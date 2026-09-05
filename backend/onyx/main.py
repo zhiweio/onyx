@@ -107,6 +107,7 @@ from onyx.server.features.persona.api import basic_router as persona_router
 from onyx.server.features.projects.api import router as projects_router
 from onyx.server.features.search.api import router as search_api_router
 from onyx.server.features.craft_project.api import router as craft_project_router
+from onyx.server.features.report_template.api import router as report_template_router
 from onyx.server.features.scenario.api import router as scenario_router
 from onyx.server.features.skill.api import user_router as skill_router
 from onyx.server.features.tax.api import router as tax_router
@@ -614,6 +615,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, mcp_gateway_admin_router)
     include_router_with_global_prefix_prepended(application, skill_router)
     include_router_with_global_prefix_prepended(application, scenario_router)
+    include_router_with_global_prefix_prepended(application, report_template_router)
     include_router_with_global_prefix_prepended(application, craft_project_router)
     include_router_with_global_prefix_prepended(application, tax_router)
 

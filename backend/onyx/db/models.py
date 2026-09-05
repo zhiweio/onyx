@@ -5042,6 +5042,44 @@ class Skill(Base):
         return self.built_in_skill_id is None
 
 
+class ReportTemplate(Base):
+    """Markdown report outline that a Craft pack can select by slug."""
+
+    __tablename__ = "report_template"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    author_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    is_builtin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    author: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[author_user_id],
+    )
+
+    __table_args__ = (UniqueConstraint("slug", name="uq_report_template_slug"),)
+
+
 class Scenario(Base):
     """Craft pack that selects skills by rules and can be shared."""
 

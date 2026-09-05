@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.db.models import Scenario, Skill, User
+from onyx.db.report_template import get_report_template_by_slug
 from onyx.db.scenario import get_scenario_for_user, resolve_scenario_skill_ids
 from onyx.server.features.build.sandbox.base import SandboxManager
 
@@ -57,7 +58,17 @@ def render_scenario_markdown_named(
     else:
         lines.append("- (no skills bound)")
     if scenario.report_template:
-        lines.extend(["", f"Preferred report template: `{scenario.report_template}`"])
+        lines.extend(
+            ["", f"Preferred report template: `{scenario.report_template}`"]
+        )
+        template = get_report_template_by_slug(
+            db_session, scenario.report_template
+        )
+        if template is not None:
+            if template.description:
+                lines.extend(["", template.description])
+            if template.body:
+                lines.extend(["", template.body.strip()])
     return "\n".join(lines).strip() + "\n"
 
 

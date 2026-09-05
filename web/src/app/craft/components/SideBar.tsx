@@ -45,6 +45,7 @@ import {
   SvgShare,
   SvgSimpleLoader,
   SvgFolder,
+  SvgFileText,
 } from "@opal/icons";
 import TypewriterText from "@/app/craft/components/TypewriterText";
 import OpencodeDebugLogsButton from "@/app/craft/components/OpencodeDebugLogs";
@@ -52,6 +53,7 @@ import {
   CRAFT_PATH,
   CRAFT_SKILLS_PATH,
   CRAFT_SCENARIOS_PATH,
+  CRAFT_REPORT_TEMPLATES_PATH,
   CRAFT_PROJECTS_PATH,
   CRAFT_APPS_PATH,
   CRAFT_TASKS_PATH,
@@ -366,6 +368,13 @@ const MemoizedBuildSidebarInner = memo(() => {
             {t("scenarios.label")}
           </SidebarTab>
           <SidebarTab
+            icon={SvgFileText}
+            onClick={() => navigate(CRAFT_REPORT_TEMPLATES_PATH)}
+            selected={pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH)}
+          >
+            {t("reportTemplates.label")}
+          </SidebarTab>
+          <SidebarTab
             icon={SvgPlug}
             onClick={() => navigate(CRAFT_APPS_PATH)}
             selected={pathname.startsWith(CRAFT_APPS_PATH)}
@@ -409,6 +418,7 @@ const MemoizedBuildSidebarInner = memo(() => {
                     !pathname.startsWith(CRAFT_TASKS_PATH) &&
                     !pathname.startsWith(CRAFT_SKILLS_PATH) &&
                     !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
+                    !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
                     !pathname.startsWith(CRAFT_PROJECTS_PATH) &&
                     !pathname.startsWith(CRAFT_APPS_PATH) &&
                     session?.id === historyItem.id
