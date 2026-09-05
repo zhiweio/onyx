@@ -400,6 +400,7 @@ class SandboxManager(_ServeMixin, ABC):
         agent_provider: str | None = None,
         agent_model: str | None = None,
         on_opencode_session_resolved: Callable[[str], None] | None = None,
+        replacement_preamble: Callable[[], str | None] | None = None,
         should_interrupt: Callable[[], bool] | None = None,
         should_abort_on_teardown: Callable[[], bool] | None = None,
         turn_timeout_seconds: float | None = None,
@@ -414,6 +415,9 @@ class SandboxManager(_ServeMixin, ABC):
         - ``on_opencode_session_resolved``: invoked with the resolved id
           when it differs from the caller's. Caller persists it so later
           turns don't orphan a fresh session each time.
+        - ``replacement_preamble``: called only when a persisted OpenCode
+          session id was replaced. Returns prior chat text to prefix onto
+          the next prompt. Must not query the database from this class.
         """
         yield from self._send_message_via_serve(
             sandbox_id,
@@ -424,6 +428,35 @@ class SandboxManager(_ServeMixin, ABC):
             agent_model,
             attachments=attachments,
             on_opencode_session_resolved=on_opencode_session_resolved,
+            replacement_preamble=replacement_preamble,
+            should_interrupt=should_interrupt,
+            should_abort_on_teardown=should_abort_on_teardown,
+            turn_timeout_seconds=turn_timeout_seconds,
+        )
+
+    def compact_session(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        *,
+        opencode_session_id: str | None,
+        agent_provider: str | None,
+        agent_model: str | None,
+        should_interrupt: Callable[[], bool] | None = None,
+        should_abort_on_teardown: Callable[[], bool] | None = None,
+        turn_timeout_seconds: float | None = None,
+    ) -> Generator[SandboxEvent, None, None]:
+        """Run OpenCode ``summarize`` as one streaming turn.
+
+        Does not mint a replacement session. Compact needs the live
+        OpenCode session that already holds the transcript.
+        """
+        yield from self._compact_via_serve(
+            sandbox_id,
+            session_id,
+            opencode_session_id,
+            agent_provider,
+            agent_model,
             should_interrupt=should_interrupt,
             should_abort_on_teardown=should_abort_on_teardown,
             turn_timeout_seconds=turn_timeout_seconds,

@@ -34,12 +34,23 @@ from onyx.server.features.build.interactive_turns.state import (
     create_interactive_turn,
     get_active_turn,
 )
+from onyx.server.features.build.jobs.phase_gate import (
+    DEFAULT_PHASE_RETRY_LIMIT,
+    evaluate_phase_gate,
+    increment_gate_retries,
+    pop_pending_enqueue_prompt,
+    retry_prompt,
+    set_pending_enqueue_prompt,
+)
+from onyx.server.features.build.jobs.plan import (
+    PLAN_JSON_PATH,
+    apply_plan_to_job_phases,
+    parse_plan_bytes,
+)
 from onyx.server.features.build.jobs.protocol import (
-    PHASE_DONE_PATH,
     compose_phase_index,
     continuation_prompt,
     current_phase,
-    phase_index_by_id,
 )
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.utils.logger import setup_logger
@@ -94,13 +105,33 @@ def maybe_continue_craft_job(
         db_session.commit()
         return
 
-    done_id = _read_phase_done(sandbox_id, session_id)
     phase = current_phase(job.phases, job.current_phase_index)
-    if phase is not None and done_id and done_id != phase.get("id"):
-        matched = phase_index_by_id(job.phases, done_id)
-        if matched is not None:
-            job.current_phase_index = matched
+    if phase is None:
+        mark_job_finished(
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail="Job has no current phase",
+        )
+        db_session.commit()
+        return
 
+    gate = evaluate_phase_gate(
+        sandbox_id=sandbox_id,
+        session_id=session_id,
+        phase=phase,
+        deadline_exceeded=deadline_exceeded,
+    )
+    if not gate.passed:
+        _retry_or_fail_phase(
+            db_session,
+            job=job,
+            user_id=user_id,
+            phase=phase,
+            missing=gate.missing,
+        )
+        return
+
+    _apply_disk_plan(job, sandbox_id=sandbox_id, session_id=session_id)
     next_index = job.current_phase_index + 1
     if next_index >= len(job.phases):
         mark_job_finished(job, status=CraftJobStatus.SUCCEEDED)
@@ -113,12 +144,104 @@ def maybe_continue_craft_job(
     if next_phase is None:
         return
     prompt = continuation_prompt(phase=next_phase, domain=job.domain, job_name=job.name)
-    _enqueue_phase_turn(
+    _enqueue_or_remember(
+        db_session,
+        job=job,
+        user_id=user_id,
+        phase=next_phase,
+        prompt=prompt,
+    )
+
+
+def flush_pending_job_enqueue(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+) -> UUID | None:
+    """Retry a continuation that missed the turn lock."""
+    phase = current_phase(job.phases, job.current_phase_index)
+    if phase is None:
+        return None
+    pending = pop_pending_enqueue_prompt(phase)
+    if pending is None:
+        return None
+    job.phases = _replace_phase(job.phases, job.current_phase_index, phase)
+    db_session.commit()
+    return _enqueue_or_remember(
+        db_session,
+        job=job,
+        user_id=user_id,
+        phase=phase,
+        prompt=pending,
+    )
+
+
+def _retry_or_fail_phase(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+    phase: dict,
+    missing: list[str],
+) -> None:
+    retries = increment_gate_retries(phase)
+    job.phases = _replace_phase(job.phases, job.current_phase_index, phase)
+    if retries >= DEFAULT_PHASE_RETRY_LIMIT:
+        mark_job_finished(
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail="Phase gate retry limit reached: " + ", ".join(missing),
+        )
+        db_session.commit()
+        return
+    db_session.commit()
+    phase_id = str(phase.get("id") or "")
+    prompt = retry_prompt(phase_id, missing)
+    _enqueue_or_remember(
+        db_session,
+        job=job,
+        user_id=user_id,
+        phase=phase,
+        prompt=prompt,
+    )
+
+
+def _apply_disk_plan(job: CraftJob, *, sandbox_id: UUID, session_id: UUID) -> None:
+    try:
+        raw = get_sandbox_manager().read_file(sandbox_id, session_id, PLAN_JSON_PATH)
+        plan = parse_plan_bytes(raw)
+    except Exception:
+        return
+    job.phases = apply_plan_to_job_phases(list(job.phases or []), plan)
+
+
+def _enqueue_or_remember(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+    phase: dict,
+    prompt: str,
+) -> UUID | None:
+    turn_id = _enqueue_phase_turn(
         db_session,
         session_id=job.session_id,
         user_id=user_id,
         prompt=prompt,
     )
+    if turn_id is None:
+        set_pending_enqueue_prompt(phase, prompt)
+        job.phases = _replace_phase(job.phases, job.current_phase_index, phase)
+        db_session.commit()
+    return turn_id
+
+
+def _replace_phase(phases: list[dict], index: int, phase: dict) -> list[dict]:
+    updated = list(phases or [])
+    if 0 <= index < len(updated):
+        updated[index] = dict(phase)
+    return updated
 
 
 def _finish_specialist_turn(
@@ -180,10 +303,11 @@ def _finish_specialist_turn(
         "\nSpecialists finished. Read `project/research/` and "
         "`project/extracted/` before you write the report."
     )
-    _enqueue_phase_turn(
+    _enqueue_or_remember(
         db_session,
-        session_id=job.session_id,
+        job=job,
         user_id=user_id,
+        phase=phase,
         prompt=prompt,
     )
 
@@ -249,17 +373,6 @@ def _enqueue_phase_turn(
 
     start_interactive_turn_runner(turn.turn_id)
     return turn.turn_id
-
-
-def _read_phase_done(sandbox_id: UUID, session_id: UUID) -> str | None:
-    try:
-        raw = get_sandbox_manager().read_file(sandbox_id, session_id, PHASE_DONE_PATH)
-    except Exception:
-        return None
-    text = raw.decode("utf-8", errors="replace").strip()
-    if not text:
-        return None
-    return text.splitlines()[0].strip()
 
 
 def job_turn_budgets(job: CraftJob | None) -> tuple[int, int] | None:

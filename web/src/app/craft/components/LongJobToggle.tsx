@@ -18,6 +18,7 @@ export default function LongJobToggle({
         type="checkbox"
         checked={checked}
         disabled={disabled}
+        data-testid="craft-long-job-toggle"
         onChange={(event) => onChange(event.target.checked)}
       />
       {t("toggle")}

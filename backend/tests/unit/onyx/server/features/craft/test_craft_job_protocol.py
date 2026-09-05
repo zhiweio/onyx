@@ -59,6 +59,7 @@ def test_first_phase_prompt_includes_user_text() -> None:
     )
     assert "2026Q2" in prompt
     assert "plan" in prompt
+    assert "PLAN.json" in prompt
 
 
 def test_job_turn_budgets_respect_phase_cap(monkeypatch) -> None:
@@ -74,3 +75,39 @@ def test_job_turn_budgets_respect_phase_cap(monkeypatch) -> None:
     assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
     assert 0 < soft < hard
     assert continuation_mod.job_turn_budgets(None) is None
+
+
+def test_job_turn_budgets_use_deep_job_soft_fraction(monkeypatch) -> None:
+    from onyx.server.features.build.jobs import continuation as continuation_mod
+    from onyx.server.features.build.timeouts import INTERACTIVE_TURN_HARD_CAP_SECONDS
+
+    job = SimpleNamespace(phase_budget_seconds=1500)
+    monkeypatch.setattr(
+        "onyx.server.features.build.configs.CRAFT_DEEP_JOB_RESOURCES", True
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.configs.CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION",
+        0.75,
+    )
+    soft, hard = continuation_mod.job_turn_budgets(job)
+    assert hard == 1500
+    assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
+    assert soft == 1125
+
+
+def test_deep_job_inactivity_default_uses_long_tool_window() -> None:
+    from onyx.server.features.build.configs import (
+        OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
+        compute_opencode_inactivity_default,
+    )
+
+    approval = 200.0
+    assert (
+        compute_opencode_inactivity_default(
+            deep_job=False, approval_default=approval
+        )
+        == approval
+    )
+    assert compute_opencode_inactivity_default(
+        deep_job=True, approval_default=approval
+    ) == max(approval, OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS)

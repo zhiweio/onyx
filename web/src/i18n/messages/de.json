@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "MCP-Server"
         },
+        "commandsGroup": {
+          "label": "Befehle"
+        },
         "skillsGroup": {
           "label": "Skills"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "Kontext verdichten",
+        "description": "Früheren Kontext zusammenfassen, um Platz zu schaffen",
+        "running": "Kontext wird verdichtet…",
+        "unavailable": "Verdichten ist erst nach dem ersten Turn und mit einem Modell verfügbar"
+      },
       "entryInfo": {
         "connected": "Verbunden",
         "connectionRequired": "Verbindung erforderlich"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

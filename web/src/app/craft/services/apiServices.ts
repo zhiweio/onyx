@@ -459,6 +459,41 @@ export async function createTurn(
   return res.json();
 }
 
+export async function createCompactTurn(
+  sessionId: string,
+  clientRequestId: string,
+  signal?: AbortSignal
+): Promise<ApiInteractiveTurnResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/compact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_request_id: clientRequestId }),
+    signal,
+  });
+
+  if (!res.ok) {
+    if (res.status === 429) {
+      const body: RateLimited429Body | null = await res
+        .json()
+        .catch(() => null);
+      if (body?.error_code === RATE_LIMITED_ERROR_CODE) {
+        throw new RateLimitedError(
+          body.detail || "You've reached your usage limit.",
+          {
+            scope: body.scope,
+            reset_at: body.reset_at,
+            retry_after_seconds: body.retry_after_seconds,
+          }
+        );
+      }
+      throw new Error(body?.detail || `Failed to compact: ${res.status}`);
+    }
+    throw new Error(await errorDetail(res, "Failed to compact"));
+  }
+
+  return res.json();
+}
+
 export async function fetchActiveTurn(
   sessionId: string
 ): Promise<ApiInteractiveTurnResponse | null> {
@@ -861,6 +896,18 @@ export async function createCraftJob(body: {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to start long job: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function cancelCraftJob(jobId: string): Promise<CraftJobResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs/${jobId}/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to cancel long job: ${res.status}`);
   }
   return res.json();
 }

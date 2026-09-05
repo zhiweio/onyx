@@ -16,6 +16,7 @@ export class CraftWelcomePage {
   readonly lockedState: Locator;
   readonly messageInput: Locator;
   readonly providerModal: Locator;
+  readonly longJobToggle: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -24,12 +25,23 @@ export class CraftWelcomePage {
     this.llmSetup = page.locator('[aria-label="craft-llm-setup"]');
     this.llmSetupToggle = this.llmSetup.getByRole("switch");
     this.lockedState = page.locator('[aria-label="craft-llm-locked"]');
-    this.messageInput = page.locator('[aria-label="Message input"]');
+    this.messageInput = page.getByRole("textbox");
     this.providerModal = page.getByRole("dialog");
+    this.longJobToggle = page.getByTestId("craft-long-job-toggle");
   }
 
   async goto(): Promise<void> {
     await this.page.goto("/craft/v1");
+  }
+
+  /** Open a blank welcome so the first prompt can start a long job. */
+  async startNewSession(): Promise<void> {
+    await this.page
+      .getByRole("button", { name: /Start Crafting|开始创作/ })
+      .click();
+    await this.page.waitForURL((url) => !url.searchParams.has("sessionId"), {
+      timeout: 15000,
+    });
   }
 
   /** Dismisses the first-visit intro tour (Escape closes the dialog). */
@@ -62,5 +74,18 @@ export class CraftWelcomePage {
   async expectInputEnabled(): Promise<void> {
     await expect(this.messageInput).toBeVisible({ timeout: 15000 });
     await expect(this.messageInput).toHaveAttribute("aria-disabled", "false");
+  }
+
+  async enableLongJob(): Promise<void> {
+    await expect(this.longJobToggle).toBeVisible({ timeout: 15000 });
+    await this.longJobToggle.check();
+    await expect(this.longJobToggle).toBeChecked();
+  }
+
+  async submitMessage(text: string): Promise<void> {
+    await this.expectInputEnabled();
+    await this.messageInput.click();
+    await this.messageInput.pressSequentially(text);
+    await this.page.getByRole("button", { name: /Send|发送/ }).click();
   }
 }

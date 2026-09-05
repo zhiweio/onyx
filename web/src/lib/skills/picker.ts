@@ -33,15 +33,34 @@ export interface PickerMcpServer {
   authenticated: boolean;
 }
 
-export type PickerEntry = PickerSkill | PickerApp | PickerMcpServer;
+export interface PickerCommand {
+  kind: "command";
+  slug: string;
+  name: string;
+  description: string;
+}
+
+export type PickerEntry =
+  | PickerSkill
+  | PickerApp
+  | PickerMcpServer
+  | PickerCommand;
 
 export interface PickerSections {
+  commands: PickerCommand[];
   skills: PickerSkill[];
   apps: PickerApp[];
   mcpServers: PickerMcpServer[];
 }
 
-const EMPTY_SECTIONS: PickerSections = { skills: [], apps: [], mcpServers: [] };
+export const COMPACT_COMMAND_SLUG = "compact";
+
+const EMPTY_SECTIONS: PickerSections = {
+  commands: [],
+  skills: [],
+  apps: [],
+  mcpServers: [],
+};
 
 /** Case-insensitive name ordering, shared so every surface listing apps and MCP
  * servers sorts them the same way. */
@@ -113,7 +132,7 @@ export function toPickerSections(
   apps.sort((a, b) => compareByName(a, b) || a.externalAppId - b.externalAppId);
   mcp.sort((a, b) => compareByName(a, b) || a.mcpServerId - b.mcpServerId);
 
-  return { skills, apps, mcpServers: mcp };
+  return { commands: [], skills, apps, mcpServers: mcp };
 }
 
 export interface SlashTrigger {
@@ -153,6 +172,9 @@ function matchesQuery(entry: PickerEntry, query: string): boolean {
     case "mcp":
       fields = [String(entry.mcpServerId), entry.name];
       break;
+    case "command":
+      fields = [entry.slug, entry.name, entry.description];
+      break;
   }
   return fields.some((field) => field.toLowerCase().includes(query));
 }
@@ -165,6 +187,8 @@ export function pickerEntryKey(entry: PickerEntry): string {
       return `app:${entry.externalAppId}`;
     case "mcp":
       return `mcp:${entry.mcpServerId}`;
+    case "command":
+      return `command:${entry.slug}`;
   }
 }
 
@@ -178,6 +202,8 @@ export function pickerEntryPromptPrefix(entry: PickerEntry): string {
       // The server's tools are already wired into the session, so this only
       // points the agent at them.
       return `[Use the MCP server ${JSON.stringify(entry.name)} and its tools]`;
+    case "command":
+      return `/${entry.slug}`;
   }
 }
 
@@ -200,6 +226,8 @@ export function pickerEntryConnectionPath(
       return entry.authenticated
         ? null
         : `${CRAFT_APPS_PATH}?${CRAFT_APPS_TAB_PARAM}=mcp`;
+    case "command":
+      return null;
   }
 }
 
@@ -210,14 +238,20 @@ export function filterPickerSections(
   const q = query.trim().toLowerCase();
   if (!q) return sections;
   return {
+    commands: sections.commands.filter((c) => matchesQuery(c, q)),
     skills: sections.skills.filter((s) => matchesQuery(s, q)),
     apps: sections.apps.filter((a) => matchesQuery(a, q)),
     mcpServers: sections.mcpServers.filter((m) => matchesQuery(m, q)),
   };
 }
 
-// Skills, then apps, then MCP servers; must match the popover's visual render
-// order so keyboard nav indices line up.
+// Commands, then skills, then apps, then MCP servers; must match the
+// popover's visual render order so keyboard nav indices line up.
 export function flattenSections(sections: PickerSections): PickerEntry[] {
-  return [...sections.skills, ...sections.apps, ...sections.mcpServers];
+  return [
+    ...sections.commands,
+    ...sections.skills,
+    ...sections.apps,
+    ...sections.mcpServers,
+  ];
 }

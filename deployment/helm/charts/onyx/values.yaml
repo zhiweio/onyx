@@ -1730,8 +1730,9 @@ configMap:
   # API service (no prefix). It is required when ENABLE_CRAFT=true.
   SANDBOX_PROXY_CA_SECRET: "sandbox-proxy-ca"
   SANDBOX_PROXY_CA_CONFIGMAP: "sandbox-proxy-ca-bundle"
-  # Long document / MCP jobs. Off by default. Raises project file cap and the
-  # silent-step inactivity window. Does not change the 30-minute turn hard cap.
+  # Operator switch for heavier long jobs. Off by default. Raises project
+  # file cap, job budgets, specialist cap, and the silent-step inactivity
+  # window. Does not change the 30-minute turn hard cap.
   CRAFT_DEEP_JOB_RESOURCES: ""
   CRAFT_DEEP_JOB_PROJECT_MAX_FILES: ""
   CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS: ""

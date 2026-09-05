@@ -1,24 +1,11 @@
 import React from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { render } from "@tests/setup/test-utils";
 import CraftInputBar from "@/app/craft/components/CraftInputBar";
-import {
-  UploadFileStatus,
-  type BuildFile,
-} from "@/app/craft/contexts/UploadFilesContext";
+import type { PickerEntry } from "@/lib/skills/picker";
+import { COMPACT_COMMAND_SLUG } from "@/lib/skills/picker";
 
-const mockClearFiles = jest.fn();
-const attachedFiles: BuildFile[] = [
-  {
-    id: "file-1",
-    name: "reference.png",
-    status: UploadFileStatus.COMPLETED,
-    file_type: "image/png",
-    size: 123,
-    created_at: "2026-07-28T00:00:00.000Z",
-    path: "attachments/reference.png",
-  },
-];
+const mockAddEntryPath: { onSelect?: (entry: PickerEntry) => void } = {};
 
 jest.mock("@/app/craft/contexts/UploadFilesContext", () => {
   const actual = jest.requireActual<
@@ -27,10 +14,10 @@ jest.mock("@/app/craft/contexts/UploadFilesContext", () => {
   return {
     ...actual,
     useUploadFilesContext: () => ({
-      currentMessageFiles: attachedFiles,
+      currentMessageFiles: [],
       uploadFiles: jest.fn(),
       removeFile: jest.fn(),
-      clearFiles: mockClearFiles,
+      clearFiles: jest.fn(),
       hasUploadingFiles: false,
     }),
   };
@@ -40,20 +27,7 @@ jest.mock("@/sections/input/BaseInputBar", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   return {
     __esModule: true,
-    default: React.forwardRef(
-      (
-        {
-          onQueueMessage,
-        }: {
-          onQueueMessage?: (message: string) => void;
-        },
-        _ref
-      ) => (
-        <button onClick={() => onQueueMessage?.("queued prompt")}>
-          Queue message
-        </button>
-      )
-    ),
+    default: React.forwardRef(() => <div data-testid="base-input" />),
   };
 });
 
@@ -64,7 +38,6 @@ jest.mock("next/navigation", () => ({
 jest.mock("swr", () => ({
   __esModule: true,
   default: () => ({ data: [], mutate: jest.fn() }),
-  // The test-utils render wrapper mounts the real SWRConfig provider.
   SWRConfig: jest.requireActual("swr").SWRConfig,
 }));
 
@@ -88,28 +61,19 @@ jest.mock("@/hooks/useEscapeInterrupt", () => ({
 
 jest.mock("@/hooks/useSlashPicker", () => ({
   __esModule: true,
-  default: () => ({
-    open: false,
-    anchorRect: null,
-    query: "",
-    onInput: jest.fn(),
-    onSelectionChange: jest.fn(),
-    onSelect: jest.fn(),
-    onClose: jest.fn(),
-    reset: jest.fn(),
-  }),
-}));
-
-jest.mock("@/lib/skills/picker", () => ({
-  pickerEntryConnectionPath: () => null,
-  pickerEntryKey: () => "",
-  pickerEntryPromptPrefix: () => "",
-  toPickerSections: () => ({
-    commands: [],
-    skills: [],
-    apps: [],
-    mcpServers: [],
-  }),
+  default: ({ onSelect }: { onSelect: (entry: PickerEntry) => void }) => {
+    mockAddEntryPath.onSelect = onSelect;
+    return {
+      open: false,
+      anchorRect: null,
+      query: "",
+      onInput: jest.fn(),
+      onSelectionChange: jest.fn(),
+      onSelect,
+      onClose: jest.fn(),
+      reset: jest.fn(),
+    };
+  },
 }));
 
 jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({
@@ -128,25 +92,31 @@ jest.mock("@/sections/input/PlusMenuButton", () => ({
 }));
 jest.mock("@/app/craft/components/UserLibraryModal", () => () => null);
 
-describe("CraftInputBar queued attachments", () => {
-  beforeEach(() => {
-    mockClearFiles.mockClear();
-  });
-
-  it("transfers composer files to the queued message and clears their association", () => {
-    const onQueueMessage = jest.fn();
+describe("CraftInputBar compact command", () => {
+  it("routes a compact picker selection to onCompact, not a chip", () => {
+    const onCompact = jest.fn();
+    const onSubmit = jest.fn();
 
     render(
       <CraftInputBar
-        onSubmit={jest.fn()}
-        isRunning
-        onQueueMessage={onQueueMessage}
+        onSubmit={onSubmit}
+        isRunning={false}
+        compactAvailable
+        onCompact={onCompact}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Queue message" }));
+    expect(mockAddEntryPath.onSelect).toBeDefined();
+    act(() => {
+      mockAddEntryPath.onSelect?.({
+        kind: "command",
+        slug: COMPACT_COMMAND_SLUG,
+        name: "Compact context",
+        description: "Summarize earlier context to free up space",
+      });
+    });
 
-    expect(onQueueMessage).toHaveBeenCalledWith("queued prompt", attachedFiles);
-    expect(mockClearFiles).toHaveBeenCalledWith({ suppressRefetch: true });
+    expect(onCompact).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

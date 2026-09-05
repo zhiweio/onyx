@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "MCP servers"
         },
+        "commandsGroup": {
+          "label": "Commands"
+        },
         "skillsGroup": {
           "label": "Skills"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "Compact context",
+        "description": "Summarize earlier context to free up space",
+        "running": "Compacting context…",
+        "unavailable": "Compact is unavailable until this session has a model and a first turn"
+      },
       "entryInfo": {
         "connected": "Connected",
         "connectionRequired": "Connection required"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "MCP 서버"
         },
+        "commandsGroup": {
+          "label": "명령"
+        },
         "skillsGroup": {
           "label": "스킬"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "컨텍스트 압축",
+        "description": "이전 컨텍스트를 요약해 공간을 확보합니다",
+        "running": "컨텍스트를 압축하는 중…",
+        "unavailable": "첫 턴과 모델이 있어야 압축할 수 있습니다"
+      },
       "entryInfo": {
         "connected": "연결됨",
         "connectionRequired": "연결 필요"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

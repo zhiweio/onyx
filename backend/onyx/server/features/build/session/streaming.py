@@ -68,6 +68,9 @@ from onyx.server.features.build.sandbox.models import PromptAttachment
 from onyx.server.features.build.sandbox.opencode.serve_client import _merge_field_meta
 from onyx.server.features.build.sandbox.serve_transport import PromptSlot
 from onyx.server.features.build.sandbox.sse import SSEKeepalive
+from onyx.server.features.build.session.history_replay import (
+    replacement_preamble_for_session,
+)
 from onyx.server.features.build.timeouts import (
     INTERACTIVE_TURN_HARD_CAP_SECONDS,
     INTERACTIVE_TURN_SOFT_BUDGET_SECONDS,
@@ -501,6 +504,7 @@ def yield_sandbox_events(
     should_interrupt: Callable[[], bool] | None = None,
     should_abort_on_teardown: Callable[[], bool] | None = None,
     turn_timeout_seconds: float | None = None,
+    kind: str = "prompt",
 ) -> Generator[Any, None, None]:
     """Drive the agent to completion, yielding raw sandbox events.
 
@@ -522,22 +526,40 @@ def yield_sandbox_events(
         # opencode session (dropping conversation history).
         _persist_opencode_session_id(db_session, session_id, new_id)
 
+    def _replacement_preamble() -> str | None:
+        return replacement_preamble_for_session(
+            db_session, session_id, user_message_content
+        )
+
     # The idle reaper keys off last_heartbeat; a turn can outlast the idle timeout.
     _refresh_sandbox_heartbeat_best_effort(sandbox_id)
     last_heartbeat_refresh = time.monotonic()
-    event_stream = sandbox_manager.send_message(
-        sandbox_id,
-        session_id,
-        user_message_content,
-        attachments=attachments,
-        opencode_session_id=opencode_session_id,
-        agent_provider=agent_provider,
-        agent_model=agent_model,
-        on_opencode_session_resolved=_persist_resolved_id,
-        should_interrupt=should_interrupt,
-        should_abort_on_teardown=should_abort_on_teardown,
-        turn_timeout_seconds=turn_timeout_seconds,
-    )
+    if kind == "compact":
+        event_stream = sandbox_manager.compact_session(
+            sandbox_id,
+            session_id,
+            opencode_session_id=opencode_session_id,
+            agent_provider=agent_provider,
+            agent_model=agent_model,
+            should_interrupt=should_interrupt,
+            should_abort_on_teardown=should_abort_on_teardown,
+            turn_timeout_seconds=turn_timeout_seconds,
+        )
+    else:
+        event_stream = sandbox_manager.send_message(
+            sandbox_id,
+            session_id,
+            user_message_content,
+            attachments=attachments,
+            opencode_session_id=opencode_session_id,
+            agent_provider=agent_provider,
+            agent_model=agent_model,
+            on_opencode_session_resolved=_persist_resolved_id,
+            replacement_preamble=_replacement_preamble,
+            should_interrupt=should_interrupt,
+            should_abort_on_teardown=should_abort_on_teardown,
+            turn_timeout_seconds=turn_timeout_seconds,
+        )
     try:
         for sandbox_event in event_stream:
             if (

@@ -173,6 +173,7 @@ def run_claimed_interactive_build_turn(
             budget_seconds=budget_seconds,
             runner_id=runner_id,
             reclaimed=turn.reclaimed,
+            kind=turn.kind,
         )
     except Exception as exc:
         logger.exception(
@@ -246,6 +247,7 @@ def _drive_interactive_turn(
     prompt: str,
     turn_index: int,
     attachments: list[PromptAttachment],
+    kind: str = "prompt",
     budget_seconds: int,
     runner_id: str | None,
     reclaimed: bool,
@@ -395,6 +397,7 @@ def _drive_interactive_turn(
                 prompt_attachments: list[PromptAttachment],
                 *,
                 can_continue: bool,
+                compact: bool = False,
             ) -> _PromptResult:
                 """Stream one opencode prompt to completion, timeout, or a
                 turn-ending failure. On the recoverable inactivity timeout it
@@ -406,14 +409,22 @@ def _drive_interactive_turn(
                 cancelled_event_seen = False
                 timed_out = False
 
-                event_stream = session_manager.yield_sandbox_events(
-                    sandbox.id,
-                    session_id,
-                    current_prompt,
-                    attachments=prompt_attachments,
-                    should_interrupt=interrupt_requested,
-                    should_abort_on_teardown=lambda: not ownership_lost,
-                )
+                if compact:
+                    event_stream = session_manager.yield_sandbox_compact_events(
+                        sandbox.id,
+                        session_id,
+                        should_interrupt=interrupt_requested,
+                        should_abort_on_teardown=lambda: not ownership_lost,
+                    )
+                else:
+                    event_stream = session_manager.yield_sandbox_events(
+                        sandbox.id,
+                        session_id,
+                        current_prompt,
+                        attachments=prompt_attachments,
+                        should_interrupt=interrupt_requested,
+                        should_abort_on_teardown=lambda: not ownership_lost,
+                    )
 
                 for sandbox_event in event_stream:
                     if time.monotonic() > deadline:
@@ -491,26 +502,34 @@ def _drive_interactive_turn(
                 )
 
             result = _PromptResult(_PromptOutcome.COMPLETED)
-            current_prompt = prompt
-            for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
+            if kind == "compact":
                 result = drive_one_prompt(
-                    current_prompt,
-                    attachments if attempt == 0 else [],
-                    can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
+                    "",
+                    [],
+                    can_continue=False,
+                    compact=True,
                 )
-                if result.outcome is not _PromptOutcome.TIMED_OUT:
-                    break
-                # Flush the aborted step's partial output as its own message so it
-                # can't merge with the continuation, then steer the agent.
-                session_manager.finalize_persist(session_id, state)
-                db_session.commit()
-                logger.info(
-                    "Interactive turn %s step timed out; re-prompting (%s/%s)",
-                    turn_id,
-                    attempt + 1,
-                    MAX_TIMEOUT_CONTINUATIONS,
-                )
-                current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+            else:
+                current_prompt = prompt
+                for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
+                    result = drive_one_prompt(
+                        current_prompt,
+                        attachments if attempt == 0 else [],
+                        can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
+                    )
+                    if result.outcome is not _PromptOutcome.TIMED_OUT:
+                        break
+                    # Flush the aborted step's partial output as its own message so it
+                    # can't merge with the continuation, then steer the agent.
+                    session_manager.finalize_persist(session_id, state)
+                    db_session.commit()
+                    logger.info(
+                        "Interactive turn %s step timed out; re-prompting (%s/%s)",
+                        turn_id,
+                        attempt + 1,
+                        MAX_TIMEOUT_CONTINUATIONS,
+                    )
+                    current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
 
             if result.outcome is _PromptOutcome.TERMINATED:
                 return
@@ -636,7 +655,7 @@ def _drive_interactive_turn(
                 session_manager.clear_turn_deadline(sandbox.id, session_id)
             prompt_slot_cm.__exit__(None, None, None)
 
-    if sandbox_id is None:
+    if sandbox_id is None or kind == "compact":
         return
     try:
         from onyx.server.features.build.jobs.continuation import (

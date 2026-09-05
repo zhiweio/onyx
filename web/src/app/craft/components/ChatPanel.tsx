@@ -105,6 +105,7 @@ export default function BuildChatPanel({
   existingSessionId,
 }: BuildChatPanelProps) {
   const t = useTranslations("craft.chatPanel");
+  const inputBarT = useTranslations("craft.inputBar");
   const router = useRouter();
   const outputPanelOpen = useOutputPanelOpen();
   const session = useSession();
@@ -124,6 +125,7 @@ export default function BuildChatPanel({
   );
   const jobInFlight = isCraftJobInFlight(craftJob);
   const [longJobEnabled, setLongJobEnabled] = useState(false);
+  const [isCompacting, setIsCompacting] = useState(false);
   const hasSession = useHasSession();
   const isRunning = useIsRunning();
   const displayIsRunning = isRunning || scheduledRunInFlight;
@@ -216,6 +218,7 @@ export default function BuildChatPanel({
   );
   const {
     streamMessage,
+    streamCompact,
     interruptStreaming,
     streamScheduledRunEvents,
     streamTurnEvents,
@@ -363,7 +366,7 @@ export default function BuildChatPanel({
   ]);
 
   useEffect(() => {
-    if (!jobSessionId || !jobInFlight || isRunning || activeTurnId) {
+    if (!jobSessionId || !jobInFlight || activeTurnId) {
       return;
     }
     let cancelledPoll = false;
@@ -387,7 +390,7 @@ export default function BuildChatPanel({
       cancelledPoll = true;
       clearInterval(timer);
     };
-  }, [jobSessionId, jobInFlight, isRunning, activeTurnId, updateSessionData]);
+  }, [jobSessionId, jobInFlight, activeTurnId, updateSessionData]);
 
   useEffect(() => {
     if (
@@ -516,12 +519,26 @@ export default function BuildChatPanel({
         }
         if (longJobEnabled && !jobInFlight) {
           try {
-            await createCraftJob({
+            const started = await createCraftJob({
               session_id: sessionId,
               prompt: message,
-              start: false,
+              start: true,
             });
             void mutateCraftJob();
+            appendMessageToCurrent({
+              id: `msg-${Date.now()}`,
+              type: "user",
+              content: message,
+              timestamp: new Date(),
+              attachments,
+            });
+            updateSessionData(sessionId, {
+              status: "running",
+              error: null,
+              activeTurnId: started.turn_id,
+              activeTurnLocalOwner: false,
+            });
+            return;
           } catch (err) {
             toast.error((err as Error).message);
             return;
@@ -620,12 +637,19 @@ export default function BuildChatPanel({
 
         if (longJobEnabled) {
           try {
-            await createCraftJob({
+            const started = await createCraftJob({
               session_id: newSessionId,
               prompt: message,
-              start: false,
+              start: true,
             });
             void mutateCraftJob();
+            updateSessionData(newSessionId, {
+              status: "running",
+              error: null,
+              activeTurnId: started.turn_id,
+              activeTurnLocalOwner: false,
+            });
+            return;
           } catch (err) {
             toast.error((err as Error).message);
             return;
@@ -653,8 +677,30 @@ export default function BuildChatPanel({
       longJobEnabled,
       jobInFlight,
       mutateCraftJob,
+      updateSessionData,
     ]
   );
+
+  const compactAvailable = Boolean(
+    sessionId &&
+      session?.opencodeSessionId &&
+      !isRunning &&
+      !scheduledRunInFlight &&
+      !isViewingSubagent &&
+      (selectedModel || session.agentModel)
+  );
+
+  const handleCompact = useCallback(async () => {
+    if (!sessionId || !compactAvailable) return;
+    setIsCompacting(true);
+    try {
+      await streamCompact(sessionId);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setIsCompacting(false);
+    }
+  }, [sessionId, compactAvailable, streamCompact]);
 
   const handleSubmit = useCallback(
     (
@@ -930,15 +976,19 @@ export default function BuildChatPanel({
                         ? handleInterrupt
                         : undefined
                     }
+                    compactAvailable={compactAvailable}
+                    onCompact={handleCompact}
                     disabled={
                       isViewingSubagent || scheduledRunInFlight || !hasProvider
                     }
                     placeholder={
-                      isViewingSubagent
-                        ? t("input.subagentPlaceholder")
-                        : scheduledRunInFlight
-                          ? t("input.scheduledRunPlaceholder")
-                          : t("input.continuePlaceholder")
+                      isCompacting
+                        ? inputBarT("compact.running")
+                        : isViewingSubagent
+                          ? t("input.subagentPlaceholder")
+                          : scheduledRunInFlight
+                            ? t("input.scheduledRunPlaceholder")
+                            : t("input.continuePlaceholder")
                     }
                     queuedMessages={queuedMessages}
                     onQueueMessage={handleQueueMessage}

@@ -28,7 +28,10 @@ from onyx.server.features.build.configs import (
     CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS,
 )
 from onyx.server.features.build.db.build_session import get_build_session
-from onyx.server.features.build.jobs.continuation import enqueue_job_phase_turn
+from onyx.server.features.build.jobs.continuation import (
+    enqueue_job_phase_turn,
+    flush_pending_job_enqueue,
+)
 from onyx.server.features.build.jobs.models import (
     CraftJobCreateRequest,
     CraftJobResponse,
@@ -129,6 +132,15 @@ def get_job_for_session(
     job = get_latest_job_for_session(db_session, session_id)
     if job is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "No long job for this session")
+    if job.status in {
+        CraftJobStatus.PENDING,
+        CraftJobStatus.RUNNING,
+        CraftJobStatus.WAITING_SPECIALISTS,
+    }:
+        flush_pending_job_enqueue(db_session, job=job, user_id=user.id)
+        refreshed = get_latest_job_for_session(db_session, session_id)
+        if refreshed is not None:
+            job = refreshed
     return CraftJobResponse.from_model(job)
 
 
@@ -141,6 +153,15 @@ def get_job(
     job = get_craft_job_for_user(db_session, job_id, user.id)
     if job is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
+    if job.status in {
+        CraftJobStatus.PENDING,
+        CraftJobStatus.RUNNING,
+        CraftJobStatus.WAITING_SPECIALISTS,
+    }:
+        flush_pending_job_enqueue(db_session, job=job, user_id=user.id)
+        refreshed = get_craft_job_for_user(db_session, job_id, user.id)
+        if refreshed is not None:
+            job = refreshed
     return CraftJobResponse.from_model(job)
 
 
@@ -161,6 +182,10 @@ def cancel_job(
         return CraftJobResponse.from_model(job)
     mark_job_finished(job, status=CraftJobStatus.CANCELLED)
     db_session.commit()
+    try:
+        SessionManager(db_session).interrupt_message(job.session_id, user.id)
+    except Exception:
+        pass
     return CraftJobResponse.from_model(job)
 
 

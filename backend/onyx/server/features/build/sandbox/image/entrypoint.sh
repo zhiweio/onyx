@@ -64,7 +64,6 @@ while true; do
     exit_code=$?
     set -e
     child_pid=
-
     echo "[entrypoint] opencode serve exited (code=$exit_code); restarting in ${backoff}s"
     sleep "$backoff"
     backoff=$((backoff * 2))

@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "MCP 服务器"
         },
+        "commandsGroup": {
+          "label": "命令"
+        },
         "skillsGroup": {
           "label": "技能"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "压缩上下文",
+        "description": "总结较早的上下文以腾出空间",
+        "running": "正在压缩上下文…",
+        "unavailable": "此会话需要模型和首轮对话后才能压缩"
+      },
       "entryInfo": {
         "connected": "已连接",
         "connectionRequired": "需要连接"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "长作业",
       "toggle": "按长作业运行",
+      "cancel": "取消",
       "status": {
         "running": "阶段：{phase}",
         "waitingSpecialists": "等待专家会话",

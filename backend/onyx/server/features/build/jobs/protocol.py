@@ -6,6 +6,7 @@ from typing import Any, Final
 
 PHASE_DONE_PATH: Final[str] = "outputs/plan/PHASE_DONE"
 PLAN_PATH: Final[str] = "outputs/plan/PLAN.md"
+PLAN_JSON_PATH: Final[str] = "outputs/plan/PLAN.json"
 TODO_PATH: Final[str] = "outputs/plan/TODO.json"
 MANIFEST_PATH: Final[str] = "outputs/ingest/MANIFEST.json"
 
@@ -66,7 +67,7 @@ def continuation_prompt(*, phase: dict[str, Any], domain: str, job_name: str) ->
     return (
         f"Continue the long job `{job_name}` ({domain}).\n"
         f"You are starting phase `{phase_id}` ({phase_name}).\n"
-        "Read `outputs/plan/PLAN.md` and `outputs/plan/TODO.json` first. "
+        "Read `outputs/plan/PLAN.json` and `outputs/plan/TODO.json` first. "
         "Read only the input files this phase needs. "
         "Do not restart finished phases. "
         "Extract tables with the document-ingest skill; never load a whole "
@@ -80,8 +81,9 @@ def continuation_prompt(*, phase: dict[str, Any], domain: str, job_name: str) ->
 def first_phase_prompt(*, user_prompt: str, domain: str, job_name: str) -> str:
     return (
         f"Start the long job `{job_name}` ({domain}).\n"
-        "Follow `long-job-protocol`. Create `outputs/plan/PLAN.md` and "
-        "`outputs/plan/TODO.json` if they are missing.\n"
+        "Follow `long-job-protocol`. Create `outputs/plan/PLAN.json` "
+        "(and a PLAN.md render) plus `outputs/plan/TODO.json` if they "
+        "are missing.\n"
         "User request:\n"
         f"{user_prompt.strip()}\n"
         f"When the plan phase is done, write `{PHASE_DONE_PATH}` with the "
@@ -93,8 +95,8 @@ def specialist_prompt(*, role: str, user_prompt: str, job_name: str) -> str:
     return (
         f"You are the `{role}` specialist for long job `{job_name}`.\n"
         "Work only on this role. Write findings under "
-        f"`project/research/{role}/` and extracted tables under "
-        "`project/extracted/` or `outputs/extracted/`. "
+        f"`project/research/{role}/FINDINGS.md` and extracted tables "
+        "under `project/extracted/`. "
         "Cite source file paths. Do not compose the final report.\n"
         f"{user_prompt.strip()}"
     )

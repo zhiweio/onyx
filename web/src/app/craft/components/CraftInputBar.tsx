@@ -33,10 +33,12 @@ import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import {
+  COMPACT_COMMAND_SLUG,
   pickerEntryConnectionPath,
   pickerEntryKey,
   pickerEntryPromptPrefix,
   toPickerSections,
+  type PickerCommand,
   type PickerEntry,
 } from "@/lib/skills/picker";
 import { SWR_KEYS } from "@/lib/swr-keys";
@@ -67,6 +69,8 @@ export interface CraftInputBarProps {
   } | null;
   /** Seed the active entry chips. For stories/tests; production callers leave unset. */
   initialEntries?: PickerEntry[];
+  compactAvailable?: boolean;
+  onCompact?: () => void;
 }
 
 function withEntryPrefixes(message: string, entries: PickerEntry[]): string {
@@ -91,6 +95,8 @@ const CraftInputBar = memo(
         isInterrupting = false,
         contextUsage,
         initialEntries,
+        compactAvailable = false,
+        onCompact,
       },
       ref
     ) => {
@@ -111,9 +117,21 @@ const CraftInputBar = memo(
       const { data: skillsData } = useUserSkills();
       const { data: appsData } = useUserExternalApps();
       const { data: craftMcpData } = useCraftMcpServers();
+      const compactCommand = useMemo<PickerCommand>(
+        () => ({
+          kind: "command",
+          slug: COMPACT_COMMAND_SLUG,
+          name: t("compact.name"),
+          description: t("compact.description"),
+        }),
+        [t]
+      );
       const pickerSections = useMemo(
-        () => toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
-        [skillsData, appsData, craftMcpData]
+        () => ({
+          ...toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
+          commands: compactAvailable ? [compactCommand] : [],
+        }),
+        [skillsData, appsData, craftMcpData, compactAvailable, compactCommand]
       );
 
       const { data: libraryTree, mutate: mutateLibrary } = useSWR(
@@ -140,6 +158,10 @@ const CraftInputBar = memo(
 
       const addEntry = useCallback(
         (entry: PickerEntry) => {
+          if (entry.kind === "command" && entry.slug === COMPACT_COMMAND_SLUG) {
+            onCompact?.();
+            return;
+          }
           const connectionPath = pickerEntryConnectionPath(entry);
           if (connectionPath) {
             router.push(connectionPath);
@@ -153,7 +175,7 @@ const CraftInputBar = memo(
               : [...prev, entry]
           );
         },
-        [router]
+        [router, onCompact]
       );
 
       const removeEntry = useCallback((entryKey: string) => {
@@ -192,10 +214,17 @@ const CraftInputBar = memo(
       const onPasteText = useCallback(
         (text: string): boolean => {
           const slug = text.trim().match(/^\/(\S+)$/)?.[1];
-          const entry = slug
-            ? (pickerSections.skills.find((entry) => entry.slug === slug) ??
-              null)
-            : null;
+          if (!slug) return false;
+          const command = pickerSections.commands.find(
+            (entry) => entry.slug === slug
+          );
+          if (command) {
+            addEntry(command);
+            return true;
+          }
+          const entry =
+            pickerSections.skills.find((candidate) => candidate.slug === slug) ??
+            null;
           if (entry) {
             addEntry(entry);
             return true;
@@ -326,7 +355,8 @@ const CraftInputBar = memo(
             <EntryInfoPopover
               name={entryInfo.entry.name}
               description={
-                entryInfo.entry.kind === "skill"
+                entryInfo.entry.kind === "skill" ||
+                entryInfo.entry.kind === "command"
                   ? entryInfo.entry.description
                   : entryInfo.entry.authenticated
                     ? t("entryInfo.connected")

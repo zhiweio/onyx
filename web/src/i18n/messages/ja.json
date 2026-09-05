@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "MCP サーバー"
         },
+        "commandsGroup": {
+          "label": "コマンド"
+        },
         "skillsGroup": {
           "label": "スキル"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "コンテキストを圧縮",
+        "description": "以前のコンテキストを要約して空きを作る",
+        "running": "コンテキストを圧縮しています…",
+        "unavailable": "最初のターンとモデルが必要です"
+      },
       "entryInfo": {
         "connected": "接続済み",
         "connectionRequired": "接続が必要です"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

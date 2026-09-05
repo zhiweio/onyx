@@ -10,6 +10,7 @@ import {
 } from "@/app/craft/types/streamingTypes";
 
 import {
+  createCompactTurn,
   createTurn,
   fetchActiveTurn,
   fetchTurnEventStream,
@@ -1051,6 +1052,85 @@ export function useBuildStreaming() {
     ]
   );
 
+  const streamCompact = useCallback(
+    async (sessionId: string): Promise<void> => {
+      const currentState = useBuildSessionStore.getState();
+      const existingSession = currentState.sessions.get(sessionId);
+
+      if (existingSession?.abortController) {
+        existingSession.abortController.abort();
+      }
+
+      const controller = new AbortController();
+      setAbortController(sessionId, controller);
+
+      updateSessionData(sessionId, {
+        status: "running",
+        error: null,
+        isInterrupting: false,
+        wasInterrupted: false,
+        turnGeneration: (existingSession?.turnGeneration ?? 0) + 1,
+        activeTurnId: null,
+        activeTurnIndex: null,
+        activeTurnLocalOwner: true,
+      });
+
+      try {
+        const turn = await createCompactTurn(
+          sessionId,
+          crypto.randomUUID(),
+          controller.signal
+        );
+        updateSessionData(sessionId, {
+          activeTurnId: turn.turn_id,
+          activeTurnIndex: turn.turn_index,
+          activeTurnLocalOwner: true,
+        });
+        await streamTurnEvents(sessionId, turn.turn_id, controller.signal);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          updateSessionData(sessionId, { isInterrupting: false });
+        } else if (err instanceof RateLimitedError) {
+          appendStreamItem(sessionId, {
+            type: "error",
+            id: genId("error"),
+            content: err.message,
+            rateLimit: err.details,
+          });
+          updateSessionData(sessionId, {
+            status: "active",
+            error: err.message,
+            isInterrupting: false,
+            activeTurnId: null,
+            activeTurnIndex: null,
+            activeTurnLocalOwner: false,
+          });
+        } else {
+          console.error("[Streaming] Compact error:", err);
+          updateSessionData(sessionId, {
+            status: "failed",
+            error: (err as Error).message,
+            isInterrupting: false,
+            activeTurnId: null,
+            activeTurnIndex: null,
+            activeTurnLocalOwner: false,
+          });
+        }
+      } finally {
+        const session = useBuildSessionStore.getState().sessions.get(sessionId);
+        if (session?.abortController === controller) {
+          setAbortController(sessionId, new AbortController());
+        }
+      }
+    },
+    [
+      setAbortController,
+      updateSessionData,
+      appendStreamItem,
+      streamTurnEvents,
+    ]
+  );
+
   /**
    * Interrupt the in-flight turn for a session. The open SSE stream terminates
    * normally so partial output can still be committed.
@@ -1142,6 +1222,7 @@ export function useBuildStreaming() {
   return useMemo(
     () => ({
       streamMessage,
+      streamCompact,
       interruptStreaming,
       streamScheduledRunEvents,
       streamTurnEvents,
@@ -1149,6 +1230,7 @@ export function useBuildStreaming() {
     }),
     [
       streamMessage,
+      streamCompact,
       interruptStreaming,
       streamScheduledRunEvents,
       streamTurnEvents,

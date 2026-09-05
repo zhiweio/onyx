@@ -34,6 +34,14 @@ from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 from tests.unit.fakes import FakeCache
 
 
+def _stub_workspace_persist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(executor, "get_sandbox_manager", lambda: object())
+    monkeypatch.setattr(
+        "onyx.server.features.build.session.artifact_persist.persist_session_workspace_files",
+        lambda *_args, **_kwargs: None,
+    )
+
+
 class _FakeDbSession:
     def __init__(self) -> None:
         self.commits = 0
@@ -44,6 +52,9 @@ class _FakeDbSession:
 
     def rollback(self) -> None:
         self.rollbacks += 1
+
+    def scalar(self, *_args: object, **_kwargs: object) -> None:
+        return None
 
 
 class _FakePromptSlot:
@@ -91,6 +102,7 @@ def _run_turn_with_events(
     reclaimed: bool = False,
     prompt_slot: "_FakePromptSlot | None" = None,
     session_missing: bool = False,
+    kind: str = "prompt",
 ) -> SimpleNamespace:
     cache = FakeCache()
     db_session = _FakeDbSession()
@@ -104,6 +116,7 @@ def _run_turn_with_events(
     stamped: list[tuple[int, int]] = []
     cleared: list[bool] = []
     captured_should_abort_on_teardown: list[Callable[[], bool]] = []
+    driven: list[str] = []
 
     turn = create_interactive_turn(
         cache=cache,
@@ -112,6 +125,7 @@ def _run_turn_with_events(
         client_request_id="req-1",
         prompt="hello",
         turn_index=0,
+        kind=kind,  # type: ignore[arg-type]
     )
 
     class FakeSessionManager:
@@ -161,6 +175,22 @@ def _run_turn_with_events(
             assert attachments == []
             assert should_interrupt is not None
             captured_should_abort_on_teardown.append(should_abort_on_teardown)
+            driven.append("prompt")
+            yield from events
+
+        def yield_sandbox_compact_events(
+            self,
+            sandbox_id_arg: UUID,
+            session_id_arg: UUID,
+            *,
+            should_interrupt: object,
+            should_abort_on_teardown: Callable[[], bool],
+        ) -> Iterator[object]:
+            assert sandbox_id_arg == sandbox_id
+            assert session_id_arg == session_id
+            assert should_interrupt is not None
+            captured_should_abort_on_teardown.append(should_abort_on_teardown)
+            driven.append("compact")
             yield from events
 
         def merge_events_with_announces(
@@ -227,6 +257,7 @@ def _run_turn_with_events(
     )
     monkeypatch.setattr(executor, "is_interrupt_requested", lambda *_: False)
     monkeypatch.setattr(executor, "clear_interrupt", lambda *_: None)
+    _stub_workspace_persist(monkeypatch)
 
     claimed = claim_turn_for_runner(cache=cache, turn_id=turn.turn_id)
     assert claimed is not None
@@ -250,6 +281,7 @@ def _run_turn_with_events(
         stamped=stamped,
         cleared=cleared,
         user_id=user_id,
+        driven=driven,
     )
 
 
@@ -278,6 +310,29 @@ def test_runner_succeeds_on_prompt_response(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.prompt_slot.exited
     assert result.prompt_slot.extend_calls == 1
     assert result.db_session.rollbacks == 0
+    assert result.driven == ["prompt"]
+
+
+def test_compact_turn_skips_prompt_and_job_continue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    continue_calls: list[bool] = []
+
+    def fake_continue(*_args: object, **_kwargs: object) -> None:
+        continue_calls.append(True)
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.maybe_continue_craft_job",
+        fake_continue,
+    )
+    prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
+    result = _run_turn_with_events(monkeypatch, [prompt_response], kind="compact")
+
+    finished = get_turn(result.cache, result.turn.turn_id)
+    assert finished is not None
+    assert finished.status == TURN_STATUS_SUCCEEDED
+    assert result.driven == ["compact"]
+    assert continue_calls == []
 
 
 def test_runner_fails_turn_when_session_deleted_mid_turn(
@@ -548,6 +603,7 @@ def test_ownership_recheck_after_slot_acquire(
     )
     monkeypatch.setattr(executor, "is_interrupt_requested", lambda *_: False)
     monkeypatch.setattr(executor, "clear_interrupt", lambda *_: None)
+    _stub_workspace_persist(monkeypatch)
 
     executor.run_claimed_interactive_build_turn(claimed, budget_seconds=30)
 
@@ -817,6 +873,7 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
         "clear_interrupt",
         lambda session_id_arg, _: clear_calls.append(session_id_arg),
     )
+    _stub_workspace_persist(monkeypatch)
 
     executor.run_claimed_interactive_build_turn(claimed, budget_seconds=30)
 
@@ -1034,6 +1091,7 @@ def _run_turn_with_batches(
     )
     monkeypatch.setattr(executor, "is_interrupt_requested", lambda *_: False)
     monkeypatch.setattr(executor, "clear_interrupt", lambda *_: None)
+    _stub_workspace_persist(monkeypatch)
 
     claimed = claim_turn_for_runner(cache=cache, turn_id=turn.turn_id)
     assert claimed is not None

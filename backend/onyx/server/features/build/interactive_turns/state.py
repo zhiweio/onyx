@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID, uuid4
 
 from onyx.cache.interface import CacheBackend, CacheLock
@@ -57,6 +58,7 @@ class InteractiveTurn:
     last_heartbeat_at: datetime | None = None
     error_detail: str | None = None
     runner_id: str | None = None
+    kind: Literal["prompt", "compact"] = "prompt"
     # Claim-local flag for stale-RUNNING recovery; not persisted (see _save_turn).
     reclaimed: bool = False
 
@@ -83,6 +85,7 @@ def create_interactive_turn(
     prompt: str,
     turn_index: int,
     attachments: list[PromptAttachment] | None = None,
+    kind: Literal["prompt", "compact"] = "prompt",
 ) -> InteractiveTurn:
     now = datetime.now(tz=timezone.utc)
     turn = InteractiveTurn(
@@ -94,6 +97,7 @@ def create_interactive_turn(
         turn_index=turn_index,
         attachments=attachments or [],
         last_heartbeat_at=now,
+        kind=kind,
     )
     _save_turn(cache, turn, ex=ACTIVE_TURN_TTL_SECONDS)
     cache.set(
@@ -319,6 +323,11 @@ def _load_turn(raw: bytes | None) -> InteractiveTurn | None:
             last_heartbeat_at=_parse_dt(payload.get("last_heartbeat_at")),
             error_detail=payload.get("error_detail"),
             runner_id=payload.get("runner_id"),
+            kind=(
+                payload.get("kind")
+                if payload.get("kind") in {"prompt", "compact"}
+                else "prompt"
+            ),
         )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None

@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "Servidores MCP"
         },
+        "commandsGroup": {
+          "label": "Comandos"
+        },
         "skillsGroup": {
           "label": "Habilidades"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "Compactar contexto",
+        "description": "Resumir el contexto anterior para liberar espacio",
+        "running": "Compactando contexto…",
+        "unavailable": "Compactar está disponible después del primer turno y con un modelo"
+      },
       "entryInfo": {
         "connected": "Conectado",
         "connectionRequired": "Conexión requerida"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

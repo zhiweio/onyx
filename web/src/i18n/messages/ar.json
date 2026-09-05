@@ -9516,6 +9516,9 @@
         "mcpServersGroup": {
           "label": "خوادم MCP"
         },
+        "commandsGroup": {
+          "label": "الأوامر"
+        },
         "skillsGroup": {
           "label": "المهارات"
         }
@@ -11813,6 +11816,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "ضغط السياق",
+        "description": "تلخيص السياق السابق لتوفير مساحة",
+        "running": "جارٍ ضغط السياق…",
+        "unavailable": "الضغط متاح بعد أول دورة ومع وجود نموذج"
+      },
       "entryInfo": {
         "connected": "متصل",
         "connectionRequired": "الاتصال مطلوب"
@@ -12041,6 +12050,7 @@
     "longJob": {
       "label": "Long job",
       "toggle": "Run as a long job",
+      "cancel": "Cancel",
       "status": {
         "running": "Phase: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",

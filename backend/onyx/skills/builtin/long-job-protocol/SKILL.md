@@ -11,20 +11,20 @@ Keep long work on disk so a later turn can continue without the prior context.
 
 | Path | Role |
 | --- | --- |
-| `outputs/plan/PLAN.md` | Phases, done-when, input paths |
+| `outputs/plan/PLAN.json` | Source plan: goal, phases, done_when, lanes |
+| `outputs/plan/PLAN.md` | Human render of the plan |
 | `outputs/plan/TODO.json` | Cross-turn checklist |
 | `outputs/plan/PHASE_DONE` | Single line: finished phase id |
 | `outputs/ingest/MANIFEST.json` | One row per source file |
-| `outputs/extracted/<file_id>.json` | Per-file extract |
-| `outputs/normalized/*.csv` | Tables for analysis |
-| `outputs/research/<role>/*.md` | Notes with citations |
+| `project/research/<role>/FINDINGS.md` | Specialist notes with citations |
+| `project/extracted/` | Extracted tables |
 | `outputs/mcp/<server>/<call>.json` | Raw MCP bodies |
 | `outputs/exceptions/*.csv` | Failures and exceptions |
 | `outputs/markdown/` | Final report |
 
 ## Rules
 
-1. Start a turn by reading `PLAN.md` and `TODO.json`. Do not restart from memory.
+1. Start a turn by reading `PLAN.json` and `TODO.json`. Do not restart from memory.
 2. Pull tables with the `document-ingest` skill. Do not paste a whole Excel file into chat.
 3. After an MCP call, if the body is large, confirm it landed under `outputs/mcp/` and keep only a digest in the reply.
 4. Give subagents a closed question list. Tell them to write files as they go.

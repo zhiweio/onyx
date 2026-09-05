@@ -540,6 +540,7 @@ class StubSandboxManager(SandboxManager):
         agent_provider: str | None = None,
         agent_model: str | None = None,
         on_opencode_session_resolved: Callable[[str], None] | None = None,
+        replacement_preamble: Callable[[], str | None] | None = None,
         should_interrupt: Callable[[], bool] | None = None,
         should_abort_on_teardown: Callable[[], bool] | None = None,
         turn_timeout_seconds: float | None = None,
@@ -554,6 +555,7 @@ class StubSandboxManager(SandboxManager):
             "agent_provider": agent_provider,
             "agent_model": agent_model,
             "on_opencode_session_resolved": on_opencode_session_resolved,
+            "replacement_preamble": replacement_preamble,
             "should_interrupt": should_interrupt,
             "should_abort_on_teardown": should_abort_on_teardown,
             "turn_timeout_seconds": turn_timeout_seconds,
@@ -561,6 +563,33 @@ class StubSandboxManager(SandboxManager):
         if self._send_message_events is None:
             raise _not_configured("send_message")
         # Iterate over the snapshot — re-driveable across calls.
+        yield from self._send_message_events
+
+    def compact_session(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        *,
+        opencode_session_id: str | None = None,
+        agent_provider: str | None = None,
+        agent_model: str | None = None,
+        should_interrupt: Callable[[], bool] | None = None,
+        should_abort_on_teardown: Callable[[], bool] | None = None,
+        turn_timeout_seconds: float | None = None,
+    ) -> Generator[SandboxEvent, None, None]:
+        self.last_send_message_payload = {
+            "sandbox_id": sandbox_id,
+            "session_id": session_id,
+            "kind": "compact",
+            "opencode_session_id": opencode_session_id,
+            "agent_provider": agent_provider,
+            "agent_model": agent_model,
+            "should_interrupt": should_interrupt,
+            "should_abort_on_teardown": should_abort_on_teardown,
+            "turn_timeout_seconds": turn_timeout_seconds,
+        }
+        if self._send_message_events is None:
+            raise _not_configured("compact_session")
         yield from self._send_message_events
 
     def abort_opencode_session(

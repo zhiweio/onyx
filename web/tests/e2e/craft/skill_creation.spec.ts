@@ -30,7 +30,7 @@ test("SKILL.md populates the create form after confirmation", async ({
     .locator('textarea[name="instructions_markdown"]')
     .fill("Typed instructions");
 
-  await page.getByLabel("Import existing skill").setInputFiles({
+  await page.locator('input[type="file"]').first().setInputFiles({
     name: "SKILL.md",
     mimeType: "text/markdown",
     buffer: Buffer.from(
@@ -42,11 +42,13 @@ test("SKILL.md populates the create form after confirmation", async ({
     ),
   });
 
-  const confirmation = page
-    .getByRole("dialog")
-    .filter({ hasText: "Import this skill?" });
+  const confirmation = page.getByRole("dialog").filter({
+    has: page.getByRole("button", { name: /Import skill|导入技能/ }),
+  });
   await expect(confirmation).toBeVisible();
-  await confirmation.getByRole("button", { name: "Import skill" }).click();
+  await confirmation
+    .getByRole("button", { name: /Import skill|导入技能/ })
+    .click();
 
   await expect(page.locator('input[name="slug"]')).toHaveCount(0);
   await expect(page.locator('input[name="name"]')).toHaveValue(

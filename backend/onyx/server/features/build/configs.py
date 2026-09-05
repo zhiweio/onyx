@@ -190,12 +190,24 @@ _APPROVAL_INACTIVITY_DEFAULT = (
 OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS = float(
     os.environ.get("OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS", "600")
 )
+
+
+def compute_opencode_inactivity_default(
+    *,
+    deep_job: bool,
+    approval_default: float = _APPROVAL_INACTIVITY_DEFAULT,
+    long_tool_seconds: float = OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
+) -> float:
+    """Silent-step window. Deep-job raises it without changing the 30-minute cap."""
+    if deep_job:
+        return max(approval_default, long_tool_seconds)
+    return approval_default
+
+
 # Deep-job deployments raise the silent-step window without changing the
 # approval wait. Tests and default Craft keep the approval-derived value.
-_INACTIVITY_DEFAULT = (
-    max(_APPROVAL_INACTIVITY_DEFAULT, OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS)
-    if os.environ.get("CRAFT_DEEP_JOB_RESOURCES", "false").lower() == "true"
-    else _APPROVAL_INACTIVITY_DEFAULT
+_INACTIVITY_DEFAULT = compute_opencode_inactivity_default(
+    deep_job=os.environ.get("CRAFT_DEEP_JOB_RESOURCES", "false").lower() == "true"
 )
 OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS = float(
     os.environ.get(

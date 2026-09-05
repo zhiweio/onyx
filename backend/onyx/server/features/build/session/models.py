@@ -115,6 +115,7 @@ class SessionResponse(BaseModel):
     origin: SessionOrigin
     agent_provider: str | None
     agent_model: str | None
+    opencode_session_id: str | None = None
     skills_stale: bool
     scenario_id: str | None = None
     project_id: str | None = None
@@ -144,6 +145,7 @@ class SessionResponse(BaseModel):
             origin=session.origin,
             agent_provider=session.agent_provider,
             agent_model=session.agent_model,
+            opencode_session_id=session.opencode_session_id,
             skills_stale=session_runtime_stale(session, sandbox),
             scenario_id=str(session.scenario_id) if session.scenario_id else None,
             project_id=str(session.project_id) if session.project_id else None,
@@ -214,6 +216,12 @@ class MessageAttachment(BaseModel):
         ):
             raise ValueError("Attachment path must be inside the attachments directory")
         return value
+
+
+class CompactRequest(BaseModel):
+    """Request to compact the current OpenCode session context."""
+
+    client_request_id: str | None = None
 
 
 class MessageRequest(BaseModel):

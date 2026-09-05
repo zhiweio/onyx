@@ -5,7 +5,7 @@ import {
 import type { PickerSections } from "@/lib/skills/picker";
 
 function sections(over: Partial<PickerSections> = {}): PickerSections {
-  return { skills: [], apps: [], mcpServers: [], ...over };
+  return { commands: [], skills: [], apps: [], mcpServers: [], ...over };
 }
 
 const ACME_APP = {
