@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { useTranslations } from "next-intl";
 import {
   Button,
   InputTypeIn,
@@ -47,7 +47,7 @@ import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
 // ---------------------------------------------------------------------------
 
 export default function SkillsPage() {
-  const t = useTranslations("craft.skillsPage");
+  const t = useTranslations("skills");
   const router = useRouter();
   const externalAppIdParam = useSearchParams().get("externalAppId");
   const focusedExternalAppId =
@@ -165,7 +165,7 @@ export default function SkillsPage() {
         { revalidate: false }
       );
       void refresh().catch(() => {
-        toast.error(t("refreshFailed.message", { name: item.name }));
+        toast.error(t("page.toasts.refreshFailed", { name: item.name }));
       });
     } catch (error) {
       if (enabled && !replaceConflict && isSkillNameConflict(error)) {
@@ -175,9 +175,12 @@ export default function SkillsPage() {
       toast.error(
         error instanceof Error
           ? error.message
-          : t(enabled ? "toggleFailed.enable" : "toggleFailed.disable", {
-              name: item.name,
-            })
+          : t(
+              enabled
+                ? "page.toasts.enableFailed"
+                : "page.toasts.disableFailed",
+              { name: item.name }
+            )
       );
     } finally {
       setOptimisticEnabledById((current) => {
@@ -278,19 +281,21 @@ export default function SkillsPage() {
   const previewUnavailableReason =
     previewTarget?.source === "builtin" && !previewTarget.is_available
       ? (previewTarget.unavailable_reason ??
-        t("unavailable.fallback"))
+        t("page.preview.unavailableFallback"))
       : null;
 
   return (
     <SettingsLayouts.Root data-testid="SkillsPage/container">
       <SettingsLayouts.Header
         icon={SvgBlocks}
-        title={t("title.text")}
-        description={t("description.text")}
+        title={t("page.header.title")}
+        description={t("page.header.description")}
         rightChildren={
           <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
             <Popover.Trigger asChild>
-              <Button icon={SvgPlus}>{t("create.label")}</Button>
+              <Button icon={SvgPlus}>
+                {t("page.createMenu.trigger.label")}
+              </Button>
             </Popover.Trigger>
             <Popover.Content align="end" sideOffset={4} width="xl">
               <Popover.Menu>
@@ -298,34 +303,34 @@ export default function SkillsPage() {
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgEdit}
-                  description={t("create.scratch.description")}
+                  description={t("page.createMenu.scratch.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     router.push("/craft/v1/skills/new" as Route);
                   }}
-                  title={t("create.scratch.title")}
+                  title={t("page.createMenu.scratch.title")}
                 />
                 <LineItemButton
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgUploadCloud}
-                  description={t("create.upload.description")}
+                  description={t("page.createMenu.upload.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     setCreateOpen(true);
                   }}
-                  title={t("create.upload.title")}
+                  title={t("page.createMenu.upload.title")}
                 />
                 <LineItemButton
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgGithub}
-                  description={t("create.github.description")}
+                  description={t("page.createMenu.github.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     setGitHubImportOpen(true);
                   }}
-                  title={t("create.github.title")}
+                  title={t("page.createMenu.github.title")}
                 />
               </Popover.Menu>
             </Popover.Content>
@@ -334,7 +339,7 @@ export default function SkillsPage() {
       >
         <InputTypeIn
           ref={searchInputRef}
-          placeholder={t("search.placeholder")}
+          placeholder={t("page.search.placeholder")}
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           searchIcon
@@ -345,11 +350,13 @@ export default function SkillsPage() {
         {focusedAppName && (
           <MessageCard
             variant="info"
-            title={t("focusedApp.title", { app: focusedAppName })}
-            description={t("focusedApp.description", { app: focusedAppName })}
+            title={t("page.focusedApp.title", { appName: focusedAppName })}
+            description={t("page.focusedApp.description", {
+              appName: focusedAppName,
+            })}
             rightChildren={
               <Button prominence="secondary" href="/craft/v1/skills">
-                {t("focusedApp.showAll.label")}
+                {t("page.focusedApp.showAll.label")}
               </Button>
             }
           />
@@ -360,8 +367,8 @@ export default function SkillsPage() {
         {error && !isLoading && (
           <MessageCard
             variant="error"
-            title={t("error.title")}
-            description={t("error.description")}
+            title={t("page.loadError.title")}
+            description={t("page.loadError.description")}
           />
         )}
 
@@ -372,20 +379,20 @@ export default function SkillsPage() {
                 illustration={SvgNoResult}
                 title={
                   items.length === 0
-                    ? t("empty.none.title")
-                    : t("empty.search.title")
+                    ? t("page.empty.noSkills.title")
+                    : t("page.empty.noMatches.title")
                 }
                 description={
                   items.length === 0
-                    ? t("empty.none.description")
-                    : t("empty.search.description")
+                    ? t("page.empty.noSkills.description")
+                    : t("page.empty.noMatches.description")
                 }
               />
             ) : (
               <>
                 <section className="flex flex-col gap-2">
                   <Text font="secondary-body" color="text-03">
-                    {t("browse.title")}
+                    {t("page.browse.title")}
                   </Text>
                   <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
                     {visibleItems.map((item) => (
@@ -406,7 +413,10 @@ export default function SkillsPage() {
                   </div>
                 </section>
                 <TextSeparator
-                  text={t("count.label", { count: visibleItems.length })}
+                  count={visibleItems.length}
+                  text={t("page.countSeparator.label", {
+                    count: visibleItems.length,
+                  })}
                 />
               </>
             )}
@@ -450,8 +460,10 @@ export default function SkillsPage() {
       {pendingSwitchTarget && (
         <ConfirmationModalLayout
           icon={SvgAlertTriangle}
-          title={t("switch.title", { name: pendingSwitchTarget.name })}
-          description={t("switch.description", {
+          title={t("page.switchModal.title", {
+            name: pendingSwitchTarget.name,
+          })}
+          description={t("page.switchModal.description", {
             name: pendingSwitchTarget.name,
           })}
           onClose={
@@ -465,11 +477,13 @@ export default function SkillsPage() {
                 void updateSkillEnabled(target, true, true);
               }}
             >
-              {switchPending ? t("switch.loading.label") : t("switch.confirm.label")}
+              {switchPending
+                ? t("page.switchModal.submit.pendingLabel")
+                : t("page.switchModal.submit.label")}
             </Button>
           }
         >
-          {t("switch.warning")}
+          {t("page.switchModal.body")}
         </ConfirmationModalLayout>
       )}
     </SettingsLayouts.Root>

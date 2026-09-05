@@ -1,6 +1,7 @@
 "use client";
 
 import MCPPageContent from "@/sections/actions/MCPPageContent";
+import { useAdminRouteTitle } from "@/lib/adminNavLabels";
 import { useTranslations } from "next-intl";
 import { Button } from "@opal/components";
 import { SettingsLayouts } from "@opal/layouts";
@@ -10,12 +11,13 @@ const route = ADMIN_ROUTES.MCP_ACTIONS;
 
 export default function Main() {
   const t = useTranslations("admin.mcpActions");
+  const adminRouteTitle = useAdminRouteTitle();
 
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={route.icon}
-        title={route.title}
+        title={adminRouteTitle(route)}
         description={t("header.description")}
         rightChildren={
           <Button

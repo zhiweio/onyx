@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { Route } from "next";
 import { useRouter, usePathname } from "next/navigation";
 import { useBuildContext } from "@/app/craft/contexts/BuildContext";
@@ -59,7 +60,6 @@ import {
   CRAFT_TASKS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
-import { useTranslations } from "next-intl";
 import { useCraftProjects } from "@/lib/craft-projects/hooks";
 
 // ============================================================================
@@ -79,7 +79,7 @@ export function CraftSessionDeleteModal({
   onClose,
   onConfirm,
 }: CraftSessionDeleteModalProps) {
-  const t = useTranslations("craft.sidebar");
+  const t = useTranslations("craft.sideBar");
   return (
     <ConfirmationModalLayout
       title={t("deleteModal.title", { title: sessionTitle })}
@@ -93,11 +93,11 @@ export function CraftSessionDeleteModal({
           onClick={onConfirm}
           icon={isDeleting ? SvgSimpleLoader : undefined}
         >
-          {isDeleting ? t("deleting.label") : t("delete.label")}
+          {isDeleting ? t("deleteModal.deleting") : t("deleteModal.confirm")}
         </Button>
       }
     >
-      {t("deleteModal.description")}
+      {t("deleteModal.body")}
     </ConfirmationModalLayout>
   );
 }
@@ -119,7 +119,7 @@ function BuildSessionButton({
   onDelete,
   onDeleteActiveSession,
 }: BuildSessionButtonProps) {
-  const t = useTranslations("craft.sidebar");
+  const t = useTranslations("craft.sideBar");
   const [renaming, setRenaming] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -155,7 +155,7 @@ function BuildSessionButton({
       try {
         await onDelete();
         setIsDeleting(false);
-        toast.success(t("deletedToast.message", { title: historyItem.title }));
+        toast.success(t("toast.deleted", { title: historyItem.title }));
         closeModal();
         if (isActive && onDeleteActiveSession) {
           onDeleteActiveSession();
@@ -163,11 +163,18 @@ function BuildSessionButton({
       } catch (err) {
         setIsDeleting(false);
         toast.error(
-          err instanceof Error ? err.message : t("deleteFailed.message")
+          err instanceof Error ? err.message : t("toast.deleteFailed")
         );
       }
     },
-    [onDelete, historyItem.title, closeModal, isActive, onDeleteActiveSession, t]
+    [
+      onDelete,
+      historyItem.title,
+      closeModal,
+      isActive,
+      onDeleteActiveSession,
+      t,
+    ]
   );
 
   const rightMenu = (
@@ -244,7 +251,7 @@ function BuildSessionButton({
                 <RefreshText
                   as="p"
                   data-state={isActive ? "active" : "inactive"}
-                  className="line-clamp-1 break-all text-left"
+                  className="line-clamp-1 break-all text-start"
                   mainUiBody
                 >
                   <TypewriterText
@@ -278,7 +285,7 @@ function BuildSessionButton({
 // ============================================================================
 
 const MemoizedBuildSidebarInner = memo(() => {
-  const t = useTranslations("craft.sidebar");
+  const t = useTranslations("craft.sideBar");
   const { folded } = useSidebarState();
   const router = useRouter();
   const { requestNavigation } = useUnsavedChangesNavigation();
@@ -337,7 +344,7 @@ const MemoizedBuildSidebarInner = memo(() => {
       >
         <div className="flex flex-col gap-0.5">
           <SidebarTab icon={SvgEditBig} onClick={handleNewBuild}>
-            {t("startCrafting.label")}
+            {t("newSession.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgClock}
@@ -406,8 +413,8 @@ const MemoizedBuildSidebarInner = memo(() => {
             )}
             <SidebarLayouts.Section title={t("sessions.title")} />
             {sessionHistory.length === 0 ? (
-              <div className="pl-2 pr-1.5 py-1">
-                <Text color="text-01">{t("sessionsEmpty.text")}</Text>
+              <div className="ps-2 pe-1.5 py-1">
+                <Text color="text-01">{t("sessions.empty")}</Text>
               </div>
             ) : (
               sessionHistory.map((historyItem) => (
