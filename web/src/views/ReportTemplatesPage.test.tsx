@@ -33,6 +33,9 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     name: "合规风险预警",
     description: "Tax compliance",
     body: "# Body",
+    kind: "MARKDOWN",
+    placeholders: [],
+    asset_filename: null,
     author_user_id: null,
     is_builtin: true,
     referenced_count: 1,
@@ -77,7 +80,9 @@ describe("ReportTemplatesPage", () => {
     expect(screen.getAllByText("My brief").length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "New template" }));
-    expect(mockRouterPush).toHaveBeenCalledWith("/craft/v1/report-templates/new");
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      "/craft/v1/report-templates/new",
+    );
   });
 
   it("filters by search", async () => {
@@ -86,7 +91,7 @@ describe("ReportTemplatesPage", () => {
 
     await user.type(
       screen.getByPlaceholderText("Search templates..."),
-      "my brief"
+      "my brief",
     );
 
     expect(screen.getAllByText("My brief").length).toBeGreaterThan(0);

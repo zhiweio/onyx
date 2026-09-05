@@ -654,6 +654,4 @@ def _drive_interactive_turn(
                 cancelled=cancelled,
             )
     except Exception:
-        logger.exception(
-            "Failed to continue Craft job after turn %s", turn_id
-        )
+        logger.exception("Failed to continue Craft job after turn %s", turn_id)

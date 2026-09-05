@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { useTranslations } from "next-intl";
-import { Button, InputTypeIn, MessageCard, Text } from "@opal/components";
+import { Button, InputTypeIn, MessageCard, Tabs, Text } from "@opal/components";
 import {
   ConfirmationModalLayout,
   IllustrationContent,
@@ -14,6 +14,10 @@ import {
 import SvgNoResult from "@opal/illustrations/no-result";
 import { SvgPlus, SvgShare, SvgSimpleLoader, SvgTrash } from "@opal/icons";
 import TextSeparator from "@/refresh-components/TextSeparator";
+import GalleryGrid from "@/sections/gallery/GalleryGrid";
+import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
+import { useGalleryScenarios } from "@/lib/system-catalog/hooks";
+import { useGalleryTab } from "@/lib/system-catalog/useGalleryTab";
 import useOnMount from "@/hooks/useOnMount";
 import useScenarios from "@/hooks/useScenarios";
 import useUserSkills from "@/hooks/useUserSkills";
@@ -29,20 +33,18 @@ import {
 } from "@/lib/scenarios/types";
 import ScenarioCard from "@/sections/cards/ScenarioCard";
 import ShareScenarioModal from "@/sections/modals/scenarios/ShareScenarioModal";
-import {
-  CRAFT_PATH,
-  CRAFT_SCENARIOS_PATH,
-} from "@/app/craft/v1/constants";
+import { CRAFT_PATH, CRAFT_SCENARIOS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 
 export default function ScenariosPage() {
   const t = useTranslations("craft.scenarios");
+  const tGallery = useTranslations("craft.gallery");
   const router = useRouter();
   const { data: scenarios, error, isLoading, refresh } = useScenarios();
   const { data: skillsData } = useUserSkills();
   const refreshSessionHistory = useBuildSessionStore(
-    (state) => state.refreshSessionHistory
+    (state) => state.refreshSessionHistory,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [domainFilter, setDomainFilter] = useState<string>("all");
@@ -52,6 +54,18 @@ export default function ScenariosPage() {
   const [customizingId, setCustomizingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const gallery = useGalleryTab({
+    kind: "scenarios",
+    onForked: async () => {
+      await refresh();
+    },
+  });
+  const {
+    data: galleryItems,
+    error: galleryError,
+    isLoading: galleryLoading,
+  } = useGalleryScenarios(gallery.tab === "gallery");
 
   useOnMount(() => {
     searchInputRef.current?.focus();
@@ -71,7 +85,7 @@ export default function ScenariosPage() {
   const domainFilters = useMemo(() => {
     const customs = collectCustomScenarioDomains(scenarios);
     const hasUncategorized = scenarios.some((scenario) =>
-      isUncategorizedDomain(scenarioDomain(scenario))
+      isUncategorizedDomain(scenarioDomain(scenario)),
     );
     return [
       "all",
@@ -103,7 +117,7 @@ export default function ScenariosPage() {
 
   function skillNamesFor(scenario: Scenario): string[] {
     return scenario.skill_ids.map(
-      (id) => skillNameById.get(id) ?? id.slice(0, 8)
+      (id) => skillNameById.get(id) ?? id.slice(0, 8),
     );
   }
 
@@ -123,7 +137,7 @@ export default function ScenariosPage() {
       toast.error(
         customizeError instanceof Error
           ? customizeError.message
-          : t("toasts.duplicateFailed.message")
+          : t("toasts.duplicateFailed.message"),
       );
     } finally {
       setCustomizingId(null);
@@ -136,7 +150,7 @@ export default function ScenariosPage() {
       const sessionId = await startScenarioRun(scenario);
       await refreshSessionHistory();
       router.push(
-        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route
+        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route,
       );
     } catch (startError) {
       console.error(startError);
@@ -159,7 +173,7 @@ export default function ScenariosPage() {
       toast.error(
         deleteError instanceof Error
           ? deleteError.message
-          : t("toasts.shareFailed.message")
+          : t("toasts.shareFailed.message"),
       );
     } finally {
       setDeleting(false);
@@ -173,16 +187,31 @@ export default function ScenariosPage() {
         title={t("page.title.text")}
         description={t("page.description.text")}
         rightChildren={
-          <Button
-            icon={SvgPlus}
-            onClick={() =>
-              router.push(`${CRAFT_SCENARIOS_PATH}/new` as Route)
-            }
-          >
-            {t("page.createButton.label")}
-          </Button>
+          gallery.tab === "mine" ? (
+            <Button
+              icon={SvgPlus}
+              onClick={() =>
+                router.push(`${CRAFT_SCENARIOS_PATH}/new` as Route)
+              }
+            >
+              {t("page.createButton.label")}
+            </Button>
+          ) : undefined
         }
       >
+        <Tabs
+          value={gallery.tab}
+          onValueChange={(value) => gallery.setTab(value as "gallery" | "mine")}
+        >
+          <Tabs.List>
+            <Tabs.Trigger value="mine" data-testid="GalleryTabs/mine">
+              {tGallery("tabs.mine.label")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="gallery" data-testid="GalleryTabs/gallery">
+              {tGallery("tabs.gallery.label")}
+            </Tabs.Trigger>
+          </Tabs.List>
+        </Tabs>
         <InputTypeIn
           ref={searchInputRef}
           placeholder={t("page.search.placeholder")}
@@ -190,85 +219,115 @@ export default function ScenariosPage() {
           onChange={(event) => setSearchQuery(event.target.value)}
           searchIcon
         />
-        <div className="flex flex-wrap gap-2 pt-2">
-          {domainFilters.map((domain) => (
-            <Button
-              key={domain}
-              prominence={domainFilter === domain ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => setDomainFilter(domain)}
-            >
-              {domain === "all" ||
-              isBuiltinScenarioDomain(domain) ||
-              domain === "custom"
-                ? t(scenarioDomainMessageKey(domain))
-                : domain}
-            </Button>
-          ))}
-        </div>
+        {gallery.tab === "mine" && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {domainFilters.map((domain) => (
+              <Button
+                key={domain}
+                prominence={domainFilter === domain ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setDomainFilter(domain)}
+              >
+                {domain === "all" ||
+                isBuiltinScenarioDomain(domain) ||
+                domain === "custom"
+                  ? t(scenarioDomainMessageKey(domain))
+                  : domain}
+              </Button>
+            ))}
+          </div>
+        )}
       </SettingsLayouts.Header>
 
       <SettingsLayouts.Body>
-        {isLoading && <SvgSimpleLoader />}
-
-        {error && !isLoading && (
-          <MessageCard
-            variant="error"
-            title={t("error.title")}
-            description={t("error.description")}
+        {gallery.tab === "gallery" ? (
+          <GalleryGrid
+            items={galleryItems}
+            icon={SvgShare}
+            isLoading={galleryLoading}
+            error={galleryError}
+            searchQuery={searchQuery}
+            category={gallery.category}
+            onCategoryChange={gallery.setCategory}
+            onPreview={gallery.setPreviewItem}
+            onFork={gallery.forkItem}
+            forkingId={gallery.forkingId}
           />
-        )}
-
-        {!isLoading && !error && (
+        ) : (
           <>
-            {visibleScenarios.length === 0 ? (
-              <IllustrationContent
-                illustration={SvgNoResult}
-                title={
-                  scenarios.length === 0
-                    ? t("empty.none.title")
-                    : t("empty.search.title")
-                }
-                description={
-                  scenarios.length === 0
-                    ? t("empty.none.description")
-                    : t("empty.search.description")
-                }
+            {isLoading && <SvgSimpleLoader />}
+
+            {error && !isLoading && (
+              <MessageCard
+                variant="error"
+                title={t("error.title")}
+                description={t("error.description")}
               />
-            ) : (
+            )}
+
+            {!isLoading && !error && (
               <>
-                <section className="flex flex-col gap-2">
-                  <Text font="secondary-body" color="text-03">
-                    {t("page.browse.title")}
-                  </Text>
-                  <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {visibleScenarios.map((scenario) => (
-                      <ScenarioCard
-                        key={scenario.id}
-                        scenario={scenario}
-                        skillNames={skillNamesFor(scenario)}
-                        startPending={startingId === scenario.id}
-                        customizePending={customizingId === scenario.id}
-                        onClick={openEditor}
-                        onEdit={openEditor}
-                        onCustomize={(item) => void handleCustomize(item)}
-                        onShare={setShareTarget}
-                        onDelete={setDeleteTarget}
-                        onStart={(item) => void handleStart(item)}
-                      />
-                    ))}
-                  </div>
-                </section>
-                <TextSeparator
-                  text={t("page.count.label", {
-                    count: visibleScenarios.length,
-                  })}
-                />
+                {visibleScenarios.length === 0 ? (
+                  <IllustrationContent
+                    illustration={SvgNoResult}
+                    title={
+                      scenarios.length === 0
+                        ? t("empty.none.title")
+                        : t("empty.search.title")
+                    }
+                    description={
+                      scenarios.length === 0
+                        ? t("empty.none.description")
+                        : t("empty.search.description")
+                    }
+                  />
+                ) : (
+                  <>
+                    <section className="flex flex-col gap-2">
+                      <Text font="secondary-body" color="text-03">
+                        {t("page.browse.title")}
+                      </Text>
+                      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {visibleScenarios.map((scenario) => (
+                          <ScenarioCard
+                            key={scenario.id}
+                            scenario={scenario}
+                            skillNames={skillNamesFor(scenario)}
+                            startPending={startingId === scenario.id}
+                            customizePending={customizingId === scenario.id}
+                            onClick={openEditor}
+                            onEdit={openEditor}
+                            onCustomize={(item) => void handleCustomize(item)}
+                            onShare={setShareTarget}
+                            onDelete={setDeleteTarget}
+                            onStart={(item) => void handleStart(item)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                    <TextSeparator
+                      text={t("page.count.label", {
+                        count: visibleScenarios.length,
+                      })}
+                    />
+                  </>
+                )}
               </>
             )}
           </>
         )}
       </SettingsLayouts.Body>
+
+      {gallery.previewItem && (
+        <GalleryPreviewModal
+          kind="scenarios"
+          entryId={gallery.previewItem.id}
+          fallbackTitle={gallery.previewItem.name}
+          onClose={() => gallery.setPreviewItem(null)}
+          onFork={(entryId) => void gallery.fork(entryId)}
+          forking={gallery.forkingId !== null}
+        />
+      )}
 
       <ShareScenarioModal
         scenario={shareTarget}

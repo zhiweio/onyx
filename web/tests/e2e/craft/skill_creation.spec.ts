@@ -5,8 +5,10 @@ test("SKILL.md populates the create form after confirmation", async ({
 }) => {
   const settingsResponse = await page.request.get("/api/settings");
   const settings = settingsResponse.ok() ? await settingsResponse.json() : null;
+  // /api/settings returns the flags at the top level; the previously nested
+  // lookup was always undefined, so this test silently skipped everywhere.
   test.skip(
-    settings?.settings?.onyx_craft_enabled !== true,
+    settings?.onyx_craft_enabled !== true,
     "Onyx Craft is disabled in this environment"
   );
 

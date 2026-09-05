@@ -115,6 +115,12 @@ from onyx.server.features.report_template.api import router as report_template_r
 from onyx.server.features.scenario.api import router as scenario_router
 from onyx.server.features.search.api import router as search_api_router
 from onyx.server.features.skill.api import user_router as skill_router
+from onyx.server.features.system_catalog.admin_api import (
+    admin_router as system_catalog_admin_router,
+)
+from onyx.server.features.system_catalog.gallery_api import (
+    router as system_catalog_gallery_router,
+)
 from onyx.server.features.tool.api import admin_router as admin_tool_router
 from onyx.server.features.tool.api import router as tool_router
 from onyx.server.features.usage.api import admin_usage_router, user_usage_router
@@ -641,6 +647,12 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, skill_router)
     include_router_with_global_prefix_prepended(application, scenario_router)
     include_router_with_global_prefix_prepended(application, report_template_router)
+    include_router_with_global_prefix_prepended(
+        application, system_catalog_gallery_router
+    )
+    include_router_with_global_prefix_prepended(
+        application, system_catalog_admin_router
+    )
     include_router_with_global_prefix_prepended(application, craft_project_router)
 
     include_router_with_global_prefix_prepended(application, pat_router)

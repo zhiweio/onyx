@@ -170,6 +170,9 @@ class BuiltInSkillRegistry:
 _REGISTRY: Final = BuiltInSkillRegistry(
     providers=(
         SeededBuiltInProvider(skill_id="pptx"),
+        SeededBuiltInProvider(skill_id="docx"),
+        SeededBuiltInProvider(skill_id="xlsx"),
+        SeededBuiltInProvider(skill_id="pdf"),
         SeededBuiltInProvider(
             skill_id="image-generation",
             is_available=is_image_generation_configured,
@@ -195,6 +198,14 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="tax-invoice-compliance"),
         SeededBuiltInProvider(skill_id="tax-opex-variance"),
         SeededBuiltInProvider(skill_id="tax-ar-risk"),
+        SeededBuiltInProvider(skill_id="tax-financial-statement"),
+        SeededBuiltInProvider(skill_id="tax-closing-checklist"),
+        SeededBuiltInProvider(skill_id="biomed-regulatory"),
+        SeededBuiltInProvider(skill_id="biomed-trial-design"),
+        SeededBuiltInProvider(skill_id="meeting-notes"),
+        SeededBuiltInProvider(skill_id="data-analysis"),
+        SeededBuiltInProvider(skill_id="doc-review"),
+        SeededBuiltInProvider(skill_id="research-brief"),
         SeededBuiltInProvider(
             skill_id="browser",
             is_available=lambda _: ENABLE_BROWSER,

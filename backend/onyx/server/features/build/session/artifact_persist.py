@@ -233,9 +233,11 @@ def _persist_attachments(
     ):
         if count >= MAX_FILES_PER_PERSIST:
             break
-        rel = workspace_path[len("attachments/") :] if workspace_path.startswith(
-            "attachments/"
-        ) else name
+        rel = (
+            workspace_path[len("attachments/") :]
+            if workspace_path.startswith("attachments/")
+            else name
+        )
         artifact = _archive_one(
             db_session,
             sandbox_manager,
@@ -318,9 +320,7 @@ def _archive_one(
             sandbox_id=sandbox_id, session_id=session_id, path=workspace_path
         )
     except Exception:
-        logger.warning(
-            "Could not read %s for session %s", workspace_path, session_id
-        )
+        logger.warning("Could not read %s for session %s", workspace_path, session_id)
         return artifact
     if len(content) > CRAFT_PROJECT_MAX_FILE_SIZE_BYTES:
         return artifact

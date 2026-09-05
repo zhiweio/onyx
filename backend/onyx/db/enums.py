@@ -855,6 +855,50 @@ class SkillAccessLevel(str, PyEnum):
     VIEWER = "VIEWER"
 
 
+class ReportTemplateKind(str, PyEnum):
+    """How a report template carries its structure.
+
+    MARKDOWN templates are inlined into SCENARIO.md as an outline. DOCX
+    templates additionally ship a Word asset that fixes the formatting; the
+    agent fills its ``{{placeholder}}`` tokens rather than writing prose from
+    scratch."""
+
+    MARKDOWN = "MARKDOWN"
+    DOCX = "DOCX"
+
+
+class SystemCatalogCategory(str, PyEnum):
+    """Domain a system catalog entry belongs to, used for gallery filtering."""
+
+    TAX = "TAX"
+    BIOMED = "BIOMED"
+    OFFICE = "OFFICE"
+    DOCUMENT = "DOCUMENT"
+    GENERAL = "GENERAL"
+
+
+class SystemCatalogPublishStatus(str, PyEnum):
+    """Lifecycle of a system catalog entry.
+
+    Only PUBLISHED entries are projected into the runtime tables and are
+    therefore the only ones users can see or fork."""
+
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
+class SystemCatalogOrigin(str, PyEnum):
+    """Where a system catalog entry came from.
+
+    BUILTIN rows are inserted by the shipped manifest sync; ADMIN rows are
+    created in the admin panel. The sync never overwrites an existing slug, so
+    admin edits to a BUILTIN row survive later syncs."""
+
+    BUILTIN = "BUILTIN"
+    ADMIN = "ADMIN"
+
+
 class PersonaAccessLevel(str, PyEnum):
     """Computed access the requesting user holds on a persona.
 

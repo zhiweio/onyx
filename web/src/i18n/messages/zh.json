@@ -8165,6 +8165,106 @@
         "refreshed": "工具列表已刷新",
         "refreshFailed": "无法刷新工具"
       }
+    },
+    "craftCatalog": {
+      "header": {
+        "title": "Craft 广场",
+        "description": "管理用户可浏览的技能、场景与报告模板。发布后才对用户可见。"
+      },
+      "tabs": {
+        "skills": {
+          "label": "技能"
+        },
+        "scenarios": {
+          "label": "场景"
+        },
+        "reportTemplates": {
+          "label": "报告模板"
+        }
+      },
+      "search": {
+        "placeholder": "搜索目录"
+      },
+      "status": {
+        "draft": {
+          "label": "草稿"
+        },
+        "published": {
+          "label": "已发布"
+        },
+        "archived": {
+          "label": "已下架"
+        }
+      },
+      "actions": {
+        "publish": {
+          "label": "发布"
+        },
+        "republish": {
+          "label": "发布更新"
+        },
+        "unpublish": {
+          "label": "下架"
+        },
+        "delete": {
+          "tooltip": "删除条目"
+        },
+        "deleteBlocked": {
+          "tooltip": "请先下架再删除"
+        }
+      },
+      "publish": {
+        "title": "发布「{name}」",
+        "description": "发布后该条目在用户广场可见，版本号加一。",
+        "confirm": {
+          "label": "发布"
+        },
+        "changelog": {
+          "label": "更新说明",
+          "description": "展示给已复制此条目的用户。",
+          "placeholder": "描述本次更新"
+        }
+      },
+      "delete": {
+        "title": "删除「{name}」",
+        "description": "仅删除目录条目，用户已复制的副本不受影响。",
+        "confirm": {
+          "label": "删除"
+        }
+      },
+      "empty": {
+        "title": "暂无目录条目",
+        "description": "内置内容会在服务启动后出现在这里。"
+      },
+      "error": {
+        "title": "加载目录失败",
+        "description": "请刷新页面重试。"
+      },
+      "toasts": {
+        "published": {
+          "message": "已发布「{name}」"
+        },
+        "unpublished": {
+          "message": "已下架「{name}」"
+        },
+        "deleted": {
+          "message": "已删除「{name}」"
+        },
+        "actionFailed": {
+          "message": "操作失败"
+        }
+      },
+      "word": {
+        "badge": {
+          "label": "Word"
+        },
+        "upload": {
+          "label": "上传 .docx"
+        },
+        "download": {
+          "label": "下载"
+        }
+      }
     }
   },
   "agents": {
@@ -12752,6 +12852,11 @@
         },
         "referenced": {
           "label": "{count, plural, one {# 个方案} other {# 个方案}}"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
         }
       },
       "delete": {
@@ -12801,6 +12906,32 @@
         "title": {
           "create": "新建模板",
           "edit": "编辑模板"
+        },
+        "docx": {
+          "title": "Word 模板（可选）",
+          "hint": "上传 .docx，让智能体按你的排版填写，而不是输出 markdown 报告。占位符会从文件中自动识别。",
+          "uploadButton": {
+            "label": "上传 .docx"
+          },
+          "replaceButton": {
+            "label": "替换 .docx"
+          },
+          "downloadButton": {
+            "label": "下载"
+          },
+          "sandboxPath": {
+            "description": "智能体从 {path} 读取该文件"
+          },
+          "placeholders": {
+            "title": "{count, plural, other {# 个占位符}}",
+            "none": "该文档没有占位符，属于固定内容。"
+          },
+          "uploaded": {
+            "message": "已保存 Word 模板，识别到 {count, plural, other {# 个占位符}}"
+          },
+          "uploadFailed": {
+            "message": "保存 Word 模板失败"
+          }
         }
       },
       "empty": {
@@ -13014,6 +13145,114 @@
         },
         "uploaded": {
           "message": "文件已添加。"
+        }
+      }
+    },
+    "gallery": {
+      "tabs": {
+        "gallery": {
+          "label": "广场"
+        },
+        "mine": {
+          "label": "我的"
+        }
+      },
+      "category": {
+        "all": {
+          "label": "全部"
+        },
+        "tax": {
+          "label": "财税"
+        },
+        "biomed": {
+          "label": "生物医药"
+        },
+        "office": {
+          "label": "办公"
+        },
+        "document": {
+          "label": "文档"
+        },
+        "general": {
+          "label": "通用"
+        }
+      },
+      "card": {
+        "version": {
+          "label": "v{version}"
+        },
+        "preview": {
+          "tooltip": "预览"
+        },
+        "fork": {
+          "tooltip": "复制到我的库"
+        },
+        "outdated": {
+          "label": "有新版本"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
+        }
+      },
+      "count": {
+        "label": "{count, plural, other {# 项}}"
+      },
+      "empty": {
+        "none": {
+          "title": "暂无已发布内容",
+          "description": "管理员可在管理后台发布广场内容。"
+        },
+        "search": {
+          "title": "没有匹配项",
+          "description": "换个关键词或分类试试。"
+        }
+      },
+      "error": {
+        "title": "加载广场失败",
+        "description": "请刷新页面重试。"
+      },
+      "preview": {
+        "fallbackTitle": "广场内容",
+        "identifier": {
+          "label": "标识"
+        },
+        "version": {
+          "label": "版本"
+        },
+        "changelog": {
+          "label": "更新说明"
+        },
+        "skills": {
+          "label": "包含技能"
+        },
+        "content": {
+          "label": "内容"
+        },
+        "placeholders": {
+          "label": "占位符"
+        },
+        "downloadWord": {
+          "label": "下载 Word 模板"
+        },
+        "wordRequired": {
+          "description": "此模板含 Word 文件，智能体必须填写该文件。"
+        },
+        "closeButton": {
+          "label": "关闭"
+        },
+        "loadError": {
+          "title": "加载失败",
+          "description": "请关闭后重试。"
+        }
+      },
+      "toasts": {
+        "forked": {
+          "message": "已复制「{name}」到我的库"
+        },
+        "forkFailed": {
+          "message": "复制失败"
         }
       }
     }
@@ -13869,6 +14108,9 @@
         },
         "webSearch": {
           "label": "网页搜索"
+        },
+        "craftCatalog": {
+          "label": "广场"
         }
       },
       "sections": {

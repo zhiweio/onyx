@@ -1545,7 +1545,9 @@ class SessionManager:
             if artifact is None or not artifact.archive_file_id:
                 continue
             try:
-                return get_default_file_store().read_file(artifact.archive_file_id).read()
+                return (
+                    get_default_file_store().read_file(artifact.archive_file_id).read()
+                )
             except Exception:
                 logger.warning(
                     "Could not read archive for session %s path %s",

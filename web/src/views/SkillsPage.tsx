@@ -10,6 +10,7 @@ import {
   LineItemButton,
   MessageCard,
   Popover,
+  Tabs,
   Text,
 } from "@opal/components";
 import {
@@ -29,6 +30,10 @@ import {
 } from "@opal/icons";
 import { SvgGithub } from "@opal/logos";
 import TextSeparator from "@/refresh-components/TextSeparator";
+import GalleryGrid from "@/sections/gallery/GalleryGrid";
+import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
+import { useGallerySkills } from "@/lib/system-catalog/hooks";
+import { useGalleryTab } from "@/lib/system-catalog/useGalleryTab";
 import useOnMount from "@/hooks/useOnMount";
 import useUserSkills from "@/hooks/useUserSkills";
 import SkillCard, {
@@ -48,6 +53,7 @@ import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
 
 export default function SkillsPage() {
   const t = useTranslations("skills");
+  const tGallery = useTranslations("craft.gallery");
   const router = useRouter();
   const externalAppIdParam = useSearchParams().get("externalAppId");
   const focusedExternalAppId =
@@ -55,15 +61,26 @@ export default function SkillsPage() {
       ? Number(externalAppIdParam)
       : null;
   const { data, error, isLoading, refresh } = useUserSkills();
+  const gallery = useGalleryTab({
+    kind: "skills",
+    onForked: async () => {
+      await refresh();
+    },
+  });
+  const {
+    data: galleryItems,
+    error: galleryError,
+    isLoading: galleryLoading,
+  } = useGallerySkills(gallery.tab === "gallery");
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [githubImportOpen, setGitHubImportOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<SkillCardItem | null>(
-    null
+    null,
   );
   const [pendingSkillIds, setPendingSkillIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [optimisticEnabledById, setOptimisticEnabledById] = useState<
     Map<string, boolean>
@@ -83,7 +100,7 @@ export default function SkillsPage() {
   async function updateSkillEnabled(
     item: SkillCardItem,
     enabled: boolean,
-    replaceConflict = false
+    replaceConflict = false,
   ) {
     if (
       enabled &&
@@ -92,7 +109,7 @@ export default function SkillsPage() {
         (candidate) =>
           candidate.id !== item.id &&
           candidate.name === item.name &&
-          candidate.enabled
+          candidate.enabled,
       )
     ) {
       setPendingSwitchTarget(item);
@@ -104,7 +121,7 @@ export default function SkillsPage() {
         ? items.filter(
             (candidate) =>
               candidate.id === item.id ||
-              (candidate.name === item.name && candidate.enabled)
+              (candidate.name === item.name && candidate.enabled),
           )
         : [item];
     const affectedIds = new Set(affectedItems.map(({ id }) => id));
@@ -117,7 +134,7 @@ export default function SkillsPage() {
       const next = new Map(current);
       if (enabled) {
         affectedItems.forEach((candidate) =>
-          next.set(candidate.id, candidate.id === item.id)
+          next.set(candidate.id, candidate.id === item.id),
         );
       } else {
         next.set(item.id, false);
@@ -128,7 +145,7 @@ export default function SkillsPage() {
       const updatedSkill = await setSkillEnabled(
         item.id,
         enabled,
-        replaceConflict
+        replaceConflict,
       );
       if (replaceConflict) setPendingSwitchTarget(null);
       await refresh(
@@ -162,7 +179,7 @@ export default function SkillsPage() {
             }),
           };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
       void refresh().catch(() => {
         toast.error(t("page.toasts.refreshFailed", { name: item.name }));
@@ -179,8 +196,8 @@ export default function SkillsPage() {
               enabled
                 ? "page.toasts.enableFailed"
                 : "page.toasts.disableFailed",
-              { name: item.name }
-            )
+              { name: item.name },
+            ),
       );
     } finally {
       setOptimisticEnabledById((current) => {
@@ -201,7 +218,7 @@ export default function SkillsPage() {
     const builtinItems: SkillCardItem[] = data.builtins
       .filter(
         (b): b is BuiltinSkill =>
-          b.source === "builtin" && b.is_available !== null
+          b.source === "builtin" && b.is_available !== null,
       )
       .map((b) => ({
         id: b.id,
@@ -240,7 +257,7 @@ export default function SkillsPage() {
     return [...builtinItems, ...customItems].sort(
       (a, b) =>
         groupRank(a) - groupRank(b) ||
-        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
   }, [data, optimisticEnabledById]);
 
@@ -259,9 +276,9 @@ export default function SkillsPage() {
       new Map(
         items
           .filter((item) => item.enabled)
-          .map((item) => [item.name, item] as const)
+          .map((item) => [item.name, item] as const),
       ),
-    [items]
+    [items],
   );
 
   const visibleItems = useMemo(() => {
@@ -272,7 +289,7 @@ export default function SkillsPage() {
           item.external_app?.external_app_id === focusedExternalAppId) &&
         (!q ||
           item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q))
+          item.description.toLowerCase().includes(q)),
     );
   }, [focusedAppName, focusedExternalAppId, items, searchQuery]);
 
@@ -291,52 +308,67 @@ export default function SkillsPage() {
         title={t("page.header.title")}
         description={t("page.header.description")}
         rightChildren={
-          <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-            <Popover.Trigger asChild>
-              <Button icon={SvgPlus}>
-                {t("page.createMenu.trigger.label")}
-              </Button>
-            </Popover.Trigger>
-            <Popover.Content align="end" sideOffset={4} width="xl">
-              <Popover.Menu>
-                <LineItemButton
-                  sizePreset="main-ui"
-                  rounding={2}
-                  icon={SvgEdit}
-                  description={t("page.createMenu.scratch.description")}
-                  onClick={() => {
-                    setCreateMenuOpen(false);
-                    router.push("/craft/v1/skills/new" as Route);
-                  }}
-                  title={t("page.createMenu.scratch.title")}
-                />
-                <LineItemButton
-                  sizePreset="main-ui"
-                  rounding={2}
-                  icon={SvgUploadCloud}
-                  description={t("page.createMenu.upload.description")}
-                  onClick={() => {
-                    setCreateMenuOpen(false);
-                    setCreateOpen(true);
-                  }}
-                  title={t("page.createMenu.upload.title")}
-                />
-                <LineItemButton
-                  sizePreset="main-ui"
-                  rounding={2}
-                  icon={SvgGithub}
-                  description={t("page.createMenu.github.description")}
-                  onClick={() => {
-                    setCreateMenuOpen(false);
-                    setGitHubImportOpen(true);
-                  }}
-                  title={t("page.createMenu.github.title")}
-                />
-              </Popover.Menu>
-            </Popover.Content>
-          </Popover>
+          gallery.tab === "mine" ? (
+            <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+              <Popover.Trigger asChild>
+                <Button icon={SvgPlus}>
+                  {t("page.createMenu.trigger.label")}
+                </Button>
+              </Popover.Trigger>
+              <Popover.Content align="end" sideOffset={4} width="xl">
+                <Popover.Menu>
+                  <LineItemButton
+                    sizePreset="main-ui"
+                    rounding={2}
+                    icon={SvgEdit}
+                    description={t("page.createMenu.scratch.description")}
+                    onClick={() => {
+                      setCreateMenuOpen(false);
+                      router.push("/craft/v1/skills/new" as Route);
+                    }}
+                    title={t("page.createMenu.scratch.title")}
+                  />
+                  <LineItemButton
+                    sizePreset="main-ui"
+                    rounding={2}
+                    icon={SvgUploadCloud}
+                    description={t("page.createMenu.upload.description")}
+                    onClick={() => {
+                      setCreateMenuOpen(false);
+                      setCreateOpen(true);
+                    }}
+                    title={t("page.createMenu.upload.title")}
+                  />
+                  <LineItemButton
+                    sizePreset="main-ui"
+                    rounding={2}
+                    icon={SvgGithub}
+                    description={t("page.createMenu.github.description")}
+                    onClick={() => {
+                      setCreateMenuOpen(false);
+                      setGitHubImportOpen(true);
+                    }}
+                    title={t("page.createMenu.github.title")}
+                  />
+                </Popover.Menu>
+              </Popover.Content>
+            </Popover>
+          ) : undefined
         }
       >
+        <Tabs
+          value={gallery.tab}
+          onValueChange={(value) => gallery.setTab(value as "gallery" | "mine")}
+        >
+          <Tabs.List>
+            <Tabs.Trigger value="mine" data-testid="GalleryTabs/mine">
+              {tGallery("tabs.mine.label")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="gallery" data-testid="GalleryTabs/gallery">
+              {tGallery("tabs.gallery.label")}
+            </Tabs.Trigger>
+          </Tabs.List>
+        </Tabs>
         <InputTypeIn
           ref={searchInputRef}
           placeholder={t("page.search.placeholder")}
@@ -347,82 +379,110 @@ export default function SkillsPage() {
       </SettingsLayouts.Header>
 
       <SettingsLayouts.Body>
-        {focusedAppName && (
-          <MessageCard
-            variant="info"
-            title={t("page.focusedApp.title", { appName: focusedAppName })}
-            description={t("page.focusedApp.description", {
-              appName: focusedAppName,
-            })}
-            rightChildren={
-              <Button prominence="secondary" href="/craft/v1/skills">
-                {t("page.focusedApp.showAll.label")}
-              </Button>
-            }
+        {gallery.tab === "gallery" ? (
+          <GalleryGrid
+            items={galleryItems}
+            icon={SvgBlocks}
+            isLoading={galleryLoading}
+            error={galleryError}
+            searchQuery={searchQuery}
+            category={gallery.category}
+            onCategoryChange={gallery.setCategory}
+            onPreview={gallery.setPreviewItem}
+            onFork={gallery.forkItem}
+            forkingId={gallery.forkingId}
           />
-        )}
-
-        {isLoading && <SvgSimpleLoader />}
-
-        {error && !isLoading && (
-          <MessageCard
-            variant="error"
-            title={t("page.loadError.title")}
-            description={t("page.loadError.description")}
-          />
-        )}
-
-        {!isLoading && !error && (
+        ) : (
           <>
-            {visibleItems.length === 0 ? (
-              <IllustrationContent
-                illustration={SvgNoResult}
-                title={
-                  items.length === 0
-                    ? t("page.empty.noSkills.title")
-                    : t("page.empty.noMatches.title")
-                }
-                description={
-                  items.length === 0
-                    ? t("page.empty.noSkills.description")
-                    : t("page.empty.noMatches.description")
+            {focusedAppName && (
+              <MessageCard
+                variant="info"
+                title={t("page.focusedApp.title", { appName: focusedAppName })}
+                description={t("page.focusedApp.description", {
+                  appName: focusedAppName,
+                })}
+                rightChildren={
+                  <Button prominence="secondary" href="/craft/v1/skills">
+                    {t("page.focusedApp.showAll.label")}
+                  </Button>
                 }
               />
-            ) : (
+            )}
+
+            {isLoading && <SvgSimpleLoader />}
+
+            {error && !isLoading && (
+              <MessageCard
+                variant="error"
+                title={t("page.loadError.title")}
+                description={t("page.loadError.description")}
+              />
+            )}
+
+            {!isLoading && !error && (
               <>
-                <section className="flex flex-col gap-2">
-                  <Text font="secondary-body" color="text-03">
-                    {t("page.browse.title")}
-                  </Text>
-                  <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {visibleItems.map((item) => (
-                      <SkillCard
-                        key={item.id}
-                        item={item}
-                        hasEnabledNameConflict={
-                          !item.enabled && enabledItemByName.has(item.name)
-                        }
-                        onEdit={handleEdit}
-                        onClick={setPreviewTarget}
-                        onEnabledChange={(skill, enabled) =>
-                          void updateSkillEnabled(skill, enabled)
-                        }
-                        enablementPending={pendingSkillIds.has(item.id)}
-                      />
-                    ))}
-                  </div>
-                </section>
-                <TextSeparator
-                  count={visibleItems.length}
-                  text={t("page.countSeparator.label", {
-                    count: visibleItems.length,
-                  })}
-                />
+                {visibleItems.length === 0 ? (
+                  <IllustrationContent
+                    illustration={SvgNoResult}
+                    title={
+                      items.length === 0
+                        ? t("page.empty.noSkills.title")
+                        : t("page.empty.noMatches.title")
+                    }
+                    description={
+                      items.length === 0
+                        ? t("page.empty.noSkills.description")
+                        : t("page.empty.noMatches.description")
+                    }
+                  />
+                ) : (
+                  <>
+                    <section className="flex flex-col gap-2">
+                      <Text font="secondary-body" color="text-03">
+                        {t("page.browse.title")}
+                      </Text>
+                      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {visibleItems.map((item) => (
+                          <SkillCard
+                            key={item.id}
+                            item={item}
+                            hasEnabledNameConflict={
+                              !item.enabled && enabledItemByName.has(item.name)
+                            }
+                            onEdit={handleEdit}
+                            onClick={setPreviewTarget}
+                            onEnabledChange={(skill, enabled) =>
+                              void updateSkillEnabled(skill, enabled)
+                            }
+                            enablementPending={pendingSkillIds.has(item.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                    <TextSeparator
+                      count={visibleItems.length}
+                      text={t("page.countSeparator.label", {
+                        count: visibleItems.length,
+                      })}
+                    />
+                  </>
+                )}
               </>
             )}
           </>
         )}
       </SettingsLayouts.Body>
+
+      {gallery.previewItem && (
+        <GalleryPreviewModal
+          kind="skills"
+          entryId={gallery.previewItem.id}
+          fallbackTitle={gallery.previewItem.name}
+          onClose={() => gallery.setPreviewItem(null)}
+          onFork={(entryId) => void gallery.fork(entryId)}
+          forking={gallery.forkingId !== null}
+        />
+      )}
 
       <CreateSkillModal
         open={createOpen}
@@ -442,7 +502,7 @@ export default function SkillsPage() {
             void refresh().catch((refreshError: unknown) => {
               console.error(
                 "Failed to refresh skills after GitHub import",
-                refreshError
+                refreshError,
               );
             });
           }}

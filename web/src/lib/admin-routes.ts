@@ -188,6 +188,16 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: (f: FeatureFlags) => f.craftAvailable,
   },
+  CRAFT_CATALOG: {
+    path: "/admin/craft/catalog",
+    icon: SvgBookOpen,
+    title: "Gallery",
+    sidebarLabel: "Gallery",
+    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
+    section: "Craft",
+    requiredTier: null,
+    visibleWhen: (f: FeatureFlags) => f.craftAvailable,
+  },
   CUSTOM_ANALYTICS: {
     path: "/admin/performance/custom-analytics",
     icon: SvgBarChart,
@@ -241,7 +251,8 @@ export const ADMIN_ROUTES = {
     requiredPermission: Permission.MANAGE_SYSTEM_MCP,
     section: "Agents & Actions",
     requiredTier: null,
-    visibleWhen: (flags) => flags.mcpGatewayAvailable && flags.mcpGatewayEnabled,
+    visibleWhen: (flags) =>
+      flags.mcpGatewayAvailable && flags.mcpGatewayEnabled,
   },
   OPENAPI_ACTIONS: {
     path: "/admin/openapi-actions",
@@ -567,7 +578,7 @@ export const VECTOR_DB_REQUIRED_ROUTE_PREFIXES: readonly string[] = [
 
 export function isVectorDbRequiredRoute(pathname: string): boolean {
   return VECTOR_DB_REQUIRED_ROUTE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
+    pathname.startsWith(prefix),
   );
 }
 

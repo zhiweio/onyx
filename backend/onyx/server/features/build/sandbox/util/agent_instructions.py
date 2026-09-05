@@ -168,7 +168,6 @@ def generate_agent_instructions(
     )
 
     return (
-        content
-        + "\n\nIf `SCENARIO.md` exists in this session directory, follow that "
+        content + "\n\nIf `SCENARIO.md` exists in this session directory, follow that "
         "scenario pack and prefer the skills it lists.\n"
     )

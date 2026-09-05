@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
+from onyx.db.enums import ReportTemplateKind
 from onyx.server.features.scenario.runtime import render_scenario_markdown_named
 
 
@@ -19,6 +20,8 @@ def test_render_includes_template_body(monkeypatch) -> None:
     template = SimpleNamespace(
         description="Tax compliance risk brief for an entity.",
         body="# 合规风险预警报告\n\n1. **对象**",
+        kind=ReportTemplateKind.MARKDOWN,
+        placeholders=[],
     )
     monkeypatch.setattr(
         "onyx.server.features.scenario.runtime.get_report_template_by_slug",
@@ -27,7 +30,12 @@ def test_render_includes_template_body(monkeypatch) -> None:
     scenario = SimpleNamespace(
         name="合规风险预警",
         description="Tax pack",
-        rules={},
+        rules={
+            "domain": "tax",
+            "objective": "Produce a cited tax-compliance risk brief",
+            "required_inputs": ["entity", "period"],
+            "always_skill_ids": ["should-not-appear"],
+        },
         skill_links=[],
         report_template="compliance_risk",
     )
@@ -35,6 +43,11 @@ def test_render_includes_template_body(monkeypatch) -> None:
     assert "Preferred report template: `compliance_risk`" in text
     assert "Tax compliance risk brief for an entity." in text
     assert "# 合规风险预警报告" in text
+    assert "## Objective" in text
+    assert "Produce a cited tax-compliance risk brief" in text
+    assert "entity" in text
+    assert "always_skill_ids" not in text
+    assert "should-not-appear" not in text
 
 
 def test_render_keeps_slug_when_template_missing(monkeypatch) -> None:

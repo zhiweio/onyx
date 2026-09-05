@@ -763,7 +763,9 @@ def is_sandbox_idle(sandbox: Sandbox, now: datetime) -> bool:
     return reference < now - timedelta(seconds=SANDBOX_IDLE_TIMEOUT_SECONDS)
 
 
-def should_sleep_sandbox(db_session: DBSession, sandbox: Sandbox, now: datetime) -> bool:
+def should_sleep_sandbox(
+    db_session: DBSession, sandbox: Sandbox, now: datetime
+) -> bool:
     """Idle sandboxes with an open long job stay up between phases."""
     if not is_sandbox_idle(sandbox, now):
         return False

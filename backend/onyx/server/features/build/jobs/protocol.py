@@ -35,13 +35,12 @@ DEFAULT_SPECIALIST_ROLES: Final[dict[str, tuple[str, ...]]] = {
 
 def default_phases_for_domain(domain: str) -> list[dict[str, Any]]:
     source = RESEARCH_PHASES if domain in RESEARCH_DOMAINS else DOCUMENT_PHASES
-    return [
-        {**phase, "status": "pending"}
-        for phase in source
-    ]
+    return [{**phase, "status": "pending"} for phase in source]
 
 
-def current_phase(job_phases: list[dict[str, Any]], index: int) -> dict[str, Any] | None:
+def current_phase(
+    job_phases: list[dict[str, Any]], index: int
+) -> dict[str, Any] | None:
     if index < 0 or index >= len(job_phases):
         return None
     return job_phases[index]

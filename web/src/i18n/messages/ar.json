@@ -8165,6 +8165,106 @@
         "refreshed": "Tool list refreshed",
         "refreshFailed": "Could not refresh tools"
       }
+    },
+    "craftCatalog": {
+      "header": {
+        "title": "Craft gallery",
+        "description": "Curate the skills, scenarios and report templates users can browse. Nothing is visible until you publish it."
+      },
+      "tabs": {
+        "skills": {
+          "label": "Skills"
+        },
+        "scenarios": {
+          "label": "Scenarios"
+        },
+        "reportTemplates": {
+          "label": "Report templates"
+        }
+      },
+      "search": {
+        "placeholder": "Search the catalog"
+      },
+      "status": {
+        "draft": {
+          "label": "Draft"
+        },
+        "published": {
+          "label": "Published"
+        },
+        "archived": {
+          "label": "Archived"
+        }
+      },
+      "actions": {
+        "publish": {
+          "label": "Publish"
+        },
+        "republish": {
+          "label": "Publish update"
+        },
+        "unpublish": {
+          "label": "Unpublish"
+        },
+        "delete": {
+          "tooltip": "Delete entry"
+        },
+        "deleteBlocked": {
+          "tooltip": "Unpublish before deleting"
+        }
+      },
+      "publish": {
+        "title": "Publish \"{name}\"",
+        "description": "Publishing makes this entry visible in the user gallery and bumps its version.",
+        "confirm": {
+          "label": "Publish"
+        },
+        "changelog": {
+          "label": "What changed",
+          "description": "Shown to users who already copied this entry.",
+          "placeholder": "Describe the update"
+        }
+      },
+      "delete": {
+        "title": "Delete \"{name}\"",
+        "description": "This removes the catalog entry. Copies users already made are not affected.",
+        "confirm": {
+          "label": "Delete"
+        }
+      },
+      "empty": {
+        "title": "No catalog entries",
+        "description": "Shipped content appears here after the server starts."
+      },
+      "error": {
+        "title": "Could not load the catalog",
+        "description": "Refresh the page to try again."
+      },
+      "toasts": {
+        "published": {
+          "message": "Published \"{name}\""
+        },
+        "unpublished": {
+          "message": "Unpublished \"{name}\""
+        },
+        "deleted": {
+          "message": "Deleted \"{name}\""
+        },
+        "actionFailed": {
+          "message": "The action failed"
+        }
+      },
+      "word": {
+        "badge": {
+          "label": "Word"
+        },
+        "upload": {
+          "label": "تحميل .docx"
+        },
+        "download": {
+          "label": "تنزيل"
+        }
+      }
     }
   },
   "agents": {
@@ -12752,6 +12852,11 @@
         },
         "referenced": {
           "label": "{count, plural, one {# pack} other {# packs}}"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
         }
       },
       "delete": {
@@ -12801,6 +12906,32 @@
         "title": {
           "create": "New template",
           "edit": "Edit template"
+        },
+        "docx": {
+          "title": "Word template (optional)",
+          "hint": "Attach a .docx so the agent fills your formatting instead of writing a markdown report. Placeholders are read from the file.",
+          "uploadButton": {
+            "label": "Upload .docx"
+          },
+          "replaceButton": {
+            "label": "Replace .docx"
+          },
+          "downloadButton": {
+            "label": "Download"
+          },
+          "sandboxPath": {
+            "description": "The agent reads this file at {path}"
+          },
+          "placeholders": {
+            "title": "{count, plural, =0 {No placeholders} one {# placeholder} other {# placeholders}}",
+            "none": "This document has no placeholder tokens, so it is fixed content."
+          },
+          "uploaded": {
+            "message": "Word template saved with {count, plural, =0 {no placeholders} one {# placeholder} other {# placeholders}}"
+          },
+          "uploadFailed": {
+            "message": "Could not save the Word template"
+          }
         }
       },
       "empty": {
@@ -13014,6 +13145,114 @@
         },
         "uploaded": {
           "message": "File added."
+        }
+      }
+    },
+    "gallery": {
+      "tabs": {
+        "gallery": {
+          "label": "Gallery"
+        },
+        "mine": {
+          "label": "Mine"
+        }
+      },
+      "category": {
+        "all": {
+          "label": "All"
+        },
+        "tax": {
+          "label": "Tax & finance"
+        },
+        "biomed": {
+          "label": "Biomed R&D"
+        },
+        "office": {
+          "label": "Office"
+        },
+        "document": {
+          "label": "Documents"
+        },
+        "general": {
+          "label": "General"
+        }
+      },
+      "card": {
+        "version": {
+          "label": "v{version}"
+        },
+        "preview": {
+          "tooltip": "Preview"
+        },
+        "fork": {
+          "tooltip": "Copy to my library"
+        },
+        "outdated": {
+          "label": "Update available"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
+        }
+      },
+      "count": {
+        "label": "{count, plural, one {# item} other {# items}}"
+      },
+      "empty": {
+        "none": {
+          "title": "Nothing published yet",
+          "description": "An admin publishes gallery content from the admin panel."
+        },
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
+      },
+      "error": {
+        "title": "Could not load the gallery",
+        "description": "Refresh the page to try again."
+      },
+      "preview": {
+        "fallbackTitle": "Gallery item",
+        "identifier": {
+          "label": "Identifier"
+        },
+        "version": {
+          "label": "Version"
+        },
+        "changelog": {
+          "label": "What changed"
+        },
+        "skills": {
+          "label": "Skills in this pack"
+        },
+        "content": {
+          "label": "Content"
+        },
+        "placeholders": {
+          "label": "العناصر النائبة"
+        },
+        "downloadWord": {
+          "label": "تنزيل قالب Word"
+        },
+        "wordRequired": {
+          "description": "يتضمن هذا القالب ملف Word يجب على الوكيل تعبئته."
+        },
+        "closeButton": {
+          "label": "Close"
+        },
+        "loadError": {
+          "title": "Could not load this item",
+          "description": "Close and try again."
+        }
+      },
+      "toasts": {
+        "forked": {
+          "message": "Copied \"{name}\" to your library"
+        },
+        "forkFailed": {
+          "message": "Could not copy this item"
         }
       }
     }
@@ -13869,6 +14108,9 @@
         },
         "webSearch": {
           "label": "البحث في الويب"
+        },
+        "craftCatalog": {
+          "label": "Gallery"
         }
       },
       "sections": {

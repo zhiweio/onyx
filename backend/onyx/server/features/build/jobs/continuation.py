@@ -112,9 +112,7 @@ def maybe_continue_craft_job(
     next_phase = current_phase(job.phases, next_index)
     if next_phase is None:
         return
-    prompt = continuation_prompt(
-        phase=next_phase, domain=job.domain, job_name=job.name
-    )
+    prompt = continuation_prompt(phase=next_phase, domain=job.domain, job_name=job.name)
     _enqueue_phase_turn(
         db_session,
         session_id=job.session_id,
@@ -141,9 +139,7 @@ def _finish_specialist_turn(
             error_detail="Cancelled",
         )
     elif turn_succeeded:
-        mark_specialist_finished(
-            specialist, status=CraftJobSpecialistStatus.SUCCEEDED
-        )
+        mark_specialist_finished(specialist, status=CraftJobSpecialistStatus.SUCCEEDED)
     else:
         mark_specialist_finished(
             specialist,
@@ -179,9 +175,7 @@ def _finish_specialist_turn(
     phase = current_phase(job.phases, compose_index)
     if phase is None:
         return
-    prompt = continuation_prompt(
-        phase=phase, domain=job.domain, job_name=job.name
-    )
+    prompt = continuation_prompt(phase=phase, domain=job.domain, job_name=job.name)
     prompt += (
         "\nSpecialists finished. Read `project/research/` and "
         "`project/extracted/` before you write the report."
@@ -217,9 +211,7 @@ def _enqueue_phase_turn(
     try:
         lock = acquire_active_turn_lock(cache, session_id)
     except InteractiveTurnLockError:
-        logger.warning(
-            "Could not lock session %s to continue a Craft job", session_id
-        )
+        logger.warning("Could not lock session %s to continue a Craft job", session_id)
         return None
     try:
         if get_active_turn(cache=cache, session_id=session_id, user_id=user_id):
@@ -261,9 +253,7 @@ def _enqueue_phase_turn(
 
 def _read_phase_done(sandbox_id: UUID, session_id: UUID) -> str | None:
     try:
-        raw = get_sandbox_manager().read_file(
-            sandbox_id, session_id, PHASE_DONE_PATH
-        )
+        raw = get_sandbox_manager().read_file(sandbox_id, session_id, PHASE_DONE_PATH)
     except Exception:
         return None
     text = raw.decode("utf-8", errors="replace").strip()

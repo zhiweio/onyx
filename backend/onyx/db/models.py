@@ -115,6 +115,7 @@ from onyx.db.enums import (
     PortAttemptStatus,
     ProcessingMode,
     ReceiptStatus,
+    ReportTemplateKind,
     SandboxStatus,
     ScenarioSharePermission,
     ScheduledTaskRunStatus,
@@ -127,6 +128,9 @@ from onyx.db.enums import (
     SwitchoverType,
     SyncStatus,
     SyncType,
+    SystemCatalogCategory,
+    SystemCatalogOrigin,
+    SystemCatalogPublishStatus,
     TaskStatus,
     ThemePreference,
     UserFileStatus,
@@ -5005,6 +5009,15 @@ class Skill(Base):
         Enum(SkillSharePermission, native_enum=False),
         nullable=True,
     )
+    # Set when the row came from the system catalog, either as the published
+    # projection (author_user_id IS NULL) or as a user's fork. Cleared if the
+    # catalog entry is deleted, so forks outlive their source.
+    system_skill_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_skill.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_skill_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -5049,6 +5062,7 @@ class Skill(Base):
             "(built_in_skill_id IS NULL) <> (bundle_file_id IS NULL)",
             name="ck_skill_definition_source",
         ),
+        Index("ix_skill_system_skill_id", "system_skill_id"),
     )
 
     @property
@@ -5068,6 +5082,20 @@ class ReportTemplate(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[ReportTemplateKind] = mapped_column(
+        Enum(ReportTemplateKind, native_enum=False),
+        nullable=False,
+        default=ReportTemplateKind.MARKDOWN,
+        server_default=ReportTemplateKind.MARKDOWN.value,
+    )
+    # Set only for DOCX templates: the Word asset in the file store, plus the
+    # placeholder contract extracted from it at upload.
+    asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
     author_user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),
@@ -5075,6 +5103,15 @@ class ReportTemplate(Base):
     )
     is_builtin: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    # See Skill.system_skill_id — same projection/fork bookkeeping.
+    system_report_template_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_report_template.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_report_template_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -5091,7 +5128,13 @@ class ReportTemplate(Base):
         foreign_keys=[author_user_id],
     )
 
-    __table_args__ = (UniqueConstraint("slug", name="uq_report_template_slug"),)
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_report_template_slug"),
+        Index(
+            "ix_report_template_system_report_template_id",
+            "system_report_template_id",
+        ),
+    )
 
 
 class Scenario(Base):
@@ -5117,6 +5160,13 @@ class Scenario(Base):
         postgresql.JSONB(), nullable=False, default=dict
     )
     report_template: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # See Skill.system_skill_id — same projection/fork bookkeeping.
+    system_scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_scenario_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -5146,6 +5196,8 @@ class Scenario(Base):
         back_populates="scenario",
         cascade="all, delete-orphan",
     )
+
+    __table_args__ = (Index("ix_scenario_system_scenario_id", "system_scenario_id"),)
 
 
 class Scenario__Skill(Base):
@@ -5215,6 +5267,249 @@ class Scenario__UserGroup(Base):
     user_group: Mapped["UserGroup"] = relationship("UserGroup")
 
     __table_args__ = (Index("ix_scenario__user_group_user_group_id", "user_group_id"),)
+
+
+class SystemSkill(Base):
+    """Admin-managed catalog entry for a skill offered in the skills gallery.
+
+    Catalog rows are never consumed at runtime. Publishing projects the entry
+    into a workspace-owned ``skill`` row (``author_user_id IS NULL``), which is
+    what the sandbox push path and the pickers already understand. Unpublishing
+    drops that projection while leaving user forks intact.
+    """
+
+    __tablename__ = "system_skill"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    # Bumped on every publish. Forks copy it so the UI can flag stale copies.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    # Content source, mirroring Skill: exactly one of the two is set.
+    built_in_skill_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    bundle_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    bundle_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_skill_slug"),
+        CheckConstraint(
+            "(built_in_skill_id IS NULL) <> (bundle_file_id IS NULL)",
+            name="ck_system_skill_definition_source",
+        ),
+        Index("ix_system_skill_publish_status", "publish_status"),
+    )
+
+
+class SystemReportTemplate(Base):
+    """Admin-managed catalog entry for a report template in the gallery."""
+
+    __tablename__ = "system_report_template"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[ReportTemplateKind] = mapped_column(
+        Enum(ReportTemplateKind, native_enum=False),
+        nullable=False,
+        default=ReportTemplateKind.MARKDOWN,
+        server_default=ReportTemplateKind.MARKDOWN.value,
+    )
+    # See ReportTemplate — the catalog carries its own copy of the asset so an
+    # unpublished draft can hold content no runtime row references yet.
+    asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_report_template_slug"),
+        Index("ix_system_report_template_publish_status", "publish_status"),
+    )
+
+
+class SystemScenario(Base):
+    """Admin-managed catalog entry for a scenario pack in the gallery.
+
+    ``skill_slugs`` names ``system_skill`` entries rather than ``skill`` UUIDs
+    so the manifest stays declarative; publishing resolves each slug to the
+    projected skill row.
+    """
+
+    __tablename__ = "system_scenario"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    rules: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict, server_default=text("'{}'")
+    )
+    skill_slugs: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    report_template_slug: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_scenario_slug"),
+        Index("ix_system_scenario_publish_status", "publish_status"),
+    )
 
 
 """
