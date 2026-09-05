@@ -38,11 +38,10 @@ class CachePolicySpec:
     inline_threshold_bytes: int = MCP_RESULT_INLINE_THRESHOLD_BYTES
     max_response_bytes: int = MCP_RESULT_MAX_BYTES
 
-    # Digest projection for results too large to hand the LLM whole.
+    # Ops digest stored with the blob. Not sent to the model.
     digest_max_bytes: int = MCP_RESULT_DIGEST_MAX_BYTES
-    # Dotted paths pulled out of the payload verbatim, e.g.
-    # "structuredContent.company.name". Pack authors name the few fields that
-    # identify a record so the model can reason without reading the body.
+    # Dotted paths pulled out of the payload for the ops digest, e.g.
+    # "structuredContent.company.name".
     digest_paths: tuple[str, ...] = ()
 
     tool_globs: tuple[str, ...] = ()

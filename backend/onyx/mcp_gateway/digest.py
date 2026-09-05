@@ -1,13 +1,8 @@
 """Deterministic summary of an MCP tool result.
 
-A digest replaces a multi-megabyte body in the LLM's context. It is built by
-pure structural projection — no model call — so it costs nothing, adds no
-latency, and produces the same output for the same input, which is what lets it
-be cached alongside the body.
-
-The shape is chosen so the model can answer two questions without reading the
-body: *what did this call return* (types, counts, keys, a text preview) and
-*what should I ask for next* (the paths it can pass to `mcp_result`).
+Stored with the blob as ops metadata. The model receives the original tool
+result, not this digest. Built by structural projection so the same body
+always produces the same summary.
 """
 
 import json
@@ -126,7 +121,7 @@ def _shrink(digest: dict[str, Any], max_bytes: int) -> dict[str, Any]:
 
     Order matters: the structural map of `structuredContent` is the first thing
     to go, then text previews, then the field map. What survives is always
-    enough to name the tool's output and point at `mcp_result`.
+    enough to name the tool's output.
     """
     if len(json.dumps(digest, ensure_ascii=False).encode("utf-8")) <= max_bytes:
         return digest

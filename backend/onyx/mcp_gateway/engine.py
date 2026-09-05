@@ -1,13 +1,14 @@
 """Cache engine for system MCP calls.
 
-One call goes through at most four steps: a Redis lookup of the digest and
-handle, a Postgres lookup of the cache entry, a lock-guarded upstream call, and
-a write to whichever storage tier fits the size of the answer.
+One call goes through at most four steps: a Redis lookup of the handle, a
+Postgres lookup of the cache entry, a lock-guarded upstream call, and a write
+to whichever storage tier fits the size of the answer. The caller always
+receives the full cached payload.
 
 Two invariants shape the code:
 
-- **Redis only ever holds small values.** It stores the handle and digest, not
-  the body, so a 10 MB answer costs the same in the hot path as a 1 KB one.
+- **Redis only ever holds small values.** It stores the handle, not the body,
+  so a 10 MB answer costs the same in the hot path as a 1 KB one.
 - **No DB session is held across an upstream call.** Those take up to five
   minutes; the entry is snapshotted into an `UpstreamTarget` and the session is
   released before the request goes out.

@@ -13,7 +13,14 @@ from typing import Any
 
 from mcp.server.lowlevel.server import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from mcp.types import ContentBlock, EmbeddedResource, ImageContent, TextContent, Tool
+from mcp.types import (
+    CallToolResult,
+    ContentBlock,
+    EmbeddedResource,
+    ImageContent,
+    TextContent,
+    Tool,
+)
 from starlette.types import Receive, Scope, Send
 
 from onyx.cache.factory import get_cache_backend
@@ -145,6 +152,19 @@ def _content_from_result(payload: dict[str, Any]) -> Sequence[ContentBlock]:
     return blocks or [TextContent(type="text", text="")]
 
 
+def call_result_from_payload(payload: dict[str, Any]) -> CallToolResult:
+    """Rebuild the original MCP result, including structuredContent."""
+    try:
+        return CallToolResult.model_validate(payload)
+    except Exception:
+        structured = payload.get("structuredContent")
+        return CallToolResult(
+            content=list(_content_from_result(payload)),
+            structuredContent=structured if isinstance(structured, dict) else None,
+            isError=bool(payload.get("isError")),
+        )
+
+
 def build_provider_server(slug: str) -> Server[Any]:
     server: Server[Any] = Server(f"onyx-mcp-gateway-{slug}")
 
@@ -156,13 +176,13 @@ def build_provider_server(slug: str) -> Server[Any]:
         return await tools_for_slug(tenant_id, slug)
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[ContentBlock]:
+    async def call_tool(name: str, arguments: dict[str, Any]) -> CallToolResult:
         resolved = await invoke_tool(
             catalog_slug=slug,
             tool_name=name,
             arguments=arguments or {},
         )
-        return _content_from_result(resolved.result)
+        return call_result_from_payload(resolved.result)
 
     return server
 

@@ -1,11 +1,11 @@
 """Three-tier storage for MCP tool results.
 
-MCP servers routinely answer with several megabytes. Putting that in Redis, in
-a JSONB column, and in the model's context at once is what made the first
-version fall over, so each tier now carries only what it is good at:
+MCP servers routinely answer with several megabytes. Putting that in Redis or
+a JSONB column is what made the first version fall over, so each tier now
+carries only what it is good at. The caller still receives the full body.
 
-- **Redis** holds the digest and the handle. Always kilobytes, whatever the
-  body weighs, so the hot path stays a single small round trip.
+- **Redis** holds the handle. Always kilobytes, whatever the body weighs, so
+  the hot path stays a single small round trip.
 - **Postgres** holds the metadata row, and the body too when it is small
   enough that a separate object would cost more than it saves.
 - **The file store** (MinIO/S3) holds large bodies, gzipped.

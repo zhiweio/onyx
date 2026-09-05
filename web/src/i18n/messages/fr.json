@@ -8112,7 +8112,7 @@
       },
       "storage": {
         "title": "Stored results",
-        "description": "Small results stay in Postgres; large ones move to the file store and reach the model as a digest.",
+        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
         "results": "Results",
         "stored": "Stored",
         "transferred": "Transferred"

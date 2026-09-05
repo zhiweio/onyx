@@ -1945,23 +1945,21 @@ MCP_GATEWAY_TOKEN_TTL_SECONDS = int(
 )
 
 #####
-# MCP result storage — how tool responses are persisted and shown to the LLM
+# MCP result storage — how the gateway caches tool responses
 #####
 # At or below this size a result is stored inline in Postgres. Above it the
-# body goes to the file store and only a digest plus a handle reaches the LLM.
+# body goes to the file store. The caller always receives the full cached
+# payload; conversation history may later cut the text to fit the window.
 MCP_RESULT_INLINE_THRESHOLD_BYTES = int(
     os.environ.get("MCP_RESULT_INLINE_THRESHOLD_BYTES") or 32_768
 )
 # Hard ceiling on what the gateway will persist at all. Bigger responses are
 # passed through to the caller uncached.
 MCP_RESULT_MAX_BYTES = int(os.environ.get("MCP_RESULT_MAX_BYTES") or 67_108_864)
-# Ceiling on the deterministic summary handed to the LLM for a large result.
+# Ceiling on the ops digest stored with a blob. Not sent to the model.
 MCP_RESULT_DIGEST_MAX_BYTES = int(
     os.environ.get("MCP_RESULT_DIGEST_MAX_BYTES") or 8_192
 )
-# Ceiling on one mcp_result read. Keeps a follow-up read from undoing the
-# saving the digest just made.
-MCP_RESULT_SLICE_MAX_BYTES = int(os.environ.get("MCP_RESULT_SLICE_MAX_BYTES") or 16_384)
 # Blobs untouched for this long are deleted by the cleanup task.
 MCP_RESULT_BLOB_TTL_DAYS = int(os.environ.get("MCP_RESULT_BLOB_TTL_DAYS") or 30)
 

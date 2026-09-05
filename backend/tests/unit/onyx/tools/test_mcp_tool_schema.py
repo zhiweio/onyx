@@ -10,6 +10,7 @@ These tests pin the contract that MCPTool.tool_definition() always returns
 a JSON-Schema-valid `parameters` dict with a `properties` key.
 """
 
+import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -19,7 +20,7 @@ from mcp.types import CallToolResult, TextContent
 from onyx.db.enums import MCPAuthenticationType
 from onyx.server.query_and_chat.placement import Placement
 from onyx.tools.interface import Tool
-from onyx.tools.models import ToolResponse
+from onyx.tools.models import CustomToolCallSummary, ToolResponse
 from onyx.tools.tool_constructor import _disambiguate_mcp_tool_names
 from onyx.tools.tool_implementations.mcp.mcp_tool import (
     MCPTool,
@@ -232,6 +233,24 @@ class TestMCPToolLLMNames:
 
         mock_call_mcp_tool.assert_called_once()
         assert mock_call_mcp_tool.call_args.args[1] == "shared"
+
+
+class TestMCPToolPassThrough:
+    def test_large_result_is_returned_in_full(self) -> None:
+        body = "x" * 80_000
+        tool = _make_tool({"type": "object"})
+        with patch(
+            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool_raw",
+            return_value=CallToolResult(content=[TextContent(type="text", text=body)]),
+        ):
+            response = tool.run(Placement(turn_index=0))
+
+        assert "result_handle" not in response.llm_facing_response
+        assert "tool_result_digest" not in response.llm_facing_response
+        parsed = json.loads(response.llm_facing_response)
+        assert parsed["tool_result"] == body
+        assert isinstance(response.rich_response, CustomToolCallSummary)
+        assert response.rich_response.tool_result == {"tool_result": body}
 
 
 if __name__ == "__main__":

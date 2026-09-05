@@ -6,12 +6,8 @@ from mcp.client.auth import OAuthClientProvider
 from mcp.types import CallToolResult
 
 from onyx.chat.emitter import Emitter
-from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.db.enums import MCPAuthenticationType, MCPTransport
 from onyx.db.models import MCPConnectionConfig, MCPServer
-from onyx.mcp_gateway.handles import grant_handle
-from onyx.mcp_gateway.models import CachePolicySpec
-from onyx.mcp_gateway.storage import canonical_bytes, store_result
 from onyx.server.features.mcp.client import call_mcp_tool_raw, process_mcp_result
 from onyx.server.features.mcp.credentials import ResolvedMCPCredentials
 from onyx.server.features.mcp.models import (
@@ -33,7 +29,6 @@ from onyx.server.query_and_chat.streaming_models import (
 )
 from onyx.tools.interface import Tool
 from onyx.tools.models import CustomToolCallSummary, ToolResponse
-from onyx.tools.tool_implementations.utils import truncate_output
 from onyx.tools.tool_name import sanitize_tool_name
 from onyx.utils.logger import setup_logger
 
@@ -89,7 +84,6 @@ class MCPTool(Tool[None]):
         user_oauth_token: str | None = None,
         additional_headers: dict[str, str] | None = None,
         resolved_credentials: ResolvedMCPCredentials | None = None,
-        result_policy: CachePolicySpec | None = None,
     ) -> None:
         super().__init__(emitter=emitter)
 
@@ -101,10 +95,6 @@ class MCPTool(Tool[None]):
         self._user_oauth_token = user_oauth_token
         self._additional_headers = additional_headers or {}
         self._resolved_credentials = resolved_credentials
-        # Controls the inline/spill threshold and the digest shape. System
-        # servers pass their catalog policy so pack-declared digest paths
-        # apply; everything else uses the deployment defaults.
-        self._result_policy = result_policy or CachePolicySpec()
 
         self._mcp_tool_name = tool_name
         self._name = tool_name  # NOTE: this may change in _disambiguate_mcp_tool_names
@@ -155,102 +145,20 @@ class MCPTool(Tool[None]):
     def _build_response(
         self, placement: Placement, raw_result: CallToolResult
     ) -> ToolResponse:
-        """Turn a tool result into a response, spilling it if it is large.
+        """Pass the original flattened MCP result through to the model.
 
-        MCP servers routinely answer with megabytes. Below the inline threshold
-        nothing changes: the flattened text goes straight to the model. Above
-        it, the body is persisted and the model gets a digest plus a handle it
-        can read through the `mcp_result` tool, which keeps one answer from
-        consuming the whole context window.
+        The gateway (when used) already cached the full body. This layer must
+        look like a raw MCP tool: no digest, no handle, no second store.
+        Conversation history may later cut the text to fit the token budget.
         """
-        payload = raw_result.model_dump(mode="json")
-        size_bytes = len(canonical_bytes(payload))
-
-        if size_bytes <= self._result_policy.inline_threshold_bytes:
-            tool_result_dict = {"tool_result": process_mcp_result(raw_result)}
-            self.emitter.emit(
-                Packet(
-                    placement=placement,
-                    obj=CustomToolDelta(
-                        tool_name=self._name,
-                        response_type="json",
-                        data=tool_result_dict,
-                    ),
-                )
-            )
-            return ToolResponse(
-                rich_response=CustomToolCallSummary(
-                    tool_name=self._name,
-                    response_type="json",
-                    tool_result=tool_result_dict,
-                ),
-                llm_facing_response=json.dumps(tool_result_dict),
-            )
-
-        stored = None
-        try:
-            with get_session_with_current_tenant() as db_session:
-                stored = store_result(
-                    db_session,
-                    payload,
-                    self._result_policy,
-                    tool_name=self._mcp_tool_name,
-                )
-                db_session.commit()
-        except Exception:
-            logger.exception(
-                "Could not persist the large result of MCP tool '%s'", self._name
-            )
-
-        if stored is None:
-            # Either past the hard ceiling or storage failed. Truncating beats
-            # both dropping the answer and blowing up the context window.
-            truncated = truncate_output(
-                process_mcp_result(raw_result),
-                self._result_policy.inline_threshold_bytes,
-                label=f"{self._name} output",
-            )
-            tool_result_dict = {"tool_result": truncated, "truncated": True}
-            self.emitter.emit(
-                Packet(
-                    placement=placement,
-                    obj=CustomToolDelta(
-                        tool_name=self._name,
-                        response_type="json",
-                        data=tool_result_dict,
-                    ),
-                )
-            )
-            return ToolResponse(
-                rich_response=CustomToolCallSummary(
-                    tool_name=self._name,
-                    response_type="json",
-                    tool_result=tool_result_dict,
-                ),
-                llm_facing_response=json.dumps(tool_result_dict),
-            )
-
-        grant_handle(self._user_id, stored.blob_id)
-
-        llm_payload = {
-            "tool_result_digest": stored.digest,
-            "result_handle": stored.blob_id,
-            "total_bytes": stored.size_bytes,
-            "truncated": True,
-            "hint": (
-                "The full result was too large for the conversation. Call "
-                "mcp_result with this result_handle to read a field by path or "
-                "a slice of the raw text."
-            ),
-        }
+        tool_result_dict = {"tool_result": process_mcp_result(raw_result)}
         self.emitter.emit(
             Packet(
                 placement=placement,
                 obj=CustomToolDelta(
                     tool_name=self._name,
                     response_type="json",
-                    data=llm_payload,
-                    file_ids=[stored.file_id] if stored.file_id else None,
+                    data=tool_result_dict,
                 ),
             )
         )
@@ -258,9 +166,9 @@ class MCPTool(Tool[None]):
             rich_response=CustomToolCallSummary(
                 tool_name=self._name,
                 response_type="json",
-                tool_result=llm_payload,
+                tool_result=tool_result_dict,
             ),
-            llm_facing_response=json.dumps(llm_payload),
+            llm_facing_response=json.dumps(tool_result_dict),
         )
 
     def run(

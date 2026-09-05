@@ -6381,8 +6381,8 @@ class MCPResultBlob(Base):
 
     The primary key is the sha256 of the canonical payload, so the same
     multi-megabyte answer fetched by ten users costs one copy. Small payloads
-    stay inline in Postgres; large ones move to the file store and only the
-    digest travels with the conversation.
+    stay inline in Postgres; large ones move to the file store. The caller
+    still receives the full body.
     """
 
     __tablename__ = "mcp_result_blob"

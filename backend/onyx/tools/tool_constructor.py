@@ -12,12 +12,11 @@ from onyx.configs.app_configs import DISABLE_VECTOR_DB
 from onyx.configs.model_configs import GEN_AI_TEMPERATURE
 from onyx.context.search.models import BaseFilters, PersonaSearchInfo
 from onyx.db.engine.sql_engine import get_session_with_current_tenant_if_none
-from onyx.db.enums import MCPServerScope
 from onyx.db.mcp import (
     get_all_mcp_tools_for_server,
     get_mcp_server_by_id,
 )
-from onyx.db.models import MCPServer, Persona, User
+from onyx.db.models import Persona, User
 from onyx.db.models import Tool as ToolDBModel
 from onyx.db.oauth_config import get_oauth_config
 from onyx.db.search_settings import get_current_search_settings
@@ -25,8 +24,6 @@ from onyx.db.tools import get_builtin_tool
 from onyx.document_index.factory import get_default_document_index
 from onyx.image_gen.interfaces import ImageGenerationProviderCredentials
 from onyx.llm.interfaces import LLM, LLMConfig
-from onyx.mcp_gateway.models import CachePolicySpec
-from onyx.mcp_gateway.policy import resolve_policy
 from onyx.onyxbot.slack.models import SlackContext
 from onyx.server.features.mcp.credentials import (
     MCPCredentialsError,
@@ -45,7 +42,6 @@ from onyx.tools.tool_implementations.file_reader.file_reader_tool import FileRea
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     ImageGenerationTool,
 )
-from onyx.tools.tool_implementations.mcp.mcp_result_tool import MCPResultTool
 from onyx.tools.tool_implementations.mcp.mcp_tool import MCPTool
 from onyx.tools.tool_implementations.memory.memory_tool import MemoryTool
 from onyx.tools.tool_implementations.open_url.open_url_tool import OpenURLTool
@@ -63,26 +59,6 @@ def _disambiguate_mcp_tool_names(tools: list[Tool]) -> None:
     for tool in tools:
         if isinstance(tool, MCPTool) and tool_name_counts[tool.name] > 1:
             tool.use_disambiguated_name()
-
-
-def _mcp_result_policy(mcp_server: MCPServer, tool_name: str) -> CachePolicySpec:
-    """Storage and digest settings for one MCP tool's results.
-
-    System servers inherit their catalog entry's policy, so pack-declared
-    digest paths apply. Everything else uses the deployment defaults.
-    """
-    if mcp_server.scope != MCPServerScope.SYSTEM:
-        return CachePolicySpec()
-    entry = mcp_server.catalog_entry
-    if entry is None:
-        return CachePolicySpec()
-    _pack, _effective, policy = resolve_policy(
-        pack_slug=entry.pack_slug,
-        policy_overrides=entry.policy_overrides,
-        tool_name=tool_name,
-        arguments={},
-    )
-    return policy
 
 
 class SearchToolConfig(BaseModel):
@@ -516,7 +492,6 @@ def _construct_tools_impl(
                     user_oauth_token=mcp_credentials.user_oauth_token,
                     additional_headers=additional_mcp_headers,
                     resolved_credentials=mcp_credentials,
-                    result_policy=_mcp_result_policy(mcp_server, saved_tool.name),
                 )
                 mcp_tool_cache[db_tool_model.mcp_server_id][saved_tool.id] = mcp_tool
 
@@ -543,25 +518,6 @@ def _construct_tools_impl(
         tool_dict[search_tool_db_model.id] = [
             _build_search_tool(search_tool_db_model.id, search_tool_config)
         ]
-
-    # Any MCP tool can answer with more than fits in the context window, in
-    # which case it hands back a digest and a handle. Inject the reader
-    # alongside so the model can actually follow up on one.
-    if mcp_tool_cache:
-        try:
-            mcp_result_db_model = get_builtin_tool(db_session, MCPResultTool)
-            tool_dict[mcp_result_db_model.id] = [
-                MCPResultTool(
-                    tool_id=mcp_result_db_model.id,
-                    emitter=emitter,
-                    user_id=str(user.id),
-                )
-            ]
-        except RuntimeError:
-            logger.warning(
-                "MCPResultTool not found in the database. Run the latest alembic "
-                "migration to seed it."
-            )
 
     # Always inject MemoryTool when the user has the memory tool enabled,
     # bypassing persona tool associations and allowed_tool_ids filtering

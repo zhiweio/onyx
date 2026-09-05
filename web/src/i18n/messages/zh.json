@@ -8112,7 +8112,7 @@
       },
       "storage": {
         "title": "结果存储",
-        "description": "小结果留在 Postgres；大结果转入文件存储，只以摘要形式送达模型。",
+        "description": "小结果留在 Postgres；大结果转入文件存储。模型始终收到原始工具结果。",
         "results": "结果数",
         "stored": "已存储",
         "transferred": "已传输"
