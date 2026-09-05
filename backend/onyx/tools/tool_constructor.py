@@ -47,6 +47,9 @@ from onyx.tools.tool_implementations.memory.memory_tool import MemoryTool
 from onyx.tools.tool_implementations.open_url.open_url_tool import OpenURLTool
 from onyx.tools.tool_implementations.python.python_tool import PythonTool
 from onyx.tools.tool_implementations.search.search_tool import SearchTool
+from onyx.tools.tool_implementations.tax_live_query.tax_live_query_tool import (
+    TaxLiveQueryTool,
+)
 from onyx.tools.tool_implementations.web_search.web_search_tool import WebSearchTool
 from onyx.utils.headers import header_dict_to_header_list
 from onyx.utils.logger import setup_logger
@@ -351,7 +354,11 @@ def _construct_tools_impl(
                     )
                 ]
 
-            # Handle File Reader Tool
+            elif tool_cls.__name__ == TaxLiveQueryTool.__name__:
+                tool_dict[db_tool_model.id] = [
+                    TaxLiveQueryTool(tool_id=db_tool_model.id, emitter=emitter)
+                ]
+
             elif tool_cls.__name__ == FileReaderTool.__name__:
                 cfg = file_reader_tool_config or FileReaderToolConfig()
                 tool_dict[db_tool_model.id] = [

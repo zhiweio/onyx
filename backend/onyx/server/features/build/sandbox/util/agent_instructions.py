@@ -167,4 +167,8 @@ def generate_agent_instructions(
         build_organization_instructions_section(organization_instructions),
     )
 
-    return content
+    return (
+        content
+        + "\n\nIf `SCENARIO.md` exists in this session directory, follow that "
+        "scenario pack and prefer the skills it lists.\n"
+    )

@@ -4610,7 +4610,54 @@
     },
     "mcpActions": {
       "header": {
-        "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。"
+        "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。",
+        "gatewayLink": "MCP Gateway"
+      }
+    },
+    "mcpGateway": {
+      "header": {
+        "title": "MCP Gateway",
+        "description": "代理计费商业 MCP，跨用户共享缓存，并为每个 tool 设置刷新策略。"
+      },
+      "packs": {
+        "title": "Provider packs"
+      },
+      "providers": {
+        "title": "Providers",
+        "empty": "还没有 gateway provider。",
+        "create": "添加 provider",
+        "slug": "Slug",
+        "pack": "Pack",
+        "upstreamUrl": "上游 URL",
+        "apiKey": "API key",
+        "enabled": "启用"
+      },
+      "stats": {
+        "title": "用量",
+        "total": "总调用",
+        "hits": "缓存命中",
+        "billed": "上游计费",
+        "saved": "节省次数",
+        "hitRate": "命中率"
+      },
+      "policies": {
+        "title": "缓存策略",
+        "tool": "Tool",
+        "mode": "模式",
+        "ttl": "TTL (秒)",
+        "override": "覆盖"
+      },
+      "cache": {
+        "title": "缓存调用",
+        "invalidate": "失效",
+        "refresh": "刷新",
+        "empty": "没有缓存条目。"
+      },
+      "toasts": {
+        "created": "已创建 provider",
+        "createFailed": "无法创建 provider",
+        "invalidated": "缓存已失效",
+        "refreshed": "已排队刷新"
       }
     },
     "modals": {
@@ -8397,6 +8444,743 @@
       },
       "incognito": {
         "title": "您处于无痕模式"
+      }
+    }
+  },
+  "craft": {
+    "sidebar": {
+      "apps": {
+        "label": "应用"
+      },
+      "backToChat": {
+        "label": "返回对话"
+      },
+      "delete": {
+        "label": "删除"
+      },
+      "deleteFailed": {
+        "message": "删除会话失败"
+      },
+      "deleteModal": {
+        "description": "这将永久删除该 Craft 会话及其全部数据。此操作无法撤销。",
+        "title": "删除“{title}”？"
+      },
+      "deletedToast": {
+        "message": "已删除“{title}”。"
+      },
+      "deleting": {
+        "label": "正在删除…"
+      },
+      "rename": {
+        "label": "重命名"
+      },
+      "scenarios": {
+        "label": "场景"
+      },
+      "reportTemplates": {
+        "label": "报告模板"
+      },
+      "projects": {
+        "label": "项目"
+      },
+      "projectsSection": {
+        "title": "项目"
+      },
+      "scheduledTasks": {
+        "label": "定时任务"
+      },
+      "sessions": {
+        "title": "会话"
+      },
+      "sessionsEmpty": {
+        "text": "开始构建后，会话历史会显示在这里。"
+      },
+      "skills": {
+        "label": "技能"
+      },
+      "startCrafting": {
+        "label": "开始构建"
+      }
+    },
+    "welcome": {
+      "placeholder": {
+        "text": "分析我的数据并生成仪表盘…"
+      }
+    },
+    "suggestedPrompts": {
+      "close": {
+        "ariaLabel": "关闭建议"
+      },
+      "engineering": {
+        "label": "工程"
+      },
+      "marketing": {
+        "label": "市场"
+      },
+      "product": {
+        "label": "产品"
+      },
+      "sales": {
+        "label": "销售"
+      }
+    },
+    "skillsPage": {
+      "browse": {
+        "title": "浏览技能"
+      },
+      "count": {
+        "label": "{count, plural, one {# 个技能} other {# 个技能}}"
+      },
+      "create": {
+        "github": {
+          "description": "从仓库导入一个或多个技能。",
+          "title": "从 GitHub 导入"
+        },
+        "label": "创建技能",
+        "scratch": {
+          "description": "在 Onyx 中编写说明并添加支持文件。",
+          "title": "从零开始"
+        },
+        "upload": {
+          "description": "导入 SKILL.md、ZIP 或技能文件夹。",
+          "title": "上传技能"
+        }
+      },
+      "description": {
+        "text": "Craft 智能体可调用的能力包。此页显示内置技能、分享给你的技能，以及你自己的个人技能。"
+      },
+      "empty": {
+        "none": {
+          "description": "还没有分享给你的自定义技能，也没有已配置的内置技能。",
+          "title": "暂无技能"
+        },
+        "search": {
+          "description": "请换一个搜索词。",
+          "title": "没有匹配的技能"
+        }
+      },
+      "error": {
+        "description": "请查看控制台详情并刷新页面。",
+        "title": "加载技能失败"
+      },
+      "focusedApp": {
+        "description": "请启用应用“{app}”关联的全部技能。没有这些技能时应用可能无法正常工作。若已启用同名技能，启用应用关联技能会为你关闭另一个技能。",
+        "showAll": {
+          "label": "显示全部技能"
+        },
+        "title": "应用“{app}”的技能"
+      },
+      "refreshFailed": {
+        "message": "{name} 已更新，但技能列表未能刷新。"
+      },
+      "search": {
+        "placeholder": "搜索技能…"
+      },
+      "switch": {
+        "cancel": {
+          "label": "取消"
+        },
+        "confirm": {
+          "label": "切换技能"
+        },
+        "description": "同一时间只能启用一个名为“{name}”的技能。",
+        "loading": {
+          "label": "正在切换…"
+        },
+        "title": "切换“{name}”技能？",
+        "warning": "继续将关闭当前已启用的技能，并启用此技能。"
+      },
+      "title": {
+        "text": "技能"
+      },
+      "toggleFailed": {
+        "disable": "关闭 {name} 失败",
+        "enable": "启用 {name} 失败"
+      },
+      "unavailable": {
+        "fallback": "此技能当前不可用。"
+      }
+    },
+    "scenarios": {
+      "card": {
+        "access": {
+          "editor": {
+            "label": "编辑者"
+          },
+          "owner": {
+            "label": "所有者"
+          },
+          "viewer": {
+            "label": "查看者"
+          }
+        },
+        "customize": {
+          "tooltip": "另存为我的方案"
+        },
+        "delete": {
+          "tooltip": "删除方案"
+        },
+        "edit": {
+          "tooltip": "编辑方案"
+        },
+        "moreSkills": {
+          "label": "+{count}"
+        },
+        "origin": {
+          "personal": {
+            "label": "个人"
+          },
+          "workspace": {
+            "label": "工作区"
+          }
+        },
+        "share": {
+          "tooltip": "分享方案"
+        },
+        "skillCount": {
+          "label": "{count, plural, one {# 个技能} other {# 个技能}}"
+        },
+        "startRun": {
+          "label": "开始运行"
+        },
+        "visibility": {
+          "private": {
+            "label": "私密"
+          },
+          "public": {
+            "label": "组织可见"
+          }
+        }
+      },
+      "delete": {
+        "confirm": {
+          "label": "删除方案"
+        },
+        "description": "这将删除该方案。已经使用它的 Craft 会话不受影响。",
+        "title": "删除“{name}”？"
+      },
+      "domain": {
+        "all": {
+          "label": "全部"
+        },
+        "biomed": {
+          "label": "生物医药"
+        },
+        "custom": {
+          "label": "自定义"
+        },
+        "tax": {
+          "label": "税务"
+        }
+      },
+      "editor": {
+        "addSkill": {
+          "label": "添加"
+        },
+        "cancel": {
+          "label": "取消"
+        },
+        "catalog": {
+          "added": {
+            "label": "已添加"
+          },
+          "empty": {
+            "text": "没有匹配的技能。"
+          },
+          "search": {
+            "placeholder": "搜索技能…"
+          },
+          "title": {
+            "text": "技能目录"
+          }
+        },
+        "conditional": {
+          "add": {
+            "label": "添加条件"
+          },
+          "intent": {
+            "placeholder": "意图"
+          },
+          "keywords": {
+            "placeholder": "关键词，用逗号分隔"
+          },
+          "remove": {
+            "ariaLabel": "移除条件"
+          },
+          "skill": {
+            "placeholder": "匹配时追加技能"
+          },
+          "title": {
+            "text": "可选条件"
+          }
+        },
+        "description": {
+          "placeholder": "这个方案要产出什么",
+          "title": "任务说明"
+        },
+        "domain": {
+          "create": {
+            "label": "新建「{name}」"
+          },
+          "empty": {
+            "text": "没有匹配的领域。输入名称即可新建。"
+          },
+          "placeholder": "选择或新建领域",
+          "search": {
+            "placeholder": "搜索领域…"
+          },
+          "title": "领域"
+        },
+        "identity": {
+          "title": "方案信息"
+        },
+        "moveDown": {
+          "ariaLabel": "下移"
+        },
+        "moveUp": {
+          "ariaLabel": "上移"
+        },
+        "name": {
+          "placeholder": "方案名称",
+          "title": "名称"
+        },
+        "preview": {
+          "title": "协议预览"
+        },
+        "removeSkill": {
+          "ariaLabel": "移除 {name}"
+        },
+        "reportTemplate": {
+          "empty": {
+            "text": "没有匹配的模板。"
+          },
+          "manage": {
+            "label": "管理模板"
+          },
+          "none": {
+            "label": "无"
+          },
+          "placeholder": "选择模板",
+          "search": {
+            "placeholder": "搜索模板…"
+          },
+          "title": "报告模板"
+        },
+        "save": {
+          "label": "保存方案"
+        },
+        "saving": {
+          "label": "正在保存…"
+        },
+        "share": {
+          "label": "分享"
+        },
+        "startRun": {
+          "label": "开始运行"
+        },
+        "subtitle": {
+          "create": "为方案命名、绑定技能，然后启动 Craft 运行。",
+          "edit": "更新任务说明、绑定技能和协议。"
+        },
+        "title": {
+          "create": "新建方案",
+          "edit": "编辑方案"
+        },
+        "tray": {
+          "count": {
+            "label": "{count, plural, one {# 个技能} other {# 个技能}}"
+          },
+          "empty": {
+            "text": "从目录添加技能。顺序即运行顺序。"
+          },
+          "title": {
+            "text": "方案托盘"
+          }
+        },
+        "readOnly": {
+          "description": "你可以查看此方案，但不能编辑。"
+        },
+        "validation": {
+          "name": "保存前请填写名称。",
+          "skills": "至少添加一个技能以组成方案。"
+        },
+        "customize": {
+          "label": "另存为我的方案"
+        },
+        "customizing": {
+          "label": "正在复制…"
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "把多个技能打包成可复用的工作台协议。",
+          "title": "还没有方案"
+        },
+        "search": {
+          "description": "请换一个搜索词或领域。",
+          "title": "没有匹配的方案"
+        }
+      },
+      "error": {
+        "description": "请查看控制台详情并刷新页面。",
+        "title": "加载方案失败"
+      },
+      "page": {
+        "browse": {
+          "title": "浏览方案"
+        },
+        "count": {
+          "label": "{count, plural, one {# 个方案} other {# 个方案}}"
+        },
+        "createButton": {
+          "label": "新建方案"
+        },
+        "description": {
+          "text": "把多个技能打包成可复用的工作台协议，并从方案启动 Craft 运行。"
+        },
+        "search": {
+          "placeholder": "搜索方案…"
+        },
+        "title": {
+          "text": "场景"
+        }
+      },
+      "share": {
+        "cancel": {
+          "label": "取消"
+        },
+        "description": {
+          "text": "与人员或用户组分享此方案，或对组织可见。"
+        },
+        "org": {
+          "off": {
+            "label": "私密"
+          },
+          "on": {
+            "label": "对组织可见"
+          }
+        },
+        "save": {
+          "label": "保存"
+        },
+        "saving": {
+          "label": "正在保存…"
+        },
+        "title": {
+          "text": "分享方案"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "方案已保存。"
+        },
+        "deleted": {
+          "message": "方案已删除。"
+        },
+        "openFailed": {
+          "message": "无法为此方案启动 Craft 运行。"
+        },
+        "saved": {
+          "message": "方案已更新。"
+        },
+        "shareFailed": {
+          "message": "无法更新方案分享。"
+        },
+        "shared": {
+          "message": "分享已更新。"
+        },
+        "duplicated": {
+          "message": "已创建你的方案副本。"
+        },
+        "duplicateFailed": {
+          "message": "无法复制此方案。"
+        }
+      }
+    },
+    "reportTemplates": {
+      "card": {
+        "delete": {
+          "tooltip": "删除模板"
+        },
+        "deleteBlocked": {
+          "tooltip": "无法删除：仍有方案使用此模板"
+        },
+        "edit": {
+          "tooltip": "编辑模板"
+        },
+        "origin": {
+          "personal": {
+            "label": "个人"
+          },
+          "workspace": {
+            "label": "工作区"
+          }
+        },
+        "referenced": {
+          "label": "{count, plural, one {# 个方案} other {# 个方案}}"
+        }
+      },
+      "delete": {
+        "blocked": {
+          "description": "仍有方案使用此模板。请先改这些方案。"
+        },
+        "confirm": {
+          "label": "删除模板"
+        },
+        "description": "这将删除模板。只有没有方案使用时才能删除。",
+        "title": "删除“{name}”？"
+      },
+      "editor": {
+        "body": {
+          "placeholder": "# 标题\n\n1. 章节",
+          "title": "结构"
+        },
+        "cancel": {
+          "label": "取消"
+        },
+        "description": {
+          "placeholder": "何时使用此报告",
+          "title": "说明"
+        },
+        "name": {
+          "placeholder": "合规风险报告",
+          "title": "名称"
+        },
+        "readOnly": {
+          "description": "你可以查看此模板，但不能编辑。"
+        },
+        "save": {
+          "label": "保存模板"
+        },
+        "saving": {
+          "label": "正在保存…"
+        },
+        "slug": {
+          "hint": "方案使用此 ID。保存后不能更改。",
+          "placeholder": "compliance_risk",
+          "title": "ID"
+        },
+        "subtitle": {
+          "create": "命名模板并写报告结构。",
+          "edit": "更新名称、说明和报告结构。"
+        },
+        "title": {
+          "create": "新建模板",
+          "edit": "编辑模板"
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "先创建报告模板，再绑定到方案。",
+          "title": "没有模板"
+        },
+        "search": {
+          "description": "换一个搜索词。",
+          "title": "没有匹配"
+        }
+      },
+      "error": {
+        "description": "刷新后重试。",
+        "title": "无法加载模板"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# 个模板} other {# 个模板}}"
+        },
+        "createButton": {
+          "label": "新建模板"
+        },
+        "description": {
+          "text": "定义方案启动 Craft 运行时使用的报告结构。"
+        },
+        "search": {
+          "placeholder": "搜索模板…"
+        },
+        "title": {
+          "text": "报告模板"
+        }
+      },
+      "toasts": {
+        "deleteBlocked": {
+          "message": "仍有方案使用此模板。"
+        },
+        "deleteFailed": {
+          "message": "无法删除此模板。"
+        },
+        "deleted": {
+          "message": "模板已删除。"
+        },
+        "saveFailed": {
+          "message": "无法保存此模板。"
+        },
+        "saved": {
+          "message": "模板已保存。"
+        }
+      }
+    },
+    "projects": {
+      "card": {
+        "continue": {
+          "label": "继续"
+        },
+        "delete": {
+          "tooltip": "删除项目"
+        },
+        "fileCount": {
+          "label": "{count, plural, other {# 个文件}}"
+        },
+        "lastActivity": {
+          "label": "更新于 {time}"
+        },
+        "sessionCount": {
+          "label": "{count, plural, other {# 个对话}}"
+        }
+      },
+      "create": {
+        "cancel": {
+          "label": "取消"
+        },
+        "description": {
+          "label": "描述",
+          "placeholder": "这个项目用来做什么"
+        },
+        "instructions": {
+          "label": "说明",
+          "placeholder": "智能体应遵守的规则"
+        },
+        "name": {
+          "label": "名称",
+          "placeholder": "项目名称"
+        },
+        "submit": {
+          "label": "创建"
+        },
+        "title": "新建项目"
+      },
+      "delete": {
+        "confirm": {
+          "label": "删除"
+        },
+        "description": "这会删除项目文件。对话记录会保留，但对话会离开该项目。",
+        "title": "删除 {name}？"
+      },
+      "detail": {
+        "continue": {
+          "label": "继续"
+        },
+        "details": {
+          "title": "详情"
+        },
+        "download": {
+          "tooltip": "下载"
+        },
+        "dropHint": {
+          "description": "将文件拖到此处即可添加。"
+        },
+        "emptyFiles": {
+          "description": "上传文件，或在对话中生成文件。",
+          "title": "还没有文件"
+        },
+        "emptySessions": {
+          "description": "开始一个对话来处理此项目。",
+          "title": "还没有对话"
+        },
+        "files": {
+          "title": "文件"
+        },
+        "instructions": {
+          "title": "说明"
+        },
+        "newChat": {
+          "label": "新对话"
+        },
+        "removeFile": {
+          "tooltip": "移除文件"
+        },
+        "save": {
+          "label": "保存"
+        },
+        "sessions": {
+          "title": "对话"
+        },
+        "sourceOutput": {
+          "label": "来自对话"
+        },
+        "sourceUpload": {
+          "label": "已上传"
+        },
+        "startChat": {
+          "label": "开始对话"
+        },
+        "upload": {
+          "label": "上传文件"
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "创建一个项目，以便在多个对话中复用文件。",
+          "title": "还没有项目"
+        },
+        "search": {
+          "description": "换一个搜索词试试。",
+          "title": "没有匹配的项目"
+        }
+      },
+      "error": {
+        "description": "刷新页面后重试。",
+        "title": "无法加载项目"
+      },
+      "page": {
+        "browse": {
+          "title": "你的项目"
+        },
+        "count": {
+          "label": "{count, plural, other {# 个项目}}"
+        },
+        "createButton": {
+          "label": "新建项目"
+        },
+        "description": {
+          "text": "在多个 Craft 对话中保留文件和说明。"
+        },
+        "search": {
+          "placeholder": "搜索项目..."
+        },
+        "title": {
+          "text": "项目"
+        }
+      },
+      "toasts": {
+        "createFailed": {
+          "message": "无法创建此项目。"
+        },
+        "created": {
+          "message": "项目已保存。"
+        },
+        "deleteFailed": {
+          "message": "无法删除此项目。"
+        },
+        "deleted": {
+          "message": "项目已删除。"
+        },
+        "fileDeleted": {
+          "message": "文件已移除。"
+        },
+        "openFailed": {
+          "message": "无法为此项目开始对话。"
+        },
+        "saveFailed": {
+          "message": "无法保存此项目。"
+        },
+        "saved": {
+          "message": "项目已更新。"
+        },
+        "uploadFailed": {
+          "message": "无法上传此文件。"
+        },
+        "uploaded": {
+          "message": "文件已添加。"
+        }
       }
     }
   },

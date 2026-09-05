@@ -15,6 +15,7 @@ import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
 import CraftLlmLockedState from "@/app/craft/onboarding/components/CraftLlmLockedState";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
 import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
+import { useTranslations } from "next-intl";
 
 interface BuildWelcomeProps {
   onSubmit: (
@@ -37,6 +38,7 @@ export default function BuildWelcome({
   isRunning,
   sandboxInitializing = false,
 }: BuildWelcomeProps) {
+  const t = useTranslations("craft.welcome");
   const inputBarRef = useRef<CraftInputBarHandle>(null);
   const [selectedModel, setSelectedModel] = useState<BuildLlmSelection | null>(
     null
@@ -104,7 +106,7 @@ export default function BuildWelcome({
               onSubmit(message, files, selectedModel)
             }
             isRunning={isRunning}
-            placeholder="Analyze my data and create a dashboard..."
+            placeholder={t("placeholder.text")}
             sandboxInitializing={sandboxInitializing}
             disabled={!hasAnyProvider}
           />

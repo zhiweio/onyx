@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
   Button,
   InputTypeIn,
@@ -46,6 +47,7 @@ import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
 // ---------------------------------------------------------------------------
 
 export default function SkillsPage() {
+  const t = useTranslations("craft.skillsPage");
   const router = useRouter();
   const externalAppIdParam = useSearchParams().get("externalAppId");
   const focusedExternalAppId =
@@ -163,9 +165,7 @@ export default function SkillsPage() {
         { revalidate: false }
       );
       void refresh().catch(() => {
-        toast.error(
-          `${item.name} was updated, but the skill list could not be refreshed.`
-        );
+        toast.error(t("refreshFailed.message", { name: item.name }));
       });
     } catch (error) {
       if (enabled && !replaceConflict && isSkillNameConflict(error)) {
@@ -175,7 +175,9 @@ export default function SkillsPage() {
       toast.error(
         error instanceof Error
           ? error.message
-          : `Failed to ${enabled ? "enable" : "disable"} ${item.name}`
+          : t(enabled ? "toggleFailed.enable" : "toggleFailed.disable", {
+              name: item.name,
+            })
       );
     } finally {
       setOptimisticEnabledById((current) => {
@@ -276,19 +278,19 @@ export default function SkillsPage() {
   const previewUnavailableReason =
     previewTarget?.source === "builtin" && !previewTarget.is_available
       ? (previewTarget.unavailable_reason ??
-        "This skill is currently unavailable.")
+        t("unavailable.fallback"))
       : null;
 
   return (
     <SettingsLayouts.Root data-testid="SkillsPage/container">
       <SettingsLayouts.Header
         icon={SvgBlocks}
-        title="Skills"
-        description="Capability bundles your Craft agent can reach for. This page shows built-in skills, skills shared with you, and your own personal skills."
+        title={t("title.text")}
+        description={t("description.text")}
         rightChildren={
           <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
             <Popover.Trigger asChild>
-              <Button icon={SvgPlus}>Create skill</Button>
+              <Button icon={SvgPlus}>{t("create.label")}</Button>
             </Popover.Trigger>
             <Popover.Content align="end" sideOffset={4} width="xl">
               <Popover.Menu>
@@ -296,34 +298,34 @@ export default function SkillsPage() {
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgEdit}
-                  description="Write the instructions and add supporting files in Onyx."
+                  description={t("create.scratch.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     router.push("/craft/v1/skills/new" as Route);
                   }}
-                  title="Start from scratch"
+                  title={t("create.scratch.title")}
                 />
                 <LineItemButton
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgUploadCloud}
-                  description="Import a SKILL.md file, ZIP file, or skill folder."
+                  description={t("create.upload.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     setCreateOpen(true);
                   }}
-                  title="Upload a skill"
+                  title={t("create.upload.title")}
                 />
                 <LineItemButton
                   sizePreset="main-ui"
                   rounding={2}
                   icon={SvgGithub}
-                  description="Import one or more skills from a repository."
+                  description={t("create.github.description")}
                   onClick={() => {
                     setCreateMenuOpen(false);
                     setGitHubImportOpen(true);
                   }}
-                  title="Import from GitHub"
+                  title={t("create.github.title")}
                 />
               </Popover.Menu>
             </Popover.Content>
@@ -332,7 +334,7 @@ export default function SkillsPage() {
       >
         <InputTypeIn
           ref={searchInputRef}
-          placeholder="Search skills..."
+          placeholder={t("search.placeholder")}
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           searchIcon
@@ -343,11 +345,11 @@ export default function SkillsPage() {
         {focusedAppName && (
           <MessageCard
             variant="info"
-            title={`Skills for app “${focusedAppName}”`}
-            description={`Enable every skill associated with app “${focusedAppName}”. The app may not work correctly without them. If another skill with the same name is enabled, enabling the app-associated skill disables the other skill for you.`}
+            title={t("focusedApp.title", { app: focusedAppName })}
+            description={t("focusedApp.description", { app: focusedAppName })}
             rightChildren={
               <Button prominence="secondary" href="/craft/v1/skills">
-                Show all skills
+                {t("focusedApp.showAll.label")}
               </Button>
             }
           />
@@ -358,8 +360,8 @@ export default function SkillsPage() {
         {error && !isLoading && (
           <MessageCard
             variant="error"
-            title="Failed to load skills"
-            description="Check the console for details and try refreshing the page."
+            title={t("error.title")}
+            description={t("error.description")}
           />
         )}
 
@@ -370,20 +372,20 @@ export default function SkillsPage() {
                 illustration={SvgNoResult}
                 title={
                   items.length === 0
-                    ? "No skills available"
-                    : "No matching skills"
+                    ? t("empty.none.title")
+                    : t("empty.search.title")
                 }
                 description={
                   items.length === 0
-                    ? "No custom skills have been shared with you yet, and no built-ins are configured."
-                    : "Try a different search."
+                    ? t("empty.none.description")
+                    : t("empty.search.description")
                 }
               />
             ) : (
               <>
                 <section className="flex flex-col gap-2">
                   <Text font="secondary-body" color="text-03">
-                    Browse skills
+                    {t("browse.title")}
                   </Text>
                   <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
                     {visibleItems.map((item) => (
@@ -404,8 +406,7 @@ export default function SkillsPage() {
                   </div>
                 </section>
                 <TextSeparator
-                  count={visibleItems.length}
-                  text={visibleItems.length === 1 ? "Skill" : "Skills"}
+                  text={t("count.label", { count: visibleItems.length })}
                 />
               </>
             )}
@@ -449,8 +450,10 @@ export default function SkillsPage() {
       {pendingSwitchTarget && (
         <ConfirmationModalLayout
           icon={SvgAlertTriangle}
-          title={`Switch “${pendingSwitchTarget.name}” skill?`}
-          description={`Only one skill named “${pendingSwitchTarget.name}” can be enabled at a time.`}
+          title={t("switch.title", { name: pendingSwitchTarget.name })}
+          description={t("switch.description", {
+            name: pendingSwitchTarget.name,
+          })}
           onClose={
             switchPending ? undefined : () => setPendingSwitchTarget(null)
           }
@@ -462,12 +465,11 @@ export default function SkillsPage() {
                 void updateSkillEnabled(target, true, true);
               }}
             >
-              {switchPending ? "Switching..." : "Switch skill"}
+              {switchPending ? t("switch.loading.label") : t("switch.confirm.label")}
             </Button>
           }
         >
-          Continuing will disable the currently enabled skill and enable this
-          one.
+          {t("switch.warning")}
         </ConfirmationModalLayout>
       )}
     </SettingsLayouts.Root>

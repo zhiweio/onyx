@@ -123,10 +123,20 @@ def create_session(
     try:
         with session_creation_lock(user.id):
             session_manager = SessionManager(db_session)
+            scenario_id = None
+            if request.scenario_id:
+                try:
+                    scenario_id = UUID(request.scenario_id)
+                except ValueError as exc:
+                    raise OnyxError(
+                        OnyxErrorCode.INVALID_INPUT,
+                        "scenario_id must be a UUID",
+                    ) from exc
             build_session = session_manager.get_or_create_empty_session(
                 user.id,
                 name=request.name,
                 headless=request.headless,
+                scenario_id=scenario_id,
             )
             sandbox = get_sandbox_by_user_id(db_session, user.id)
             if sandbox is None:

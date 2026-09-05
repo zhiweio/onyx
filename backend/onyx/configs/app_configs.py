@@ -1823,6 +1823,20 @@ ENTERPRISE_EDITION_ENABLED = (
     os.environ.get("ENABLE_PAID_ENTERPRISE_EDITION_FEATURES", "").lower() == "true"
 )
 
+# China tax/finance vertical: live query plugins, tax_live_query tool, seed agents.
+TAX_VERTICAL_ENABLED = (
+    os.environ.get("TAX_VERTICAL_ENABLED", "true").lower() == "true"
+)
+TAX_DISABLED_SOURCES = [
+    item.strip()
+    for item in os.environ.get("TAX_DISABLED_SOURCES", "").split(",")
+    if item.strip()
+]
+QIXINBAO_MCP_NAME_FRAGMENT = os.environ.get("QIXINBAO_MCP_NAME_FRAGMENT", "qixinbao")
+PATSNAP_MCP_NAME_FRAGMENT = os.environ.get("PATSNAP_MCP_NAME_FRAGMENT", "patsnap")
+QIXINBAO_MCP_TOOL = os.environ.get("QIXINBAO_MCP_TOOL") or None
+PATSNAP_MCP_TOOL = os.environ.get("PATSNAP_MCP_TOOL") or None
+
 #####
 # Image Generation Configuration (DEPRECATED)
 # These environment variables will be deprecated soon.

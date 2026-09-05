@@ -149,6 +149,7 @@ export interface ApiSessionResponse {
   agent_provider: string | null;
   agent_model: string | null;
   skills_stale: boolean;
+  scenario_id?: string | null;
 }
 
 export interface ApiSessionSkillsState {

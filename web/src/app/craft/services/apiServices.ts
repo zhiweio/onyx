@@ -89,6 +89,7 @@ export async function processSSEStream(
 
 export interface CreateSessionOptions {
   name?: string | null;
+  scenarioId?: string | null;
 }
 
 // Pull the backend's human-readable error detail out of a failed response,
@@ -113,6 +114,7 @@ export async function createSession(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: options?.name || null,
+      scenario_id: options?.scenarioId || null,
     }),
   });
 

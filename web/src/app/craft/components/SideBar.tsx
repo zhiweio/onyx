@@ -42,6 +42,7 @@ import {
   SvgEdit,
   SvgTrash,
   SvgPlug,
+  SvgShare,
   SvgSimpleLoader,
 } from "@opal/icons";
 import TypewriterText from "@/app/craft/components/TypewriterText";
@@ -49,10 +50,12 @@ import OpencodeDebugLogsButton from "@/app/craft/components/OpencodeDebugLogs";
 import {
   CRAFT_PATH,
   CRAFT_SKILLS_PATH,
+  CRAFT_SCENARIOS_PATH,
   CRAFT_APPS_PATH,
   CRAFT_TASKS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
+import { useTranslations } from "next-intl";
 
 // ============================================================================
 // Build Session Button
@@ -71,9 +74,10 @@ export function CraftSessionDeleteModal({
   onClose,
   onConfirm,
 }: CraftSessionDeleteModalProps) {
+  const t = useTranslations("craft.sidebar");
   return (
     <ConfirmationModalLayout
-      title={`Delete "${sessionTitle}"?`}
+      title={t("deleteModal.title", { title: sessionTitle })}
       icon={SvgTrash}
       onClose={isDeleting ? undefined : onClose}
       submit={
@@ -84,12 +88,11 @@ export function CraftSessionDeleteModal({
           onClick={onConfirm}
           icon={isDeleting ? SvgSimpleLoader : undefined}
         >
-          {isDeleting ? "Deleting..." : "Delete"}
+          {isDeleting ? t("deleting.label") : t("delete.label")}
         </Button>
       }
     >
-      This permanently removes the Craft session and all of its data. This
-      action cannot be undone.
+      {t("deleteModal.description")}
     </ConfirmationModalLayout>
   );
 }
@@ -111,6 +114,7 @@ function BuildSessionButton({
   onDelete,
   onDeleteActiveSession,
 }: BuildSessionButtonProps) {
+  const t = useTranslations("craft.sidebar");
   const [renaming, setRenaming] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -146,7 +150,7 @@ function BuildSessionButton({
       try {
         await onDelete();
         setIsDeleting(false);
-        toast.success(`Deleted "${historyItem.title}".`);
+        toast.success(t("deletedToast.message", { title: historyItem.title }));
         closeModal();
         if (isActive && onDeleteActiveSession) {
           onDeleteActiveSession();
@@ -154,11 +158,11 @@ function BuildSessionButton({
       } catch (err) {
         setIsDeleting(false);
         toast.error(
-          err instanceof Error ? err.message : "Failed to delete session"
+          err instanceof Error ? err.message : t("deleteFailed.message")
         );
       }
     },
-    [onDelete, historyItem.title, closeModal, isActive, onDeleteActiveSession]
+    [onDelete, historyItem.title, closeModal, isActive, onDeleteActiveSession, t]
   );
 
   const rightMenu = (
@@ -188,7 +192,7 @@ function BuildSessionButton({
               key="rename"
               icon={SvgEdit}
               onClick={noProp(() => setRenaming(true))}
-              title="Rename"
+              title={t("rename.label")}
             />,
             null,
             <LineItemButton
@@ -198,7 +202,7 @@ function BuildSessionButton({
               icon={SvgTrash}
               onClick={noProp(() => setIsDeleteModalOpen(true))}
               color="danger"
-              title="Delete"
+              title={t("delete.label")}
             />,
           ]}
         </PopoverMenu>
@@ -269,6 +273,7 @@ function BuildSessionButton({
 // ============================================================================
 
 const MemoizedBuildSidebarInner = memo(() => {
+  const t = useTranslations("craft.sidebar");
   const { folded } = useSidebarState();
   const router = useRouter();
   const { requestNavigation } = useUnsavedChangesNavigation();
@@ -288,7 +293,6 @@ const MemoizedBuildSidebarInner = memo(() => {
   const returnToMainAgent = useBuildSessionStore(
     (state) => state.returnToMainAgent
   );
-
   // Fetch session history on mount
   useEffect(() => {
     refreshSessionHistory();
@@ -326,40 +330,45 @@ const MemoizedBuildSidebarInner = memo(() => {
       >
         <div className="flex flex-col gap-0.5">
           <SidebarTab icon={SvgEditBig} onClick={handleNewBuild}>
-            Start Crafting
+            {t("startCrafting.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgClock}
             onClick={() => navigate(CRAFT_TASKS_PATH)}
             selected={pathname.startsWith(CRAFT_TASKS_PATH)}
           >
-            Scheduled Tasks
+            {t("scheduledTasks.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgBlocks}
             onClick={() => navigate(CRAFT_SKILLS_PATH)}
             selected={pathname.startsWith(CRAFT_SKILLS_PATH)}
           >
-            Skills
+            {t("skills.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgShare}
+            onClick={() => navigate(CRAFT_SCENARIOS_PATH)}
+            selected={pathname.startsWith(CRAFT_SCENARIOS_PATH)}
+          >
+            {t("scenarios.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgPlug}
             onClick={() => navigate(CRAFT_APPS_PATH)}
             selected={pathname.startsWith(CRAFT_APPS_PATH)}
           >
-            Apps
+            {t("apps.label")}
           </SidebarTab>
         </div>
       </SidebarLayouts.Header>
       <SidebarLayouts.Body scrollKey="build-sidebar">
         {!folded && (
           <>
-            <SidebarLayouts.Section title="Sessions" />
+            <SidebarLayouts.Section title={t("sessions.title")} />
             {sessionHistory.length === 0 ? (
               <div className="pl-2 pr-1.5 py-1">
-                <Text color="text-01">
-                  Start building! Session history will appear here.
-                </Text>
+                <Text color="text-01">{t("sessionsEmpty.text")}</Text>
               </div>
             ) : (
               sessionHistory.map((historyItem) => (
@@ -369,6 +378,7 @@ const MemoizedBuildSidebarInner = memo(() => {
                   isActive={
                     !pathname.startsWith(CRAFT_TASKS_PATH) &&
                     !pathname.startsWith(CRAFT_SKILLS_PATH) &&
+                    !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
                     !pathname.startsWith(CRAFT_APPS_PATH) &&
                     session?.id === historyItem.id
                   }
@@ -391,7 +401,7 @@ const MemoizedBuildSidebarInner = memo(() => {
       <SidebarLayouts.Footer>
         <div>
           <SidebarTab icon={SvgArrowLeft} onClick={() => navigate("/app")}>
-            Back to Chat
+            {t("backToChat.label")}
           </SidebarTab>
           <OpencodeDebugLogsButton folded={folded} />
           <AccountPopover />

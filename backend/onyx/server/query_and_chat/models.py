@@ -178,7 +178,15 @@ class ChatRenameRequest(BaseModel):
 
 
 class ChatSessionUpdateRequest(BaseModel):
-    sharing_status: ChatSessionSharedStatus
+    sharing_status: ChatSessionSharedStatus | None = None
+    shared_user_ids: list[UUID] | None = None
+    shared_group_ids: list[int] | None = None
+
+
+class ChatSessionShareResponse(BaseModel):
+    shared_status: ChatSessionSharedStatus
+    shared_user_ids: list[UUID]
+    shared_group_ids: list[int]
 
 
 class DeleteAllSessionsRequest(BaseModel):

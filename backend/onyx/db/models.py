@@ -74,6 +74,7 @@ from onyx.db.enums import (
     BuildSessionStatus,
     CapabilityCheckTrigger,
     CapabilityReportRunStatus,
+    ChatSessionSharePermission,
     ChatSessionSharedStatus,
     ConnectorCredentialPairStatus,
     DefaultAppMode,
@@ -112,6 +113,7 @@ from onyx.db.enums import (
     ScheduledTaskTriggerSource,
     SessionOrigin,
     SharingScope,
+    ScenarioSharePermission,
     SkillSharePermission,
     SSOProviderType,
     SwitchoverType,
@@ -3260,6 +3262,72 @@ class ChatSession(Base):
         foreign_keys="ChatMessage.chat_session_id",
     )
     persona: Mapped["Persona"] = relationship("Persona")
+    user_shares: Mapped[list["ChatSession__User"]] = relationship(
+        "ChatSession__User",
+        back_populates="chat_session",
+        cascade="all, delete-orphan",
+    )
+    group_shares: Mapped[list["ChatSession__UserGroup"]] = relationship(
+        "ChatSession__UserGroup",
+        back_populates="chat_session",
+        cascade="all, delete-orphan",
+    )
+
+
+class ChatSession__User(Base):
+    __tablename__ = "chat_session__user"
+
+    chat_session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("chat_session.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ChatSessionSharePermission] = mapped_column(
+        Enum(ChatSessionSharePermission, native_enum=False),
+        nullable=False,
+        default=ChatSessionSharePermission.VIEWER,
+        server_default=ChatSessionSharePermission.VIEWER.value,
+    )
+
+    chat_session: Mapped[ChatSession] = relationship(
+        "ChatSession", back_populates="user_shares"
+    )
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (Index("ix_chat_session__user_user_id", "user_id"),)
+
+
+class ChatSession__UserGroup(Base):
+    __tablename__ = "chat_session__user_group"
+
+    chat_session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("chat_session.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ChatSessionSharePermission] = mapped_column(
+        Enum(ChatSessionSharePermission, native_enum=False),
+        nullable=False,
+        default=ChatSessionSharePermission.VIEWER,
+        server_default=ChatSessionSharePermission.VIEWER.value,
+    )
+
+    chat_session: Mapped[ChatSession] = relationship(
+        "ChatSession", back_populates="group_shares"
+    )
+    user_group: Mapped["UserGroup"] = relationship("UserGroup")
+
+    __table_args__ = (
+        Index("ix_chat_session__user_group_user_group_id", "user_group_id"),
+    )
 
 
 class ChatMessage(Base):
@@ -4967,6 +5035,129 @@ class Skill(Base):
         return self.built_in_skill_id is None
 
 
+class Scenario(Base):
+    """Craft pack that selects skills by rules and can be shared."""
+
+    __tablename__ = "scenario"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    author_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    public_permission: Mapped[ScenarioSharePermission | None] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=True,
+    )
+    rules: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    report_template: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    author: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[author_user_id],
+    )
+    skill_links: Mapped[list["Scenario__Skill"]] = relationship(
+        "Scenario__Skill",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+    user_shares: Mapped[list["Scenario__User"]] = relationship(
+        "Scenario__User",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+    group_shares: Mapped[list["Scenario__UserGroup"]] = relationship(
+        "Scenario__UserGroup",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+
+
+class Scenario__Skill(Base):
+    __tablename__ = "scenario__skill"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    skill_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("skill.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="skill_links")
+    skill: Mapped[Skill] = relationship("Skill")
+
+
+class Scenario__User(Base):
+    __tablename__ = "scenario__user"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ScenarioSharePermission] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=False,
+        default=ScenarioSharePermission.VIEWER,
+        server_default=ScenarioSharePermission.VIEWER.value,
+    )
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="user_shares")
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (Index("ix_scenario__user_user_id", "user_id"),)
+
+
+class Scenario__UserGroup(Base):
+    __tablename__ = "scenario__user_group"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ScenarioSharePermission] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=False,
+        default=ScenarioSharePermission.VIEWER,
+        server_default=ScenarioSharePermission.VIEWER.value,
+    )
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="group_shares")
+    user_group: Mapped["UserGroup"] = relationship("UserGroup")
+
+    __table_args__ = (Index("ix_scenario__user_group_user_group_id", "user_group_id"),)
+
+
 """
 ************************************************************************
 Enterprise Edition Models
@@ -6352,9 +6543,15 @@ class BuildSession(Base):
     agent_model: Mapped[str | None] = mapped_column(String, nullable=True)
     skills_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mcp_config_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
     user: Mapped[User | None] = relationship("User", foreign_keys=[user_id])
+    scenario: Mapped["Scenario | None"] = relationship("Scenario")
     artifacts: Mapped[list["Artifact"]] = relationship(
         "Artifact", back_populates="session", cascade="all, delete-orphan"
     )

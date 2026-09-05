@@ -207,6 +207,31 @@ class MCPServerStatus(str, PyEnum):
     DISCONNECTED = "DISCONNECTED"  # Server disconnected, but not deleted
 
 
+class MCPGatewayRefreshMode(str, PyEnum):
+    TTL = "ttl"
+    SWR = "swr"
+    SCHEDULE = "schedule"
+    TTL_AND_SCHEDULE = "ttl_and_schedule"
+    NEVER = "never"
+    BYPASS = "bypass"
+
+
+class MCPGatewayAuthAdapter(str, PyEnum):
+    BEARER = "bearer"
+    RAW_AUTHORIZATION = "raw_authorization"
+    HEADER_MAP = "header_map"
+    QUERY_APIKEY = "query_apikey"
+
+
+class MCPGatewayCallOutcome(str, PyEnum):
+    HIT = "hit"
+    MISS = "miss"
+    SWR = "swr"
+    REFRESH = "refresh"
+    BYPASS = "bypass"
+    ERROR = "error"
+
+
 # Consistent with Celery task statuses
 class TaskStatus(str, PyEnum):
     PENDING = "PENDING"
@@ -246,6 +271,7 @@ class IndexReclaimStatus(str, PyEnum):
 class ChatSessionSharedStatus(str, PyEnum):
     PUBLIC = "public"
     PRIVATE = "private"
+    SHARED = "shared"
 
 
 class ConnectorCredentialPairStatus(str, PyEnum):
@@ -554,6 +580,13 @@ class ArtifactType(str, PyEnum):
     FILE = "file"
 
 
+class CraftProjectFileSource(str, PyEnum):
+    """How a file entered a Craft Project catalog."""
+
+    UPLOAD = "upload"
+    SESSION_OUTPUT = "session_output"
+
+
 class ReceiptStatus(str, PyEnum):
     """Lifecycle of an external-action receipt. The full contract lives on
     ActionReceipt."""
@@ -721,6 +754,28 @@ class SkillSharePermission(str, PyEnum):
     """Level granted by a skill share row (user or group), or to the whole org
     via `Skill.public_permission`."""
 
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
+
+
+class ChatSessionSharePermission(str, PyEnum):
+    """Level granted by a chat-session share row (user or group)."""
+
+    VIEWER = "VIEWER"
+
+
+class ScenarioSharePermission(str, PyEnum):
+    """Level granted by a scenario share row (user or group), or to the whole
+    org via `Scenario.public_permission`."""
+
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
+
+
+class ScenarioAccessLevel(str, PyEnum):
+    """Computed access the requesting user holds on a scenario."""
+
+    OWNER = "OWNER"
     EDITOR = "EDITOR"
     VIEWER = "VIEWER"
 

@@ -116,7 +116,13 @@
         "src/app/app/layout.tsx",
         "src/app/app/components/**",
         "src/app/app/message/**",
-        "src/app/app/shared/**"
+        "src/app/app/shared/**",
+        "src/views/SkillsPage.tsx",
+        "src/views/ScenariosPage.tsx",
+        "src/views/ScenarioEditorPage.tsx",
+        "src/app/craft/components/SideBar.tsx",
+        "src/app/craft/components/BuildWelcome.tsx",
+        "src/app/craft/components/SuggestedPrompts.tsx"
       ],
       "rules": {
         "i18n/no-raw-jsx-text": "error"

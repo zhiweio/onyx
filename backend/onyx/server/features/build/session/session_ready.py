@@ -35,6 +35,7 @@ from onyx.server.features.build.session.manager import (
     SessionManager,
     mark_opencode_dispose_pending,
 )
+from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.server.features.build.session.sandbox_lifecycle import (
     ProvisioningPolicy,
     SandboxReadyOutcome,
@@ -151,6 +152,15 @@ def ensure_session_ready(
                 nextjs_port=nextjs_port,
                 connectable_apps_section=connectable_apps_section,
                 mcp_servers=mcp_servers,
+            )
+        if session.scenario_id is not None:
+            write_scenario_md_to_session(
+                db_session,
+                sandbox_manager,
+                sandbox.id,
+                session_id,
+                session.scenario_id,
+                user,
             )
     except Exception:
         if snapshot:

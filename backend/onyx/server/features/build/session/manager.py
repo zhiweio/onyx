@@ -78,6 +78,7 @@ from onyx.server.features.build.sandbox.util.opencode_config import (
     build_provider_opencode_config,
 )
 from onyx.server.features.build.session import streaming as _streaming
+from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.server.features.build.session.errors import (
     StaleProvisioningAttemptError,
     UploadLimitExceededError,
@@ -481,6 +482,8 @@ class SessionManager:
         user_id: UUID,
         name: str | None = None,
         origin: SessionOrigin = SessionOrigin.INTERACTIVE,
+        scenario_id: UUID | None = None,
+        headless: bool = False,
     ) -> BuildSession:
         """Create a new build session with a ready sandbox.
 
@@ -523,12 +526,13 @@ class SessionManager:
             origin=origin,
             agent_provider=llm_config.provider,
             agent_model=llm_config.model_name,
+            scenario_id=scenario_id,
         )
         # Port allocation is skipped for non-interactive origins (SCHEDULED,
         # SLACK): those sessions are headless, never attach a preview, and
         # pile up fast enough to exhaust the [3010, 3100) range on a busy
         # tenant.
-        if origin == SessionOrigin.INTERACTIVE:
+        if origin == SessionOrigin.INTERACTIVE and not headless:
             reserve_nextjs_port__no_commit(self._db_session, build_session)
         self._db_session.commit()
         logger.info(
@@ -546,6 +550,7 @@ class SessionManager:
         user_id: UUID,
         name: str | None = None,
         headless: bool = False,
+        scenario_id: UUID | None = None,
     ) -> BuildSession:
         """Get or create the user's empty (pre-provisioned) session.
 
@@ -588,6 +593,7 @@ class SessionManager:
                 name=name,
                 agent_provider=llm_config.provider,
                 agent_model=llm_config.model_name,
+                scenario_id=scenario_id,
             )
             if not headless:
                 reserve_nextjs_port__no_commit(self._db_session, session)
@@ -600,6 +606,8 @@ class SessionManager:
         session = existing
         if name is not None:
             session.name = name
+        if scenario_id is not None:
+            session.scenario_id = scenario_id
         self._db_session.commit()
         logger.info(
             "Found existing empty session %s (status=%s) for user %s",
@@ -621,6 +629,20 @@ class SessionManager:
             # session runtime and hand the session back.
             self.reconcile_session_llm_config(sandbox, session, user)
             self._prewarm_opencode_session(sandbox, session)
+            if session.scenario_id is not None:
+                try:
+                    write_scenario_md_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session.id,
+                        session.scenario_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write SCENARIO.md for session %s", session.id
+                    )
             self._db_session.commit()
             logger.info(
                 "Returning existing empty session %s for user %s",
@@ -690,6 +712,20 @@ class SessionManager:
                 user_name=user_name,
                 mcp_servers=mcp_servers,
             )
+            if session.scenario_id is not None:
+                try:
+                    write_scenario_md_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session_id,
+                        session.scenario_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write SCENARIO.md for session %s", session_id
+                    )
             minted_opencode_session_id = self._sandbox_manager.ensure_opencode_session(
                 sandbox_id=sandbox.id,
                 session_id=session_id,
