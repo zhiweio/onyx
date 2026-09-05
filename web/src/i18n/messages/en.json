@@ -8083,20 +8083,7 @@
     "mcpGateway": {
       "header": {
         "title": "MCP Gateway",
-        "description": "Proxy paid commercial MCP servers, share cache across users, and set a refresh policy per tool."
-      },
-      "packs": {
-        "title": "Provider packs"
-      },
-      "providers": {
-        "title": "Providers",
-        "empty": "No gateway providers yet.",
-        "create": "Add provider",
-        "slug": "Slug",
-        "pack": "Pack",
-        "upstreamUrl": "Upstream URL",
-        "apiKey": "API key",
-        "enabled": "Enabled"
+        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
       },
       "stats": {
         "title": "Usage",
@@ -8106,24 +8093,77 @@
         "saved": "Calls saved",
         "hitRate": "Hit rate"
       },
-      "policies": {
-        "title": "Cache policies",
-        "tool": "Tool",
-        "mode": "Mode",
-        "ttl": "TTL (s)",
-        "override": "Override"
-      },
       "cache": {
         "title": "Cached calls",
         "invalidate": "Invalidate",
         "refresh": "Refresh",
-        "empty": "No cache entries."
+        "empty": "No cache entries.",
+        "hits": "hits"
       },
       "toasts": {
-        "created": "Provider created",
-        "createFailed": "Could not create provider",
         "invalidated": "Cache invalidated",
-        "refreshed": "Refresh queued"
+        "refreshed": "Refresh queued",
+        "loadFailed": "Could not load gateway data"
+      },
+      "filter": {
+        "title": "Server",
+        "all": "All",
+        "empty": "No system MCP servers yet."
+      },
+      "storage": {
+        "title": "Stored results",
+        "description": "Small results stay in Postgres; large ones move to the file store and reach the model as a digest.",
+        "results": "Results",
+        "stored": "Stored",
+        "transferred": "Transferred"
+      }
+    },
+    "mcpCatalog": {
+      "header": {
+        "title": "System MCP",
+        "description": "Install MCP servers for the whole organization, hold their shared credentials, and grant them to groups."
+      },
+      "notDeployed": "The MCP Gateway process is not deployed. Set MCP_GATEWAY_ENABLED to use system MCP.",
+      "module": {
+        "title": "Module",
+        "label": "Enable system MCP",
+        "description": "When off, system MCP servers disappear for every user. Personal MCP servers are not affected.",
+        "enabled": "System MCP enabled",
+        "disabled": "System MCP disabled",
+        "saveFailed": "Could not change the setting"
+      },
+      "install": {
+        "title": "Install a server",
+        "description": "Pick a provider pack for sensible cache defaults, or use the generic one.",
+        "slug": "Slug",
+        "upstreamUrl": "Upstream URL",
+        "apiKey": "API key",
+        "submit": "Install",
+        "slugHint": "Letters, digits, '-' and '_'. A package name is converted to a slug."
+      },
+      "installed": {
+        "title": "Installed",
+        "empty": "No system MCP servers yet.",
+        "enabled": "Enabled",
+        "remove": "Remove",
+        "toolCount": "{count, plural, one {# tool} other {# tools}}",
+        "discoveryError": "Could not read tools: {error}",
+        "refreshTools": "Refresh tools"
+      },
+      "access": {
+        "public": "Open to everyone",
+        "groups": "Granted to groups",
+        "noGroups": "No groups yet."
+      },
+      "toasts": {
+        "installed": "System MCP installed",
+        "installFailed": "Could not install the system MCP",
+        "updateFailed": "Could not save the change",
+        "removed": "System MCP removed",
+        "removeFailed": "Could not remove the system MCP",
+        "loadFailed": "Could not load system MCP servers",
+        "refreshed": "Tool list refreshed",
+        "refreshFailed": "Could not refresh tools"
       }
     }
   },
@@ -13677,6 +13717,14 @@
         "title": "Playback Speed"
       },
       "title": "Voice"
+    },
+    "systemMcp": {
+      "title": "System MCP",
+      "description": "Servers your administrator made available. Turn on the ones you want in chat.",
+      "toolCount": "{count, plural, one {# tool} other {# tools}}",
+      "toggleLabel": "Enable {name}",
+      "toggleFailed": "Could not change the setting",
+      "empty": "No system MCP servers are available to you."
     }
   },
   "sidebar": {
@@ -13758,6 +13806,12 @@
         },
         "mcpActions": {
           "label": "MCP Actions"
+        },
+        "mcpCatalog": {
+          "label": "System MCP"
+        },
+        "mcpGateway": {
+          "label": "MCP Gateway"
         },
         "openapiActions": {
           "label": "OpenAPI Actions"

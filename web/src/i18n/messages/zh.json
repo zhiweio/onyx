@@ -8082,21 +8082,8 @@
     },
     "mcpGateway": {
       "header": {
-        "title": "MCP Gateway",
-        "description": "代理计费商业 MCP，跨用户共享缓存，并为每个 tool 设置刷新策略。"
-      },
-      "packs": {
-        "title": "Provider packs"
-      },
-      "providers": {
-        "title": "Providers",
-        "empty": "还没有 gateway provider。",
-        "create": "添加 provider",
-        "slug": "Slug",
-        "pack": "Pack",
-        "upstreamUrl": "上游 URL",
-        "apiKey": "API key",
-        "enabled": "启用"
+        "title": "MCP 网关",
+        "description": "系统 MCP 服务器的缓存命中率、结果存储量与缓存控制。"
       },
       "stats": {
         "title": "用量",
@@ -8106,24 +8093,77 @@
         "saved": "节省次数",
         "hitRate": "命中率"
       },
-      "policies": {
-        "title": "缓存策略",
-        "tool": "Tool",
-        "mode": "模式",
-        "ttl": "TTL (秒)",
-        "override": "覆盖"
-      },
       "cache": {
         "title": "缓存调用",
         "invalidate": "失效",
         "refresh": "刷新",
-        "empty": "没有缓存条目。"
+        "empty": "没有缓存条目。",
+        "hits": "命中"
       },
       "toasts": {
-        "created": "已创建 provider",
-        "createFailed": "无法创建 provider",
         "invalidated": "缓存已失效",
-        "refreshed": "已排队刷新"
+        "refreshed": "已排队刷新",
+        "loadFailed": "无法加载网关数据"
+      },
+      "filter": {
+        "title": "服务器",
+        "all": "全部",
+        "empty": "还没有系统 MCP 服务器。"
+      },
+      "storage": {
+        "title": "结果存储",
+        "description": "小结果留在 Postgres；大结果转入文件存储，只以摘要形式送达模型。",
+        "results": "结果数",
+        "stored": "已存储",
+        "transferred": "已传输"
+      }
+    },
+    "mcpCatalog": {
+      "header": {
+        "title": "系统 MCP",
+        "description": "为整个组织安装 MCP 服务器，保管其共享凭据，并授权给用户组。"
+      },
+      "notDeployed": "MCP 网关进程未部署。设置 MCP_GATEWAY_ENABLED 后才能使用系统 MCP。",
+      "module": {
+        "title": "模块",
+        "label": "启用系统 MCP",
+        "description": "关闭后，所有用户都看不到系统 MCP 服务器。个人 MCP 服务器不受影响。",
+        "enabled": "已启用系统 MCP",
+        "disabled": "已禁用系统 MCP",
+        "saveFailed": "无法更改该设置"
+      },
+      "install": {
+        "title": "安装服务器",
+        "description": "选择一个供应商包以获得合理的缓存默认值，或使用通用包。",
+        "slug": "标识",
+        "upstreamUrl": "上游地址",
+        "apiKey": "API 密钥",
+        "submit": "安装",
+        "slugHint": "仅使用字母、数字、'-' 和 '_'。软件包名会自动转成标识。"
+      },
+      "installed": {
+        "title": "已安装",
+        "empty": "还没有系统 MCP 服务器。",
+        "enabled": "已启用",
+        "remove": "移除",
+        "toolCount": "{count, plural, other {# 个工具}}",
+        "discoveryError": "无法读取工具：{error}",
+        "refreshTools": "刷新工具"
+      },
+      "access": {
+        "public": "向所有人开放",
+        "groups": "授权给用户组",
+        "noGroups": "还没有用户组。"
+      },
+      "toasts": {
+        "installed": "系统 MCP 已安装",
+        "installFailed": "无法安装系统 MCP",
+        "updateFailed": "无法保存更改",
+        "removed": "系统 MCP 已移除",
+        "removeFailed": "无法移除系统 MCP",
+        "loadFailed": "无法加载系统 MCP 服务器",
+        "refreshed": "工具列表已刷新",
+        "refreshFailed": "无法刷新工具"
       }
     }
   },
@@ -13677,6 +13717,14 @@
         "title": "播放速度"
       },
       "title": "语音"
+    },
+    "systemMcp": {
+      "title": "系统 MCP",
+      "description": "管理员向你开放的服务器。按需在对话中启用。",
+      "toolCount": "{count, plural, other {# 个工具}}",
+      "toggleLabel": "启用 {name}",
+      "toggleFailed": "无法更改该设置",
+      "empty": "当前没有可用的系统 MCP 服务器。"
     }
   },
   "sidebar": {
@@ -13758,6 +13806,12 @@
         },
         "mcpActions": {
           "label": "MCP 操作"
+        },
+        "mcpCatalog": {
+          "label": "系统 MCP"
+        },
+        "mcpGateway": {
+          "label": "MCP 网关"
         },
         "openapiActions": {
           "label": "OpenAPI 操作"

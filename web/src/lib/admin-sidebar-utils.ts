@@ -29,6 +29,8 @@ export type AdminNavItemId =
   | "customAnalytics"
   | "agents"
   | "mcpActions"
+  | "mcpCatalog"
+  | "mcpGateway"
   | "openapiActions"
   | "existingConnectors"
   | "addConnector"
@@ -85,7 +87,8 @@ export const NAV_ITEM_IDS: Record<
   CUSTOM_ANALYTICS: "customAnalytics",
   AGENTS: "agents",
   MCP_ACTIONS: "mcpActions",
-  MCP_GATEWAY: null,
+  MCP_CATALOG: "mcpCatalog",
+  MCP_GATEWAY: "mcpGateway",
   OPENAPI_ACTIONS: "openapiActions",
   INDEXING_STATUS: "existingConnectors",
   ADD_CONNECTOR: "addConnector",

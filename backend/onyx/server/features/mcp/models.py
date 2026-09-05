@@ -16,6 +16,7 @@ from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
 )
@@ -736,8 +737,9 @@ class MCPServer(BaseModel):
             "None outside the Craft listing, the only one that computes it."
         ),
     )
-    via_gateway: bool = False
-    gateway_provider_slug: Optional[str] = None
+    scope: MCPServerScope = MCPServerScope.USER
+    # Set for system-scoped servers: the catalog entry an admin installed.
+    catalog_slug: Optional[str] = None
 
 
 class MCPServersResponse(BaseModel):

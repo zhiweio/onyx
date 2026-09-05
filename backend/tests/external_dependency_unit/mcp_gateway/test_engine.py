@@ -9,19 +9,16 @@ from sqlalchemy.orm import Session
 from onyx.db.enums import (
     MCPGatewayAuthAdapter,
     MCPGatewayCallOutcome,
-    MCPGatewayRefreshMode,
     MCPTransport,
 )
-from onyx.db.mcp_gateway import (
-    create_provider__no_commit,
-    delete_cache_entries,
-    delete_provider,
-    get_provider_by_slug,
-    upsert_policy__no_commit,
+from onyx.db.mcp_catalog import (
+    create_catalog_entry__no_commit,
+    delete_catalog_entry,
+    get_catalog_entry_by_slug,
 )
-from onyx.db.models import MCPGatewayCallLog, MCPGatewayCachePolicy, MCPGatewayProvider
+from onyx.db.mcp_gateway import delete_cache_entries
+from onyx.db.models import MCPCatalogEntry, MCPGatewayCallLog
 from onyx.mcp_gateway.engine import invoke_tool
-from shared_configs.contextvars import get_current_tenant_id
 
 
 def _ok_result(text: str) -> dict:
@@ -41,44 +38,47 @@ def _err_result() -> dict:
 
 
 @pytest.fixture
-def gateway_provider(
-    db_session: Session, tenant_context: None
-) -> Generator[MCPGatewayProvider, None, None]:
+def catalog_entry(
+    db_session: Session,
+    tenant_context: None,  # noqa: ARG001
+) -> Generator[MCPCatalogEntry, None, None]:
     slug = f"gw-{uuid4().hex[:10]}"
-    provider = create_provider__no_commit(
+    entry = create_catalog_entry__no_commit(
         db_session,
         slug=slug,
         display_name=slug,
-        pack_slug="generic_http",
+        description=None,
         upstream_url="http://127.0.0.1:9/mcp",
         transport=MCPTransport.STREAMABLE_HTTP,
         auth_adapter=MCPGatewayAuthAdapter.BEARER,
         credentials={},
+        pack_slug="generic_http",
     )
     db_session.commit()
     try:
-        yield provider
+        yield entry
     finally:
-        tenant_id = get_current_tenant_id()
-        delete_cache_entries(db_session, tenant_id=tenant_id, provider_slug=slug)
+        delete_cache_entries(db_session, catalog_slug=slug)
         db_session.execute(
-            delete(MCPGatewayCallLog).where(MCPGatewayCallLog.provider_slug == slug)
+            delete(MCPGatewayCallLog).where(MCPGatewayCallLog.catalog_slug == slug)
         )
-        db_session.execute(
-            delete(MCPGatewayCachePolicy).where(
-                MCPGatewayCachePolicy.provider_slug == slug
-            )
-        )
-        fresh = get_provider_by_slug(db_session, slug)
-        if fresh is not None:
-            delete_provider(db_session, fresh)
         db_session.commit()
+        fresh = get_catalog_entry_by_slug(db_session, slug)
+        if fresh is not None:
+            delete_catalog_entry(db_session, fresh)
+
+
+def _with_overrides(
+    db_session: Session, entry: MCPCatalogEntry, overrides: dict
+) -> None:
+    entry.policy_overrides = overrides
+    db_session.commit()
 
 
 @pytest.mark.asyncio
 async def test_second_call_hits_cache_and_is_not_billed(
-    gateway_provider: MCPGatewayProvider,
-    tenant_context: None,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
     calls = {"n": 0}
 
@@ -89,13 +89,15 @@ async def test_second_call_hits_cache_and_is_not_billed(
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("onyx.mcp_gateway.engine.call_upstream", fake_upstream)
         first = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
             user_email="a@example.com",
         )
+        # A different user must reuse the same cached answer: caching is per
+        # tenant, not per user, which is the point of a shared system MCP.
         second = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
             user_email="b@example.com",
@@ -111,8 +113,8 @@ async def test_second_call_hits_cache_and_is_not_billed(
 
 @pytest.mark.asyncio
 async def test_single_flight_calls_upstream_once(
-    gateway_provider: MCPGatewayProvider,
-    tenant_context: None,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
     calls = {"n": 0}
 
@@ -125,12 +127,12 @@ async def test_single_flight_calls_upstream_once(
         mp.setattr("onyx.mcp_gateway.engine.call_upstream", fake_upstream)
         left, right = await asyncio.gather(
             invoke_tool(
-                provider_slug=gateway_provider.slug,
+                catalog_slug=catalog_entry.slug,
                 tool_name="hello",
                 arguments={"name": "Ada"},
             ),
             invoke_tool(
-                provider_slug=gateway_provider.slug,
+                catalog_slug=catalog_entry.slug,
                 tool_name="hello",
                 arguments={"name": "Ada"},
             ),
@@ -142,9 +144,10 @@ async def test_single_flight_calls_upstream_once(
 
 @pytest.mark.asyncio
 async def test_error_result_is_not_cached(
-    gateway_provider: MCPGatewayProvider,
-    tenant_context: None,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
+    """An error belongs to the attempt, not the arguments — never cache it."""
     calls = {"n": 0}
 
     async def fake_upstream(*_args: object, **_kwargs: object) -> dict:
@@ -154,12 +157,12 @@ async def test_error_result_is_not_cached(
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("onyx.mcp_gateway.engine.call_upstream", fake_upstream)
         first = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
         )
         second = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
         )
@@ -172,23 +175,14 @@ async def test_error_result_is_not_cached(
 @pytest.mark.asyncio
 async def test_swr_returns_stale_and_enqueues_refresh(
     db_session: Session,
-    gateway_provider: MCPGatewayProvider,
-    tenant_context: None,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
-    upsert_policy__no_commit(
+    _with_overrides(
         db_session,
-        provider_slug=gateway_provider.slug,
-        tool_name="hello",
-        refresh_mode=MCPGatewayRefreshMode.SWR,
-        ttl_seconds=1,
-        swr_seconds=3600,
-        schedule_cron=None,
-        key_fields=None,
-        normalize=None,
-        cache_empty_ttl_seconds=1,
-        max_response_bytes=2_000_000,
+        catalog_entry,
+        {"hello": {"refresh_mode": "swr", "ttl_seconds": 1, "swr_seconds": 3600}},
     )
-    db_session.commit()
     refresh_calls: list[str] = []
 
     async def fake_upstream(*_args: object, **_kwargs: object) -> dict:
@@ -201,13 +195,13 @@ async def test_swr_returns_stale_and_enqueues_refresh(
         mp.setattr("onyx.mcp_gateway.engine.call_upstream", fake_upstream)
         mp.setattr("onyx.mcp_gateway.engine.enqueue_refresh", fake_enqueue)
         first = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
         )
         await asyncio.sleep(1.1)
         second = await invoke_tool(
-            provider_slug=gateway_provider.slug,
+            catalog_slug=catalog_entry.slug,
             tool_name="hello",
             arguments={"name": "Ada"},
         )
@@ -216,3 +210,51 @@ async def test_swr_returns_stale_and_enqueues_refresh(
     assert second.outcome == MCPGatewayCallOutcome.SWR
     assert second.upstream_billed is False
     assert refresh_calls
+
+
+@pytest.mark.asyncio
+async def test_bypass_policy_never_caches(
+    db_session: Session,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
+) -> None:
+    _with_overrides(db_session, catalog_entry, {"hello": {"refresh_mode": "bypass"}})
+    calls = {"n": 0}
+
+    async def fake_upstream(*_args: object, **_kwargs: object) -> dict:
+        calls["n"] += 1
+        return _ok_result("live")
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("onyx.mcp_gateway.engine.call_upstream", fake_upstream)
+        first = await invoke_tool(
+            catalog_slug=catalog_entry.slug,
+            tool_name="hello",
+            arguments={"name": "Ada"},
+        )
+        second = await invoke_tool(
+            catalog_slug=catalog_entry.slug,
+            tool_name="hello",
+            arguments={"name": "Ada"},
+        )
+
+    assert first.outcome == MCPGatewayCallOutcome.BYPASS
+    assert second.outcome == MCPGatewayCallOutcome.BYPASS
+    assert calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_disabled_entry_is_refused(
+    db_session: Session,
+    catalog_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
+) -> None:
+    catalog_entry.enabled = False
+    db_session.commit()
+
+    with pytest.raises(ValueError):
+        await invoke_tool(
+            catalog_slug=catalog_entry.slug,
+            tool_name="hello",
+            arguments={},
+        )

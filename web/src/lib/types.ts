@@ -74,6 +74,7 @@ export enum Permission {
   MANAGE_LLMS = "manage:llms",
   READ_AGENT_ANALYTICS = "read:agent_analytics",
   MANAGE_ACTIONS = "manage:actions",
+  MANAGE_SYSTEM_MCP = "manage:system_mcp",
   READ_QUERY_HISTORY = "read:query_history",
   MANAGE_USER_GROUPS = "manage:user_groups",
   MANAGE_SKILLS = "manage:skills",

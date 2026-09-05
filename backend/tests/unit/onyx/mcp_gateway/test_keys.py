@@ -5,7 +5,7 @@ from onyx.mcp_gateway.keys import (
     expand_nested_tool,
 )
 from onyx.mcp_gateway.models import CachePolicySpec, ProviderPack
-from onyx.mcp_gateway.packs import TIANYANCHA
+from onyx.mcp_gateway.packs.tianyancha import PACK as TIANYANCHA
 
 
 def test_expand_nested_call_tool() -> None:
@@ -35,9 +35,7 @@ def test_canonicalize_key_fields_and_whitespace() -> None:
         key_fields=["keyword"],
         normalize={"keyword": {"collapse_ws": True, "lowercase": True}},
     )
-    out = canonicalize_arguments(
-        {"keyword": "  Foo   Bar ", "pageSize": 20}, policy
-    )
+    out = canonicalize_arguments({"keyword": "  Foo   Bar ", "pageSize": 20}, policy)
     assert out == {"keyword": "foo bar"}
 
 

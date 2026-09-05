@@ -64,6 +64,10 @@ IMPLIED_PERMISSIONS: dict[str, set[str]] = {
     Permission.MANAGE_ACTIONS.value: {
         Permission.READ_USER_GROUPS.value,
     },
+    Permission.MANAGE_SYSTEM_MCP.value: {
+        # Needed to pick the groups a system MCP server is granted to.
+        Permission.READ_USER_GROUPS.value,
+    },
     # basic grants the search/chat surfaces; admin grants read:admin (and the
     # rest) via the FULL_ADMIN_PANEL_ACCESS short-circuit in
     # resolve_effective_permissions.
@@ -179,6 +183,16 @@ PERMISSION_REGISTRY: list[PermissionRegistryEntry] = [
         display_name="Manage Actions",
         description="Add and update custom tools and MCP/OpenAPI actions.",
         permissions=[Permission.MANAGE_ACTIONS],
+        group=0,
+    ),
+    PermissionRegistryEntry(
+        id="manage_system_mcp",
+        display_name="Manage System MCP",
+        description=(
+            "Install system-wide MCP servers, hold their shared credentials, "
+            "and grant them to groups."
+        ),
+        permissions=[Permission.MANAGE_SYSTEM_MCP],
         group=0,
     ),
     # Group 1 — User & Access Management

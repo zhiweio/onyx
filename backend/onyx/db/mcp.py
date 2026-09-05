@@ -1,7 +1,7 @@
 import datetime
 from uuid import UUID
 
-from sqlalchemy import Select, and_, delete, select
+from sqlalchemy import Select, and_, delete, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -10,6 +10,7 @@ from onyx.db.constants import UNSET, UnsetType
 from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
     Permission,
@@ -17,6 +18,8 @@ from onyx.db.enums import (
 )
 from onyx.db.models import (
     MCPAuthenticationType,
+    MCPCatalogEntry,
+    MCPCatalogEntry__UserGroup,
     MCPConnectionConfig,
     MCPServer,
     MCPServer__User,
@@ -122,39 +125,81 @@ def get_mcp_servers_for_persona(
     return list(mcp_servers)
 
 
-def _add_mcp_server_access_filter(stmt: Select, user: User) -> Select:
-    """Servers the user may add to an agent (public / direct / group). Admins bypass.
-    Does not control chat use of agent-attached servers.
+def _add_mcp_server_access_filter(
+    stmt: Select, user: User, include_system: bool | None = None
+) -> Select:
+    """Servers the user may add to an agent. Admins bypass.
+
+    The two scopes are gated differently. A USER server is reachable when it is
+    public, shared with the user directly or through a group, or owned by them.
+    A SYSTEM server is reachable when its catalog entry is enabled and either
+    public or granted to one of the user's groups — never by direct share,
+    since system MCP is granted per group by design.
+
+    `include_system` defaults to the gateway module toggle: with the module off,
+    system servers disappear and user servers are untouched.
+
+    Does not control chat use of agent-attached servers, and does not consider
+    per-user enablement — that is a separate choice, see `mcp_catalog`.
     """
+    if include_system is None:
+        from onyx.mcp_gateway.service import is_gateway_enabled
+
+        include_system = is_gateway_enabled()
+
+    if not include_system:
+        stmt = stmt.where(MCPServer.scope == MCPServerScope.USER)
+
     if has_global_permission(user, Permission.FULL_ADMIN_PANEL_ACCESS):
         return stmt
 
     stmt = stmt.distinct()
     MCPServer__UG = aliased(MCPServer__UserGroup)
+    Entry__UG = aliased(MCPCatalogEntry__UserGroup)
+    ServerUG_Member = aliased(User__UserGroup)
+    CatalogUG_Member = aliased(User__UserGroup)
     stmt = (
         stmt.outerjoin(MCPServer__UG, MCPServer__UG.mcp_server_id == MCPServer.id)
         .outerjoin(
-            User__UserGroup,
-            User__UserGroup.user_group_id == MCPServer__UG.user_group_id,
+            ServerUG_Member,
+            ServerUG_Member.user_group_id == MCPServer__UG.user_group_id,
         )
         .outerjoin(MCPServer__User, MCPServer__User.mcp_server_id == MCPServer.id)
+        .outerjoin(MCPCatalogEntry, MCPCatalogEntry.id == MCPServer.catalog_entry_id)
+        .outerjoin(Entry__UG, Entry__UG.catalog_entry_id == MCPCatalogEntry.id)
+        .outerjoin(
+            CatalogUG_Member,
+            CatalogUG_Member.user_group_id == Entry__UG.user_group_id,
+        )
     )
 
-    where_clause = MCPServer.is_public == True  # noqa: E712
+    user_scope_clause = MCPServer.is_public == True  # noqa: E712
+    system_scope_clause = MCPCatalogEntry.is_public.is_(True)
     if not user.is_anonymous:
-        where_clause |= User__UserGroup.user_id == user.id
-        where_clause |= MCPServer__User.user_id == user.id
+        user_scope_clause |= ServerUG_Member.user_id == user.id
+        user_scope_clause |= MCPServer__User.user_id == user.id
         # The curator who created a private server must still see/attach it.
-        where_clause |= MCPServer.owner == user.email
-    return stmt.where(where_clause)
+        user_scope_clause |= MCPServer.owner == user.email
+        system_scope_clause |= CatalogUG_Member.user_id == user.id
+
+    return stmt.where(
+        or_(
+            and_(MCPServer.scope == MCPServerScope.USER, user_scope_clause),
+            and_(
+                MCPServer.scope == MCPServerScope.SYSTEM,
+                MCPCatalogEntry.enabled.is_(True),
+                system_scope_clause,
+            ),
+        )
+    )
 
 
 def get_mcp_servers_accessible_to_user(
-    user: User, db_session: Session
+    user: User, db_session: Session, include_system: bool | None = None
 ) -> list[MCPServer]:
     """MCP servers the user may attach to personas (public, or shared with them)."""
     stmt = _add_mcp_server_access_filter(
-        select(MCPServer).order_by(MCPServer.created_at), user
+        select(MCPServer).order_by(MCPServer.created_at), user, include_system
     )
     return list(db_session.scalars(stmt).all())
 
@@ -178,6 +223,25 @@ def affected_user_ids_for_mcp_server(
     filter in ``_add_mcp_server_access_filter`` and therefore see every
     craft-enabled server)."""
     stmt = select(Sandbox.user_id).where(Sandbox.status == SandboxStatus.RUNNING)
+
+    # A system server carries its grants on the catalog entry, not on itself.
+    if server.scope == MCPServerScope.SYSTEM:
+        entry = server.catalog_entry
+        if entry is None or not entry.enabled:
+            return set()
+        if entry.is_public:
+            return set(db_session.scalars(stmt))
+        catalog_users = (
+            select(User__UserGroup.user_id)
+            .join(
+                MCPCatalogEntry__UserGroup,
+                MCPCatalogEntry__UserGroup.user_group_id
+                == User__UserGroup.user_group_id,
+            )
+            .where(MCPCatalogEntry__UserGroup.catalog_entry_id == entry.id)
+        )
+        return set(db_session.scalars(stmt.where(Sandbox.user_id.in_(catalog_users))))
+
     if server.is_public:
         return set(db_session.scalars(stmt))
 
@@ -240,8 +304,8 @@ def create_mcp_server__no_commit(
     oauth_additional_auth_params: dict[str, str] | None = None,
     admin_connection_config_id: int | None = None,
     is_public: bool = True,
-    via_gateway: bool = False,
-    gateway_provider_slug: str | None = None,
+    scope: MCPServerScope = MCPServerScope.USER,
+    catalog_entry_id: int | None = None,
 ) -> MCPServer:
     """Create a new MCP server"""
     new_server = MCPServer(
@@ -259,8 +323,8 @@ def create_mcp_server__no_commit(
         oauth_additional_auth_params=oauth_additional_auth_params,
         admin_connection_config_id=admin_connection_config_id,
         is_public=is_public,
-        via_gateway=via_gateway,
-        gateway_provider_slug=gateway_provider_slug,
+        scope=scope,
+        catalog_entry_id=catalog_entry_id,
     )
     db_session.add(new_server)
     db_session.flush()  # Get the ID without committing
@@ -286,8 +350,6 @@ def update_mcp_server__no_commit(
     last_refreshed_at: datetime.datetime | None = None,
     is_public: bool | None = None,
     available_in_craft: bool | None = None,
-    via_gateway: bool | None = None,
-    gateway_provider_slug: str | None = None,
 ) -> MCPServer:
     """Update an existing MCP server"""
     server = get_mcp_server_by_id(server_id, db_session)
@@ -324,10 +386,6 @@ def update_mcp_server__no_commit(
         server.last_refreshed_at = last_refreshed_at
     if available_in_craft is not None:
         server.available_in_craft = available_in_craft
-    if via_gateway is not None:
-        server.via_gateway = via_gateway
-    if gateway_provider_slug is not None:
-        server.gateway_provider_slug = gateway_provider_slug
 
     db_session.flush()  # Don't commit yet, let caller decide when to commit
     return server

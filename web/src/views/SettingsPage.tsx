@@ -4,6 +4,7 @@ import { useRef, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Section, AttachmentItemLayout } from "@/layouts/general-layouts";
+import SystemMcpSettings from "@/sections/settings/SystemMcpSettings";
 import {
   Content,
   ContentAction,
@@ -2614,6 +2615,7 @@ function ConnectorsSettings() {
 
   return (
     <Section gap={8}>
+      <SystemMcpSettings />
       <Section gap={3} justifyContent="start">
         <Content
           title={t("connectors.title")}

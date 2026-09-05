@@ -14,6 +14,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from mcp.types import CallToolResult, TextContent
 
 from onyx.db.enums import MCPAuthenticationType
 from onyx.server.query_and_chat.placement import Placement
@@ -224,8 +225,8 @@ class TestMCPToolLLMNames:
         _disambiguate_mcp_tool_names([mcp_tool, conflicting_tool])
 
         with patch(
-            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool",
-            return_value={"ok": True},
+            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool_raw",
+            return_value=CallToolResult(content=[TextContent(type="text", text="ok")]),
         ) as mock_call_mcp_tool:
             mcp_tool.run(Placement(turn_index=0))
 

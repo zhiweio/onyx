@@ -83,6 +83,7 @@ from onyx.server.features.admin_banner.api import admin_router as admin_banner_r
 from onyx.server.features.build.api import admin_router as build_admin_router
 from onyx.server.features.build.api import router as build_router
 from onyx.server.features.build.webapp_proxy import public_build_router
+from onyx.server.features.craft_project.api import router as craft_project_router
 from onyx.server.features.default_assistant.api import (
     router as default_assistant_router,
 )
@@ -95,7 +96,11 @@ from onyx.server.features.input_prompt.api import (
 from onyx.server.features.input_prompt.api import basic_router as input_prompt_router
 from onyx.server.features.mcp.api import admin_router as mcp_admin_router
 from onyx.server.features.mcp.api import router as mcp_router
-from onyx.server.features.mcp_gateway.api import admin_router as mcp_gateway_admin_router
+from onyx.server.features.mcp_catalog.api import (
+    admin_router as mcp_catalog_admin_router,
+)
+from onyx.server.features.mcp_catalog.api import ops_router as mcp_gateway_ops_router
+from onyx.server.features.mcp_catalog.api import user_router as mcp_catalog_user_router
 from onyx.server.features.notifications.api import router as notification_router
 from onyx.server.features.oauth_config.api import (
     admin_router as admin_oauth_config_router,
@@ -106,12 +111,10 @@ from onyx.server.features.persona.api import admin_agents_router, agents_router
 from onyx.server.features.persona.api import admin_router as admin_persona_router
 from onyx.server.features.persona.api import basic_router as persona_router
 from onyx.server.features.projects.api import router as projects_router
-from onyx.server.features.search.api import router as search_api_router
-from onyx.server.features.craft_project.api import router as craft_project_router
 from onyx.server.features.report_template.api import router as report_template_router
 from onyx.server.features.scenario.api import router as scenario_router
+from onyx.server.features.search.api import router as search_api_router
 from onyx.server.features.skill.api import user_router as skill_router
-from onyx.server.features.tax.api import router as tax_router
 from onyx.server.features.tool.api import admin_router as admin_tool_router
 from onyx.server.features.tool.api import router as tool_router
 from onyx.server.features.usage.api import admin_usage_router, user_usage_router
@@ -630,12 +633,15 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, federated_router)
     include_router_with_global_prefix_prepended(application, mcp_router)
     include_router_with_global_prefix_prepended(application, mcp_admin_router)
-    include_router_with_global_prefix_prepended(application, mcp_gateway_admin_router)
+    # Always mounted; every handler refuses to act while the module is off, so
+    # the admin UI can explain the state instead of 404-ing.
+    include_router_with_global_prefix_prepended(application, mcp_catalog_admin_router)
+    include_router_with_global_prefix_prepended(application, mcp_catalog_user_router)
+    include_router_with_global_prefix_prepended(application, mcp_gateway_ops_router)
     include_router_with_global_prefix_prepended(application, skill_router)
     include_router_with_global_prefix_prepended(application, scenario_router)
     include_router_with_global_prefix_prepended(application, report_template_router)
     include_router_with_global_prefix_prepended(application, craft_project_router)
-    include_router_with_global_prefix_prepended(application, tax_router)
 
     include_router_with_global_prefix_prepended(application, pat_router)
     include_router_with_global_prefix_prepended(application, captcha_router)

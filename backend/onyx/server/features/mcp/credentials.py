@@ -29,7 +29,11 @@ from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import MCPAuthenticationPerformer, MCPAuthenticationType
+from onyx.db.enums import (
+    MCPAuthenticationPerformer,
+    MCPAuthenticationType,
+    MCPServerScope,
+)
 from onyx.db.mcp import get_user_connection_config
 from onyx.db.models import MCPConnectionConfig, MCPServer, User
 from onyx.server.features.mcp.models import (
@@ -139,6 +143,11 @@ class ResolvedMCPCredentials(BaseModel):
     auth_type: MCPAuthenticationType | None = None
     auth_template: MCPAuthTemplate | None = None
     user_email: str = ""
+    # Set for system-scoped servers. The upstream credentials live on the
+    # catalog entry and are attached by the gateway, so what travels from here
+    # is a short-lived token naming the tenant and the entry — minted per call,
+    # never stored.
+    system_catalog_slug: str | None = None
 
     def _config_data(self) -> MCPConnectionData:
         return extract_connection_data(self.connection_config, apply_mask=False)
@@ -181,8 +190,24 @@ class ResolvedMCPCredentials(BaseModel):
             substitutions.get(field) for field in self.auth_template.required_fields
         )
 
+    def _gateway_headers(self) -> dict[str, str]:
+        from onyx.mcp_gateway.tokens import mint_gateway_token
+        from shared_configs.contextvars import get_current_tenant_id
+
+        if not self.system_catalog_slug:
+            return {}
+        token = mint_gateway_token(
+            tenant_id=get_current_tenant_id(),
+            catalog_slug=self.system_catalog_slug,
+            user_email=self.user_email or None,
+        )
+        return {"Authorization": f"Bearer {token}"}
+
     def build_headers(self) -> dict[str, str]:
         """Build configured headers with generated authentication taking precedence."""
+        if self.system_catalog_slug:
+            return self._gateway_headers()
+
         stored = merge_mcp_headers(
             self._configured_headers(), self._generated_auth_headers()
         )
@@ -214,6 +239,13 @@ class ResolvedMCPCredentials(BaseModel):
     def can_authenticate(self) -> bool:
         """Whether these credentials can authenticate a call now (lazy refresh
         of an expired-but-refreshable OAuth token still allowed downstream)."""
+        if self.system_catalog_slug:
+            # The user holds no credential for a system server; the admin's
+            # live on the catalog entry. Only a missing signing secret can
+            # block the call, and that is a deployment fault, not a user one.
+            from onyx.mcp_gateway.tokens import gateway_signing_secret
+
+            return bool(gateway_signing_secret())
         if self.auth_type in (None, MCPAuthenticationType.NONE):
             return self._has_required_substitutions()
         if self.auth_type == MCPAuthenticationType.PT_OAUTH:
@@ -241,6 +273,23 @@ def resolve_mcp_credentials(
     `user_configs` may preload every requested server's user row; a missing key
     means no stored user values.
     """
+    # A system server carries no per-user credential: the admin's shared
+    # credentials live on the catalog entry and the gateway attaches them.
+    if mcp_server.scope == MCPServerScope.SYSTEM:
+        entry = mcp_server.catalog_entry
+        if entry is None:
+            raise MCPCredentialsError(
+                f"System MCP server {mcp_server.id} has no catalog entry"
+            )
+        return ResolvedMCPCredentials(
+            connection_config=None,
+            user_oauth_token=None,
+            auth_type=mcp_server.auth_type,
+            auth_template=None,
+            user_email=user.email,
+            system_catalog_slug=entry.slug,
+        )
+
     auth_template = get_mcp_auth_template(mcp_server)
     user_connection_config = (
         user_configs.get(mcp_server.id)

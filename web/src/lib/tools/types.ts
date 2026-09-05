@@ -19,6 +19,16 @@ export enum MCPServerStatus {
   DISCONNECTED = "DISCONNECTED",
 }
 
+/**
+ * SYSTEM servers are installed by an admin from the MCP catalog and route
+ * through the gateway; USER servers are configured by end users and connect
+ * directly to their upstream.
+ */
+export enum McpServerScope {
+  SYSTEM = "SYSTEM",
+  USER = "USER",
+}
+
 export interface MCPServer {
   id: number;
   name: string;
@@ -56,8 +66,9 @@ export interface MCPServer {
   tool_count: number;
   // Server-stamped affordance map; fail-closed (absent = denied).
   permissions?: PermissionsOf<"MCPServer">;
-  via_gateway?: boolean;
-  gateway_provider_slug?: string | null;
+  scope?: McpServerScope;
+  // Set for system-scoped servers: the catalog entry an admin installed.
+  catalog_slug?: string | null;
 }
 
 export interface MCPAuthTemplate {

@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
 
 from onyx.db.enums import MCPGatewayRefreshMode
 from onyx.mcp_gateway.models import CachePolicySpec
-from onyx.mcp_gateway.packs import policy_for_tool, get_pack
-from onyx.mcp_gateway.policy import freshness, resolve_policy, spec_from_row
+from onyx.mcp_gateway.policy import effective_policies, freshness, resolve_policy
+from onyx.mcp_gateway.registry import get_pack, policy_for_tool
 
 
 def _entry(*, age_seconds: int, is_empty: bool = False) -> SimpleNamespace:
@@ -39,6 +38,11 @@ def test_tianyancha_risk_and_finance() -> None:
     finance = policy_for_tool(pack, "financialReport")
     assert finance.refresh_mode == MCPGatewayRefreshMode.TTL_AND_SCHEDULE
     assert finance.schedule_cron is not None
+
+
+def test_unknown_pack_falls_back_to_generic() -> None:
+    assert get_pack("does-not-exist").slug == "generic_http"
+    assert get_pack(None).slug == "generic_http"
 
 
 def test_fresh_stale_expired_and_bypass() -> None:
@@ -93,37 +97,65 @@ def test_schedule_due_is_expired() -> None:
     assert freshness(entry, policy, now) == "expired"
 
 
-def test_resolve_pack_default_vs_db_override() -> None:
-    db_row = SimpleNamespace(
-        refresh_mode=MCPGatewayRefreshMode.BYPASS,
-        ttl_seconds=0,
-        swr_seconds=0,
-        schedule_cron=None,
-        key_fields=None,
-        normalize=None,
-        cache_empty_ttl_seconds=3600,
-        max_response_bytes=2_000_000,
+def test_nested_tool_resolves_to_inner_policy() -> None:
+    _pack, effective, spec = resolve_policy(
+        pack_slug="tianyancha",
+        policy_overrides=None,
+        tool_name="call_tool",
+        arguments={"name": "getCompanyRisk", "arguments": {"id": "1"}},
     )
-    session = MagicMock()
-    with patch("onyx.mcp_gateway.policy.get_policy", return_value=None):
-        _pack, effective, spec = resolve_policy(
-            session,
-            provider_slug="tyc",
-            pack_slug="tianyancha",
-            tool_name="call_tool",
-            arguments={"name": "getCompanyRisk", "arguments": {"id": "1"}},
-        )
-        assert effective == "getCompanyRisk"
-        assert spec.refresh_mode == MCPGatewayRefreshMode.SWR
-        assert spec.ttl_seconds == 12 * 3600
+    assert effective == "getCompanyRisk"
+    assert spec.refresh_mode == MCPGatewayRefreshMode.SWR
+    assert spec.ttl_seconds == 12 * 3600
 
-    with patch("onyx.mcp_gateway.policy.get_policy", return_value=db_row):
-        _pack, effective, spec = resolve_policy(
-            session,
-            provider_slug="tyc",
-            pack_slug="tianyancha",
-            tool_name="call_tool",
-            arguments={"name": "getCompanyRisk", "arguments": {"id": "1"}},
-        )
-        assert spec.refresh_mode == MCPGatewayRefreshMode.BYPASS
-        assert spec_from_row(db_row).refresh_mode == MCPGatewayRefreshMode.BYPASS
+
+def test_catalog_override_wins_over_pack() -> None:
+    _pack, effective, spec = resolve_policy(
+        pack_slug="tianyancha",
+        policy_overrides={"getCompanyRisk": {"refresh_mode": "bypass"}},
+        tool_name="call_tool",
+        arguments={"name": "getCompanyRisk", "arguments": {"id": "1"}},
+    )
+    assert effective == "getCompanyRisk"
+    assert spec.refresh_mode == MCPGatewayRefreshMode.BYPASS
+
+
+def test_override_is_layered_not_replacing() -> None:
+    """A partial override keeps every field it does not mention."""
+    _pack, _effective, spec = resolve_policy(
+        pack_slug="tianyancha",
+        policy_overrides={"getCompanyRisk": {"ttl_seconds": 99}},
+        tool_name="getCompanyRisk",
+        arguments={},
+    )
+    assert spec.ttl_seconds == 99
+    assert spec.refresh_mode == MCPGatewayRefreshMode.SWR
+    assert spec.swr_seconds == 86400
+
+
+def test_glob_override_matches() -> None:
+    _pack, _effective, spec = resolve_policy(
+        pack_slug="generic_http",
+        policy_overrides={"*search*": {"ttl_seconds": 7}},
+        tool_name="companySearchV2",
+        arguments={},
+    )
+    assert spec.ttl_seconds == 7
+
+
+def test_entry_default_override_applies_to_unmatched_tools() -> None:
+    _pack, _effective, spec = resolve_policy(
+        pack_slug="generic_http",
+        policy_overrides={"*": {"ttl_seconds": 11}},
+        tool_name="anythingElse",
+        arguments={},
+    )
+    assert spec.ttl_seconds == 11
+
+
+def test_effective_policies_flags_overrides() -> None:
+    rows = effective_policies("tianyancha", {"getCompanyRisk": {"ttl_seconds": 5}})
+    by_label = {label: (spec, is_override) for label, spec, is_override in rows}
+    assert by_label["*"][1] is False
+    assert by_label["getCompanyRisk"][0].ttl_seconds == 5
+    assert by_label["getCompanyRisk"][1] is True

@@ -51,6 +51,8 @@ export interface FeatureFlags {
   opensearchEnabled: boolean;
   queryHistoryEnabled: boolean;
   craftAvailable: boolean;
+  mcpGatewayAvailable: boolean;
+  mcpGatewayEnabled: boolean;
 }
 
 /**
@@ -219,15 +221,27 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: null,
   },
+  MCP_CATALOG: {
+    path: "/admin/mcp-catalog",
+    icon: SvgMcp,
+    title: "System MCP",
+    sidebarLabel: "System MCP",
+    requiredPermission: Permission.MANAGE_SYSTEM_MCP,
+    section: "Agents & Actions",
+    requiredTier: null,
+    // Show when the gateway process is deployed, even if the runtime toggle
+    // is still off — the toggle lives on this page.
+    visibleWhen: (flags) => flags.mcpGatewayAvailable,
+  },
   MCP_GATEWAY: {
     path: "/admin/mcp-gateway",
     icon: SvgMcp,
     title: "MCP Gateway",
-    sidebarLabel: "",
-    requiredPermission: Permission.MANAGE_ACTIONS,
+    sidebarLabel: "MCP Gateway",
+    requiredPermission: Permission.MANAGE_SYSTEM_MCP,
     section: "Agents & Actions",
     requiredTier: null,
-    visibleWhen: null,
+    visibleWhen: (flags) => flags.mcpGatewayAvailable && flags.mcpGatewayEnabled,
   },
   OPENAPI_ACTIONS: {
     path: "/admin/openapi-actions",

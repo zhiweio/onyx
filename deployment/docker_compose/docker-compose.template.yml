@@ -117,6 +117,12 @@ services:
       # Onyx Craft configuration (disabled by default, set ENABLE_CRAFT=true in .env to enable)
       # Use --include-craft with install script, or manually set in .env file
       - ENABLE_CRAFT=${ENABLE_CRAFT:-false}
+      # MCP Gateway: the API server must see the same deploy flag as the
+      # gateway process, or the admin toggle stays disabled.
+      - MCP_GATEWAY_ENABLED=${MCP_GATEWAY_ENABLED:-true}
+      - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
+      - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
       #!endfor
     #!value prod,no-letsencrypt: # Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
     # PRODUCTION: Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
@@ -212,6 +218,10 @@ services:
       #!for default
       # Onyx Craft configuration (set up automatically on container startup)
       - ENABLE_CRAFT=${ENABLE_CRAFT:-false}
+      - MCP_GATEWAY_ENABLED=${MCP_GATEWAY_ENABLED:-true}
+      - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
+      - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
       #!endfor
     #!value prod,no-letsencrypt: # Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
     # PRODUCTION: Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres

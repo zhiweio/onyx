@@ -100,6 +100,12 @@ export interface Settings {
   // True when hooks are available: single-tenant deployments only.
   hooks_enabled?: boolean;
 
+  // Admin toggle for the MCP Gateway module.
+  mcp_gateway_enabled?: boolean;
+  // True when the operator deployed the gateway process. Gates the admin
+  // toggle itself; mcp_gateway_enabled gates the module.
+  mcp_gateway_available?: boolean;
+
   // Application version from the ONYX_VERSION env var on the server.
   version?: string | null;
   // Hard ceiling for user_file_max_upload_size_mb, derived from env var.

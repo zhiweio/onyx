@@ -22,7 +22,25 @@ export async function parseErrorDetail(
 ): Promise<string> {
   try {
     const body = await res.json();
-    return body?.detail ?? fallback;
+    const detail = body?.detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object" && "msg" in item) {
+            return String((item as { msg: unknown }).msg);
+          }
+          return null;
+        })
+        .filter((item): item is string => Boolean(item));
+      if (messages.length > 0) {
+        return messages.join("; ");
+      }
+    }
+    return fallback;
   } catch {
     return fallback;
   }

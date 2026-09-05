@@ -1826,20 +1826,6 @@ ENTERPRISE_EDITION_ENABLED = (
     os.environ.get("ENABLE_PAID_ENTERPRISE_EDITION_FEATURES", "").lower() == "true"
 )
 
-# China tax/finance vertical: live query plugins, tax_live_query tool, seed agents.
-TAX_VERTICAL_ENABLED = (
-    os.environ.get("TAX_VERTICAL_ENABLED", "true").lower() == "true"
-)
-TAX_DISABLED_SOURCES = [
-    item.strip()
-    for item in os.environ.get("TAX_DISABLED_SOURCES", "").split(",")
-    if item.strip()
-]
-QIXINBAO_MCP_NAME_FRAGMENT = os.environ.get("QIXINBAO_MCP_NAME_FRAGMENT", "qixinbao")
-PATSNAP_MCP_NAME_FRAGMENT = os.environ.get("PATSNAP_MCP_NAME_FRAGMENT", "patsnap")
-QIXINBAO_MCP_TOOL = os.environ.get("QIXINBAO_MCP_TOOL") or None
-PATSNAP_MCP_TOOL = os.environ.get("PATSNAP_MCP_TOOL") or None
-
 #####
 # Image Generation Configuration (DEPRECATED)
 # These environment variables will be deprecated soon.
@@ -1951,6 +1937,33 @@ MCP_GATEWAY_TRUSTED_HOSTS = {
 _gateway_public_host = urllib.parse.urlparse(MCP_GATEWAY_PUBLIC_URL).hostname
 if _gateway_public_host:
     MCP_GATEWAY_TRUSTED_HOSTS.add(_gateway_public_host)
+
+# Lifetime of the signed token the API server mints for gateway calls. Short,
+# because it carries the tenant and is replayable within its window.
+MCP_GATEWAY_TOKEN_TTL_SECONDS = int(
+    os.environ.get("MCP_GATEWAY_TOKEN_TTL_SECONDS") or 300
+)
+
+#####
+# MCP result storage — how tool responses are persisted and shown to the LLM
+#####
+# At or below this size a result is stored inline in Postgres. Above it the
+# body goes to the file store and only a digest plus a handle reaches the LLM.
+MCP_RESULT_INLINE_THRESHOLD_BYTES = int(
+    os.environ.get("MCP_RESULT_INLINE_THRESHOLD_BYTES") or 32_768
+)
+# Hard ceiling on what the gateway will persist at all. Bigger responses are
+# passed through to the caller uncached.
+MCP_RESULT_MAX_BYTES = int(os.environ.get("MCP_RESULT_MAX_BYTES") or 67_108_864)
+# Ceiling on the deterministic summary handed to the LLM for a large result.
+MCP_RESULT_DIGEST_MAX_BYTES = int(
+    os.environ.get("MCP_RESULT_DIGEST_MAX_BYTES") or 8_192
+)
+# Ceiling on one mcp_result read. Keeps a follow-up read from undoing the
+# saving the digest just made.
+MCP_RESULT_SLICE_MAX_BYTES = int(os.environ.get("MCP_RESULT_SLICE_MAX_BYTES") or 16_384)
+# Blobs untouched for this long are deleted by the cleanup task.
+MCP_RESULT_BLOB_TTL_DAYS = int(os.environ.get("MCP_RESULT_BLOB_TTL_DAYS") or 30)
 
 
 POD_NAME = os.environ.get("POD_NAME")

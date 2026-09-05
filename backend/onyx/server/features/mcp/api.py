@@ -1312,8 +1312,10 @@ def _db_mcp_server_to_api_mcp_server(
         user_credentials=user_credentials,
         admin_credentials=admin_credentials,
         permissions=permissions or {},
-        via_gateway=db_server.via_gateway,
-        gateway_provider_slug=db_server.gateway_provider_slug,
+        scope=db_server.scope,
+        catalog_slug=(
+            db_server.catalog_entry.slug if db_server.catalog_entry else None
+        ),
     )
 
 
@@ -1529,7 +1531,7 @@ def _upsert_db_tools(
         existing_by_name[tool_name] = new_tool
 
 
-def _sync_mcp_server_tools(
+def sync_mcp_server_tools(
     mcp_server_id: int,
     discovered_tools: list[MCPLibTool],
     db: Session,
@@ -1641,7 +1643,7 @@ def _list_mcp_tools_by_id(
     db.commit()
 
     if is_admin:
-        _sync_mcp_server_tools(mcp_server.id, discovered_tools, db)
+        sync_mcp_server_tools(mcp_server.id, discovered_tools, db)
 
     # Truncate tool descriptions to prevent overly long responses
     for tool in discovered_tools:
@@ -2553,8 +2555,8 @@ def create_mcp_server_simple(
         auth_template=None,
         user_credentials=None,
         admin_credentials=None,
-        via_gateway=mcp_server.via_gateway,
-        gateway_provider_slug=mcp_server.gateway_provider_slug,
+        scope=mcp_server.scope,
+        catalog_slug=None,
     )
 
 

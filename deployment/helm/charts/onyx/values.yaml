@@ -1730,6 +1730,22 @@ configMap:
   # API service (no prefix). It is required when ENABLE_CRAFT=true.
   SANDBOX_PROXY_CA_SECRET: "sandbox-proxy-ca"
   SANDBOX_PROXY_CA_CONFIGMAP: "sandbox-proxy-ca-bundle"
+  # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the
+  # module on in Admin Panel > System MCP. Both gates must be open before any
+  # system MCP server is visible to users.
+  # Lifetime of the signed token the API server sends to the gateway.
+  MCP_GATEWAY_TOKEN_TTL_SECONDS: ""
+  # MCP result storage. At or below the inline threshold a result stays in
+  # Postgres and reaches the model whole; above it the body goes to the file
+  # store and the model gets a digest plus a handle for the mcp_result tool.
+  MCP_RESULT_INLINE_THRESHOLD_BYTES: ""
+  # Hard ceiling on what the gateway persists; larger responses pass through.
+  MCP_RESULT_MAX_BYTES: ""
+  MCP_RESULT_DIGEST_MAX_BYTES: ""
+  # Ceiling on one mcp_result read, so a follow-up cannot undo the saving.
+  MCP_RESULT_SLICE_MAX_BYTES: ""
+  # Stored results untouched for this long are deleted.
+  MCP_RESULT_BLOB_TTL_DAYS: ""
 # -- Craft sandbox RBAC (rendered when configMap.ENABLE_CRAFT=true).
 craft:
   # Extra SAs (release ns) to also grant sandbox RBAC, e.g. a separate worker SA.

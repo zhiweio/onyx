@@ -1,16 +1,29 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from onyx.configs.app_configs import (
+    MCP_RESULT_DIGEST_MAX_BYTES,
+    MCP_RESULT_INLINE_THRESHOLD_BYTES,
+    MCP_RESULT_MAX_BYTES,
+)
 from onyx.db.enums import (
     MCPGatewayAuthAdapter,
     MCPGatewayCallOutcome,
     MCPGatewayRefreshMode,
+    MCPResultStorage,
     MCPTransport,
 )
 
 
 @dataclass(frozen=True)
 class CachePolicySpec:
+    """How one tool's results are cached, stored, and summarized.
+
+    Resolved per call by layering, most specific first: a DB policy row, the
+    catalog entry's `policy_overrides`, the provider pack's per-tool policy,
+    then the pack default.
+    """
+
     refresh_mode: MCPGatewayRefreshMode = MCPGatewayRefreshMode.SWR
     ttl_seconds: int = 86400
     swr_seconds: int = 86400
@@ -18,21 +31,102 @@ class CachePolicySpec:
     key_fields: list[str] | None = None
     normalize: dict[str, Any] | None = None
     cache_empty_ttl_seconds: int = 3600
-    max_response_bytes: int = 2_000_000
+
+    # Storage tiering. A result at or below inline_threshold_bytes is kept in
+    # Postgres; a larger one goes to the file store. Past max_response_bytes
+    # nothing is persisted and the call is passed through.
+    inline_threshold_bytes: int = MCP_RESULT_INLINE_THRESHOLD_BYTES
+    max_response_bytes: int = MCP_RESULT_MAX_BYTES
+
+    # Digest projection for results too large to hand the LLM whole.
+    digest_max_bytes: int = MCP_RESULT_DIGEST_MAX_BYTES
+    # Dotted paths pulled out of the payload verbatim, e.g.
+    # "structuredContent.company.name". Pack authors name the few fields that
+    # identify a record so the model can reason without reading the body.
+    digest_paths: tuple[str, ...] = ()
+
     tool_globs: tuple[str, ...] = ()
+
+
+_POLICY_FIELDS = frozenset(
+    {
+        "refresh_mode",
+        "ttl_seconds",
+        "swr_seconds",
+        "schedule_cron",
+        "key_fields",
+        "normalize",
+        "cache_empty_ttl_seconds",
+        "inline_threshold_bytes",
+        "max_response_bytes",
+        "digest_max_bytes",
+        "digest_paths",
+        "tool_globs",
+    }
+)
+
+
+def policy_from_mapping(
+    raw: dict[str, Any], base: CachePolicySpec | None = None
+) -> CachePolicySpec:
+    """Overlay an admin-supplied dict onto a base policy.
+
+    Unknown keys are ignored so a catalog entry written against a newer schema
+    does not break an older deployment.
+    """
+    spec = base or CachePolicySpec()
+    updates: dict[str, Any] = {}
+    for key, value in raw.items():
+        if key not in _POLICY_FIELDS:
+            continue
+        if key == "refresh_mode":
+            updates[key] = MCPGatewayRefreshMode(value)
+        elif key in ("digest_paths", "tool_globs"):
+            updates[key] = tuple(value) if isinstance(value, (list, tuple)) else ()
+        else:
+            updates[key] = value
+    return replace(spec, **updates)
 
 
 @dataclass(frozen=True)
 class ProviderPack:
+    """Defaults for one upstream MCP product.
+
+    A pack is data, not behavior: it seeds sensible cache policies so an admin
+    installing a known provider does not start from nothing. Every field can be
+    overridden per catalog entry, and `generic_http` covers anything unknown.
+    """
+
     slug: str
     display_name: str
-    default_upstream_url: str
+    default_upstream_url: str = ""
+    description: str = ""
     transport: MCPTransport = MCPTransport.STREAMABLE_HTTP
     auth_adapter: MCPGatewayAuthAdapter = MCPGatewayAuthAdapter.BEARER
     default_policy: CachePolicySpec = field(default_factory=CachePolicySpec)
     tool_policies: tuple[CachePolicySpec, ...] = ()
+    # Providers that tunnel every call through one entry tool, e.g.
+    # call_tool(name=..., arguments=...). The gateway unwraps these so the
+    # cache key names the real tool.
     nested_entry_tools: tuple[str, ...] = ()
     batch_entry_tools: tuple[str, ...] = ()
+
+
+@dataclass
+class StoredResult:
+    """A persisted MCP result: metadata plus the body, if it was loaded."""
+
+    blob_id: str
+    content_hash: str
+    size_bytes: int
+    storage: MCPResultStorage
+    digest: dict[str, Any]
+    file_id: str | None = None
+    payload: dict[str, Any] | None = None
+
+    @property
+    def is_large(self) -> bool:
+        return self.storage == MCPResultStorage.OBJECT
 
 
 @dataclass
@@ -46,4 +140,5 @@ class ResolvedCall:
     result: dict[str, Any]
     upstream_billed: bool
     latency_ms: int
+    stored: StoredResult | None = None
     error_message: str | None = None

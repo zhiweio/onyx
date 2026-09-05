@@ -11,16 +11,16 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import MCPGatewayAuthAdapter, MCPGatewayCallOutcome, MCPTransport
-from onyx.db.mcp_gateway import (
-    create_provider__no_commit,
-    delete_cache_entries,
-    delete_provider,
-    get_provider_by_slug,
+from onyx.db.mcp_catalog import (
+    create_catalog_entry__no_commit,
+    delete_catalog_entry,
+    get_catalog_entry_by_slug,
 )
-from onyx.db.models import MCPGatewayCallLog, MCPGatewayCachePolicy, MCPGatewayProvider
+from onyx.db.mcp_gateway import delete_cache_entries
+from onyx.db.models import MCPCatalogEntry, MCPGatewayCallLog
 from onyx.mcp_gateway.engine import invoke_tool
-from onyx.mcp_gateway.protocol import _tools_for_slug, invalidate_tools_cache
-from onyx.mcp_gateway.upstream import list_upstream_tools
+from onyx.mcp_gateway.protocol import invalidate_tools_cache, tools_for_slug
+from onyx.mcp_gateway.upstream import UpstreamTarget, list_upstream_tools
 from shared_configs.contextvars import get_current_tenant_id
 
 MCP_SERVER_SCRIPT = (
@@ -72,47 +72,45 @@ def mock_mcp_url() -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def live_provider(
-    db_session: Session, tenant_context: None, mock_mcp_url: str
-) -> Generator[MCPGatewayProvider, None, None]:
+def live_entry(
+    db_session: Session,
+    tenant_context: None,  # noqa: ARG001
+    mock_mcp_url: str,
+) -> Generator[MCPCatalogEntry, None, None]:
     slug = f"live-{uuid4().hex[:10]}"
-    provider = create_provider__no_commit(
+    entry = create_catalog_entry__no_commit(
         db_session,
         slug=slug,
         display_name=slug,
-        pack_slug="generic_http",
+        description=None,
         upstream_url=mock_mcp_url,
         transport=MCPTransport.STREAMABLE_HTTP,
         auth_adapter=MCPGatewayAuthAdapter.BEARER,
         credentials={},
+        pack_slug="generic_http",
     )
     db_session.commit()
     try:
-        yield provider
+        yield entry
     finally:
-        invalidate_tools_cache(slug)
-        tenant_id = get_current_tenant_id()
-        delete_cache_entries(db_session, tenant_id=tenant_id, provider_slug=slug)
+        invalidate_tools_cache(get_current_tenant_id(), slug)
+        delete_cache_entries(db_session, catalog_slug=slug)
         db_session.execute(
-            delete(MCPGatewayCallLog).where(MCPGatewayCallLog.provider_slug == slug)
+            delete(MCPGatewayCallLog).where(MCPGatewayCallLog.catalog_slug == slug)
         )
-        db_session.execute(
-            delete(MCPGatewayCachePolicy).where(
-                MCPGatewayCachePolicy.provider_slug == slug
-            )
-        )
-        fresh = get_provider_by_slug(db_session, slug)
-        if fresh is not None:
-            delete_provider(db_session, fresh)
         db_session.commit()
+        fresh = get_catalog_entry_by_slug(db_session, slug)
+        if fresh is not None:
+            delete_catalog_entry(db_session, fresh)
 
 
 @pytest.mark.asyncio
 async def test_tools_list_matches_upstream(
-    live_provider: MCPGatewayProvider, tenant_context: None
+    live_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
-    upstream = await list_upstream_tools(live_provider)
-    gateway = await _tools_for_slug(live_provider.slug)
+    upstream = await list_upstream_tools(UpstreamTarget.from_entry(live_entry))
+    gateway = await tools_for_slug(get_current_tenant_id(), live_entry.slug)
     assert [item.name for item in gateway] == [item.name for item in upstream]
     assert [item.inputSchema for item in gateway] == [
         item.inputSchema for item in upstream
@@ -122,16 +120,17 @@ async def test_tools_list_matches_upstream(
 
 @pytest.mark.asyncio
 async def test_two_identical_calls_bill_upstream_once(
-    live_provider: MCPGatewayProvider, tenant_context: None
+    live_entry: MCPCatalogEntry,
+    tenant_context: None,  # noqa: ARG001
 ) -> None:
     first = await invoke_tool(
-        provider_slug=live_provider.slug,
+        catalog_slug=live_entry.slug,
         tool_name="hello",
         arguments={"name": "Ada"},
         user_email="a@example.com",
     )
     second = await invoke_tool(
-        provider_slug=live_provider.slug,
+        catalog_slug=live_entry.slug,
         tool_name="hello",
         arguments={"name": "Ada"},
         user_email="b@example.com",

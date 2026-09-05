@@ -420,6 +420,7 @@ class FileOrigin(str, Enum):
     INDEXING_CHECKPOINT = "indexing_checkpoint"
     INDEXING_STAGING = "indexing_staging"
     LOG_EXPORT = "log_export"
+    MCP_RESULT = "mcp_result"
     PLAINTEXT_CACHE = "plaintext_cache"
     OTHER = "other"
     QUERY_HISTORY_CSV = "query_history_csv"
@@ -726,6 +727,7 @@ class OnyxCeleryTask:
 
     REFRESH_MCP_GATEWAY_CACHE_ENTRY = "refresh_mcp_gateway_cache_entry"
     CHECK_MCP_GATEWAY_SCHEDULED_REFRESH = "check_mcp_gateway_scheduled_refresh"
+    CLEANUP_MCP_RESULT_BLOBS = "cleanup_mcp_result_blobs"
 
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"

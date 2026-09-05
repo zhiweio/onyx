@@ -16,9 +16,11 @@ import { useCreateModal } from "@opal/components";
 import {
   ActionStatus,
   ToolSnapshot,
+  McpServerScope,
   MCPServerStatus,
   MCPServer,
 } from "@/lib/tools/types";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import useServerTools from "@/hooks/useServerTools";
 import { can } from "@/lib/permissions/resource-actions";
 import { KeyedMutator } from "swr";
@@ -275,8 +277,8 @@ export default function MCPActionCard({
             aria-label={t("mcpCard.refreshToolsButton.ariaLabel")}
           />
         )}
-        {server.via_gateway && (
-          <Button href="/admin/mcp-gateway" prominence="internal">
+        {server.scope === McpServerScope.SYSTEM && (
+          <Button href={ADMIN_ROUTES.MCP_CATALOG.path} prominence="internal">
             {tGateway("header.gatewayLink")}
           </Button>
         )}
@@ -290,7 +292,7 @@ export default function MCPActionCard({
   }, [
     canManageStatus,
     server.last_refreshed_at,
-    server.via_gateway,
+    server.scope,
     serverId,
     mutate,
     onRefreshTools,

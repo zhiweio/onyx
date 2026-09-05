@@ -27,6 +27,7 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.key_value_store.factory import get_kv_store
 from onyx.key_value_store.interface import KvKeyNotFoundError
+from onyx.mcp_gateway.service import is_gateway_deployed
 from onyx.server.features.build.utils import (
     is_craft_available_for_deployment,
     is_craft_enabled_for_user,
@@ -103,6 +104,15 @@ def admin_patch_settings(
             raise OnyxError(
                 OnyxErrorCode.INVALID_INPUT,
                 f"File upload size limit cannot exceed {MAX_ALLOWED_UPLOAD_SIZE_MB} MB",
+            )
+
+        # The runtime toggle only means something when the operator deployed the
+        # gateway process. Reject rather than store a setting that cannot apply.
+        if merged.mcp_gateway_enabled and not is_gateway_deployed():
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "The MCP Gateway process is not deployed. "
+                "Set MCP_GATEWAY_ENABLED before turning the module on.",
             )
 
         # Search Mode is Business+, Chat Retention is Enterprise-only. Same error
@@ -203,6 +213,7 @@ def fetch_settings(
         opencode_debugging_enabled=ENABLE_OPENCODE_DEBUGGING,
         vector_db_enabled=not DISABLE_VECTOR_DB,
         hooks_enabled=not MULTI_TENANT,
+        mcp_gateway_available=is_gateway_deployed(),
         version=onyx_version,
         max_allowed_upload_size_mb=MAX_ALLOWED_UPLOAD_SIZE_MB,
         default_user_file_max_upload_size_mb=min(

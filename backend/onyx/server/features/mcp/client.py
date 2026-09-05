@@ -142,15 +142,11 @@ def _create_mcp_client_function_runner(
     )
 
     async def run_client_function() -> T:
-        from urllib.parse import urlparse
-
-        from onyx.configs.app_configs import MCP_GATEWAY_TRUSTED_HOSTS
-        from shared_configs.contextvars import get_current_tenant_id
-
+        # The gateway takes the tenant from the signed token in the
+        # Authorization header, so nothing tenant-related is added here. An
+        # earlier version sent X-Onyx-Tenant-Id, which let any holder of the
+        # shared secret name any tenant.
         request_headers = dict(auth_headers)
-        host = (urlparse(server_url).hostname or "").lower()
-        if host in {item.lower() for item in MCP_GATEWAY_TRUSTED_HOSTS}:
-            request_headers.setdefault("X-Onyx-Tenant-Id", get_current_tenant_id())
         async with client_func(
             server_url,
             headers=request_headers,
@@ -287,6 +283,28 @@ def _call_mcp_tool_raw(
         return await session.call_tool(tool_name, arguments)
 
     return call_tool
+
+
+def call_mcp_tool_raw(
+    server_url: str,
+    tool_name: str,
+    arguments: dict[str, Any],
+    connection_headers: dict[str, str] | None = None,
+    transport: MCPTransport = MCPTransport.STREAMABLE_HTTP,
+    auth: OAuthClientProvider | None = None,
+) -> CallToolResult:
+    """Call a tool and keep the structured result.
+
+    Preferred over `call_mcp_tool` where the caller needs the payload's shape,
+    for instance to summarize a large response instead of inlining it.
+    """
+    return _call_mcp_client_function_sync(
+        _call_mcp_tool_raw(tool_name, arguments),
+        server_url,
+        connection_headers,
+        transport,
+        auth,
+    )
 
 
 async def call_mcp_tool_raw_async(

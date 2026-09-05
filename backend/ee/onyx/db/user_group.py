@@ -43,6 +43,7 @@ from onyx.db.models import (
     DocumentSet__UserGroup,
     FederatedConnector__DocumentSet,
     LLMProvider__UserGroup,
+    MCPCatalogEntry__UserGroup,
     MCPServer__UserGroup,
     PermissionGrant,
     Persona,
@@ -134,6 +135,18 @@ def _cleanup_mcp_server__user_group_relationships__no_commit(
     """NOTE: does not commit the transaction."""
     db_session.query(MCPServer__UserGroup).filter(
         MCPServer__UserGroup.user_group_id == user_group_id
+    ).delete(synchronize_session=False)
+
+
+def _cleanup_mcp_catalog_entry__user_group_relationships__no_commit(
+    db_session: Session, user_group_id: int
+) -> None:
+    """Drop the group's grants on system MCP catalog entries.
+
+    NOTE: does not commit the transaction.
+    """
+    db_session.query(MCPCatalogEntry__UserGroup).filter(
+        MCPCatalogEntry__UserGroup.user_group_id == user_group_id
     ).delete(synchronize_session=False)
 
 
@@ -1051,6 +1064,9 @@ def prepare_user_group_for_deletion(db_session: Session, user_group_id: int) -> 
         db_session=db_session, user_group_id=user_group_id
     )
     _cleanup_mcp_server__user_group_relationships__no_commit(
+        db_session=db_session, user_group_id=user_group_id
+    )
+    _cleanup_mcp_catalog_entry__user_group_relationships__no_commit(
         db_session=db_session, user_group_id=user_group_id
     )
     _handle_owned_personas_for_group_deletion__no_commit(

@@ -1,211 +1,168 @@
-from datetime import datetime, timezone
+"""Gateway cache entries, call log, and result blobs.
+
+Cache rows live inside the tenant schema, so none of them carry a tenant
+column — the schema is the boundary. Result bodies are not stored here either:
+a cache entry points at an `mcp_result_blob` row, which is shared by content
+hash across every caller that got the same answer.
+"""
+
+import datetime
+from datetime import timezone
 from typing import Any
 
-from sqlalchemy import Integer, delete, desc, func, select, update
+from sqlalchemy import Integer, cast, delete, desc, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import (
-    MCPGatewayAuthAdapter,
-    MCPGatewayCallOutcome,
-    MCPGatewayRefreshMode,
-    MCPTransport,
-)
-from onyx.db.models import (
-    MCPGatewayCacheEntry,
-    MCPGatewayCachePolicy,
-    MCPGatewayCallLog,
-    MCPGatewayProvider,
-    MCPServer,
-)
+from onyx.db.enums import MCPGatewayCallOutcome, MCPResultStorage
+from onyx.db.models import MCPGatewayCacheEntry, MCPGatewayCallLog, MCPResultBlob
+
+# ---------------------------------------------------------------------------
+# Result blobs
+# ---------------------------------------------------------------------------
 
 
-def get_provider_by_slug(
-    db_session: Session, slug: str
-) -> MCPGatewayProvider | None:
-    return db_session.scalar(
-        select(MCPGatewayProvider).where(MCPGatewayProvider.slug == slug)
-    )
+def get_blob(db_session: Session, blob_id: str) -> MCPResultBlob | None:
+    return db_session.scalar(select(MCPResultBlob).where(MCPResultBlob.id == blob_id))
 
 
-def get_provider_by_id(db_session: Session, provider_id: int) -> MCPGatewayProvider:
-    provider = db_session.scalar(
-        select(MCPGatewayProvider).where(MCPGatewayProvider.id == provider_id)
-    )
-    if provider is None:
-        raise ValueError(f"MCP gateway provider {provider_id} does not exist")
-    return provider
-
-
-def list_providers(db_session: Session, enabled_only: bool = False) -> list[MCPGatewayProvider]:
-    stmt = select(MCPGatewayProvider).order_by(MCPGatewayProvider.slug)
-    if enabled_only:
-        stmt = stmt.where(MCPGatewayProvider.enabled.is_(True))
-    return list(db_session.scalars(stmt).all())
-
-
-def create_provider__no_commit(
+def upsert_blob__no_commit(
     db_session: Session,
     *,
-    slug: str,
-    display_name: str,
-    pack_slug: str,
-    upstream_url: str,
-    transport: MCPTransport,
-    auth_adapter: MCPGatewayAuthAdapter,
-    credentials: dict[str, Any],
-    mcp_server_id: int | None = None,
-    enabled: bool = True,
-) -> MCPGatewayProvider:
-    provider = MCPGatewayProvider(
-        slug=slug,
-        display_name=display_name,
-        pack_slug=pack_slug,
-        upstream_url=upstream_url,
-        transport=transport,
-        auth_adapter=auth_adapter,
-        credentials=credentials,
-        mcp_server_id=mcp_server_id,
-        enabled=enabled,
+    blob_id: str,
+    size_bytes: int,
+    storage: MCPResultStorage,
+    digest: dict[str, Any],
+    inline_payload: dict[str, Any] | None,
+    file_id: str | None,
+    provider_slug: str | None,
+    tool_name: str | None,
+) -> MCPResultBlob:
+    """Insert a blob, or bump the reference count if this body already exists.
+
+    The primary key is the content hash, so two callers fetching the same
+    answer converge on one row. `ON CONFLICT` rather than read-then-write keeps
+    that true under concurrency.
+    """
+    now = datetime.datetime.now(timezone.utc)
+    stmt = (
+        pg_insert(MCPResultBlob)
+        .values(
+            id=blob_id,
+            size_bytes=size_bytes,
+            storage=storage,
+            digest=digest,
+            inline_payload=inline_payload,
+            file_id=file_id,
+            provider_slug=provider_slug,
+            tool_name=tool_name,
+            ref_count=1,
+            created_at=now,
+            last_accessed_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=[MCPResultBlob.id],
+            set_={
+                "ref_count": MCPResultBlob.ref_count + 1,
+                "last_accessed_at": now,
+            },
+        )
+        .returning(MCPResultBlob)
     )
-    db_session.add(provider)
+    row = db_session.scalars(stmt).one()
     db_session.flush()
-    return provider
+    return row
 
 
-def update_provider__no_commit(
-    db_session: Session,
-    provider: MCPGatewayProvider,
-    *,
-    display_name: str | None = None,
-    upstream_url: str | None = None,
-    transport: MCPTransport | None = None,
-    auth_adapter: MCPGatewayAuthAdapter | None = None,
-    credentials: dict[str, Any] | None = None,
-    mcp_server_id: int | None = None,
-    enabled: bool | None = None,
-    tools_list_refreshed_at: datetime | None = None,
-) -> MCPGatewayProvider:
-    if display_name is not None:
-        provider.display_name = display_name
-    if upstream_url is not None:
-        provider.upstream_url = upstream_url
-    if transport is not None:
-        provider.transport = transport
-    if auth_adapter is not None:
-        provider.auth_adapter = auth_adapter
-    if credentials is not None:
-        provider.credentials = credentials
-    if mcp_server_id is not None:
-        provider.mcp_server_id = mcp_server_id
-    if enabled is not None:
-        provider.enabled = enabled
-    if tools_list_refreshed_at is not None:
-        provider.tools_list_refreshed_at = tools_list_refreshed_at
-    db_session.flush()
-    return provider
+def touch_blob__no_commit(db_session: Session, blob_id: str) -> None:
+    """Push back a blob's collection deadline without loading it."""
+    db_session.execute(
+        update(MCPResultBlob)
+        .where(MCPResultBlob.id == blob_id)
+        .values(last_accessed_at=datetime.datetime.now(timezone.utc))
+    )
 
 
-def delete_provider(db_session: Session, provider: MCPGatewayProvider) -> None:
-    db_session.delete(provider)
-    db_session.commit()
-
-
-def list_policies_for_provider(
-    db_session: Session, provider_slug: str
-) -> list[MCPGatewayCachePolicy]:
+def list_expired_blobs(
+    db_session: Session, *, older_than: datetime.datetime, limit: int = 500
+) -> list[MCPResultBlob]:
     return list(
         db_session.scalars(
-            select(MCPGatewayCachePolicy)
-            .where(MCPGatewayCachePolicy.provider_slug == provider_slug)
-            .order_by(MCPGatewayCachePolicy.tool_name)
+            select(MCPResultBlob)
+            .where(MCPResultBlob.last_accessed_at < older_than)
+            .order_by(MCPResultBlob.last_accessed_at)
+            .limit(limit)
         ).all()
     )
 
 
-def get_policy(
-    db_session: Session, provider_slug: str, tool_name: str
-) -> MCPGatewayCachePolicy | None:
-    return db_session.scalar(
-        select(MCPGatewayCachePolicy).where(
-            MCPGatewayCachePolicy.provider_slug == provider_slug,
-            MCPGatewayCachePolicy.tool_name == tool_name,
-        )
+def delete_blobs(db_session: Session, blob_ids: list[str]) -> int:
+    if not blob_ids:
+        return 0
+    result = db_session.execute(
+        delete(MCPResultBlob).where(MCPResultBlob.id.in_(blob_ids))
     )
-
-
-def upsert_policy__no_commit(
-    db_session: Session,
-    *,
-    provider_slug: str,
-    tool_name: str,
-    refresh_mode: MCPGatewayRefreshMode,
-    ttl_seconds: int,
-    swr_seconds: int,
-    schedule_cron: str | None,
-    key_fields: list[str] | None,
-    normalize: dict[str, Any] | None,
-    cache_empty_ttl_seconds: int,
-    max_response_bytes: int,
-) -> MCPGatewayCachePolicy:
-    existing = get_policy(db_session, provider_slug, tool_name)
-    if existing is None:
-        existing = MCPGatewayCachePolicy(
-            provider_slug=provider_slug,
-            tool_name=tool_name,
-        )
-        db_session.add(existing)
-    existing.refresh_mode = refresh_mode
-    existing.ttl_seconds = ttl_seconds
-    existing.swr_seconds = swr_seconds
-    existing.schedule_cron = schedule_cron
-    existing.key_fields = key_fields
-    existing.normalize = normalize
-    existing.cache_empty_ttl_seconds = cache_empty_ttl_seconds
-    existing.max_response_bytes = max_response_bytes
-    db_session.flush()
-    return existing
-
-
-def delete_policy(db_session: Session, policy: MCPGatewayCachePolicy) -> None:
-    db_session.delete(policy)
     db_session.commit()
+    return result.rowcount or 0  # ty: ignore[unresolved-attribute]
 
 
-def get_cache_entry(
-    db_session: Session, tenant_id: str, cache_key: str
-) -> MCPGatewayCacheEntry | None:
+def blob_storage_summary(db_session: Session) -> dict[str, Any]:
+    """Row count and total bytes per storage tier, for the admin ops view."""
+    rows = db_session.execute(
+        select(
+            MCPResultBlob.storage,
+            func.count(),
+            func.coalesce(func.sum(MCPResultBlob.size_bytes), 0),
+        ).group_by(MCPResultBlob.storage)
+    ).all()
+    by_tier: dict[str, dict[str, int]] = {}
+    total_bytes = 0
+    total_count = 0
+    for storage, count, size in rows:
+        key = storage.value if isinstance(storage, MCPResultStorage) else str(storage)
+        by_tier[key] = {"count": int(count), "bytes": int(size or 0)}
+        total_count += int(count)
+        total_bytes += int(size or 0)
+    return {
+        "total_count": total_count,
+        "total_bytes": total_bytes,
+        "by_storage": by_tier,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Cache entries
+# ---------------------------------------------------------------------------
+
+
+def get_cache_entry(db_session: Session, cache_key: str) -> MCPGatewayCacheEntry | None:
     return db_session.scalar(
-        select(MCPGatewayCacheEntry).where(
-            MCPGatewayCacheEntry.tenant_id == tenant_id,
-            MCPGatewayCacheEntry.cache_key == cache_key,
-        )
+        select(MCPGatewayCacheEntry).where(MCPGatewayCacheEntry.cache_key == cache_key)
     )
 
 
 def upsert_cache_entry__no_commit(
     db_session: Session,
     *,
-    tenant_id: str,
     cache_key: str,
-    provider_slug: str,
+    catalog_slug: str,
     tool_name: str,
     effective_tool_name: str,
     arguments: dict[str, Any],
-    result: dict[str, Any],
+    blob_id: str,
     is_empty: bool,
     last_refresh_status: str,
 ) -> MCPGatewayCacheEntry:
-    now = datetime.now(timezone.utc)
-    existing = get_cache_entry(db_session, tenant_id, cache_key)
+    now = datetime.datetime.now(timezone.utc)
+    existing = get_cache_entry(db_session, cache_key)
     if existing is None:
         existing = MCPGatewayCacheEntry(
-            tenant_id=tenant_id,
             cache_key=cache_key,
-            provider_slug=provider_slug,
+            catalog_slug=catalog_slug,
             tool_name=tool_name,
             effective_tool_name=effective_tool_name,
             arguments=arguments,
-            result=result,
+            blob_id=blob_id,
             is_empty=is_empty,
             first_fetched_at=now,
             last_fetched_at=now,
@@ -215,7 +172,7 @@ def upsert_cache_entry__no_commit(
         )
         db_session.add(existing)
     else:
-        existing.result = result
+        existing.blob_id = blob_id
         existing.is_empty = is_empty
         existing.last_fetched_at = now
         existing.last_accessed_at = now
@@ -230,25 +187,22 @@ def mark_cache_entry_hit__no_commit(
     db_session: Session, entry: MCPGatewayCacheEntry
 ) -> None:
     entry.hit_count = (entry.hit_count or 0) + 1
-    entry.last_accessed_at = datetime.now(timezone.utc)
+    entry.last_accessed_at = datetime.datetime.now(timezone.utc)
     db_session.flush()
 
 
 def delete_cache_entries(
     db_session: Session,
     *,
-    tenant_id: str,
     cache_key: str | None = None,
-    provider_slug: str | None = None,
+    catalog_slug: str | None = None,
     tool_name: str | None = None,
 ) -> int:
-    stmt = delete(MCPGatewayCacheEntry).where(
-        MCPGatewayCacheEntry.tenant_id == tenant_id
-    )
+    stmt = delete(MCPGatewayCacheEntry)
     if cache_key:
         stmt = stmt.where(MCPGatewayCacheEntry.cache_key == cache_key)
-    if provider_slug:
-        stmt = stmt.where(MCPGatewayCacheEntry.provider_slug == provider_slug)
+    if catalog_slug:
+        stmt = stmt.where(MCPGatewayCacheEntry.catalog_slug == catalog_slug)
     if tool_name:
         stmt = stmt.where(
             (MCPGatewayCacheEntry.effective_tool_name == tool_name)
@@ -256,42 +210,39 @@ def delete_cache_entries(
         )
     result = db_session.execute(stmt)
     db_session.commit()
-    return result.rowcount or 0
+    return result.rowcount or 0  # ty: ignore[unresolved-attribute]
 
 
 def list_cache_entries(
     db_session: Session,
     *,
-    tenant_id: str,
-    provider_slug: str | None = None,
+    catalog_slug: str | None = None,
     limit: int = 50,
 ) -> list[MCPGatewayCacheEntry]:
     stmt = (
         select(MCPGatewayCacheEntry)
-        .where(MCPGatewayCacheEntry.tenant_id == tenant_id)
         .order_by(desc(MCPGatewayCacheEntry.last_accessed_at))
         .limit(limit)
     )
-    if provider_slug:
-        stmt = stmt.where(MCPGatewayCacheEntry.provider_slug == provider_slug)
+    if catalog_slug:
+        stmt = stmt.where(MCPGatewayCacheEntry.catalog_slug == catalog_slug)
     return list(db_session.scalars(stmt).all())
 
 
 def list_entries_for_scheduled_refresh(
     db_session: Session,
     *,
-    tenant_id: str,
-    provider_slug: str,
+    catalog_slug: str,
     tool_names: list[str],
-    older_than: datetime,
+    older_than: datetime.datetime,
     limit: int = 200,
 ) -> list[MCPGatewayCacheEntry]:
+    """Most-used stale entries first, so a bounded refresh budget buys the most."""
     return list(
         db_session.scalars(
             select(MCPGatewayCacheEntry)
             .where(
-                MCPGatewayCacheEntry.tenant_id == tenant_id,
-                MCPGatewayCacheEntry.provider_slug == provider_slug,
+                MCPGatewayCacheEntry.catalog_slug == catalog_slug,
                 MCPGatewayCacheEntry.effective_tool_name.in_(tool_names),
                 MCPGatewayCacheEntry.last_fetched_at < older_than,
             )
@@ -301,36 +252,41 @@ def list_entries_for_scheduled_refresh(
     )
 
 
+# ---------------------------------------------------------------------------
+# Call log
+# ---------------------------------------------------------------------------
+
+
 def insert_call_log__no_commit(
     db_session: Session,
     *,
-    tenant_id: str,
-    provider_slug: str,
+    catalog_slug: str,
     tool_name: str,
     effective_tool_name: str,
     cache_key: str,
     outcome: MCPGatewayCallOutcome,
     upstream_billed: bool,
     latency_ms: int,
+    response_bytes: int,
     user_email: str | None,
     session_id: str | None,
     arguments: dict[str, Any],
-    result: dict[str, Any] | None,
+    result_blob_id: str | None,
     error_message: str | None,
 ) -> MCPGatewayCallLog:
     row = MCPGatewayCallLog(
-        tenant_id=tenant_id,
-        provider_slug=provider_slug,
+        catalog_slug=catalog_slug,
         tool_name=tool_name,
         effective_tool_name=effective_tool_name,
         cache_key=cache_key,
         outcome=outcome,
         upstream_billed=upstream_billed,
         latency_ms=latency_ms,
+        response_bytes=response_bytes,
         user_email=user_email,
         session_id=session_id,
         arguments=arguments,
-        result=result,
+        result_blob_id=result_blob_id,
         error_message=error_message,
     )
     db_session.add(row)
@@ -341,22 +297,23 @@ def insert_call_log__no_commit(
 def call_stats(
     db_session: Session,
     *,
-    tenant_id: str,
-    provider_slug: str | None = None,
+    catalog_slug: str | None = None,
 ) -> dict[str, Any]:
     stmt = select(
         MCPGatewayCallLog.outcome,
         func.count(),
-        func.sum(func.cast(MCPGatewayCallLog.upstream_billed, Integer)),
-    ).where(MCPGatewayCallLog.tenant_id == tenant_id)
-    if provider_slug:
-        stmt = stmt.where(MCPGatewayCallLog.provider_slug == provider_slug)
+        func.sum(cast(MCPGatewayCallLog.upstream_billed, Integer)),
+        func.coalesce(func.sum(MCPGatewayCallLog.response_bytes), 0),
+    )
+    if catalog_slug:
+        stmt = stmt.where(MCPGatewayCallLog.catalog_slug == catalog_slug)
     stmt = stmt.group_by(MCPGatewayCallLog.outcome)
-    rows = db_session.execute(stmt).all()
+
     by_outcome: dict[str, int] = {}
     billed = 0
     total = 0
-    for outcome, count, billed_sum in rows:
+    total_bytes = 0
+    for outcome, count, billed_sum, bytes_sum in db_session.execute(stmt).all():
         key = (
             outcome.value
             if isinstance(outcome, MCPGatewayCallOutcome)
@@ -365,6 +322,8 @@ def call_stats(
         by_outcome[key] = int(count)
         total += int(count)
         billed += int(billed_sum or 0)
+        total_bytes += int(bytes_sum or 0)
+
     hits = by_outcome.get("hit", 0) + by_outcome.get("swr", 0)
     return {
         "total_calls": total,
@@ -372,31 +331,6 @@ def call_stats(
         "cache_hits": hits,
         "hit_rate": (hits / total) if total else 0.0,
         "saved_calls": max(total - billed, 0),
+        "total_response_bytes": total_bytes,
         "by_outcome": by_outcome,
     }
-
-
-def set_mcp_server_gateway_fields__no_commit(
-    db_session: Session,
-    server: MCPServer,
-    *,
-    via_gateway: bool,
-    gateway_provider_slug: str | None,
-    server_url: str | None = None,
-) -> None:
-    server.via_gateway = via_gateway
-    server.gateway_provider_slug = gateway_provider_slug
-    if server_url is not None:
-        server.server_url = server_url
-    db_session.flush()
-
-
-def increment_hit_count(db_session: Session, entry_id: int) -> None:
-    db_session.execute(
-        update(MCPGatewayCacheEntry)
-        .where(MCPGatewayCacheEntry.id == entry_id)
-        .values(
-            hit_count=MCPGatewayCacheEntry.hit_count + 1,
-            last_accessed_at=datetime.now(timezone.utc),
-        )
-    )

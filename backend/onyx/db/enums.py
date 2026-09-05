@@ -207,6 +207,31 @@ class MCPServerStatus(str, PyEnum):
     DISCONNECTED = "DISCONNECTED"  # Server disconnected, but not deleted
 
 
+class MCPServerScope(str, PyEnum):
+    """Who owns an MCP server and how its calls are routed.
+
+    SYSTEM servers are installed by an admin from the MCP catalog, route
+    through the gateway (shared cache + shared credentials), and are granted to
+    user groups. USER servers are configured by end users, connect directly to
+    their upstream, and never touch the gateway.
+    """
+
+    SYSTEM = "SYSTEM"
+    USER = "USER"
+
+
+class MCPCatalogOrigin(str, PyEnum):
+    """Where a catalog entry came from.
+
+    LOCAL entries are created by an admin in this deployment. PUSHED entries
+    are provisioned from outside (a control plane in a multi-tenant setup) and
+    may only be enabled or disabled locally, never edited.
+    """
+
+    LOCAL = "LOCAL"
+    PUSHED = "PUSHED"
+
+
 class MCPGatewayRefreshMode(str, PyEnum):
     TTL = "ttl"
     SWR = "swr"
@@ -230,6 +255,17 @@ class MCPGatewayCallOutcome(str, PyEnum):
     REFRESH = "refresh"
     BYPASS = "bypass"
     ERROR = "error"
+
+
+class MCPResultStorage(str, PyEnum):
+    """Where the body of a stored MCP result lives.
+
+    Small results are inlined in Postgres. Large ones go to the file store so
+    neither Redis nor a JSONB column has to carry multi-MB payloads.
+    """
+
+    INLINE = "inline"
+    OBJECT = "object"
 
 
 # Consistent with Celery task statuses
@@ -697,6 +733,11 @@ class Permission(str, PyEnum):
     # Toggle tokens
     READ_AGENT_ANALYTICS = "read:agent_analytics"
     MANAGE_ACTIONS = "manage:actions"
+    # Install system-wide MCP servers and grant them to groups. Deliberately
+    # separate from MANAGE_ACTIONS: a system MCP carries shared credentials
+    # that every granted user spends, so it is a higher bar than adding a
+    # personal MCP server.
+    MANAGE_SYSTEM_MCP = "manage:system_mcp"
     MANAGE_SKILLS = "manage:skills"
     READ_QUERY_HISTORY = "read:query_history"
     MANAGE_USER_GROUPS = "manage:user_groups"

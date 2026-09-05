@@ -27,6 +27,8 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       customAnalytics: t("adminNav.items.customAnalytics.label"),
       agents: t("adminNav.items.agents.label"),
       mcpActions: t("adminNav.items.mcpActions.label"),
+      mcpCatalog: t("adminNav.items.mcpCatalog.label"),
+      mcpGateway: t("adminNav.items.mcpGateway.label"),
       openapiActions: t("adminNav.items.openapiActions.label"),
       existingConnectors: t("adminNav.items.existingConnectors.label"),
       addConnector: t("adminNav.items.addConnector.label"),

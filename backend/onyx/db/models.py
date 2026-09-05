@@ -72,12 +72,12 @@ from onyx.db.enums import (
     ApprovalDecision,
     ArtifactType,
     BuildSessionStatus,
-    CraftProjectFileSource,
     CapabilityCheckTrigger,
     CapabilityReportRunStatus,
-    ChatSessionSharePermission,
     ChatSessionSharedStatus,
+    ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
+    CraftProjectFileSource,
     DefaultAppMode,
     EmbeddingPrecision,
     EndpointPolicy,
@@ -95,10 +95,12 @@ from onyx.db.enums import (
     LLMModelFlowType,
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
+    MCPCatalogOrigin,
     MCPGatewayAuthAdapter,
     MCPGatewayCallOutcome,
-    MCPGatewayRefreshMode,
     MCPOAuthProviderMode,
+    MCPResultStorage,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
     NotificationSeverity,
@@ -112,12 +114,12 @@ from onyx.db.enums import (
     ProcessingMode,
     ReceiptStatus,
     SandboxStatus,
+    ScenarioSharePermission,
     ScheduledTaskRunStatus,
     ScheduledTaskStatus,
     ScheduledTaskTriggerSource,
     SessionOrigin,
     SharingScope,
-    ScenarioSharePermission,
     SkillSharePermission,
     SSOProviderType,
     SwitchoverType,
@@ -5486,6 +5488,12 @@ class UserGroup(Base):
     accessible_mcp_servers: Mapped[list["MCPServer"]] = relationship(
         "MCPServer", secondary="mcp_server__user_group", back_populates="user_groups"
     )
+    # System MCP catalog entries granted to this user group
+    granted_mcp_catalog_entries: Mapped[list["MCPCatalogEntry"]] = relationship(
+        "MCPCatalogEntry",
+        secondary="mcp_catalog_entry__user_group",
+        back_populates="user_groups",
+    )
     permission_grants: Mapped[list["PermissionGrant"]] = relationship(
         "PermissionGrant", back_populates="group", cascade="all, delete-orphan"
     )
@@ -6116,12 +6124,29 @@ class MCPServer(Base):
     last_refreshed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    via_gateway: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("false")
+
+    # SYSTEM servers are installed from the MCP catalog and route through the
+    # gateway; USER servers are configured by end users and connect directly.
+    # The scope decides routing, so there is no separate via_gateway flag.
+    scope: Mapped[MCPServerScope] = mapped_column(
+        Enum(MCPServerScope, native_enum=False),
+        nullable=False,
+        default=MCPServerScope.USER,
+        server_default=MCPServerScope.USER.value,
     )
-    gateway_provider_slug: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Set only for SYSTEM servers: the catalog entry that owns this row.
+    catalog_entry_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("mcp_catalog_entry.id", ondelete="CASCADE"),
+        nullable=True,
+    )
 
     # Relationships
+    catalog_entry: Mapped["MCPCatalogEntry | None"] = relationship(
+        "MCPCatalogEntry",
+        foreign_keys=[catalog_entry_id],
+        back_populates="mcp_server",
+    )
     admin_connection_config: Mapped["MCPConnectionConfig | None"] = relationship(
         "MCPConnectionConfig",
         foreign_keys=[admin_connection_config_id],
@@ -6146,6 +6171,8 @@ class MCPServer(Base):
         secondary="mcp_server__user_group",
         back_populates="accessible_mcp_servers",
     )
+
+    __table_args__ = (Index("ix_mcp_server_scope", "scope"),)
 
 
 class MCPServer__User(Base):
@@ -6223,15 +6250,27 @@ class MCPConnectionConfig(Base):
     )
 
 
-class MCPGatewayProvider(Base):
-    """Upstream commercial MCP routed through the gateway."""
+class MCPCatalogEntry(Base):
+    """A system-wide MCP server installed by an admin.
 
-    __tablename__ = "mcp_gateway_provider"
+    The catalog is the admin-facing half of system MCP: it holds the upstream
+    address, the shared credentials every granted user spends, and the cache
+    policy. Each entry projects into exactly one `MCPServer` row with
+    scope=SYSTEM, which is what the chat tool loop actually calls.
+
+    Access follows the standard shareable-resource shape: `is_public` opens it
+    to the whole organization, otherwise the linked user groups decide. There
+    is deliberately no per-user grant — a system MCP is granted to a group, and
+    membership does the rest.
+    """
+
+    __tablename__ = "mcp_catalog_entry"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     slug: Mapped[str] = mapped_column(String(128), nullable=False)
     display_name: Mapped[str] = mapped_column(String(256), nullable=False)
-    pack_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     upstream_url: Mapped[str] = mapped_column(Text, nullable=False)
     transport: Mapped[MCPTransport] = mapped_column(
         Enum(MCPTransport, native_enum=False),
@@ -6243,15 +6282,31 @@ class MCPGatewayProvider(Base):
         nullable=False,
         server_default=MCPGatewayAuthAdapter.BEARER.value,
     )
+    # Shared upstream credentials. Never leaves the backend: users reach this
+    # server through the gateway, which attaches these itself.
     credentials: Mapped[SensitiveValue[dict[str, Any]] | None] = mapped_column(
         EncryptedJson(), nullable=False, default=dict
     )
-    mcp_server_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("mcp_server.id", ondelete="SET NULL"), nullable=True
+
+    # Provider pack supplying cache defaults, plus per-entry overrides keyed by
+    # tool name or glob ("*" for the entry default).
+    pack_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    policy_overrides: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
     )
+
     enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    origin: Mapped[MCPCatalogOrigin] = mapped_column(
+        Enum(MCPCatalogOrigin, native_enum=False),
+        nullable=False,
+        server_default=MCPCatalogOrigin.LOCAL.value,
+    )
+
     tools_list_refreshed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -6263,42 +6318,52 @@ class MCPGatewayProvider(Base):
     )
 
     mcp_server: Mapped["MCPServer | None"] = relationship(
-        "MCPServer", foreign_keys=[mcp_server_id]
+        "MCPServer",
+        foreign_keys="MCPServer.catalog_entry_id",
+        back_populates="catalog_entry",
+        uselist=False,
+    )
+    user_groups: Mapped[list["UserGroup"]] = relationship(
+        "UserGroup",
+        secondary="mcp_catalog_entry__user_group",
+        back_populates="granted_mcp_catalog_entries",
     )
 
-    __table_args__ = (UniqueConstraint("slug", name="uq_mcp_gateway_provider_slug"),)
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_mcp_catalog_entry_slug"),
+        Index("ix_mcp_catalog_entry_enabled", "enabled"),
+    )
 
 
-class MCPGatewayCachePolicy(Base):
-    """Per-provider / per-tool cache refresh policy. tool_name='*' is default."""
+class MCPCatalogEntry__UserGroup(Base):
+    __tablename__ = "mcp_catalog_entry__user_group"
+    catalog_entry_id: Mapped[int] = mapped_column(
+        ForeignKey("mcp_catalog_entry.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"), primary_key=True
+    )
 
-    __tablename__ = "mcp_gateway_cache_policy"
+
+class MCPUserEnablement(Base):
+    """A user's choice to turn a system MCP server on for themselves.
+
+    Access and enablement are separate concerns: a group grant decides whether
+    a user *may* use a server, a row here decides whether they *want* to. No
+    row means off, so a new grant never silently adds tools to someone's chat.
+    """
+
+    __tablename__ = "mcp_user_enablement"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
-    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
-    refresh_mode: Mapped[MCPGatewayRefreshMode] = mapped_column(
-        Enum(MCPGatewayRefreshMode, native_enum=False),
-        nullable=False,
-        server_default=MCPGatewayRefreshMode.SWR.value,
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
-    ttl_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)
-    swr_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)
-    schedule_cron: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    key_fields: Mapped[list[str] | None] = mapped_column(
-        postgresql.JSONB(), nullable=True
+    mcp_server_id: Mapped[int] = mapped_column(
+        ForeignKey("mcp_server.id", ondelete="CASCADE"), nullable=False
     )
-    normalize: Mapped[dict[str, Any] | None] = mapped_column(
-        postgresql.JSONB(), nullable=True
-    )
-    cache_empty_ttl_seconds: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=3600
-    )
-    max_response_bytes: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=2_000_000
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -6306,29 +6371,73 @@ class MCPGatewayCachePolicy(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "provider_slug",
-            "tool_name",
-            name="uq_mcp_gateway_cache_policy_provider_tool",
+            "user_id", "mcp_server_id", name="uq_mcp_user_enablement_user_server"
         ),
-        Index("ix_mcp_gateway_cache_policy_provider", "provider_slug"),
     )
 
 
+class MCPResultBlob(Base):
+    """The body of one MCP tool result, stored once and shared by content hash.
+
+    The primary key is the sha256 of the canonical payload, so the same
+    multi-megabyte answer fetched by ten users costs one copy. Small payloads
+    stay inline in Postgres; large ones move to the file store and only the
+    digest travels with the conversation.
+    """
+
+    __tablename__ = "mcp_result_blob"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    storage: Mapped[MCPResultStorage] = mapped_column(
+        Enum(MCPResultStorage, native_enum=False), nullable=False
+    )
+    # Exactly one of these is set, per `storage`.
+    inline_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Deterministic summary handed to the LLM in place of a large body.
+    digest: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB(), nullable=False)
+
+    provider_slug: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    # Bumped on every reuse; the cleanup task deletes by last_accessed_at, so a
+    # blob a long-running conversation keeps touching is never collected.
+    ref_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_accessed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("ix_mcp_result_blob_accessed", "last_accessed_at"),)
+
+
 class MCPGatewayCacheEntry(Base):
-    """Durable cache of one canonical MCP tool call."""
+    """Durable cache of one canonical MCP tool call.
+
+    Rows live inside the tenant schema, so there is no tenant column — the
+    schema is the boundary. The body is not stored here; `blob_id` points at
+    the shared `mcp_result_blob` row.
+    """
 
     __tablename__ = "mcp_gateway_cache_entry"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(256), nullable=False)
     cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
     effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
     arguments: Mapped[dict[str, Any]] = mapped_column(
         postgresql.JSONB(), nullable=False
     )
-    result: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB(), nullable=False)
+    blob_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("mcp_result_blob.id", ondelete="CASCADE"), nullable=False
+    )
     is_empty: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
@@ -6344,13 +6453,13 @@ class MCPGatewayCacheEntry(Base):
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_refresh_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    blob: Mapped["MCPResultBlob"] = relationship("MCPResultBlob")
+
     __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "cache_key", name="uq_mcp_gateway_cache_entry_tenant_key"
-        ),
+        UniqueConstraint("cache_key", name="uq_mcp_gateway_cache_entry_key"),
         Index(
-            "ix_mcp_gateway_cache_entry_provider_tool",
-            "provider_slug",
+            "ix_mcp_gateway_cache_entry_catalog_tool",
+            "catalog_slug",
             "effective_tool_name",
         ),
         Index("ix_mcp_gateway_cache_entry_accessed", "last_accessed_at"),
@@ -6358,13 +6467,16 @@ class MCPGatewayCacheEntry(Base):
 
 
 class MCPGatewayCallLog(Base):
-    """Full audit of each gateway tool call."""
+    """Audit of each gateway tool call.
+
+    Holds a pointer to the result rather than the result itself, so a table
+    that grows with every call does not also grow with payload size.
+    """
 
     __tablename__ = "mcp_gateway_call_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(256), nullable=False)
-    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
     effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
     cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -6375,13 +6487,17 @@ class MCPGatewayCallLog(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    response_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
     user_email: Mapped[str | None] = mapped_column(String, nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     arguments: Mapped[dict[str, Any]] = mapped_column(
         postgresql.JSONB(), nullable=False
     )
-    result: Mapped[dict[str, Any] | None] = mapped_column(
-        postgresql.JSONB(), nullable=True
+    # Nullable: an errored or pass-through call may have no stored body.
+    result_blob_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("mcp_result_blob.id", ondelete="SET NULL"), nullable=True
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -6391,8 +6507,8 @@ class MCPGatewayCallLog(Base):
     __table_args__ = (
         Index("ix_mcp_gateway_call_log_created", "created_at"),
         Index(
-            "ix_mcp_gateway_call_log_provider_outcome",
-            "provider_slug",
+            "ix_mcp_gateway_call_log_catalog_outcome",
+            "catalog_slug",
             "outcome",
         ),
     )
