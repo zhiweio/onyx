@@ -10,9 +10,9 @@ Produce a cited China tax policy trend note.
 ## Workflow
 
 1. Clarify tax type (VAT, CIT, IIT, customs) and region / industry if given.
-2. Call `tax_live_query` with intent `policy` against `sta_policy` and `tax_reference`.
-3. Call `tax_live_query` with intent `news` against `tax_intel`.
-4. If patents or R&D incentives matter, query `patsnap_mcp` when configured.
+2. If a policy, news, or enterprise MCP server is configured, query it for the tax type and period.
+3. If patents or R&D incentives matter, query Patsnap MCP when configured.
+4. If no relevant MCP server is configured, say so and do not invent notices.
 5. Write:
    - What changed
    - Who is affected
@@ -22,6 +22,6 @@ Produce a cited China tax policy trend note.
 
 ## Rules
 
-- Quote document numbers and issuing bodies from the fetched records.
+- Quote document numbers and issuing bodies from fetched records.
 - Separate official policy from news commentary.
 - Do not treat a news snippet as an enacted rule.

@@ -1947,7 +1947,10 @@ def validate_persona_tools(tools: list[Tool], db_session: Session) -> None:
 
     for tool in tools:
         if tool.in_code_tool_id is not None:
-            tool_cls = get_built_in_tool_by_id(tool.in_code_tool_id)
+            try:
+                tool_cls = get_built_in_tool_by_id(tool.in_code_tool_id)
+            except KeyError:
+                continue
             if not tool_cls.is_available(db_session):
                 raise ValueError(f"Tool {tool.in_code_tool_id} is not available")
 

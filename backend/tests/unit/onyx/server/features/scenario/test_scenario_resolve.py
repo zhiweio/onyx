@@ -1,10 +1,12 @@
 from types import SimpleNamespace
-from uuid import uuid4
+from typing import cast
+from uuid import UUID, uuid4
 
+from onyx.db.models import Scenario
 from onyx.db.scenario import resolve_scenario_skill_ids
 
 
-def _scenario(rules: dict, skill_ids: list) -> SimpleNamespace:
+def _scenario(rules: dict[str, object], skill_ids: list[UUID]) -> SimpleNamespace:
     links = [
         SimpleNamespace(skill_id=skill_id, sort_order=index)
         for index, skill_id in enumerate(skill_ids)
@@ -16,7 +18,7 @@ def test_resolve_always_and_bound_skills() -> None:
     always = uuid4()
     bound = uuid4()
     scenario = _scenario({"always_skill_ids": [str(always)]}, [bound])
-    assert resolve_scenario_skill_ids(scenario) == [always, bound]
+    assert resolve_scenario_skill_ids(cast(Scenario, scenario)) == [always, bound]
 
 
 def test_resolve_query_contains_any() -> None:
@@ -33,8 +35,10 @@ def test_resolve_query_contains_any() -> None:
         },
         [],
     )
-    assert resolve_scenario_skill_ids(scenario, "查找专利布局") == [extra]
-    assert resolve_scenario_skill_ids(scenario, "普通问询") == []
+    assert resolve_scenario_skill_ids(cast(Scenario, scenario), "查找专利布局") == [
+        extra
+    ]
+    assert resolve_scenario_skill_ids(cast(Scenario, scenario), "普通问询") == []
 
 
 def test_resolve_intent_matcher() -> None:
@@ -47,4 +51,6 @@ def test_resolve_intent_matcher() -> None:
         },
         [],
     )
-    assert resolve_scenario_skill_ids(scenario, "enforcement review") == [extra]
+    assert resolve_scenario_skill_ids(
+        cast(Scenario, scenario), "enforcement review"
+    ) == [extra]
