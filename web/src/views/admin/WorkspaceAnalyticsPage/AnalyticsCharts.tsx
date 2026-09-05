@@ -103,8 +103,8 @@ export function TeamUsageChart({ timeRange }: TimeRangeProps) {
 
   return (
     <AnalyticsChart
-      title="Team usage"
-      description="Assistant messages by the chat owner's user group."
+      title={t("teamUsageChart.title")}
+      description={t("teamUsageChart.description")}
       timeRange={timeRange}
       state={resolveChartState({
         isLoading,

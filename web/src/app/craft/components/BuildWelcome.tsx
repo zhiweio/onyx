@@ -16,7 +16,6 @@ import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
 import CraftLlmLockedState from "@/app/craft/onboarding/components/CraftLlmLockedState";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
 import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
-import { useTranslations } from "next-intl";
 
 interface BuildWelcomeProps {
   onSubmit: (

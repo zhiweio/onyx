@@ -1117,6 +1117,10 @@
           }
         },
         "title": "使用情况"
+      },
+      "teamUsageChart": {
+        "description": "按会话所属用户组统计助手消息。",
+        "title": "团队用量"
       }
     },
     "billing": {
@@ -5614,7 +5618,8 @@
     },
     "mcpActions": {
       "header": {
-        "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。"
+        "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。",
+        "gatewayLink": "MCP Gateway"
       }
     },
     "modals": {
@@ -8073,6 +8078,52 @@
       },
       "unexpectedError": {
         "message": "发生意外错误。"
+      }
+    },
+    "mcpGateway": {
+      "header": {
+        "title": "MCP Gateway",
+        "description": "代理计费商业 MCP，跨用户共享缓存，并为每个 tool 设置刷新策略。"
+      },
+      "packs": {
+        "title": "Provider packs"
+      },
+      "providers": {
+        "title": "Providers",
+        "empty": "还没有 gateway provider。",
+        "create": "添加 provider",
+        "slug": "Slug",
+        "pack": "Pack",
+        "upstreamUrl": "上游 URL",
+        "apiKey": "API key",
+        "enabled": "启用"
+      },
+      "stats": {
+        "title": "用量",
+        "total": "总调用",
+        "hits": "缓存命中",
+        "billed": "上游计费",
+        "saved": "节省次数",
+        "hitRate": "命中率"
+      },
+      "policies": {
+        "title": "缓存策略",
+        "tool": "Tool",
+        "mode": "模式",
+        "ttl": "TTL (秒)",
+        "override": "覆盖"
+      },
+      "cache": {
+        "title": "缓存调用",
+        "invalidate": "失效",
+        "refresh": "刷新",
+        "empty": "没有缓存条目。"
+      },
+      "toasts": {
+        "created": "已创建 provider",
+        "createFailed": "无法创建 provider",
+        "invalidated": "缓存已失效",
+        "refreshed": "已排队刷新"
       }
     }
   },

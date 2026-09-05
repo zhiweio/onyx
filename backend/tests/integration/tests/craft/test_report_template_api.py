@@ -133,7 +133,7 @@ def test_basic_user_cannot_edit_workspace_template(
         for row in listed.json()["templates"]
         if row["slug"] == "compliance_risk"
     )
-    basic = UserManager.create(name="report-template-basic")
+    basic = UserManager.create(name=f"report-template-basic-{uuid4().hex[:8]}")
     denied = client.patch(
         _url(workspace["id"]),
         json={"description": "should fail"},

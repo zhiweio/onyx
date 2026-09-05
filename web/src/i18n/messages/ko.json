@@ -1117,6 +1117,10 @@
           }
         },
         "title": "사용량"
+      },
+      "teamUsageChart": {
+        "description": "Assistant messages by the chat owner's user group.",
+        "title": "Team usage"
       }
     },
     "billing": {
@@ -5614,7 +5618,8 @@
     },
     "mcpActions": {
       "header": {
-        "description": "MCP(Model Context Protocol) 서버를 연결해 에이전트용 사용자 지정 작업과 도구를 추가하세요."
+        "description": "MCP(Model Context Protocol) 서버를 연결해 에이전트용 사용자 지정 작업과 도구를 추가하세요.",
+        "gatewayLink": "MCP Gateway"
       }
     },
     "modals": {
@@ -8073,6 +8078,52 @@
       },
       "unexpectedError": {
         "message": "예기치 않은 오류가 발생했습니다."
+      }
+    },
+    "mcpGateway": {
+      "header": {
+        "title": "MCP Gateway",
+        "description": "Proxy paid commercial MCP servers, share cache across users, and set a refresh policy per tool."
+      },
+      "packs": {
+        "title": "Provider packs"
+      },
+      "providers": {
+        "title": "Providers",
+        "empty": "No gateway providers yet.",
+        "create": "Add provider",
+        "slug": "Slug",
+        "pack": "Pack",
+        "upstreamUrl": "Upstream URL",
+        "apiKey": "API key",
+        "enabled": "Enabled"
+      },
+      "stats": {
+        "title": "Usage",
+        "total": "Total calls",
+        "hits": "Cache hits",
+        "billed": "Upstream billed",
+        "saved": "Calls saved",
+        "hitRate": "Hit rate"
+      },
+      "policies": {
+        "title": "Cache policies",
+        "tool": "Tool",
+        "mode": "Mode",
+        "ttl": "TTL (s)",
+        "override": "Override"
+      },
+      "cache": {
+        "title": "Cached calls",
+        "invalidate": "Invalidate",
+        "refresh": "Refresh",
+        "empty": "No cache entries."
+      },
+      "toasts": {
+        "created": "Provider created",
+        "createFailed": "Could not create provider",
+        "invalidated": "Cache invalidated",
+        "refreshed": "Refresh queued"
       }
     }
   },

@@ -23,7 +23,7 @@ export interface ReportTemplateCardProps {
 }
 
 function stopAndCall(
-  event: MouseEvent<HTMLButtonElement>,
+  event: MouseEvent<HTMLElement>,
   handler: ((template: ReportTemplate) => void) | undefined,
   template: ReportTemplate
 ) {
