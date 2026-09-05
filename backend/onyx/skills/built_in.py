@@ -182,6 +182,10 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="craft-documentation"),
         SeededBuiltInProvider(skill_id="tax-compliance"),
         SeededBuiltInProvider(skill_id="tax-policy-trend"),
+        SeededBuiltInProvider(skill_id="biomed-literature"),
+        SeededBuiltInProvider(skill_id="biomed-patent-fto"),
+        SeededBuiltInProvider(skill_id="biomed-clinical-intel"),
+        SeededBuiltInProvider(skill_id="biomed-cmc-quality"),
         SeededBuiltInProvider(
             skill_id="browser",
             is_available=lambda _: ENABLE_BROWSER,
