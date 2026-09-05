@@ -6,6 +6,7 @@ import { useTimeRange } from "@/lib/usage/hooks";
 import {
   FeedbackChart,
   SlackChannelChart,
+  TeamUsageChart,
   UsageChart,
 } from "@/views/admin/WorkspaceAnalyticsPage/AnalyticsCharts";
 import { PersonaMessagesChart } from "@/views/admin/WorkspaceAnalyticsPage/PersonaMessagesChart";
@@ -42,6 +43,7 @@ export default function WorkspaceAnalyticsPage() {
       />
       <SettingsLayouts.Body>
         <UsageChart timeRange={timeRange} />
+        <TeamUsageChart timeRange={timeRange} />
         <FeedbackChart timeRange={timeRange} />
         <SlackChannelChart timeRange={timeRange} />
         <PersonaMessagesChart timeRange={timeRange} />

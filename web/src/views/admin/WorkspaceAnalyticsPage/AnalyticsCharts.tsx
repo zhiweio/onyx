@@ -1,5 +1,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import {
+  useGroupAnalytics,
   useOnyxBotAnalytics,
   useQueryAnalytics,
   useUserAnalytics,
@@ -85,6 +86,41 @@ export function FeedbackChart({ timeRange }: TimeRangeProps) {
           ),
         ],
       })}
+    />
+  );
+}
+
+export function TeamUsageChart({ timeRange }: TimeRangeProps) {
+  const t = useTranslations("admin.analytics");
+  const locale = useLocale();
+  const { data, isLoading, error } = useGroupAnalytics(timeRange);
+
+  useLoggedChartError("Team", error);
+
+  const groupNames = Array.from(
+    new Set((data ?? []).map((row) => row.group_name))
+  ).slice(0, 8);
+
+  return (
+    <AnalyticsChart
+      title="Team usage"
+      description="Assistant messages by the chat owner's user group."
+      timeRange={timeRange}
+      state={resolveChartState({
+        isLoading,
+        error,
+        errorMessage: t("usageChart.error"),
+        emptyMessage: t("usageChart.empty"),
+        series: groupNames.map((name) =>
+          chartSeries(
+            name,
+            (data ?? []).filter((row) => row.group_name === name),
+            (row) => row.total_queries
+          )
+        ),
+      })}
+      allowDecimals={false}
+      yAxisFormatter={(value) => formatTokenCount(value, locale)}
     />
   );
 }

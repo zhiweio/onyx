@@ -13,6 +13,7 @@ import {
   PersonaMessageAnalytics,
   PersonaUniqueUserAnalytics,
   QueryAnalytics,
+  GroupAnalytics,
   UserAnalytics,
 } from "@/lib/usage/interfaces";
 import {
@@ -58,6 +59,19 @@ export function useUserAnalytics(timeRange: DateRangePickerValue) {
   return {
     ...swrResponse,
     refreshUserAnalytics: () => mutate(url),
+  };
+}
+
+export function useGroupAnalytics(timeRange: DateRangePickerValue) {
+  const url = buildApiPath(
+    "/api/analytics/admin/group",
+    analyticsRange(timeRange)
+  );
+  const swrResponse = useSWR<GroupAnalytics[]>(url, errorHandlingFetcher);
+
+  return {
+    ...swrResponse,
+    refreshGroupAnalytics: () => mutate(url),
   };
 }
 

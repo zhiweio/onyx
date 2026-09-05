@@ -10,6 +10,13 @@ export interface UserAnalytics {
   date: string;
 }
 
+export interface GroupAnalytics {
+  group_id: number;
+  group_name: string;
+  total_queries: number;
+  date: string;
+}
+
 export interface OnyxBotAnalytics {
   total_queries: number;
   auto_resolved: number;

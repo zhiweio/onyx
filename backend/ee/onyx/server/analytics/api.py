@@ -10,6 +10,7 @@ from ee.onyx.db.analytics import (
     fetch_assistant_message_analytics,
     fetch_assistant_unique_users,
     fetch_assistant_unique_users_total,
+    fetch_group_query_analytics,
     fetch_onyxbot_analytics,
     fetch_per_user_query_analytics,
     fetch_persona_message_analytics,
@@ -108,6 +109,40 @@ def get_user_analytics(
             date=date,
         )
         for date, cnt in user_analytics.items()
+    ]
+
+
+class GroupAnalyticsResponse(BaseModel):
+    group_id: int
+    group_name: str
+    total_queries: int
+    date: datetime.date
+
+
+@router.get("/admin/group")
+def get_group_analytics(
+    start: datetime.datetime | None = None,
+    end: datetime.datetime | None = None,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> list[GroupAnalyticsResponse]:
+    rows = fetch_group_query_analytics(
+        start=start
+        or (
+            datetime.datetime.now(tz=datetime.timezone.utc)
+            - datetime.timedelta(days=_DEFAULT_LOOKBACK_DAYS)
+        ),
+        end=end or datetime.datetime.now(tz=datetime.timezone.utc),
+        db_session=db_session,
+    )
+    return [
+        GroupAnalyticsResponse(
+            group_id=group_id,
+            group_name=group_name,
+            total_queries=total_queries,
+            date=date,
+        )
+        for group_id, group_name, total_queries, date in rows
     ]
 
 
