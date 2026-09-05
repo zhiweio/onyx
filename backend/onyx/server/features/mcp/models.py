@@ -736,6 +736,8 @@ class MCPServer(BaseModel):
             "None outside the Craft listing, the only one that computes it."
         ),
     )
+    via_gateway: bool = False
+    gateway_provider_slug: Optional[str] = None
 
 
 class MCPServersResponse(BaseModel):

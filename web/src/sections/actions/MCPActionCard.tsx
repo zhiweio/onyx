@@ -108,6 +108,7 @@ export default function MCPActionCard({
   className,
 }: MCPActionCardProps) {
   const t = useTranslations("actions");
+  const tGateway = useTranslations("admin.mcpActions");
   const [isToolsExpanded, setIsToolsExpanded] = useState(initialExpanded);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
@@ -274,6 +275,11 @@ export default function MCPActionCard({
             aria-label={t("mcpCard.refreshToolsButton.ariaLabel")}
           />
         )}
+        {server.via_gateway && (
+          <Button href="/admin/mcp-gateway" prominence="internal">
+            {tGateway("header.gatewayLink")}
+          </Button>
+        )}
         {lastRefreshedText && (
           <Text as="p" text03 mainUiBody className="whitespace-nowrap">
             {t("mcpCard.lastRefreshed.label", { time: lastRefreshedText })}
@@ -284,11 +290,13 @@ export default function MCPActionCard({
   }, [
     canManageStatus,
     server.last_refreshed_at,
+    server.via_gateway,
     serverId,
     mutate,
     onRefreshTools,
     isToolsRefreshing,
     t,
+    tGateway,
   ]);
 
   return (

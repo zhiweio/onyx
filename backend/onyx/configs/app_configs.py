@@ -1928,6 +1928,27 @@ MCP_SERVER_CORS_ORIGINS = [
     if origin.strip()
 ]
 
+#####
+# MCP Gateway (commercial MCP proxy)
+#####
+MCP_GATEWAY_ENABLED = os.environ.get("MCP_GATEWAY_ENABLED", "").lower() == "true"
+MCP_GATEWAY_HOST = os.environ.get("MCP_GATEWAY_HOST", "0.0.0.0")  # noqa: S104
+MCP_GATEWAY_PORT = int(os.environ.get("MCP_GATEWAY_PORT") or 8091)
+MCP_GATEWAY_PUBLIC_URL = os.environ.get(
+    "MCP_GATEWAY_PUBLIC_URL", "http://mcp_gateway:8091"
+).rstrip("/")
+MCP_GATEWAY_INTERNAL_TOKEN = os.environ.get("MCP_GATEWAY_INTERNAL_TOKEN", "")
+MCP_GATEWAY_TRUSTED_HOSTS = {
+    item.strip()
+    for item in os.environ.get(
+        "MCP_GATEWAY_TRUSTED_HOSTS", "mcp_gateway,localhost,127.0.0.1"
+    ).split(",")
+    if item.strip()
+}
+_gateway_public_host = urllib.parse.urlparse(MCP_GATEWAY_PUBLIC_URL).hostname
+if _gateway_public_host:
+    MCP_GATEWAY_TRUSTED_HOSTS.add(_gateway_public_host)
+
 
 POD_NAME = os.environ.get("POD_NAME")
 POD_NAMESPACE = os.environ.get("POD_NAMESPACE")

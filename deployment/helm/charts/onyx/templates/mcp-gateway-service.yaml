@@ -1,0 +1,23 @@
+{{- if .Values.mcpGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "onyx.resourceName" (list . "mcp-gateway-service") }}
+  labels:
+    {{- include "onyx.labels" . | nindent 4 }}
+    {{- if .Values.mcpGateway.deploymentLabels }}
+    {{- toYaml .Values.mcpGateway.deploymentLabels | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.mcpGateway.service.type }}
+  ports:
+    - port: {{ .Values.mcpGateway.service.servicePort }}
+      targetPort: {{ .Values.mcpGateway.service.targetPort }}
+      protocol: TCP
+      name: {{ .Values.mcpGateway.service.portName }}
+  selector:
+    {{- include "onyx.selectorLabels" . | nindent 4 }}
+    {{- if .Values.mcpGateway.deploymentLabels }}
+    {{- toYaml .Values.mcpGateway.deploymentLabels | nindent 4 }}
+    {{- end }}
+{{- end }}

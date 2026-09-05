@@ -237,6 +237,42 @@ services:
   #   volumes:
   #     - mcp_server_logs:/var/log/onyx
 
+  mcp_gateway:
+    image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:${IMAGE_TAG:-latest}}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: runtime
+    command: >
+      /bin/sh -c "if [ \"${MCP_GATEWAY_ENABLED:-}\" != \"True\" ] && [ \"${MCP_GATEWAY_ENABLED:-}\" != \"true\" ]; then
+        echo 'MCP gateway is disabled (MCP_GATEWAY_ENABLED=false), skipping...';
+        exit 0;
+      else
+        exec python -m onyx.mcp_gateway_main;
+      fi"
+    depends_on:
+      - relational_db
+      - cache
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-relational_db}
+      - REDIS_HOST=${REDIS_HOST:-cache}
+      - MCP_GATEWAY_ENABLED=${MCP_GATEWAY_ENABLED:-true}
+      - MCP_GATEWAY_HOST=${MCP_GATEWAY_HOST:-0.0.0.0}
+      - MCP_GATEWAY_PORT=${MCP_GATEWAY_PORT:-8091}
+      - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
+      - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+    volumes:
+      - mcp_gateway_logs:/var/log/onyx
+
   inference_model_server:
     image: ${ONYX_MODEL_SERVER_IMAGE:-onyxdotapp/onyx-model-server:${IMAGE_TAG:-latest}}
     build:
@@ -497,6 +533,7 @@ volumes:
   api_server_logs:
   background_logs:
   # mcp_server_logs:
+  mcp_gateway_logs:
   inference_model_server_logs:
   indexing_model_server_logs:
   # Shared volume for persistent document storage (Craft file-system mode)

@@ -173,6 +173,8 @@ class MCPServerResolver(CredentialResolver):
                     str(e), sandbox_detail=_connect_detail(server.name, admin_managed)
                 ) from e
             headers = creds.build_headers()
+            if server.via_gateway:
+                headers["X-Onyx-Tenant-Id"] = tenant_id
             credentials_ready = creds.can_authenticate()
             expired_oauth_config_id: int | None = None
             if (

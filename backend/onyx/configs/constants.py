@@ -469,6 +469,7 @@ class OnyxCeleryQueues:
     # Chat retention (TTL) hard-deletion queue, consumed by the light worker.
     # Kept off the primary "celery" queue so cleanup never starves check_for_indexing.
     CHAT_TTL_DELETION = "chat_ttl_deletion"
+    MCP_GATEWAY = "mcp_gateway"
 
     # User file processing queue
     USER_FILE_PROCESSING = "user_file_processing"
@@ -712,6 +713,9 @@ class OnyxCeleryTask:
 
     # Sandbox cleanup
     CLEANUP_IDLE_SANDBOXES = "cleanup_idle_sandboxes"
+
+    REFRESH_MCP_GATEWAY_CACHE_ENTRY = "refresh_mcp_gateway_cache_entry"
+    CHECK_MCP_GATEWAY_SCHEDULED_REFRESH = "check_mcp_gateway_scheduled_refresh"
 
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"

@@ -94,6 +94,9 @@ from onyx.db.enums import (
     LLMModelFlowType,
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
+    MCPGatewayAuthAdapter,
+    MCPGatewayCallOutcome,
+    MCPGatewayRefreshMode,
     MCPOAuthProviderMode,
     MCPServerStatus,
     MCPTransport,
@@ -6064,6 +6067,10 @@ class MCPServer(Base):
     last_refreshed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    via_gateway: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    gateway_provider_slug: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Relationships
     admin_connection_config: Mapped["MCPConnectionConfig | None"] = relationship(
@@ -6164,6 +6171,181 @@ class MCPConnectionConfig(Base):
     __table_args__ = (
         Index("ix_mcp_connection_config_user_email", "user_email"),
         Index("ix_mcp_connection_config_server_user", "mcp_server_id", "user_email"),
+    )
+
+
+class MCPGatewayProvider(Base):
+    """Upstream commercial MCP routed through the gateway."""
+
+    __tablename__ = "mcp_gateway_provider"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    pack_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    upstream_url: Mapped[str] = mapped_column(Text, nullable=False)
+    transport: Mapped[MCPTransport] = mapped_column(
+        Enum(MCPTransport, native_enum=False),
+        nullable=False,
+        server_default=MCPTransport.STREAMABLE_HTTP.value,
+    )
+    auth_adapter: Mapped[MCPGatewayAuthAdapter] = mapped_column(
+        Enum(MCPGatewayAuthAdapter, native_enum=False),
+        nullable=False,
+        server_default=MCPGatewayAuthAdapter.BEARER.value,
+    )
+    credentials: Mapped[SensitiveValue[dict[str, Any]] | None] = mapped_column(
+        EncryptedJson(), nullable=False, default=dict
+    )
+    mcp_server_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("mcp_server.id", ondelete="SET NULL"), nullable=True
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    tools_list_refreshed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    mcp_server: Mapped["MCPServer | None"] = relationship(
+        "MCPServer", foreign_keys=[mcp_server_id]
+    )
+
+    __table_args__ = (UniqueConstraint("slug", name="uq_mcp_gateway_provider_slug"),)
+
+
+class MCPGatewayCachePolicy(Base):
+    """Per-provider / per-tool cache refresh policy. tool_name='*' is default."""
+
+    __tablename__ = "mcp_gateway_cache_policy"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    refresh_mode: Mapped[MCPGatewayRefreshMode] = mapped_column(
+        Enum(MCPGatewayRefreshMode, native_enum=False),
+        nullable=False,
+        server_default=MCPGatewayRefreshMode.SWR.value,
+    )
+    ttl_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)
+    swr_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)
+    schedule_cron: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    key_fields: Mapped[list[str] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    normalize: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    cache_empty_ttl_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=3600
+    )
+    max_response_bytes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=2_000_000
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider_slug",
+            "tool_name",
+            name="uq_mcp_gateway_cache_policy_provider_tool",
+        ),
+        Index("ix_mcp_gateway_cache_policy_provider", "provider_slug"),
+    )
+
+
+class MCPGatewayCacheEntry(Base):
+    """Durable cache of one canonical MCP tool call."""
+
+    __tablename__ = "mcp_gateway_cache_entry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False
+    )
+    result: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB(), nullable=False)
+    is_empty: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    first_fetched_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_fetched_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_accessed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_refresh_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "cache_key", name="uq_mcp_gateway_cache_entry_tenant_key"
+        ),
+        Index(
+            "ix_mcp_gateway_cache_entry_provider_tool",
+            "provider_slug",
+            "effective_tool_name",
+        ),
+        Index("ix_mcp_gateway_cache_entry_accessed", "last_accessed_at"),
+    )
+
+
+class MCPGatewayCallLog(Base):
+    """Full audit of each gateway tool call."""
+
+    __tablename__ = "mcp_gateway_call_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    provider_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome: Mapped[MCPGatewayCallOutcome] = mapped_column(
+        Enum(MCPGatewayCallOutcome, native_enum=False), nullable=False
+    )
+    upstream_billed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    user_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False
+    )
+    result: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_mcp_gateway_call_log_created", "created_at"),
+        Index(
+            "ix_mcp_gateway_call_log_provider_outcome",
+            "provider_slug",
+            "outcome",
+        ),
     )
 
 

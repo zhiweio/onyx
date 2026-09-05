@@ -25,6 +25,13 @@ def validate_mcp_outbound_url(url: str, *, resolve_dns: bool = True) -> str:
     become reachable while cloud-metadata/link-local stays blocked.
     ``resolve_dns=False`` skips the DNS lookup at store time — the transport
     guard re-validates with DNS on every fetch."""
+    from urllib.parse import urlparse
+
+    from onyx.configs.app_configs import MCP_GATEWAY_TRUSTED_HOSTS
+
+    host = (urlparse(url).hostname or "").lower()
+    if host in {item.lower() for item in MCP_GATEWAY_TRUSTED_HOSTS}:
+        return url
     params = outbound_ssrf_params(get_security_settings().ssrf_protection_level)
     return validate_outbound_http_url(
         url,

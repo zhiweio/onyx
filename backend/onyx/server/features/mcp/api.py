@@ -1312,6 +1312,8 @@ def _db_mcp_server_to_api_mcp_server(
         user_credentials=user_credentials,
         admin_credentials=admin_credentials,
         permissions=permissions or {},
+        via_gateway=db_server.via_gateway,
+        gateway_provider_slug=db_server.gateway_provider_slug,
     )
 
 
@@ -2546,6 +2548,8 @@ def create_mcp_server_simple(
         auth_template=None,
         user_credentials=None,
         admin_credentials=None,
+        via_gateway=mcp_server.via_gateway,
+        gateway_provider_slug=mcp_server.gateway_provider_slug,
     )
 
 

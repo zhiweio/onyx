@@ -219,6 +219,16 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: null,
   },
+  MCP_GATEWAY: {
+    path: "/admin/mcp-gateway",
+    icon: SvgMcp,
+    title: "MCP Gateway",
+    sidebarLabel: "",
+    requiredPermission: Permission.MANAGE_ACTIONS,
+    section: "Agents & Actions",
+    requiredTier: null,
+    visibleWhen: null,
+  },
   OPENAPI_ACTIONS: {
     path: "/admin/openapi-actions",
     icon: SvgActions,

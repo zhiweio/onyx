@@ -56,6 +56,8 @@ export interface MCPServer {
   tool_count: number;
   // Server-stamped affordance map; fail-closed (absent = denied).
   permissions?: PermissionsOf<"MCPServer">;
+  via_gateway?: boolean;
+  gateway_provider_slug?: string | null;
 }
 
 export interface MCPAuthTemplate {

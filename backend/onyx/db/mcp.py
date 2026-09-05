@@ -41,6 +41,21 @@ def get_all_mcp_servers(db_session: Session) -> list[MCPServer]:
     )
 
 
+def find_mcp_server_by_name_fragment(
+    db_session: Session, fragment: str
+) -> MCPServer | None:
+    """First MCP server whose name contains ``fragment`` (case-insensitive)."""
+    if not fragment:
+        return None
+    return db_session.scalar(
+        select(MCPServer)
+        .options(selectinload(MCPServer.admin_connection_config))
+        .where(MCPServer.name.ilike(f"%{fragment}%"))
+        .order_by(MCPServer.created_at)
+        .limit(1)
+    )
+
+
 def get_mcp_server_by_id(server_id: int, db_session: Session) -> MCPServer:
     """Get MCP server by ID"""
     server = db_session.scalar(select(MCPServer).where(MCPServer.id == server_id))
@@ -225,6 +240,8 @@ def create_mcp_server__no_commit(
     oauth_additional_auth_params: dict[str, str] | None = None,
     admin_connection_config_id: int | None = None,
     is_public: bool = True,
+    via_gateway: bool = False,
+    gateway_provider_slug: str | None = None,
 ) -> MCPServer:
     """Create a new MCP server"""
     new_server = MCPServer(
@@ -242,6 +259,8 @@ def create_mcp_server__no_commit(
         oauth_additional_auth_params=oauth_additional_auth_params,
         admin_connection_config_id=admin_connection_config_id,
         is_public=is_public,
+        via_gateway=via_gateway,
+        gateway_provider_slug=gateway_provider_slug,
     )
     db_session.add(new_server)
     db_session.flush()  # Get the ID without committing
@@ -267,6 +286,8 @@ def update_mcp_server__no_commit(
     last_refreshed_at: datetime.datetime | None = None,
     is_public: bool | None = None,
     available_in_craft: bool | None = None,
+    via_gateway: bool | None = None,
+    gateway_provider_slug: str | None = None,
 ) -> MCPServer:
     """Update an existing MCP server"""
     server = get_mcp_server_by_id(server_id, db_session)
@@ -303,6 +324,10 @@ def update_mcp_server__no_commit(
         server.last_refreshed_at = last_refreshed_at
     if available_in_craft is not None:
         server.available_in_craft = available_in_craft
+    if via_gateway is not None:
+        server.via_gateway = via_gateway
+    if gateway_provider_slug is not None:
+        server.gateway_provider_slug = gateway_provider_slug
 
     db_session.flush()  # Don't commit yet, let caller decide when to commit
     return server

@@ -52,6 +52,12 @@ services:
   #   ports:
   #     - "8090:8090"
 
+  mcp_gateway:
+    build:
+      target: dev
+    ports:
+      - "8091:8091"
+
   relational_db:
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"

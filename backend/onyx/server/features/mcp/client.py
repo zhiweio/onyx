@@ -142,9 +142,18 @@ def _create_mcp_client_function_runner(
     )
 
     async def run_client_function() -> T:
+        from urllib.parse import urlparse
+
+        from onyx.configs.app_configs import MCP_GATEWAY_TRUSTED_HOSTS
+        from shared_configs.contextvars import get_current_tenant_id
+
+        request_headers = dict(auth_headers)
+        host = (urlparse(server_url).hostname or "").lower()
+        if host in {item.lower() for item in MCP_GATEWAY_TRUSTED_HOSTS}:
+            request_headers.setdefault("X-Onyx-Tenant-Id", get_current_tenant_id())
         async with client_func(
             server_url,
-            headers=auth_headers,
+            headers=request_headers,
             auth=auth_for_request,
             httpx_client_factory=mcp_ssrf_httpx_client_factory,
         ) as client_tuple:
@@ -263,6 +272,48 @@ def call_mcp_tool(
     """Call a specific tool on the MCP server"""
     return _call_mcp_client_function_sync(
         _call_mcp_tool(tool_name, arguments),
+        server_url,
+        connection_headers,
+        transport,
+        auth,
+    )
+
+
+def _call_mcp_tool_raw(
+    tool_name: str, arguments: dict[str, Any]
+) -> MCPClientFunction[CallToolResult]:
+    async def call_tool(session: ClientSession) -> CallToolResult:
+        await session.initialize()
+        return await session.call_tool(tool_name, arguments)
+
+    return call_tool
+
+
+async def call_mcp_tool_raw_async(
+    server_url: str,
+    tool_name: str,
+    arguments: dict[str, Any],
+    connection_headers: dict[str, str] | None = None,
+    transport: MCPTransport = MCPTransport.STREAMABLE_HTTP,
+    auth: OAuthClientProvider | None = None,
+) -> CallToolResult:
+    return await _call_mcp_client_function_async(
+        _call_mcp_tool_raw(tool_name, arguments),
+        server_url,
+        connection_headers,
+        transport,
+        auth,
+    )
+
+
+async def discover_mcp_tools_async(
+    server_url: str,
+    connection_headers: dict[str, str] | None = None,
+    transport: MCPTransport = MCPTransport.STREAMABLE_HTTP,
+    auth: OAuthClientProvider | None = None,
+) -> list[MCPLibTool]:
+    return await _call_mcp_client_function_async(
+        _discover_mcp_tools,
         server_url,
         connection_headers,
         transport,

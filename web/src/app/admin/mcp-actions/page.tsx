@@ -2,6 +2,7 @@
 
 import MCPPageContent from "@/sections/actions/MCPPageContent";
 import { useTranslations } from "next-intl";
+import { Button } from "@opal/components";
 import { SettingsLayouts } from "@opal/layouts";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 
@@ -16,6 +17,14 @@ export default function Main() {
         icon={route.icon}
         title={route.title}
         description={t("header.description")}
+        rightChildren={
+          <Button
+            href={ADMIN_ROUTES.MCP_GATEWAY.path}
+            prominence="secondary"
+          >
+            {t("header.gatewayLink")}
+          </Button>
+        }
         divider
       />
       <SettingsLayouts.Body>

@@ -82,6 +82,7 @@ const NAV_ITEM_IDS: Record<keyof typeof ADMIN_ROUTES, AdminNavItemId | null> = {
   CUSTOM_ANALYTICS: "customAnalytics",
   AGENTS: "agents",
   MCP_ACTIONS: "mcpActions",
+  MCP_GATEWAY: null,
   OPENAPI_ACTIONS: "openapiActions",
   INDEXING_STATUS: "existingConnectors",
   ADD_CONNECTOR: "addConnector",
