@@ -11938,6 +11938,17 @@
         "label": "查看任务"
       }
     },
+    "longJob": {
+      "label": "长作业",
+      "toggle": "按长作业运行",
+      "status": {
+        "running": "阶段：{phase}",
+        "waitingSpecialists": "等待专家会话",
+        "succeeded": "已完成",
+        "failed": "失败",
+        "cancelled": "已取消"
+      }
+    },
     "setupCard": {
       "appFallback": {
         "label": "外部应用 {id}"
@@ -12352,6 +12363,10 @@
       },
       "export": {
         "button": "导出为 .docx",
+        "inProgress": "正在导出..."
+      },
+      "exportPdf": {
+        "button": "导出为 .pdf",
         "inProgress": "正在导出..."
       },
       "forward": {

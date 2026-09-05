@@ -10,6 +10,7 @@ import CraftInputBar, {
   CraftInputBarHandle,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
+import LongJobToggle from "@/app/craft/components/LongJobToggle";
 import SuggestedPrompts from "@/app/craft/components/SuggestedPrompts";
 import ConnectDataBanner from "@/app/craft/components/ConnectDataBanner";
 import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
@@ -26,6 +27,8 @@ interface BuildWelcomeProps {
   isRunning: boolean;
   /** When true, shows spinner on send button with "Initializing sandbox..." tooltip */
   sandboxInitializing?: boolean;
+  longJobEnabled: boolean;
+  onLongJobEnabledChange: (enabled: boolean) => void;
 }
 
 /**
@@ -37,6 +40,8 @@ export default function BuildWelcome({
   onSubmit,
   isRunning,
   sandboxInitializing = false,
+  longJobEnabled,
+  onLongJobEnabledChange,
 }: BuildWelcomeProps) {
   const t = useTranslations("craft.welcome");
   const inputBarRef = useRef<CraftInputBarHandle>(null);
@@ -89,11 +94,17 @@ export default function BuildWelcome({
                 craft
               </Text>
             </button>
-            <ModelPickerButton
-              selection={selectedModel}
-              onChange={setSelectedModel}
-              disabled={!hasAnyProvider}
-            />
+            <div className="flex items-center gap-3">
+              <LongJobToggle
+                checked={longJobEnabled}
+                onChange={onLongJobEnabledChange}
+              />
+              <ModelPickerButton
+                selection={selectedModel}
+                onChange={setSelectedModel}
+                disabled={!hasAnyProvider}
+              />
+            </div>
           </div>
         </div>
       </div>

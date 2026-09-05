@@ -1484,7 +1484,14 @@ class TestSidebarOriginFilter:
             status=BuildSessionStatus.ACTIVE,
             origin=SessionOrigin.SLACK,
         )
-        db_session.add_all([interactive, scheduled, slack_session])
+        job_session = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="job-specialist",
+            status=BuildSessionStatus.ACTIVE,
+            origin=SessionOrigin.JOB,
+        )
+        db_session.add_all([interactive, scheduled, slack_session, job_session])
         db_session.flush()
         db_session.add_all(
             [
@@ -1515,6 +1522,15 @@ class TestSidebarOriginFilter:
                         "content": {"text": "@bot hi"},
                     },
                 ),
+                BuildMessage(
+                    session_id=job_session.id,
+                    turn_index=0,
+                    type=MessageType.USER,
+                    message_metadata={
+                        "type": "user_message",
+                        "content": {"text": "specialist"},
+                    },
+                ),
             ]
         )
         db_session.commit()
@@ -1522,8 +1538,9 @@ class TestSidebarOriginFilter:
         listed = get_user_build_sessions(test_user.id, db_session)
         listed_ids = {s.id for s in listed}
 
-        # Observable outcome: SCHEDULED and SLACK rows are invisible to the
-        # sidebar query while the INTERACTIVE row is visible.
+        # Observable outcome: SCHEDULED, SLACK, and JOB rows are invisible to
+        # the sidebar query while the INTERACTIVE row is visible.
         assert interactive.id in listed_ids
         assert scheduled.id not in listed_ids
         assert slack_session.id not in listed_ids
+        assert job_session.id not in listed_ids

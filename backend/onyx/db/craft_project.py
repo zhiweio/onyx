@@ -18,12 +18,25 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.configs import (
+    CRAFT_DEEP_JOB_PROJECT_MAX_FILES,
+    CRAFT_DEEP_JOB_RESOURCES,
     CRAFT_PROJECT_MAX_FILE_SIZE_BYTES,
     CRAFT_PROJECT_MAX_FILES,
     CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES,
 )
 
 _PATH_SEGMENT = re.compile(r"[^A-Za-z0-9._\- ]+")
+
+
+def project_file_limit(db_session: Session, project_id: UUID) -> int:
+    if CRAFT_DEEP_JOB_RESOURCES:
+        return CRAFT_DEEP_JOB_PROJECT_MAX_FILES
+    from onyx.db.craft_job import project_has_craft_job
+
+    if project_has_craft_job(db_session, project_id):
+        return CRAFT_DEEP_JOB_PROJECT_MAX_FILES
+    return CRAFT_PROJECT_MAX_FILES
+
 
 
 def sanitize_project_path(path: str) -> str:
@@ -169,7 +182,8 @@ def upsert_project_file(
     )
     if existing is None:
         count, total = _project_usage(db_session, project_id)
-        if count >= CRAFT_PROJECT_MAX_FILES:
+        file_limit = project_file_limit(db_session, project_id)
+        if count >= file_limit:
             raise OnyxError(
                 OnyxErrorCode.INVALID_INPUT,
                 "This project already has the maximum number of files",

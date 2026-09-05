@@ -77,6 +77,8 @@ from onyx.db.enums import (
     ChatSessionSharedStatus,
     ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
+    CraftJobSpecialistStatus,
+    CraftJobStatus,
     CraftProjectFileSource,
     DefaultAppMode,
     EmbeddingPrecision,
@@ -499,6 +501,9 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     files: Mapped[list["UserFile"]] = relationship("UserFile", back_populates="user")
     craft_projects: Mapped[list["CraftProject"]] = relationship(
         "CraftProject", back_populates="user"
+    )
+    craft_jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="user"
     )
     # MCP servers accessible to this user
     accessible_mcp_servers: Mapped[list["MCPServer"]] = relationship(
@@ -6873,6 +6878,9 @@ class CraftProject(Base):
     sessions: Mapped[list["BuildSession"]] = relationship(
         "BuildSession", back_populates="project"
     )
+    jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="project"
+    )
 
     __table_args__ = (
         Index("ix_craft_project_user_created", "user_id", desc("created_at")),
@@ -7010,6 +7018,12 @@ class BuildSession(Base):
     snapshots: Mapped[list["Snapshot"]] = relationship(
         "Snapshot", back_populates="session", cascade="all, delete-orphan"
     )
+    craft_jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="session"
+    )
+    craft_job_specialists: Mapped[list["CraftJobSpecialist"]] = relationship(
+        "CraftJobSpecialist", back_populates="session"
+    )
 
     __table_args__ = (
         # Composite index supports the Craft sidebar query:
@@ -7033,6 +7047,137 @@ class BuildSession(Base):
             unique=True,
             postgresql_where=text("nextjs_port IS NOT NULL"),
         ),
+    )
+
+
+class CraftJob(Base):
+    """Multi-phase Craft long job. Disk is the source of truth between turns."""
+
+    __tablename__ = "craft_job"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    domain: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
+    status: Mapped[CraftJobStatus] = mapped_column(
+        Enum(CraftJobStatus, native_enum=False, name="craftjobstatus"),
+        nullable=False,
+        default=CraftJobStatus.PENDING,
+        server_default="pending",
+    )
+    phases: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list
+    )
+    current_phase_index: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    total_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    phase_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User", back_populates="craft_jobs")
+    session: Mapped[BuildSession] = relationship(
+        "BuildSession", back_populates="craft_jobs", foreign_keys=[session_id]
+    )
+    project: Mapped[CraftProject | None] = relationship(
+        "CraftProject", back_populates="jobs"
+    )
+    scenario: Mapped[Scenario | None] = relationship("Scenario")
+    specialists: Mapped[list["CraftJobSpecialist"]] = relationship(
+        "CraftJobSpecialist",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("ix_craft_job_user_created", "user_id", desc("created_at")),
+        Index("ix_craft_job_session_id", "session_id"),
+        Index("ix_craft_job_status", "status"),
+    )
+
+
+class CraftJobSpecialist(Base):
+    """One expert BuildSession under a Craft long job."""
+
+    __tablename__ = "craft_job_specialist"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_job.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[CraftJobSpecialistStatus] = mapped_column(
+        Enum(
+            CraftJobSpecialistStatus,
+            native_enum=False,
+            name="craftjobspecialiststatus",
+        ),
+        nullable=False,
+        default=CraftJobSpecialistStatus.PENDING,
+        server_default="pending",
+    )
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    job: Mapped[CraftJob] = relationship("CraftJob", back_populates="specialists")
+    session: Mapped[BuildSession] = relationship(
+        "BuildSession",
+        back_populates="craft_job_specialists",
+        foreign_keys=[session_id],
+    )
+
+    __table_args__ = (
+        Index("ix_craft_job_specialist_job_id", "job_id"),
+        UniqueConstraint("session_id", name="uq_craft_job_specialist_session_id"),
     )
 
 

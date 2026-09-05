@@ -11938,6 +11938,17 @@
         "label": "작업 보기"
       }
     },
+    "longJob": {
+      "label": "Long job",
+      "toggle": "Run as a long job",
+      "status": {
+        "running": "Phase: {phase}",
+        "waitingSpecialists": "Waiting for specialist sessions",
+        "succeeded": "Finished",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
     "setupCard": {
       "appFallback": {
         "label": "외부 앱 {id}"
@@ -12352,6 +12363,10 @@
       },
       "export": {
         "button": ".docx로 내보내기",
+        "inProgress": "내보내는 중..."
+      },
+      "exportPdf": {
+        "button": ".pdf로 내보내기",
         "inProgress": "내보내는 중..."
       },
       "forward": {

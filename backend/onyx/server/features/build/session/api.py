@@ -678,6 +678,48 @@ def export_docx(
     )
 
 
+@router.get("/{session_id}/export-pdf/{path:path}")
+def export_pdf(
+    session_id: UUID,
+    path: str,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> Response:
+    """Export a markdown file as PDF."""
+    session_manager = SessionManager(db_session)
+
+    try:
+        result = session_manager.export_pdf(session_id, user.id, path)
+    except ValueError as e:
+        error_message = str(e)
+        if (
+            "path traversal" in error_message.lower()
+            or "access denied" in error_message.lower()
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=400, detail=error_message)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    pdf_bytes, filename = result
+
+    try:
+        filename.encode("latin-1")
+        content_disposition = f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        from urllib.parse import quote
+
+        encoded_filename = quote(filename, safe="")
+        content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": content_disposition},
+    )
+
+
 @router.get("/{session_id}/pptx-preview/{path:path}")
 def get_pptx_preview(
     session_id: UUID,

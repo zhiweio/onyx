@@ -95,6 +95,7 @@ from onyx.server.features.build.session.llm_config import (
     parse_agent_selection,
 )
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
+from onyx.server.features.build.session.md_to_pdf import markdown_to_pdf_bytes
 from onyx.server.features.build.session.naming import generate_session_name
 from onyx.server.features.build.session.sandbox_lifecycle import (
     ProvisioningPolicy,
@@ -516,7 +517,8 @@ class SessionManager:
             name: Optional session name
             origin: Provenance of the session. INTERACTIVE (default) sessions
                 appear in the Craft sidebar; SCHEDULED (scheduled-tasks
-                executor) and SLACK (Slack bot) sessions are excluded.
+                executor), SLACK (Slack bot), and JOB (long-job specialist)
+                sessions are excluded.
 
         Raises:
             ValueError: If the user is missing
@@ -1589,6 +1591,27 @@ class SessionManager:
 
         docx_filename = filename.rsplit(".", 1)[0] + ".docx"
         return (docx_bytes, docx_filename)
+
+    def export_pdf(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        path: str,
+    ) -> tuple[bytes, str] | None:
+        """Export a markdown file as PDF."""
+        result = self.download_artifact(session_id, user_id, path)
+        if result is None:
+            return None
+
+        content_bytes, _mime_type, filename = result
+
+        if not filename.lower().endswith(".md"):
+            raise ValueError("Only markdown (.md) files can be exported as PDF")
+
+        md_text = content_bytes.decode("utf-8")
+        pdf_bytes = markdown_to_pdf_bytes(md_text)
+        pdf_filename = filename.rsplit(".", 1)[0] + ".pdf"
+        return (pdf_bytes, pdf_filename)
 
     def get_pptx_preview(
         self,

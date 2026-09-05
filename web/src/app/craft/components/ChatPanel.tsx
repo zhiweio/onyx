@@ -37,6 +37,7 @@ import CraftInputBar, {
   CraftInputBarHandle,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
+import LongJobToggle from "@/app/craft/components/LongJobToggle";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import {
   BuildLlmSelection,
@@ -48,6 +49,14 @@ import { useUser } from "@/providers/UserProvider";
 import ScheduledRunBanner, {
   useScheduledRunContext,
 } from "@/app/craft/components/ScheduledRunBanner";
+import CraftJobBanner, {
+  isCraftJobInFlight,
+  useCraftJob,
+} from "@/app/craft/components/CraftJobBanner";
+import {
+  createCraftJob,
+  fetchActiveTurn,
+} from "@/app/craft/services/apiServices";
 import BuildWelcome from "@/app/craft/components/BuildWelcome";
 import BuildMessageList from "@/app/craft/components/BuildMessageList";
 import LiveApprovalsRegion from "@/app/craft/components/approvals/LiveApprovalsRegion";
@@ -109,6 +118,12 @@ export default function BuildChatPanel({
   const scheduledRunInFlight =
     isScheduledRunContextInFlight(scheduledRunContext);
   const shouldStreamScheduledRun = scheduledRunContext?.status === "RUNNING";
+  const jobSessionId = sessionId ?? existingSessionId ?? null;
+  const { data: craftJob, mutate: mutateCraftJob } = useCraftJob(
+    session?.origin === "SCHEDULED" ? null : jobSessionId
+  );
+  const jobInFlight = isCraftJobInFlight(craftJob);
+  const [longJobEnabled, setLongJobEnabled] = useState(false);
   const hasSession = useHasSession();
   const isRunning = useIsRunning();
   const displayIsRunning = isRunning || scheduledRunInFlight;
@@ -348,6 +363,33 @@ export default function BuildChatPanel({
   ]);
 
   useEffect(() => {
+    if (!jobSessionId || !jobInFlight || isRunning || activeTurnId) {
+      return;
+    }
+    let cancelledPoll = false;
+    const poll = async () => {
+      try {
+        const turn = await fetchActiveTurn(jobSessionId);
+        if (!cancelledPoll && turn) {
+          updateSessionData(jobSessionId, {
+            activeTurnId: turn.turn_id,
+            activeTurnIndex: turn.turn_index,
+            activeTurnLocalOwner: false,
+          });
+        }
+      } catch {
+        // 404 means no turn yet
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 5000);
+    return () => {
+      cancelledPoll = true;
+      clearInterval(timer);
+    };
+  }, [jobSessionId, jobInFlight, isRunning, activeTurnId, updateSessionData]);
+
+  useEffect(() => {
     if (
       !scheduledSessionId ||
       !scheduledRunContext ||
@@ -472,6 +514,19 @@ export default function BuildChatPanel({
           toast.error(t("toast.operationWait"));
           return;
         }
+        if (longJobEnabled && !jobInFlight) {
+          try {
+            await createCraftJob({
+              session_id: sessionId,
+              prompt: message,
+              start: false,
+            });
+            void mutateCraftJob();
+          } catch (err) {
+            toast.error((err as Error).message);
+            return;
+          }
+        }
 
         // Add user message to state
         appendMessageToCurrent({
@@ -563,6 +618,20 @@ export default function BuildChatPanel({
           nameBuildSession(newSessionId);
         }, 1000);
 
+        if (longJobEnabled) {
+          try {
+            await createCraftJob({
+              session_id: newSessionId,
+              prompt: message,
+              start: false,
+            });
+            void mutateCraftJob();
+          } catch (err) {
+            toast.error((err as Error).message);
+            return;
+          }
+        }
+
         // Stream the response (uses session ID directly, not currentSessionId)
         await streamMessage(newSessionId, message, chosen, attachments);
       }
@@ -581,6 +650,9 @@ export default function BuildChatPanel({
       hasUploadingFiles,
       selectedModel,
       t,
+      longJobEnabled,
+      jobInFlight,
+      mutateCraftJob,
     ]
   );
 
@@ -688,6 +760,7 @@ export default function BuildChatPanel({
                   sessionId={scheduledSessionId}
                   context={scheduledRunContext ?? null}
                 />
+                <CraftJobBanner sessionId={jobSessionId} />
               </div>
               {/* Right cluster: sandbox status sits left of the panel toggle. The
               toggle stays pinned to the right edge, so the status chip's width
@@ -744,6 +817,8 @@ export default function BuildChatPanel({
                       onSubmit={handleSubmit}
                       isRunning={displayIsRunning}
                       sandboxInitializing={sandboxNotReady}
+                      longJobEnabled={longJobEnabled}
+                      onLongJobEnabledChange={setLongJobEnabled}
                     />
                   ) : (
                     <BuildMessageList
@@ -824,7 +899,12 @@ export default function BuildChatPanel({
                   switch applies from the next turn. Subagent transcripts
                   cannot send, so they get no picker. */}
                   {session?.isLoaded && !isViewingSubagent && (
-                    <div className="flex justify-end pb-2">
+                    <div className="flex justify-end items-center gap-3 pb-2">
+                      <LongJobToggle
+                        checked={longJobEnabled || jobInFlight}
+                        disabled={jobInFlight}
+                        onChange={setLongJobEnabled}
+                      />
                       <ModelPickerButton
                         selection={selectedModel}
                         onChange={(model) => {

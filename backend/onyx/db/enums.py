@@ -436,11 +436,33 @@ class SessionOrigin(str, PyEnum):
     SLACK:       session started by a Slack thread mention. Surfaces in
                  Slack (and a future admin list), not the user sidebar.
                  Excluded from the Craft sidebar list.
+    JOB:         specialist session spawned by a Craft long job. Excluded
+                 from the Craft sidebar list.
     """
 
     INTERACTIVE = "INTERACTIVE"
     SCHEDULED = "SCHEDULED"
     SLACK = "SLACK"
+    # Specialist session spawned by a Craft long job. Hidden from the sidebar.
+    JOB = "JOB"
+
+
+class CraftJobStatus(str, PyEnum):
+    """Lifecycle of a multi-phase Craft long job."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    WAITING_SPECIALISTS = "waiting_specialists"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class CraftJobSpecialistStatus(str, PyEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
 
 
 class SharingScope(str, PyEnum):

@@ -25,6 +25,8 @@ from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheLock, CacheLockLostError
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.server.features.build.configs import (
+    CRAFT_DEEP_JOB_RESOURCES,
+    OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
     OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
     OPENCODE_SERVE_EVENT_READ_TIMEOUT,
     OPENCODE_SERVER_USERNAME,
@@ -614,7 +616,14 @@ class _ServeMixin:
                     model_provider=agent_provider,
                     model_id=agent_model,
                     attachments=attachments,
-                    timeout=OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+                    timeout=(
+                        max(
+                            OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+                            OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
+                        )
+                        if CRAFT_DEEP_JOB_RESOURCES
+                        else OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS
+                    ),
                     absolute_timeout=turn_timeout_seconds,
                     should_interrupt=should_interrupt,
                 ):

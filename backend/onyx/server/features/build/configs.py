@@ -63,6 +63,9 @@ SANDBOX_CONTAINER_IMAGE = (
     os.environ.get("SANDBOX_CONTAINER_IMAGE", "").strip() or "onyxdotapp/sandbox:latest"
 )
 
+# Kubernetes: imagePullPolicy. Docker: Never skips Hub refresh of latest/beta/edge
+# so a local fork build is not overwritten. IfNotPresent uses a cached image when
+# the tag is immutable and still refreshes mutable tags. Always refreshes.
 # Set to "Always" only in internal environments that deliberately pin a mutable
 # tag. Non-dev deployments should use app-aligned immutable tags.
 SANDBOX_IMAGE_PULL_POLICY = os.environ.get("SANDBOX_IMAGE_PULL_POLICY", "IfNotPresent")
@@ -180,12 +183,24 @@ SSE_KEEPALIVE_INTERVAL = float(os.environ.get("SSE_KEEPALIVE_INTERVAL", "15.0"))
 # silent for the full approval window, hence the derivation. It exists to
 # catch stalls opencode does not bound itself (LLM-stream hangs, non-bash/MCP
 # tool hangs). The turn budget is the hard ceiling.
+_APPROVAL_INACTIVITY_DEFAULT = (
+    SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS + SANDBOX_APPROVAL_WAIT_MARGIN_SECONDS
+)
+# Silent MCP / vision steps. Independent of the approval wait window.
+OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS = float(
+    os.environ.get("OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS", "600")
+)
+# Deep-job deployments raise the silent-step window without changing the
+# approval wait. Tests and default Craft keep the approval-derived value.
+_INACTIVITY_DEFAULT = (
+    max(_APPROVAL_INACTIVITY_DEFAULT, OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS)
+    if os.environ.get("CRAFT_DEEP_JOB_RESOURCES", "false").lower() == "true"
+    else _APPROVAL_INACTIVITY_DEFAULT
+)
 OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS = float(
     os.environ.get(
         "OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS",
-        str(
-            SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS + SANDBOX_APPROVAL_WAIT_MARGIN_SECONDS
-        ),
+        str(_INACTIVITY_DEFAULT),
     )
 )
 
@@ -254,6 +269,33 @@ CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES = (
     CRAFT_PROJECT_MAX_TOTAL_SIZE_GB * 1024 * 1024 * 1024
 )
 CRAFT_PROJECT_MAX_FILES = int(os.environ.get("CRAFT_PROJECT_MAX_FILES", "50"))
+
+# Deep-job profile. Off by default so ordinary Craft stays on 1 CPU / 2Gi
+# and the 50-file project cap. Turn on only for document + MCP long jobs.
+CRAFT_DEEP_JOB_RESOURCES = (
+    os.environ.get("CRAFT_DEEP_JOB_RESOURCES", "false").lower() == "true"
+)
+CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT = os.environ.get(
+    "CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT", "8g"
+)
+CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT = float(
+    os.environ.get("CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT", "4.0")
+)
+CRAFT_DEEP_JOB_PROJECT_MAX_FILES = int(
+    os.environ.get("CRAFT_DEEP_JOB_PROJECT_MAX_FILES", "500")
+)
+CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS = int(
+    os.environ.get("CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS", str(120 * 60))
+)
+CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS = int(
+    os.environ.get("CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS", str(25 * 60))
+)
+CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION = float(
+    os.environ.get("CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION", "0.75")
+)
+CRAFT_DEEP_JOB_MAX_SPECIALISTS = int(
+    os.environ.get("CRAFT_DEEP_JOB_MAX_SPECIALISTS", "3")
+)
 
 USER_LIBRARY_CONNECTOR_NAME = "User Library"
 USER_LIBRARY_CREDENTIAL_NAME = "User Library Credential"

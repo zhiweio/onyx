@@ -786,6 +786,85 @@ export async function exportDocx(
   return res.blob();
 }
 
+export async function exportPdf(
+  sessionId: string,
+  path: string
+): Promise<Blob> {
+  const encodedPath = path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  const res = await fetch(
+    `${BUILD_API_BASE}/sessions/${sessionId}/export-pdf/${encodedPath}`
+  );
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || `Failed to export as PDF: ${res.status}`
+    );
+  }
+
+  return res.blob();
+}
+
+export type CraftJobStatus =
+  | "pending"
+  | "running"
+  | "waiting_specialists"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+export interface CraftJobPhaseResponse {
+  id: string;
+  name: string;
+  kind: string;
+  status: string;
+}
+
+export interface CraftJobSpecialistResponse {
+  id: string;
+  session_id: string;
+  role: string;
+  status: string;
+}
+
+export interface CraftJobResponse {
+  id: string;
+  session_id: string;
+  project_id: string | null;
+  scenario_id: string | null;
+  name: string;
+  domain: string;
+  status: CraftJobStatus;
+  current_phase_index: number;
+  phases: CraftJobPhaseResponse[];
+  total_budget_seconds: number;
+  phase_budget_seconds: number;
+  error_detail: string | null;
+  specialists: CraftJobSpecialistResponse[];
+}
+
+export async function createCraftJob(body: {
+  session_id: string;
+  prompt?: string;
+  domain?: string;
+  start?: boolean;
+}): Promise<{ job: CraftJobResponse; turn_id: string | null }> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to start long job: ${res.status}`);
+  }
+  return res.json();
+}
+
 // =============================================================================
 // PPTX Preview API
 // =============================================================================

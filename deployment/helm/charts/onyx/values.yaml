@@ -1730,6 +1730,19 @@ configMap:
   # API service (no prefix). It is required when ENABLE_CRAFT=true.
   SANDBOX_PROXY_CA_SECRET: "sandbox-proxy-ca"
   SANDBOX_PROXY_CA_CONFIGMAP: "sandbox-proxy-ca-bundle"
+  # Long document / MCP jobs. Off by default. Raises project file cap and the
+  # silent-step inactivity window. Does not change the 30-minute turn hard cap.
+  CRAFT_DEEP_JOB_RESOURCES: ""
+  CRAFT_DEEP_JOB_PROJECT_MAX_FILES: ""
+  CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS: ""
+  CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS: ""
+  CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION: ""
+  CRAFT_DEEP_JOB_MAX_SPECIALISTS: ""
+  CRAFT_PROJECT_MAX_FILES: ""
+  CRAFT_PROJECT_MAX_FILE_SIZE_MB: ""
+  CRAFT_PROJECT_MAX_TOTAL_SIZE_GB: ""
+  SANDBOX_IMAGE_PULL_POLICY: ""
+  OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS: ""
   # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the
   # module on in Admin Panel > System MCP. Both gates must be open before any
   # system MCP server is visible to users.

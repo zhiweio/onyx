@@ -11938,6 +11938,17 @@
         "label": "Voir la tâche"
       }
     },
+    "longJob": {
+      "label": "Long job",
+      "toggle": "Run as a long job",
+      "status": {
+        "running": "Phase: {phase}",
+        "waitingSpecialists": "Waiting for specialist sessions",
+        "succeeded": "Finished",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
     "setupCard": {
       "appFallback": {
         "label": "Application externe {id}"
@@ -12353,6 +12364,10 @@
       "export": {
         "button": "Exporter en .docx",
         "inProgress": "Exportation..."
+      },
+      "exportPdf": {
+        "button": "Exporter en .pdf",
+        "inProgress": "Export en cours..."
       },
       "forward": {
         "ariaLabel": "Aller en avant"

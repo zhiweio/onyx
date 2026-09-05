@@ -290,4 +290,6 @@ export const SWR_KEYS = {
     `/api/build/scheduled-tasks/${taskId}/runs`,
   scheduledRunContext: (sessionId: string) =>
     `/api/build/sessions/${sessionId}/scheduled-run-context`,
+  craftJob: (sessionId: string) =>
+    `/api/build/jobs?session_id=${encodeURIComponent(sessionId)}`,
 } as const;

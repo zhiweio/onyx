@@ -22,6 +22,7 @@ import {
   fetchWebappInfo,
   fetchArtifacts,
   exportDocx,
+  exportPdf,
 } from "@/app/craft/services/apiServices";
 import { getFileIcon } from "@/lib/utils";
 import { cn } from "@opal/utils";
@@ -403,6 +404,7 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
     isFilePreviewActive && activeFilePath && /\.pdf$/i.test(activeFilePath);
 
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleDocxDownload = useCallback(async () => {
     if (!session?.id || !activeFilePath) return;
@@ -422,6 +424,27 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
       console.error("Failed to export as DOCX:", err);
     } finally {
       setIsExportingDocx(false);
+    }
+  }, [session?.id, activeFilePath]);
+
+  const handlePdfDownload = useCallback(async () => {
+    if (!session?.id || !activeFilePath) return;
+    setIsExportingPdf(true);
+    try {
+      const blob = await exportPdf(session.id, activeFilePath);
+      const fileName = activeFilePath.split("/").pop() || activeFilePath;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName.replace(/\.md$/i, ".pdf");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export as PDF:", err);
+    } finally {
+      setIsExportingPdf(false);
     }
   }, [session?.id, activeFilePath]);
 
@@ -694,6 +717,8 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
         }
         onDownload={isMarkdownPreview ? handleDocxDownload : undefined}
         isDownloading={isExportingDocx}
+        onExportPdf={isMarkdownPreview ? handlePdfDownload : undefined}
+        isExportingPdf={isExportingPdf}
         onRefresh={handleRefresh}
         isRefreshing={effectiveActiveTab === "files" && filesRefreshing}
         sessionId={

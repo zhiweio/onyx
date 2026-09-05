@@ -4,7 +4,7 @@
 
 export type SharingScope = "private" | "public_org";
 
-export type SessionOrigin = "INTERACTIVE" | "SCHEDULED" | "SLACK";
+export type SessionOrigin = "INTERACTIVE" | "SCHEDULED" | "SLACK" | "JOB";
 
 // =============================================================================
 // Artifact & Message Types

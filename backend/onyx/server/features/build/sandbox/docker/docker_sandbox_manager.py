@@ -82,6 +82,9 @@ from onyx.db.enums import SandboxStatus
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.configs import (
     ATTACHMENTS_DIRECTORY,
+    CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT,
+    CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT,
+    CRAFT_DEEP_JOB_RESOURCES,
     ONYX_SERVER_URL,
     OPENCODE_SERVE_PORT,
     OPENCODE_SERVER_PASSWORD,
@@ -91,6 +94,7 @@ from onyx.server.features.build.configs import (
     SANDBOX_DOCKER_NETWORK,
     SANDBOX_DOCKER_SOCKET,
     SANDBOX_DOCKER_VOLUME_PREFIX,
+    SANDBOX_IMAGE_PULL_POLICY,
     SANDBOX_PROXY_CA_VOLUME_NAME,
     SANDBOX_PROXY_HOST,
     SANDBOX_PROXY_INJECTED_PLACEHOLDER,
@@ -204,6 +208,8 @@ _OPENCODE_SESSION_TAG_PLUGIN_PATH = "/workspace/opencode-plugins/session-proxy-t
 _OPENCODE_CONNECT_APP_PLUGIN_PATH = "/workspace/opencode-plugins/connect-app.ts"
 # Soft turn-budget wrap-up steer (reads the per-turn deadline stamp).
 _OPENCODE_TURN_BUDGET_PLUGIN_PATH = "/workspace/opencode-plugins/turn-budget.ts"
+# Dumps large MCP / tool bodies to outputs/mcp and returns a digest.
+_OPENCODE_MCP_OFFLOAD_PLUGIN_PATH = "/workspace/opencode-plugins/mcp-offload.ts"
 # Surfaces the `webapp` tool (start/status/logs/restart); always on.
 _OPENCODE_WEBAPP_PLUGIN_PATH = "/workspace/opencode-plugins/webapp.ts"
 _MUTABLE_SANDBOX_IMAGE_TAGS = {"latest", "beta", "edge"}
@@ -675,8 +681,16 @@ class DockerSandboxManager(SandboxManager):
         self._image_checked = False
         self._image_check_lock = threading.Lock()
         self._network_name = SANDBOX_DOCKER_NETWORK
-        self._memory_limit = SANDBOX_DOCKER_MEMORY_LIMIT
-        self._cpu_limit = SANDBOX_DOCKER_CPU_LIMIT
+        self._memory_limit = (
+            CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT
+            if CRAFT_DEEP_JOB_RESOURCES
+            else SANDBOX_DOCKER_MEMORY_LIMIT
+        )
+        self._cpu_limit = (
+            CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT
+            if CRAFT_DEEP_JOB_RESOURCES
+            else SANDBOX_DOCKER_CPU_LIMIT
+        )
         self._snapshot_manager = SnapshotManager(get_default_file_store())
 
         self._init_serve_state()
@@ -710,13 +724,19 @@ class DockerSandboxManager(SandboxManager):
                     image_name.rsplit(":", 1)[1] if ":" in image_name else "latest"
                 )
             is_mutable_tag = image_tag in _MUTABLE_SANDBOX_IMAGE_TAGS
-            if not is_mutable_tag:
+            never_pull = SANDBOX_IMAGE_PULL_POLICY.strip().lower() == "never"
+            if never_pull or not is_mutable_tag:
                 try:
                     self._docker.images.get(self._image)
                     self._image_checked = True
                     return
                 except NotFound:
-                    pass
+                    if never_pull:
+                        raise RuntimeError(
+                            f"Sandbox image {self._image} is not on this host and "
+                            "SANDBOX_IMAGE_PULL_POLICY=Never forbids a registry "
+                            "pull. Build it from this repo first."
+                        ) from None
 
             logger.info(
                 "%s sandbox image %s.",
@@ -852,6 +872,7 @@ class DockerSandboxManager(SandboxManager):
             plugins = [
                 _OPENCODE_CONNECT_APP_PLUGIN_PATH,
                 _OPENCODE_TURN_BUDGET_PLUGIN_PATH,
+                _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH,
                 _OPENCODE_WEBAPP_PLUGIN_PATH,
             ]
             if SANDBOX_PROXY_HOST:
