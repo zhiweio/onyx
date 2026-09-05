@@ -67,6 +67,10 @@ services:
   # Egress proxy: MITMs sandbox HTTPS traffic and gates action approvals.
   sandbox-proxy:
     image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:${IMAGE_TAG:-latest}}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: runtime
     command: ["python", "-m", "onyx.sandbox_proxy.server"]
     env_file:
       - path: .env

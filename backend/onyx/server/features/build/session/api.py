@@ -132,12 +132,32 @@ def create_session(
                         OnyxErrorCode.INVALID_INPUT,
                         "scenario_id must be a UUID",
                     ) from exc
-            build_session = session_manager.get_or_create_empty_session(
-                user.id,
-                name=request.name,
-                headless=request.headless,
-                scenario_id=scenario_id,
-            )
+            project_id = None
+            if request.project_id:
+                try:
+                    project_id = UUID(request.project_id)
+                except ValueError as exc:
+                    raise OnyxError(
+                        OnyxErrorCode.INVALID_INPUT,
+                        "project_id must be a UUID",
+                    ) from exc
+                from onyx.db.craft_project import require_project_for_user
+
+                require_project_for_user(db_session, project_id, user)
+            if project_id is not None:
+                build_session = session_manager.create_session(
+                    user.id,
+                    name=request.name,
+                    scenario_id=scenario_id,
+                    project_id=project_id,
+                )
+            else:
+                build_session = session_manager.get_or_create_empty_session(
+                    user.id,
+                    name=request.name,
+                    headless=request.headless,
+                    scenario_id=scenario_id,
+                )
             sandbox = get_sandbox_by_user_id(db_session, user.id)
             if sandbox is None:
                 raise RuntimeError("Session creation completed without a sandbox")

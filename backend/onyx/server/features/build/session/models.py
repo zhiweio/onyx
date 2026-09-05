@@ -27,6 +27,7 @@ class SessionCreateRequest(BaseModel):
     # exercise the webapp proxy and don't want to pay the ~20s startup wait.
     headless: bool = False
     scenario_id: str | None = None
+    project_id: str | None = None
 
 
 class SessionUpdateRequest(BaseModel):
@@ -116,6 +117,7 @@ class SessionResponse(BaseModel):
     agent_model: str | None
     skills_stale: bool
     scenario_id: str | None = None
+    project_id: str | None = None
 
     @classmethod
     def from_model(
@@ -144,6 +146,7 @@ class SessionResponse(BaseModel):
             agent_model=session.agent_model,
             skills_stale=session_runtime_stale(session, sandbox),
             scenario_id=str(session.scenario_id) if session.scenario_id else None,
+            project_id=str(session.project_id) if session.project_id else None,
         )
 
 

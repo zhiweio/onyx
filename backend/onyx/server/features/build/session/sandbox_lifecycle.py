@@ -868,6 +868,24 @@ def sleep_sandbox(
     snapshot_failed = False
     for session_id in session_ids:
         try:
+            from onyx.server.features.build.session.artifact_persist import (
+                persist_session_workspace_files,
+            )
+
+            persist_session_workspace_files(
+                db_session,
+                sandbox_manager,
+                sandbox_id=sandbox_id,
+                session_id=session_id,
+                user_id=sandbox.user_id,
+            )
+        except Exception:
+            logger.warning(
+                "File catalog persist failed for session %s before sleep",
+                session_id,
+                exc_info=True,
+            )
+        try:
             snapshot_start = time.monotonic()
             snapshot_result = create_session_snapshot_keep_latest(
                 sandbox_manager=sandbox_manager,

@@ -423,6 +423,8 @@ class FileOrigin(str, Enum):
     SANDBOX_SNAPSHOT = "sandbox_snapshot"
     SKILL_BUNDLE = "skill_bundle"
     USER_FILE = "user_file"
+    CRAFT_ARTIFACT = "craft_artifact"
+    CRAFT_PROJECT = "craft_project"
 
 
 class FileType(str, Enum):

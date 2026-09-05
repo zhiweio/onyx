@@ -494,6 +494,18 @@ def _drive_interactive_turn(
 
             session_manager.finalize_persist(session_id, state)
             db_session.commit()
+            from onyx.server.features.build.session.artifact_persist import (
+                persist_session_workspace_files,
+            )
+
+            persist_session_workspace_files(
+                db_session,
+                get_sandbox_manager(),
+                sandbox_id=sandbox.id,
+                session_id=session_id,
+                user_id=user_id,
+                turn_index=turn_index,
+            )
 
             if deadline_exceeded:
                 persist_turn_error(
@@ -543,6 +555,18 @@ def _drive_interactive_turn(
             try:
                 session_manager.finalize_persist(session_id, state)
                 db_session.commit()
+                from onyx.server.features.build.session.artifact_persist import (
+                    persist_session_workspace_files,
+                )
+
+                persist_session_workspace_files(
+                    db_session,
+                    get_sandbox_manager(),
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    user_id=user_id,
+                    turn_index=turn_index,
+                )
             except Exception:
                 logger.exception("Failed to finalize persistence for turn %s", turn_id)
             persist_turn_error("This turn failed unexpectedly.")

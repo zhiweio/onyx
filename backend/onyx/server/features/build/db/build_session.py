@@ -33,6 +33,7 @@ def create_build_session__no_commit(
     agent_provider: str | None = None,
     agent_model: str | None = None,
     scenario_id: UUID | None = None,
+    project_id: UUID | None = None,
 ) -> BuildSession:
     """``flush()`` only — caller commits.
 
@@ -50,6 +51,7 @@ def create_build_session__no_commit(
         agent_provider=agent_provider,
         agent_model=agent_model,
         scenario_id=scenario_id,
+        project_id=project_id,
     )
     db_session.add(session)
     db_session.flush()

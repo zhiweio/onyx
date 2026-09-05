@@ -483,6 +483,7 @@ class SessionManager:
         name: str | None = None,
         origin: SessionOrigin = SessionOrigin.INTERACTIVE,
         scenario_id: UUID | None = None,
+        project_id: UUID | None = None,
         headless: bool = False,
     ) -> BuildSession:
         """Create a new build session with a ready sandbox.
@@ -527,6 +528,7 @@ class SessionManager:
             agent_provider=llm_config.provider,
             agent_model=llm_config.model_name,
             scenario_id=scenario_id,
+            project_id=project_id,
         )
         # Port allocation is skipped for non-interactive origins (SCHEDULED,
         # SLACK): those sessions are headless, never attach a preview, and
@@ -643,6 +645,24 @@ class SessionManager:
                     logger.exception(
                         "Failed to write SCENARIO.md for session %s", session.id
                     )
+            if session.project_id is not None:
+                try:
+                    from onyx.server.features.craft_project.runtime import (
+                        write_project_to_session,
+                    )
+
+                    write_project_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session.id,
+                        session.project_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write project files for session %s", session.id
+                    )
             self._db_session.commit()
             logger.info(
                 "Returning existing empty session %s for user %s",
@@ -726,6 +746,39 @@ class SessionManager:
                     logger.exception(
                         "Failed to write SCENARIO.md for session %s", session_id
                     )
+            if session.project_id is not None:
+                try:
+                    from onyx.server.features.craft_project.runtime import (
+                        write_project_to_session,
+                    )
+
+                    write_project_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session_id,
+                        session.project_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write project files for session %s", session_id
+                    )
+            try:
+                from onyx.server.features.build.session.artifact_persist import (
+                    restore_archived_files_to_session,
+                )
+
+                restore_archived_files_to_session(
+                    self._db_session,
+                    self._sandbox_manager,
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to restore archived files for session %s", session_id
+                )
             minted_opencode_session_id = self._sandbox_manager.ensure_opencode_session(
                 sandbox_id=sandbox.id,
                 session_id=session_id,
@@ -1340,16 +1393,16 @@ class SessionManager:
                 path="outputs",
             )
         except ValueError:
-            # outputs/ doesn't exist yet — no artifacts.
-            return artifacts
+            # outputs/ is missing after recycle — serve the durable catalog.
+            return self._catalog_artifact_dicts(session_id)
         except Exception:
-            # Sandbox transiently unreachable — degrade to no artifacts, not 500.
+            # Sandbox transiently unreachable — serve the durable catalog.
             logger.warning(
                 "Could not list artifacts for session %s; sandbox not reachable",
                 session_id,
                 exc_info=True,
             )
-            return artifacts
+            return self._catalog_artifact_dicts(session_id)
 
         # Check for webapp (web directory in outputs)
         has_webapp = any(
@@ -1370,7 +1423,37 @@ class SessionManager:
                 }
             )
 
+        catalog = self._catalog_artifact_dicts(session_id)
+        seen = {item["path"] for item in artifacts}
+        artifacts.extend(item for item in catalog if item["path"] not in seen)
         return artifacts
+
+    def _catalog_artifact_dicts(self, session_id: UUID) -> list[dict[str, Any]]:
+        from onyx.server.features.build.db.artifact import get_session_artifacts
+        from onyx.server.features.build.session.artifact_persist import (
+            ATTACHMENTS_PREFIX,
+        )
+
+        rows = get_session_artifacts(self._db_session, session_id=session_id)
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            if row.path.startswith(ATTACHMENTS_PREFIX):
+                display_path = f"attachments/{row.path[len(ATTACHMENTS_PREFIX) :]}"
+            else:
+                display_path = f"outputs/{row.path}"
+            items.append(
+                {
+                    "id": str(row.id),
+                    "session_id": str(session_id),
+                    "type": row.type.value,
+                    "name": row.name,
+                    "path": display_path,
+                    "preview_url": None,
+                    "created_at": row.created_at.isoformat(),
+                    "updated_at": row.updated_at.isoformat(),
+                }
+            )
+        return items
 
     def download_artifact(
         self,
@@ -1415,11 +1498,42 @@ class SessionManager:
             # read_file raises ValueError for not found or directory
             if "Not a file" in str(e):
                 raise ValueError("Cannot download directory")
-            return None
+            archived = self._read_archived_artifact(session_id, path)
+            if archived is None:
+                return None
+            content = archived
+        except Exception:
+            archived = self._read_archived_artifact(session_id, path)
+            if archived is None:
+                return None
+            content = archived
 
         mime_type, _ = mimetypes.guess_type(filename)
 
         return (content, mime_type or "application/octet-stream", filename)
+
+    def _read_archived_artifact(self, session_id: UUID, path: str) -> bytes | None:
+        from onyx.file_store.file_store import get_default_file_store
+        from onyx.server.features.build.db.artifact import get_artifact_by_path
+        from onyx.server.features.build.session.artifact_persist import (
+            catalog_paths_for_request,
+        )
+
+        for candidate in catalog_paths_for_request(path):
+            artifact = get_artifact_by_path(
+                self._db_session, session_id=session_id, path=candidate
+            )
+            if artifact is None or not artifact.archive_file_id:
+                continue
+            try:
+                return get_default_file_store().read_file(artifact.archive_file_id).read()
+            except Exception:
+                logger.warning(
+                    "Could not read archive for session %s path %s",
+                    session_id,
+                    candidate,
+                )
+        return None
 
     def export_docx(
         self,

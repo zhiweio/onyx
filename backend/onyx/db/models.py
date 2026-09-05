@@ -72,6 +72,7 @@ from onyx.db.enums import (
     ApprovalDecision,
     ArtifactType,
     BuildSessionStatus,
+    CraftProjectFileSource,
     CapabilityCheckTrigger,
     CapabilityReportRunStatus,
     ChatSessionSharePermission,
@@ -494,6 +495,9 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
         "UserProject", back_populates="user"
     )
     files: Mapped[list["UserFile"]] = relationship("UserFile", back_populates="user")
+    craft_projects: Mapped[list["CraftProject"]] = relationship(
+        "CraftProject", back_populates="user"
+    )
     # MCP servers accessible to this user
     accessible_mcp_servers: Mapped[list["MCPServer"]] = relationship(
         "MCPServer", secondary="mcp_server__user", back_populates="users"
@@ -6675,6 +6679,97 @@ class ModelCostOverride(Base):
 """Tables related to Build Mode (CLI Agent Platform)"""
 
 
+class CraftProject(Base):
+    """Durable file + instruction container for many Craft sessions."""
+
+    __tablename__ = "craft_project"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="craft_projects")
+    files: Mapped[list["CraftProjectFile"]] = relationship(
+        "CraftProjectFile",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    sessions: Mapped[list["BuildSession"]] = relationship(
+        "BuildSession", back_populates="project"
+    )
+
+    __table_args__ = (
+        Index("ix_craft_project_user_created", "user_id", desc("created_at")),
+    )
+
+
+class CraftProjectFile(Base):
+    """One path in a Craft Project file catalog."""
+
+    __tablename__ = "craft_project_file"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    project_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    path: Mapped[str] = mapped_column(String, nullable=False)
+    file_id: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    source: Mapped[CraftProjectFileSource] = mapped_column(
+        Enum(CraftProjectFileSource, native_enum=False, name="craftprojectfilesource"),
+        nullable=False,
+        default=CraftProjectFileSource.UPLOAD,
+    )
+    produced_by_session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    project: Mapped["CraftProject"] = relationship(
+        "CraftProject", back_populates="files"
+    )
+
+    __table_args__ = (
+        Index("uq_craft_project_file_path", "project_id", "path", unique=True),
+        Index("ix_craft_project_file_project_id", "project_id"),
+    )
+
+
 class BuildSession(Base):
     """Stores metadata about CLI agent build sessions."""
 
@@ -6730,10 +6825,18 @@ class BuildSession(Base):
         ForeignKey("scenario.id", ondelete="SET NULL"),
         nullable=True,
     )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
     user: Mapped[User | None] = relationship("User", foreign_keys=[user_id])
     scenario: Mapped["Scenario | None"] = relationship("Scenario")
+    project: Mapped["CraftProject | None"] = relationship(
+        "CraftProject", back_populates="sessions"
+    )
     artifacts: Mapped[list["Artifact"]] = relationship(
         "Artifact", back_populates="session", cascade="all, delete-orphan"
     )
@@ -6758,6 +6861,7 @@ class BuildSession(Base):
             desc("created_at"),
         ),
         Index("ix_build_session_status", "status"),
+        Index("ix_build_session_project_id", "project_id"),
         # Durable port reservation: allocation retries on collision instead of
         # trusting the application-level scan. Scoped per user — ports only
         # collide within one user's sandbox.
