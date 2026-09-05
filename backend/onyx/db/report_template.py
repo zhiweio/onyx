@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import re
 from uuid import UUID
 
@@ -10,10 +12,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import has_global_permission
-from onyx.db.enums import Permission
+from onyx.configs.constants import FileOrigin
+from onyx.db.enums import Permission, ReportTemplateKind
 from onyx.db.models import ReportTemplate, Scenario, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.file_store.file_store import get_default_file_store
+from onyx.report_templates.docx_template import (
+    DOCX_CONTENT_TYPE,
+    extract_docx_placeholder_schema,
+)
+from onyx.report_templates.placeholders import PlaceholderSpec
 
 SLUG_MAX = 64
 NAME_MAX = 128
@@ -73,9 +82,7 @@ def get_report_template(db_session: Session, template_id: UUID) -> ReportTemplat
 def get_report_template_by_slug(
     db_session: Session, slug: str
 ) -> ReportTemplate | None:
-    return db_session.scalar(
-        select(ReportTemplate).where(ReportTemplate.slug == slug)
-    )
+    return db_session.scalar(select(ReportTemplate).where(ReportTemplate.slug == slug))
 
 
 def create_report_template(
@@ -109,11 +116,60 @@ def create_report_template(
         db_session.commit()
     except IntegrityError:
         db_session.rollback()
-        raise OnyxError(
-            OnyxErrorCode.DUPLICATE_RESOURCE, "Template ID already exists"
-        )
+        raise OnyxError(OnyxErrorCode.DUPLICATE_RESOURCE, "Template ID already exists")
     db_session.refresh(template)
     return template
+
+
+def attach_docx_asset(
+    db_session: Session,
+    template: ReportTemplate,
+    user: User,
+    *,
+    asset_bytes: bytes,
+    filename: str | None,
+    overlay: list[PlaceholderSpec] | None = None,
+) -> ReportTemplate:
+    """Turn a template into a Word template, or replace its asset.
+
+    Names come from the uploaded document. Overlay only supplies metadata
+    (kind, description, example), so the contract cannot drift from the file
+    the agent will fill.
+    """
+    if not can_edit_report_template(template, user):
+        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS)
+
+    placeholders = extract_docx_placeholder_schema(asset_bytes, overlay)
+    file_store = get_default_file_store()
+    previous_file_id = template.asset_file_id
+    asset_file_id = file_store.save_file(
+        content=io.BytesIO(asset_bytes),
+        display_name=f"{template.slug}.docx",
+        file_origin=FileOrigin.REPORT_TEMPLATE_ASSET,
+        file_type=DOCX_CONTENT_TYPE,
+    )
+    try:
+        template.kind = ReportTemplateKind.DOCX
+        template.asset_file_id = asset_file_id
+        template.asset_sha256 = hashlib.sha256(asset_bytes).hexdigest()
+        template.asset_filename = (filename or f"{template.slug}.docx")[:255]
+        template.placeholders = placeholders
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+        file_store.delete_file(asset_file_id, error_on_missing=False)
+        raise
+    if previous_file_id is not None and previous_file_id != asset_file_id:
+        # The row now points at the new blob, so the old one is unreachable.
+        file_store.delete_file(previous_file_id, error_on_missing=False)
+    db_session.refresh(template)
+    return template
+
+
+def read_docx_asset(template: ReportTemplate) -> bytes:
+    if template.kind is not ReportTemplateKind.DOCX or template.asset_file_id is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "This template has no Word document")
+    return get_default_file_store().read_file(template.asset_file_id).read()
 
 
 def update_report_template(
@@ -158,5 +214,13 @@ def delete_report_template(
             "Packs still use this template",
             extra={"referenced_count": referenced},
         )
+    asset_file_id = template.asset_file_id
+    # A catalog projection only borrows the entry's blob — the catalog row owns
+    # it and outlives the projection, so deleting it here would orphan the entry.
+    owns_asset = template.system_report_template_id is None
     db_session.delete(template)
     db_session.commit()
+    if asset_file_id is not None and owns_asset:
+        # Only after the row is gone, so a failed delete never orphans the row
+        # from its asset.
+        get_default_file_store().delete_file(asset_file_id, error_on_missing=False)

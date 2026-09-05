@@ -11,12 +11,7 @@ import {
   InputTypeIn,
   MessageCard,
 } from "@opal/components";
-import {
-  Content,
-  InputVertical,
-  SettingsLayouts,
-  toast,
-} from "@opal/layouts";
+import { Content, InputVertical, SettingsLayouts, toast } from "@opal/layouts";
 import { SvgFileText, SvgSimpleLoader } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import useUnsavedChangesGuard from "@/hooks/useUnsavedChangesGuard";
@@ -26,6 +21,7 @@ import {
   updateReportTemplate,
 } from "@/lib/report-templates/api";
 import { suggestReportTemplateSlug } from "@/lib/report-templates/types";
+import DocxTemplateSection from "@/sections/reportTemplates/DocxTemplateSection";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import UnsavedChangesModal from "@/sections/modals/UnsavedChangesModal";
 import { CRAFT_REPORT_TEMPLATES_PATH } from "@/app/craft/v1/constants";
@@ -63,9 +59,7 @@ export default function ReportTemplateEditorPage({
 
   useEffect(() => {
     if (isCreating && baseline === "") {
-      setBaseline(
-        draftKey({ name: "", slug: "", description: "", body: "" })
-      );
+      setBaseline(draftKey({ name: "", slug: "", description: "", body: "" }));
     }
   }, [baseline, isCreating]);
 
@@ -82,7 +76,7 @@ export default function ReportTemplateEditorPage({
         slug: template.slug,
         description: template.description,
         body: template.body,
-      })
+      }),
     );
     setHydratedId(template.id);
   }, [hydratedId, template]);
@@ -125,7 +119,7 @@ export default function ReportTemplateEditorPage({
         toast.success(t("toasts.saved.message"));
         // SAFETY: created.id is the UUID of the template that was just saved.
         router.replace(
-          `${CRAFT_REPORT_TEMPLATES_PATH}/edit/${created.id}` as Route
+          `${CRAFT_REPORT_TEMPLATES_PATH}/edit/${created.id}` as Route,
         );
       } else if (template) {
         await updateReportTemplate(template.id, {
@@ -143,7 +137,7 @@ export default function ReportTemplateEditorPage({
       toast.error(
         saveError instanceof Error
           ? saveError.message
-          : t("toasts.saveFailed.message")
+          : t("toasts.saveFailed.message"),
       );
     } finally {
       setSaving(false);
@@ -204,7 +198,10 @@ export default function ReportTemplateEditorPage({
               sizePreset="main-content"
               variant="section"
             />
-            <InputVertical withLabel="template-name" title={t("editor.name.title")}>
+            <InputVertical
+              withLabel="template-name"
+              title={t("editor.name.title")}
+            >
               <InputTypeIn
                 id="template-name"
                 value={name}
@@ -246,7 +243,10 @@ export default function ReportTemplateEditorPage({
                 variant={fieldsLocked ? "disabled" : "primary"}
               />
             </InputVertical>
-            <InputVertical withLabel="template-body" title={t("editor.body.title")}>
+            <InputVertical
+              withLabel="template-body"
+              title={t("editor.body.title")}
+            >
               <InputTextArea
                 id="template-body"
                 rows={16}
@@ -258,6 +258,16 @@ export default function ReportTemplateEditorPage({
                 variant={fieldsLocked ? "disabled" : "primary"}
               />
             </InputVertical>
+            {template && (
+              <DocxTemplateSection
+                template={template}
+                disabled={fieldsLocked}
+                onUploaded={() => {
+                  void mutate(SWR_KEYS.reportTemplate(template.id));
+                  void mutate(SWR_KEYS.reportTemplates);
+                }}
+              />
+            )}
           </Section>
         )}
       </SettingsLayouts.Body>

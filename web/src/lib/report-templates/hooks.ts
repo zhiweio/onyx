@@ -11,7 +11,7 @@ import type {
 export function useReportTemplates() {
   const { data, error, isLoading, mutate } = useSWR<ReportTemplateListResponse>(
     SWR_KEYS.reportTemplates,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   return {
@@ -25,7 +25,7 @@ export function useReportTemplates() {
 export function useReportTemplate(templateId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<ReportTemplate>(
     templateId ? SWR_KEYS.reportTemplate(templateId) : null,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   return {

@@ -9,6 +9,9 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     name: "合规风险预警",
     description: "Tax compliance risk brief for an entity.",
     body: "# 合规风险预警报告",
+    kind: "MARKDOWN",
+    placeholders: [],
+    asset_filename: null,
     author_user_id: null,
     is_builtin: true,
     referenced_count: 2,
@@ -30,13 +33,37 @@ describe("ReportTemplateCard", () => {
     expect(screen.getByText("2 packs")).toBeInTheDocument();
   });
 
+  it("shows a Word badge on a Word template", () => {
+    render(
+      <ReportTemplateCard
+        template={template({
+          kind: "DOCX",
+          placeholders: [
+            {
+              name: "entity_name",
+              kind: "text",
+              required: true,
+              description: "",
+              example: "",
+            },
+          ],
+          asset_filename: "close.docx",
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId("ReportTemplateCard/word")).toHaveTextContent(
+      "Word",
+    );
+  });
+
   it("blocks delete when packs still use the template", () => {
     render(<ReportTemplateCard template={template()} onDelete={jest.fn()} />);
 
     expect(
       screen.getByRole("button", {
         name: "Cannot delete: packs use this template",
-      })
+      }),
     ).toBeDisabled();
   });
 
@@ -54,7 +81,7 @@ describe("ReportTemplateCard", () => {
         })}
         onClick={onClick}
         onDelete={onDelete}
-      />
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Delete template" }));

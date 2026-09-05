@@ -67,6 +67,11 @@ export default function ReportTemplateCard({
                   : t("card.origin.personal.label")
               }
             />
+            {template.kind === "DOCX" && (
+              <span data-testid="ReportTemplateCard/word">
+                <Tag size="sm" color="green" title={t("card.kind.word.label")} />
+              </span>
+            )}
             <Content
               title={template.slug}
               sizePreset="secondary"
