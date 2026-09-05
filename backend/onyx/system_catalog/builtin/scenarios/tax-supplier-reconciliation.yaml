@@ -1,0 +1,24 @@
+domain: tax
+objective: Align payables with supplier invoices or statements and explain gaps
+required_inputs:
+  - entity
+  - period
+  - payables_file
+  - supplier_files
+phases:
+  - id: ingest
+    done_when: Both sides are in normalized tables
+  - id: match
+    done_when: Each row has a match status and a difference class
+  - id: report
+    done_when: outputs/report.docx lists open differences
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/supplier_differences.csv
+quality_gates:
+  - Every open difference has an amount and a class
+  - Unreadable scans are listed as data gaps
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not force a match across different suppliers
+  - Do not invent invoice numbers

@@ -1,0 +1,25 @@
+domain: tax
+objective: Roll subsidiary expense claims into one coded table and flag outliers
+required_inputs:
+  - entity_group
+  - period
+  - claim_files
+phases:
+  - id: ingest
+    done_when: Every claim file is parsed or listed as unreadable
+  - id: code
+    done_when: Rows have company, department, and account
+  - id: check
+    done_when: Outliers and policy breaks are listed
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/expense_rollup.csv
+quality_gates:
+  - Totals by company and department are reconcilable to source files
+  - Unmapped accounts are listed, not guessed
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent departments or accounts
+  - Do not silently drop a file

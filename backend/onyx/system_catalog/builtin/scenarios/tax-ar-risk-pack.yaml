@@ -1,0 +1,23 @@
+domain: tax
+objective: Rank customers by collection risk and name the next action
+required_inputs:
+  - entity
+  - as_of_date
+  - ar_file
+phases:
+  - id: age
+    done_when: Every open item is in an aging bucket
+  - id: score
+    done_when: High-risk customers have a score and a reason
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/ar_risk.csv
+quality_gates:
+  - Every high-risk row has an owner and a next action
+  - External signals are dated and weighted, not treated as fact
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent overdue amounts
+  - Do not mark a balance current without an as-of date

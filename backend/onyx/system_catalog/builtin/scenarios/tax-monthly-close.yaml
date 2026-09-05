@@ -1,0 +1,26 @@
+domain: tax
+objective: Drive month-end close to a sign-off decision
+required_inputs:
+  - entity
+  - period
+  - currency
+  - close_deadline
+phases:
+  - id: plan
+    done_when: Scope, period, and deadline are fixed
+  - id: collect
+    done_when: Bank, payables, and checklist evidence are in the workspace
+  - id: reconcile
+    done_when: Every module has a status and every exception has an owner
+  - id: report
+    done_when: outputs/report.docx is filled and leftover tokens are gone
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/close_checklist.csv
+quality_gates:
+  - Every blocking exception has an amount and an owner
+  - No leftover {{placeholders}} in the Word file
+  - Do not mark close complete when a blocking module is open
+refusal_rules:
+  - Do not mark a module done without evidence
+  - Do not invent balances or tax differences

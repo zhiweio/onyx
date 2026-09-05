@@ -1,0 +1,22 @@
+domain: biomed
+objective: State freedom-to-operate risk with claim-level comparison
+required_inputs:
+  - asset
+  - jurisdiction
+  - as_of_date
+phases:
+  - id: search
+    done_when: Families and expiry or exclusivity dates are listed
+  - id: compare
+    done_when: Each material claim is mapped to the product
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+quality_gates:
+  - Term and exclusivity are kept separate
+  - A blocked claim names the patent and the element
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent patent numbers or expiry dates
+  - Do not give a legal opinion; state evidence and residual risk

@@ -1,0 +1,21 @@
+domain: biomed
+objective: Scan competing trials and compare design choices for one indication
+required_inputs:
+  - indication
+  - as_of_date
+phases:
+  - id: collect
+    done_when: Registered trials have IDs, sponsors, and phases
+  - id: compare
+    done_when: Population, endpoint, and control are tabulated
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+quality_gates:
+  - Trial IDs follow the source registry format
+  - Missing design elements are listed as gaps
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent enrollment or readout dates
+  - Do not merge two trials into one row
