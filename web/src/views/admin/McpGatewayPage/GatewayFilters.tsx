@@ -39,10 +39,7 @@ function FilterField({
   testId?: string;
 }) {
   return (
-    <div
-      className={cn("flex min-w-44 flex-col gap-1.5", className)}
-      data-testid={testId}
-    >
+    <div className={cn("flex flex-col gap-1.5", className)} data-testid={testId}>
       <Text as="p" secondaryBody text03>
         {label}
       </Text>
@@ -96,11 +93,11 @@ export default function GatewayFilters({
 
   return (
     <div
-      className="grid w-full grid-cols-1 items-end gap-4 md:grid-cols-[minmax(13rem,16rem)_minmax(0,auto)_minmax(13rem,16rem)]"
+      className="flex flex-wrap items-end gap-3"
       data-testid="mcp-gateway-filters"
     >
       <FilterField
-        className="w-full"
+        className="w-56"
         label={t("filter.server")}
         testId="mcp-gateway-server-filter"
       >
@@ -136,20 +133,7 @@ export default function GatewayFilters({
       </FilterField>
 
       <FilterField
-        className="min-w-0"
-        label={t("filter.time")}
-        testId="mcp-gateway-time-filter"
-      >
-        <DateRangePicker
-          value={dateRange ?? rangeForInclusiveDays(7)}
-          onValueChange={onDateRangeChange}
-          size="md"
-          className="min-h-10 w-full justify-center rounded-08 border border-border-01 bg-background-neutral-00"
-        />
-      </FilterField>
-
-      <FilterField
-        className="w-full"
+        className="w-56"
         label={t("filter.tool")}
         testId="mcp-gateway-tool-filter"
       >
@@ -186,6 +170,19 @@ export default function GatewayFilters({
             ))}
           </InputSelect.Content>
         </InputSelect>
+      </FilterField>
+
+      <FilterField
+        className="w-fit"
+        label={t("filter.time")}
+        testId="mcp-gateway-time-filter"
+      >
+        <DateRangePicker
+          value={dateRange ?? rangeForInclusiveDays(7)}
+          onValueChange={onDateRangeChange}
+          size="md"
+          className="h-[42px] items-center rounded-08 border border-border-01 bg-background-neutral-00"
+        />
       </FilterField>
     </div>
   );
