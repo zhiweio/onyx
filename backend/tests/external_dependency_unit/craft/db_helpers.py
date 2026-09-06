@@ -57,6 +57,8 @@ from onyx.db.models import (
 from onyx.db.permissions import recompute_user_permissions__no_commit
 from onyx.db.users import assign_user_to_default_groups__no_commit
 
+_CREATED_USER_IDS: list[UUID] = []
+
 
 def force_approval_created_at(
     db_session: Session,
@@ -86,6 +88,13 @@ def force_receipt_created_at(
     db_session.commit()
 
 
+def drain_created_users() -> list[UUID]:
+    """Return and clear user ids created by ``make_user`` in this test."""
+    user_ids = list(_CREATED_USER_IDS)
+    _CREATED_USER_IDS.clear()
+    return user_ids
+
+
 def make_user(
     db_session: Session,
     *,
@@ -100,6 +109,10 @@ def make_user(
     here, because a list written here drifts the first time a group's grants
     change. The no-flag default is a group-less placeholder, matching the users
     that external permission sync creates.
+
+    The craft conftest retires these users after the test. That matters:
+    committed ``ScheduledTask`` rows stay ``ACTIVE`` and the live beat
+    dispatches them, which wakes Docker sandboxes and refreshes heartbeats.
     """
     helper = PasswordHelper()
     joins_a_group = standard_account or is_admin or is_group_manager
@@ -124,6 +137,7 @@ def make_user(
 
     # The recompute updates the row in SQL, so re-read it or the caller gets stale permissions.
     db_session.refresh(user)
+    _CREATED_USER_IDS.append(user.id)
     return user
 
 

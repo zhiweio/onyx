@@ -121,6 +121,9 @@ def test_dispatch_uses_skip_locked_to_avoid_dupes(
             user_id=user.id,
             name=f"due-{i}",
             prompt=f"prompt-{i}",
+            # Every-minute cron is live if this user row survives the test.
+            # ``make_user`` teardown must retire the task; otherwise the
+            # compose beat keeps waking Docker sandboxes.
             cron_expression="* * * * *",
             editor_mode="advanced",
             status=ScheduledTaskStatus.ACTIVE,
@@ -201,6 +204,41 @@ def test_dispatch_uses_skip_locked_to_avoid_dupes(
     )
     # The two dispatchers together claimed exactly 3 — no double-fire.
     assert sum(results.values()) == 3
+
+
+def test_make_user_teardown_disables_committed_scheduled_tasks(
+    db_session: Session,
+    test_user: User,  # noqa: ARG001
+) -> None:
+    """Committed every-minute tasks must not stay ACTIVE after the helper exits.
+
+    A leftover ACTIVE ``* * * * *`` row is dispatched by the live beat, which
+    provisions Docker sandboxes and refreshes heartbeats so idle cleanup
+    never reaps them.
+    """
+    from tests.external_dependency_unit.craft.conftest import _retire_helper_users
+    from tests.external_dependency_unit.craft.db_helpers import drain_created_users
+
+    user = make_user(db_session)
+    task = ScheduledTask(
+        user_id=user.id,
+        name="leaked-minutely",
+        prompt="ping",
+        cron_expression="* * * * *",
+        editor_mode="advanced",
+        status=ScheduledTaskStatus.ACTIVE,
+        next_run_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    db_session.add(task)
+    db_session.commit()
+    task_id = task.id
+
+    _retire_helper_users(drain_created_users())
+    db_session.expire_all()
+    leftover = db_session.get(ScheduledTask, task_id)
+    assert leftover is None or leftover.deleted is True
+    if leftover is not None:
+        assert leftover.next_run_at is None
 
 
 def test_cleanup_stuck_runs_marks_queued_over_threshold_failed(

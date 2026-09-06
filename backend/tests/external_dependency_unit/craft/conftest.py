@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi_users.password import PasswordHelper
-from sqlalchemy import text
+from sqlalchemy import delete, text, update
 from sqlalchemy.orm import Session
 
 from onyx.configs.constants import FileOrigin
@@ -33,9 +33,11 @@ from onyx.db.llm import (
 from onyx.db.models import (
     BuildSession,
     Sandbox,
+    ScheduledTask,
     Skill,
     Skill__UserGroup,
     User,
+    User__UserGroup,
     UserGroup,
 )
 from onyx.file_store.file_store import get_default_file_store
@@ -54,6 +56,7 @@ from tests.common.craft.skill_table_isolation import (
     snapshot_skill_tables,
 )
 from tests.common.craft.stubs import StubSandboxManager
+from tests.external_dependency_unit.craft.db_helpers import drain_created_users
 
 
 def _best_effort_delete(model: type[Any], ids: Iterable[Any]) -> None:
@@ -74,6 +77,57 @@ def _best_effort_delete(model: type[Any], ids: Iterable[Any]) -> None:
             CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
     except Exception:
         pass
+
+
+def _retire_helper_users(user_ids: list[UUID]) -> None:
+    """Disable leftover scheduled tasks, then delete the helper users.
+
+    ``make_user`` used to leave committed ``ScheduledTask`` rows ``ACTIVE``.
+    The live beat then dispatched them every minute, which provisioned
+    Docker sandboxes and kept ``last_heartbeat`` fresh so idle cleanup
+    never reaped them.
+    """
+    user_ids = [user_id for user_id in user_ids if user_id is not None]
+    if not user_ids:
+        return
+    try:
+        token = CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE)
+        try:
+            with get_session_with_current_tenant() as session:
+                session.execute(text("SET lock_timeout = '10s'"))
+                session.execute(
+                    update(ScheduledTask)
+                    .where(
+                        ScheduledTask.user_id.in_(user_ids),
+                        ScheduledTask.deleted.is_(False),
+                    )
+                    .values(deleted=True, next_run_at=None)
+                )
+                session.commit()
+        finally:
+            CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+    except Exception:
+        pass
+    try:
+        token = CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE)
+        try:
+            with get_session_with_current_tenant() as session:
+                session.execute(text("SET lock_timeout = '10s'"))
+                session.execute(
+                    delete(User__UserGroup).where(User__UserGroup.user_id.in_(user_ids))
+                )
+                session.execute(delete(User).where(User.id.in_(user_ids)))
+                session.commit()
+        finally:
+            CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_make_user_rows() -> Generator[None, None, None]:
+    yield
+    _retire_helper_users(drain_created_users())
 
 
 @pytest.fixture(autouse=True)

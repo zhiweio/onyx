@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from onyx.db.engine.sql_engine import SqlEngine, get_session_with_current_tenant
 from onyx.db.enums import (
@@ -26,6 +26,9 @@ from tests.integration.common_utils.http_client import client
 from tests.integration.common_utils.test_models import DATestUser
 
 
+_CREATED_TASK_IDS: list[UUID] = []
+
+
 @pytest.fixture(autouse=True)
 def _db_access() -> Generator[None, None, None]:
     SqlEngine.init_engine(pool_size=10, max_overflow=5)
@@ -34,6 +37,24 @@ def _db_access() -> Generator[None, None, None]:
         yield
     finally:
         CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_created_scheduled_tasks(_db_access: None) -> Generator[None, None, None]:
+    """Soft-delete tasks this module created so the live beat cannot fire them."""
+    _CREATED_TASK_IDS.clear()
+    yield
+    task_ids = list(_CREATED_TASK_IDS)
+    _CREATED_TASK_IDS.clear()
+    if not task_ids:
+        return
+    with get_session_with_current_tenant() as db_session:
+        db_session.execute(
+            update(ScheduledTask)
+            .where(ScheduledTask.id.in_(task_ids), ScheduledTask.deleted.is_(False))
+            .values(deleted=True, next_run_at=None)
+        )
+        db_session.commit()
 
 
 def _url(*parts: str) -> str:
@@ -64,12 +85,17 @@ def _create_task(
     }
     if pre_approved_mcp_server_ids is not None:
         body["pre_approved_mcp_server_ids"] = pre_approved_mcp_server_ids
-    return client.post(
+    response = client.post(
         _url(),
         json=body,
         headers=user.headers,
         cookies=user.cookies,
     )
+    if response.is_success:
+        task_id = response.json().get("id")
+        if task_id:
+            _CREATED_TASK_IDS.append(UUID(task_id))
+    return response
 
 
 def _patch_task(
