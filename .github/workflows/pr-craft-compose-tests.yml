@@ -24,6 +24,7 @@ on:
       - "backend/tests/external_dependency_unit/sandbox_proxy/**"
       - "deployment/docker_compose/docker-compose.yml"
       - "deployment/docker_compose/docker-compose.craft.yml"
+      - "deployment/docker_compose/docker-compose.local-build.yml"
       - "deployment/docker_compose/env.template"
       - "deployment/docker_compose/install.sh"
       - ".github/workflows/pr-craft-compose-tests.yml"
@@ -80,6 +81,20 @@ jobs:
           echo "$rendered" | grep -q "sandbox-proxy:"
           echo "$rendered" | grep -A1 "sandbox_proxy_ca:" | grep -q "name: sandbox_proxy_ca"
           echo "$rendered" | grep -A1 "onyx_craft_sandbox:" | grep -q "name: onyx_craft_sandbox"
+          # Fork / secondary-dev overlay: build from this repo, do not pull Hub tags.
+          local_build=$(ONYX_BACKEND_IMAGE=onyxdotapp/onyx-backend:local \
+            ONYX_WEB_SERVER_IMAGE=onyxdotapp/onyx-web-server:local \
+            SANDBOX_CONTAINER_IMAGE=onyxdotapp/sandbox:local \
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.craft.yml \
+              -f docker-compose.local-build.yml \
+              --env-file env.template \
+              config)
+          echo "$local_build" | grep -q "onyxdotapp/onyx-backend:local"
+          echo "$local_build" | grep -q "onyxdotapp/onyx-web-server:local"
+          echo "$local_build" | grep -q "onyxdotapp/sandbox:local"
+          echo "$local_build" | grep -q "SANDBOX_IMAGE_PULL_POLICY: Never"
 
       # Pins the contract install.sh --include-craft's `inspect`-guarded block
       # relies on: after `create`, `inspect` exits 0 for both network and

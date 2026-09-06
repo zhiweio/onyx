@@ -77,6 +77,9 @@ RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
     libreoffice-common \
     libreoffice-impress \
     libreoffice-draw \
+    libreoffice-writer \
+    libreoffice-calc \
+    tesseract-ocr \
     poppler-utils \
     fontconfig \
     fonts-dejavu-core \

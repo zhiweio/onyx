@@ -1,0 +1,24 @@
+domain: tax
+objective: Explain period-over-period expense movement with named drivers
+required_inputs:
+  - entity
+  - current_period
+  - compare_period
+  - expense_files
+phases:
+  - id: ingest
+    done_when: Both periods are in one coded table
+  - id: variance
+    done_when: Material lines have amount, percent, and a driver
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/opex_variance.csv
+quality_gates:
+  - A material line without a driver is an open issue, not a story
+  - Mix, price, and volume are separated when the data supports it
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent a business reason
+  - Do not hide a restatement as an operating variance

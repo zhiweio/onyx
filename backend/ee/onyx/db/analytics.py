@@ -12,6 +12,8 @@ from onyx.db.models import (
     ChatSession,
     Persona,
     User,
+    User__UserGroup,
+    UserGroup,
 )
 from onyx.db.persona import can_view_persona_stats
 
@@ -88,6 +90,31 @@ def fetch_per_user_query_analytics(
         .order_by(cast(ChatMessage.time_sent, Date), ChatSession.user_id)
     )
 
+    return db_session.execute(stmt).all()  # ty: ignore[invalid-return-type]
+
+
+def fetch_group_query_analytics(
+    start: datetime.datetime,
+    end: datetime.datetime,
+    db_session: Session,
+) -> Sequence[tuple[int, str, int, datetime.date]]:
+    """Daily assistant-message counts grouped by the chat owner's user group."""
+    stmt = (
+        select(
+            UserGroup.id,
+            UserGroup.name,
+            func.count(ChatMessage.id),
+            cast(ChatMessage.time_sent, Date),
+        )
+        .join(ChatSession, ChatSession.id == ChatMessage.chat_session_id)
+        .join(User__UserGroup, User__UserGroup.user_id == ChatSession.user_id)
+        .join(UserGroup, UserGroup.id == User__UserGroup.user_group_id)
+        .where(ChatMessage.time_sent >= start)
+        .where(ChatMessage.time_sent <= end)
+        .where(ChatMessage.message_type == MessageType.ASSISTANT)
+        .group_by(UserGroup.id, UserGroup.name, cast(ChatMessage.time_sent, Date))
+        .order_by(cast(ChatMessage.time_sent, Date), UserGroup.name)
+    )
     return db_session.execute(stmt).all()  # ty: ignore[invalid-return-type]
 
 

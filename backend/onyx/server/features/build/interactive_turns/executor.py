@@ -173,6 +173,7 @@ def run_claimed_interactive_build_turn(
             budget_seconds=budget_seconds,
             runner_id=runner_id,
             reclaimed=turn.reclaimed,
+            kind=turn.kind,
         )
     except Exception as exc:
         logger.exception(
@@ -246,15 +247,34 @@ def _drive_interactive_turn(
     prompt: str,
     turn_index: int,
     attachments: list[PromptAttachment],
+    kind: str = "prompt",
     budget_seconds: int,
     runner_id: str | None,
     reclaimed: bool,
 ) -> None:
     cache = get_cache_backend()
+    turn_succeeded = False
+    deadline_exceeded = False
+    cancelled = False
+    sandbox_id: UUID | None = None
     with get_session_with_current_tenant() as db_session:
         session_manager = SessionManager(db_session)
         sandbox = _ready_session_runtime(db_session, session_id, user_id)
+        sandbox_id = sandbox.id
         db_session.commit()
+        from onyx.db.craft_job import (
+            get_open_job_for_session,
+            get_specialist_for_session,
+        )
+        from onyx.server.features.build.jobs.continuation import job_turn_budgets
+
+        job = get_open_job_for_session(db_session, session_id)
+        if job is None:
+            specialist = get_specialist_for_session(db_session, session_id)
+            job = specialist.job if specialist is not None else None
+        budgets = job_turn_budgets(job)
+        if budgets is not None:
+            _soft_budget_seconds, budget_seconds = budgets
 
         if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
             logger.info("Interactive turn %s runner ownership lost", turn_id)
@@ -262,7 +282,6 @@ def _drive_interactive_turn(
 
         state = BuildStreamingState(turn_index=turn_index)
         deadline = time.monotonic() + budget_seconds
-        deadline_exceeded = False
 
         def interrupt_requested() -> bool:
             nonlocal deadline_exceeded
@@ -351,12 +370,18 @@ def _drive_interactive_turn(
                 sandbox.id,
                 session_id,
                 soft_budget_seconds=min(
-                    INTERACTIVE_TURN_SOFT_BUDGET_SECONDS, budget_seconds
+                    (
+                        budgets[0]
+                        if budgets is not None
+                        else INTERACTIVE_TURN_SOFT_BUDGET_SECONDS
+                    ),
+                    budget_seconds,
                 ),
                 hard_cap_seconds=budget_seconds,
             )
 
             if interrupt_requested():
+                cancelled = not deadline_exceeded
                 session_manager.finalize_persist(session_id, state)
                 db_session.commit()
                 finish_turn(
@@ -372,6 +397,7 @@ def _drive_interactive_turn(
                 prompt_attachments: list[PromptAttachment],
                 *,
                 can_continue: bool,
+                compact: bool = False,
             ) -> _PromptResult:
                 """Stream one opencode prompt to completion, timeout, or a
                 turn-ending failure. On the recoverable inactivity timeout it
@@ -383,14 +409,22 @@ def _drive_interactive_turn(
                 cancelled_event_seen = False
                 timed_out = False
 
-                event_stream = session_manager.yield_sandbox_events(
-                    sandbox.id,
-                    session_id,
-                    current_prompt,
-                    attachments=prompt_attachments,
-                    should_interrupt=interrupt_requested,
-                    should_abort_on_teardown=lambda: not ownership_lost,
-                )
+                if compact:
+                    event_stream = session_manager.yield_sandbox_compact_events(
+                        sandbox.id,
+                        session_id,
+                        should_interrupt=interrupt_requested,
+                        should_abort_on_teardown=lambda: not ownership_lost,
+                    )
+                else:
+                    event_stream = session_manager.yield_sandbox_events(
+                        sandbox.id,
+                        session_id,
+                        current_prompt,
+                        attachments=prompt_attachments,
+                        should_interrupt=interrupt_requested,
+                        should_abort_on_teardown=lambda: not ownership_lost,
+                    )
 
                 for sandbox_event in event_stream:
                     if time.monotonic() > deadline:
@@ -468,32 +502,52 @@ def _drive_interactive_turn(
                 )
 
             result = _PromptResult(_PromptOutcome.COMPLETED)
-            current_prompt = prompt
-            for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
+            if kind == "compact":
                 result = drive_one_prompt(
-                    current_prompt,
-                    attachments if attempt == 0 else [],
-                    can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
+                    "",
+                    [],
+                    can_continue=False,
+                    compact=True,
                 )
-                if result.outcome is not _PromptOutcome.TIMED_OUT:
-                    break
-                # Flush the aborted step's partial output as its own message so it
-                # can't merge with the continuation, then steer the agent.
-                session_manager.finalize_persist(session_id, state)
-                db_session.commit()
-                logger.info(
-                    "Interactive turn %s step timed out; re-prompting (%s/%s)",
-                    turn_id,
-                    attempt + 1,
-                    MAX_TIMEOUT_CONTINUATIONS,
-                )
-                current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+            else:
+                current_prompt = prompt
+                for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
+                    result = drive_one_prompt(
+                        current_prompt,
+                        attachments if attempt == 0 else [],
+                        can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
+                    )
+                    if result.outcome is not _PromptOutcome.TIMED_OUT:
+                        break
+                    # Flush the aborted step's partial output as its own message so it
+                    # can't merge with the continuation, then steer the agent.
+                    session_manager.finalize_persist(session_id, state)
+                    db_session.commit()
+                    logger.info(
+                        "Interactive turn %s step timed out; re-prompting (%s/%s)",
+                        turn_id,
+                        attempt + 1,
+                        MAX_TIMEOUT_CONTINUATIONS,
+                    )
+                    current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
 
             if result.outcome is _PromptOutcome.TERMINATED:
                 return
 
             session_manager.finalize_persist(session_id, state)
             db_session.commit()
+            from onyx.server.features.build.session.artifact_persist import (
+                persist_session_workspace_files,
+            )
+
+            persist_session_workspace_files(
+                db_session,
+                get_sandbox_manager(),
+                sandbox_id=sandbox.id,
+                session_id=session_id,
+                user_id=user_id,
+                turn_index=turn_index,
+            )
 
             if deadline_exceeded:
                 persist_turn_error(
@@ -523,6 +577,7 @@ def _drive_interactive_turn(
                 return
 
             if result.cancelled:
+                cancelled = True
                 finish_turn(
                     cache=cache,
                     turn_id=turn_id,
@@ -531,6 +586,7 @@ def _drive_interactive_turn(
                 )
                 return
 
+            turn_succeeded = True
             finish_turn(
                 cache=cache,
                 turn_id=turn_id,
@@ -543,6 +599,18 @@ def _drive_interactive_turn(
             try:
                 session_manager.finalize_persist(session_id, state)
                 db_session.commit()
+                from onyx.server.features.build.session.artifact_persist import (
+                    persist_session_workspace_files,
+                )
+
+                persist_session_workspace_files(
+                    db_session,
+                    get_sandbox_manager(),
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    user_id=user_id,
+                    turn_index=turn_index,
+                )
             except Exception:
                 logger.exception("Failed to finalize persistence for turn %s", turn_id)
             persist_turn_error("This turn failed unexpectedly.")
@@ -586,3 +654,23 @@ def _drive_interactive_turn(
                     )
                 session_manager.clear_turn_deadline(sandbox.id, session_id)
             prompt_slot_cm.__exit__(None, None, None)
+
+    if sandbox_id is None or kind == "compact":
+        return
+    try:
+        from onyx.server.features.build.jobs.continuation import (
+            maybe_continue_craft_job,
+        )
+
+        with get_session_with_current_tenant() as continue_session:
+            maybe_continue_craft_job(
+                continue_session,
+                session_id=session_id,
+                user_id=user_id,
+                sandbox_id=sandbox_id,
+                turn_succeeded=turn_succeeded,
+                deadline_exceeded=deadline_exceeded,
+                cancelled=cancelled,
+            )
+    except Exception:
+        logger.exception("Failed to continue Craft job after turn %s", turn_id)

@@ -49,6 +49,7 @@ export enum ResearchType {
 export enum ChatSessionSharedStatus {
   Private = "private",
   Public = "public",
+  Shared = "shared",
 }
 
 export interface ChatSessionSummary {

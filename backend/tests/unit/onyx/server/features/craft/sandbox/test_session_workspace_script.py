@@ -79,6 +79,9 @@ class TestSetupScriptReplaySafety:
         script = _setup_script()
         assert shlex.quote('# Agent\'s "instructions"') in script
         assert f"> {_SESSION_PATH}/AGENTS.md" in script
+        assert f"{_SESSION_PATH}/.opencode/skills" in script
+        assert "/workspace/managed/skills" in script
+        assert ".pi/" not in script
 
     def test_headless_omits_nextjs_start(self) -> None:
         script = _setup_script(nextjs_port=None)

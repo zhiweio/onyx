@@ -141,6 +141,9 @@ export const SWR_KEYS = {
   adminMcpServers: "/api/admin/mcp/servers",
   adminMcpServerToolSnapshots: (serverId: number) =>
     `/api/admin/mcp/server/${serverId}/tools/snapshots?source=db`,
+  personalMcpServers: "/api/mcp/personal/servers",
+  personalMcpServerToolSnapshots: (serverId: number) =>
+    `/api/mcp/personal/server/${serverId}/tools/snapshots?source=db`,
   mcpServers: "/api/mcp/servers",
   mcpServersCraft: "/api/mcp/servers/craft",
   agentMcpServers: (agentId: number) => `/api/mcp/servers/persona/${agentId}`,
@@ -149,6 +152,12 @@ export const SWR_KEYS = {
   userSkills: "/api/skills",
   userSkillPreview: (skillId: string) => `/api/skills/${skillId}/preview`,
   editableSkill: (skillId: string) => `/api/skills/custom/${skillId}/edit`,
+  scenarios: "/api/scenarios",
+  scenario: (scenarioId: string) => `/api/scenarios/${scenarioId}`,
+  reportTemplates: "/api/report-templates",
+  reportTemplate: (templateId: string) => `/api/report-templates/${templateId}`,
+  craftProjects: "/api/craft-projects",
+  craftProject: (projectId: string) => `/api/craft-projects/${projectId}`,
 
   // ── Tools ─────────────────────────────────────────────────────────────────
   tools: "/api/tool",
@@ -231,6 +240,19 @@ export const SWR_KEYS = {
 
   // ── MCP Server (per-ID) ───────────────────────────────────────────────────
   adminMcpServer: (id: number) => `/api/admin/mcp/servers/${id}`,
+  personalMcpServer: (id: number) => `/api/mcp/personal/servers/${id}`,
+  adminMcpGatewayPacks: "/api/admin/mcp-gateway/packs",
+  adminMcpGatewayProviders: "/api/admin/mcp-gateway/providers",
+  adminMcpGatewayPolicies: (slug: string) =>
+    `/api/admin/mcp-gateway/providers/${slug}/policies`,
+  adminMcpGatewayCache: (providerSlug?: string) =>
+    providerSlug
+      ? `/api/admin/mcp-gateway/cache?provider_slug=${encodeURIComponent(providerSlug)}`
+      : "/api/admin/mcp-gateway/cache",
+  adminMcpGatewayStats: (providerSlug?: string) =>
+    providerSlug
+      ? `/api/admin/mcp-gateway/stats?provider_slug=${encodeURIComponent(providerSlug)}`
+      : "/api/admin/mcp-gateway/stats",
 
   // ── Document Processing ───────────────────────────────────────────────────
   unstructuredApiKeySet: "/api/search-settings/unstructured-api-key-set",
@@ -272,4 +294,6 @@ export const SWR_KEYS = {
     `/api/build/scheduled-tasks/${taskId}/runs`,
   scheduledRunContext: (sessionId: string) =>
     `/api/build/sessions/${sessionId}/scheduled-run-context`,
+  craftJob: (sessionId: string) =>
+    `/api/build/jobs?session_id=${encodeURIComponent(sessionId)}`,
 } as const;

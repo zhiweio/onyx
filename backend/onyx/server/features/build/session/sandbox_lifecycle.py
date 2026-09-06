@@ -763,6 +763,17 @@ def is_sandbox_idle(sandbox: Sandbox, now: datetime) -> bool:
     return reference < now - timedelta(seconds=SANDBOX_IDLE_TIMEOUT_SECONDS)
 
 
+def should_sleep_sandbox(
+    db_session: DBSession, sandbox: Sandbox, now: datetime
+) -> bool:
+    """Idle sandboxes with an open long job stay up between phases."""
+    if not is_sandbox_idle(sandbox, now):
+        return False
+    from onyx.db.craft_job import user_has_open_craft_job
+
+    return not user_has_open_craft_job(db_session, sandbox.user_id)
+
+
 def list_snapshotable_session_workspaces(
     db_session: DBSession,
     sandbox_manager: SandboxManager,
@@ -868,6 +879,24 @@ def sleep_sandbox(
     snapshot_failed = False
     for session_id in session_ids:
         try:
+            from onyx.server.features.build.session.artifact_persist import (
+                persist_session_workspace_files,
+            )
+
+            persist_session_workspace_files(
+                db_session,
+                sandbox_manager,
+                sandbox_id=sandbox_id,
+                session_id=session_id,
+                user_id=sandbox.user_id,
+            )
+        except Exception:
+            logger.warning(
+                "File catalog persist failed for session %s before sleep",
+                session_id,
+                exc_info=True,
+            )
+        try:
             snapshot_start = time.monotonic()
             snapshot_result = create_session_snapshot_keep_latest(
                 sandbox_manager=sandbox_manager,
@@ -946,8 +975,8 @@ def sleep_sandbox(
         # Snapshotting above can take minutes; re-check idleness right before
         # the kill and capture the attempt number the sleep must still match.
         db_session.refresh(sandbox)
-        if sandbox.status != SandboxStatus.RUNNING or not is_sandbox_idle(
-            sandbox, datetime.now(timezone.utc)
+        if sandbox.status != SandboxStatus.RUNNING or not should_sleep_sandbox(
+            db_session, sandbox, datetime.now(timezone.utc)
         ):
             logger.info("Sandbox %s went active mid-sweep; skipping reap", sandbox_id)
             return

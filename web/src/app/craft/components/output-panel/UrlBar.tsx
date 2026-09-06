@@ -39,6 +39,8 @@ export interface UrlBarProps {
   onDownload?: () => void;
   /** Whether a download/export is currently in progress */
   isDownloading?: boolean;
+  onExportPdf?: () => void;
+  isExportingPdf?: boolean;
   /** Optional refresh callback — shows a refresh icon at the right edge of the URL pill */
   onRefresh?: () => void;
   /** Whether the current view is refreshing. */
@@ -70,6 +72,8 @@ export default function UrlBar({
   downloadRawTooltip,
   onDownload,
   isDownloading = false,
+  onExportPdf,
+  isExportingPdf = false,
   onRefresh,
   isRefreshing = false,
   sessionId,
@@ -253,6 +257,17 @@ export default function UrlBar({
             onClick={onDownload}
           >
             {isDownloading ? t("export.inProgress") : t("export.button")}
+          </Button>
+        )}
+        {onExportPdf && (
+          <Button
+            disabled={isExportingPdf}
+            variant="action"
+            prominence="tertiary"
+            icon={isExportingPdf ? SpinningLoader : SvgExternalLink}
+            onClick={onExportPdf}
+          >
+            {isExportingPdf ? t("exportPdf.inProgress") : t("exportPdf.button")}
           </Button>
         )}
         {/* Share button — shown when webapp preview is active */}

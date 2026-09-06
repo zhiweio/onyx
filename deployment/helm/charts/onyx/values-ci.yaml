@@ -204,6 +204,9 @@ discordbot:
 mcpServer:
   enabled: false
 
+mcpGateway:
+  enabled: false
+
 inferenceCapability:
   replicaCount: 0
 

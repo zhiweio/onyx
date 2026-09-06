@@ -23,10 +23,12 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       chatPreferences: t("adminNav.items.chatPreferences.label"),
       craftAccess: t("adminNav.items.craftAccess.label"),
       craftApps: t("adminNav.items.craftApps.label"),
+      craftCatalog: t("adminNav.items.craftCatalog.label"),
       craftPreferences: t("adminNav.items.craftPreferences.label"),
       customAnalytics: t("adminNav.items.customAnalytics.label"),
       agents: t("adminNav.items.agents.label"),
       mcpActions: t("adminNav.items.mcpActions.label"),
+      mcpGateway: t("adminNav.items.mcpGateway.label"),
       openapiActions: t("adminNav.items.openapiActions.label"),
       existingConnectors: t("adminNav.items.existingConnectors.label"),
       addConnector: t("adminNav.items.addConnector.label"),
@@ -50,7 +52,7 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       exportLogs: t("adminNav.items.exportLogs.label"),
       upgradePlan: t("adminNav.items.upgradePlan.label"),
     }),
-    [t]
+    [t],
   );
 }
 
@@ -64,7 +66,7 @@ function useAdminHiddenRouteTitles(): Record<AdminHiddenRouteId, string> {
       oauthTest: t("adminNav.hiddenRoutes.oauthTest.title"),
       standardAnswers: t("adminNav.hiddenRoutes.standardAnswers.title"),
     }),
-    [t]
+    [t],
   );
 }
 
@@ -81,6 +83,6 @@ export function useAdminRouteTitle(): (route: AdminRouteEntry) => string {
       const hiddenId = getAdminHiddenRouteId(route);
       return hiddenId ? hiddenTitles[hiddenId] : route.title;
     },
-    [labels, hiddenTitles]
+    [labels, hiddenTitles],
   );
 }

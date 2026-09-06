@@ -1,0 +1,26 @@
+domain: tax
+objective: Merge bank statements and produce a balance reconciliation
+required_inputs:
+  - entity
+  - period
+  - bank_files
+  - book_balance
+phases:
+  - id: ingest
+    done_when: Every statement is parsed with bank, account, and currency
+  - id: normalize
+    done_when: Dates, amounts, and signs follow one convention
+  - id: reconcile
+    done_when: Outstanding items explain book versus bank
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/bank_outstanding.csv
+quality_gates:
+  - Every outstanding item has a side, an amount, and a date
+  - A zero difference is written, not omitted
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not drop a statement that failed to parse
+  - Do not invent clearing dates

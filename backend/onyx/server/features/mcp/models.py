@@ -16,6 +16,7 @@ from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
 )
@@ -304,6 +305,13 @@ class MCPToolCreateRequest(BaseModel):
         default=None,
         description="User IDs allowed to use this server when not public",
     )
+    gateway_binding: Optional["MCPGatewayBindingRequest"] = Field(
+        None,
+        description=(
+            "Optional gateway bind for an organization MCP. Packs always bind. "
+            "Personal MCP must omit this."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_auth_configuration(self) -> "MCPToolCreateRequest":
@@ -402,7 +410,53 @@ class MCPToolCreateRequest(BaseModel):
             self.oauth_scopes_override = None
             self.oauth_additional_auth_params = None
 
+        if self.gateway_binding is not None and (
+            self.auth_performer == MCPAuthenticationPerformer.PER_USER
+        ):
+            raise ValueError("Gateway-bound servers cannot use per-user authentication")
+
         return self
+
+
+class MCPGatewayBindingRequest(BaseModel):
+    """Bind an organization MCP to the gateway."""
+
+    slug: Optional[str] = Field(
+        None,
+        description="Gateway path slug. Derived from the server name when omitted.",
+    )
+    pack_slug: str = Field(default="generic_http")
+    upstream_url: Optional[str] = Field(
+        None, description="Upstream URL. Defaults to the server URL when omitted."
+    )
+    credentials: dict[str, Any] = Field(default_factory=dict)
+    policy_overrides: Optional[dict[str, Any]] = None
+    auth_adapter: Optional[str] = None
+
+
+class MCPFromPackRequest(BaseModel):
+    """Install a built-in pack as an organization MCP. Always uses the gateway."""
+
+    pack_slug: str
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    upstream_url: Optional[str] = None
+    credentials: dict[str, Any] = Field(default_factory=dict)
+    policy_overrides: Optional[dict[str, Any]] = None
+    is_public: bool = True
+    groups: list[int] = Field(default_factory=list)
+    users: list[UUID] = Field(default_factory=list)
+
+
+class MCPPackSummary(BaseModel):
+    slug: str
+    display_name: str
+    description: str
+    default_upstream_url: str
+    group: str
+    transport: MCPTransport
+    auth_adapter: str
 
 
 class MCPToolUpdateRequest(BaseModel):
@@ -436,6 +490,10 @@ class MCPServerSimpleCreateRequest(BaseModel):
     users: list[UUID] = Field(
         default_factory=list,
         description="User IDs allowed to use this server when not public",
+    )
+    gateway_binding: Optional[MCPGatewayBindingRequest] = Field(
+        None,
+        description="Optional gateway bind. Packs use /servers/from-pack instead.",
     )
 
 
@@ -736,6 +794,11 @@ class MCPServer(BaseModel):
             "None outside the Craft listing, the only one that computes it."
         ),
     )
+    scope: MCPServerScope = MCPServerScope.USER
+    # Set when this organization server routes through the MCP Gateway.
+    catalog_slug: Optional[str] = None
+    pack_slug: Optional[str] = None
+    gateway_bound: bool = False
 
 
 class MCPServersResponse(BaseModel):

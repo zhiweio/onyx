@@ -51,6 +51,8 @@ export interface FeatureFlags {
   opensearchEnabled: boolean;
   queryHistoryEnabled: boolean;
   craftAvailable: boolean;
+  mcpGatewayAvailable: boolean;
+  mcpGatewayEnabled: boolean;
 }
 
 /**
@@ -186,6 +188,16 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: (f: FeatureFlags) => f.craftAvailable,
   },
+  CRAFT_CATALOG: {
+    path: "/admin/craft/catalog",
+    icon: SvgBookOpen,
+    title: "Gallery",
+    sidebarLabel: "Gallery",
+    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
+    section: "Craft",
+    requiredTier: null,
+    visibleWhen: (f: FeatureFlags) => f.craftAvailable,
+  },
   CUSTOM_ANALYTICS: {
     path: "/admin/performance/custom-analytics",
     icon: SvgBarChart,
@@ -218,6 +230,16 @@ export const ADMIN_ROUTES = {
     section: "Agents & Actions",
     requiredTier: null,
     visibleWhen: null,
+  },
+  MCP_GATEWAY: {
+    path: "/admin/mcp-gateway",
+    icon: SvgMcp,
+    title: "MCP Gateway",
+    sidebarLabel: "MCP Gateway",
+    requiredPermission: Permission.MANAGE_ACTIONS,
+    section: "Agents & Actions",
+    requiredTier: null,
+    visibleWhen: (flags) => flags.mcpGatewayAvailable,
   },
   OPENAPI_ACTIONS: {
     path: "/admin/openapi-actions",
@@ -543,7 +565,7 @@ export const VECTOR_DB_REQUIRED_ROUTE_PREFIXES: readonly string[] = [
 
 export function isVectorDbRequiredRoute(pathname: string): boolean {
   return VECTOR_DB_REQUIRED_ROUTE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
+    pathname.startsWith(prefix),
   );
 }
 

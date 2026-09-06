@@ -1059,6 +1059,71 @@ export class OnyxApiClient {
     return data.id;
   }
 
+  async createMcpServerFromPack(request: {
+    pack_slug: string;
+    name?: string;
+    slug?: string;
+    description?: string;
+    upstream_url?: string;
+    credentials?: Record<string, string>;
+    is_public?: boolean;
+    groups?: number[];
+    users?: string[];
+  }): Promise<{
+    id: number;
+    name: string;
+    gateway_bound: boolean;
+    catalog_slug: string | null;
+    pack_slug: string | null;
+  }> {
+    const response = await this.post("/admin/mcp/servers/from-pack", request);
+    const data = await this.handleResponse<{
+      id: number;
+      name: string;
+      gateway_bound: boolean;
+      catalog_slug: string | null;
+      pack_slug: string | null;
+    }>(response, `Failed to install pack ${request.pack_slug}`);
+    this.log(`Installed pack MCP ${data.name} (ID: ${data.id})`);
+    return data;
+  }
+
+  async createPersonalMcpServer(
+    name: string,
+    serverUrl: string,
+    options: { authType?: "NONE" | "API_TOKEN"; apiToken?: string } = {}
+  ): Promise<number> {
+    const response = await this.post("/mcp/personal/servers/create", {
+      name,
+      description: "E2E personal MCP server",
+      server_url: serverUrl,
+      auth_type: options.authType ?? "NONE",
+      auth_performer: "ADMIN",
+      transport: "STREAMABLE_HTTP",
+      api_token: options.apiToken,
+    });
+    const data = await this.handleResponse<{ server_id: number }>(
+      response,
+      "Failed to create personal MCP server"
+    );
+    this.log(`Created personal MCP server: ${name} (ID: ${data.server_id})`);
+    return data.server_id;
+  }
+
+  async deletePersonalMcpServer(serverId: number): Promise<boolean> {
+    const response = await this.request.delete(
+      `${this.baseUrl}/mcp/personal/server/${serverId}`
+    );
+    const success = await this.handleResponseSoft(
+      response,
+      `Failed to delete personal MCP server ${serverId}`
+    );
+    if (success) {
+      this.log(`Deleted personal MCP server ${serverId}`);
+    }
+    return success;
+  }
+
   async createMcpServer(
     name: string,
     serverUrl: string = "https://example.com/mcp"

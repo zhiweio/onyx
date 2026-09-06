@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from mcp.types import CallToolResult, TextContent
 
 from onyx.db.enums import MCPAuthenticationType
 from onyx.mcp_server.api import create_mcp_fastapi_app
@@ -15,6 +16,10 @@ from onyx.server.metrics.mcp_common import MCPToolCallStatus
 from onyx.server.metrics.mcp_server import MCPAuthResult, MCPServerToolName
 from onyx.server.query_and_chat.placement import Placement
 from onyx.tools.tool_implementations.mcp.mcp_tool import MCPTool
+
+
+def _call_result(text: str = "ok") -> CallToolResult:
+    return CallToolResult(content=[TextContent(type="text", text=text)])
 
 
 def _mcp_tool(
@@ -39,8 +44,8 @@ def test_client_records_success_once() -> None:
     tool = _mcp_tool()
     with (
         patch(
-            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool",
-            return_value={"ok": True},
+            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool_raw",
+            return_value=_call_result(),
         ),
         patch(
             "onyx.tools.tool_implementations.mcp.mcp_tool."
@@ -68,7 +73,7 @@ def test_client_records_reauthentication_required_as_auth_error() -> None:
     tool = _mcp_tool()
     with (
         patch(
-            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool",
+            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool_raw",
             side_effect=MCPReauthenticationRequired(),
         ),
         patch(
@@ -92,8 +97,8 @@ def test_client_records_post_call_failure_once() -> None:
             side_effect=[RuntimeError("emit failed"), None],
         ),
         patch(
-            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool",
-            return_value={"ok": True},
+            "onyx.tools.tool_implementations.mcp.mcp_tool.call_mcp_tool_raw",
+            return_value=_call_result(),
         ),
         patch(
             "onyx.tools.tool_implementations.mcp.mcp_tool."

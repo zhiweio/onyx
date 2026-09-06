@@ -3,11 +3,12 @@ import time
 from typing import Any
 
 from mcp.client.auth import OAuthClientProvider
+from mcp.types import CallToolResult
 
 from onyx.chat.emitter import Emitter
-from onyx.db.enums import MCPAuthenticationType, MCPTransport
+from onyx.db.enums import MCPAuthenticationType, MCPServerScope, MCPTransport
 from onyx.db.models import MCPConnectionConfig, MCPServer
-from onyx.server.features.mcp.client import call_mcp_tool
+from onyx.server.features.mcp.client import call_mcp_tool_raw, process_mcp_result
 from onyx.server.features.mcp.credentials import ResolvedMCPCredentials
 from onyx.server.features.mcp.models import (
     DENYLISTED_MCP_HEADERS,
@@ -141,6 +142,35 @@ class MCPTool(Tool[None]):
             )
         )
 
+    def _build_response(
+        self, placement: Placement, raw_result: CallToolResult
+    ) -> ToolResponse:
+        """Pass the original flattened MCP result through to the model.
+
+        The gateway (when used) already cached the full body. This layer must
+        look like a raw MCP tool: no digest, no handle, no second store.
+        Conversation history may later cut the text to fit the token budget.
+        """
+        tool_result_dict = {"tool_result": process_mcp_result(raw_result)}
+        self.emitter.emit(
+            Packet(
+                placement=placement,
+                obj=CustomToolDelta(
+                    tool_name=self._name,
+                    response_type="json",
+                    data=tool_result_dict,
+                ),
+            )
+        )
+        return ToolResponse(
+            rich_response=CustomToolCallSummary(
+                tool_name=self._name,
+                response_type="json",
+                tool_result=tool_result_dict,
+            ),
+            llm_facing_response=json.dumps(tool_result_dict),
+        )
+
     def run(
         self,
         placement: Placement,
@@ -152,6 +182,36 @@ class MCPTool(Tool[None]):
         _server = self.mcp_server.name
         outcome = MCPToolCallStatus.ERROR
         try:
+            if (
+                self.mcp_server.scope == MCPServerScope.PERSONAL
+                and self.mcp_server.owner != self.user_email
+            ):
+                error_result = {
+                    "error": (
+                        "This personal MCP server belongs to another user. "
+                        "Only the owner can run it."
+                    )
+                }
+                self.emitter.emit(
+                    Packet(
+                        placement=placement,
+                        obj=CustomToolDelta(
+                            tool_name=self._name,
+                            response_type="json",
+                            data=error_result,
+                        ),
+                    )
+                )
+                outcome = MCPToolCallStatus.AUTH_ERROR
+                return ToolResponse(
+                    rich_response=CustomToolCallSummary(
+                        tool_name=self._name,
+                        response_type="json",
+                        tool_result=error_result,
+                    ),
+                    llm_facing_response=json.dumps(error_result),
+                )
+
             request_headers = {
                 name: value
                 for name, value in self._additional_headers.items()
@@ -247,7 +307,7 @@ class MCPTool(Tool[None]):
                         None,
                     )
 
-            tool_result = call_mcp_tool(
+            raw_result = call_mcp_tool_raw(
                 self.mcp_server.server_url,
                 self._mcp_tool_name,
                 llm_kwargs,
@@ -258,30 +318,7 @@ class MCPTool(Tool[None]):
 
             logger.info("MCP tool '%s' executed successfully", self._name)
 
-            # Format the tool result for response
-            tool_result_dict = {"tool_result": tool_result}
-            llm_facing_response = json.dumps(tool_result_dict)
-
-            # Emit CustomToolDelta packet
-            self.emitter.emit(
-                Packet(
-                    placement=placement,
-                    obj=CustomToolDelta(
-                        tool_name=self._name,
-                        response_type="json",
-                        data=tool_result_dict,
-                    ),
-                )
-            )
-
-            response = ToolResponse(
-                rich_response=CustomToolCallSummary(
-                    tool_name=self._name,
-                    response_type="json",
-                    tool_result=tool_result_dict,
-                ),
-                llm_facing_response=llm_facing_response,
-            )
+            response = self._build_response(placement, raw_result)
             outcome = MCPToolCallStatus.SUCCESS
             return response
 

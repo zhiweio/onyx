@@ -13,6 +13,10 @@ from onyx.configs.chat_configs import HARD_DELETE_CHATS
 from onyx.configs.constants import MessageType
 from onyx.context.search.models import InferenceSection, SavedSearchDoc
 from onyx.context.search.models import SearchDoc as ServerSearchDoc
+from onyx.db.chat_share import (
+    chat_session_visible_to_user_clause,
+    user_can_view_chat_session,
+)
 from onyx.db.enums import IncognitoRecordMode, record_mode_persists_content
 from onyx.db.models import (
     ChatMessage,
@@ -60,16 +64,6 @@ def get_chat_session_by_id(
             joinedload(ChatSession.project),
         )
 
-    if is_shared:
-        stmt = stmt.where(ChatSession.shared_status == ChatSessionSharedStatus.PUBLIC)
-    else:
-        # if user_id is None, assume this is an admin who should be able
-        # to view all chat sessions
-        if user_id is not None:
-            stmt = stmt.where(
-                or_(ChatSession.user_id == user_id, ChatSession.user_id.is_(None))
-            )
-
     result = db_session.execute(stmt)
     chat_session = result.scalar_one_or_none()
 
@@ -78,6 +72,13 @@ def get_chat_session_by_id(
 
     if not include_deleted and chat_session.deleted:
         raise ValueError("Chat session has been deleted")
+
+    if is_shared:
+        if not user_can_view_chat_session(db_session, chat_session, user_id):
+            raise ValueError("Invalid Chat Session ID provided")
+    elif user_id is not None:
+        if not user_can_view_chat_session(db_session, chat_session, user_id):
+            raise ValueError("Invalid Chat Session ID provided")
 
     return chat_session
 
@@ -133,10 +134,13 @@ def get_chat_sessions_by_user(
 ) -> list[ChatSession]:
     stmt = (
         select(ChatSession)
-        .where(ChatSession.user_id == user_id)
         .where(ChatSession.onyxbot_flow.is_(False))
         .order_by(desc(ChatSession.time_updated))
     )
+    if user_id is not None:
+        stmt = stmt.where(chat_session_visible_to_user_clause(user_id))
+    else:
+        stmt = stmt.where(ChatSession.user_id.is_(None))
 
     # The two exclusions are independent because the surfaces differ: the owner
     # sees none of their incognito sessions, while a workspace surface keeps the

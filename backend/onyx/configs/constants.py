@@ -420,12 +420,16 @@ class FileOrigin(str, Enum):
     INDEXING_CHECKPOINT = "indexing_checkpoint"
     INDEXING_STAGING = "indexing_staging"
     LOG_EXPORT = "log_export"
+    MCP_RESULT = "mcp_result"
     PLAINTEXT_CACHE = "plaintext_cache"
     OTHER = "other"
     QUERY_HISTORY_CSV = "query_history_csv"
+    REPORT_TEMPLATE_ASSET = "report_template_asset"
     SANDBOX_SNAPSHOT = "sandbox_snapshot"
     SKILL_BUNDLE = "skill_bundle"
     USER_FILE = "user_file"
+    CRAFT_ARTIFACT = "craft_artifact"
+    CRAFT_PROJECT = "craft_project"
 
 
 class FileType(str, Enum):
@@ -475,6 +479,7 @@ class OnyxCeleryQueues:
     # Chat retention (TTL) hard-deletion queue, consumed by the light worker.
     # Kept off the primary "celery" queue so cleanup never starves check_for_indexing.
     CHAT_TTL_DELETION = "chat_ttl_deletion"
+    MCP_GATEWAY = "mcp_gateway"
 
     # User file processing queue
     USER_FILE_PROCESSING = "user_file_processing"
@@ -720,6 +725,12 @@ class OnyxCeleryTask:
 
     # Sandbox cleanup
     CLEANUP_IDLE_SANDBOXES = "cleanup_idle_sandboxes"
+
+    REFRESH_MCP_GATEWAY_CACHE_ENTRY = "refresh_mcp_gateway_cache_entry"
+    CHECK_MCP_GATEWAY_SCHEDULED_REFRESH = "check_mcp_gateway_scheduled_refresh"
+    CLEANUP_MCP_RESULT_BLOBS = "cleanup_mcp_result_blobs"
+    ROLLUP_MCP_GATEWAY_CALL_STATS = "rollup_mcp_gateway_call_stats"
+    PRUNE_MCP_GATEWAY_CALL_LOGS = "prune_mcp_gateway_call_logs"
 
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"

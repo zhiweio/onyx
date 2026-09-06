@@ -249,6 +249,48 @@ beat_task_templates: list[dict] = [
             "work_gated": True,
         },
     },
+    {
+        "name": "check-mcp-gateway-scheduled-refresh",
+        "task": OnyxCeleryTask.CHECK_MCP_GATEWAY_SCHEDULED_REFRESH,
+        "schedule": timedelta(minutes=15),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+            "queue": OnyxCeleryQueues.MCP_GATEWAY,
+        },
+    },
+    {
+        # Result bodies are collected by last read, not by age, so this only
+        # needs to run often enough to keep the object store from drifting.
+        "name": "cleanup-mcp-result-blobs",
+        "task": OnyxCeleryTask.CLEANUP_MCP_RESULT_BLOBS,
+        "schedule": timedelta(hours=6),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+            "queue": OnyxCeleryQueues.MCP_GATEWAY,
+        },
+    },
+    {
+        "name": "rollup-mcp-gateway-call-stats",
+        "task": OnyxCeleryTask.ROLLUP_MCP_GATEWAY_CALL_STATS,
+        "schedule": timedelta(hours=1),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+            "queue": OnyxCeleryQueues.MCP_GATEWAY,
+        },
+    },
+    {
+        "name": "prune-mcp-gateway-call-logs",
+        "task": OnyxCeleryTask.PRUNE_MCP_GATEWAY_CALL_LOGS,
+        "schedule": timedelta(hours=6),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+            "queue": OnyxCeleryQueues.MCP_GATEWAY,
+        },
+    },
 ]
 
 # Mirror set_is_ee_based_on_env_variable(): EE features are active when either

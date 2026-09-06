@@ -123,11 +123,41 @@ def create_session(
     try:
         with session_creation_lock(user.id):
             session_manager = SessionManager(db_session)
-            build_session = session_manager.get_or_create_empty_session(
-                user.id,
-                name=request.name,
-                headless=request.headless,
-            )
+            scenario_id = None
+            if request.scenario_id:
+                try:
+                    scenario_id = UUID(request.scenario_id)
+                except ValueError as exc:
+                    raise OnyxError(
+                        OnyxErrorCode.INVALID_INPUT,
+                        "scenario_id must be a UUID",
+                    ) from exc
+            project_id = None
+            if request.project_id:
+                try:
+                    project_id = UUID(request.project_id)
+                except ValueError as exc:
+                    raise OnyxError(
+                        OnyxErrorCode.INVALID_INPUT,
+                        "project_id must be a UUID",
+                    ) from exc
+                from onyx.db.craft_project import require_project_for_user
+
+                require_project_for_user(db_session, project_id, user)
+            if project_id is not None:
+                build_session = session_manager.create_session(
+                    user.id,
+                    name=request.name,
+                    scenario_id=scenario_id,
+                    project_id=project_id,
+                )
+            else:
+                build_session = session_manager.get_or_create_empty_session(
+                    user.id,
+                    name=request.name,
+                    headless=request.headless,
+                    scenario_id=scenario_id,
+                )
             sandbox = get_sandbox_by_user_id(db_session, user.id)
             if sandbox is None:
                 raise RuntimeError("Session creation completed without a sandbox")
@@ -644,6 +674,48 @@ def export_docx(
     return Response(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": content_disposition},
+    )
+
+
+@router.get("/{session_id}/export-pdf/{path:path}")
+def export_pdf(
+    session_id: UUID,
+    path: str,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> Response:
+    """Export a markdown file as PDF."""
+    session_manager = SessionManager(db_session)
+
+    try:
+        result = session_manager.export_pdf(session_id, user.id, path)
+    except ValueError as e:
+        error_message = str(e)
+        if (
+            "path traversal" in error_message.lower()
+            or "access denied" in error_message.lower()
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=400, detail=error_message)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    pdf_bytes, filename = result
+
+    try:
+        filename.encode("latin-1")
+        content_disposition = f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        from urllib.parse import quote
+
+        encoded_filename = quote(filename, safe="")
+        content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
         headers={"Content-Disposition": content_disposition},
     )
 

@@ -31,8 +31,20 @@ COPY package.json bun.lock tsconfig.json ./
 COPY lib/opal/ ./lib/opal/
 COPY lib/shared/ ./lib/shared/
 
-# Install dependencies. opal's `prepare` script builds dist/ as part of install.
-RUN bun install --frozen-lockfile
+# bun does not link TypeScript 7's optional native package
+# (@typescript/typescript-<os>-<cpu>) for the workspace install, so `prepare`
+# / `tsc` fails. Install deps without lifecycle scripts, unpack the matching
+# native tarball next to typescript, then build workspace dist/ for Next.js.
+RUN bun install --frozen-lockfile --ignore-scripts \
+    && TS_VER="$(node -p "require('./lib/shared/node_modules/typescript/package.json').version")" \
+    && NATIVE_NAME="typescript-linux-$(node -p process.arch)" \
+    && TARBALL="$(npm pack "@typescript/${NATIVE_NAME}@${TS_VER}" --pack-destination /tmp)" \
+    && mkdir -p lib/shared/node_modules/@typescript \
+    && tar -xzf "/tmp/${TARBALL}" -C /tmp \
+    && rm -rf "lib/shared/node_modules/@typescript/${NATIVE_NAME}" \
+    && mv /tmp/package "lib/shared/node_modules/@typescript/${NATIVE_NAME}" \
+    && bun run --cwd lib/shared build \
+    && bun run --cwd lib/opal build
 
 # pull in remaining source code
 COPY . .

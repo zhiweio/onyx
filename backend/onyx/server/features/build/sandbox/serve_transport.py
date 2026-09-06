@@ -25,6 +25,8 @@ from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheLock, CacheLockLostError
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.server.features.build.configs import (
+    CRAFT_DEEP_JOB_RESOURCES,
+    OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
     OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
     OPENCODE_SERVE_EVENT_READ_TIMEOUT,
     OPENCODE_SERVER_USERNAME,
@@ -33,8 +35,10 @@ from onyx.server.features.build.configs import (
 )
 from onyx.server.features.build.db.sandbox import get_sandbox_by_id
 from onyx.server.features.build.sandbox.event_schema import (
+    TURN_ERROR_CODE_TRANSPORT,
     AgentMessageChunk,
     AgentThoughtChunk,
+    Error,
     PromptResponse,
 )
 from onyx.server.features.build.sandbox.models import PromptAttachment
@@ -48,6 +52,9 @@ from onyx.server.features.build.sandbox.opencode.serve_client import (
     translate_opencode_event,
 )
 from onyx.server.features.build.sandbox.sse import SSEKeepalive
+from onyx.server.features.build.session.history_replay import (
+    message_after_session_replace,
+)
 from onyx.server.features.build.timeouts import (
     POLL_INTERVAL_SECONDS,
     PROMPT_SLOT_FAST_FAIL_ACQUIRE_SECONDS,
@@ -562,6 +569,7 @@ class _ServeMixin:
         *,
         attachments: list[PromptAttachment] | None = None,
         on_opencode_session_resolved: Callable[[str], None] | None = None,
+        replacement_preamble: Callable[[], str | None] | None = None,
         should_interrupt: Callable[[], bool] | None = None,
         should_abort_on_teardown: Callable[[], bool] | None = None,
         turn_timeout_seconds: float | None = None,
@@ -597,6 +605,13 @@ class _ServeMixin:
                 if on_opencode_session_resolved is not None:
                     on_opencode_session_resolved(resolved_session_id)
 
+            prompt = message_after_session_replace(
+                message,
+                previous_session_id=opencode_session_id,
+                resolved_session_id=resolved_session_id,
+                replacement_preamble=replacement_preamble,
+            )
+
             logger.info(
                 "[SANDBOX-SERVE] Sending message: session=%s opencode_session=%s api_pod=%s",
                 session_id,
@@ -609,12 +624,19 @@ class _ServeMixin:
             try:
                 for event in client.send_message(
                     resolved_session_id,
-                    message,
+                    prompt,
                     directory=session_path,
                     model_provider=agent_provider,
                     model_id=agent_model,
                     attachments=attachments,
-                    timeout=OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+                    timeout=(
+                        max(
+                            OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+                            OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
+                        )
+                        if CRAFT_DEEP_JOB_RESOURCES
+                        else OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS
+                    ),
                     absolute_timeout=turn_timeout_seconds,
                     should_interrupt=should_interrupt,
                 ):
@@ -654,6 +676,93 @@ class _ServeMixin:
                     log_level=logging.ERROR,
                 )
                 raise
+        finally:
+            client.close()
+
+    def _compact_via_serve(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        opencode_session_id: str | None,
+        agent_provider: str | None,
+        agent_model: str | None,
+        *,
+        should_interrupt: Callable[[], bool] | None = None,
+        should_abort_on_teardown: Callable[[], bool] | None = None,
+        turn_timeout_seconds: float | None = None,
+    ) -> Generator[SandboxEvent, None, None]:
+        """Stream OpenCode summarize events. Does not mint a session."""
+        if not opencode_session_id or not agent_provider or not agent_model:
+            yield Error.model_validate(
+                {
+                    "code": TURN_ERROR_CODE_TRANSPORT,
+                    "message": "Compact needs a live OpenCode session and a model.",
+                }
+            )
+            return
+
+        session_path = self._session_directory(session_id)
+        client = self._build_serve_client(sandbox_id, session_path)
+        events_count = 0
+        try:
+            if not client.session_exists(opencode_session_id, directory=session_path):
+                yield Error.model_validate(
+                    {
+                        "code": TURN_ERROR_CODE_TRANSPORT,
+                        "message": (
+                            "The OpenCode session is gone after a sandbox restore. "
+                            "Send a follow-up message first so history can replay."
+                        ),
+                    }
+                )
+                return
+
+            logger.info(
+                "[SANDBOX-SERVE] Compacting session=%s opencode_session=%s",
+                session_id,
+                opencode_session_id,
+            )
+            for event in client.compact(
+                opencode_session_id,
+                directory=session_path,
+                model_provider=agent_provider,
+                model_id=agent_model,
+                timeout=(
+                    max(
+                        OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+                        OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS,
+                    )
+                    if CRAFT_DEEP_JOB_RESOURCES
+                    else OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS
+                ),
+                absolute_timeout=turn_timeout_seconds,
+                should_interrupt=should_interrupt,
+            ):
+                events_count += 1
+                yield event
+        except GeneratorExit:
+            if should_abort_on_teardown is None or should_abort_on_teardown():
+                self._abort_and_log_turn_failure(
+                    client=client,
+                    session_id=session_id,
+                    resolved_session_id=opencode_session_id,
+                    session_path=session_path,
+                    events_count=events_count,
+                    error="GeneratorExit",
+                    log_level=logging.WARNING,
+                )
+            raise
+        except Exception as e:
+            self._abort_and_log_turn_failure(
+                client=client,
+                session_id=session_id,
+                resolved_session_id=opencode_session_id,
+                session_path=session_path,
+                events_count=events_count,
+                error=f"Exception: {e}",
+                log_level=logging.ERROR,
+            )
+            raise
         finally:
             client.close()
 

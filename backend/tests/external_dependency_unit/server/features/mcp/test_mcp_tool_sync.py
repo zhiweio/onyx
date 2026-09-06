@@ -1,4 +1,4 @@
-"""Tool sync for an MCP server (`_sync_mcp_server_tools`) against a real DB.
+"""Tool sync for an MCP server (`sync_mcp_server_tools`) against a real DB.
 
 Regression coverage for onyx-dot-app/onyx#14346: one OAuth connect fired two
 concurrent tool refreshes and every tool was stored twice."""
@@ -89,7 +89,7 @@ def test_concurrent_syncs_store_each_tool_once(
         CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE)
         with get_session_with_current_tenant() as session:
             start.wait(timeout=10)
-            mcp_api._sync_mcp_server_tools(server.id, _discovered(names), session)
+            mcp_api.sync_mcp_server_tools(server.id, _discovered(names), session)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(run_sync) for _ in range(2)]
@@ -105,7 +105,7 @@ def test_repeated_name_in_one_discovery_is_stored_once(
 ) -> None:
     server = _make_server(db_session)
 
-    mcp_api._sync_mcp_server_tools(
+    mcp_api.sync_mcp_server_tools(
         server.id, _discovered(["dup", "dup", "other"]), db_session
     )
 
@@ -126,7 +126,7 @@ def test_sync_collapses_existing_duplicates_and_drops_stale_tools(
         if t.name == "keep"
     )
 
-    mcp_api._sync_mcp_server_tools(server.id, _discovered(["keep"]), db_session)
+    mcp_api.sync_mcp_server_tools(server.id, _discovered(["keep"]), db_session)
 
     remaining = get_tools_by_mcp_server_id(server.id, db_session)
     assert [(t.id, t.name) for t in remaining] == [(keeper_id, "keep")]

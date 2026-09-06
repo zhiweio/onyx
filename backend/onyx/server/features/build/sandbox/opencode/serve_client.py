@@ -1216,6 +1216,19 @@ class OpencodeServeClient:
         )
         return new_id
 
+    def session_exists(self, opencode_session_id: str, *, directory: str) -> bool:
+        """Return True when the live serve process still has this session."""
+        r = self._request(
+            "GET",
+            f"/session/{opencode_session_id}",
+            params={"directory": directory},
+            idempotent=True,
+        )
+        if r.status_code == 404:
+            return False
+        _raise_for_status(r, "session lookup")
+        return True
+
     def delete_session(self, opencode_session_id: str, *, directory: str) -> bool:
         """Best-effort delete of an opencode session from the live serve process.
 
@@ -1431,6 +1444,101 @@ class OpencodeServeClient:
 
         except GeneratorExit:
             if prompt_posted:
+                self.abort(opencode_session_id, directory=directory)
+            raise
+        finally:
+            self._event_bus.unsubscribe(sub)
+
+    def compact(
+        self,
+        opencode_session_id: str,
+        *,
+        directory: str,
+        model_provider: str,
+        model_id: str,
+        timeout: float = OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+        absolute_timeout: float | None = None,
+        should_interrupt: Callable[[], bool] | None = None,
+    ) -> Generator[SandboxEvent, None, None]:
+        """Stream one manual compaction turn via POST ``/session/{id}/summarize``.
+
+        Reuses the same event bus and translator as :meth:`send_message`.
+        ``session.compacted`` becomes a ``CompactionPacket``; ``session.idle``
+        ends the stream.
+        """
+        if self._event_bus is None:
+            raise RuntimeError(
+                "OpencodeServeClient.compact requires event_bus; "
+                "construct the client with event_bus=PodEventBus(...)"
+            )
+
+        state = _TurnState(session_id=opencode_session_id)
+        turn_started_at = time.monotonic()
+        summarize_posted = False
+
+        def fetch_message(mid: str) -> dict[str, Any] | None:
+            return self.get_message(opencode_session_id, mid, directory=directory)
+
+        sub = self._event_bus.subscribe(opencode_session_id)
+        try:
+            readiness_timeout = (
+                min(timeout, absolute_timeout)
+                if absolute_timeout is not None
+                else timeout
+            )
+            ready = yield from self._wait_for_event_stream_ready(
+                sub,
+                readiness_timeout,
+                turn_started_at,
+                should_interrupt=should_interrupt,
+            )
+            if not ready:
+                return
+
+            try:
+                self._post_summarize(
+                    opencode_session_id,
+                    model_provider,
+                    model_id,
+                    directory=directory,
+                )
+                summarize_posted = True
+            except httpx.HTTPStatusError as e:
+                yield Error.model_validate(
+                    {
+                        "code": e.response.status_code,
+                        "message": _short_body(e.response),
+                    }
+                )
+                return
+            except httpx.HTTPError as e:
+                yield Error.model_validate(
+                    {
+                        "code": TURN_ERROR_CODE_TRANSPORT,
+                        "message": f"summarize failed: {e}",
+                    }
+                )
+                return
+
+            yield from self._consume_from_bus(
+                sub,
+                timeout,
+                opencode_session_id,
+                state,
+                fetch_message,
+                directory=directory,
+                absolute_deadline=(
+                    turn_started_at + absolute_timeout
+                    if absolute_timeout is not None
+                    else None
+                ),
+                parent_resolver=self._event_bus.parent_of,
+                children_resolver=self._event_bus.list_children,
+                should_interrupt=should_interrupt,
+            )
+
+        except GeneratorExit:
+            if summarize_posted:
                 self.abort(opencode_session_id, directory=directory)
             raise
         finally:
@@ -1664,6 +1772,29 @@ class OpencodeServeClient:
             idempotent=False,
         )
         _raise_for_status(r, "prompt_async")
+
+    def _post_summarize(
+        self,
+        opencode_session_id: str,
+        model_provider: str,
+        model_id: str,
+        *,
+        directory: str,
+    ) -> None:
+        """POST /session/.../summarize with a manual (non-auto) compact."""
+        body: dict[str, Any] = {
+            "providerID": model_provider,
+            "modelID": model_id,
+            "auto": False,
+        }
+        r = self._request(
+            "POST",
+            f"/session/{opencode_session_id}/summarize",
+            params={"directory": directory},
+            json=body,
+            idempotent=False,
+        )
+        _raise_for_status(r, "summarize")
 
     def _handle_permission_ask(
         self, evt: dict[str, Any], state: _TurnState, *, directory: str

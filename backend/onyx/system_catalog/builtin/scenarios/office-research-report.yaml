@@ -1,0 +1,22 @@
+domain: office
+objective: Write a cited brief that a reader can check
+required_inputs:
+  - topic
+  - audience
+  - due_date
+phases:
+  - id: scope
+    done_when: Question, audience, and out-of-scope items are fixed
+  - id: collect
+    done_when: Sources are graded and conflicts are listed
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+quality_gates:
+  - Every material claim has a citation
+  - Disagreements are stated, not averaged
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent sources
+  - Do not write a parallel markdown report when a Word template is named

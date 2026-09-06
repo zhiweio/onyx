@@ -134,6 +134,44 @@
         "serverCreated": "MCP-Server erfolgreich erstellt",
         "serverUpdated": "MCP-Server erfolgreich aktualisiert",
         "updateFailed": "Der MCP-Server konnte nicht aktualisiert werden"
+      },
+      "installMode": {
+        "custom": "Benutzerdefinierte URL",
+        "pack": "Aus Pack"
+      },
+      "packGroup": {
+        "common": "Allgemein",
+        "enterprise": "Unternehmensdaten",
+        "generic": "Generisch"
+      },
+      "routeThrough": {
+        "title": "Über das MCP-Gateway leiten",
+        "description": "Eine gemeinsame Upstream-Anmeldung verwenden und Ergebnisse zwischenspeichern. Benutzerbezogene Token sind nicht zulässig."
+      },
+      "slug": {
+        "placeholder": "z. B. tianyancha",
+        "title": "Gateway-Slug"
+      },
+      "packApiKey": {
+        "placeholder": "Gemeinsamer Upstream-Schlüssel",
+        "title": "Organisations-API-Schlüssel"
+      },
+      "packHint": "Packs laufen immer über das MCP-Gateway.",
+      "packList": {
+        "change": "Pack wechseln",
+        "empty": "Keine Packs verfügbar.",
+        "loading": "Packs werden geladen...",
+        "prompt": "Wählen Sie ein Pack, um fortzufahren."
+      },
+      "packs": {
+        "context7": "Upstash Context7 library docs. Works without a key; an org Bearer raises the quota.",
+        "deepwiki": "Cognition DeepWiki for public GitHub repos. Use mcp.devin.ai plus a Bearer token for private repos.",
+        "generic_http": "Any MCP server reachable over Streamable HTTP or SSE.",
+        "microsoft_learn": "Official Microsoft Learn MCP. Public docs, no authentication.",
+        "parallel_search": "Parallel Search MCP. Live web search is not cached; fetch may cache a page for a short time.",
+        "patsnap": "Patent search, patent detail, and generative research tools.",
+        "qixinbao": "Chinese company registry, risk, and litigation lookups.",
+        "tianyancha": "Chinese company registry, IP, judicial, and financial data."
       }
     },
     "addOpenApiModal": {
@@ -376,6 +414,11 @@
       "refreshToolsButton": {
         "ariaLabel": "Tools aktualisieren",
         "tooltip": "Tools aktualisieren"
+      },
+      "badge": {
+        "direct": "Direct",
+        "gateway": "Gateway",
+        "gatewayOff": "Gateway off"
       }
     },
     "mcpOauthCallback": {
@@ -770,6 +813,10 @@
         "ariaLabel": "Tools durchsuchen",
         "placeholder": "Tools durchsuchen…"
       }
+    },
+    "mcpLineItem": {
+      "personal": "{name} · Personal",
+      "personalOnlyYou": "{name} · Personal — only you can run"
     }
   },
   "admin": {
@@ -1117,6 +1164,10 @@
           }
         },
         "title": "Nutzung"
+      },
+      "teamUsageChart": {
+        "description": "Assistant messages by the chat owner's user group.",
+        "title": "Team usage"
       }
     },
     "billing": {
@@ -5614,7 +5665,10 @@
     },
     "mcpActions": {
       "header": {
-        "description": "Verbinden Sie MCP-Server (Model Context Protocol), um benutzerdefinierte Aktionen und Tools für Ihre Agenten hinzuzufügen."
+        "description": "Verbinden Sie MCP-Server (Model Context Protocol), um benutzerdefinierte Aktionen und Tools für Ihre Agenten hinzuzufügen.",
+        "gatewayLink": "MCP Gateway",
+        "gatewayOn": "Gateway on",
+        "gatewayOff": "Gateway off"
       }
     },
     "modals": {
@@ -8074,6 +8128,213 @@
       "unexpectedError": {
         "message": "Ein unerwarteter Fehler ist aufgetreten."
       }
+    },
+    "mcpGateway": {
+      "header": {
+        "title": "MCP Gateway",
+        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
+      },
+      "stats": {
+        "title": "Usage",
+        "total": "Total calls",
+        "hits": "Cache hits",
+        "billed": "Upstream billed",
+        "saved": "Calls saved",
+        "hitRate": "Hit rate"
+      },
+      "cache": {
+        "title": "Cached calls",
+        "invalidate": "Invalidate",
+        "refresh": "Refresh",
+        "empty": "No cache entries.",
+        "hits": "hits"
+      },
+      "toasts": {
+        "invalidated": "Cache invalidated",
+        "refreshed": "Refresh queued",
+        "loadFailed": "Could not load gateway data",
+        "updated": "Gateway setting updated"
+      },
+      "filter": {
+        "title": "Server",
+        "all": "All",
+        "empty": "No system MCP servers yet.",
+        "toolPlaceholder": "Tool name"
+      },
+      "storage": {
+        "title": "Stored results",
+        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
+        "results": "Results",
+        "stored": "Stored",
+        "transferred": "Transferred"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "cache": "Cache",
+        "calls": "Calls"
+      },
+      "window": {
+        "label": "Time window",
+        "24h": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "module": {
+        "label": "Enable MCP Gateway",
+        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
+        "retention": "Call logs are kept for {days} days."
+      },
+      "emptyBound": "No organization MCP is bound to the gateway yet.",
+      "openActions": "Add from a pack",
+      "loadMore": "Load more"
+    },
+    "mcpCatalog": {
+      "header": {
+        "title": "System MCP",
+        "description": "Install MCP servers for the whole organization, hold their shared credentials, and grant them to groups."
+      },
+      "notDeployed": "The MCP Gateway process is not deployed. Set MCP_GATEWAY_ENABLED to use system MCP.",
+      "module": {
+        "title": "Module",
+        "label": "Enable system MCP",
+        "description": "When off, system MCP servers disappear for every user. Personal MCP servers are not affected.",
+        "enabled": "System MCP enabled",
+        "disabled": "System MCP disabled",
+        "saveFailed": "Could not change the setting"
+      },
+      "install": {
+        "title": "Install a server",
+        "description": "Pick a provider pack for sensible cache defaults, or use the generic one.",
+        "slug": "Slug",
+        "upstreamUrl": "Upstream URL",
+        "apiKey": "API key",
+        "submit": "Install",
+        "slugHint": "Letters, digits, '-' and '_'. A package name is converted to a slug."
+      },
+      "installed": {
+        "title": "Installed",
+        "empty": "No system MCP servers yet.",
+        "enabled": "Enabled",
+        "remove": "Remove",
+        "toolCount": "{count, plural, one {# tool} other {# tools}}",
+        "discoveryError": "Could not read tools: {error}",
+        "refreshTools": "Refresh tools"
+      },
+      "access": {
+        "public": "Open to everyone",
+        "groups": "Granted to groups",
+        "noGroups": "No groups yet."
+      },
+      "toasts": {
+        "installed": "System MCP installed",
+        "installFailed": "Could not install the system MCP",
+        "updateFailed": "Could not save the change",
+        "removed": "System MCP removed",
+        "removeFailed": "Could not remove the system MCP",
+        "loadFailed": "Could not load system MCP servers",
+        "refreshed": "Tool list refreshed",
+        "refreshFailed": "Could not refresh tools"
+      }
+    },
+    "craftCatalog": {
+      "header": {
+        "title": "Craft gallery",
+        "description": "Curate the skills, scenarios and report templates users can browse. Nothing is visible until you publish it."
+      },
+      "tabs": {
+        "skills": {
+          "label": "Skills"
+        },
+        "scenarios": {
+          "label": "Scenarios"
+        },
+        "reportTemplates": {
+          "label": "Report templates"
+        }
+      },
+      "search": {
+        "placeholder": "Search the catalog"
+      },
+      "status": {
+        "draft": {
+          "label": "Draft"
+        },
+        "published": {
+          "label": "Published"
+        },
+        "archived": {
+          "label": "Archived"
+        }
+      },
+      "actions": {
+        "publish": {
+          "label": "Publish"
+        },
+        "republish": {
+          "label": "Publish update"
+        },
+        "unpublish": {
+          "label": "Unpublish"
+        },
+        "delete": {
+          "tooltip": "Delete entry"
+        },
+        "deleteBlocked": {
+          "tooltip": "Unpublish before deleting"
+        }
+      },
+      "publish": {
+        "title": "Publish \"{name}\"",
+        "description": "Publishing makes this entry visible in the user gallery and bumps its version.",
+        "confirm": {
+          "label": "Publish"
+        },
+        "changelog": {
+          "label": "What changed",
+          "description": "Shown to users who already copied this entry.",
+          "placeholder": "Describe the update"
+        }
+      },
+      "delete": {
+        "title": "Delete \"{name}\"",
+        "description": "This removes the catalog entry. Copies users already made are not affected.",
+        "confirm": {
+          "label": "Delete"
+        }
+      },
+      "empty": {
+        "title": "No catalog entries",
+        "description": "Shipped content appears here after the server starts."
+      },
+      "error": {
+        "title": "Could not load the catalog",
+        "description": "Refresh the page to try again."
+      },
+      "toasts": {
+        "published": {
+          "message": "Published \"{name}\""
+        },
+        "unpublished": {
+          "message": "Unpublished \"{name}\""
+        },
+        "deleted": {
+          "message": "Deleted \"{name}\""
+        },
+        "actionFailed": {
+          "message": "The action failed"
+        }
+      },
+      "word": {
+        "badge": {
+          "label": "Word"
+        },
+        "upload": {
+          "label": ".docx hochladen"
+        },
+        "download": {
+          "label": "Herunterladen"
+        }
+      }
     }
   },
   "agents": {
@@ -8200,7 +8461,9 @@
         },
         "searchTools": {
           "placeholder": "Tools suchen..."
-        }
+        },
+        "personal": "{name} · Personal",
+        "personalOnlyYou": "{name} · Personal — only you can run"
       },
       "page": {
         "ariaLabel": "Agenten-Editor-Seite"
@@ -9324,6 +9587,9 @@
         },
         "mcpServersGroup": {
           "label": "MCP-Server"
+        },
+        "commandsGroup": {
+          "label": "Befehle"
         },
         "skillsGroup": {
           "label": "Skills"
@@ -11360,7 +11626,8 @@
           "description": "Verbinde die Tools, die Onyx Craft während der Arbeit als Kontext nutzen kann.",
           "manageButton": "Apps verwalten",
           "searchPlaceholder": "Apps suchen...",
-          "title": "Apps"
+          "title": "Apps",
+          "manageMyMcp": "Manage my MCP"
         },
         "kinds": {
           "app": {
@@ -11622,6 +11889,12 @@
       }
     },
     "inputBar": {
+      "compact": {
+        "name": "Kontext verdichten",
+        "description": "Früheren Kontext zusammenfassen, um Platz zu schaffen",
+        "running": "Kontext wird verdichtet…",
+        "unavailable": "Verdichten ist erst nach dem ersten Turn und mit einem Modell verfügbar"
+      },
       "entryInfo": {
         "connected": "Verbunden",
         "connectionRequired": "Verbindung erforderlich"
@@ -11847,6 +12120,18 @@
         "label": "Aufgabe anzeigen"
       }
     },
+    "longJob": {
+      "label": "Long job",
+      "toggle": "Run as a long job",
+      "cancel": "Cancel",
+      "status": {
+        "running": "Phase: {phase}",
+        "waitingSpecialists": "Waiting for specialist sessions",
+        "succeeded": "Finished",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
     "setupCard": {
       "appFallback": {
         "label": "Externe App {id}"
@@ -11936,6 +12221,21 @@
       "toast": {
         "deleteFailed": "Sitzung konnte nicht gelöscht werden",
         "deleted": "\"{title}\" gelöscht."
+      },
+      "projects": {
+        "label": "Projekte"
+      },
+      "scenarios": {
+        "label": "Szenarien"
+      },
+      "reportTemplates": {
+        "label": "Berichtsvorlagen"
+      },
+      "projectsSection": {
+        "title": "Projekte"
+      },
+      "mcpActions": {
+        "label": "MCP Actions"
       }
     },
     "skillsStale": {
@@ -11958,7 +12258,19 @@
     },
     "suggestedPrompts": {
       "close": {
-        "ariaLabel": "Vorschläge schließen"
+        "ariaLabel": "Close suggestions"
+      },
+      "engineering": {
+        "label": "Technik"
+      },
+      "marketing": {
+        "label": "Marketing"
+      },
+      "product": {
+        "label": "Produkt"
+      },
+      "sales": {
+        "label": "Vertrieb"
       }
     },
     "tasks": {
@@ -12239,6 +12551,10 @@
         "button": "Als .docx exportieren",
         "inProgress": "Wird exportiert..."
       },
+      "exportPdf": {
+        "button": "Als .pdf exportieren",
+        "inProgress": "Wird exportiert..."
+      },
       "forward": {
         "ariaLabel": "Vorwärts"
       },
@@ -12303,6 +12619,733 @@
     "welcome": {
       "input": {
         "placeholder": "Analysiere meine Daten und erstelle ein Dashboard..."
+      }
+    },
+    "scenarios": {
+      "card": {
+        "access": {
+          "editor": {
+            "label": "Editor"
+          },
+          "owner": {
+            "label": "Owner"
+          },
+          "viewer": {
+            "label": "Viewer"
+          }
+        },
+        "customize": {
+          "tooltip": "Save as my pack"
+        },
+        "delete": {
+          "tooltip": "Delete pack"
+        },
+        "edit": {
+          "tooltip": "Edit pack"
+        },
+        "moreSkills": {
+          "label": "+{count}"
+        },
+        "origin": {
+          "personal": {
+            "label": "Personal"
+          },
+          "workspace": {
+            "label": "Workspace"
+          }
+        },
+        "share": {
+          "tooltip": "Share pack"
+        },
+        "skillCount": {
+          "label": "{count, plural, one {# skill} other {# skills}}"
+        },
+        "startRun": {
+          "label": "Starten"
+        },
+        "visibility": {
+          "private": {
+            "label": "Privat"
+          },
+          "public": {
+            "label": "Organization"
+          }
+        }
+      },
+      "delete": {
+        "confirm": {
+          "label": "Delete pack"
+        },
+        "description": "This removes the pack. Craft sessions that already used it are unchanged.",
+        "title": "Delete \"{name}\"?"
+      },
+      "domain": {
+        "all": {
+          "label": "Alle"
+        },
+        "biomed": {
+          "label": "Biomedizin"
+        },
+        "custom": {
+          "label": "Benutzerdefiniert"
+        },
+        "tax": {
+          "label": "Steuern"
+        }
+      },
+      "editor": {
+        "addSkill": {
+          "label": "Add"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "catalog": {
+          "added": {
+            "label": "Added"
+          },
+          "empty": {
+            "text": "No matching skills."
+          },
+          "search": {
+            "placeholder": "Search skills..."
+          },
+          "title": {
+            "text": "Skill catalog"
+          }
+        },
+        "conditional": {
+          "add": {
+            "label": "Add condition"
+          },
+          "intent": {
+            "placeholder": "Intent"
+          },
+          "keywords": {
+            "placeholder": "Keywords, comma separated"
+          },
+          "remove": {
+            "ariaLabel": "Remove condition"
+          },
+          "skill": {
+            "placeholder": "Add skill if matched"
+          },
+          "title": {
+            "text": "Optional conditions"
+          }
+        },
+        "description": {
+          "placeholder": "What this pack should produce",
+          "title": "Mission"
+        },
+        "domain": {
+          "create": {
+            "label": "„{name}“ anlegen"
+          },
+          "empty": {
+            "text": "Keine passenden Bereiche. Geben Sie einen Namen ein, um einen neuen anzulegen."
+          },
+          "placeholder": "Bereich wählen oder anlegen",
+          "search": {
+            "placeholder": "Bereiche suchen..."
+          },
+          "title": "Bereich"
+        },
+        "identity": {
+          "title": "Pack details"
+        },
+        "moveDown": {
+          "ariaLabel": "Move down"
+        },
+        "moveUp": {
+          "ariaLabel": "Move up"
+        },
+        "name": {
+          "placeholder": "Pack name",
+          "title": "Name"
+        },
+        "preview": {
+          "title": "Protocol preview"
+        },
+        "removeSkill": {
+          "ariaLabel": "Remove {name}"
+        },
+        "reportTemplate": {
+          "empty": {
+            "text": "Keine passenden Vorlagen."
+          },
+          "manage": {
+            "label": "Vorlagen verwalten"
+          },
+          "none": {
+            "label": "Keine"
+          },
+          "placeholder": "Vorlage wählen",
+          "search": {
+            "placeholder": "Vorlagen suchen..."
+          },
+          "title": "Berichtsvorlage"
+        },
+        "save": {
+          "label": "Save pack"
+        },
+        "saving": {
+          "label": "Saving..."
+        },
+        "share": {
+          "label": "Teilen"
+        },
+        "startRun": {
+          "label": "Starten"
+        },
+        "title": {
+          "create": "Neues Paket",
+          "edit": "Edit pack"
+        },
+        "subtitle": {
+          "create": "Name the pack, bind skills, then start a Craft run.",
+          "edit": "Update the mission, bound skills, and protocol."
+        },
+        "tray": {
+          "count": {
+            "label": "{count, plural, one {# skill} other {# skills}}"
+          },
+          "empty": {
+            "text": "Add skills from the catalog. Order is the run order."
+          },
+          "title": {
+            "text": "Pack tray"
+          }
+        },
+        "readOnly": {
+          "description": "You can view this pack but you cannot edit it."
+        },
+        "validation": {
+          "name": "Add a name before saving.",
+          "skills": "Add at least one skill to build a pack."
+        },
+        "customize": {
+          "label": "Save as my pack"
+        },
+        "customizing": {
+          "label": "Copying..."
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "Create a pack to bind skills into a reusable workbench protocol.",
+          "title": "No packs yet"
+        },
+        "search": {
+          "description": "Try a different search or domain.",
+          "title": "No matching packs"
+        }
+      },
+      "error": {
+        "description": "Check the console for details and try refreshing the page.",
+        "title": "Failed to load packs"
+      },
+      "page": {
+        "browse": {
+          "title": "Browse packs"
+        },
+        "count": {
+          "label": "{count, plural, one {# pack} other {# packs}}"
+        },
+        "createButton": {
+          "label": "Neues Paket"
+        },
+        "description": {
+          "text": "Pack multiple skills into a reusable workbench protocol. Start a Craft run from a pack."
+        },
+        "search": {
+          "placeholder": "Search packs..."
+        },
+        "title": {
+          "text": "Szenarien"
+        }
+      },
+      "share": {
+        "cancel": {
+          "label": "Abbrechen"
+        },
+        "description": {
+          "text": "Share this pack with people or groups, or make it visible to the organization."
+        },
+        "org": {
+          "off": {
+            "label": "Privat"
+          },
+          "on": {
+            "label": "Visible to organization"
+          }
+        },
+        "save": {
+          "label": "Speichern"
+        },
+        "saving": {
+          "label": "Saving..."
+        },
+        "title": {
+          "text": "Share pack"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "Pack saved."
+        },
+        "deleted": {
+          "message": "Pack deleted."
+        },
+        "openFailed": {
+          "message": "Could not start a Craft run for this pack."
+        },
+        "saved": {
+          "message": "Pack updated."
+        },
+        "shareFailed": {
+          "message": "Could not update pack sharing."
+        },
+        "shared": {
+          "message": "Sharing updated."
+        },
+        "duplicated": {
+          "message": "Created your copy of this pack."
+        },
+        "duplicateFailed": {
+          "message": "Could not copy this pack."
+        }
+      }
+    },
+    "reportTemplates": {
+      "card": {
+        "delete": {
+          "tooltip": "Delete template"
+        },
+        "deleteBlocked": {
+          "tooltip": "Cannot delete: packs use this template"
+        },
+        "edit": {
+          "tooltip": "Edit template"
+        },
+        "origin": {
+          "personal": {
+            "label": "Personal"
+          },
+          "workspace": {
+            "label": "Workspace"
+          }
+        },
+        "referenced": {
+          "label": "{count, plural, one {# pack} other {# packs}}"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
+        }
+      },
+      "delete": {
+        "blocked": {
+          "description": "Packs still use this template. Change those packs first."
+        },
+        "confirm": {
+          "label": "Delete template"
+        },
+        "description": "This removes the template. You can only delete a template that no pack uses.",
+        "title": "Delete \"{name}\"?"
+      },
+      "editor": {
+        "body": {
+          "placeholder": "# Title\n\n1. Section",
+          "title": "Structure"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "description": {
+          "placeholder": "When to use this report",
+          "title": "Description"
+        },
+        "name": {
+          "placeholder": "Compliance risk report",
+          "title": "Name"
+        },
+        "readOnly": {
+          "description": "You can view this template. You cannot edit it."
+        },
+        "save": {
+          "label": "Save template"
+        },
+        "saving": {
+          "label": "Saving..."
+        },
+        "slug": {
+          "hint": "Packs use this ID. You cannot change it after save.",
+          "placeholder": "compliance_risk",
+          "title": "ID"
+        },
+        "subtitle": {
+          "create": "Name the template and write the report structure.",
+          "edit": "Update the name, description, and report structure."
+        },
+        "title": {
+          "create": "New template",
+          "edit": "Edit template"
+        },
+        "docx": {
+          "title": "Word template (optional)",
+          "hint": "Attach a .docx so the agent fills your formatting instead of writing a markdown report. Placeholders are read from the file.",
+          "uploadButton": {
+            "label": "Upload .docx"
+          },
+          "replaceButton": {
+            "label": "Replace .docx"
+          },
+          "downloadButton": {
+            "label": "Download"
+          },
+          "sandboxPath": {
+            "description": "The agent reads this file at {path}"
+          },
+          "placeholders": {
+            "title": "{count, plural, =0 {No placeholders} one {# placeholder} other {# placeholders}}",
+            "none": "This document has no placeholder tokens, so it is fixed content."
+          },
+          "uploaded": {
+            "message": "Word template saved with {count, plural, =0 {no placeholders} one {# placeholder} other {# placeholders}}"
+          },
+          "uploadFailed": {
+            "message": "Could not save the Word template"
+          }
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "Create a report template, then bind it to a pack.",
+          "title": "No templates"
+        },
+        "search": {
+          "description": "Try a different search.",
+          "title": "No matches"
+        }
+      },
+      "error": {
+        "description": "Refresh and try again.",
+        "title": "Could not load templates"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# Template} other {# Templates}}"
+        },
+        "createButton": {
+          "label": "New template"
+        },
+        "description": {
+          "text": "Define the report structure Craft uses when a pack starts a run."
+        },
+        "search": {
+          "placeholder": "Search templates..."
+        },
+        "title": {
+          "text": "Report templates"
+        }
+      },
+      "toasts": {
+        "deleteBlocked": {
+          "message": "Packs still use this template."
+        },
+        "deleteFailed": {
+          "message": "Could not delete this template."
+        },
+        "deleted": {
+          "message": "Template deleted."
+        },
+        "saveFailed": {
+          "message": "Could not save this template."
+        },
+        "saved": {
+          "message": "Template saved."
+        }
+      }
+    },
+    "projects": {
+      "card": {
+        "continue": {
+          "label": "Weiter"
+        },
+        "delete": {
+          "tooltip": "Projekt löschen"
+        },
+        "fileCount": {
+          "label": "{count, plural, one {# Datei} other {# Dateien}}"
+        },
+        "lastActivity": {
+          "label": "Aktualisiert {time}"
+        },
+        "sessionCount": {
+          "label": "{count, plural, one {# Chat} other {# Chats}}"
+        }
+      },
+      "create": {
+        "cancel": {
+          "label": "Abbrechen"
+        },
+        "description": {
+          "label": "Beschreibung",
+          "placeholder": "Wofür dieses Projekt ist"
+        },
+        "instructions": {
+          "label": "Anweisungen",
+          "placeholder": "Regeln, die der Agent befolgen soll"
+        },
+        "name": {
+          "label": "Name",
+          "placeholder": "Projektname"
+        },
+        "submit": {
+          "label": "Erstellen"
+        },
+        "title": "Neues Projekt"
+      },
+      "delete": {
+        "confirm": {
+          "label": "Löschen"
+        },
+        "description": "Dadurch werden Projektdateien entfernt. Der Chatverlauf bleibt, aber Chats verlassen das Projekt.",
+        "title": "{name} löschen?"
+      },
+      "detail": {
+        "continue": {
+          "label": "Weiter"
+        },
+        "details": {
+          "title": "Details"
+        },
+        "download": {
+          "tooltip": "Herunterladen"
+        },
+        "dropHint": {
+          "description": "Legen Sie eine Datei hier ab, um sie hinzuzufügen."
+        },
+        "emptyFiles": {
+          "description": "Laden Sie eine Datei hoch oder erzeugen Sie eine in einem Chat.",
+          "title": "Noch keine Dateien"
+        },
+        "emptySessions": {
+          "description": "Starten Sie einen Chat, um in diesem Projekt zu arbeiten.",
+          "title": "Noch keine Chats"
+        },
+        "files": {
+          "title": "Dateien"
+        },
+        "instructions": {
+          "title": "Anweisungen"
+        },
+        "newChat": {
+          "label": "Neuer Chat"
+        },
+        "removeFile": {
+          "tooltip": "Datei entfernen"
+        },
+        "save": {
+          "label": "Speichern"
+        },
+        "sessions": {
+          "title": "Chats"
+        },
+        "sourceOutput": {
+          "label": "Aus dem Chat"
+        },
+        "sourceUpload": {
+          "label": "Hochgeladen"
+        },
+        "startChat": {
+          "label": "Chat starten"
+        },
+        "upload": {
+          "label": "Datei hochladen"
+        }
+      },
+      "empty": {
+        "none": {
+          "description": "Erstellen Sie ein Projekt, um Dateien in mehreren Chats wiederzuverwenden.",
+          "title": "Noch keine Projekte"
+        },
+        "search": {
+          "description": "Versuchen Sie eine andere Suche.",
+          "title": "Keine passenden Projekte"
+        }
+      },
+      "error": {
+        "description": "Aktualisieren Sie die Seite und versuchen Sie es erneut.",
+        "title": "Projekte konnten nicht geladen werden"
+      },
+      "page": {
+        "browse": {
+          "title": "Ihre Projekte"
+        },
+        "count": {
+          "label": "{count, plural, one {# Projekt} other {# Projekte}}"
+        },
+        "createButton": {
+          "label": "Neues Projekt"
+        },
+        "description": {
+          "text": "Behalten Sie Dateien und Anweisungen über viele Craft-Chats hinweg."
+        },
+        "search": {
+          "placeholder": "Projekte suchen..."
+        },
+        "title": {
+          "text": "Projekte"
+        }
+      },
+      "toasts": {
+        "createFailed": {
+          "message": "Dieses Projekt konnte nicht erstellt werden."
+        },
+        "created": {
+          "message": "Projekt gespeichert."
+        },
+        "deleteFailed": {
+          "message": "Dieses Projekt konnte nicht gelöscht werden."
+        },
+        "deleted": {
+          "message": "Projekt gelöscht."
+        },
+        "fileDeleted": {
+          "message": "Datei entfernt."
+        },
+        "openFailed": {
+          "message": "Für dieses Projekt konnte kein Chat gestartet werden."
+        },
+        "saveFailed": {
+          "message": "Dieses Projekt konnte nicht gespeichert werden."
+        },
+        "saved": {
+          "message": "Projekt aktualisiert."
+        },
+        "uploadFailed": {
+          "message": "Diese Datei konnte nicht hochgeladen werden."
+        },
+        "uploaded": {
+          "message": "Datei hinzugefügt."
+        }
+      }
+    },
+    "gallery": {
+      "tabs": {
+        "gallery": {
+          "label": "Gallery"
+        },
+        "mine": {
+          "label": "Mine"
+        }
+      },
+      "category": {
+        "all": {
+          "label": "All"
+        },
+        "tax": {
+          "label": "Tax & finance"
+        },
+        "biomed": {
+          "label": "Biomed R&D"
+        },
+        "office": {
+          "label": "Office"
+        },
+        "document": {
+          "label": "Documents"
+        },
+        "general": {
+          "label": "General"
+        }
+      },
+      "card": {
+        "version": {
+          "label": "v{version}"
+        },
+        "preview": {
+          "tooltip": "Preview"
+        },
+        "fork": {
+          "tooltip": "Copy to my library"
+        },
+        "outdated": {
+          "label": "Update available"
+        },
+        "kind": {
+          "word": {
+            "label": "Word"
+          }
+        }
+      },
+      "count": {
+        "label": "{count, plural, one {# item} other {# items}}"
+      },
+      "empty": {
+        "none": {
+          "title": "Nothing published yet",
+          "description": "An admin publishes gallery content from the admin panel."
+        },
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
+      },
+      "error": {
+        "title": "Could not load the gallery",
+        "description": "Refresh the page to try again."
+      },
+      "preview": {
+        "fallbackTitle": "Gallery item",
+        "identifier": {
+          "label": "Identifier"
+        },
+        "version": {
+          "label": "Version"
+        },
+        "changelog": {
+          "label": "What changed"
+        },
+        "skills": {
+          "label": "Skills in this pack"
+        },
+        "content": {
+          "label": "Content"
+        },
+        "placeholders": {
+          "label": "Platzhalter"
+        },
+        "downloadWord": {
+          "label": "Word-Vorlage herunterladen"
+        },
+        "wordRequired": {
+          "description": "Diese Vorlage enthält eine Word-Datei, die der Agent ausfüllen muss."
+        },
+        "closeButton": {
+          "label": "Close"
+        },
+        "loadError": {
+          "title": "Could not load this item",
+          "description": "Close and try again."
+        }
+      },
+      "toasts": {
+        "forked": {
+          "message": "Copied \"{name}\" to your library"
+        },
+        "forkFailed": {
+          "message": "Could not copy this item"
+        }
+      }
+    },
+    "mcpActions": {
+      "header": {
+        "title": "MCP Actions",
+        "description": "Add MCP servers that only you can use in Chat and Craft."
       }
     }
   },
@@ -13020,6 +14063,14 @@
         "title": "Wiedergabegeschwindigkeit"
       },
       "title": "Sprachfunktionen"
+    },
+    "systemMcp": {
+      "title": "System MCP",
+      "description": "Servers your administrator made available. Turn on the ones you want in chat.",
+      "toolCount": "{count, plural, one {# tool} other {# tools}}",
+      "toggleLabel": "Enable {name}",
+      "toggleFailed": "Could not change the setting",
+      "empty": "No system MCP servers are available to you."
     }
   },
   "sidebar": {
@@ -13102,6 +14153,12 @@
         "mcpActions": {
           "label": "MCP-Aktionen"
         },
+        "mcpCatalog": {
+          "label": "System-MCP"
+        },
+        "mcpGateway": {
+          "label": "MCP-Gateway"
+        },
         "openapiActions": {
           "label": "OpenAPI-Aktionen"
         },
@@ -13143,6 +14200,9 @@
         },
         "webSearch": {
           "label": "Websuche"
+        },
+        "craftCatalog": {
+          "label": "Gallery"
         }
       },
       "sections": {

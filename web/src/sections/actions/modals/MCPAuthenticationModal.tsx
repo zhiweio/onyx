@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import { mcpActionsPath, type McpSurface } from "@/lib/tools/mcpSurface";
 import useSWR, { KeyedMutator } from "swr";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -51,6 +51,7 @@ interface MCPAuthenticationModalProps {
   skipOverlay?: boolean;
   onTriggerFetchTools?: (serverId: number) => Promise<void> | void;
   mutateMcpServers: KeyedMutator<MCPServersResponse>;
+  surface?: McpSurface;
 }
 
 export interface MCPAuthFormValues {
@@ -98,6 +99,7 @@ export default function MCPAuthenticationModal({
   skipOverlay = false,
   onTriggerFetchTools,
   mutateMcpServers,
+  surface = "admin",
 }: MCPAuthenticationModalProps) {
   const t = useTranslations("actions");
   const { isOpen, toggle } = useModal();
@@ -109,6 +111,7 @@ export default function MCPAuthenticationModal({
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const isOAuthEnabled = useOAuthPassThroughEnabled();
+  const gatewayBound = mcpServer?.gateway_bound === true;
 
   const validationSchema = useMemo(
     () =>
@@ -187,7 +190,11 @@ export default function MCPAuthenticationModal({
 
   // Get the current frontend URL for redirect URI
   const { data: fullServer } = useSWR<MCPServer>(
-    mcpServer ? SWR_KEYS.adminMcpServer(mcpServer.id) : null,
+    mcpServer
+      ? surface === "personal"
+        ? SWR_KEYS.personalMcpServer(mcpServer.id)
+        : SWR_KEYS.adminMcpServer(mcpServer.id)
+      : null,
     errorHandlingFetcher
   );
 
@@ -195,6 +202,7 @@ export default function MCPAuthenticationModal({
   useEffect(() => {
     if (fullServer) {
       if (
+        gatewayBound ||
         fullServer.auth_performer === MCPAuthenticationPerformer.ADMIN ||
         fullServer.auth_type === MCPAuthenticationType.NONE
       ) {
@@ -214,8 +222,12 @@ export default function MCPAuthenticationModal({
         transport: mcpServer?.server_url
           ? getTransportFromUrl(mcpServer.server_url)
           : MCPTransportType.STREAMABLE_HTTP,
-        auth_type: MCPAuthenticationType.OAUTH,
-        auth_performer: MCPAuthenticationPerformer.PER_USER,
+        auth_type: gatewayBound
+          ? MCPAuthenticationType.API_TOKEN
+          : MCPAuthenticationType.OAUTH,
+        auth_performer: gatewayBound
+          ? MCPAuthenticationPerformer.ADMIN
+          : MCPAuthenticationPerformer.PER_USER,
         api_token: "",
         auth_template: {
           headers: {},
@@ -246,10 +258,13 @@ export default function MCPAuthenticationModal({
           MCPTransportType.STREAMABLE_HTTP,
       auth_type:
         (fullServer.auth_type as MCPAuthenticationType) ||
-        MCPAuthenticationType.OAUTH,
-      auth_performer:
-        (fullServer.auth_performer as MCPAuthenticationPerformer) ||
-        MCPAuthenticationPerformer.PER_USER,
+        (gatewayBound
+          ? MCPAuthenticationType.API_TOKEN
+          : MCPAuthenticationType.OAUTH),
+      auth_performer: gatewayBound
+        ? MCPAuthenticationPerformer.ADMIN
+        : (fullServer.auth_performer as MCPAuthenticationPerformer) ||
+          MCPAuthenticationPerformer.PER_USER,
       // Admin API Token
       api_token: fullServer.admin_credentials?.api_key || "",
       // OAuth Credentials
@@ -279,7 +294,7 @@ export default function MCPAuthenticationModal({
           : undefined) ||
         {},
     };
-  }, [fullServer, mcpServer?.server_url]);
+  }, [fullServer, gatewayBound, mcpServer?.server_url]);
 
   // Mirrors the LLM-provider `api_key_changed` pattern in
   // `web/src/sections/modals/languageModels/svc.ts`. The backend uses these flags
@@ -385,7 +400,9 @@ export default function MCPAuthenticationModal({
       server_url: mcpServer.server_url,
       transport: values.transport,
       auth_type: values.auth_type,
-      auth_performer: values.auth_performer,
+      auth_performer: gatewayBound
+        ? MCPAuthenticationPerformer.ADMIN
+        : values.auth_performer,
       api_token: isAdminApiToken ? values.api_token : undefined,
       api_token_changed: isAdminApiToken
         ? values.api_token !== initialValues.api_token
@@ -446,8 +463,10 @@ export default function MCPAuthenticationModal({
 
       const authType = values.auth_type;
       // Step 1: Save the authentication configuration to the MCP server
-      const { data: serverResult, error: serverError } =
-        await upsertMCPServer(serverData);
+      const { data: serverResult, error: serverError } = await upsertMCPServer({
+        ...serverData,
+        surface,
+      });
 
       if (serverError || !serverResult) {
         throw new Error(
@@ -459,27 +478,33 @@ export default function MCPAuthenticationModal({
       if (authType === MCPAuthenticationType.OAUTH) {
         await updateMCPServerStatus(
           mcpServer.id,
-          MCPServerStatus.AWAITING_AUTH
+          MCPServerStatus.AWAITING_AUTH,
+          surface
         );
       }
 
       // Step 3: For OAuth, initiate the OAuth flow
       if (authType === MCPAuthenticationType.OAUTH) {
         const oauthChangedFlags = computeOAuthChangedFlags(values);
-        const oauthResponse = await fetch("/api/admin/mcp/oauth/connect", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            server_id: mcpServer.id.toString(),
-            oauth_client_id: values.oauth_client_id,
-            oauth_client_secret: values.oauth_client_secret,
-            ...oauthChangedFlags,
-            return_path: `${ADMIN_ROUTES.MCP_ACTIONS.path}/?server_id=${mcpServer.id}&trigger_fetch=true`,
-            include_resource_param: true,
-          }),
-        });
+        const oauthResponse = await fetch(
+          surface === "personal"
+            ? "/api/mcp/oauth/connect"
+            : "/api/admin/mcp/oauth/connect",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              server_id: mcpServer.id.toString(),
+              oauth_client_id: values.oauth_client_id,
+              oauth_client_secret: values.oauth_client_secret,
+              ...oauthChangedFlags,
+              return_path: `${mcpActionsPath(surface)}/?server_id=${mcpServer.id}&trigger_fetch=true`,
+              include_resource_param: true,
+            }),
+          }
+        );
 
         if (!oauthResponse.ok) {
           const error = await oauthResponse.json();
@@ -500,7 +525,7 @@ export default function MCPAuthenticationModal({
           onTriggerFetchTools(mcpServer.id);
         } else {
           // Fallback to previous behavior if parent didn't provide handler
-          window.location.href = `${ADMIN_ROUTES.MCP_ACTIONS.path}/?server_id=${mcpServer.id}&trigger_fetch=true`;
+          window.location.href = `${mcpActionsPath(surface)}/?server_id=${mcpServer.id}&trigger_fetch=true`;
         }
         toggle(false);
       }
@@ -605,15 +630,17 @@ export default function MCPAuthenticationModal({
                             data-testid="mcp-auth-method-select"
                           />
                           <InputSelect.Content>
-                            <InputSelect.Item
-                              value={MCPAuthenticationType.OAUTH}
-                              description={t(
-                                "mcpAuthModal.authType.oauth.description"
-                              )}
-                            >
-                              {t("mcpAuthModal.authType.oauth.label")}
-                            </InputSelect.Item>
-                            {isOAuthEnabled && (
+                            {!gatewayBound && (
+                              <InputSelect.Item
+                                value={MCPAuthenticationType.OAUTH}
+                                description={t(
+                                  "mcpAuthModal.authType.oauth.description"
+                                )}
+                              >
+                                {t("mcpAuthModal.authType.oauth.label")}
+                              </InputSelect.Item>
+                            )}
+                            {isOAuthEnabled && !gatewayBound && (
                               <InputSelect.Item
                                 value={MCPAuthenticationType.PT_OAUTH}
                                 description={t(
@@ -949,9 +976,11 @@ export default function MCPAuthenticationModal({
                         }}
                       >
                         <Tabs.List>
-                          <Tabs.Trigger value="per-user">
-                            {t("mcpAuthModal.apiKeyTabs.perUser.label")}
-                          </Tabs.Trigger>
+                          {!gatewayBound && (
+                            <Tabs.Trigger value="per-user">
+                              {t("mcpAuthModal.apiKeyTabs.perUser.label")}
+                            </Tabs.Trigger>
+                          )}
                           <Tabs.Trigger value="admin">
                             {t("mcpAuthModal.apiKeyTabs.admin.label")}
                           </Tabs.Trigger>

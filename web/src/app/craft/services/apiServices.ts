@@ -89,6 +89,8 @@ export async function processSSEStream(
 
 export interface CreateSessionOptions {
   name?: string | null;
+  scenarioId?: string | null;
+  projectId?: string | null;
 }
 
 // Pull the backend's human-readable error detail out of a failed response,
@@ -113,6 +115,8 @@ export async function createSession(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: options?.name || null,
+      scenario_id: options?.scenarioId || null,
+      project_id: options?.projectId || null,
     }),
   });
 
@@ -455,6 +459,41 @@ export async function createTurn(
   return res.json();
 }
 
+export async function createCompactTurn(
+  sessionId: string,
+  clientRequestId: string,
+  signal?: AbortSignal
+): Promise<ApiInteractiveTurnResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/compact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_request_id: clientRequestId }),
+    signal,
+  });
+
+  if (!res.ok) {
+    if (res.status === 429) {
+      const body: RateLimited429Body | null = await res
+        .json()
+        .catch(() => null);
+      if (body?.error_code === RATE_LIMITED_ERROR_CODE) {
+        throw new RateLimitedError(
+          body.detail || "You've reached your usage limit.",
+          {
+            scope: body.scope,
+            reset_at: body.reset_at,
+            retry_after_seconds: body.retry_after_seconds,
+          }
+        );
+      }
+      throw new Error(body?.detail || `Failed to compact: ${res.status}`);
+    }
+    throw new Error(await errorDetail(res, "Failed to compact"));
+  }
+
+  return res.json();
+}
+
 export async function fetchActiveTurn(
   sessionId: string
 ): Promise<ApiInteractiveTurnResponse | null> {
@@ -780,6 +819,97 @@ export async function exportDocx(
   }
 
   return res.blob();
+}
+
+export async function exportPdf(
+  sessionId: string,
+  path: string
+): Promise<Blob> {
+  const encodedPath = path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  const res = await fetch(
+    `${BUILD_API_BASE}/sessions/${sessionId}/export-pdf/${encodedPath}`
+  );
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || `Failed to export as PDF: ${res.status}`
+    );
+  }
+
+  return res.blob();
+}
+
+export type CraftJobStatus =
+  | "pending"
+  | "running"
+  | "waiting_specialists"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+export interface CraftJobPhaseResponse {
+  id: string;
+  name: string;
+  kind: string;
+  status: string;
+}
+
+export interface CraftJobSpecialistResponse {
+  id: string;
+  session_id: string;
+  role: string;
+  status: string;
+}
+
+export interface CraftJobResponse {
+  id: string;
+  session_id: string;
+  project_id: string | null;
+  scenario_id: string | null;
+  name: string;
+  domain: string;
+  status: CraftJobStatus;
+  current_phase_index: number;
+  phases: CraftJobPhaseResponse[];
+  total_budget_seconds: number;
+  phase_budget_seconds: number;
+  error_detail: string | null;
+  specialists: CraftJobSpecialistResponse[];
+}
+
+export async function createCraftJob(body: {
+  session_id: string;
+  prompt?: string;
+  domain?: string;
+  start?: boolean;
+}): Promise<{ job: CraftJobResponse; turn_id: string | null }> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to start long job: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function cancelCraftJob(jobId: string): Promise<CraftJobResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs/${jobId}/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to cancel long job: ${res.status}`);
+  }
+  return res.json();
 }
 
 // =============================================================================

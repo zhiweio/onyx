@@ -248,16 +248,13 @@ def user_can_access_chat_file(file_id: str, user: User, db_session: Session) -> 
     if _user_can_access_persona_attached_file(file_id, user, db_session):
         return True
 
+    from onyx.db.chat_share import chat_session_visible_to_user_clause
+
     chat_file_stmt = (
         select(ChatMessage.id)
         .join(ChatSession, ChatMessage.chat_session_id == ChatSession.id)
         .where(ChatMessage.files.op("@>")([{"id": file_id}]))
-        .where(
-            or_(
-                ChatSession.user_id == user.id,
-                ChatSession.shared_status == ChatSessionSharedStatus.PUBLIC,
-            )
-        )
+        .where(chat_session_visible_to_user_clause(user.id))
         .limit(1)
     )
     if db_session.execute(chat_file_stmt).first() is not None:

@@ -207,6 +207,71 @@ class MCPServerStatus(str, PyEnum):
     DISCONNECTED = "DISCONNECTED"  # Server disconnected, but not deleted
 
 
+class MCPServerScope(str, PyEnum):
+    """Who owns an MCP server and how its calls are routed.
+
+    USER servers are organization MCP: an admin configures them on
+    /admin/mcp-actions, shares them with users or groups, and may optionally
+    bind them to the gateway. PERSONAL servers are owned by one user, isolated
+    from everyone else, and never route through the gateway.
+
+    SYSTEM is a leftover of the catalog product. New rows are not written with
+    it; existing SYSTEM rows migrate to USER plus a gateway binding.
+    """
+
+    USER = "USER"
+    PERSONAL = "PERSONAL"
+    SYSTEM = "SYSTEM"
+
+
+class MCPCatalogOrigin(str, PyEnum):
+    """Where a catalog entry came from.
+
+    LOCAL entries are created by an admin in this deployment. PUSHED entries
+    are provisioned from outside (a control plane in a multi-tenant setup) and
+    may only be enabled or disabled locally, never edited.
+    """
+
+    LOCAL = "LOCAL"
+    PUSHED = "PUSHED"
+
+
+class MCPGatewayRefreshMode(str, PyEnum):
+    TTL = "ttl"
+    SWR = "swr"
+    SCHEDULE = "schedule"
+    TTL_AND_SCHEDULE = "ttl_and_schedule"
+    NEVER = "never"
+    BYPASS = "bypass"
+
+
+class MCPGatewayAuthAdapter(str, PyEnum):
+    BEARER = "bearer"
+    RAW_AUTHORIZATION = "raw_authorization"
+    HEADER_MAP = "header_map"
+    QUERY_APIKEY = "query_apikey"
+
+
+class MCPGatewayCallOutcome(str, PyEnum):
+    HIT = "hit"
+    MISS = "miss"
+    SWR = "swr"
+    REFRESH = "refresh"
+    BYPASS = "bypass"
+    ERROR = "error"
+
+
+class MCPResultStorage(str, PyEnum):
+    """Where the body of a stored MCP result lives.
+
+    Small results are inlined in Postgres. Large ones go to the file store so
+    neither Redis nor a JSONB column has to carry multi-MB payloads.
+    """
+
+    INLINE = "inline"
+    OBJECT = "object"
+
+
 # Consistent with Celery task statuses
 class TaskStatus(str, PyEnum):
     PENDING = "PENDING"
@@ -248,6 +313,7 @@ class IndexReclaimStatus(str, PyEnum):
 class ChatSessionSharedStatus(str, PyEnum):
     PUBLIC = "public"
     PRIVATE = "private"
+    SHARED = "shared"
 
 
 class ConnectorCredentialPairStatus(str, PyEnum):
@@ -374,11 +440,33 @@ class SessionOrigin(str, PyEnum):
     SLACK:       session started by a Slack thread mention. Surfaces in
                  Slack (and a future admin list), not the user sidebar.
                  Excluded from the Craft sidebar list.
+    JOB:         specialist session spawned by a Craft long job. Excluded
+                 from the Craft sidebar list.
     """
 
     INTERACTIVE = "INTERACTIVE"
     SCHEDULED = "SCHEDULED"
     SLACK = "SLACK"
+    # Specialist session spawned by a Craft long job. Hidden from the sidebar.
+    JOB = "JOB"
+
+
+class CraftJobStatus(str, PyEnum):
+    """Lifecycle of a multi-phase Craft long job."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    WAITING_SPECIALISTS = "waiting_specialists"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class CraftJobSpecialistStatus(str, PyEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
 
 
 class SharingScope(str, PyEnum):
@@ -557,6 +645,13 @@ class ArtifactType(str, PyEnum):
     FILE = "file"
 
 
+class CraftProjectFileSource(str, PyEnum):
+    """How a file entered a Craft Project catalog."""
+
+    UPLOAD = "upload"
+    SESSION_OUTPUT = "session_output"
+
+
 class ReceiptStatus(str, PyEnum):
     """Lifecycle of an external-action receipt. The full contract lives on
     ActionReceipt."""
@@ -664,6 +759,11 @@ class Permission(str, PyEnum):
     # Toggle tokens
     READ_AGENT_ANALYTICS = "read:agent_analytics"
     MANAGE_ACTIONS = "manage:actions"
+    # Install system-wide MCP servers and grant them to groups. Deliberately
+    # separate from MANAGE_ACTIONS: a system MCP carries shared credentials
+    # that every granted user spends, so it is a higher bar than adding a
+    # personal MCP server.
+    MANAGE_SYSTEM_MCP = "manage:system_mcp"
     MANAGE_SKILLS = "manage:skills"
     READ_QUERY_HISTORY = "read:query_history"
     MANAGE_USER_GROUPS = "manage:user_groups"
@@ -729,12 +829,78 @@ class SkillSharePermission(str, PyEnum):
     VIEWER = "VIEWER"
 
 
+class ChatSessionSharePermission(str, PyEnum):
+    """Level granted by a chat-session share row (user or group)."""
+
+    VIEWER = "VIEWER"
+
+
+class ScenarioSharePermission(str, PyEnum):
+    """Level granted by a scenario share row (user or group), or to the whole
+    org via `Scenario.public_permission`."""
+
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
+
+
+class ScenarioAccessLevel(str, PyEnum):
+    """Computed access the requesting user holds on a scenario."""
+
+    OWNER = "OWNER"
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
+
+
 class SkillAccessLevel(str, PyEnum):
     """Computed access the requesting user holds on a skill."""
 
     OWNER = "OWNER"
     EDITOR = "EDITOR"
     VIEWER = "VIEWER"
+
+
+class ReportTemplateKind(str, PyEnum):
+    """How a report template carries its structure.
+
+    MARKDOWN templates are inlined into SCENARIO.md as an outline. DOCX
+    templates additionally ship a Word asset that fixes the formatting; the
+    agent fills its ``{{placeholder}}`` tokens rather than writing prose from
+    scratch."""
+
+    MARKDOWN = "MARKDOWN"
+    DOCX = "DOCX"
+
+
+class SystemCatalogCategory(str, PyEnum):
+    """Domain a system catalog entry belongs to, used for gallery filtering."""
+
+    TAX = "TAX"
+    BIOMED = "BIOMED"
+    OFFICE = "OFFICE"
+    DOCUMENT = "DOCUMENT"
+    GENERAL = "GENERAL"
+
+
+class SystemCatalogPublishStatus(str, PyEnum):
+    """Lifecycle of a system catalog entry.
+
+    Only PUBLISHED entries are projected into the runtime tables and are
+    therefore the only ones users can see or fork."""
+
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
+class SystemCatalogOrigin(str, PyEnum):
+    """Where a system catalog entry came from.
+
+    BUILTIN rows are inserted by the shipped manifest sync; ADMIN rows are
+    created in the admin panel. The sync never overwrites an existing slug, so
+    admin edits to a BUILTIN row survive later syncs."""
+
+    BUILTIN = "BUILTIN"
+    ADMIN = "ADMIN"
 
 
 class PersonaAccessLevel(str, PyEnum):

@@ -12,6 +12,7 @@ from onyx.configs.app_configs import DISABLE_VECTOR_DB
 from onyx.configs.model_configs import GEN_AI_TEMPERATURE
 from onyx.context.search.models import BaseFilters, PersonaSearchInfo
 from onyx.db.engine.sql_engine import get_session_with_current_tenant_if_none
+from onyx.db.enums import MCPServerScope
 from onyx.db.mcp import (
     get_all_mcp_tools_for_server,
     get_mcp_server_by_id,
@@ -242,7 +243,14 @@ def _construct_tools_impl(
             continue
 
         if db_tool_model.in_code_tool_id:
-            tool_cls = get_built_in_tool_by_id(db_tool_model.in_code_tool_id)
+            try:
+                tool_cls = get_built_in_tool_by_id(db_tool_model.in_code_tool_id)
+            except KeyError:
+                logger.warning(
+                    "Skipping unknown built-in tool %s",
+                    db_tool_model.in_code_tool_id,
+                )
+                continue
 
             try:
                 tool_is_available = tool_cls.is_available(db_session)
@@ -351,7 +359,6 @@ def _construct_tools_impl(
                     )
                 ]
 
-            # Handle File Reader Tool
             elif tool_cls.__name__ == FileReaderTool.__name__:
                 cfg = file_reader_tool_config or FileReaderToolConfig()
                 tool_dict[db_tool_model.id] = [
@@ -451,6 +458,16 @@ def _construct_tools_impl(
                 continue
 
             mcp_server = get_mcp_server_by_id(db_tool_model.mcp_server_id, db_session)
+            if (
+                mcp_server.scope == MCPServerScope.PERSONAL
+                and mcp_server.owner != user.email
+            ):
+                logger.warning(
+                    "Skipping personal MCP server %s for user %s",
+                    mcp_server.id,
+                    user.email,
+                )
+                continue
 
             try:
                 mcp_credentials = resolve_mcp_credentials(mcp_server, user, db_session)

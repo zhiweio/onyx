@@ -103,6 +103,12 @@ class Settings(BaseModel):
         default=None, max_length=CRAFT_INSTRUCTIONS_MAX_LENGTH
     )
 
+    # Admin toggle for the MCP Gateway module. Only takes effect when the
+    # operator also deployed the gateway process (MCP_GATEWAY_ENABLED).
+    mcp_gateway_enabled: bool = False
+    # Users may create personal MCP servers. Default on.
+    personal_mcp_enabled: bool = True
+
     # Seat usage - populated by license enforcement when seat limit is exceeded
     seat_count: int | None = None
     used_seats: int | None = None
@@ -130,6 +136,9 @@ class UserSettings(Settings):
     vector_db_enabled: bool = True
     # True when hooks are available: single-tenant EE deployments only.
     hooks_enabled: bool = False
+    # True when the operator deployed the MCP Gateway process. Gates visibility
+    # of the admin toggle; mcp_gateway_enabled gates the module itself.
+    mcp_gateway_available: bool = False
     # Application version, read from the ONYX_VERSION env var at startup.
     version: str | None = None
     # Hard ceiling for user_file_max_upload_size_mb, derived from env var.

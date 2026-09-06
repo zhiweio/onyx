@@ -75,10 +75,12 @@ from onyx.tools.models import (
     ToolResponse,
 )
 from onyx.tools.tool_implementations.images.models import FinalImageGenerationResponse
+from onyx.tools.tool_implementations.mcp.mcp_tool import MCPTool
 from onyx.tools.tool_implementations.memory.models import MemoryToolResponse
 from onyx.tools.tool_implementations.open_url.open_url_tool import OpenURLTool
 from onyx.tools.tool_implementations.python.python_tool import PythonTool
 from onyx.tools.tool_implementations.search.search_tool import SearchTool
+from onyx.tools.tool_implementations.utils import fit_text_to_token_budget
 from onyx.tools.tool_implementations.web_search.utils import extract_url_snippet_map
 from onyx.tools.tool_implementations.web_search.web_search_tool import WebSearchTool
 from onyx.tools.tool_runner import run_tool_calls
@@ -1138,6 +1140,17 @@ def run_llm_loop(
                 simple_chat_history.extend(failure_messages)
                 continue
 
+            remaining_mcp_history_tokens = max(
+                0,
+                available_tokens
+                - sum(msg.token_count for msg in simple_chat_history)
+                - sum(
+                    token_counter(tr.tool_call.to_msg_str())
+                    for tr in tool_responses
+                    if tr.tool_call is not None
+                ),
+            )
+
             for tool_response in tool_responses:
                 # Extract tool_call from the response (set by run_tool_calls)
                 if tool_response.tool_call is None:
@@ -1286,6 +1299,21 @@ def run_llm_loop(
                     saved_response = tool_response.rich_response
                 else:
                     saved_response = tool_response.llm_facing_response
+
+                # MCP answers stay the original tool result. If one of them
+                # would overflow the window, cut the text that history stores
+                # and that the next cycle sends — not a digest or handle.
+                if isinstance(tool, MCPTool):
+                    fitted = fit_text_to_token_budget(
+                        tool_response.llm_facing_response,
+                        token_counter,
+                        remaining_mcp_history_tokens,
+                    )
+                    tool_response.llm_facing_response = fitted
+                    saved_response = fitted
+                    remaining_mcp_history_tokens = max(
+                        0, remaining_mcp_history_tokens - token_counter(fitted)
+                    )
 
                 tool_call_info = ToolCallInfo(
                     parent_tool_call_id=None,  # Top-level tool calls are attached to the chat message

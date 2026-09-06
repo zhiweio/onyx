@@ -324,6 +324,7 @@ const BaseInputBar = memo(
                   scrollbarColor: "var(--border-02) transparent",
                 }}
                 role="textbox"
+                data-testid="craft-message-input"
                 aria-label={t("baseInputBar.input.ariaLabel")}
                 aria-multiline={true}
                 aria-disabled={disabled}

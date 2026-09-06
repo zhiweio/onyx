@@ -47,9 +47,11 @@ PYTHONUNBUFFERED=1
 
 
 # Enable the full set of Onyx Enterprise Edition features.
-# NOTE: DO NOT ENABLE THIS UNLESS YOU HAVE A PAID ENTERPRISE LICENSE (or if you
-# are using this for local testing/development).
-ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=False
+# Local / internal: pair with LICENSE_ENFORCEMENT_ENABLED=false so Business
+# and Enterprise routes unlock without a paid license blob.
+ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=true
+LICENSE_ENFORCEMENT_ENABLED=false
+NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES=true
 
 
 # S3 File Store Configuration (MinIO for local development)
@@ -79,3 +81,8 @@ LANGSMITH_PROJECT=<REPLACE_THIS>
 # OpenSearch
 # Arbitrary password is fine for local development.
 OPENSEARCH_INITIAL_ADMIN_PASSWORD=<REPLACE THIS>
+
+# MCP Gateway (commercial MCP proxy). Defaults match docker-compose.
+# MCP_GATEWAY_ENABLED=true
+# MCP_GATEWAY_PUBLIC_URL=http://localhost:8091
+# MCP_GATEWAY_INTERNAL_TOKEN=

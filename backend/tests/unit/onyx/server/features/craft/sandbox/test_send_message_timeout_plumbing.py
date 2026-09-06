@@ -21,6 +21,8 @@ class _FakeServeClient:
     def __init__(self) -> None:
         self.captured_timeout: float | None = None
         self.captured_absolute_timeout: float | None = None
+        self.captured_message: str | None = None
+        self.captured_compact: dict[str, str] | None = None
 
     def ensure_session(
         self,
@@ -34,7 +36,7 @@ class _FakeServeClient:
     def send_message(
         self,
         opencode_session_id: str,  # noqa: ARG002
-        message: str,  # noqa: ARG002
+        message: str,
         *,
         directory: str,  # noqa: ARG002
         model_provider: str | None = None,  # noqa: ARG002
@@ -44,9 +46,37 @@ class _FakeServeClient:
         absolute_timeout: float | None = None,
         should_interrupt: Callable[[], bool] | None = None,  # noqa: ARG002
     ) -> Generator[Any, None, None]:
+        self.captured_message = message
         self.captured_timeout = timeout
         self.captured_absolute_timeout = absolute_timeout
         yield PromptResponse.model_validate({"stopReason": "end_turn"})
+
+    def compact(
+        self,
+        opencode_session_id: str,  # noqa: ARG002
+        *,
+        directory: str,  # noqa: ARG002
+        model_provider: str,
+        model_id: str,
+        timeout: float = OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+        absolute_timeout: float | None = None,
+        should_interrupt: Callable[[], bool] | None = None,  # noqa: ARG002
+    ) -> Generator[Any, None, None]:
+        self.captured_compact = {
+            "model_provider": model_provider,
+            "model_id": model_id,
+        }
+        self.captured_timeout = timeout
+        self.captured_absolute_timeout = absolute_timeout
+        yield PromptResponse.model_validate({"stopReason": "end_turn"})
+
+    def session_exists(
+        self,
+        opencode_session_id: str,  # noqa: ARG002
+        *,
+        directory: str,  # noqa: ARG002
+    ) -> bool:
+        return True
 
     def close(self) -> None:
         pass
@@ -94,3 +124,59 @@ def test_subagent_message_has_prompt_slot_hard_ceiling() -> None:
 
     assert client.captured_timeout == OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS
     assert client.captured_absolute_timeout == PROMPT_SLOT_KEEP_ALIVE_MAX_SECONDS
+
+
+def test_replaced_session_prefixes_replay_preamble() -> None:
+    client = _FakeServeClient()
+    manager = _manager_with(client)
+
+    list(
+        manager.send_message(
+            uuid4(),
+            uuid4(),
+            "follow up",
+            opencode_session_id="ses_old",
+            replacement_preamble=lambda: "PRIOR HISTORY",
+        )
+    )
+
+    assert client.captured_message is not None
+    assert client.captured_message.startswith("PRIOR HISTORY")
+    assert "follow up" in client.captured_message
+
+
+def test_first_mint_does_not_prefix_replay_preamble() -> None:
+    client = _FakeServeClient()
+    manager = _manager_with(client)
+
+    list(
+        manager.send_message(
+            uuid4(),
+            uuid4(),
+            "hello",
+            replacement_preamble=lambda: "PRIOR HISTORY",
+        )
+    )
+
+    assert client.captured_message == "hello"
+
+
+def test_compact_session_posts_to_existing_session() -> None:
+    client = _FakeServeClient()
+    manager = _manager_with(client)
+
+    events = list(
+        manager.compact_session(
+            uuid4(),
+            uuid4(),
+            opencode_session_id="ses_live",
+            agent_provider="openai",
+            agent_model="gpt-5",
+        )
+    )
+
+    assert client.captured_compact == {
+        "model_provider": "openai",
+        "model_id": "gpt-5",
+    }
+    assert any(isinstance(e, PromptResponse) for e in events)

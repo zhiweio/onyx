@@ -193,6 +193,30 @@ def test_local_dev_sandbox_image_uses_cached_image_when_present() -> None:
     docker.images.pull.assert_not_called()
 
 
+def test_never_pull_policy_uses_local_latest_without_hub_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dsm, "SANDBOX_IMAGE_PULL_POLICY", "Never")
+    mgr, docker = _bare_manager_with_image("onyxdotapp/sandbox:latest")
+
+    mgr._ensure_sandbox_image()
+
+    docker.images.get.assert_called_once_with("onyxdotapp/sandbox:latest")
+    docker.images.pull.assert_not_called()
+
+
+def test_never_pull_policy_raises_when_local_image_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dsm, "SANDBOX_IMAGE_PULL_POLICY", "Never")
+    mgr, docker = _bare_manager_with_image("onyxdotapp/sandbox:local")
+    docker.images.get.side_effect = dsm.NotFound("missing")
+
+    with pytest.raises(RuntimeError, match="SANDBOX_IMAGE_PULL_POLICY=Never"):
+        mgr._ensure_sandbox_image()
+    docker.images.pull.assert_not_called()
+
+
 def test_registry_port_untagged_image_refreshes_as_implicit_latest() -> None:
     image = "localhost:5001/onyx-sandbox"
     mgr, docker = _bare_manager_with_image(image)
@@ -913,3 +937,54 @@ def test_embedded_craft_compose_copy_is_in_sync() -> None:
         / "cli/internal/deploy/deployfiles/embedded/docker_compose/docker-compose.craft.yml"
     )
     assert embedded.read_text() == source.read_text()
+
+
+def test_local_build_overlay_builds_fork_images_and_skips_hub() -> None:
+    """Fork / secondary-dev stacks must build Onyx images from this repo and
+    refuse a Hub refresh of the sandbox. Official compose still pulls Hub tags
+    when this overlay is not stacked.
+    """
+    compose_path = (
+        REPO_ROOT / "deployment/docker_compose/docker-compose.local-build.yml"
+    )
+    compose = yaml.safe_load(compose_path.read_text())
+    services = compose["services"]
+
+    for service_name in (
+        "api_server",
+        "background",
+        "mcp_gateway",
+        "sandbox-proxy",
+        "web_server",
+        "sandbox-image-prepull",
+    ):
+        assert services[service_name]["pull_policy"] == "build"
+
+    backend_image = "${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:local}"
+    for service_name in ("api_server", "background", "mcp_gateway", "sandbox-proxy"):
+        assert services[service_name]["image"] == backend_image
+        assert services[service_name]["build"]["context"] == "../../backend"
+
+    assert (
+        services["web_server"]["image"]
+        == "${ONYX_WEB_SERVER_IMAGE:-onyxdotapp/onyx-web-server:local}"
+    )
+    assert services["web_server"]["build"]["context"] == "../../web"
+
+    prepull = services["sandbox-image-prepull"]
+    assert prepull["image"] == "${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}"
+    assert (
+        prepull["build"]["context"]
+        == "../../backend/onyx/server/features/build/sandbox/image"
+    )
+    assert prepull["deploy"]["replicas"] == 0
+    assert prepull["entrypoint"] == ["/bin/true"]
+
+    never_pull = "SANDBOX_IMAGE_PULL_POLICY=${SANDBOX_IMAGE_PULL_POLICY:-Never}"
+    local_sandbox = (
+        "SANDBOX_CONTAINER_IMAGE=${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}"
+    )
+    for service_name in ("api_server", "background"):
+        environment = services[service_name]["environment"]
+        assert never_pull in environment
+        assert local_sandbox in environment

@@ -14,6 +14,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -75,7 +76,11 @@ from onyx.db.enums import (
     CapabilityCheckTrigger,
     CapabilityReportRunStatus,
     ChatSessionSharedStatus,
+    ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
+    CraftJobSpecialistStatus,
+    CraftJobStatus,
+    CraftProjectFileSource,
     DefaultAppMode,
     EmbeddingPrecision,
     EndpointPolicy,
@@ -93,7 +98,12 @@ from onyx.db.enums import (
     LLMModelFlowType,
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
+    MCPCatalogOrigin,
+    MCPGatewayAuthAdapter,
+    MCPGatewayCallOutcome,
     MCPOAuthProviderMode,
+    MCPResultStorage,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
     NotificationSeverity,
@@ -106,7 +116,9 @@ from onyx.db.enums import (
     PortAttemptStatus,
     ProcessingMode,
     ReceiptStatus,
+    ReportTemplateKind,
     SandboxStatus,
+    ScenarioSharePermission,
     ScheduledTaskRunStatus,
     ScheduledTaskStatus,
     ScheduledTaskTriggerSource,
@@ -117,6 +129,9 @@ from onyx.db.enums import (
     SwitchoverType,
     SyncStatus,
     SyncType,
+    SystemCatalogCategory,
+    SystemCatalogOrigin,
+    SystemCatalogPublishStatus,
     TaskStatus,
     ThemePreference,
     UserFileStatus,
@@ -489,6 +504,12 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
         "UserProject", back_populates="user"
     )
     files: Mapped[list["UserFile"]] = relationship("UserFile", back_populates="user")
+    craft_projects: Mapped[list["CraftProject"]] = relationship(
+        "CraftProject", back_populates="user"
+    )
+    craft_jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="user"
+    )
     # MCP servers accessible to this user
     accessible_mcp_servers: Mapped[list["MCPServer"]] = relationship(
         "MCPServer", secondary="mcp_server__user", back_populates="users"
@@ -3264,6 +3285,72 @@ class ChatSession(Base):
         foreign_keys="ChatMessage.chat_session_id",
     )
     persona: Mapped["Persona"] = relationship("Persona")
+    user_shares: Mapped[list["ChatSession__User"]] = relationship(
+        "ChatSession__User",
+        back_populates="chat_session",
+        cascade="all, delete-orphan",
+    )
+    group_shares: Mapped[list["ChatSession__UserGroup"]] = relationship(
+        "ChatSession__UserGroup",
+        back_populates="chat_session",
+        cascade="all, delete-orphan",
+    )
+
+
+class ChatSession__User(Base):
+    __tablename__ = "chat_session__user"
+
+    chat_session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("chat_session.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ChatSessionSharePermission] = mapped_column(
+        Enum(ChatSessionSharePermission, native_enum=False),
+        nullable=False,
+        default=ChatSessionSharePermission.VIEWER,
+        server_default=ChatSessionSharePermission.VIEWER.value,
+    )
+
+    chat_session: Mapped[ChatSession] = relationship(
+        "ChatSession", back_populates="user_shares"
+    )
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (Index("ix_chat_session__user_user_id", "user_id"),)
+
+
+class ChatSession__UserGroup(Base):
+    __tablename__ = "chat_session__user_group"
+
+    chat_session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("chat_session.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ChatSessionSharePermission] = mapped_column(
+        Enum(ChatSessionSharePermission, native_enum=False),
+        nullable=False,
+        default=ChatSessionSharePermission.VIEWER,
+        server_default=ChatSessionSharePermission.VIEWER.value,
+    )
+
+    chat_session: Mapped[ChatSession] = relationship(
+        "ChatSession", back_populates="group_shares"
+    )
+    user_group: Mapped["UserGroup"] = relationship("UserGroup")
+
+    __table_args__ = (
+        Index("ix_chat_session__user_group_user_group_id", "user_group_id"),
+    )
 
 
 class ChatMessage(Base):
@@ -4923,6 +5010,15 @@ class Skill(Base):
         Enum(SkillSharePermission, native_enum=False),
         nullable=True,
     )
+    # Set when the row came from the system catalog, either as the published
+    # projection (author_user_id IS NULL) or as a user's fork. Cleared if the
+    # catalog entry is deleted, so forks outlive their source.
+    system_skill_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_skill.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_skill_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -4967,11 +5063,454 @@ class Skill(Base):
             "(built_in_skill_id IS NULL) <> (bundle_file_id IS NULL)",
             name="ck_skill_definition_source",
         ),
+        Index("ix_skill_system_skill_id", "system_skill_id"),
     )
 
     @property
     def is_custom(self) -> bool:
         return self.built_in_skill_id is None
+
+
+class ReportTemplate(Base):
+    """Markdown report outline that a Craft pack can select by slug."""
+
+    __tablename__ = "report_template"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[ReportTemplateKind] = mapped_column(
+        Enum(ReportTemplateKind, native_enum=False),
+        nullable=False,
+        default=ReportTemplateKind.MARKDOWN,
+        server_default=ReportTemplateKind.MARKDOWN.value,
+    )
+    # Set only for DOCX templates: the Word asset in the file store, plus the
+    # placeholder contract extracted from it at upload.
+    asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    author_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    is_builtin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    # See Skill.system_skill_id — same projection/fork bookkeeping.
+    system_report_template_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_report_template.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_report_template_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    author: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[author_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_report_template_slug"),
+        Index(
+            "ix_report_template_system_report_template_id",
+            "system_report_template_id",
+        ),
+    )
+
+
+class Scenario(Base):
+    """Craft pack that selects skills by rules and can be shared."""
+
+    __tablename__ = "scenario"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    author_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    public_permission: Mapped[ScenarioSharePermission | None] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=True,
+    )
+    rules: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    report_template: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # See Skill.system_skill_id — same projection/fork bookkeeping.
+    system_scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("system_scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    system_scenario_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    author: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[author_user_id],
+    )
+    skill_links: Mapped[list["Scenario__Skill"]] = relationship(
+        "Scenario__Skill",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+    user_shares: Mapped[list["Scenario__User"]] = relationship(
+        "Scenario__User",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+    group_shares: Mapped[list["Scenario__UserGroup"]] = relationship(
+        "Scenario__UserGroup",
+        back_populates="scenario",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (Index("ix_scenario_system_scenario_id", "system_scenario_id"),)
+
+
+class Scenario__Skill(Base):
+    __tablename__ = "scenario__skill"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    skill_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("skill.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="skill_links")
+    skill: Mapped[Skill] = relationship("Skill")
+
+
+class Scenario__User(Base):
+    __tablename__ = "scenario__user"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ScenarioSharePermission] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=False,
+        default=ScenarioSharePermission.VIEWER,
+        server_default=ScenarioSharePermission.VIEWER.value,
+    )
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="user_shares")
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (Index("ix_scenario__user_user_id", "user_id"),)
+
+
+class Scenario__UserGroup(Base):
+    __tablename__ = "scenario__user_group"
+
+    scenario_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[ScenarioSharePermission] = mapped_column(
+        Enum(ScenarioSharePermission, native_enum=False),
+        nullable=False,
+        default=ScenarioSharePermission.VIEWER,
+        server_default=ScenarioSharePermission.VIEWER.value,
+    )
+
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="group_shares")
+    user_group: Mapped["UserGroup"] = relationship("UserGroup")
+
+    __table_args__ = (Index("ix_scenario__user_group_user_group_id", "user_group_id"),)
+
+
+class SystemSkill(Base):
+    """Admin-managed catalog entry for a skill offered in the skills gallery.
+
+    Catalog rows are never consumed at runtime. Publishing projects the entry
+    into a workspace-owned ``skill`` row (``author_user_id IS NULL``), which is
+    what the sandbox push path and the pickers already understand. Unpublishing
+    drops that projection while leaving user forks intact.
+    """
+
+    __tablename__ = "system_skill"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    # Bumped on every publish. Forks copy it so the UI can flag stale copies.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    # Content source, mirroring Skill: exactly one of the two is set.
+    built_in_skill_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    bundle_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    bundle_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_skill_slug"),
+        CheckConstraint(
+            "(built_in_skill_id IS NULL) <> (bundle_file_id IS NULL)",
+            name="ck_system_skill_definition_source",
+        ),
+        Index("ix_system_skill_publish_status", "publish_status"),
+    )
+
+
+class SystemReportTemplate(Base):
+    """Admin-managed catalog entry for a report template in the gallery."""
+
+    __tablename__ = "system_report_template"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[ReportTemplateKind] = mapped_column(
+        Enum(ReportTemplateKind, native_enum=False),
+        nullable=False,
+        default=ReportTemplateKind.MARKDOWN,
+        server_default=ReportTemplateKind.MARKDOWN.value,
+    )
+    # See ReportTemplate — the catalog carries its own copy of the asset so an
+    # unpublished draft can hold content no runtime row references yet.
+    asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_report_template_slug"),
+        Index("ix_system_report_template_publish_status", "publish_status"),
+    )
+
+
+class SystemScenario(Base):
+    """Admin-managed catalog entry for a scenario pack in the gallery.
+
+    ``skill_slugs`` names ``system_skill`` entries rather than ``skill`` UUIDs
+    so the manifest stays declarative; publishing resolves each slug to the
+    projected skill row.
+    """
+
+    __tablename__ = "system_scenario"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[SystemCatalogCategory] = mapped_column(
+        Enum(SystemCatalogCategory, native_enum=False),
+        nullable=False,
+        default=SystemCatalogCategory.GENERAL,
+        server_default=SystemCatalogCategory.GENERAL.value,
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    publish_status: Mapped[SystemCatalogPublishStatus] = mapped_column(
+        Enum(SystemCatalogPublishStatus, native_enum=False),
+        nullable=False,
+        default=SystemCatalogPublishStatus.DRAFT,
+        server_default=SystemCatalogPublishStatus.DRAFT.value,
+    )
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    changelog: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    origin: Mapped[SystemCatalogOrigin] = mapped_column(
+        Enum(SystemCatalogOrigin, native_enum=False),
+        nullable=False,
+        default=SystemCatalogOrigin.ADMIN,
+        server_default=SystemCatalogOrigin.ADMIN.value,
+    )
+
+    rules: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict, server_default=text("'{}'")
+    )
+    skill_slugs: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
+    )
+    report_template_slug: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    published_by: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[published_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_system_scenario_slug"),
+        Index("ix_system_scenario_publish_status", "publish_status"),
+    )
 
 
 """
@@ -5249,6 +5788,12 @@ class UserGroup(Base):
     # MCP servers accessible to this user group
     accessible_mcp_servers: Mapped[list["MCPServer"]] = relationship(
         "MCPServer", secondary="mcp_server__user_group", back_populates="user_groups"
+    )
+    # System MCP catalog entries granted to this user group
+    granted_mcp_catalog_entries: Mapped[list["MCPCatalogEntry"]] = relationship(
+        "MCPCatalogEntry",
+        secondary="mcp_catalog_entry__user_group",
+        back_populates="user_groups",
     )
     permission_grants: Mapped[list["PermissionGrant"]] = relationship(
         "PermissionGrant", back_populates="group", cascade="all, delete-orphan"
@@ -5881,7 +6426,29 @@ class MCPServer(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # USER = organization MCP (admin-managed, shareable, optional gateway).
+    # PERSONAL = one user's private MCP (never gateway).
+    # SYSTEM is leftover and migrated to USER plus a binding.
+    scope: Mapped[MCPServerScope] = mapped_column(
+        Enum(MCPServerScope, native_enum=False),
+        nullable=False,
+        default=MCPServerScope.USER,
+        server_default=MCPServerScope.USER.value,
+    )
+    # Optional gateway binding. Set when this org server routes through the
+    # gateway; PERSONAL servers must leave this null.
+    catalog_entry_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("mcp_catalog_entry.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
     # Relationships
+    catalog_entry: Mapped["MCPCatalogEntry | None"] = relationship(
+        "MCPCatalogEntry",
+        foreign_keys=[catalog_entry_id],
+        back_populates="mcp_server",
+    )
     admin_connection_config: Mapped["MCPConnectionConfig | None"] = relationship(
         "MCPConnectionConfig",
         foreign_keys=[admin_connection_config_id],
@@ -5906,6 +6473,8 @@ class MCPServer(Base):
         secondary="mcp_server__user_group",
         back_populates="accessible_mcp_servers",
     )
+
+    __table_args__ = (Index("ix_mcp_server_scope", "scope"),)
 
 
 class MCPServer__User(Base):
@@ -5980,6 +6549,310 @@ class MCPConnectionConfig(Base):
     __table_args__ = (
         Index("ix_mcp_connection_config_user_email", "user_email"),
         Index("ix_mcp_connection_config_server_user", "mcp_server_id", "user_email"),
+    )
+
+
+class MCPCatalogEntry(Base):
+    """Optional gateway binding for one organization MCP server.
+
+    Holds the real upstream URL, shared upstream credentials, pack, and cache
+    policy. The chat tool loop calls the projected `MCPServer` at the gateway
+    URL. Access lives on the MCPServer (is_public / users / groups), not here.
+    """
+
+    __tablename__ = "mcp_catalog_entry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    upstream_url: Mapped[str] = mapped_column(Text, nullable=False)
+    transport: Mapped[MCPTransport] = mapped_column(
+        Enum(MCPTransport, native_enum=False),
+        nullable=False,
+        server_default=MCPTransport.STREAMABLE_HTTP.value,
+    )
+    auth_adapter: Mapped[MCPGatewayAuthAdapter] = mapped_column(
+        Enum(MCPGatewayAuthAdapter, native_enum=False),
+        nullable=False,
+        server_default=MCPGatewayAuthAdapter.BEARER.value,
+    )
+    # Shared upstream credentials. Never leaves the backend: users reach this
+    # server through the gateway, which attaches these itself.
+    credentials: Mapped[SensitiveValue[dict[str, Any]] | None] = mapped_column(
+        EncryptedJson(), nullable=False, default=dict
+    )
+
+    # Provider pack supplying cache defaults, plus per-entry overrides keyed by
+    # tool name or glob ("*" for the entry default).
+    pack_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    policy_overrides: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    origin: Mapped[MCPCatalogOrigin] = mapped_column(
+        Enum(MCPCatalogOrigin, native_enum=False),
+        nullable=False,
+        server_default=MCPCatalogOrigin.LOCAL.value,
+    )
+
+    tools_list_refreshed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    mcp_server: Mapped["MCPServer | None"] = relationship(
+        "MCPServer",
+        foreign_keys="MCPServer.catalog_entry_id",
+        back_populates="catalog_entry",
+        uselist=False,
+    )
+    user_groups: Mapped[list["UserGroup"]] = relationship(
+        "UserGroup",
+        secondary="mcp_catalog_entry__user_group",
+        back_populates="granted_mcp_catalog_entries",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_mcp_catalog_entry_slug"),
+        Index("ix_mcp_catalog_entry_enabled", "enabled"),
+    )
+
+
+class MCPCatalogEntry__UserGroup(Base):
+    __tablename__ = "mcp_catalog_entry__user_group"
+    catalog_entry_id: Mapped[int] = mapped_column(
+        ForeignKey("mcp_catalog_entry.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class MCPUserEnablement(Base):
+    """A user's choice to turn a system MCP server on for themselves.
+
+    Access and enablement are separate concerns: a group grant decides whether
+    a user *may* use a server, a row here decides whether they *want* to. No
+    row means off, so a new grant never silently adds tools to someone's chat.
+    """
+
+    __tablename__ = "mcp_user_enablement"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    mcp_server_id: Mapped[int] = mapped_column(
+        ForeignKey("mcp_server.id", ondelete="CASCADE"), nullable=False
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "mcp_server_id", name="uq_mcp_user_enablement_user_server"
+        ),
+    )
+
+
+class MCPResultBlob(Base):
+    """The body of one MCP tool result, stored once and shared by content hash.
+
+    The primary key is the sha256 of the canonical payload, so the same
+    multi-megabyte answer fetched by ten users costs one copy. Small payloads
+    stay inline in Postgres; large ones move to the file store. The caller
+    still receives the full body.
+    """
+
+    __tablename__ = "mcp_result_blob"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    storage: Mapped[MCPResultStorage] = mapped_column(
+        Enum(MCPResultStorage, native_enum=False), nullable=False
+    )
+    # Exactly one of these is set, per `storage`.
+    inline_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Deterministic summary handed to the LLM in place of a large body.
+    digest: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB(), nullable=False)
+
+    provider_slug: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    # Bumped on every reuse; the cleanup task deletes by last_accessed_at, so a
+    # blob a long-running conversation keeps touching is never collected.
+    ref_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_accessed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("ix_mcp_result_blob_accessed", "last_accessed_at"),)
+
+
+class MCPGatewayCacheEntry(Base):
+    """Durable cache of one canonical MCP tool call.
+
+    Rows live inside the tenant schema, so there is no tenant column — the
+    schema is the boundary. The body is not stored here; `blob_id` points at
+    the shared `mcp_result_blob` row.
+    """
+
+    __tablename__ = "mcp_gateway_cache_entry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False
+    )
+    blob_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("mcp_result_blob.id", ondelete="CASCADE"), nullable=False
+    )
+    is_empty: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    first_fetched_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_fetched_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_accessed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_refresh_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    blob: Mapped["MCPResultBlob"] = relationship("MCPResultBlob")
+
+    __table_args__ = (
+        UniqueConstraint("cache_key", name="uq_mcp_gateway_cache_entry_key"),
+        Index(
+            "ix_mcp_gateway_cache_entry_catalog_tool",
+            "catalog_slug",
+            "effective_tool_name",
+        ),
+        Index("ix_mcp_gateway_cache_entry_accessed", "last_accessed_at"),
+    )
+
+
+class MCPGatewayCallLog(Base):
+    """Audit of each gateway tool call.
+
+    Holds a pointer to the result rather than the result itself, so a table
+    that grows with every call does not also grow with payload size.
+    """
+
+    __tablename__ = "mcp_gateway_call_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    effective_tool_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome: Mapped[MCPGatewayCallOutcome] = mapped_column(
+        Enum(MCPGatewayCallOutcome, native_enum=False), nullable=False
+    )
+    upstream_billed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    response_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+    user_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False
+    )
+    # Short preview for list views. Full arguments stay on the cache entry.
+    arguments_digest: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Nullable: an errored or pass-through call may have no stored body.
+    result_blob_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("mcp_result_blob.id", ondelete="SET NULL"), nullable=True
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_mcp_gateway_call_log_created", "created_at"),
+        Index(
+            "ix_mcp_gateway_call_log_catalog_outcome",
+            "catalog_slug",
+            "outcome",
+        ),
+        Index(
+            "ix_mcp_gateway_call_log_created_id",
+            "created_at",
+            "id",
+        ),
+        Index("ix_mcp_gateway_call_log_catalog_created", "catalog_slug", "created_at"),
+        Index(
+            "ix_mcp_gateway_call_log_tool_created",
+            "effective_tool_name",
+            "created_at",
+        ),
+        Index("ix_mcp_gateway_call_log_user_created", "user_email", "created_at"),
+        Index("ix_mcp_gateway_call_log_cache_created", "cache_key", "created_at"),
+    )
+
+
+class MCPGatewayCallStatsDaily(Base):
+    """Per-day rollup of gateway calls. Overview reads this, not the raw log."""
+
+    __tablename__ = "mcp_gateway_call_stats_daily"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    day: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    outcome: Mapped[MCPGatewayCallOutcome] = mapped_column(
+        Enum(MCPGatewayCallOutcome, native_enum=False), nullable=False
+    )
+    call_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    billed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    response_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+    latency_ms_sum: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "catalog_slug",
+            "day",
+            "outcome",
+            name="uq_mcp_gateway_call_stats_daily_slug_day_outcome",
+        ),
+        Index("ix_mcp_gateway_call_stats_daily_day", "day"),
     )
 
 
@@ -6309,6 +7182,100 @@ class ModelCostOverride(Base):
 """Tables related to Build Mode (CLI Agent Platform)"""
 
 
+class CraftProject(Base):
+    """Durable file + instruction container for many Craft sessions."""
+
+    __tablename__ = "craft_project"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="craft_projects")
+    files: Mapped[list["CraftProjectFile"]] = relationship(
+        "CraftProjectFile",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    sessions: Mapped[list["BuildSession"]] = relationship(
+        "BuildSession", back_populates="project"
+    )
+    jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="project"
+    )
+
+    __table_args__ = (
+        Index("ix_craft_project_user_created", "user_id", desc("created_at")),
+    )
+
+
+class CraftProjectFile(Base):
+    """One path in a Craft Project file catalog."""
+
+    __tablename__ = "craft_project_file"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    project_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    path: Mapped[str] = mapped_column(String, nullable=False)
+    file_id: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    source: Mapped[CraftProjectFileSource] = mapped_column(
+        Enum(CraftProjectFileSource, native_enum=False, name="craftprojectfilesource"),
+        nullable=False,
+        default=CraftProjectFileSource.UPLOAD,
+    )
+    produced_by_session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    project: Mapped["CraftProject"] = relationship(
+        "CraftProject", back_populates="files"
+    )
+
+    __table_args__ = (
+        Index("uq_craft_project_file_path", "project_id", "path", unique=True),
+        Index("ix_craft_project_file_project_id", "project_id"),
+    )
+
+
 class BuildSession(Base):
     """Stores metadata about CLI agent build sessions."""
 
@@ -6359,9 +7326,23 @@ class BuildSession(Base):
     agent_model: Mapped[str | None] = mapped_column(String, nullable=True)
     skills_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mcp_config_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
     user: Mapped[User | None] = relationship("User", foreign_keys=[user_id])
+    scenario: Mapped["Scenario | None"] = relationship("Scenario")
+    project: Mapped["CraftProject | None"] = relationship(
+        "CraftProject", back_populates="sessions"
+    )
     artifacts: Mapped[list["Artifact"]] = relationship(
         "Artifact", back_populates="session", cascade="all, delete-orphan"
     )
@@ -6373,6 +7354,12 @@ class BuildSession(Base):
     )
     snapshots: Mapped[list["Snapshot"]] = relationship(
         "Snapshot", back_populates="session", cascade="all, delete-orphan"
+    )
+    craft_jobs: Mapped[list["CraftJob"]] = relationship(
+        "CraftJob", back_populates="session"
+    )
+    craft_job_specialists: Mapped[list["CraftJobSpecialist"]] = relationship(
+        "CraftJobSpecialist", back_populates="session"
     )
 
     __table_args__ = (
@@ -6386,6 +7373,7 @@ class BuildSession(Base):
             desc("created_at"),
         ),
         Index("ix_build_session_status", "status"),
+        Index("ix_build_session_project_id", "project_id"),
         # Durable port reservation: allocation retries on collision instead of
         # trusting the application-level scan. Scoped per user — ports only
         # collide within one user's sandbox.
@@ -6396,6 +7384,137 @@ class BuildSession(Base):
             unique=True,
             postgresql_where=text("nextjs_port IS NOT NULL"),
         ),
+    )
+
+
+class CraftJob(Base):
+    """Multi-phase Craft long job. Disk is the source of truth between turns."""
+
+    __tablename__ = "craft_job"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    domain: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
+    status: Mapped[CraftJobStatus] = mapped_column(
+        Enum(CraftJobStatus, native_enum=False, name="craftjobstatus"),
+        nullable=False,
+        default=CraftJobStatus.PENDING,
+        server_default="pending",
+    )
+    phases: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list
+    )
+    current_phase_index: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    total_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    phase_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User", back_populates="craft_jobs")
+    session: Mapped[BuildSession] = relationship(
+        "BuildSession", back_populates="craft_jobs", foreign_keys=[session_id]
+    )
+    project: Mapped[CraftProject | None] = relationship(
+        "CraftProject", back_populates="jobs"
+    )
+    scenario: Mapped[Scenario | None] = relationship("Scenario")
+    specialists: Mapped[list["CraftJobSpecialist"]] = relationship(
+        "CraftJobSpecialist",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("ix_craft_job_user_created", "user_id", desc("created_at")),
+        Index("ix_craft_job_session_id", "session_id"),
+        Index("ix_craft_job_status", "status"),
+    )
+
+
+class CraftJobSpecialist(Base):
+    """One expert BuildSession under a Craft long job."""
+
+    __tablename__ = "craft_job_specialist"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_job.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[CraftJobSpecialistStatus] = mapped_column(
+        Enum(
+            CraftJobSpecialistStatus,
+            native_enum=False,
+            name="craftjobspecialiststatus",
+        ),
+        nullable=False,
+        default=CraftJobSpecialistStatus.PENDING,
+        server_default="pending",
+    )
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    job: Mapped[CraftJob] = relationship("CraftJob", back_populates="specialists")
+    session: Mapped[BuildSession] = relationship(
+        "BuildSession",
+        back_populates="craft_job_specialists",
+        foreign_keys=[session_id],
+    )
+
+    __table_args__ = (
+        Index("ix_craft_job_specialist_job_id", "job_id"),
+        UniqueConstraint("session_id", name="uq_craft_job_specialist_session_id"),
     )
 
 

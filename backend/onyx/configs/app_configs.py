@@ -1917,6 +1917,56 @@ MCP_SERVER_CORS_ORIGINS = [
     if origin.strip()
 ]
 
+#####
+# MCP Gateway (commercial MCP proxy)
+#####
+MCP_GATEWAY_ENABLED = os.environ.get("MCP_GATEWAY_ENABLED", "").lower() == "true"
+MCP_GATEWAY_HOST = os.environ.get("MCP_GATEWAY_HOST", "0.0.0.0")  # noqa: S104
+MCP_GATEWAY_PORT = int(os.environ.get("MCP_GATEWAY_PORT") or 8091)
+MCP_GATEWAY_PUBLIC_URL = os.environ.get(
+    "MCP_GATEWAY_PUBLIC_URL", "http://mcp_gateway:8091"
+).rstrip("/")
+MCP_GATEWAY_INTERNAL_TOKEN = os.environ.get("MCP_GATEWAY_INTERNAL_TOKEN", "")
+MCP_GATEWAY_TRUSTED_HOSTS = {
+    item.strip()
+    for item in os.environ.get(
+        "MCP_GATEWAY_TRUSTED_HOSTS", "mcp_gateway,localhost,127.0.0.1"
+    ).split(",")
+    if item.strip()
+}
+_gateway_public_host = urllib.parse.urlparse(MCP_GATEWAY_PUBLIC_URL).hostname
+if _gateway_public_host:
+    MCP_GATEWAY_TRUSTED_HOSTS.add(_gateway_public_host)
+
+# Lifetime of the signed token the API server mints for gateway calls. Short,
+# because it carries the tenant and is replayable within its window.
+MCP_GATEWAY_TOKEN_TTL_SECONDS = int(
+    os.environ.get("MCP_GATEWAY_TOKEN_TTL_SECONDS") or 300
+)
+MCP_GATEWAY_CALL_LOG_RETENTION_DAYS = int(
+    os.environ.get("MCP_GATEWAY_CALL_LOG_RETENTION_DAYS") or 30
+)
+PERSONAL_MCP_MAX_SERVERS = int(os.environ.get("PERSONAL_MCP_MAX_SERVERS") or 20)
+
+#####
+# MCP result storage — how the gateway caches tool responses
+#####
+# At or below this size a result is stored inline in Postgres. Above it the
+# body goes to the file store. The caller always receives the full cached
+# payload; conversation history may later cut the text to fit the window.
+MCP_RESULT_INLINE_THRESHOLD_BYTES = int(
+    os.environ.get("MCP_RESULT_INLINE_THRESHOLD_BYTES") or 32_768
+)
+# Hard ceiling on what the gateway will persist at all. Bigger responses are
+# passed through to the caller uncached.
+MCP_RESULT_MAX_BYTES = int(os.environ.get("MCP_RESULT_MAX_BYTES") or 67_108_864)
+# Ceiling on the ops digest stored with a blob. Not sent to the model.
+MCP_RESULT_DIGEST_MAX_BYTES = int(
+    os.environ.get("MCP_RESULT_DIGEST_MAX_BYTES") or 8_192
+)
+# Blobs untouched for this long are deleted by the cleanup task.
+MCP_RESULT_BLOB_TTL_DAYS = int(os.environ.get("MCP_RESULT_BLOB_TTL_DAYS") or 30)
+
 
 POD_NAME = os.environ.get("POD_NAME")
 POD_NAMESPACE = os.environ.get("POD_NAMESPACE")

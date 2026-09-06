@@ -180,6 +180,8 @@ _OPENCODE_SESSION_TAG_PLUGIN_PATH = "/workspace/opencode-plugins/session-proxy-t
 _OPENCODE_CONNECT_APP_PLUGIN_PATH = "/workspace/opencode-plugins/connect-app.ts"
 # Soft turn-budget wrap-up steer (reads the per-turn deadline stamp).
 _OPENCODE_TURN_BUDGET_PLUGIN_PATH = "/workspace/opencode-plugins/turn-budget.ts"
+# Dumps large MCP / tool bodies to outputs/mcp and returns a digest.
+_OPENCODE_MCP_OFFLOAD_PLUGIN_PATH = "/workspace/opencode-plugins/mcp-offload.ts"
 # Surfaces the `webapp` tool (start/status/logs/restart); always on.
 _OPENCODE_WEBAPP_PLUGIN_PATH = "/workspace/opencode-plugins/webapp.ts"
 
@@ -1113,6 +1115,7 @@ class KubernetesSandboxManager(SandboxManager):
                     plugins=[
                         _OPENCODE_CONNECT_APP_PLUGIN_PATH,
                         _OPENCODE_TURN_BUDGET_PLUGIN_PATH,
+                        _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH,
                         _OPENCODE_WEBAPP_PLUGIN_PATH,
                         _OPENCODE_SESSION_TAG_PLUGIN_PATH,
                     ],

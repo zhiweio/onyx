@@ -20,6 +20,21 @@ export default function SuggestedPrompts({
 }: SuggestedPromptsProps) {
   const t = useTranslations("craft.suggestedPrompts");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  function domainLabel(domainId: string): string {
+    switch (domainId) {
+      case "engineering":
+        return t("engineering.label");
+      case "sales":
+        return t("sales.label");
+      case "marketing":
+        return t("marketing.label");
+      case "product":
+        return t("product.label");
+      default:
+        return domainId;
+    }
+  }
   const containerRef = useRef<HTMLDivElement>(null);
 
   const expandedDomain: UseCaseDomain | undefined = useCaseDomains.find(
@@ -71,7 +86,7 @@ export default function SuggestedPrompts({
           >
             <domain.icon className="w-4 h-4" />
             <Text font="main-ui-body" color="inherit">
-              {domain.label}
+              {domainLabel(domain.id)}
             </Text>
           </button>
         ))}
@@ -91,7 +106,7 @@ export default function SuggestedPrompts({
               <div className="flex items-center gap-2">
                 <expandedDomain.icon className="w-3.5 h-3.5 text-text-02" />
                 <Text font="figure-small-label" color="text-02">
-                  {expandedDomain.label}
+                  {domainLabel(expandedDomain.id)}
                 </Text>
               </div>
               <button

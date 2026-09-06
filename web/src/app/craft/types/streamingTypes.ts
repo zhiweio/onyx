@@ -4,7 +4,7 @@
 
 export type SharingScope = "private" | "public_org";
 
-export type SessionOrigin = "INTERACTIVE" | "SCHEDULED" | "SLACK";
+export type SessionOrigin = "INTERACTIVE" | "SCHEDULED" | "SLACK" | "JOB";
 
 // =============================================================================
 // Artifact & Message Types
@@ -148,7 +148,9 @@ export interface ApiSessionResponse {
   origin: SessionOrigin;
   agent_provider: string | null;
   agent_model: string | null;
+  opencode_session_id?: string | null;
   skills_stale: boolean;
+  scenario_id?: string | null;
 }
 
 export interface ApiSessionSkillsState {

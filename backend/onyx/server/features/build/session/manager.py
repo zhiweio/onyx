@@ -82,6 +82,7 @@ from onyx.server.features.build.sandbox.util.opencode_config import (
     build_provider_opencode_config,
 )
 from onyx.server.features.build.session import streaming as _streaming
+from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.server.features.build.session.errors import (
     StaleProvisioningAttemptError,
     UploadLimitExceededError,
@@ -94,6 +95,7 @@ from onyx.server.features.build.session.llm_config import (
     parse_agent_selection,
 )
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
+from onyx.server.features.build.session.md_to_pdf import markdown_to_pdf_bytes
 from onyx.server.features.build.session.naming import generate_session_name
 from onyx.server.features.build.session.sandbox_lifecycle import (
     ProvisioningPolicy,
@@ -498,6 +500,9 @@ class SessionManager:
         user_id: UUID,
         name: str | None = None,
         origin: SessionOrigin = SessionOrigin.INTERACTIVE,
+        scenario_id: UUID | None = None,
+        project_id: UUID | None = None,
+        headless: bool = False,
     ) -> BuildSession:
         """Create a new build session with a ready sandbox.
 
@@ -512,7 +517,8 @@ class SessionManager:
             name: Optional session name
             origin: Provenance of the session. INTERACTIVE (default) sessions
                 appear in the Craft sidebar; SCHEDULED (scheduled-tasks
-                executor) and SLACK (Slack bot) sessions are excluded.
+                executor), SLACK (Slack bot), and JOB (long-job specialist)
+                sessions are excluded.
 
         Raises:
             ValueError: If the user is missing
@@ -540,12 +546,14 @@ class SessionManager:
             origin=origin,
             agent_provider=llm_config.provider,
             agent_model=llm_config.model_name,
+            scenario_id=scenario_id,
+            project_id=project_id,
         )
         # Port allocation is skipped for non-interactive origins (SCHEDULED,
         # SLACK): those sessions are headless, never attach a preview, and
         # pile up fast enough to exhaust the [3010, 3100) range on a busy
         # tenant.
-        if origin == SessionOrigin.INTERACTIVE:
+        if origin == SessionOrigin.INTERACTIVE and not headless:
             reserve_nextjs_port__no_commit(self._db_session, build_session)
         self._db_session.commit()
         logger.info(
@@ -563,6 +571,7 @@ class SessionManager:
         user_id: UUID,
         name: str | None = None,
         headless: bool = False,
+        scenario_id: UUID | None = None,
     ) -> BuildSession:
         """Get or create the user's empty (pre-provisioned) session.
 
@@ -605,6 +614,7 @@ class SessionManager:
                 name=name,
                 agent_provider=llm_config.provider,
                 agent_model=llm_config.model_name,
+                scenario_id=scenario_id,
             )
             if not headless:
                 reserve_nextjs_port__no_commit(self._db_session, session)
@@ -617,6 +627,8 @@ class SessionManager:
         session = existing
         if name is not None:
             session.name = name
+        if scenario_id is not None:
+            session.scenario_id = scenario_id
         self._db_session.commit()
         logger.info(
             "Found existing empty session %s (status=%s) for user %s",
@@ -638,6 +650,38 @@ class SessionManager:
             # session runtime and hand the session back.
             self.reconcile_session_llm_config(sandbox, session, user)
             self._prewarm_opencode_session(sandbox, session)
+            if session.scenario_id is not None:
+                try:
+                    write_scenario_md_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session.id,
+                        session.scenario_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write SCENARIO.md for session %s", session.id
+                    )
+            if session.project_id is not None:
+                try:
+                    from onyx.server.features.craft_project.runtime import (
+                        write_project_to_session,
+                    )
+
+                    write_project_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session.id,
+                        session.project_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write project files for session %s", session.id
+                    )
             self._db_session.commit()
             logger.info(
                 "Returning existing empty session %s for user %s",
@@ -707,6 +751,53 @@ class SessionManager:
                 user_name=user_name,
                 mcp_servers=mcp_servers,
             )
+            if session.scenario_id is not None:
+                try:
+                    write_scenario_md_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session_id,
+                        session.scenario_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write SCENARIO.md for session %s", session_id
+                    )
+            if session.project_id is not None:
+                try:
+                    from onyx.server.features.craft_project.runtime import (
+                        write_project_to_session,
+                    )
+
+                    write_project_to_session(
+                        self._db_session,
+                        self._sandbox_manager,
+                        sandbox.id,
+                        session_id,
+                        session.project_id,
+                        user,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to write project files for session %s", session_id
+                    )
+            try:
+                from onyx.server.features.build.session.artifact_persist import (
+                    restore_archived_files_to_session,
+                )
+
+                restore_archived_files_to_session(
+                    self._db_session,
+                    self._sandbox_manager,
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to restore archived files for session %s", session_id
+                )
             minted_opencode_session_id = self._sandbox_manager.ensure_opencode_session(
                 sandbox_id=sandbox.id,
                 session_id=session_id,
@@ -1120,6 +1211,7 @@ class SessionManager:
         should_interrupt: Callable[[], bool] | None = None,
         should_abort_on_teardown: Callable[[], bool] | None = None,
         turn_timeout_seconds: float | None = None,
+        kind: str = "prompt",
     ) -> Generator[Any, None, None]:
         build_session = _streaming.load_turn_session(
             self._db_session, self._sandbox_manager, sandbox_id, session_id
@@ -1139,6 +1231,25 @@ class SessionManager:
             should_interrupt=should_interrupt,
             should_abort_on_teardown=should_abort_on_teardown,
             turn_timeout_seconds=turn_timeout_seconds,
+            kind=kind,
+        )
+
+    def yield_sandbox_compact_events(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        should_interrupt: Callable[[], bool] | None = None,
+        should_abort_on_teardown: Callable[[], bool] | None = None,
+        turn_timeout_seconds: float | None = None,
+    ) -> Generator[Any, None, None]:
+        yield from self.yield_sandbox_events(
+            sandbox_id,
+            session_id,
+            "",
+            should_interrupt=should_interrupt,
+            should_abort_on_teardown=should_abort_on_teardown,
+            turn_timeout_seconds=turn_timeout_seconds,
+            kind="compact",
         )
 
     def merge_events_with_announces(
@@ -1321,16 +1432,16 @@ class SessionManager:
                 path="outputs",
             )
         except ValueError:
-            # outputs/ doesn't exist yet — no artifacts.
-            return artifacts
+            # outputs/ is missing after recycle — serve the durable catalog.
+            return self._catalog_artifact_dicts(session_id)
         except Exception:
-            # Sandbox transiently unreachable — degrade to no artifacts, not 500.
+            # Sandbox transiently unreachable — serve the durable catalog.
             logger.warning(
                 "Could not list artifacts for session %s; sandbox not reachable",
                 session_id,
                 exc_info=True,
             )
-            return artifacts
+            return self._catalog_artifact_dicts(session_id)
 
         # Check for webapp (web directory in outputs)
         has_webapp = any(
@@ -1351,7 +1462,37 @@ class SessionManager:
                 }
             )
 
+        catalog = self._catalog_artifact_dicts(session_id)
+        seen = {item["path"] for item in artifacts}
+        artifacts.extend(item for item in catalog if item["path"] not in seen)
         return artifacts
+
+    def _catalog_artifact_dicts(self, session_id: UUID) -> list[dict[str, Any]]:
+        from onyx.server.features.build.db.artifact import get_session_artifacts
+        from onyx.server.features.build.session.artifact_persist import (
+            ATTACHMENTS_PREFIX,
+        )
+
+        rows = get_session_artifacts(self._db_session, session_id=session_id)
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            if row.path.startswith(ATTACHMENTS_PREFIX):
+                display_path = f"attachments/{row.path[len(ATTACHMENTS_PREFIX) :]}"
+            else:
+                display_path = f"outputs/{row.path}"
+            items.append(
+                {
+                    "id": str(row.id),
+                    "session_id": str(session_id),
+                    "type": row.type.value,
+                    "name": row.name,
+                    "path": display_path,
+                    "preview_url": None,
+                    "created_at": row.created_at.isoformat(),
+                    "updated_at": row.updated_at.isoformat(),
+                }
+            )
+        return items
 
     def download_artifact(
         self,
@@ -1396,11 +1537,44 @@ class SessionManager:
             # read_file raises ValueError for not found or directory
             if "Not a file" in str(e):
                 raise ValueError("Cannot download directory")
-            return None
+            archived = self._read_archived_artifact(session_id, path)
+            if archived is None:
+                return None
+            content = archived
+        except Exception:
+            archived = self._read_archived_artifact(session_id, path)
+            if archived is None:
+                return None
+            content = archived
 
         mime_type, _ = mimetypes.guess_type(filename)
 
         return (content, mime_type or "application/octet-stream", filename)
+
+    def _read_archived_artifact(self, session_id: UUID, path: str) -> bytes | None:
+        from onyx.file_store.file_store import get_default_file_store
+        from onyx.server.features.build.db.artifact import get_artifact_by_path
+        from onyx.server.features.build.session.artifact_persist import (
+            catalog_paths_for_request,
+        )
+
+        for candidate in catalog_paths_for_request(path):
+            artifact = get_artifact_by_path(
+                self._db_session, session_id=session_id, path=candidate
+            )
+            if artifact is None or not artifact.archive_file_id:
+                continue
+            try:
+                return (
+                    get_default_file_store().read_file(artifact.archive_file_id).read()
+                )
+            except Exception:
+                logger.warning(
+                    "Could not read archive for session %s path %s",
+                    session_id,
+                    candidate,
+                )
+        return None
 
     def export_docx(
         self,
@@ -1439,6 +1613,27 @@ class SessionManager:
 
         docx_filename = filename.rsplit(".", 1)[0] + ".docx"
         return (docx_bytes, docx_filename)
+
+    def export_pdf(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        path: str,
+    ) -> tuple[bytes, str] | None:
+        """Export a markdown file as PDF."""
+        result = self.download_artifact(session_id, user_id, path)
+        if result is None:
+            return None
+
+        content_bytes, _mime_type, filename = result
+
+        if not filename.lower().endswith(".md"):
+            raise ValueError("Only markdown (.md) files can be exported as PDF")
+
+        md_text = content_bytes.decode("utf-8")
+        pdf_bytes = markdown_to_pdf_bytes(md_text)
+        pdf_filename = filename.rsplit(".", 1)[0] + ".pdf"
+        return (pdf_bytes, pdf_filename)
 
     def get_pptx_preview(
         self,

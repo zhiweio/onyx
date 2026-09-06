@@ -138,6 +138,37 @@ immediately with what was delivered and what remains. Pace the turn across the w
 flow — gather as much as the deliverable genuinely needs, but plan so producing and
 verifying fit too; no single phase should consume the budget.
 
+## Long jobs
+
+A long job spans several turns. The disk is the source of truth. Do not keep
+large tables, MCP dumps, or extracted files only in chat.
+
+Required layout:
+
+```
+outputs/plan/PLAN.md
+outputs/plan/TODO.json
+outputs/plan/PHASE_DONE          # write the finished phase id, then stop
+outputs/ingest/MANIFEST.json
+outputs/extracted/<file_id>.json
+outputs/normalized/*.csv
+outputs/research/<role>/*.md
+outputs/mcp/<server>/<call>.json
+outputs/exceptions/*.csv
+outputs/markdown/               # final report
+```
+
+Rules:
+
+- Extract spreadsheets and digital PDFs with code (`document-ingest` skill).
+  Never load a whole workbook into the model.
+- Write MCP and extract results to disk first. Reply with a short digest and
+  the file path.
+- When a phase is done, write `outputs/plan/PHASE_DONE` with the phase id and
+  stop. The platform starts the next phase.
+- Source batches live in `project/` or `user_library/`, not in the 20-file
+  session attachment slot.
+
 ## Subagents
 
 Use subagents to divide large work into parallel streams instead of

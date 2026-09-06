@@ -43,17 +43,25 @@ import {
   SvgEdit,
   SvgTrash,
   SvgPlug,
+  SvgShare,
   SvgSimpleLoader,
+  SvgFolder,
+  SvgFileText,
 } from "@opal/icons";
 import TypewriterText from "@/app/craft/components/TypewriterText";
 import OpencodeDebugLogsButton from "@/app/craft/components/OpencodeDebugLogs";
 import {
   CRAFT_PATH,
   CRAFT_SKILLS_PATH,
+  CRAFT_SCENARIOS_PATH,
+  CRAFT_REPORT_TEMPLATES_PATH,
+  CRAFT_PROJECTS_PATH,
   CRAFT_APPS_PATH,
+  CRAFT_MCP_ACTIONS_PATH,
   CRAFT_TASKS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
+import { useCraftProjects } from "@/lib/craft-projects/hooks";
 
 // ============================================================================
 // Build Session Button
@@ -298,6 +306,7 @@ const MemoizedBuildSidebarInner = memo(() => {
   const returnToMainAgent = useBuildSessionStore(
     (state) => state.returnToMainAgent
   );
+  const { data: projects } = useCraftProjects();
 
   // Fetch session history on mount
   useEffect(() => {
@@ -353,17 +362,63 @@ const MemoizedBuildSidebarInner = memo(() => {
             {t("skills.label")}
           </SidebarTab>
           <SidebarTab
+            icon={SvgFolder}
+            onClick={() => navigate(CRAFT_PROJECTS_PATH)}
+            selected={pathname.startsWith(CRAFT_PROJECTS_PATH)}
+          >
+            {t("projects.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgShare}
+            onClick={() => navigate(CRAFT_SCENARIOS_PATH)}
+            selected={pathname.startsWith(CRAFT_SCENARIOS_PATH)}
+          >
+            {t("scenarios.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgFileText}
+            onClick={() => navigate(CRAFT_REPORT_TEMPLATES_PATH)}
+            selected={pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH)}
+          >
+            {t("reportTemplates.label")}
+          </SidebarTab>
+          <SidebarTab
             icon={SvgPlug}
             onClick={() => navigate(CRAFT_APPS_PATH)}
             selected={pathname.startsWith(CRAFT_APPS_PATH)}
           >
             {t("apps.label")}
           </SidebarTab>
+          <SidebarTab
+            icon={SvgBlocks}
+            onClick={() => navigate(CRAFT_MCP_ACTIONS_PATH)}
+            selected={pathname.startsWith(CRAFT_MCP_ACTIONS_PATH)}
+          >
+            {t("mcpActions.label")}
+          </SidebarTab>
         </div>
       </SidebarLayouts.Header>
       <SidebarLayouts.Body scrollKey="build-sidebar">
         {!folded && (
           <>
+            {projects.length > 0 && (
+              <>
+                <SidebarLayouts.Section title={t("projectsSection.title")} />
+                {projects.slice(0, 8).map((project) => (
+                  <LineItemButton
+                    key={project.id}
+                    sizePreset="main-ui"
+                    rounding={2}
+                    icon={SvgFolder}
+                    title={project.name}
+                    onClick={() =>
+                      // SAFETY: project.id is a UUID path segment under /craft/v1/projects.
+                      navigate(`${CRAFT_PROJECTS_PATH}/${project.id}` as Route)
+                    }
+                  />
+                ))}
+              </>
+            )}
             <SidebarLayouts.Section title={t("sessions.title")} />
             {sessionHistory.length === 0 ? (
               <div className="ps-2 pe-1.5 py-1">
@@ -377,6 +432,9 @@ const MemoizedBuildSidebarInner = memo(() => {
                   isActive={
                     !pathname.startsWith(CRAFT_TASKS_PATH) &&
                     !pathname.startsWith(CRAFT_SKILLS_PATH) &&
+                    !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
+                    !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
+                    !pathname.startsWith(CRAFT_PROJECTS_PATH) &&
                     !pathname.startsWith(CRAFT_APPS_PATH) &&
                     session?.id === historyItem.id
                   }

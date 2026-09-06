@@ -156,3 +156,49 @@ def test_mcp_client_no_auth_flow(
     )
     persona_tool_ids = {tool["id"] for tool in persona_entry["tools"]}
     assert tool_id in persona_tool_ids
+
+
+def test_personal_mcp_persists_discovered_tools(
+    mcp_no_auth_server: None,  # noqa: ARG001
+    basic_user: DATestUser,
+) -> None:
+    create_response = client.post(
+        f"{API_SERVER_URL}/mcp/personal/servers/create",
+        json={
+            "name": "personal-mcp-discover-tools",
+            "description": "Personal MCP tool persist check",
+            "server_url": MCP_SERVER_URL,
+            "transport": MCPTransport.STREAMABLE_HTTP.value,
+            "auth_type": MCPAuthenticationType.NONE.value,
+            "auth_performer": MCPAuthenticationPerformer.ADMIN.value,
+        },
+        headers=basic_user.headers,
+        cookies=basic_user.cookies,
+    )
+    create_response.raise_for_status()
+    server_id = create_response.json()["server_id"]
+
+    try:
+        discovered = client.get(
+            f"{API_SERVER_URL}/mcp/personal/server/{server_id}/tools/snapshots",
+            params={"source": "mcp"},
+            headers=basic_user.headers,
+            cookies=basic_user.cookies,
+        )
+        discovered.raise_for_status()
+        assert any(tool["name"] == MCP_HELLO_TOOL for tool in discovered.json())
+
+        stored = client.get(
+            f"{API_SERVER_URL}/mcp/personal/server/{server_id}/tools/snapshots",
+            params={"source": "db"},
+            headers=basic_user.headers,
+            cookies=basic_user.cookies,
+        )
+        stored.raise_for_status()
+        assert any(tool["name"] == MCP_HELLO_TOOL for tool in stored.json())
+    finally:
+        client.delete(
+            f"{API_SERVER_URL}/mcp/personal/server/{server_id}",
+            headers=basic_user.headers,
+            cookies=basic_user.cookies,
+        ).raise_for_status()

@@ -32,6 +32,7 @@ from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
     Permission,
@@ -50,12 +51,12 @@ from onyx.db.mcp import (
     delete_connection_config,
     delete_mcp_server,
     delete_user_connection_configs_for_server,
-    get_all_mcp_servers,
     get_all_mcp_tools_for_server,
     get_craft_enabled_mcp_servers,
     get_mcp_server_by_id,
     get_mcp_servers_accessible_to_user,
     get_mcp_servers_for_persona,
+    get_org_mcp_servers,
     get_user_connection_config,
     get_user_connection_configs,
     update_connection_config,
@@ -76,6 +77,7 @@ from onyx.db.tools import (
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.mcp_gateway.registry import list_packs
 from onyx.server.features.mcp.client import (
     discover_mcp_tools,
     log_exception_group,
@@ -92,12 +94,20 @@ from onyx.server.features.mcp.credentials import (
     resolve_mcp_credentials,
     user_can_authenticate,
 )
+from onyx.server.features.mcp.gateway_bind import (
+    bind_org_server_to_gateway,
+    create_org_server_from_pack,
+    unbind_org_server_from_gateway,
+)
 from onyx.server.features.mcp.models import (
     MCPApiKeyResponse,
     MCPAuthTemplate,
     MCPConnectionData,
+    MCPFromPackRequest,
+    MCPGatewayBindingRequest,
     MCPOAuthCallbackResponse,
     MCPOAuthKeys,
+    MCPPackSummary,
     MCPServer,
     MCPServerCreateResponse,
     MCPServerSimpleCreateRequest,
@@ -1138,6 +1148,12 @@ class ServerToolsResponse(BaseModel):
     tools: list[MCPToolDescription]
 
 
+def _reject_personal_on_admin(server: DbMCPServer) -> None:
+    """Admin MCP surfaces never expose personal servers or their credentials."""
+    if server.scope == MCPServerScope.PERSONAL:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+
+
 def _ensure_mcp_server_owner_or_admin(server: DbMCPServer, user: User) -> None:
     """GATE 2 for every MCP server mutation. Delegates to the predicate the projection
     stamps, so the UI can't offer a control this rejects. A FULL_ADMIN check here would
@@ -1312,6 +1328,14 @@ def _db_mcp_server_to_api_mcp_server(
         user_credentials=user_credentials,
         admin_credentials=admin_credentials,
         permissions=permissions or {},
+        scope=db_server.scope,
+        catalog_slug=(
+            db_server.catalog_entry.slug if db_server.catalog_entry else None
+        ),
+        pack_slug=(
+            db_server.catalog_entry.pack_slug if db_server.catalog_entry else None
+        ),
+        gateway_bound=db_server.catalog_entry_id is not None,
     )
 
 
@@ -1527,7 +1551,7 @@ def _upsert_db_tools(
         existing_by_name[tool_name] = new_tool
 
 
-def _sync_mcp_server_tools(
+def sync_mcp_server_tools(
     mcp_server_id: int,
     discovered_tools: list[MCPLibTool],
     db: Session,
@@ -1638,8 +1662,10 @@ def _list_mcp_tools_by_id(
     )
     db.commit()
 
-    if is_admin:
-        _sync_mcp_server_tools(mcp_server.id, discovered_tools, db)
+    # Admin discovery persists so the org card can toggle tools. Personal
+    # discovery must persist too — the personal snapshots route reads the DB.
+    if is_admin or mcp_server.scope == MCPServerScope.PERSONAL:
+        sync_mcp_server_tools(mcp_server.id, discovered_tools, db)
 
     # Truncate tool descriptions to prevent overly long responses
     for tool in discovered_tools:
@@ -1670,6 +1696,16 @@ def _apply_mcp_server_access(
     """Validate the acting user may assign these groups (EE; no-op in MIT), set
     the public flag, and reconcile the user/group access rows (EE write). Public
     servers clear any existing grants."""
+    if mcp_server.scope == MCPServerScope.PERSONAL:
+        mcp_server.is_public = False
+        fetch_versioned_implementation("onyx.db.mcp", "make_mcp_server_private")(
+            server_id=mcp_server.id,
+            user_ids=[],
+            group_ids=[],
+            db_session=db_session,
+        )
+        return
+
     is_public = mcp_server.is_public if is_public is None else is_public
     if not is_public and not global_version.is_ee_version():
         raise OnyxError(
@@ -1711,6 +1747,9 @@ def _upsert_mcp_server(
     request: MCPToolCreateRequest,
     db_session: Session,
     user: User,
+    *,
+    scope: MCPServerScope = MCPServerScope.USER,
+    available_in_craft: bool | None = None,
 ) -> DbMCPServer:
     """
     Creates a new or edits an existing MCP server. Returns the DB model
@@ -1746,7 +1785,30 @@ def _upsert_mcp_server(
                 status_code=404,
                 detail=f"MCP server with ID {request.existing_server_id} not found",
             )
-        _ensure_mcp_server_owner_or_admin(mcp_server, user)
+        if scope == MCPServerScope.PERSONAL:
+            if (
+                mcp_server.scope != MCPServerScope.PERSONAL
+                or mcp_server.owner != user.email
+            ):
+                raise HTTPException(status_code=404, detail="MCP server not found")
+        else:
+            _ensure_mcp_server_owner_or_admin(mcp_server, user)
+            if mcp_server.scope == MCPServerScope.PERSONAL:
+                raise HTTPException(status_code=404, detail="MCP server not found")
+        if request.gateway_binding is not None and scope == MCPServerScope.PERSONAL:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "Personal MCP servers cannot use the gateway.",
+            )
+        if (
+            request.gateway_binding is not None
+            or mcp_server.catalog_entry_id is not None
+        ):
+            if request.auth_performer == MCPAuthenticationPerformer.PER_USER:
+                raise OnyxError(
+                    OnyxErrorCode.INVALID_INPUT,
+                    "Gateway-bound servers cannot use per-user authentication.",
+                )
         existing_admin_config_dict: MCPConnectionData = MCPConnectionData(headers={})
         if mcp_server.admin_connection_config:
             existing_admin_config_dict = extract_connection_data(
@@ -2015,6 +2077,11 @@ def _upsert_mcp_server(
                 detail="Authenticated user email required to create MCP servers",
             )
 
+        if request.gateway_binding is not None and scope == MCPServerScope.PERSONAL:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "Personal MCP servers cannot use the gateway.",
+            )
         mcp_server = create_mcp_server__no_commit(
             owner_email=user.email,
             name=request.name,
@@ -2029,6 +2096,11 @@ def _upsert_mcp_server(
             oauth_additional_auth_params=request.oauth_additional_auth_params,
             transport=request.transport or MCPTransport.STREAMABLE_HTTP,
             db_session=db_session,
+            is_public=False if scope == MCPServerScope.PERSONAL else True,
+            scope=scope,
+            available_in_craft=(
+                True if scope == MCPServerScope.PERSONAL else bool(available_in_craft)
+            ),
         )
 
         logger.info(
@@ -2069,6 +2141,9 @@ def _upsert_mcp_server(
             db_session=db_session,
         )
         users_to_reload.add(user.id)
+
+    if request.gateway_binding is not None and mcp_server.catalog_entry_id is None:
+        bind_org_server_to_gateway(db_session, mcp_server, request.gateway_binding)
 
     if not changing_connection_config:
         db_session.commit()
@@ -2136,6 +2211,9 @@ def _upsert_mcp_server(
             admin_connection_config_id=admin_connection_config_id,
         )
 
+    if request.gateway_binding is not None and mcp_server.catalog_entry_id is None:
+        bind_org_server_to_gateway(db_session, mcp_server, request.gateway_binding)
+
     db_session.commit()
     _hot_reload_craft_sessions(users_to_reload, db_session)
     return mcp_server
@@ -2181,6 +2259,7 @@ def get_mcp_server_detail(
         server = get_mcp_server_by_id(server_id, db_session)
     except ValueError:
         raise HTTPException(status_code=404, detail="MCP server not found")
+    _reject_personal_on_admin(server)
 
     # Read gate: owner, admin, or a manager of a group the server is connected to.
     _ensure_mcp_server_viewable(server, user, db_session)
@@ -2224,7 +2303,7 @@ def get_all_mcp_tools(
         )
         visible_server_ids = {
             server.id
-            for server in get_all_mcp_servers(db)
+            for server in get_org_mcp_servers(db)
             if server.owner == user.email or server.id in connected
         }
         stmt = stmt.where(Tool.mcp_server_id.in_(visible_server_ids))
@@ -2277,7 +2356,7 @@ def get_mcp_servers_for_admin(
     logger.info("Fetching all MCP servers for admin display")
 
     try:
-        db_mcp_servers = get_all_mcp_servers(db)
+        db_mcp_servers = get_org_mcp_servers(db)
 
         # A global MANAGE_ACTIONS holder (incl. admins) sees every server; a scoped manager
         # sees only those they own or that are connected to a group they manage (one query for
@@ -2314,6 +2393,101 @@ def get_mcp_servers_for_admin(
     except Exception as e:
         logger.error("Failed to fetch MCP servers for admin: %s:%s", type(e), e)
         raise HTTPException(status_code=500, detail="Failed to fetch MCP servers")
+
+
+@admin_router.get("/packs")
+def list_org_mcp_packs(
+    _: User = Depends(require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)),
+) -> list[MCPPackSummary]:
+    return [
+        MCPPackSummary(
+            slug=pack.slug,
+            display_name=pack.display_name,
+            description=pack.description,
+            default_upstream_url=pack.default_upstream_url,
+            group=pack.group,
+            transport=pack.transport,
+            auth_adapter=pack.auth_adapter.value,
+        )
+        for pack in list_packs()
+    ]
+
+
+@admin_router.post("/servers/from-pack")
+def create_org_mcp_from_pack(
+    request: MCPFromPackRequest,
+    db_session: Session = Depends(get_session),
+    user: User = Depends(
+        require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
+    ),
+) -> MCPServer:
+    server, _entry, _error = create_org_server_from_pack(
+        db_session,
+        user,
+        request,
+        apply_access=_apply_mcp_server_access,
+    )
+    return _db_mcp_server_to_api_mcp_server(
+        server,
+        db_session,
+        request_user=user,
+        permissions=mcp_server_permissions(
+            can_manage=can_manage_mcp_server(user, server),
+        ),
+    )
+
+
+@admin_router.patch("/server/{server_id}/gateway-binding")
+def bind_org_mcp_gateway(
+    server_id: int,
+    request: MCPGatewayBindingRequest,
+    db_session: Session = Depends(get_session),
+    user: User = Depends(
+        require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
+    ),
+) -> MCPServer:
+    try:
+        server = get_mcp_server_by_id(server_id, db_session)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+    _reject_personal_on_admin(server)
+    _ensure_mcp_server_owner_or_admin(server, user)
+    bind_org_server_to_gateway(db_session, server, request)
+    db_session.commit()
+    return _db_mcp_server_to_api_mcp_server(
+        server,
+        db_session,
+        request_user=user,
+        permissions=mcp_server_permissions(
+            can_manage=can_manage_mcp_server(user, server),
+        ),
+    )
+
+
+@admin_router.delete("/server/{server_id}/gateway-binding")
+def unbind_org_mcp_gateway(
+    server_id: int,
+    db_session: Session = Depends(get_session),
+    user: User = Depends(
+        require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
+    ),
+) -> MCPServer:
+    try:
+        server = get_mcp_server_by_id(server_id, db_session)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+    _reject_personal_on_admin(server)
+    _ensure_mcp_server_owner_or_admin(server, user)
+    unbind_org_server_from_gateway(db_session, server)
+    db_session.commit()
+    return _db_mcp_server_to_api_mcp_server(
+        server,
+        db_session,
+        request_user=user,
+        permissions=mcp_server_permissions(
+            can_manage=can_manage_mcp_server(user, server),
+        ),
+    )
 
 
 @admin_router.get("/server/{server_id}/db-tools")
@@ -2525,32 +2699,18 @@ def create_mcp_server_simple(
         db_session=db_session,
     )
 
+    if request.gateway_binding is not None:
+        bind_org_server_to_gateway(db_session, mcp_server, request.gateway_binding)
+
     db_session.commit()
 
-    return MCPServer(
-        id=mcp_server.id,
-        name=mcp_server.name,
-        description=mcp_server.description,
-        server_url=mcp_server.server_url,
-        owner=mcp_server.owner,
-        transport=mcp_server.transport,
-        auth_type=mcp_server.auth_type,
-        auth_performer=mcp_server.auth_performer,
-        oauth_provider_mode=mcp_server.oauth_provider_mode,
-        oauth_authorization_endpoint=mcp_server.oauth_authorization_endpoint,
-        oauth_token_endpoint=mcp_server.oauth_token_endpoint,
-        oauth_scopes_override=mcp_server.oauth_scopes_override,
-        oauth_additional_auth_params=mcp_server.oauth_additional_auth_params,
-        user_can_authenticate=False,  # No credentials resolved yet
-        status=mcp_server.status,
-        is_public=mcp_server.is_public,
-        groups=[group.id for group in mcp_server.user_groups],
-        users=[user.id for user in mcp_server.users],
-        available_in_craft=mcp_server.available_in_craft,
-        tool_count=0,  # New server, no tools yet
-        auth_template=None,
-        user_credentials=None,
-        admin_credentials=None,
+    return _db_mcp_server_to_api_mcp_server(
+        mcp_server,
+        db_session,
+        request_user=user,
+        permissions=mcp_server_permissions(
+            can_manage=can_manage_mcp_server(user, mcp_server),
+        ),
     )
 
 
@@ -2568,6 +2728,7 @@ def update_mcp_server_simple(
         mcp_server = get_mcp_server_by_id(server_id, db_session)
     except ValueError:
         raise HTTPException(status_code=404, detail="MCP server not found")
+    _reject_personal_on_admin(mcp_server)
 
     _ensure_mcp_server_owner_or_admin(mcp_server, user)
 
@@ -2663,6 +2824,7 @@ def delete_mcp_server_admin(
         server = get_mcp_server_by_id(server_id, db_session)
     except ValueError:
         raise HTTPException(status_code=404, detail="MCP server not found")
+    _reject_personal_on_admin(server)
     _ensure_mcp_server_owner_or_admin(server, user)
 
     try:

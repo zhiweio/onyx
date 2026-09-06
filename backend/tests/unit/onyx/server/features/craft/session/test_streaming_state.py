@@ -36,6 +36,7 @@ class _FakeStreamingSandboxManager:
         agent_provider: str | None = None,
         agent_model: str | None = None,
         on_opencode_session_resolved: Any = None,  # noqa: ARG002
+        replacement_preamble: Any = None,  # noqa: ARG002
         should_interrupt: Any = None,  # noqa: ARG002
         should_abort_on_teardown: Any = None,  # noqa: ARG002
         turn_timeout_seconds: float | None = None,  # noqa: ARG002
@@ -48,10 +49,33 @@ class _FakeStreamingSandboxManager:
             "opencode_session_id": opencode_session_id,
             "agent_provider": agent_provider,
             "agent_model": agent_model,
+            "replacement_preamble": replacement_preamble,
         }
         if on_opencode_session_resolved is not None:
             if self.resolved_opencode_session_id is not None:
                 on_opencode_session_resolved(self.resolved_opencode_session_id)
+        yield object()
+
+    def compact_session(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        *,
+        opencode_session_id: str | None = None,
+        agent_provider: str | None = None,
+        agent_model: str | None = None,
+        should_interrupt: Any = None,  # noqa: ARG002
+        should_abort_on_teardown: Any = None,  # noqa: ARG002
+        turn_timeout_seconds: float | None = None,  # noqa: ARG002
+    ) -> Any:
+        self.last_payload = {
+            "sandbox_id": sandbox_id,
+            "session_id": session_id,
+            "kind": "compact",
+            "opencode_session_id": opencode_session_id,
+            "agent_provider": agent_provider,
+            "agent_model": agent_model,
+        }
         yield object()
 
 
@@ -363,6 +387,30 @@ def test_yield_sandbox_events_allows_non_empty_session_without_opencode_id() -> 
     assert len(events) == 1
     assert sandbox_manager.last_payload is not None
     assert sandbox_manager.last_payload["opencode_session_id"] is None
+
+
+def test_yield_sandbox_events_compact_drives_compact_session() -> None:
+    sandbox_manager = _FakeStreamingSandboxManager()
+
+    events = list(
+        streaming.yield_sandbox_events(
+            cast(Any, object()),
+            cast(Any, sandbox_manager),
+            uuid4(),
+            uuid4(),
+            "",
+            opencode_session_id="ses_live",
+            agent_provider="openai",
+            agent_model="gpt-5",
+            kind="compact",
+        )
+    )
+
+    assert len(events) == 1
+    assert sandbox_manager.last_payload is not None
+    assert sandbox_manager.last_payload["kind"] == "compact"
+    assert sandbox_manager.last_payload["opencode_session_id"] == "ses_live"
+    assert "user_message_content" not in sandbox_manager.last_payload
 
 
 def test_persist_context_usage_and_compaction(

@@ -112,6 +112,7 @@ from onyx.server.query_and_chat.chat_utils import (
     is_spreadsheet_mime_type,
     parse_spreadsheet_for_preview,
 )
+from onyx.db.chat_share import list_chat_session_shares, replace_chat_session_shares
 from onyx.server.query_and_chat.models import (
     ChatFeedbackRequest,
     ChatMessageIdentifier,
@@ -122,6 +123,7 @@ from onyx.server.query_and_chat.models import (
     ChatSessionDetails,
     ChatSessionGroup,
     ChatSessionsResponse,
+    ChatSessionShareResponse,
     ChatSessionSummary,
     ChatSessionUpdateRequest,
     CurrentRunInfo,
@@ -619,15 +621,60 @@ def patch_chat_session(
     chat_session_update_req: ChatSessionUpdateRequest,
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
-) -> None:
+) -> ChatSessionShareResponse:
     user_id = user.id
-    update_chat_session(
+    chat_session = get_chat_session_by_id(
+        chat_session_id=session_id, user_id=user_id, db_session=db_session
+    )
+    wants_share_change = (
+        chat_session_update_req.sharing_status is not None
+        or chat_session_update_req.shared_user_ids is not None
+        or chat_session_update_req.shared_group_ids is not None
+    )
+    if wants_share_change and chat_session.user_id != user_id:
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+            "Only the chat owner can change sharing.",
+        )
+    chat_session = update_chat_session(
         db_session=db_session,
         user_id=user_id,
         chat_session_id=session_id,
         sharing_status=chat_session_update_req.sharing_status,
     )
-    return None
+    if (
+        chat_session_update_req.shared_user_ids is not None
+        or chat_session_update_req.shared_group_ids is not None
+    ):
+        chat_session = replace_chat_session_shares(
+            db_session,
+            chat_session,
+            user_ids=chat_session_update_req.shared_user_ids or [],
+            group_ids=chat_session_update_req.shared_group_ids or [],
+        )
+    users, groups = list_chat_session_shares(db_session, chat_session.id)
+    return ChatSessionShareResponse(
+        shared_status=chat_session.shared_status,
+        shared_user_ids=[row.user_id for row in users],
+        shared_group_ids=[row.user_group_id for row in groups],
+    )
+
+
+@router.get("/chat-session/{session_id}/shares")
+def get_chat_session_shares(
+    session_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> ChatSessionShareResponse:
+    chat_session = get_chat_session_by_id(
+        chat_session_id=session_id, user_id=user.id, db_session=db_session
+    )
+    users, groups = list_chat_session_shares(db_session, chat_session.id)
+    return ChatSessionShareResponse(
+        shared_status=chat_session.shared_status,
+        shared_user_ids=[row.user_id for row in users],
+        shared_group_ids=[row.user_group_id for row in groups],
+    )
 
 
 def _teardown_incognito_after_delete(

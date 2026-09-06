@@ -52,6 +52,7 @@ describe("toPickerSections", () => {
 
   it("returns empty sections when no data", () => {
     expect(toPickerSections(undefined, undefined)).toEqual({
+      commands: [],
       skills: [],
       apps: [],
       mcpServers: [],
@@ -294,6 +295,14 @@ describe("toPickerSections", () => {
 
 describe("filterPickerSections", () => {
   const sections: PickerSections = {
+    commands: [
+      {
+        kind: "command",
+        slug: "compact",
+        name: "Compact context",
+        description: "Summarize earlier context to free up space",
+      },
+    ],
     skills: [
       {
         kind: "skill",
@@ -347,15 +356,30 @@ describe("filterPickerSections", () => {
 
   it("returns empty sections when nothing matches", () => {
     const empty = filterPickerSections(sections, "zzz");
+    expect(empty.commands).toEqual([]);
     expect(empty.skills).toEqual([]);
     expect(empty.apps).toEqual([]);
     expect(empty.mcpServers).toEqual([]);
   });
+
+  it("filters commands on /comp", () => {
+    expect(
+      filterPickerSections(sections, "comp").commands.map((c) => c.slug)
+    ).toEqual(["compact"]);
+  });
 });
 
 describe("flattenSections", () => {
-  it("returns skills, then apps, then MCP servers in render order", () => {
+  it("returns commands first, then skills, apps, and MCP servers", () => {
     const sections: PickerSections = {
+      commands: [
+        {
+          kind: "command",
+          slug: "compact",
+          name: "Compact context",
+          description: "",
+        },
+      ],
       skills: [
         { kind: "skill", slug: "a", name: "A", description: "" },
         { kind: "skill", slug: "b", name: "B", description: "" },
@@ -382,6 +406,7 @@ describe("flattenSections", () => {
     // Keyboard-nav indices are positional, so this order must match the
     // popover's render order exactly.
     expect(flattenSections(sections)).toEqual([
+      sections.commands[0],
       sections.skills[0],
       sections.skills[1],
       sections.apps[0],

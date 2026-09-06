@@ -85,7 +85,12 @@ import { useMcpServersForAgent } from "@/lib/tools/hooks";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { useAvailableTools } from "@/lib/tools/hooks";
 import { getActionIcon } from "@/lib/tools/utils";
-import { AgentEditorMCPServer, MCPTool, ToolSnapshot } from "@/lib/tools/types";
+import {
+  AgentEditorMCPServer,
+  MCPTool,
+  McpServerScope,
+  ToolSnapshot,
+} from "@/lib/tools/types";
 import useFilter from "@/hooks/useFilter";
 import EnabledCount from "@/refresh-components/EnabledCount";
 import { useAppPosition } from "@/lib/position/hooks";
@@ -321,6 +326,14 @@ function MCPServerCard({
   isLoading,
 }: MCPServerCardProps) {
   const t = useTranslations("agents");
+  const { user } = useUser();
+  const isPersonal = server.scope === McpServerScope.PERSONAL;
+  const isOwner = server.owner === user?.email;
+  const serverTitle = isPersonal
+    ? isOwner
+      ? t("editor.mcp.personal", { name: server.name })
+      : t("editor.mcp.personalOnlyYou", { name: server.name })
+    : server.name;
   const [isFolded, setIsFolded] = useState(false);
   const { values, setFieldValue, getFieldMeta } = useFormikContext<any>();
   const serverFieldName = `mcp_server_${server.id}`;
@@ -420,7 +433,7 @@ function MCPServerCard({
           <div className="p-2">
             <ContentAction
               icon={getActionIcon(server.server_url, server.name)}
-              title={server.name}
+              title={serverTitle}
               description={server.description}
               sizePreset="main-ui"
               variant="section"

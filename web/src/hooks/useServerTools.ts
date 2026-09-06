@@ -69,9 +69,14 @@ interface UseServerToolsReturn {
  */
 export default function useServerTools(
   server: MCPServer,
-  isExpanded: boolean
+  isExpanded: boolean,
+  surface: "admin" | "personal" = "admin"
 ): UseServerToolsReturn {
   const shouldFetch = isExpanded;
+  const snapshotsKey =
+    surface === "personal"
+      ? `/api/mcp/personal/server/${server.id}/tools/snapshots?source=db`
+      : `/api/admin/mcp/server/${server.id}/tools/snapshots?source=db`;
 
   const {
     data: toolsData,
@@ -79,9 +84,7 @@ export default function useServerTools(
     error,
     mutate,
   } = useSWR<ToolSnapshot[]>(
-    shouldFetch
-      ? `/api/admin/mcp/server/${server.id}/tools/snapshots?source=db`
-      : null,
+    shouldFetch ? snapshotsKey : null,
     errorHandlingFetcher,
     {
       revalidateOnFocus: false,

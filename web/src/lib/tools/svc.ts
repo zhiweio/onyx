@@ -17,6 +17,9 @@ import {
   MCPAuthTemplate,
 } from "@/lib/tools/types";
 import { parseErrorDetail } from "@/lib/fetcher";
+import { mcpApiRoot, type McpSurface } from "@/lib/tools/mcpSurface";
+
+export type { McpSurface };
 
 export interface ToolStatusUpdateRequest {
   tool_ids: number[];
@@ -31,8 +34,11 @@ export interface ToolStatusUpdateResponse {
 /**
  * Delete an MCP server
  */
-export async function deleteMCPServer(serverId: number): Promise<void> {
-  const response = await fetch(`/api/admin/mcp/server/${serverId}`, {
+export async function deleteMCPServer(
+  serverId: number,
+  surface: McpSurface = "admin"
+): Promise<void> {
+  const response = await fetch(`${mcpApiRoot(surface)}/server/${serverId}`, {
     method: "DELETE",
   });
 
@@ -46,11 +52,12 @@ export async function deleteMCPServer(serverId: number): Promise<void> {
  * This performs actual discovery from the MCP server and syncs to DB
  */
 export async function refreshMCPServerTools(
-  serverId: number
+  serverId: number,
+  surface: McpSurface = "admin"
 ): Promise<ToolSnapshot[]> {
   // Discovers tools from MCP server, upserts to DB, and returns ToolSnapshot format
   const response = await fetch(
-    `/api/admin/mcp/server/${serverId}/tools/snapshots?source=mcp`
+    `${mcpApiRoot(surface)}/server/${serverId}/tools/snapshots?source=mcp`
   );
   if (!response.ok) {
     const errorText = await response.text();
@@ -65,9 +72,14 @@ export async function refreshMCPServerTools(
  */
 export async function updateToolsStatus(
   toolIds: number[],
-  enabled: boolean
+  enabled: boolean,
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
-  const response = await fetch("/api/admin/tool/status", {
+  const path =
+    surface === "personal"
+      ? "/api/mcp/personal/tools/status"
+      : "/api/admin/tool/status";
+  const response = await fetch(path, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -91,27 +103,30 @@ export async function updateToolsStatus(
  */
 export async function updateToolStatus(
   toolId: number,
-  enabled: boolean
+  enabled: boolean,
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
-  return updateToolsStatus([toolId], enabled);
+  return updateToolsStatus([toolId], enabled, surface);
 }
 
 /**
  * Disable all tools for a specific MCP server
  */
 export async function disableAllServerTools(
-  toolIds: number[]
+  toolIds: number[],
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
-  return updateToolsStatus(toolIds, false);
+  return updateToolsStatus(toolIds, false, surface);
 }
 
 /**
  * Create a new MCP server with basic information
  */
 export async function createMCPServer(
-  data: MCPServerCreateRequest
+  data: MCPServerCreateRequest,
+  surface: McpSurface = "admin"
 ): Promise<MCPServer> {
-  const response = await fetch("/api/admin/mcp/server", {
+  const response = await fetch(`${mcpApiRoot(surface)}/server`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -127,14 +142,38 @@ export async function createMCPServer(
   return await response.json();
 }
 
+export async function createMCPServerFromPack(data: {
+  pack_slug: string;
+  name?: string;
+  slug?: string;
+  description?: string;
+  upstream_url?: string;
+  credentials?: Record<string, string>;
+  is_public?: boolean;
+  groups?: number[];
+  users?: string[];
+}): Promise<MCPServer> {
+  const response = await fetch("/api/admin/mcp/servers/from-pack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to install pack");
+  }
+  return await response.json();
+}
+
 /**
  * Update an existing MCP server
  */
 export async function updateMCPServer(
   serverId: number,
-  data: MCPServerUpdateRequest
+  data: MCPServerUpdateRequest,
+  surface: McpSurface = "admin"
 ): Promise<MCPServer> {
-  const response = await fetch(`/api/admin/mcp/server/${serverId}`, {
+  const response = await fetch(`${mcpApiRoot(surface)}/server/${serverId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -155,10 +194,11 @@ export async function updateMCPServer(
  */
 export async function updateMCPServerStatus(
   serverId: number,
-  status: MCPServerStatus
+  status: MCPServerStatus,
+  surface: McpSurface = "admin"
 ): Promise<void> {
   const response = await fetch(
-    `/api/admin/mcp/server/${serverId}/status?status=${status}`,
+    `${mcpApiRoot(surface)}/server/${serverId}/status?status=${status}`,
     {
       method: "PATCH",
     }
@@ -210,14 +250,16 @@ export async function upsertMCPServer(serverData: {
   // Per-key analogue of `oauth_client_*_changed` for `admin_credentials`.
   admin_credentials_changed?: Record<string, boolean>;
   existing_server_id?: number;
+  surface?: McpSurface;
 }): Promise<ApiResponse<UpsertMCPServerResponse>> {
   try {
-    const response = await fetch("/api/admin/mcp/servers/create", {
+    const { surface = "admin", ...body } = serverData;
+    const response = await fetch(`${mcpApiRoot(surface)}/servers/create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(serverData),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

@@ -25,10 +25,12 @@ export type AdminNavItemId =
   | "chatPreferences"
   | "craftAccess"
   | "craftApps"
+  | "craftCatalog"
   | "craftPreferences"
   | "customAnalytics"
   | "agents"
   | "mcpActions"
+  | "mcpGateway"
   | "openapiActions"
   | "existingConnectors"
   | "addConnector"
@@ -81,10 +83,12 @@ export const NAV_ITEM_IDS: Record<
   CHAT_PREFERENCES: "chatPreferences",
   CRAFT_ACCESS: "craftAccess",
   CRAFT_APPS: "craftApps",
+  CRAFT_CATALOG: "craftCatalog",
   CRAFT_PREFERENCES: "craftPreferences",
   CUSTOM_ANALYTICS: "customAnalytics",
   AGENTS: "agents",
   MCP_ACTIONS: "mcpActions",
+  MCP_GATEWAY: "mcpGateway",
   OPENAPI_ACTIONS: "openapiActions",
   INDEXING_STATUS: "existingConnectors",
   ADD_CONNECTOR: "addConnector",
@@ -137,12 +141,12 @@ const ROUTE_KEYS = Object.keys(ADMIN_ROUTES) as (keyof typeof ADMIN_ROUTES)[];
 
 const NAV_ID_BY_PATH: Record<string, AdminNavItemId | null> =
   Object.fromEntries(
-    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, NAV_ITEM_IDS[key]])
+    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, NAV_ITEM_IDS[key]]),
   );
 
 const HIDDEN_ID_BY_PATH: Record<string, AdminHiddenRouteId | undefined> =
   Object.fromEntries(
-    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, HIDDEN_ROUTE_IDS[key]])
+    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, HIDDEN_ROUTE_IDS[key]]),
   );
 
 /** Nav id for a route, for server components that resolve labels themselves. */
@@ -152,7 +156,7 @@ export function getAdminNavId(route: AdminRouteEntry): AdminNavItemId | null {
 
 /** Hidden-route title id for a route outside the sidebar, if it has one. */
 export function getAdminHiddenRouteId(
-  route: AdminRouteEntry
+  route: AdminRouteEntry,
 ): AdminHiddenRouteId | null {
   return HIDDEN_ID_BY_PATH[route.path] ?? null;
 }
@@ -190,7 +194,7 @@ export interface SidebarItemEntry {
 export function buildItems(
   permissions: string[],
   flags: FeatureFlags,
-  settings: Settings | null
+  settings: Settings | null,
 ): SidebarItemEntry[] {
   const userCanAccess = (perm: string) => hasPermission(permissions, perm);
   const items: SidebarItemEntry[] = [];

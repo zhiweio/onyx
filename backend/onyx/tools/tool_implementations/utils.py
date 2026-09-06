@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 
 from onyx.context.search.models import InferenceSection
 from onyx.context.search.utils import sandbox_filename_for_document
@@ -6,16 +7,48 @@ from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
+_OUTPUT_TRUNCATED_FOOTER = "\n... [output truncated, {omitted} characters omitted]"
+
 
 def truncate_output(output: str, max_length: int, label: str = "output") -> str:
     """Truncate to ``max_length`` and append a footer noting how many chars were elided. ``label`` is only used in the debug log."""
     truncated = output[:max_length]
     if len(output) > max_length:
-        truncated += (
-            f"\n... [output truncated, {len(output) - max_length} characters omitted]"
-        )
+        truncated += _OUTPUT_TRUNCATED_FOOTER.format(omitted=len(output) - max_length)
         logger.debug("Truncated %s: %s", label, truncated)
     return truncated
+
+
+def fit_text_to_token_budget(
+    text: str,
+    token_counter: Callable[[str], int],
+    max_tokens: int,
+) -> str:
+    """Keep as much of ``text`` as fits in ``max_tokens``, with a truncation footer.
+
+    The tool still produced the full result. This only cuts what is written
+    into conversation history so one MCP answer cannot overflow the window.
+    """
+    if max_tokens <= 0:
+        return _OUTPUT_TRUNCATED_FOOTER.format(omitted=len(text)).lstrip()
+    if token_counter(text) <= max_tokens:
+        return text
+
+    lo = 0
+    hi = len(text)
+    best = ""
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        omitted = len(text) - mid
+        candidate = text[:mid] + _OUTPUT_TRUNCATED_FOOTER.format(omitted=omitted)
+        if token_counter(candidate) <= max_tokens:
+            best = candidate
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    if best:
+        return best
+    return _OUTPUT_TRUNCATED_FOOTER.format(omitted=len(text)).lstrip()
 
 
 FILE_ASSOCIATED_GUIDANCE = (

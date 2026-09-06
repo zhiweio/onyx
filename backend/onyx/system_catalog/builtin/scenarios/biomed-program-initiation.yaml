@@ -1,0 +1,22 @@
+domain: biomed
+objective: Reach a cited go / hold / no-go recommendation for one asset
+required_inputs:
+  - asset
+  - indication
+  - decision_date
+phases:
+  - id: collect
+    done_when: Literature, trials, patents, and CMC sources are listed
+  - id: score
+    done_when: Each decision factor has a score and a citation
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+quality_gates:
+  - Every material claim has a primary citation
+  - Open questions name the missing evidence
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent trial IDs, patent numbers, or labels
+  - Do not treat a news brief as a primary source

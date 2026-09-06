@@ -37,6 +37,7 @@ import {
 } from "@/app/craft/v1/apps/connectableApps";
 import UserCredentialsModal from "@/app/craft/v1/apps/UserCredentialsModal";
 import { useUser } from "@/providers/UserProvider";
+import { CRAFT_MCP_ACTIONS_PATH } from "@/app/craft/v1/constants";
 import useUserSkills from "@/hooks/useUserSkills";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import { compareByName } from "@/lib/skills/picker";
@@ -67,15 +68,20 @@ export default function ExternalAppsPage() {
         title={t("header.title")}
         description={t("header.description")}
         rightChildren={
-          isAdmin ? (
-            <Button
-              href="/admin/craft/apps"
-              prominence="secondary"
-              icon={SvgSettings}
-            >
-              {t("header.manageButton")}
+          <div className="flex items-center gap-2">
+            <Button href={CRAFT_MCP_ACTIONS_PATH} prominence="secondary">
+              {t("header.manageMyMcp")}
             </Button>
-          ) : undefined
+            {isAdmin ? (
+              <Button
+                href="/admin/craft/apps"
+                prominence="secondary"
+                icon={SvgSettings}
+              >
+                {t("header.manageButton")}
+              </Button>
+            ) : undefined}
+          </div>
         }
       >
         <InputTypeIn

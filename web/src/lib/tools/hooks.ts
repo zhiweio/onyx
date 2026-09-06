@@ -73,6 +73,25 @@ export function useAdminMcpServers() {
   };
 }
 
+export function usePersonalMcpServers() {
+  const {
+    data: mcpData,
+    error,
+    isLoading,
+    mutate: mutateMcpServers,
+  } = useSWR<MCPServersResponse>(
+    SWR_KEYS.personalMcpServers,
+    errorHandlingFetcher
+  );
+
+  return {
+    mcpData: mcpData ?? null,
+    isLoading,
+    error,
+    mutateMcpServers,
+  };
+}
+
 /**
  * The MCP servers relevant to one agent: those the user can reach, plus any
  * already attached to the agent that they cannot. `can_attach` distinguishes

@@ -94,6 +94,35 @@ def mark_artifact_deleted(
     return artifact
 
 
+def set_artifact_archive_file_id(
+    db_session: Session,
+    *,
+    session_id: UUID,
+    path: str,
+    archive_file_id: str,
+) -> Artifact | None:
+    """Attach FileStore bytes to an existing artifact row."""
+    artifact = db_session.scalar(
+        select(Artifact).where(Artifact.session_id == session_id, Artifact.path == path)
+    )
+    if artifact is None:
+        return None
+    artifact.archive_file_id = archive_file_id
+    db_session.flush()
+    return artifact
+
+
+def get_artifact_by_path(
+    db_session: Session,
+    *,
+    session_id: UUID,
+    path: str,
+) -> Artifact | None:
+    return db_session.scalar(
+        select(Artifact).where(Artifact.session_id == session_id, Artifact.path == path)
+    )
+
+
 def get_session_artifacts(
     db_session: Session,
     *,

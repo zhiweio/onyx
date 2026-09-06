@@ -41,6 +41,7 @@ from onyx.server.features.build.session.sandbox_lifecycle import (
     ensure_sandbox_ready,
     sync_managed_content,
 )
+from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -152,6 +153,38 @@ def ensure_session_ready(
                 connectable_apps_section=connectable_apps_section,
                 mcp_servers=mcp_servers,
             )
+        if session.scenario_id is not None:
+            write_scenario_md_to_session(
+                db_session,
+                sandbox_manager,
+                sandbox.id,
+                session_id,
+                session.scenario_id,
+                user,
+            )
+        if session.project_id is not None:
+            from onyx.server.features.craft_project.runtime import (
+                write_project_to_session,
+            )
+
+            write_project_to_session(
+                db_session,
+                sandbox_manager,
+                sandbox.id,
+                session_id,
+                session.project_id,
+                user,
+            )
+        from onyx.server.features.build.session.artifact_persist import (
+            restore_archived_files_to_session,
+        )
+
+        restore_archived_files_to_session(
+            db_session,
+            sandbox_manager,
+            sandbox_id=sandbox.id,
+            session_id=session_id,
+        )
     except Exception:
         if snapshot:
             # Release the port the restore reserved but never bound.

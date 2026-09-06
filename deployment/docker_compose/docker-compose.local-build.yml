@@ -1,0 +1,65 @@
+# Build Onyx app images from this worktree. Do not pull official Hub tags.
+#
+# Stack last, after docker-compose.yml / docker-compose.dev.yml /
+# docker-compose.craft.yml:
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.dev.yml \
+#     -f docker-compose.craft.yml \
+#     -f docker-compose.local-build.yml \
+#     up -d --build
+#
+# Or set in .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml:docker-compose.craft.yml:docker-compose.local-build.yml
+#   ONYX_BACKEND_IMAGE=onyxdotapp/onyx-backend:local
+#   ONYX_WEB_SERVER_IMAGE=onyxdotapp/onyx-web-server:local
+#   SANDBOX_CONTAINER_IMAGE=onyxdotapp/sandbox:local
+#   SANDBOX_IMAGE_PULL_POLICY=Never
+#
+# Third-party images (Postgres, Redis, OpenSearch, MinIO, nginx, model-server)
+# still come from their registries.
+
+x-onyx-backend-build: &onyx_backend_build
+  image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:local}
+  pull_policy: build
+  build:
+    context: ../../backend
+    dockerfile: Dockerfile
+    target: ${ONYX_BACKEND_BUILD_TARGET:-dev}
+
+services:
+  api_server:
+    <<: *onyx_backend_build
+    environment:
+      - SANDBOX_CONTAINER_IMAGE=${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}
+      - SANDBOX_IMAGE_PULL_POLICY=${SANDBOX_IMAGE_PULL_POLICY:-Never}
+
+  background:
+    <<: *onyx_backend_build
+    environment:
+      - SANDBOX_CONTAINER_IMAGE=${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}
+      - SANDBOX_IMAGE_PULL_POLICY=${SANDBOX_IMAGE_PULL_POLICY:-Never}
+
+  mcp_gateway:
+    <<: *onyx_backend_build
+
+  sandbox-proxy:
+    <<: *onyx_backend_build
+
+  web_server:
+    image: ${ONYX_WEB_SERVER_IMAGE:-onyxdotapp/onyx-web-server:local}
+    pull_policy: build
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+
+  sandbox-image-prepull:
+    image: ${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}
+    pull_policy: build
+    build:
+      context: ../../backend/onyx/server/features/build/sandbox/image
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 0
+    entrypoint: ["/bin/true"]

@@ -25,8 +25,8 @@ separate from normal per-session workspace snapshots.
 4. Keep Docker workspace snapshots from carrying opencode data; opencode
    history persistence is currently a Kubernetes-only capability.
 5. Be optimistic when a saved opencode ID is missing from a restored DB: mint a
-   replacement ID and persist it. A later follow-up can replay saved chat history
-   into that replacement session.
+   replacement ID and persist it. The next user prompt then carries a short
+   replay of saved BuildMessage history so the model keeps transcript continuity.
 6. Treat opencode's session store as implementation data. Deleting an Onyx
    BuildSession removes the product-visible record and best-effort deletes the
    live opencode session when the sandbox is running; failure does not block
@@ -225,10 +225,10 @@ The prompt path is intentionally optimistic.
    streaming proceeds.
 
 This means a restored sandbox with a missing opencode ID does not fail the user
-turn. It starts a new opencode session and records the new ID. The tradeoff is
-that opencode itself does not yet receive prior chat history in that newly
-created session. That replay behavior is intentionally out of scope for this
-change.
+turn. It starts a new opencode session and records the new ID. When the saved
+ID was replaced, `_send_message_via_serve` prefixes a short replay of persisted
+user/assistant text onto the next prompt. Disk artifacts remain the long-job
+source of truth. First-turn mint (no prior ID) does not replay.
 
 ## Delete Session Flow
 
@@ -345,16 +345,15 @@ policy.
   failed delete does not leave a terminated sandbox with restorable stale
   history.
 
-## Known Follow-Up
+## History Replay After Replacement
 
-If a restored sandbox does not contain the saved opencode ID, Onyx now mints a
-new opencode session and persists it. That avoids blocking the user, but the
-new opencode session does not yet contain prior chat history.
-
-The planned follow-up is to detect this replacement-session case and replay the
-saved BuildMessage history into opencode before sending the next user prompt.
-That should live above the low-level snapshot/restore path. The snapshot layer
-should continue to restore the DB when possible and stay storage-focused.
+When `ensure_session` replaces a persisted ID, the send path calls
+`replacement_preamble_for_session` in `session/history_replay.py`. That helper
+reads `BuildMessage` rows, keeps the most recent user/assistant text that fits
+a 16k character budget, skips the current outgoing user prompt, and prefixes
+the next OpenCode message. Compact does not mint a replacement session: if the
+saved ID is gone, compact fails and the user sends a follow-up first so replay
+can run.
 
 ## Files Worth Reading
 
@@ -364,5 +363,6 @@ should continue to restore the DB when possible and stay storage-focused.
 - `backend/onyx/server/features/build/sandbox/kubernetes/kubernetes_sandbox_manager.py`
 - `backend/onyx/server/features/build/sandbox/opencode/serve_client.py`
 - `backend/onyx/server/features/build/sandbox/serve_transport.py`
+- `backend/onyx/server/features/build/session/history_replay.py`
 - `backend/onyx/server/features/build/session/streaming.py`
 - `backend/onyx/server/features/build/session/manager.py`

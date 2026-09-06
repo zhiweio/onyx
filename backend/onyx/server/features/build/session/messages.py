@@ -43,6 +43,7 @@ from onyx.server.features.build.sandbox.models import PromptAttachment
 from onyx.server.features.build.session.llm_config import GatewaySelection
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.features.build.session.models import (
+    CompactRequest,
     MessageInterruptResponse,
     MessageListResponse,
     MessageRequest,
@@ -208,6 +209,89 @@ def send_message(
     except Exception:
         logger.exception(
             "Failed to start interactive turn %s; attach endpoints will retry",
+            turn.turn_id,
+        )
+
+    return InteractiveTurnResponse.from_turn(turn)
+
+
+@router.post("/sessions/{session_id}/compact", tags=PUBLIC_API_TAGS)
+def compact_session(
+    session_id: UUID,
+    request: CompactRequest | None = None,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> InteractiveTurnResponse:
+    """Start a compact turn. No user message row is created."""
+    session = get_build_session(session_id, user.id, db_session)
+    if session is None:
+        raise OnyxError(OnyxErrorCode.SESSION_NOT_FOUND, "Session not found")
+    if not session.opencode_session_id:
+        raise OnyxError(
+            OnyxErrorCode.BAD_REQUEST,
+            "Compact is unavailable before the first turn.",
+        )
+    if not session.agent_provider or not session.agent_model:
+        raise OnyxError(
+            OnyxErrorCode.BAD_REQUEST,
+            "Compact needs a model on this session.",
+        )
+
+    cache = get_cache_backend()
+    client_request_id = (
+        request.client_request_id
+        if request and request.client_request_id
+        else str(uuid4())
+    )
+
+    try:
+        lock = acquire_active_turn_lock(cache, session_id)
+    except InteractiveTurnLockError as exc:
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT,
+            "This session is busy with a previous turn.",
+        ) from exc
+
+    lock_released = False
+    try:
+        existing = get_turn_for_request(
+            cache=cache,
+            session_id=session_id,
+            user_id=user.id,
+            client_request_id=client_request_id,
+        )
+        if existing is not None:
+            return InteractiveTurnResponse.from_turn(existing)
+
+        active = get_active_turn(cache=cache, session_id=session_id, user_id=user.id)
+        if active is not None:
+            raise OnyxError(
+                OnyxErrorCode.CONFLICT,
+                "This session is busy with a previous turn.",
+            )
+
+        check_token_rate_limits(user)
+
+        user_count = count_user_messages(session_id, db_session)
+        turn_index = max(0, user_count - 1) if user_count else 0
+        turn = create_interactive_turn(
+            cache=cache,
+            session_id=session_id,
+            user_id=user.id,
+            client_request_id=client_request_id,
+            prompt="",
+            turn_index=turn_index,
+            kind="compact",
+        )
+    finally:
+        if not lock_released:
+            lock.release()
+
+    try:
+        start_interactive_turn_runner(turn.turn_id)
+    except Exception:
+        logger.exception(
+            "Failed to start compact turn %s; attach endpoints will retry",
             turn.turn_id,
         )
 

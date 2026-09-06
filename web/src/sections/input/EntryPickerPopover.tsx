@@ -152,6 +152,7 @@ function EntryPickerPopover({
             onHover: setSelectedIndex,
             emptyMessage: t("entryPickerPopover.empty.text"),
             groupLabels: {
+              commands: t("entryPickerPopover.commandsGroup.label"),
               skills: t("entryPickerPopover.skillsGroup.label"),
               apps: t("entryPickerPopover.appsGroup.label"),
               mcpServers: t("entryPickerPopover.mcpServersGroup.label"),
@@ -172,7 +173,12 @@ interface BuildMenuChildrenArgs {
   onHover: (idx: number) => void;
   /** Translated copy: this helper is not a component, so it cannot call `t`. */
   emptyMessage: string;
-  groupLabels: { skills: string; apps: string; mcpServers: string };
+  groupLabels: {
+    commands: string;
+    skills: string;
+    apps: string;
+    mcpServers: string;
+  };
 }
 
 // `Popover.Menu` renders a literal `null` between children as a divider.
@@ -198,6 +204,11 @@ function buildMenuChildren({
   // Groups must stay in `flattenSections` order — keyboard nav indexes into that
   // flat list, so a running index is what keeps the two aligned.
   const groups: { key: string; label: string; entries: PickerEntry[] }[] = [
+    {
+      key: "commands",
+      label: groupLabels.commands,
+      entries: filtered.commands,
+    },
     { key: "skills", label: groupLabels.skills, entries: filtered.skills },
     { key: "apps", label: groupLabels.apps, entries: filtered.apps },
     {
@@ -230,6 +241,13 @@ function buildMenuChildren({
             {...rowProps}
             slug={entry.slug}
             description={entry.description}
+          />
+        ) : entry.kind === "command" ? (
+          <CommandRow
+            {...rowProps}
+            name={entry.name}
+            description={entry.description}
+            slug={entry.slug}
           />
         ) : (
           <ConnectableRow
@@ -269,6 +287,55 @@ interface SkillRowProps {
   onHover: () => void;
   onPick: () => void;
   rowIndex: number;
+}
+
+interface CommandRowProps {
+  name: string;
+  description: string;
+  slug: string;
+  selected: boolean;
+  onHover: () => void;
+  onPick: () => void;
+  rowIndex: number;
+}
+
+function CommandRow({
+  name,
+  description,
+  slug,
+  selected,
+  onHover,
+  onPick,
+  rowIndex,
+}: CommandRowProps) {
+  const Icon = pickerEntryIcon({
+    kind: "command",
+    slug,
+    name,
+    description,
+  });
+  return (
+    <div className="cursor-pointer">
+      <LineItem
+        interactive={false}
+        selected={selected}
+        emphasized={selected}
+        description={description}
+        onMouseEnter={onHover}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onPick();
+        }}
+        data-row-index={rowIndex}
+        data-testid={`command-picker-row-${slug}`}
+      >
+        <span className="inline-flex items-center gap-2">
+          <Icon className="h-4 w-4 shrink-0" />
+          <span>{name}</span>
+        </span>
+      </LineItem>
+    </div>
+  );
 }
 
 function SkillRow({

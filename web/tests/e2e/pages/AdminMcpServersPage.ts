@@ -7,10 +7,12 @@
  */
 
 import { type Page, type Locator, expect } from "@playwright/test";
-import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import type { McpSurface } from "@/lib/tools/mcpSurface";
+import { mcpActionsPath } from "@/lib/tools/mcpSurface";
 
 export class AdminMcpServersPage {
   readonly page: Page;
+  readonly surface: McpSurface;
 
   // Add-server modal
   readonly addServerButton: Locator;
@@ -30,8 +32,9 @@ export class AdminMcpServersPage {
   // Server card + tools
   readonly refreshToolsButton: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, surface: McpSurface = "admin") {
     this.page = page;
+    this.surface = surface;
     this.addServerButton = page.getByRole("button", {
       name: /Add MCP Server/i,
     });
@@ -53,7 +56,7 @@ export class AdminMcpServersPage {
     this.connectButton = page.getByTestId("mcp-auth-connect-button");
 
     this.refreshToolsButton = page.getByRole("button", {
-      name: "Refresh tools",
+      name: /Refresh tools/i,
     });
   }
 
@@ -61,9 +64,16 @@ export class AdminMcpServersPage {
   // Navigation
   // ---------------------------------------------------------------------------
 
+  private apiRoot(): string {
+    return this.surface === "personal"
+      ? "/api/mcp/personal"
+      : "/api/admin/mcp";
+  }
+
   async goto(): Promise<void> {
-    await this.page.goto(ADMIN_ROUTES.MCP_ACTIONS.path);
-    await this.page.waitForURL(`**${ADMIN_ROUTES.MCP_ACTIONS.path}**`);
+    const path = mcpActionsPath(this.surface);
+    await this.page.goto(path);
+    await this.page.waitForURL(`**${path}**`);
   }
 
   // ---------------------------------------------------------------------------
@@ -120,7 +130,7 @@ export class AdminMcpServersPage {
   async submitAddServer(): Promise<number> {
     const responsePromise = this.page.waitForResponse(
       (resp) =>
-        new URL(resp.url()).pathname === "/api/admin/mcp/server" &&
+        new URL(resp.url()).pathname === `${this.apiRoot()}/server` &&
         resp.request().method() === "POST" &&
         resp.ok()
     );
@@ -136,7 +146,7 @@ export class AdminMcpServersPage {
   // Auth modal
   // ---------------------------------------------------------------------------
 
-  async selectAuthMethod(method: "OAuth" | "API Key"): Promise<void> {
+  async selectAuthMethod(method: "OAuth" | "API Key" | "None"): Promise<void> {
     await this.authMethodSelect.click();
     await this.page.getByRole("option", { name: method }).click();
   }
@@ -176,7 +186,7 @@ export class AdminMcpServersPage {
   async connectAndWaitForUpsert(): Promise<void> {
     const responsePromise = this.page.waitForResponse(
       (resp) =>
-        resp.url().endsWith("/api/admin/mcp/servers/create") &&
+        resp.url().endsWith(`${this.apiRoot()}/servers/create`) &&
         resp.request().method() === "POST"
     );
     await this.clickConnect();
@@ -253,10 +263,41 @@ export class AdminMcpServersPage {
     ).toBeVisible();
   }
 
+  async connectAndWaitForTools(): Promise<void> {
+    const toolsPromise = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes(`${this.apiRoot()}/server/`) &&
+        resp.url().includes("/tools/snapshots") &&
+        resp.request().method() === "GET"
+    );
+    await this.connectAndWaitForUpsert();
+    const response = await toolsPromise;
+    expect(response.ok()).toBeTruthy();
+  }
+
   async refreshTools(): Promise<void> {
     await expect(this.refreshToolsButton).toBeVisible();
     await this.refreshToolsButton.click();
     await expect(this.page.getByText("No tools available")).not.toBeVisible();
+  }
+
+  serverCard(serverName: string): Locator {
+    return this.page.getByRole("article", {
+      name: new RegExp(serverName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    });
+  }
+
+  async expandServerCard(serverName: string): Promise<void> {
+    const card = this.serverCard(serverName);
+    await expect(card).toBeVisible();
+    const fold = card.getByRole("button", { name: /^Fold$/i });
+    if ((await fold.count()) === 0) {
+      await card
+        .getByRole("button", { name: /View .* tools?/i })
+        .first()
+        .click();
+    }
+    await expect(card.getByPlaceholder(/Search tools/i)).toBeVisible();
   }
 
   cardToolToggle(toolName: string): Locator {
@@ -279,5 +320,103 @@ export class AdminMcpServersPage {
         await expect(toggle).toHaveAttribute("aria-checked", desired);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pack install + gateway badge
+  // ---------------------------------------------------------------------------
+
+  customUrlModeButton(): Locator {
+    return this.page.getByTestId("mcp-install-custom");
+  }
+
+  fromPackModeButton(): Locator {
+    return this.page.getByTestId("mcp-install-pack");
+  }
+
+  async expectInstallModesVisible(): Promise<void> {
+    await expect(this.customUrlModeButton()).toBeVisible();
+    await expect(this.fromPackModeButton()).toBeVisible();
+  }
+
+  async expectInstallModesHidden(): Promise<void> {
+    await expect(this.customUrlModeButton()).toHaveCount(0);
+    await expect(this.fromPackModeButton()).toHaveCount(0);
+  }
+
+  async selectFromPack(): Promise<void> {
+    await this.fromPackModeButton().click();
+  }
+
+  packButton(displayName: string): Locator {
+    const escaped = displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return this.page.getByRole("button", { name: new RegExp(`^${escaped}`) });
+  }
+
+  packBySlug(slug: string): Locator {
+    return this.page.getByTestId(`mcp-pack-${slug}`);
+  }
+
+  async selectPack(displayName: string): Promise<void> {
+    const pack = this.packButton(displayName);
+    await expect(pack).toBeVisible();
+    await pack.click();
+  }
+
+  async changePack(): Promise<void> {
+    const change = this.page.getByTestId("mcp-pack-change");
+    await expect(change).toBeVisible();
+    await change.click();
+  }
+
+  async fillGatewaySlug(slug: string): Promise<void> {
+    const slugInput = this.page.locator('input[name="gateway_slug"]');
+    await expect(slugInput).toBeVisible();
+    await slugInput.fill(slug);
+  }
+
+  /**
+   * Submit a From Pack install and return the created server id.
+   */
+  async submitFromPack(): Promise<number> {
+    const responsePromise = this.page.waitForResponse(
+      (resp) =>
+        new URL(resp.url()).pathname === "/api/admin/mcp/servers/from-pack" &&
+        resp.request().method() === "POST" &&
+        resp.ok()
+    );
+    await this.submitButton.click();
+    const response = await responsePromise;
+    const created = (await response.json()) as { id?: number };
+    expect(created.id).toBeTruthy();
+    return Number(created.id);
+  }
+
+  async expectGatewayBadge(serverName: string): Promise<void> {
+    await expect(
+      this.page.getByText(`${serverName} · Gateway`, { exact: false }).first()
+    ).toBeVisible();
+  }
+
+  async expectDirectBadge(serverName: string): Promise<void> {
+    await expect(
+      this.page.getByText(`${serverName} · Direct`, { exact: false }).first()
+    ).toBeVisible();
+  }
+
+  async openGatewayFromCard(serverName: string, slug?: string): Promise<void> {
+    await this.expectGatewayBadge(serverName);
+    const suffix = slug ? `?tab=cache&server=${slug}` : "";
+    await this.page.goto(`/admin/mcp-gateway${suffix}`);
+    await this.page.waitForURL("**/admin/mcp-gateway**");
+  }
+
+  async expectCatalogAbsentFromSidebar(): Promise<void> {
+    await expect(
+      this.page.getByRole("link", { name: /System MCP/i })
+    ).toHaveCount(0);
+    await expect(
+      this.page.locator('a[href="/admin/mcp-catalog"]')
+    ).toHaveCount(0);
   }
 }

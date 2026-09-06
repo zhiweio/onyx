@@ -104,7 +104,12 @@ jest.mock("@/lib/skills/picker", () => ({
   pickerEntryConnectionPath: () => null,
   pickerEntryKey: () => "",
   pickerEntryPromptPrefix: () => "",
-  toPickerSections: () => ({ skills: [], apps: [], mcpServers: [] }),
+  toPickerSections: () => ({
+    commands: [],
+    skills: [],
+    apps: [],
+    mcpServers: [],
+  }),
 }));
 
 jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({

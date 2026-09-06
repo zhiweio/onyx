@@ -80,6 +80,8 @@ export default function AdminSidebar() {
       settings?.query_history_type !== "disabled" &&
       !settings?.hide_query_history_from_admin_panel,
     craftAvailable: settings?.onyx_craft_available ?? false,
+    mcpGatewayAvailable: settings?.mcp_gateway_available ?? false,
+    mcpGatewayEnabled: settings?.mcp_gateway_enabled ?? false,
   };
 
   const allItems = buildItems(adminCapabilities, flags, settings);

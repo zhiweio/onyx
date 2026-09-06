@@ -22,8 +22,8 @@ from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.session.locks import get_session_creation_lock
 from onyx.server.features.build.session.sandbox_lifecycle import (
     create_session_snapshot_keep_latest,
-    is_sandbox_idle,
     list_snapshotable_session_workspaces,
+    should_sleep_sandbox,
     sleep_sandbox,
 )
 
@@ -92,7 +92,7 @@ def cleanup_idle_sandboxes_task(self: Task, *, tenant_id: str) -> None:  # noqa:
             for sandbox in running_sandboxes:
                 (
                     idle_sandboxes
-                    if is_sandbox_idle(sandbox, now)
+                    if should_sleep_sandbox(db_session, sandbox, now)
                     else non_idle_sandboxes
                 ).append(sandbox)
 

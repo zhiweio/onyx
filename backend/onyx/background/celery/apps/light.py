@@ -166,6 +166,7 @@ celery_app.autodiscover_tasks(
             "onyx.background.celery.tasks.opensearch_migration",
             # Sandbox cleanup tasks (build feature)
             "onyx.background.celery.tasks.build",
+            "onyx.background.celery.tasks.mcp_gateway",
         ]
     )
 )

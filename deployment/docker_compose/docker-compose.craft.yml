@@ -15,6 +15,11 @@ services:
       - SANDBOX_DOCKER_NETWORK=onyx_craft_sandbox
       - SANDBOX_DOCKER_MEMORY_LIMIT=${SANDBOX_DOCKER_MEMORY_LIMIT:-2g}
       - SANDBOX_DOCKER_CPU_LIMIT=${SANDBOX_DOCKER_CPU_LIMIT:-1.0}
+      - CRAFT_DEEP_JOB_RESOURCES=${CRAFT_DEEP_JOB_RESOURCES:-false}
+      - CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT=${CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT:-8g}
+      - CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT=${CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT:-4.0}
+      - CRAFT_DEEP_JOB_PROJECT_MAX_FILES=${CRAFT_DEEP_JOB_PROJECT_MAX_FILES:-500}
+      - OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS=${OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS:-600}
       - ENABLE_OPENCODE_DEBUGGING=${ENABLE_OPENCODE_DEBUGGING:-false}
       # Pinned: Container-side bind target. Overrides host-path values that
       # the operator's .env may inject via env_file.
@@ -49,6 +54,11 @@ services:
       - SANDBOX_DOCKER_NETWORK=onyx_craft_sandbox
       - SANDBOX_DOCKER_MEMORY_LIMIT=${SANDBOX_DOCKER_MEMORY_LIMIT:-2g}
       - SANDBOX_DOCKER_CPU_LIMIT=${SANDBOX_DOCKER_CPU_LIMIT:-1.0}
+      - CRAFT_DEEP_JOB_RESOURCES=${CRAFT_DEEP_JOB_RESOURCES:-false}
+      - CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT=${CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT:-8g}
+      - CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT=${CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT:-4.0}
+      - CRAFT_DEEP_JOB_PROJECT_MAX_FILES=${CRAFT_DEEP_JOB_PROJECT_MAX_FILES:-500}
+      - OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS=${OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS:-600}
       - ENABLE_OPENCODE_DEBUGGING=${ENABLE_OPENCODE_DEBUGGING:-false}
       - SANDBOX_DOCKER_SOCKET=/var/run/docker.sock
       - OPENCODE_SERVE_PORT=4096
@@ -67,6 +77,10 @@ services:
   # Egress proxy: MITMs sandbox HTTPS traffic and gates action approvals.
   sandbox-proxy:
     image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:${IMAGE_TAG:-latest}}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: runtime
     command: ["python", "-m", "onyx.sandbox_proxy.server"]
     env_file:
       - path: .env

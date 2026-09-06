@@ -36,6 +36,9 @@ def load_env_vars(env_file: str = ".env") -> None:
 # Env must be in place before any onyx.* / shared_configs imports below pull
 # in module-level constants that read os.environ once.
 load_env_vars()
+# In-process TestClient has no compose file. Treat the gateway as deployed so
+# admin can turn the module on.
+os.environ["MCP_GATEWAY_ENABLED"] = "true"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
