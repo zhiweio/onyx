@@ -14,6 +14,7 @@ PACK = ProviderPack(
     slug="generic_http",
     display_name="Generic HTTP MCP",
     description="Any MCP server reachable over Streamable HTTP or SSE.",
+    group="generic",
     auth_adapter=MCPGatewayAuthAdapter.BEARER,
     default_policy=CachePolicySpec(
         refresh_mode=MCPGatewayRefreshMode.SWR,

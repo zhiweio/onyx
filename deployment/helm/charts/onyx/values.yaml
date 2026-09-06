@@ -1749,6 +1749,10 @@ configMap:
   # system MCP server is visible to users.
   # Lifetime of the signed token the API server sends to the gateway.
   MCP_GATEWAY_TOKEN_TTL_SECONDS: ""
+  # Days to keep gateway call-history rows before the prune task deletes them.
+  MCP_GATEWAY_CALL_LOG_RETENTION_DAYS: ""
+  # Max personal MCP servers one user may create.
+  PERSONAL_MCP_MAX_SERVERS: ""
   # MCP result storage. At or below the inline threshold a result stays in
   # Postgres; above it the body goes to the file store. The caller always
   # receives the full cached payload.

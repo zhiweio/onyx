@@ -100,6 +100,8 @@ class ProviderPack:
     display_name: str
     default_upstream_url: str = ""
     description: str = ""
+    # common | enterprise | generic — used only by the mcp-actions pack picker
+    group: str = "generic"
     transport: MCPTransport = MCPTransport.STREAMABLE_HTTP
     auth_adapter: MCPGatewayAuthAdapter = MCPGatewayAuthAdapter.BEARER
     default_policy: CachePolicySpec = field(default_factory=CachePolicySpec)

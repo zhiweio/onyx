@@ -134,6 +134,44 @@
         "serverCreated": "تم إنشاء خادم MCP بنجاح",
         "serverUpdated": "تم تحديث خادم MCP بنجاح",
         "updateFailed": "فشل تحديث خادم MCP"
+      },
+      "installMode": {
+        "custom": "عنوان URL مخصص",
+        "pack": "من الحزمة"
+      },
+      "packGroup": {
+        "common": "شائع",
+        "enterprise": "بيانات المؤسسات",
+        "generic": "عام"
+      },
+      "routeThrough": {
+        "title": "التوجيه عبر بوابة MCP",
+        "description": "مشاركة بيانات اعتماد مصدر واحدة وتخزين النتائج مؤقتًا. لا يُسمح برموز لكل مستخدم."
+      },
+      "slug": {
+        "placeholder": "مثل tianyancha",
+        "title": "معرّف البوابة"
+      },
+      "packApiKey": {
+        "placeholder": "مفتاح المصدر المشترك",
+        "title": "مفتاح API للمؤسسة"
+      },
+      "packHint": "تمر الحزم دائمًا عبر بوابة MCP.",
+      "packList": {
+        "change": "تغيير الحزمة",
+        "empty": "لا توجد حزم متاحة.",
+        "loading": "جارٍ تحميل الحزم...",
+        "prompt": "حدد حزمة للمتابعة."
+      },
+      "packs": {
+        "context7": "Upstash Context7 library docs. Works without a key; an org Bearer raises the quota.",
+        "deepwiki": "Cognition DeepWiki for public GitHub repos. Use mcp.devin.ai plus a Bearer token for private repos.",
+        "generic_http": "Any MCP server reachable over Streamable HTTP or SSE.",
+        "microsoft_learn": "Official Microsoft Learn MCP. Public docs, no authentication.",
+        "parallel_search": "Parallel Search MCP. Live web search is not cached; fetch may cache a page for a short time.",
+        "patsnap": "Patent search, patent detail, and generative research tools.",
+        "qixinbao": "Chinese company registry, risk, and litigation lookups.",
+        "tianyancha": "Chinese company registry, IP, judicial, and financial data."
       }
     },
     "addOpenApiModal": {
@@ -376,6 +414,11 @@
       "refreshToolsButton": {
         "ariaLabel": "تحديث الأدوات",
         "tooltip": "تحديث الأدوات"
+      },
+      "badge": {
+        "direct": "Direct",
+        "gateway": "Gateway",
+        "gatewayOff": "Gateway off"
       }
     },
     "mcpOauthCallback": {
@@ -770,6 +813,10 @@
         "ariaLabel": "البحث في الأدوات",
         "placeholder": "البحث في الأدوات…"
       }
+    },
+    "mcpLineItem": {
+      "personal": "{name} · Personal",
+      "personalOnlyYou": "{name} · Personal — only you can run"
     }
   },
   "admin": {
@@ -5619,7 +5666,9 @@
     "mcpActions": {
       "header": {
         "description": "اربط خوادم MCP (بروتوكول سياق النموذج) لإضافة إجراءات وأدوات مخصصة لوكلائك.",
-        "gatewayLink": "MCP Gateway"
+        "gatewayLink": "MCP Gateway",
+        "gatewayOn": "Gateway on",
+        "gatewayOff": "Gateway off"
       }
     },
     "modals": {
@@ -8103,12 +8152,14 @@
       "toasts": {
         "invalidated": "Cache invalidated",
         "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data"
+        "loadFailed": "Could not load gateway data",
+        "updated": "Gateway setting updated"
       },
       "filter": {
         "title": "Server",
         "all": "All",
-        "empty": "No system MCP servers yet."
+        "empty": "No system MCP servers yet.",
+        "toolPlaceholder": "Tool name"
       },
       "storage": {
         "title": "Stored results",
@@ -8116,7 +8167,26 @@
         "results": "Results",
         "stored": "Stored",
         "transferred": "Transferred"
-      }
+      },
+      "tabs": {
+        "overview": "Overview",
+        "cache": "Cache",
+        "calls": "Calls"
+      },
+      "window": {
+        "label": "Time window",
+        "24h": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "module": {
+        "label": "Enable MCP Gateway",
+        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
+        "retention": "Call logs are kept for {days} days."
+      },
+      "emptyBound": "No organization MCP is bound to the gateway yet.",
+      "openActions": "Add from a pack",
+      "loadMore": "Load more"
     },
     "mcpCatalog": {
       "header": {
@@ -8391,7 +8461,9 @@
         },
         "searchTools": {
           "placeholder": "البحث عن أدوات..."
-        }
+        },
+        "personal": "{name} · Personal",
+        "personalOnlyYou": "{name} · Personal — only you can run"
       },
       "page": {
         "ariaLabel": "صفحة محرر الوكلاء"
@@ -11554,7 +11626,8 @@
           "description": "قم بتوصيل الأدوات التي يمكن لـ Onyx Craft استخدامها كسياق أثناء عمله.",
           "manageButton": "إدارة التطبيقات",
           "searchPlaceholder": "البحث في التطبيقات...",
-          "title": "التطبيقات"
+          "title": "التطبيقات",
+          "manageMyMcp": "Manage my MCP"
         },
         "kinds": {
           "app": {
@@ -12160,6 +12233,9 @@
       },
       "projectsSection": {
         "title": "Projects"
+      },
+      "mcpActions": {
+        "label": "MCP Actions"
       }
     },
     "skillsStale": {
@@ -13264,6 +13340,12 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      }
+    },
+    "mcpActions": {
+      "header": {
+        "title": "MCP Actions",
+        "description": "Add MCP servers that only you can use in Chat and Craft."
       }
     }
   },

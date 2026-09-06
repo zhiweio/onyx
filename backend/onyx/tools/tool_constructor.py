@@ -12,6 +12,7 @@ from onyx.configs.app_configs import DISABLE_VECTOR_DB
 from onyx.configs.model_configs import GEN_AI_TEMPERATURE
 from onyx.context.search.models import BaseFilters, PersonaSearchInfo
 from onyx.db.engine.sql_engine import get_session_with_current_tenant_if_none
+from onyx.db.enums import MCPServerScope
 from onyx.db.mcp import (
     get_all_mcp_tools_for_server,
     get_mcp_server_by_id,
@@ -457,6 +458,16 @@ def _construct_tools_impl(
                 continue
 
             mcp_server = get_mcp_server_by_id(db_tool_model.mcp_server_id, db_session)
+            if (
+                mcp_server.scope == MCPServerScope.PERSONAL
+                and mcp_server.owner != user.email
+            ):
+                logger.warning(
+                    "Skipping personal MCP server %s for user %s",
+                    mcp_server.id,
+                    user.email,
+                )
+                continue
 
             try:
                 mcp_credentials = resolve_mcp_credentials(mcp_server, user, db_session)

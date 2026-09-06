@@ -1,6 +1,11 @@
 """Root conftest — shared fixtures available to all test directories."""
 
+import os
 from collections.abc import Generator
+
+# Must run before any onyx import. Parent conftest loads first and pulls
+# app_configs, which freezes MCP_GATEWAY_ENABLED at import time.
+os.environ.setdefault("MCP_GATEWAY_ENABLED", "true")
 
 import pytest
 

@@ -6,13 +6,26 @@ below — nothing in the engine changes.
 """
 
 from onyx.mcp_gateway.models import ProviderPack
-from onyx.mcp_gateway.packs import generic, patsnap, qixinbao, tianyancha
+from onyx.mcp_gateway.packs import (
+    context7,
+    deepwiki,
+    generic,
+    microsoft_learn,
+    parallel_search,
+    patsnap,
+    qixinbao,
+    tianyancha,
+)
 
 BUILTIN_PACKS: tuple[ProviderPack, ...] = (
-    generic.PACK,
-    patsnap.PACK,
-    qixinbao.PACK,
+    deepwiki.PACK,
+    context7.PACK,
+    parallel_search.PACK,
+    microsoft_learn.PACK,
     tianyancha.PACK,
+    qixinbao.PACK,
+    patsnap.PACK,
+    generic.PACK,
 )
 
 __all__ = ["BUILTIN_PACKS"]

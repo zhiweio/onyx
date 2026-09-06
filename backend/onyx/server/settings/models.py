@@ -106,6 +106,8 @@ class Settings(BaseModel):
     # Admin toggle for the MCP Gateway module. Only takes effect when the
     # operator also deployed the gateway process (MCP_GATEWAY_ENABLED).
     mcp_gateway_enabled: bool = False
+    # Users may create personal MCP servers. Default on.
+    personal_mcp_enabled: bool = True
 
     # Seat usage - populated by license enforcement when seat limit is exceeded
     seat_count: int | None = None

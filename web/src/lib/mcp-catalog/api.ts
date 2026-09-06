@@ -1,18 +1,13 @@
 import { parseErrorDetail } from "@/lib/fetcher";
 import type {
-  McpCatalogEntry,
-  McpCatalogEntryCreate,
-  McpCatalogEntryUpdate,
-  McpCatalogPolicy,
-  McpGatewayCacheEntry,
+  McpGatewayCacheList,
+  McpGatewayCallList,
   McpGatewayStats,
   McpPack,
-  SystemMcpServer,
 } from "@/lib/mcp-catalog/types";
 
-const CATALOG_BASE = "/api/admin/mcp-catalog";
 const OPS_BASE = "/api/admin/mcp-gateway";
-const USER_BASE = "/api/mcp-catalog";
+const ADMIN_MCP_BASE = "/api/admin/mcp";
 
 async function readJson<T>(response: Response, fallback: string): Promise<T> {
   if (!response.ok) {
@@ -33,94 +28,80 @@ async function expectOk(response: Response, fallback: string): Promise<void> {
 
 export async function listMcpPacks(): Promise<McpPack[]> {
   return readJson<McpPack[]>(
-    await fetch(`${CATALOG_BASE}/packs`),
+    await fetch(`${ADMIN_MCP_BASE}/packs`),
     "Could not load provider packs"
   );
 }
 
-export async function listMcpCatalogEntries(): Promise<McpCatalogEntry[]> {
-  return readJson<McpCatalogEntry[]>(
-    await fetch(`${CATALOG_BASE}/entries`),
-    "Could not load system MCP servers"
-  );
+function queryString(params: Record<string, string | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value);
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
 }
 
-export async function createMcpCatalogEntry(
-  input: McpCatalogEntryCreate
-): Promise<McpCatalogEntry> {
-  const response = await fetch(`${CATALOG_BASE}/entries`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return readJson<McpCatalogEntry>(
-    response,
-    "Could not install the system MCP"
-  );
-}
-
-export async function updateMcpCatalogEntry(
-  entryId: number,
-  input: McpCatalogEntryUpdate
-): Promise<McpCatalogEntry> {
-  const response = await fetch(`${CATALOG_BASE}/entries/${entryId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return readJson<McpCatalogEntry>(response, "Could not update the system MCP");
-}
-
-export async function refreshMcpCatalogEntryTools(
-  entryId: number
-): Promise<McpCatalogEntry> {
-  const response = await fetch(
-    `${CATALOG_BASE}/entries/${entryId}/refresh-tools`,
-    { method: "POST" }
-  );
-  return readJson<McpCatalogEntry>(
-    response,
-    "Could not refresh the tool list"
-  );
-}
-
-export async function deleteMcpCatalogEntry(entryId: number): Promise<void> {
-  await expectOk(
-    await fetch(`${CATALOG_BASE}/entries/${entryId}`, { method: "DELETE" }),
-    "Could not remove the system MCP"
-  );
-}
-
-export async function listMcpCatalogPolicies(
-  entryId: number
-): Promise<McpCatalogPolicy[]> {
-  return readJson<McpCatalogPolicy[]>(
-    await fetch(`${CATALOG_BASE}/entries/${entryId}/policies`),
-    "Could not load cache policies"
-  );
-}
-
-// ── Admin: gateway operations ──────────────────────────────────────────────
-
-function slugParam(catalogSlug?: string): string {
-  return catalogSlug ? `?catalog_slug=${encodeURIComponent(catalogSlug)}` : "";
-}
-
-export async function listMcpGatewayCache(
-  catalogSlug?: string
-): Promise<McpGatewayCacheEntry[]> {
-  return readJson<McpGatewayCacheEntry[]>(
-    await fetch(`${OPS_BASE}/cache${slugParam(catalogSlug)}`),
+export async function listMcpGatewayCache(params: {
+  catalog_slug?: string;
+  tool?: string;
+  q?: string;
+  cursor?: string;
+  limit?: number;
+}): Promise<McpGatewayCacheList> {
+  return readJson<McpGatewayCacheList>(
+    await fetch(
+      `${OPS_BASE}/cache${queryString({
+        catalog_slug: params.catalog_slug,
+        tool: params.tool,
+        q: params.q,
+        cursor: params.cursor,
+        limit: params.limit ? String(params.limit) : undefined,
+      })}`
+    ),
     "Could not load the cache"
   );
 }
 
-export async function getMcpGatewayStats(
-  catalogSlug?: string
-): Promise<McpGatewayStats> {
+export async function getMcpGatewayStats(params: {
+  from: string;
+  to: string;
+  catalog_slug?: string;
+}): Promise<McpGatewayStats> {
   return readJson<McpGatewayStats>(
-    await fetch(`${OPS_BASE}/stats${slugParam(catalogSlug)}`),
+    await fetch(
+      `${OPS_BASE}/stats${queryString({
+        from: params.from,
+        to: params.to,
+        catalog_slug: params.catalog_slug,
+      })}`
+    ),
     "Could not load gateway stats"
+  );
+}
+
+export async function listMcpGatewayCalls(params: {
+  from: string;
+  to: string;
+  catalog_slug?: string;
+  tool?: string;
+  outcome?: string;
+  user_email?: string;
+  cursor?: string;
+}): Promise<McpGatewayCallList> {
+  return readJson<McpGatewayCallList>(
+    await fetch(
+      `${OPS_BASE}/calls${queryString({
+        from: params.from,
+        to: params.to,
+        catalog_slug: params.catalog_slug,
+        tool: params.tool,
+        outcome: params.outcome,
+        user_email: params.user_email,
+        cursor: params.cursor,
+      })}`
+    ),
+    "Could not load call history"
   );
 }
 
@@ -151,25 +132,3 @@ export async function refreshMcpGatewayCache(cacheKey: string): Promise<void> {
   );
 }
 
-// ── User: my system MCP servers ────────────────────────────────────────────
-
-export async function listSystemMcpServers(): Promise<SystemMcpServer[]> {
-  return readJson<SystemMcpServer[]>(
-    await fetch(`${USER_BASE}/servers`),
-    "Could not load system MCP servers"
-  );
-}
-
-export async function setSystemMcpServerEnabled(
-  mcpServerId: number,
-  enabled: boolean
-): Promise<void> {
-  await expectOk(
-    await fetch(`${USER_BASE}/servers/${mcpServerId}/enabled`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled }),
-    }),
-    "Could not change the setting"
-  );
-}

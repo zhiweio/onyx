@@ -116,6 +116,71 @@ function waitForPort(
   });
 }
 
+/**
+ * URL the Docker API container can use to reach a mock MCP on the host.
+ * Bind the mock to 0.0.0.0 and advertise this host.
+ */
+export function dockerReachableMcpUrl(
+  port: number,
+  path: string = "/mcp"
+): string {
+  const host =
+    process.env.MCP_TEST_SERVER_PUBLIC_HOST || "host.docker.internal";
+  return `http://${host}:${port}${path}`;
+}
+
+export async function startMcpNoAuthServer(
+  options: StartServerOptions = {}
+): Promise<McpServerProcess> {
+  const bindHost = options.bindHost || "0.0.0.0";
+  const publicHost =
+    options.publicHost ||
+    process.env.MCP_TEST_SERVER_PUBLIC_HOST ||
+    "host.docker.internal";
+  const port = options.port ?? 8011;
+  const pythonBinary = options.pythonBinary || "python3";
+  const readyTimeout = options.readyTimeoutMs ?? READY_TIMEOUT_MS;
+
+  const scriptPath =
+    options.scriptPath ||
+    path.resolve(
+      __dirname,
+      "../../../..",
+      "backend/tests/integration/mock_services/mcp_test_server/run_mcp_server_no_auth.py"
+    );
+  const scriptDir = path.dirname(scriptPath);
+
+  const proc = spawn(pythonBinary, [scriptPath, port.toString()], {
+    cwd: scriptDir,
+    stdio: ["pipe", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      MCP_SERVER_PORT: port.toString(),
+      MCP_SERVER_BIND_HOST: bindHost,
+      MCP_SERVER_HOST: bindHost,
+      MCP_SERVER_PUBLIC_HOST: publicHost,
+    },
+  });
+
+  proc.stdout.on("data", (chunk) => {
+    const message = chunk.toString();
+    console.log(`[mcp-no-auth-server] ${message.trimEnd()}`);
+  });
+  proc.stderr.on("data", (chunk) => {
+    const message = chunk.toString();
+    console.error(`[mcp-no-auth-server:stderr] ${message.trimEnd()}`);
+  });
+
+  proc.on("error", (err) => {
+    console.error("[mcp-no-auth-server] failed to start", err);
+  });
+
+  const readyHost = bindHost === "0.0.0.0" ? "127.0.0.1" : bindHost;
+  await waitForPort(readyHost, port, proc, readyTimeout);
+
+  return new McpServerProcess(proc, bindHost, publicHost, port);
+}
+
 export async function startMcpOauthServer(
   options: StartServerOptions = {}
 ): Promise<McpServerProcess> {

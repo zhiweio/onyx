@@ -96,11 +96,8 @@ from onyx.server.features.input_prompt.api import (
 from onyx.server.features.input_prompt.api import basic_router as input_prompt_router
 from onyx.server.features.mcp.api import admin_router as mcp_admin_router
 from onyx.server.features.mcp.api import router as mcp_router
-from onyx.server.features.mcp_catalog.api import (
-    admin_router as mcp_catalog_admin_router,
-)
+from onyx.server.features.mcp.personal_api import personal_router as mcp_personal_router
 from onyx.server.features.mcp_catalog.api import ops_router as mcp_gateway_ops_router
-from onyx.server.features.mcp_catalog.api import user_router as mcp_catalog_user_router
 from onyx.server.features.notifications.api import router as notification_router
 from onyx.server.features.oauth_config.api import (
     admin_router as admin_oauth_config_router,
@@ -638,11 +635,10 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, standard_oauth_router)
     include_router_with_global_prefix_prepended(application, federated_router)
     include_router_with_global_prefix_prepended(application, mcp_router)
+    include_router_with_global_prefix_prepended(application, mcp_personal_router)
     include_router_with_global_prefix_prepended(application, mcp_admin_router)
     # Always mounted; every handler refuses to act while the module is off, so
     # the admin UI can explain the state instead of 404-ing.
-    include_router_with_global_prefix_prepended(application, mcp_catalog_admin_router)
-    include_router_with_global_prefix_prepended(application, mcp_catalog_user_router)
     include_router_with_global_prefix_prepended(application, mcp_gateway_ops_router)
     include_router_with_global_prefix_prepended(application, skill_router)
     include_router_with_global_prefix_prepended(application, scenario_router)

@@ -6,7 +6,7 @@ from mcp.client.auth import OAuthClientProvider
 from mcp.types import CallToolResult
 
 from onyx.chat.emitter import Emitter
-from onyx.db.enums import MCPAuthenticationType, MCPTransport
+from onyx.db.enums import MCPAuthenticationType, MCPServerScope, MCPTransport
 from onyx.db.models import MCPConnectionConfig, MCPServer
 from onyx.server.features.mcp.client import call_mcp_tool_raw, process_mcp_result
 from onyx.server.features.mcp.credentials import ResolvedMCPCredentials
@@ -182,6 +182,36 @@ class MCPTool(Tool[None]):
         _server = self.mcp_server.name
         outcome = MCPToolCallStatus.ERROR
         try:
+            if (
+                self.mcp_server.scope == MCPServerScope.PERSONAL
+                and self.mcp_server.owner != self.user_email
+            ):
+                error_result = {
+                    "error": (
+                        "This personal MCP server belongs to another user. "
+                        "Only the owner can run it."
+                    )
+                }
+                self.emitter.emit(
+                    Packet(
+                        placement=placement,
+                        obj=CustomToolDelta(
+                            tool_name=self._name,
+                            response_type="json",
+                            data=error_result,
+                        ),
+                    )
+                )
+                outcome = MCPToolCallStatus.AUTH_ERROR
+                return ToolResponse(
+                    rich_response=CustomToolCallSummary(
+                        tool_name=self._name,
+                        response_type="json",
+                        tool_result=error_result,
+                    ),
+                    llm_facing_response=json.dumps(error_result),
+                )
+
             request_headers = {
                 name: value
                 for name, value in self._additional_headers.items()

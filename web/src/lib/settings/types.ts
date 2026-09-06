@@ -102,6 +102,8 @@ export interface Settings {
 
   // Admin toggle for the MCP Gateway module.
   mcp_gateway_enabled?: boolean;
+  // Users may create personal MCP servers. Default on.
+  personal_mcp_enabled?: boolean;
   // True when the operator deployed the gateway process. Gates the admin
   // toggle itself; mcp_gateway_enabled gates the module.
   mcp_gateway_available?: boolean;

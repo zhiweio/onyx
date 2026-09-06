@@ -14,6 +14,7 @@ PACK = ProviderPack(
     display_name="Patsnap / Zhihuiya",
     description="Patent search, patent detail, and generative research tools.",
     default_upstream_url="https://connect.patsnap.com/mcp",
+    group="enterprise",
     auth_adapter=MCPGatewayAuthAdapter.BEARER,
     default_policy=CachePolicySpec(
         refresh_mode=MCPGatewayRefreshMode.SWR,

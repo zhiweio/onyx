@@ -210,14 +210,18 @@ class MCPServerStatus(str, PyEnum):
 class MCPServerScope(str, PyEnum):
     """Who owns an MCP server and how its calls are routed.
 
-    SYSTEM servers are installed by an admin from the MCP catalog, route
-    through the gateway (shared cache + shared credentials), and are granted to
-    user groups. USER servers are configured by end users, connect directly to
-    their upstream, and never touch the gateway.
+    USER servers are organization MCP: an admin configures them on
+    /admin/mcp-actions, shares them with users or groups, and may optionally
+    bind them to the gateway. PERSONAL servers are owned by one user, isolated
+    from everyone else, and never route through the gateway.
+
+    SYSTEM is a leftover of the catalog product. New rows are not written with
+    it; existing SYSTEM rows migrate to USER plus a gateway binding.
     """
 
-    SYSTEM = "SYSTEM"
     USER = "USER"
+    PERSONAL = "PERSONAL"
+    SYSTEM = "SYSTEM"
 
 
 class MCPCatalogOrigin(str, PyEnum):

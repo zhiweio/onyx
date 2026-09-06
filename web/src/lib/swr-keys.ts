@@ -141,6 +141,9 @@ export const SWR_KEYS = {
   adminMcpServers: "/api/admin/mcp/servers",
   adminMcpServerToolSnapshots: (serverId: number) =>
     `/api/admin/mcp/server/${serverId}/tools/snapshots?source=db`,
+  personalMcpServers: "/api/mcp/personal/servers",
+  personalMcpServerToolSnapshots: (serverId: number) =>
+    `/api/mcp/personal/server/${serverId}/tools/snapshots?source=db`,
   mcpServers: "/api/mcp/servers",
   mcpServersCraft: "/api/mcp/servers/craft",
   agentMcpServers: (agentId: number) => `/api/mcp/servers/persona/${agentId}`,
@@ -237,6 +240,7 @@ export const SWR_KEYS = {
 
   // ── MCP Server (per-ID) ───────────────────────────────────────────────────
   adminMcpServer: (id: number) => `/api/admin/mcp/servers/${id}`,
+  personalMcpServer: (id: number) => `/api/mcp/personal/servers/${id}`,
   adminMcpGatewayPacks: "/api/admin/mcp-gateway/packs",
   adminMcpGatewayProviders: "/api/admin/mcp-gateway/providers",
   adminMcpGatewayPolicies: (slug: string) =>

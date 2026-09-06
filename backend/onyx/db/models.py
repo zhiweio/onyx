@@ -14,6 +14,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -6425,16 +6426,17 @@ class MCPServer(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # SYSTEM servers are installed from the MCP catalog and route through the
-    # gateway; USER servers are configured by end users and connect directly.
-    # The scope decides routing, so there is no separate via_gateway flag.
+    # USER = organization MCP (admin-managed, shareable, optional gateway).
+    # PERSONAL = one user's private MCP (never gateway).
+    # SYSTEM is leftover and migrated to USER plus a binding.
     scope: Mapped[MCPServerScope] = mapped_column(
         Enum(MCPServerScope, native_enum=False),
         nullable=False,
         default=MCPServerScope.USER,
         server_default=MCPServerScope.USER.value,
     )
-    # Set only for SYSTEM servers: the catalog entry that owns this row.
+    # Optional gateway binding. Set when this org server routes through the
+    # gateway; PERSONAL servers must leave this null.
     catalog_entry_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("mcp_catalog_entry.id", ondelete="CASCADE"),
@@ -6551,17 +6553,11 @@ class MCPConnectionConfig(Base):
 
 
 class MCPCatalogEntry(Base):
-    """A system-wide MCP server installed by an admin.
+    """Optional gateway binding for one organization MCP server.
 
-    The catalog is the admin-facing half of system MCP: it holds the upstream
-    address, the shared credentials every granted user spends, and the cache
-    policy. Each entry projects into exactly one `MCPServer` row with
-    scope=SYSTEM, which is what the chat tool loop actually calls.
-
-    Access follows the standard shareable-resource shape: `is_public` opens it
-    to the whole organization, otherwise the linked user groups decide. There
-    is deliberately no per-user grant — a system MCP is granted to a group, and
-    membership does the rest.
+    Holds the real upstream URL, shared upstream credentials, pack, and cache
+    policy. The chat tool loop calls the projected `MCPServer` at the gateway
+    URL. Access lives on the MCPServer (is_public / users / groups), not here.
     """
 
     __tablename__ = "mcp_catalog_entry"
@@ -6795,6 +6791,8 @@ class MCPGatewayCallLog(Base):
     arguments: Mapped[dict[str, Any]] = mapped_column(
         postgresql.JSONB(), nullable=False
     )
+    # Short preview for list views. Full arguments stay on the cache entry.
+    arguments_digest: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Nullable: an errored or pass-through call may have no stored body.
     result_blob_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("mcp_result_blob.id", ondelete="SET NULL"), nullable=True
@@ -6811,6 +6809,50 @@ class MCPGatewayCallLog(Base):
             "catalog_slug",
             "outcome",
         ),
+        Index(
+            "ix_mcp_gateway_call_log_created_id",
+            "created_at",
+            "id",
+        ),
+        Index("ix_mcp_gateway_call_log_catalog_created", "catalog_slug", "created_at"),
+        Index(
+            "ix_mcp_gateway_call_log_tool_created",
+            "effective_tool_name",
+            "created_at",
+        ),
+        Index("ix_mcp_gateway_call_log_user_created", "user_email", "created_at"),
+        Index("ix_mcp_gateway_call_log_cache_created", "cache_key", "created_at"),
+    )
+
+
+class MCPGatewayCallStatsDaily(Base):
+    """Per-day rollup of gateway calls. Overview reads this, not the raw log."""
+
+    __tablename__ = "mcp_gateway_call_stats_daily"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    catalog_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    day: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    outcome: Mapped[MCPGatewayCallOutcome] = mapped_column(
+        Enum(MCPGatewayCallOutcome, native_enum=False), nullable=False
+    )
+    call_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    billed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    response_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+    latency_ms_sum: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "catalog_slug",
+            "day",
+            "outcome",
+            name="uq_mcp_gateway_call_stats_daily_slug_day_outcome",
+        ),
+        Index("ix_mcp_gateway_call_stats_daily_day", "day"),
     )
 
 

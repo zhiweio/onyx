@@ -134,6 +134,44 @@
         "serverCreated": "MCP 서버를 만들었습니다",
         "serverUpdated": "MCP 서버를 업데이트했습니다",
         "updateFailed": "MCP 서버를 업데이트하지 못했습니다"
+      },
+      "installMode": {
+        "custom": "사용자 지정 URL",
+        "pack": "Pack에서 추가"
+      },
+      "packGroup": {
+        "common": "일반",
+        "enterprise": "기업 데이터",
+        "generic": "일반 용도"
+      },
+      "routeThrough": {
+        "title": "MCP 게이트웨이를 통해 연결",
+        "description": "조직 자격 증명을 하나 공유하고 결과를 캐시합니다. 사용자별 토큰은 사용할 수 없습니다."
+      },
+      "slug": {
+        "placeholder": "예: tianyancha",
+        "title": "게이트웨이 slug"
+      },
+      "packApiKey": {
+        "placeholder": "공유 업스트림 키",
+        "title": "조직 API 키"
+      },
+      "packHint": "Pack은 항상 MCP 게이트웨이를 통해 연결됩니다.",
+      "packList": {
+        "change": "Pack 변경",
+        "empty": "사용 가능한 Pack이 없습니다.",
+        "loading": "Pack을 불러오는 중...",
+        "prompt": "계속하려면 Pack을 선택하세요."
+      },
+      "packs": {
+        "context7": "Upstash Context7 library docs. Works without a key; an org Bearer raises the quota.",
+        "deepwiki": "Cognition DeepWiki for public GitHub repos. Use mcp.devin.ai plus a Bearer token for private repos.",
+        "generic_http": "Any MCP server reachable over Streamable HTTP or SSE.",
+        "microsoft_learn": "Official Microsoft Learn MCP. Public docs, no authentication.",
+        "parallel_search": "Parallel Search MCP. Live web search is not cached; fetch may cache a page for a short time.",
+        "patsnap": "Patent search, patent detail, and generative research tools.",
+        "qixinbao": "Chinese company registry, risk, and litigation lookups.",
+        "tianyancha": "Chinese company registry, IP, judicial, and financial data."
       }
     },
     "addOpenApiModal": {
@@ -376,6 +414,11 @@
       "refreshToolsButton": {
         "ariaLabel": "도구 새로 고침",
         "tooltip": "도구 새로 고침"
+      },
+      "badge": {
+        "direct": "Direct",
+        "gateway": "Gateway",
+        "gatewayOff": "Gateway off"
       }
     },
     "mcpOauthCallback": {
@@ -770,6 +813,10 @@
         "ariaLabel": "도구 검색",
         "placeholder": "도구 검색…"
       }
+    },
+    "mcpLineItem": {
+      "personal": "{name} · Personal",
+      "personalOnlyYou": "{name} · Personal — only you can run"
     }
   },
   "admin": {
@@ -5619,7 +5666,9 @@
     "mcpActions": {
       "header": {
         "description": "MCP(Model Context Protocol) 서버를 연결해 에이전트용 사용자 지정 작업과 도구를 추가하세요.",
-        "gatewayLink": "MCP Gateway"
+        "gatewayLink": "MCP Gateway",
+        "gatewayOn": "Gateway on",
+        "gatewayOff": "Gateway off"
       }
     },
     "modals": {
@@ -8103,12 +8152,14 @@
       "toasts": {
         "invalidated": "Cache invalidated",
         "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data"
+        "loadFailed": "Could not load gateway data",
+        "updated": "Gateway setting updated"
       },
       "filter": {
         "title": "Server",
         "all": "All",
-        "empty": "No system MCP servers yet."
+        "empty": "No system MCP servers yet.",
+        "toolPlaceholder": "Tool name"
       },
       "storage": {
         "title": "Stored results",
@@ -8116,7 +8167,26 @@
         "results": "Results",
         "stored": "Stored",
         "transferred": "Transferred"
-      }
+      },
+      "tabs": {
+        "overview": "Overview",
+        "cache": "Cache",
+        "calls": "Calls"
+      },
+      "window": {
+        "label": "Time window",
+        "24h": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "module": {
+        "label": "Enable MCP Gateway",
+        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
+        "retention": "Call logs are kept for {days} days."
+      },
+      "emptyBound": "No organization MCP is bound to the gateway yet.",
+      "openActions": "Add from a pack",
+      "loadMore": "Load more"
     },
     "mcpCatalog": {
       "header": {
@@ -8391,7 +8461,9 @@
         },
         "searchTools": {
           "placeholder": "도구 검색..."
-        }
+        },
+        "personal": "{name} · Personal",
+        "personalOnlyYou": "{name} · Personal — only you can run"
       },
       "page": {
         "ariaLabel": "에이전트 편집기 페이지"
@@ -11554,7 +11626,8 @@
           "description": "Onyx Craft가 작업하는 동안 컨텍스트로 사용할 수 있는 도구를 연결하세요.",
           "manageButton": "앱 관리",
           "searchPlaceholder": "앱 검색...",
-          "title": "앱"
+          "title": "앱",
+          "manageMyMcp": "Manage my MCP"
         },
         "kinds": {
           "app": {
@@ -12160,6 +12233,9 @@
       },
       "projectsSection": {
         "title": "프로젝트"
+      },
+      "mcpActions": {
+        "label": "MCP Actions"
       }
     },
     "skillsStale": {
@@ -13264,6 +13340,12 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      }
+    },
+    "mcpActions": {
+      "header": {
+        "title": "MCP Actions",
+        "description": "Add MCP servers that only you can use in Chat and Craft."
       }
     }
   },

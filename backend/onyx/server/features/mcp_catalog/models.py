@@ -146,3 +146,38 @@ class StatsResponse(BaseModel):
     blob_total_count: int
     blob_total_bytes: int
     blob_by_storage: dict[str, dict[str, int]]
+    retention_days: int = 30
+    top_servers: list[dict[str, Any]] = Field(default_factory=list)
+    top_tools: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CacheListResponse(BaseModel):
+    items: list[CacheEntryResponse]
+    next_cursor: str | None = None
+    total: int = 0
+
+
+class CallLogListItem(BaseModel):
+    id: int
+    created_at: datetime
+    catalog_slug: str
+    tool_name: str
+    effective_tool_name: str
+    outcome: str
+    upstream_billed: bool
+    latency_ms: int
+    response_bytes: int
+    user_email: str | None
+    session_id: str | None
+    cache_key: str
+    arguments_preview: str
+    error_message: str | None = None
+
+
+class CallLogListResponse(BaseModel):
+    items: list[CallLogListItem]
+    next_cursor: str | None = None
+
+
+class CallLogDetailResponse(CallLogListItem):
+    arguments: dict[str, Any] = Field(default_factory=dict)

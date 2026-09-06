@@ -8,6 +8,7 @@ export interface McpPack {
   display_name: string;
   description: string;
   default_upstream_url: string;
+  group?: string;
   transport: string;
   auth_adapter: string;
 }
@@ -122,6 +123,37 @@ export interface McpGatewayStats {
   blob_total_count: number;
   blob_total_bytes: number;
   blob_by_storage: Record<string, { count: number; bytes: number }>;
+  retention_days?: number;
+  top_servers?: { slug: string; count: number }[];
+  top_tools?: { tool: string; count: number }[];
+}
+
+export interface McpGatewayCacheList {
+  items: McpGatewayCacheEntry[];
+  next_cursor: string | null;
+  total: number;
+}
+
+export interface McpGatewayCallItem {
+  id: number;
+  created_at: string;
+  catalog_slug: string;
+  tool_name: string;
+  effective_tool_name: string;
+  outcome: string;
+  upstream_billed: boolean;
+  latency_ms: number;
+  response_bytes: number;
+  user_email: string | null;
+  session_id: string | null;
+  cache_key: string;
+  arguments_preview: string;
+  error_message: string | null;
+}
+
+export interface McpGatewayCallList {
+  items: McpGatewayCallItem[];
+  next_cursor: string | null;
 }
 
 /** One system MCP server as the current user sees it in their settings. */

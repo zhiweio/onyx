@@ -1943,6 +1943,10 @@ if _gateway_public_host:
 MCP_GATEWAY_TOKEN_TTL_SECONDS = int(
     os.environ.get("MCP_GATEWAY_TOKEN_TTL_SECONDS") or 300
 )
+MCP_GATEWAY_CALL_LOG_RETENTION_DAYS = int(
+    os.environ.get("MCP_GATEWAY_CALL_LOG_RETENTION_DAYS") or 30
+)
+PERSONAL_MCP_MAX_SERVERS = int(os.environ.get("PERSONAL_MCP_MAX_SERVERS") or 20)
 
 #####
 # MCP result storage — how the gateway caches tool responses

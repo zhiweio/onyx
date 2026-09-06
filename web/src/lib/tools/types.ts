@@ -20,13 +20,14 @@ export enum MCPServerStatus {
 }
 
 /**
- * SYSTEM servers are installed by an admin from the MCP catalog and route
- * through the gateway; USER servers are configured by end users and connect
- * directly to their upstream.
+ * USER is an organization MCP (admin-managed, shareable).
+ * PERSONAL is owned by one user and never uses the gateway.
+ * SYSTEM is leftover and treated as USER + gateway binding.
  */
 export enum McpServerScope {
   SYSTEM = "SYSTEM",
   USER = "USER",
+  PERSONAL = "PERSONAL",
 }
 
 export interface MCPServer {
@@ -67,8 +68,9 @@ export interface MCPServer {
   // Server-stamped affordance map; fail-closed (absent = denied).
   permissions?: PermissionsOf<"MCPServer">;
   scope?: McpServerScope;
-  // Set for system-scoped servers: the catalog entry an admin installed.
   catalog_slug?: string | null;
+  pack_slug?: string | null;
+  gateway_bound?: boolean;
 }
 
 export interface MCPAuthTemplate {
@@ -85,6 +87,13 @@ export interface MCPServersResponse {
   mcp_servers: MCPServer[];
 }
 
+export interface MCPGatewayBindingRequest {
+  slug?: string;
+  pack_slug?: string;
+  upstream_url?: string;
+  credentials?: Record<string, string>;
+}
+
 export interface MCPServerCreateRequest {
   name: string;
   description?: string;
@@ -92,6 +101,7 @@ export interface MCPServerCreateRequest {
   is_public: boolean;
   groups: number[];
   users: string[];
+  gateway_binding?: MCPGatewayBindingRequest;
 }
 
 export interface MCPServerUpdateRequest {

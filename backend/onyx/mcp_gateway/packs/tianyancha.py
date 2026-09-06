@@ -14,6 +14,7 @@ PACK = ProviderPack(
     display_name="Tianyancha",
     description="Chinese company registry, IP, judicial, and financial data.",
     default_upstream_url="https://mcp.tianyancha.com/mcp",
+    group="enterprise",
     auth_adapter=MCPGatewayAuthAdapter.RAW_AUTHORIZATION,
     default_policy=CachePolicySpec(
         refresh_mode=MCPGatewayRefreshMode.SWR,

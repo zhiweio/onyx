@@ -134,6 +134,44 @@
         "serverCreated": "MCP 服务器创建成功",
         "serverUpdated": "MCP 服务器更新成功",
         "updateFailed": "更新 MCP 服务器失败"
+      },
+      "installMode": {
+        "custom": "自定义 URL",
+        "pack": "从 Pack 安装"
+      },
+      "packGroup": {
+        "common": "常用",
+        "enterprise": "企业数据",
+        "generic": "通用"
+      },
+      "routeThrough": {
+        "title": "通过 MCP 网关接入",
+        "description": "使用一份组织凭据并缓存结果。不允许按用户分别使用 token。"
+      },
+      "slug": {
+        "placeholder": "例如 tianyancha",
+        "title": "网关 slug"
+      },
+      "packApiKey": {
+        "placeholder": "上游服务的组织密钥",
+        "title": "组织 API 密钥"
+      },
+      "packHint": "Pack 一律通过 MCP 网关接入。",
+      "packList": {
+        "change": "更换 Pack",
+        "empty": "暂无可用 Pack。",
+        "loading": "正在加载 Pack...",
+        "prompt": "选择一个 Pack 以继续。"
+      },
+      "packs": {
+        "context7": "Upstash Context7 库文档。无需密钥即可使用；组织 Bearer 可提高配额。",
+        "deepwiki": "Cognition DeepWiki，用于公开 GitHub 仓库。私有仓库需使用 mcp.devin.ai 和 Bearer token。",
+        "generic_http": "任意可通过 Streamable HTTP 或 SSE 访问的 MCP 服务器。",
+        "microsoft_learn": "官方 Microsoft Learn MCP。公开文档，无需身份验证。",
+        "parallel_search": "Parallel Search MCP。实时网页搜索不缓存；抓取页面可短时缓存。",
+        "patsnap": "专利检索、专利详情和生成式研究工具。",
+        "qixinbao": "中国企业工商、风险和诉讼查询。",
+        "tianyancha": "中国企业工商、知识产权、司法和财务数据。"
       }
     },
     "addOpenApiModal": {
@@ -376,6 +414,11 @@
       "refreshToolsButton": {
         "ariaLabel": "刷新工具",
         "tooltip": "刷新工具"
+      },
+      "badge": {
+        "direct": "Direct",
+        "gateway": "Gateway",
+        "gatewayOff": "Gateway off"
       }
     },
     "mcpOauthCallback": {
@@ -770,6 +813,10 @@
         "ariaLabel": "搜索工具",
         "placeholder": "搜索工具…"
       }
+    },
+    "mcpLineItem": {
+      "personal": "{name} · Personal",
+      "personalOnlyYou": "{name} · Personal — only you can run"
     }
   },
   "admin": {
@@ -5619,7 +5666,9 @@
     "mcpActions": {
       "header": {
         "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。",
-        "gatewayLink": "MCP Gateway"
+        "gatewayLink": "MCP Gateway",
+        "gatewayOn": "Gateway on",
+        "gatewayOff": "Gateway off"
       }
     },
     "modals": {
@@ -8103,12 +8152,14 @@
       "toasts": {
         "invalidated": "缓存已失效",
         "refreshed": "已排队刷新",
-        "loadFailed": "无法加载网关数据"
+        "loadFailed": "无法加载网关数据",
+        "updated": "Gateway setting updated"
       },
       "filter": {
         "title": "服务器",
         "all": "全部",
-        "empty": "还没有系统 MCP 服务器。"
+        "empty": "还没有系统 MCP 服务器。",
+        "toolPlaceholder": "Tool name"
       },
       "storage": {
         "title": "结果存储",
@@ -8116,7 +8167,26 @@
         "results": "结果数",
         "stored": "已存储",
         "transferred": "已传输"
-      }
+      },
+      "tabs": {
+        "overview": "Overview",
+        "cache": "Cache",
+        "calls": "Calls"
+      },
+      "window": {
+        "label": "Time window",
+        "24h": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "module": {
+        "label": "Enable MCP Gateway",
+        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
+        "retention": "Call logs are kept for {days} days."
+      },
+      "emptyBound": "No organization MCP is bound to the gateway yet.",
+      "openActions": "Add from a pack",
+      "loadMore": "Load more"
     },
     "mcpCatalog": {
       "header": {
@@ -8391,7 +8461,9 @@
         },
         "searchTools": {
           "placeholder": "搜索工具..."
-        }
+        },
+        "personal": "{name} · Personal",
+        "personalOnlyYou": "{name} · Personal — only you can run"
       },
       "page": {
         "ariaLabel": "智能体编辑器页面"
@@ -11554,7 +11626,8 @@
           "description": "连接 Onyx Craft 在工作时可用作上下文的工具。",
           "manageButton": "管理应用",
           "searchPlaceholder": "搜索应用...",
-          "title": "应用"
+          "title": "应用",
+          "manageMyMcp": "管理我的 MCP 操作"
         },
         "kinds": {
           "app": {
@@ -12160,6 +12233,9 @@
       },
       "projectsSection": {
         "title": "项目"
+      },
+      "mcpActions": {
+        "label": "MCP 操作"
       }
     },
     "skillsStale": {
@@ -13264,6 +13340,12 @@
         "forkFailed": {
           "message": "复制失败"
         }
+      }
+    },
+    "mcpActions": {
+      "header": {
+        "title": "MCP 操作",
+        "description": "添加仅供你在对话和 Craft 中使用的 MCP 服务器。"
       }
     }
   },

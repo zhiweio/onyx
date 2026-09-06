@@ -55,7 +55,8 @@ const ToolsList: React.FC<ToolsListProps> = ({
   const t = useTranslations("actions");
 
   const showFooter =
-    totalCount !== undefined && enabledCount !== undefined && totalCount > 0;
+    Boolean(leftAction) ||
+    (totalCount !== undefined && enabledCount !== undefined && totalCount > 0);
 
   return (
     <>
@@ -84,7 +85,7 @@ const ToolsList: React.FC<ToolsListProps> = ({
       </FadingEdgeContainer>
 
       {/* Footer showing enabled tool count with filter toggle */}
-      {showFooter && !(totalCount === 0) && !isFetching && (
+      {showFooter && !isFetching && (
         <div className="pt-2 px-2">
           <div className="flex items-center justify-between gap-2 w-full">
             {/* Left action area */}
@@ -92,7 +93,7 @@ const ToolsList: React.FC<ToolsListProps> = ({
 
             {/* Right action area */}
             <div className="flex items-center gap-1 ms-auto">
-              {enabledCount > 0 && (
+              {enabledCount > 0 && totalCount !== undefined && (
                 <EnabledCount
                   enabledCount={enabledCount}
                   totalCount={totalCount}

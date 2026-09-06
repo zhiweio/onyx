@@ -134,6 +134,44 @@
         "serverCreated": "MCP Server created successfully",
         "serverUpdated": "MCP Server updated successfully",
         "updateFailed": "Failed to update MCP server"
+      },
+      "installMode": {
+        "custom": "Custom URL",
+        "pack": "From Pack"
+      },
+      "packGroup": {
+        "common": "Common",
+        "enterprise": "Enterprise data",
+        "generic": "Generic"
+      },
+      "routeThrough": {
+        "title": "Route through MCP Gateway",
+        "description": "Share one upstream credential and cache results. Per-user tokens are not allowed."
+      },
+      "slug": {
+        "placeholder": "e.g. tianyancha",
+        "title": "Gateway slug"
+      },
+      "packApiKey": {
+        "placeholder": "Shared upstream key",
+        "title": "Organization API key"
+      },
+      "packHint": "Packs always route through the MCP Gateway.",
+      "packList": {
+        "change": "Change pack",
+        "empty": "No packs are available.",
+        "loading": "Loading packs...",
+        "prompt": "Select a pack to continue."
+      },
+      "packs": {
+        "context7": "Upstash Context7 library docs. Works without a key; an org Bearer raises the quota.",
+        "deepwiki": "Cognition DeepWiki for public GitHub repos. Use mcp.devin.ai plus a Bearer token for private repos.",
+        "generic_http": "Any MCP server reachable over Streamable HTTP or SSE.",
+        "microsoft_learn": "Official Microsoft Learn MCP. Public docs, no authentication.",
+        "parallel_search": "Parallel Search MCP. Live web search is not cached; fetch may cache a page for a short time.",
+        "patsnap": "Patent search, patent detail, and generative research tools.",
+        "qixinbao": "Chinese company registry, risk, and litigation lookups.",
+        "tianyancha": "Chinese company registry, IP, judicial, and financial data."
       }
     },
     "addOpenApiModal": {
@@ -376,7 +414,16 @@
       "refreshToolsButton": {
         "ariaLabel": "Refresh tools",
         "tooltip": "Refresh tools"
+      },
+      "badge": {
+        "direct": "Direct",
+        "gateway": "Gateway",
+        "gatewayOff": "Gateway off"
       }
+    },
+    "mcpLineItem": {
+      "personal": "{name} · Personal",
+      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -5619,7 +5666,9 @@
     "mcpActions": {
       "header": {
         "description": "Connect MCP (Model Context Protocol) servers to add custom actions and tools for your agents.",
-        "gatewayLink": "MCP Gateway"
+        "gatewayLink": "MCP Gateway",
+        "gatewayOn": "Gateway on",
+        "gatewayOff": "Gateway off"
       }
     },
     "modals": {
@@ -8083,8 +8132,26 @@
     "mcpGateway": {
       "header": {
         "title": "MCP Gateway",
-        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
+        "description": "Operations for organization MCP servers that route through the gateway."
       },
+      "tabs": {
+        "overview": "Overview",
+        "cache": "Cache",
+        "calls": "Calls"
+      },
+      "window": {
+        "label": "Time window",
+        "24h": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "module": {
+        "label": "Enable MCP Gateway",
+        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
+        "retention": "Call logs are kept for {days} days."
+      },
+      "emptyBound": "No organization MCP is bound to the gateway yet.",
+      "openActions": "Add from a pack",
       "stats": {
         "title": "Usage",
         "total": "Total calls",
@@ -8103,12 +8170,15 @@
       "toasts": {
         "invalidated": "Cache invalidated",
         "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data"
+        "loadFailed": "Could not load gateway data",
+        "updated": "Gateway setting updated"
       },
+      "loadMore": "Load more",
       "filter": {
         "title": "Server",
         "all": "All",
-        "empty": "No system MCP servers yet."
+        "empty": "No system MCP servers yet.",
+        "toolPlaceholder": "Tool name"
       },
       "storage": {
         "title": "Stored results",
@@ -8391,7 +8461,9 @@
         },
         "searchTools": {
           "placeholder": "Search tools..."
-        }
+        },
+        "personal": "{name} · Personal",
+        "personalOnlyYou": "{name} · Personal — only you can run"
       },
       "page": {
         "ariaLabel": "Agents Editor Page"
@@ -11384,6 +11456,12 @@
         "errorFallback": "Failed to submit decision"
       }
     },
+    "mcpActions": {
+      "header": {
+        "title": "MCP Actions",
+        "description": "Add MCP servers that only you can use in Chat and Craft."
+      }
+    },
     "apps": {
       "addCatalog": {
         "addButton": "Add",
@@ -11553,6 +11631,7 @@
         "header": {
           "description": "Connect the tools Onyx Craft can use as context while it works.",
           "manageButton": "Manage apps",
+          "manageMyMcp": "Manage my MCP",
           "searchPlaceholder": "Search apps...",
           "title": "Apps"
         },
@@ -12116,6 +12195,9 @@
     "sideBar": {
       "apps": {
         "label": "Apps"
+      },
+      "mcpActions": {
+        "label": "MCP Actions"
       },
       "backToChat": {
         "label": "Back to Chat"

@@ -13,10 +13,13 @@ import {
   SvgSimpleLoader,
 } from "@opal/icons";
 
+import { useTranslations } from "next-intl";
+import { useUser } from "@/providers/UserProvider";
 import { Section } from "@/layouts/general-layouts";
 import {
   MCPAuthenticationType,
   MCPAuthenticationPerformer,
+  McpServerScope,
   ToolSnapshot,
 } from "@/lib/tools/types";
 import EnabledCount from "@/refresh-components/EnabledCount";
@@ -31,6 +34,8 @@ export interface MCPServer {
   user_can_authenticate?: boolean;
   auth_template?: any;
   user_credentials?: Record<string, string>;
+  scope?: McpServerScope;
+  owner?: string;
 }
 
 export interface MCPLineItemProps {
@@ -54,6 +59,17 @@ export default function MCPLineItem({
   isAuthenticated,
   isLoading,
 }: MCPLineItemProps) {
+  const t = useTranslations("actions.mcpLineItem");
+  const { user } = useUser();
+  const isPersonal = server.scope === McpServerScope.PERSONAL;
+  const isOwner =
+    server.owner === user?.email || server.owner_email === user?.email;
+  const displayName = isPersonal
+    ? isOwner
+      ? t("personal", { name: server.name })
+      : t("personalOnlyYou", { name: server.name })
+    : server.name;
+
   const showAuthTrigger =
     server.auth_performer === MCPAuthenticationPerformer.PER_USER &&
     server.auth_type !== MCPAuthenticationType.NONE;
@@ -92,7 +108,7 @@ export default function MCPLineItem({
 
   return (
     <LineItemButton
-      title={server.name}
+      title={displayName}
       icon={getServerIcon()}
       sizePreset="main-ui"
       variant="section"

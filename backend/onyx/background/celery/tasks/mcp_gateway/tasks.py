@@ -4,7 +4,10 @@ from datetime import datetime, timedelta, timezone
 from celery import shared_task
 from croniter import croniter
 
-from onyx.configs.app_configs import MCP_RESULT_BLOB_TTL_DAYS
+from onyx.configs.app_configs import (
+    MCP_GATEWAY_CALL_LOG_RETENTION_DAYS,
+    MCP_RESULT_BLOB_TTL_DAYS,
+)
 from onyx.configs.constants import OnyxCeleryQueues, OnyxCeleryTask
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.db.enums import MCPGatewayRefreshMode, MCPResultStorage
@@ -13,6 +16,8 @@ from onyx.db.mcp_gateway import (
     delete_blobs,
     list_entries_for_scheduled_refresh,
     list_expired_blobs,
+    prune_call_logs,
+    upsert_daily_call_stats,
 )
 from onyx.mcp_gateway.engine import refresh_entry
 from onyx.mcp_gateway.policy import effective_policies
@@ -129,3 +134,31 @@ def cleanup_mcp_result_blobs(*, tenant_id: str) -> None:  # noqa: ARG001
         deleted = delete_blobs(db_session, [blob_id for blob_id, _ in targets])
 
     logger.info("Deleted %s expired MCP result blobs", deleted)
+
+
+@shared_task(
+    name=OnyxCeleryTask.ROLLUP_MCP_GATEWAY_CALL_STATS,
+    ignore_result=True,
+    trail=False,
+    queue=OnyxCeleryQueues.MCP_GATEWAY,
+)
+def rollup_mcp_gateway_call_stats(*, tenant_id: str) -> None:  # noqa: ARG001
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
+    with get_session_with_current_tenant() as db_session:
+        written = upsert_daily_call_stats(db_session, day=yesterday)
+    logger.info("Rolled up MCP gateway call stats for %s (%s rows)", yesterday, written)
+
+
+@shared_task(
+    name=OnyxCeleryTask.PRUNE_MCP_GATEWAY_CALL_LOGS,
+    ignore_result=True,
+    trail=False,
+    queue=OnyxCeleryQueues.MCP_GATEWAY,
+)
+def prune_mcp_gateway_call_logs(*, tenant_id: str) -> None:  # noqa: ARG001
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        days=MCP_GATEWAY_CALL_LOG_RETENTION_DAYS
+    )
+    with get_session_with_current_tenant() as db_session:
+        deleted = prune_call_logs(db_session, older_than=cutoff)
+    logger.info("Pruned %s MCP gateway call log rows older than %s", deleted, cutoff)

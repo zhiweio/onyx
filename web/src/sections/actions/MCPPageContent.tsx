@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import { mcpActionsPath, type McpSurface } from "@/lib/tools/mcpSurface";
 import { KeyedMutator } from "swr";
 import MCPActionCard from "@/sections/actions/MCPActionCard";
 import AdminListHeader from "@/sections/admin/AdminListHeader";
@@ -29,17 +29,25 @@ import {
 } from "@/lib/tools/svc";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useAdminMcpServers } from "@/lib/tools/hooks";
+import type { Route } from "next";
+import { useAdminMcpServers, usePersonalMcpServers } from "@/lib/tools/hooks";
 
-export default function MCPPageContent() {
+export default function MCPPageContent({
+  variant = "admin",
+}: {
+  variant?: McpSurface;
+}) {
   const t = useTranslations("actions");
+  const listPath = mcpActionsPath(variant);
 
   // Data fetching
+  const adminListing = useAdminMcpServers();
+  const personalListing = usePersonalMcpServers();
   const {
     mcpData,
     isLoading: isMcpLoading,
     mutateMcpServers,
-  } = useAdminMcpServers();
+  } = variant === "personal" ? personalListing : adminListing;
 
   // Modal management
   const authModal = useCreateModal();
@@ -57,7 +65,7 @@ export default function MCPPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const mcpServers = useMemo(
-    () => (mcpData?.mcp_servers || []) as MCPServer[],
+    () => mcpData?.mcp_servers ?? [],
     [mcpData?.mcp_servers]
   );
   const isLoading = isMcpLoading;
@@ -88,17 +96,19 @@ export default function MCPPageContent() {
         try {
           await updateMCPServerStatus(
             serverIdInt,
-            MCPServerStatus.FETCHING_TOOLS
+            MCPServerStatus.FETCHING_TOOLS,
+            variant
           );
 
           await mutateMcpServers();
 
-          router.replace(ADMIN_ROUTES.MCP_ACTIONS.path);
+          // SAFETY: mcpActionsPath returns only /admin/mcp-actions or /craft/v1/mcp-actions.
+          router.replace(listPath as Route);
 
           // Automatically expand the tools for this server
           setServerToExpand(serverIdInt);
 
-          await refreshMCPServerTools(serverIdInt);
+          await refreshMCPServerTools(serverIdInt, variant);
 
           toast.success(t("mcpPage.toasts.toolsFetched"));
 
@@ -187,7 +197,8 @@ export default function MCPPageContent() {
     try {
       await updateMCPServerStatus(
         activeServer.id,
-        MCPServerStatus.DISCONNECTED
+        MCPServerStatus.DISCONNECTED,
+        variant
       );
 
       toast.success(t("mcpPage.toasts.serverDisconnected"));
@@ -212,7 +223,7 @@ export default function MCPPageContent() {
 
     setIsDisconnecting(true);
     try {
-      await deleteMCPServer(activeServer.id);
+      await deleteMCPServer(activeServer.id, variant);
 
       toast.success(t("mcpPage.toasts.serverDeleted"));
 
@@ -259,7 +270,7 @@ export default function MCPPageContent() {
   const handleDelete = useCallback(
     async (serverId: number) => {
       try {
-        await deleteMCPServer(serverId);
+        await deleteMCPServer(serverId, variant);
 
         toast.success(t("mcpPage.toasts.serverDeleted"));
 
@@ -297,10 +308,14 @@ export default function MCPPageContent() {
         // Expand tools list immediately so the user sees the skeleton
         setServerToExpand(serverId);
 
-        await updateMCPServerStatus(serverId, MCPServerStatus.FETCHING_TOOLS);
+        await updateMCPServerStatus(
+          serverId,
+          MCPServerStatus.FETCHING_TOOLS,
+          variant
+        );
         await mutateMcpServers();
 
-        await refreshMCPServerTools(serverId);
+        await refreshMCPServerTools(serverId, variant);
 
         toast.success(t("mcpPage.toasts.toolsFetched"));
 
@@ -324,7 +339,11 @@ export default function MCPPageContent() {
   const handleReconnect = useCallback(
     async (serverId: number) => {
       try {
-        await updateMCPServerStatus(serverId, MCPServerStatus.CONNECTED);
+        await updateMCPServerStatus(
+          serverId,
+          MCPServerStatus.CONNECTED,
+          variant
+        );
 
         toast.success(t("mcpPage.toasts.serverReconnected"));
 
@@ -360,7 +379,7 @@ export default function MCPPageContent() {
           { revalidate: false }
         );
 
-        await updateToolStatus(parseInt(toolId), enabled);
+        await updateToolStatus(parseInt(toolId), enabled, variant);
 
         // Revalidate to get fresh data from server
         await mutateServerTools();
@@ -393,7 +412,7 @@ export default function MCPPageContent() {
     ) => {
       try {
         // Refresh tools for this specific server (discovers from MCP and syncs to DB)
-        await refreshMCPServerTools(serverId);
+        await refreshMCPServerTools(serverId, variant);
 
         // Update the local cache with fresh data
         await mutateServerTools();
@@ -438,7 +457,7 @@ export default function MCPPageContent() {
           { revalidate: false }
         );
 
-        const result = await updateToolsStatus(toolIds, enabled);
+        const result = await updateToolsStatus(toolIds, enabled, variant);
 
         // Revalidate to get fresh data from server
         await mutateServerTools();
@@ -485,7 +504,7 @@ export default function MCPPageContent() {
   const handleRenameServer = useCallback(
     async (serverId: number, newName: string) => {
       try {
-        await updateMCPServer(serverId, { name: newName });
+        await updateMCPServer(serverId, { name: newName }, variant);
         toast.success(t("mcpPage.toasts.serverRenamed"));
         await mutateMcpServers();
       } catch (error) {
@@ -550,6 +569,7 @@ export default function MCPPageContent() {
               return (
                 <MCPActionCard
                   key={server.id}
+                  surface={variant}
                   serverId={server.id}
                   server={server}
                   title={server.name}
@@ -578,6 +598,7 @@ export default function MCPPageContent() {
       <authModal.Provider>
         <MCPAuthenticationModal
           mcpServer={activeServer}
+          surface={variant}
           skipOverlay
           onTriggerFetchTools={triggerFetchToolsInPlace}
           mutateMcpServers={mutateMcpServers}
@@ -587,6 +608,7 @@ export default function MCPPageContent() {
       <manageServerModal.Provider>
         <AddMCPServerModal
           skipOverlay
+          surface={variant}
           activeServer={activeServer}
           setActiveServer={setActiveServer}
           disconnectModal={disconnectModal}

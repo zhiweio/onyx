@@ -7,7 +7,12 @@ from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from onyx.auth.permissions import has_permission
 from onyx.db.constants import UNSET, UnsetType
-from onyx.db.enums import MCPServerStatus, Permission, PermissionAuthority
+from onyx.db.enums import (
+    MCPServerScope,
+    MCPServerStatus,
+    Permission,
+    PermissionAuthority,
+)
 from onyx.db.models import (
     MCPServer,
     OAuthConfig,
@@ -112,6 +117,8 @@ def can_manage_mcp_server(user: User, server: MCPServer) -> bool:
     """Owner-or-admin gate for every action on an MCP server (edit, delete, connect, status).
     Global MANAGE_ACTIONS manages any server — that permission is full-admin-equivalent for
     actions, so it isn't narrowed to FULL_ADMIN; a scoped manager only one they own."""
+    if server.scope == MCPServerScope.PERSONAL:
+        return server.owner == user.email
     authority = has_permission(user, Permission.MANAGE_ACTIONS)
     if authority is PermissionAuthority.GLOBAL:
         return True

@@ -729,6 +729,8 @@ class OnyxCeleryTask:
     REFRESH_MCP_GATEWAY_CACHE_ENTRY = "refresh_mcp_gateway_cache_entry"
     CHECK_MCP_GATEWAY_SCHEDULED_REFRESH = "check_mcp_gateway_scheduled_refresh"
     CLEANUP_MCP_RESULT_BLOBS = "cleanup_mcp_result_blobs"
+    ROLLUP_MCP_GATEWAY_CALL_STATS = "rollup_mcp_gateway_call_stats"
+    PRUNE_MCP_GATEWAY_CALL_LOGS = "prune_mcp_gateway_call_logs"
 
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"

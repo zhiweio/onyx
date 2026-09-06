@@ -16,11 +16,11 @@ import { useCreateModal } from "@opal/components";
 import {
   ActionStatus,
   ToolSnapshot,
-  McpServerScope,
   MCPServerStatus,
   MCPServer,
 } from "@/lib/tools/types";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import { useSettings } from "@/lib/settings/hooks";
 import useServerTools from "@/hooks/useServerTools";
 import { can } from "@/lib/permissions/resource-actions";
 import { KeyedMutator } from "swr";
@@ -85,6 +85,7 @@ export interface MCPActionCardProps {
 
   // Optional styling
   className?: string;
+  surface?: "admin" | "personal";
 }
 
 // Main Component
@@ -108,9 +109,21 @@ export default function MCPActionCard({
   onRefreshTools,
   onUpdateToolsStatus,
   className,
+  surface = "admin",
 }: MCPActionCardProps) {
   const t = useTranslations("actions");
   const tGateway = useTranslations("admin.mcpActions");
+  const settings = useSettings();
+  const cardTitle =
+    surface === "admin"
+      ? `${title} · ${
+          server.gateway_bound
+            ? settings.mcp_gateway_enabled
+              ? t("mcpCard.badge.gateway")
+              : t("mcpCard.badge.gatewayOff")
+            : t("mcpCard.badge.direct")
+        }`
+      : title;
   const [isToolsExpanded, setIsToolsExpanded] = useState(initialExpanded);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
@@ -146,7 +159,11 @@ export default function MCPActionCard({
   }, [server.status]);
 
   // Lazy load tools only when expanded
-  const { tools, isLoading, mutate } = useServerTools(server, isToolsExpanded);
+  const { tools, isLoading, mutate } = useServerTools(
+    server,
+    isToolsExpanded,
+    surface
+  );
 
   // Retry tools fetch when server transitions from FETCHING_TOOLS to CONNECTED
   useEffect(() => {
@@ -277,8 +294,11 @@ export default function MCPActionCard({
             aria-label={t("mcpCard.refreshToolsButton.ariaLabel")}
           />
         )}
-        {server.scope === McpServerScope.SYSTEM && (
-          <Button href={ADMIN_ROUTES.MCP_CATALOG.path} prominence="internal">
+        {surface === "admin" && server.gateway_bound && (
+          <Button
+            href={`${ADMIN_ROUTES.MCP_GATEWAY.path}?tab=cache&server=${server.catalog_slug ?? ""}`}
+            prominence="internal"
+          >
             {tGateway("header.gatewayLink")}
           </Button>
         )}
@@ -304,7 +324,7 @@ export default function MCPActionCard({
   return (
     <>
       <ActionCard
-        title={title}
+        title={cardTitle}
         description={description}
         icon={icon}
         status={status}
@@ -318,7 +338,7 @@ export default function MCPActionCard({
         onSearchQueryChange={setSearchQuery}
         onFold={handleFold}
         className={className}
-        ariaLabel={t("mcpCard.card.ariaLabel", { title })}
+        ariaLabel={t("mcpCard.card.ariaLabel", { title: cardTitle })}
       >
         <ToolsList
           isFetching={

@@ -57,6 +57,7 @@ import {
   CRAFT_REPORT_TEMPLATES_PATH,
   CRAFT_PROJECTS_PATH,
   CRAFT_APPS_PATH,
+  CRAFT_MCP_ACTIONS_PATH,
   CRAFT_TASKS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
@@ -387,6 +388,13 @@ const MemoizedBuildSidebarInner = memo(() => {
             selected={pathname.startsWith(CRAFT_APPS_PATH)}
           >
             {t("apps.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgBlocks}
+            onClick={() => navigate(CRAFT_MCP_ACTIONS_PATH)}
+            selected={pathname.startsWith(CRAFT_MCP_ACTIONS_PATH)}
+          >
+            {t("mcpActions.label")}
           </SidebarTab>
         </div>
       </SidebarLayouts.Header>

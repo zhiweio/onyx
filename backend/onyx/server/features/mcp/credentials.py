@@ -273,13 +273,16 @@ def resolve_mcp_credentials(
     `user_configs` may preload every requested server's user row; a missing key
     means no stored user values.
     """
-    # A system server carries no per-user credential: the admin's shared
-    # credentials live on the catalog entry and the gateway attaches them.
-    if mcp_server.scope == MCPServerScope.SYSTEM:
-        entry = mcp_server.catalog_entry
-        if entry is None:
+    # Gateway-bound organization servers never carry per-user credentials.
+    # Personal servers never route through the gateway, even if a binding
+    # row were attached by mistake.
+    if (
+        mcp_server.scope != MCPServerScope.PERSONAL
+        and mcp_server.catalog_entry is not None
+    ):
+        if mcp_server.auth_performer == MCPAuthenticationPerformer.PER_USER:
             raise MCPCredentialsError(
-                f"System MCP server {mcp_server.id} has no catalog entry"
+                "Gateway-bound servers cannot use per-user authentication"
             )
         return ResolvedMCPCredentials(
             connection_config=None,
@@ -287,7 +290,7 @@ def resolve_mcp_credentials(
             auth_type=mcp_server.auth_type,
             auth_template=None,
             user_email=user.email,
-            system_catalog_slug=entry.slug,
+            system_catalog_slug=mcp_server.catalog_entry.slug,
         )
 
     auth_template = get_mcp_auth_template(mcp_server)

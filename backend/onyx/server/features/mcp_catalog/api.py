@@ -1,29 +1,28 @@
-"""System MCP catalog: admin install/grant, ops view, and the user settings surface.
+"""Gateway operations for organization MCP servers bound to the gateway.
 
-Three routers, three audiences:
+`ops_router` (`/admin/mcp-gateway`) is the live surface: cache, call history,
+and time-window stats. Gated on MANAGE_ACTIONS.
 
-- `admin_router` (`/admin/mcp-catalog`) — install a system MCP, hold its shared
-  credentials, grant it to groups. Gated on MANAGE_SYSTEM_MCP.
-- `ops_router` (`/admin/mcp-gateway`) — cache hit rate, stored bytes, and
-  invalidation. Same gate, separate surface so the two do not blur together.
-- `user_router` (`/mcp-catalog`) — what a user has been granted, and their own
-  on/off switch.
-
-Every route refuses to do anything when the gateway module is off. That is what
-makes this a removable brick rather than a permanent fixture.
+Catalog install and user routers in this module are leftover and not mounted.
+Organization MCP is created from `/admin/mcp`.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
-from onyx.configs.app_configs import MCP_GATEWAY_PUBLIC_URL
+from onyx.configs.app_configs import (
+    MCP_GATEWAY_CALL_LOG_RETENTION_DAYS,
+    MCP_GATEWAY_PUBLIC_URL,
+)
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
+    MCPGatewayCallOutcome,
     MCPServerScope,
     MCPServerStatus,
     Permission,
@@ -49,11 +48,21 @@ from onyx.db.mcp_catalog import (
 )
 from onyx.db.mcp_gateway import (
     blob_storage_summary,
-    call_stats,
+    call_stats_windowed,
+    count_cache_entries,
     delete_cache_entries,
+    get_call_log,
     list_cache_entries,
+    list_call_logs,
+    top_call_slugs,
+    top_call_tools,
 )
-from onyx.db.models import MCPCatalogEntry, User
+from onyx.db.models import (
+    MCPCatalogEntry,
+    MCPGatewayCacheEntry,
+    MCPGatewayCallLog,
+    User,
+)
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.mcp_gateway.engine import enqueue_refresh, invalidate_cache_keys
@@ -66,6 +75,10 @@ from onyx.server.features.mcp.api import sync_mcp_server_tools
 from onyx.server.features.mcp.client import discover_mcp_tools
 from onyx.server.features.mcp_catalog.models import (
     CacheEntryResponse,
+    CacheListResponse,
+    CallLogDetailResponse,
+    CallLogListItem,
+    CallLogListResponse,
     CatalogEntryCreateRequest,
     CatalogEntryResponse,
     CatalogEntryUpdateRequest,
@@ -86,7 +99,7 @@ admin_router = APIRouter(prefix="/admin/mcp-catalog")
 ops_router = APIRouter(prefix="/admin/mcp-gateway")
 user_router = APIRouter(prefix="/mcp-catalog")
 
-_MANAGE = require_permission(Permission.MANAGE_SYSTEM_MCP)
+_MANAGE = require_permission(Permission.MANAGE_ACTIONS)
 _BASIC = require_permission(Permission.BASIC_ACCESS)
 
 
@@ -372,28 +385,114 @@ def list_entry_policies(
 # Admin: gateway operations
 # ---------------------------------------------------------------------------
 
+_MAX_CALL_WINDOW = timedelta(days=7)
+
+
+def _parse_window(
+    from_time: datetime | None, to_time: datetime | None
+) -> tuple[datetime, datetime]:
+    if from_time is None or to_time is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "from and to are required.",
+        )
+    if to_time <= from_time:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "to must be after from.")
+    if to_time - from_time > _MAX_CALL_WINDOW:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "The time window cannot exceed 7 days.",
+        )
+    return from_time, to_time
+
+
+def _cache_cursor(item: MCPGatewayCacheEntry) -> str:
+    return f"{item.last_accessed_at.isoformat()}|{item.id}"
+
+
+def _parse_cache_cursor(cursor: str | None) -> tuple[datetime | None, int | None]:
+    if not cursor:
+        return None, None
+    stamp, raw_id = cursor.rsplit("|", 1)
+    return datetime.fromisoformat(stamp), int(raw_id)
+
+
+def _call_cursor(item: MCPGatewayCallLog) -> str:
+    return f"{item.created_at.isoformat()}|{item.id}"
+
+
+def _parse_call_cursor(cursor: str | None) -> tuple[datetime | None, int | None]:
+    if not cursor:
+        return None, None
+    stamp, raw_id = cursor.rsplit("|", 1)
+    return datetime.fromisoformat(stamp), int(raw_id)
+
+
+def _call_item(row: MCPGatewayCallLog) -> CallLogListItem:
+    preview = row.arguments_digest or ""
+    return CallLogListItem(
+        id=row.id,
+        created_at=row.created_at,
+        catalog_slug=row.catalog_slug,
+        tool_name=row.tool_name,
+        effective_tool_name=row.effective_tool_name,
+        outcome=row.outcome.value,
+        upstream_billed=row.upstream_billed,
+        latency_ms=row.latency_ms,
+        response_bytes=row.response_bytes,
+        user_email=row.user_email,
+        session_id=row.session_id,
+        cache_key=row.cache_key,
+        arguments_preview=preview[:120],
+        error_message=row.error_message,
+    )
+
 
 @ops_router.get("/cache")
 def list_gateway_cache(
     catalog_slug: str | None = None,
+    tool: str | None = None,
+    q: str | None = None,
+    sort: str = "last_accessed",
+    limit: int = 50,
+    cursor: str | None = None,
     db_session: Session = Depends(get_session),
     _: User = Depends(_MANAGE),
-) -> list[CacheEntryResponse]:
-    return [
-        CacheEntryResponse(
-            cache_key=item.cache_key,
-            catalog_slug=item.catalog_slug,
-            tool_name=item.tool_name,
-            effective_tool_name=item.effective_tool_name,
-            hit_count=item.hit_count,
-            size_bytes=item.blob.size_bytes if item.blob else 0,
-            storage=item.blob.storage.value if item.blob else "unknown",
-            last_fetched_at=item.last_fetched_at,
-            last_accessed_at=item.last_accessed_at,
-            last_refresh_status=item.last_refresh_status,
-        )
-        for item in list_cache_entries(db_session, catalog_slug=catalog_slug)
-    ]
+) -> CacheListResponse:
+    accessed_at, cursor_id = _parse_cache_cursor(cursor)
+    items = list_cache_entries(
+        db_session,
+        catalog_slug=catalog_slug,
+        tool_name=tool,
+        q=q,
+        sort=sort,
+        limit=min(limit, 100),
+        cursor_accessed_at=accessed_at,
+        cursor_id=cursor_id,
+    )
+    total = count_cache_entries(
+        db_session, catalog_slug=catalog_slug, tool_name=tool, q=q
+    )
+    next_cursor = _cache_cursor(items[-1]) if len(items) >= min(limit, 100) else None
+    return CacheListResponse(
+        items=[
+            CacheEntryResponse(
+                cache_key=item.cache_key,
+                catalog_slug=item.catalog_slug,
+                tool_name=item.tool_name,
+                effective_tool_name=item.effective_tool_name,
+                hit_count=item.hit_count,
+                size_bytes=item.blob.size_bytes if item.blob else 0,
+                storage=item.blob.storage.value if item.blob else "unknown",
+                last_fetched_at=item.last_fetched_at,
+                last_accessed_at=item.last_accessed_at,
+                last_refresh_status=item.last_refresh_status,
+            )
+            for item in items
+        ],
+        next_cursor=next_cursor,
+        total=total,
+    )
 
 
 @ops_router.post("/cache/invalidate")
@@ -402,13 +501,22 @@ def invalidate_gateway_cache(
     db_session: Session = Depends(get_session),
     _: User = Depends(_MANAGE),
 ) -> dict[str, int]:
-    # Collect the keys before deleting the rows, otherwise a slug- or
-    # tool-wide invalidation leaves the hot tier serving what the durable tier
-    # no longer has.
+    if (
+        request.cache_key is None
+        and request.catalog_slug is None
+        and request.tool_name is None
+    ):
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "Set a server, tool, or cache key before invalidating.",
+        )
     doomed = [
         entry.cache_key
         for entry in list_cache_entries(
-            db_session, catalog_slug=request.catalog_slug, limit=10_000
+            db_session,
+            catalog_slug=request.catalog_slug,
+            tool_name=request.tool_name,
+            limit=100,
         )
         if request.cache_key is None or entry.cache_key == request.cache_key
     ]
@@ -431,19 +539,92 @@ def refresh_gateway_cache(
     enqueue_refresh(get_current_tenant_id(), request.cache_key)
 
 
+@ops_router.get("/calls")
+def list_gateway_calls(
+    from_time: Annotated[datetime | None, Query(alias="from")] = None,
+    to_time: Annotated[datetime | None, Query(alias="to")] = None,
+    catalog_slug: str | None = None,
+    tool: str | None = None,
+    outcome: MCPGatewayCallOutcome | None = None,
+    user_email: str | None = None,
+    session: str | None = None,
+    cache_key: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    db_session: Session = Depends(get_session),
+    _: User = Depends(_MANAGE),
+) -> CallLogListResponse:
+    start, end = _parse_window(from_time, to_time)
+    created_at, cursor_id = _parse_call_cursor(cursor)
+    items = list_call_logs(
+        db_session,
+        from_time=start,
+        to_time=end,
+        catalog_slug=catalog_slug,
+        tool_name=tool,
+        outcome=outcome,
+        user_email=user_email,
+        session_id=session,
+        cache_key=cache_key,
+        limit=min(limit, 100),
+        cursor_created_at=created_at,
+        cursor_id=cursor_id,
+    )
+    next_cursor = _call_cursor(items[-1]) if len(items) >= min(limit, 100) else None
+    return CallLogListResponse(
+        items=[_call_item(row) for row in items],
+        next_cursor=next_cursor,
+    )
+
+
+@ops_router.get("/calls/{call_id}")
+def get_gateway_call(
+    call_id: int,
+    db_session: Session = Depends(get_session),
+    _: User = Depends(_MANAGE),
+) -> CallLogDetailResponse:
+    row = get_call_log(db_session, call_id)
+    if row is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Call log row not found")
+    item = _call_item(row)
+    return CallLogDetailResponse(
+        **item.model_dump(),
+        arguments=row.arguments or {},
+    )
+
+
 @ops_router.get("/stats")
 def gateway_stats(
+    from_time: Annotated[datetime | None, Query(alias="from")] = None,
+    to_time: Annotated[datetime | None, Query(alias="to")] = None,
     catalog_slug: str | None = None,
     db_session: Session = Depends(get_session),
     _: User = Depends(_MANAGE),
 ) -> StatsResponse:
-    calls = call_stats(db_session, catalog_slug=catalog_slug)
+    start, end = _parse_window(from_time, to_time)
+    calls = call_stats_windowed(
+        db_session, from_time=start, to_time=end, catalog_slug=catalog_slug
+    )
     blobs = blob_storage_summary(db_session)
     return StatsResponse(
         **calls,
         blob_total_count=blobs["total_count"],
         blob_total_bytes=blobs["total_bytes"],
         blob_by_storage=blobs["by_storage"],
+        retention_days=MCP_GATEWAY_CALL_LOG_RETENTION_DAYS,
+        top_servers=[
+            {"slug": slug, "count": count}
+            for slug, count in top_call_slugs(db_session, from_time=start, to_time=end)
+        ],
+        top_tools=[
+            {"tool": name, "count": count}
+            for name, count in top_call_tools(
+                db_session,
+                from_time=start,
+                to_time=end,
+                catalog_slug=catalog_slug,
+            )
+        ],
     )
 
 

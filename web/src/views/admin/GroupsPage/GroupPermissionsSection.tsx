@@ -21,7 +21,6 @@ import {
   SvgFiles,
   SvgCreateAgent,
   SvgManageAgent,
-  SvgMcp,
   SvgSimpleLoader,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
@@ -38,7 +37,6 @@ const ICON_MAP: Record<string, IconFunctionComponent> = {
   manage_llms: SvgCpu,
   manage_connectors_and_document_sets: SvgFiles,
   manage_actions: SvgActions,
-  manage_system_mcp: SvgMcp,
   manage_groups: SvgUsers,
   manage_service_accounts: SvgUserKey,
   manage_bots: SvgSlack,

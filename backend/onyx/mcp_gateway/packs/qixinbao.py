@@ -13,6 +13,7 @@ PACK = ProviderPack(
     display_name="Qixinbao",
     description="Chinese company registry, risk, and litigation lookups.",
     default_upstream_url="https://ai.qixin.com/mcp",
+    group="enterprise",
     auth_adapter=MCPGatewayAuthAdapter.HEADER_MAP,
     default_policy=CachePolicySpec(
         refresh_mode=MCPGatewayRefreshMode.SWR,
