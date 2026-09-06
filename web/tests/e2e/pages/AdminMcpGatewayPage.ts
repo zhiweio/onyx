@@ -7,27 +7,39 @@ import { ADMIN_ROUTES } from "@/lib/admin-routes";
 
 export class AdminMcpGatewayPage {
   readonly page: Page;
+  readonly root: Locator;
+  readonly enableSwitch: Locator;
+  readonly dateRange: Locator;
+  readonly filters: Locator;
+  readonly serverFilter: Locator;
+  readonly toolFilter: Locator;
   readonly overviewTab: Locator;
   readonly cacheTab: Locator;
   readonly callsTab: Locator;
-  readonly toolFilter: Locator;
-  readonly loadMoreButton: Locator;
   readonly cacheTable: Locator;
   readonly callsTable: Locator;
+  readonly cacheSearch: Locator;
+  readonly callsSearch: Locator;
+  readonly confirmToggle: Locator;
+  readonly tableFooter: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.overviewTab = page.getByRole("tab", { name: /Overview/i });
-    this.cacheTab = page.getByRole("tab", { name: /^Cache$/i });
-    this.callsTab = page.getByRole("tab", { name: /^Calls$/i });
-    this.toolFilter = page.getByLabel(/Tool name/i);
-    this.loadMoreButton = page.getByRole("button", { name: /Load more/i });
-    this.cacheTable = page.getByRole("table").filter({
-      has: page.getByText(/Cached calls/i),
-    });
-    this.callsTable = page.getByRole("table").filter({
-      has: page.getByText(/Time window/i),
-    });
+    this.root = page.getByTestId("mcp-gateway-page");
+    this.enableSwitch = page.getByTestId("mcp-gateway-enable-switch");
+    this.dateRange = page.getByTestId("admin-date-range-selector");
+    this.filters = page.getByTestId("mcp-gateway-filters");
+    this.serverFilter = page.getByTestId("mcp-gateway-server-filter");
+    this.toolFilter = page.getByTestId("mcp-gateway-tool-filter");
+    this.overviewTab = page.getByTestId("mcp-gateway-tab-overview");
+    this.cacheTab = page.getByTestId("mcp-gateway-tab-cache");
+    this.callsTab = page.getByTestId("mcp-gateway-tab-calls");
+    this.cacheTable = page.getByTestId("mcp-gateway-cache-table");
+    this.callsTable = page.getByTestId("mcp-gateway-calls-table");
+    this.cacheSearch = page.getByTestId("mcp-gateway-cache-search");
+    this.callsSearch = page.getByTestId("mcp-gateway-calls-search");
+    this.confirmToggle = page.getByTestId("mcp-gateway-confirm-toggle");
+    this.tableFooter = page.locator(".table-footer");
   }
 
   async goto(query?: { tab?: string; server?: string }): Promise<void> {
@@ -40,24 +52,31 @@ export class AdminMcpGatewayPage {
   }
 
   async expectLoaded(): Promise<void> {
-    await expect(
-      this.page.getByText(
-        /Operations for organization MCP servers that route through the gateway/i
-      )
-    ).toBeVisible();
+    await expect(this.root).toBeVisible();
     await expect(this.overviewTab).toBeVisible();
     await expect(this.cacheTab).toBeVisible();
     await expect(this.callsTab).toBeVisible();
   }
 
-  async expectTimeWindowVisible(): Promise<void> {
-    await expect(this.page.getByText(/24 hours/i).first()).toBeVisible();
+  async expectDateRangeVisible(): Promise<void> {
+    await expect(this.dateRange).toBeVisible();
+    await expect(this.dateRange.locator("button").nth(1)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   }
 
   async selectSevenDayWindow(): Promise<void> {
-    await this.page.getByText(/24 hours/i).first().click();
-    await this.page.getByRole("option", { name: /7 days/i }).click();
-    await expect(this.page.getByText(/7 days/i).first()).toBeVisible();
+    await this.dateRange.locator("button").nth(0).click();
+    await expect(this.dateRange.locator("button").nth(0)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await this.dateRange.locator("button").nth(1).click();
+    await expect(this.dateRange.locator("button").nth(1)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   }
 
   async openTab(tab: "overview" | "cache" | "calls"): Promise<void> {
@@ -72,18 +91,37 @@ export class AdminMcpGatewayPage {
   }
 
   async expectCacheTable(): Promise<void> {
-    await expect(this.page.getByText(/Cached calls/i).first()).toBeVisible();
-    await expect(this.page.getByText(/hits/i).first()).toBeVisible();
+    await expect(this.cacheTable).toBeVisible();
+    await expect(this.cacheSearch).toBeVisible();
+    await expect(this.cacheTable.locator(".table-footer")).toBeVisible();
+  }
+
+  async searchCache(term: string): Promise<void> {
+    await this.cacheSearch.fill(term);
+    await expect(this.cacheSearch).toHaveValue(term);
   }
 
   async expectCallsPreviewOnly(): Promise<void> {
-    await expect(this.page.getByText(/Time window/i).first()).toBeVisible();
-    const body = await this.page.locator("table tbody").innerText();
-    expect(body).not.toMatch(/"arguments"\s*:/);
-    expect(body).not.toMatch(/\{\s*"\w+"\s*:/);
+    await expect(this.callsTable).toBeVisible();
+    await expect(this.callsSearch).toBeVisible();
+    await expect(this.callsTable.locator(".table-footer")).toBeVisible();
+    await expect(this.callsTable).not.toContainText(/"arguments"\s*:/);
+    await expect(this.callsTable).not.toContainText(/\{\s*"\w+"\s*:/);
+  }
+
+  async expectConfirmOnToggle(): Promise<void> {
+    await expect(this.enableSwitch).toBeVisible();
+    await this.enableSwitch.click();
+    await expect(this.page.getByRole("dialog")).toBeVisible();
+    await expect(this.confirmToggle).toBeVisible();
+    await this.page.getByTestId("mcp-gateway-confirm-cancel").click();
+    await expect(this.page.getByRole("dialog")).toHaveCount(0);
+    await expect(this.enableSwitch).toHaveAttribute("aria-checked", "true");
   }
 
   async expectServerFilter(serverName: string): Promise<void> {
-    await expect(this.page.getByText(serverName, { exact: false }).first()).toBeVisible();
+    await expect(
+      this.serverFilter.getByText(serverName, { exact: false }).first()
+    ).toBeVisible();
   }
 }

@@ -1,6 +1,7 @@
 import { parseErrorDetail } from "@/lib/fetcher";
 import type {
   McpGatewayCacheList,
+  McpGatewayCallDetail,
   McpGatewayCallList,
   McpGatewayStats,
   McpPack,
@@ -48,6 +49,7 @@ export async function listMcpGatewayCache(params: {
   q?: string;
   cursor?: string;
   limit?: number;
+  offset?: number;
 }): Promise<McpGatewayCacheList> {
   return readJson<McpGatewayCacheList>(
     await fetch(
@@ -57,6 +59,10 @@ export async function listMcpGatewayCache(params: {
         q: params.q,
         cursor: params.cursor,
         limit: params.limit ? String(params.limit) : undefined,
+        offset:
+          params.offset && params.offset > 0
+            ? String(params.offset)
+            : undefined,
       })}`
     ),
     "Could not load the cache"
@@ -87,7 +93,10 @@ export async function listMcpGatewayCalls(params: {
   tool?: string;
   outcome?: string;
   user_email?: string;
+  q?: string;
   cursor?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<McpGatewayCallList> {
   return readJson<McpGatewayCallList>(
     await fetch(
@@ -98,10 +107,25 @@ export async function listMcpGatewayCalls(params: {
         tool: params.tool,
         outcome: params.outcome,
         user_email: params.user_email,
+        q: params.q,
         cursor: params.cursor,
+        limit: params.limit ? String(params.limit) : undefined,
+        offset:
+          params.offset && params.offset > 0
+            ? String(params.offset)
+            : undefined,
       })}`
     ),
     "Could not load call history"
+  );
+}
+
+export async function getMcpGatewayCall(
+  callId: number
+): Promise<McpGatewayCallDetail> {
+  return readJson<McpGatewayCallDetail>(
+    await fetch(`${OPS_BASE}/calls/${callId}`),
+    "Could not load the call"
   );
 }
 
@@ -131,4 +155,3 @@ export async function refreshMcpGatewayCache(cacheKey: string): Promise<void> {
     "Could not queue a refresh"
   );
 }
-

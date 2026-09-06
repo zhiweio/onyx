@@ -121,7 +121,9 @@
         "invalid": "유효한 URL이어야 합니다",
         "required": "서버 URL은 필수입니다",
         "subDescription": "신뢰할 수 있는 서버에만 연결하세요. 이 연결로 수행되는 작업과 도구를 최신 상태로 유지하는 책임은 사용자에게 있습니다.",
-        "title": "MCP 서버 URL"
+        "title": "MCP 서버 URL",
+        "upstreamTitle": "Upstream URL",
+        "upstreamSubDescription": "The real MCP server. The gateway path stays the same."
       },
       "submitButton": {
         "addLabel": "서버 추가",
@@ -133,7 +135,13 @@
         "createFailed": "MCP 서버를 만들지 못했습니다",
         "serverCreated": "MCP 서버를 만들었습니다",
         "serverUpdated": "MCP 서버를 업데이트했습니다",
-        "updateFailed": "MCP 서버를 업데이트하지 못했습니다"
+        "updateFailed": "MCP 서버를 업데이트하지 못했습니다",
+        "bound": "Server now routes through the gateway",
+        "unbound": "Server now connects directly",
+        "bindFailed": "Failed to bind to the gateway",
+        "unbindFailed": "Failed to unbind from the gateway",
+        "bindingUpdated": "Gateway binding updated",
+        "discoveryFailed": "Bound, but tool discovery failed: {error}"
       },
       "installMode": {
         "custom": "사용자 지정 URL",
@@ -172,6 +180,21 @@
         "patsnap": "Patent search, patent detail, and generative research tools.",
         "qixinbao": "Chinese company registry, risk, and litigation lookups.",
         "tianyancha": "Chinese company registry, IP, judicial, and financial data."
+      },
+      "gatewayBind": {
+        "title": "Route through MCP Gateway",
+        "bindButton": "Bind to gateway",
+        "binding": "Binding...",
+        "unbindButton": "Unbind to direct",
+        "unbinding": "Unbinding...",
+        "updateButton": "Update binding",
+        "updating": "Updating...",
+        "pathLabel": "Gateway path",
+        "confirmPack": "This pack will lose its cache policy and stored organization credentials. The server will call the upstream URL directly.",
+        "confirmDirect": "This server will call the upstream URL directly. The gateway path and cached results will be removed.",
+        "confirmAction": "Unbind",
+        "cancelConfirm": "Keep bound",
+        "perUserBlocked": "Servers that use per-user tokens cannot use the gateway."
       }
     },
     "addOpenApiModal": {
@@ -416,10 +439,17 @@
         "tooltip": "도구 새로 고침"
       },
       "badge": {
-        "direct": "Direct",
-        "gateway": "Gateway",
-        "gatewayOff": "Gateway off"
-      }
+        "direct": "직접",
+        "gateway": "게이트웨이",
+        "gatewayOff": "게이트웨이 꺼짐"
+      },
+      "access": {
+        "public": "모든 사용자에게 공개",
+        "restricted": "제한됨 — 할당된 그룹 없음",
+        "restrictedGroups": "{count}개 그룹으로 제한",
+        "restrictedNamed": "{names}(으)로 제한"
+      },
+      "unavailable": "게이트웨이가 꺼져 있는 동안 사용할 수 없습니다"
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -5666,9 +5696,9 @@
     "mcpActions": {
       "header": {
         "description": "MCP(Model Context Protocol) 서버를 연결해 에이전트용 사용자 지정 작업과 도구를 추가하세요.",
-        "gatewayLink": "MCP Gateway",
-        "gatewayOn": "Gateway on",
-        "gatewayOff": "Gateway off"
+        "gatewayLink": "MCP 게이트웨이",
+        "gatewayOn": "게이트웨이 켜짐",
+        "gatewayOff": "게이트웨이 꺼짐"
       }
     },
     "modals": {
@@ -8131,62 +8161,104 @@
     },
     "mcpGateway": {
       "header": {
-        "title": "MCP Gateway",
-        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
-      },
-      "stats": {
-        "title": "Usage",
-        "total": "Total calls",
-        "hits": "Cache hits",
-        "billed": "Upstream billed",
-        "saved": "Calls saved",
-        "hitRate": "Hit rate"
-      },
-      "cache": {
-        "title": "Cached calls",
-        "invalidate": "Invalidate",
-        "refresh": "Refresh",
-        "empty": "No cache entries.",
-        "hits": "hits"
-      },
-      "toasts": {
-        "invalidated": "Cache invalidated",
-        "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data",
-        "updated": "Gateway setting updated"
-      },
-      "filter": {
-        "title": "Server",
-        "all": "All",
-        "empty": "No system MCP servers yet.",
-        "toolPlaceholder": "Tool name"
-      },
-      "storage": {
-        "title": "Stored results",
-        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
-        "results": "Results",
-        "stored": "Stored",
-        "transferred": "Transferred"
+        "title": "MCP 게이트웨이",
+        "description": "게이트웨이를 거치는 조직 MCP 서버 운영입니다."
       },
       "tabs": {
-        "overview": "Overview",
-        "cache": "Cache",
-        "calls": "Calls"
-      },
-      "window": {
-        "label": "Time window",
-        "24h": "24 hours",
-        "7d": "7 days",
-        "30d": "30 days"
+        "overview": "개요",
+        "cache": "캐시",
+        "calls": "호출"
       },
       "module": {
-        "label": "Enable MCP Gateway",
-        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
-        "retention": "Call logs are kept for {days} days."
+        "label": "MCP 게이트웨이 사용",
+        "description": "끄면 게이트웨이에 바인딩된 조직 MCP 서버가 중지됩니다. 직접 연결 서버는 계속 사용할 수 있습니다.",
+        "retention": "호출 로그는 {days}일 동안 보관됩니다.",
+        "retentionAll": "호출 로그는 기한 없이 보관됩니다.",
+        "confirmEnableTitle": "MCP 게이트웨이를 켤까요?",
+        "confirmEnableBody": "바인딩된 조직 MCP 서버가 다시 시작됩니다. 직접 연결 서버는 그대로입니다.",
+        "confirmEnableAction": "켜기",
+        "confirmDisableTitle": "MCP 게이트웨이를 끌까요?",
+        "confirmDisableBody": "바인딩된 조직 MCP 서버가 모든 사용자에게 중지됩니다. 직접 연결 서버는 계속 사용할 수 있습니다.",
+        "confirmDisableAction": "끄기",
+        "confirmCancel": "취소"
       },
-      "emptyBound": "No organization MCP is bound to the gateway yet.",
-      "openActions": "Add from a pack",
-      "loadMore": "Load more"
+      "emptyBound": "아직 게이트웨이에 바인딩된 조직 MCP가 없습니다.",
+      "openActions": "팩에서 추가",
+      "stats": {
+        "title": "사용량",
+        "total": "총 호출",
+        "hits": "캐시 적중",
+        "billed": "업스트림 과금",
+        "saved": "절약한 호출",
+        "hitRate": "적중률"
+      },
+      "cache": {
+        "title": "캐시된 호출",
+        "tool": "도구",
+        "server": "서버",
+        "hits": "적중",
+        "size": "크기",
+        "lastAccess": "최근 접근",
+        "status": "새로고침 상태",
+        "actions": "작업",
+        "invalidate": "무효화",
+        "refresh": "새로고침",
+        "empty": "캐시 항목이 없습니다.",
+        "searchPlaceholder": "캐시 검색"
+      },
+      "calls": {
+        "time": "시간",
+        "server": "서버",
+        "tool": "도구",
+        "outcome": "결과",
+        "latency": "지연",
+        "latencyMs": "{ms} ms",
+        "size": "크기",
+        "billed": "과금",
+        "preview": "인수",
+        "empty": "이 기간에 호출이 없습니다.",
+        "searchPlaceholder": "호출 검색",
+        "detailTitle": "호출 세부정보",
+        "billedYes": "예",
+        "billedNo": "아니요",
+        "outcomes": {
+          "hit": "적중",
+          "miss": "미스",
+          "swr": "만료 후 재검증",
+          "refresh": "새로고침",
+          "bypass": "우회",
+          "error": "오류"
+        }
+      },
+      "toasts": {
+        "invalidated": "캐시를 무효화했습니다",
+        "refreshed": "새로고침을 대기열에 넣었습니다",
+        "loadFailed": "게이트웨이 데이터를 불러오지 못했습니다",
+        "updated": "게이트웨이 설정을 업데이트했습니다"
+      },
+      "filter": {
+        "server": "서버",
+        "time": "기간",
+        "all": "전체",
+        "empty": "바인딩된 MCP 서버가 아직 없습니다.",
+        "serverSearch": "서버 검색",
+        "tool": "도구",
+        "toolAll": "모든 도구",
+        "toolPlaceholder": "도구 선택",
+        "toolSearch": "도구 검색",
+        "toolDisabled": "서버를 선택하면 도구가 표시됩니다"
+      },
+      "table": {
+        "footerUnits": "행",
+        "loading": "로드 중…"
+      },
+      "storage": {
+        "title": "저장된 결과",
+        "description": "작은 결과는 Postgres에 남고 큰 결과는 파일 저장소로 이동합니다. 모델은 항상 원본 결과를 받습니다.",
+        "results": "결과 수",
+        "stored": "저장됨",
+        "transferred": "전송됨"
+      }
     },
     "mcpCatalog": {
       "header": {

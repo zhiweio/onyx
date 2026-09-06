@@ -123,7 +123,7 @@ export interface McpGatewayStats {
   blob_total_count: number;
   blob_total_bytes: number;
   blob_by_storage: Record<string, { count: number; bytes: number }>;
-  retention_days?: number;
+  retention_days?: number | null;
   top_servers?: { slug: string; count: number }[];
   top_tools?: { tool: string; count: number }[];
 }
@@ -154,6 +154,11 @@ export interface McpGatewayCallItem {
 export interface McpGatewayCallList {
   items: McpGatewayCallItem[];
   next_cursor: string | null;
+  total: number;
+}
+
+export interface McpGatewayCallDetail extends McpGatewayCallItem {
+  arguments: Record<string, unknown>;
 }
 
 /** One system MCP server as the current user sees it in their settings. */

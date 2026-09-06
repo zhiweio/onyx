@@ -425,7 +425,10 @@ class MCPGatewayBindingRequest(BaseModel):
         None,
         description="Gateway path slug. Derived from the server name when omitted.",
     )
-    pack_slug: str = Field(default="generic_http")
+    pack_slug: Optional[str] = Field(
+        default=None,
+        description="Provider pack. Defaults to generic_http on first bind.",
+    )
     upstream_url: Optional[str] = Field(
         None, description="Upstream URL. Defaults to the server URL when omitted."
     )
@@ -799,6 +802,10 @@ class MCPServer(BaseModel):
     catalog_slug: Optional[str] = None
     pack_slug: Optional[str] = None
     gateway_bound: bool = False
+    # Real upstream URL while bound. Empty when the server is direct.
+    upstream_url: Optional[str] = None
+    # Set when bind / unbind / from-pack kept the server but tool discovery failed.
+    discovery_error: Optional[str] = None
 
 
 class MCPServersResponse(BaseModel):

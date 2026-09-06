@@ -15,6 +15,7 @@ import {
   MCPOAuthProviderMode,
   MCPTransportType,
   MCPAuthTemplate,
+  MCPGatewayBindingRequest,
 } from "@/lib/tools/types";
 import { parseErrorDetail } from "@/lib/fetcher";
 import { mcpApiRoot, type McpSurface } from "@/lib/tools/mcpSurface";
@@ -168,6 +169,45 @@ export async function createMCPServerFromPack(data: {
 /**
  * Update an existing MCP server
  */
+export async function bindMCPServerGateway(
+  serverId: number,
+  data: MCPGatewayBindingRequest
+): Promise<MCPServer> {
+  const response = await fetch(
+    `/api/admin/mcp/server/${serverId}/gateway-binding`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to bind MCP server to the gateway");
+  }
+  return await response.json();
+}
+
+export async function unbindMCPServerGateway(
+  serverId: number
+): Promise<MCPServer> {
+  const response = await fetch(
+    `/api/admin/mcp/server/${serverId}/gateway-binding`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      errorText || "Failed to unbind MCP server from the gateway"
+    );
+  }
+  return await response.json();
+}
+
 export async function updateMCPServer(
   serverId: number,
   data: MCPServerUpdateRequest,

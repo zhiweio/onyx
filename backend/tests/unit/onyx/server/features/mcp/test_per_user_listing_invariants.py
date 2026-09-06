@@ -16,6 +16,7 @@ from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPServerStatus,
     MCPTransport,
 )
@@ -56,6 +57,13 @@ def _make_db_server(
     server.oauth_scopes_override = None
     server.oauth_additional_auth_params = None
     server.current_actions = []
+    server.scope = MCPServerScope.USER
+    server.catalog_entry = None
+    server.catalog_entry_id = None
+    server.is_public = True
+    server.user_groups = []
+    server.users = []
+    server.available_in_craft = False
     return server
 
 

@@ -10,12 +10,15 @@ import { Content, InputVertical, toast } from "@opal/layouts";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
 import {
+  bindMCPServerGateway,
   createMCPServer,
   createMCPServerFromPack,
+  unbindMCPServerGateway,
   updateMCPServer,
 } from "@/lib/tools/svc";
 import type { McpSurface } from "@/lib/tools/mcpSurface";
 import {
+  MCPAuthenticationPerformer,
   MCPServerCreateRequest,
   MCPServerStatus,
   MCPServer,
@@ -87,6 +90,7 @@ function packNeedsUrl(pack: McpPack | null): boolean {
 export default function AddMCPServerModal({
   skipOverlay = false,
   activeServer,
+  setActiveServer,
   disconnectModal,
   manageServerModal,
   onServerCreated,
@@ -104,6 +108,8 @@ export default function AddMCPServerModal({
   const [routeThroughGateway, setRouteThroughGateway] = useState(false);
   const [gatewaySlug, setGatewaySlug] = useState("");
   const [packApiKey, setPackApiKey] = useState("");
+  const [unbindConfirming, setUnbindConfirming] = useState(false);
+  const [gatewayBusy, setGatewayBusy] = useState(false);
   const focusOnMount = useFocusOnMount<HTMLInputElement>();
 
   const { permissions } = useUser();
@@ -121,11 +127,14 @@ export default function AddMCPServerModal({
   useEffect(() => {
     if (!isOpen) return;
     setInstallMode("custom");
-    setSelectedPackSlug(null);
+    setSelectedPackSlug(
+      activeServer?.pack_slug ?? (activeServer ? "generic_http" : null)
+    );
     setRouteThroughGateway(false);
     setGatewaySlug("");
     setPackApiKey("");
-  }, [isOpen]);
+    setUnbindConfirming(false);
+  }, [isOpen, activeServer]);
 
   useEffect(() => {
     if (!gatewayReady || !isOpen) return;
@@ -165,7 +174,10 @@ export default function AddMCPServerModal({
   const initialValues: MCPServerCreateRequest = {
     name: server?.name || "",
     description: server?.description || "",
-    server_url: server?.server_url || "",
+    server_url:
+      server?.gateway_bound && server.upstream_url
+        ? server.upstream_url
+        : server?.server_url || "",
     is_public: server?.is_public ?? true,
     groups: server?.groups ?? [],
     users: server?.users ?? [],
@@ -191,6 +203,11 @@ export default function AddMCPServerModal({
     });
     setPackApiKey("");
     setGatewaySlug("");
+  };
+
+  const selectPackOnly = (pack: McpPack) => {
+    setSelectedPackSlug(pack.slug);
+    setPackApiKey("");
   };
 
   const handleSubmit = async (values: MCPServerCreateRequest) => {
@@ -260,6 +277,86 @@ export default function AddMCPServerModal({
     toggle(open);
   };
 
+  const toastDiscovery = (updated: MCPServer) => {
+    if (updated.discovery_error) {
+      toast.error(
+        t("addMcpModal.toasts.discoveryFailed", {
+          error: updated.discovery_error,
+        })
+      );
+    }
+  };
+
+  const handleBindGateway = async (upstreamUrl: string) => {
+    if (!server) return;
+    setGatewayBusy(true);
+    try {
+      const updated = await bindMCPServerGateway(server.id, {
+        pack_slug: selectedPackSlug || "generic_http",
+        slug: gatewaySlug || undefined,
+        upstream_url: upstreamUrl || undefined,
+        credentials: packApiKey ? { api_key: packApiKey } : {},
+      });
+      toast.success(t("addMcpModal.toasts.bound"));
+      toastDiscovery(updated);
+      await mutateMcpServers?.();
+      setActiveServer?.(updated);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("addMcpModal.toasts.bindFailed")
+      );
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleUpdateBinding = async (upstreamUrl: string) => {
+    if (!server) return;
+    setGatewayBusy(true);
+    try {
+      const updated = await bindMCPServerGateway(server.id, {
+        pack_slug: selectedPackSlug || server.pack_slug || "generic_http",
+        upstream_url: upstreamUrl || undefined,
+        credentials: packApiKey ? { api_key: packApiKey } : {},
+      });
+      toast.success(t("addMcpModal.toasts.bindingUpdated"));
+      toastDiscovery(updated);
+      await mutateMcpServers?.();
+      setActiveServer?.(updated);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("addMcpModal.toasts.bindFailed")
+      );
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  const handleUnbindGateway = async () => {
+    if (!server) return;
+    setGatewayBusy(true);
+    try {
+      const updated = await unbindMCPServerGateway(server.id);
+      toast.success(t("addMcpModal.toasts.unbound"));
+      toastDiscovery(updated);
+      setUnbindConfirming(false);
+      await mutateMcpServers?.();
+      setActiveServer?.(updated);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("addMcpModal.toasts.unbindFailed")
+      );
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
   const showInstallModes = gatewayReady && !isEditMode;
   const showPackFields = installMode !== "pack" || selectedPack !== null;
   const showUrlField =
@@ -269,8 +366,19 @@ export default function AddMCPServerModal({
   return (
     <Modal open={isOpen} onOpenChange={handleModalClose}>
       <Modal.Content
-        width={showInstallModes && installMode === "pack" ? "lg" : showInstallModes ? "md" : "sm"}
-        height={showInstallModes && installMode === "pack" ? "lg" : "fit"}
+        width={
+          showInstallModes && installMode === "pack"
+            ? "lg"
+            : showInstallModes || (isEditMode && gatewayReady)
+              ? "md"
+              : "sm"
+        }
+        height={
+          (showInstallModes && installMode === "pack") ||
+          (isEditMode && gatewayReady)
+            ? "lg"
+            : "fit"
+        }
         preventAccidentalClose={false}
         skipOverlay={skipOverlay}
       >
@@ -455,14 +563,37 @@ export default function AddMCPServerModal({
                 {showUrlField && (
                   <InputVertical
                     withLabel="server_url"
-                    title={t("addMcpModal.serverUrl.title")}
-                    subDescription={t("addMcpModal.serverUrl.subDescription")}
+                    title={
+                      isEditMode && server?.gateway_bound
+                        ? t("addMcpModal.serverUrl.upstreamTitle")
+                        : t("addMcpModal.serverUrl.title")
+                    }
+                    subDescription={
+                      isEditMode && server?.gateway_bound
+                        ? t("addMcpModal.serverUrl.upstreamSubDescription")
+                        : t("addMcpModal.serverUrl.subDescription")
+                    }
                   >
                     <InputTypeInField
                       name="server_url"
                       placeholder="https://your-mcp-server.com/mcp"
                     />
                   </InputVertical>
+                )}
+
+                {showPackFields && surface !== "personal" && (
+                  <div data-testid="mcp-access-section">
+                    <Divider paddingParallel={0} paddingPerpendicular={0} />
+                    <IsPublicGroupSelector
+                      formikProps={formikProps}
+                      objectName="MCP server"
+                      isGlobalHolder={hasPermission(
+                        permissions,
+                        Permission.MANAGE_ACTIONS
+                      )}
+                      publicToWhom="Users"
+                    />
+                  </div>
                 )}
 
                 {showInstallModes && installMode === "custom" && (
@@ -508,55 +639,289 @@ export default function AddMCPServerModal({
                   </div>
                 )}
 
-                {showInstallModes &&
-                  installMode === "pack" &&
-                  selectedPack && (
-                    <Section gap={3} alignItems="start" width="full">
-                      <InputVertical
-                        title={t("addMcpModal.packApiKey.title")}
-                        suffix={t("addMcpModal.description.suffix")}
-                      >
-                        <InputTypeIn
-                          name="pack_api_key"
-                          placeholder={t("addMcpModal.packApiKey.placeholder")}
-                          value={packApiKey}
-                          onChange={(event) =>
-                            setPackApiKey(event.target.value)
-                          }
-                        />
-                      </InputVertical>
-                      <InputVertical
-                        title={t("addMcpModal.slug.title")}
-                        suffix={t("addMcpModal.description.suffix")}
-                      >
-                        <InputTypeIn
-                          name="gateway_slug"
-                          placeholder={t("addMcpModal.slug.placeholder")}
-                          value={gatewaySlug}
-                          onChange={(event) =>
-                            setGatewaySlug(event.target.value)
-                          }
-                        />
-                      </InputVertical>
-                    </Section>
-                  )}
-
-                {showPackFields && (
-                  <>
-                    <Divider paddingParallel={0} paddingPerpendicular={0} />
-
-                    {surface !== "personal" && (
-                      <IsPublicGroupSelector
-                        formikProps={formikProps}
-                        objectName="MCP server"
-                        isGlobalHolder={hasPermission(
-                          permissions,
-                          Permission.MANAGE_ACTIONS
-                        )}
-                        publicToWhom="Users"
+                {showInstallModes && installMode === "pack" && selectedPack && (
+                  <Section gap={3} alignItems="start" width="full">
+                    <InputVertical
+                      title={t("addMcpModal.packApiKey.title")}
+                      suffix={t("addMcpModal.description.suffix")}
+                    >
+                      <InputTypeIn
+                        name="pack_api_key"
+                        placeholder={t("addMcpModal.packApiKey.placeholder")}
+                        value={packApiKey}
+                        onChange={(event) => setPackApiKey(event.target.value)}
                       />
+                    </InputVertical>
+                    <InputVertical
+                      title={t("addMcpModal.slug.title")}
+                      suffix={t("addMcpModal.description.suffix")}
+                    >
+                      <InputTypeIn
+                        name="gateway_slug"
+                        placeholder={t("addMcpModal.slug.placeholder")}
+                        value={gatewaySlug}
+                        onChange={(event) => setGatewaySlug(event.target.value)}
+                      />
+                    </InputVertical>
+                  </Section>
+                )}
+
+                {isEditMode && gatewayReady && server && (
+                  <div
+                    className="flex w-full flex-col gap-3 rounded-12 border border-border-01 p-3"
+                    data-testid="mcp-gateway-section"
+                  >
+                    {server.auth_performer ===
+                    MCPAuthenticationPerformer.PER_USER ? (
+                      <Text font="secondary-body" color="text-03" as="p">
+                        {t("addMcpModal.gatewayBind.perUserBlocked")}
+                      </Text>
+                    ) : server.gateway_bound ? (
+                      <>
+                        <Text font="main-ui-body" color="text-04" as="p">
+                          {t("addMcpModal.gatewayBind.title")}
+                        </Text>
+                        <InputVertical
+                          title={t("addMcpModal.gatewayBind.pathLabel")}
+                        >
+                          <InputTypeIn
+                            name="gateway_path"
+                            value={`/p/${server.catalog_slug ?? ""}`}
+                            variant="readOnly"
+                            data-testid="mcp-gateway-path"
+                          />
+                        </InputVertical>
+                        {packsLoading ? (
+                          <Text font="secondary-body" color="text-03" as="p">
+                            {t("addMcpModal.packList.loading")}
+                          </Text>
+                        ) : selectedPack ? (
+                          <Section
+                            flexDirection="row"
+                            alignItems="center"
+                            gap={2}
+                            width="full"
+                          >
+                            <div className="min-w-0 flex-1 rounded-12 border border-border-03 bg-background-tint-00 p-3">
+                              <Content
+                                sizePreset="main-ui"
+                                variant="section"
+                                title={selectedPack.display_name}
+                                description={packDescription(selectedPack)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              prominence="secondary"
+                              data-testid="mcp-pack-change"
+                              onClick={() => setSelectedPackSlug(null)}
+                            >
+                              {t("addMcpModal.packList.change")}
+                            </Button>
+                          </Section>
+                        ) : (
+                          <div className="flex w-full max-h-64 flex-col gap-2 overflow-y-auto">
+                            {packs.map((pack) => (
+                              <div
+                                key={pack.slug}
+                                data-testid={`mcp-pack-${pack.slug}`}
+                              >
+                                <LineItemButton
+                                  selectVariant="select-heavy"
+                                  state="empty"
+                                  rounding={3}
+                                  onClick={() => selectPackOnly(pack)}
+                                  title={pack.display_name}
+                                  description={packDescription(pack)}
+                                  sizePreset="main-ui"
+                                  variant="section"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <InputVertical
+                          title={t("addMcpModal.packApiKey.title")}
+                          suffix={t("addMcpModal.description.suffix")}
+                        >
+                          <InputTypeIn
+                            name="pack_api_key"
+                            placeholder={t(
+                              "addMcpModal.packApiKey.placeholder"
+                            )}
+                            value={packApiKey}
+                            onChange={(event) =>
+                              setPackApiKey(event.target.value)
+                            }
+                          />
+                        </InputVertical>
+                        <Section
+                          flexDirection="row"
+                          gap={2}
+                          width="full"
+                          justifyContent="start"
+                        >
+                          <Button
+                            type="button"
+                            prominence="secondary"
+                            disabled={gatewayBusy || !selectedPackSlug}
+                            data-testid="mcp-gateway-update"
+                            onClick={() =>
+                              void handleUpdateBinding(
+                                formikProps.values.server_url
+                              )
+                            }
+                          >
+                            {gatewayBusy
+                              ? t("addMcpModal.gatewayBind.updating")
+                              : t("addMcpModal.gatewayBind.updateButton")}
+                          </Button>
+                          {!unbindConfirming ? (
+                            <Button
+                              type="button"
+                              prominence="tertiary"
+                              disabled={gatewayBusy}
+                              data-testid="mcp-gateway-unbind"
+                              onClick={() => setUnbindConfirming(true)}
+                            >
+                              {t("addMcpModal.gatewayBind.unbindButton")}
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                prominence="primary"
+                                disabled={gatewayBusy}
+                                data-testid="mcp-gateway-unbind-confirm"
+                                onClick={() => void handleUnbindGateway()}
+                              >
+                                {gatewayBusy
+                                  ? t("addMcpModal.gatewayBind.unbinding")
+                                  : t("addMcpModal.gatewayBind.confirmAction")}
+                              </Button>
+                              <Button
+                                type="button"
+                                prominence="secondary"
+                                disabled={gatewayBusy}
+                                onClick={() => setUnbindConfirming(false)}
+                              >
+                                {t("addMcpModal.gatewayBind.cancelConfirm")}
+                              </Button>
+                            </>
+                          )}
+                        </Section>
+                        {unbindConfirming && (
+                          <Text font="secondary-body" color="text-03" as="p">
+                            {server.pack_slug &&
+                            server.pack_slug !== "generic_http"
+                              ? t("addMcpModal.gatewayBind.confirmPack")
+                              : t("addMcpModal.gatewayBind.confirmDirect")}
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Text font="main-ui-body" color="text-04" as="p">
+                          {t("addMcpModal.routeThrough.title")}
+                        </Text>
+                        <Text font="secondary-body" color="text-03" as="p">
+                          {t("addMcpModal.routeThrough.description")}
+                        </Text>
+                        {packsLoading ? (
+                          <Text font="secondary-body" color="text-03" as="p">
+                            {t("addMcpModal.packList.loading")}
+                          </Text>
+                        ) : selectedPack ? (
+                          <Section
+                            flexDirection="row"
+                            alignItems="center"
+                            gap={2}
+                            width="full"
+                          >
+                            <div
+                              className="min-w-0 flex-1 rounded-12 border border-border-03 bg-background-tint-00 p-3"
+                              data-testid={`mcp-pack-${selectedPack.slug}`}
+                            >
+                              <Content
+                                sizePreset="main-ui"
+                                variant="section"
+                                title={selectedPack.display_name}
+                                description={packDescription(selectedPack)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              prominence="secondary"
+                              data-testid="mcp-pack-change"
+                              onClick={() => setSelectedPackSlug(null)}
+                            >
+                              {t("addMcpModal.packList.change")}
+                            </Button>
+                          </Section>
+                        ) : (
+                          <div className="flex w-full max-h-64 flex-col gap-2 overflow-y-auto">
+                            {packs.map((pack) => (
+                              <div
+                                key={pack.slug}
+                                data-testid={`mcp-pack-${pack.slug}`}
+                              >
+                                <LineItemButton
+                                  selectVariant="select-heavy"
+                                  state="empty"
+                                  rounding={3}
+                                  onClick={() => selectPackOnly(pack)}
+                                  title={pack.display_name}
+                                  description={packDescription(pack)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <InputVertical
+                          title={t("addMcpModal.slug.title")}
+                          suffix={t("addMcpModal.description.suffix")}
+                        >
+                          <InputTypeIn
+                            name="gateway_slug"
+                            placeholder={t("addMcpModal.slug.placeholder")}
+                            value={gatewaySlug}
+                            onChange={(event) =>
+                              setGatewaySlug(event.target.value)
+                            }
+                          />
+                        </InputVertical>
+                        <InputVertical
+                          title={t("addMcpModal.packApiKey.title")}
+                          suffix={t("addMcpModal.description.suffix")}
+                        >
+                          <InputTypeIn
+                            name="pack_api_key"
+                            placeholder={t(
+                              "addMcpModal.packApiKey.placeholder"
+                            )}
+                            value={packApiKey}
+                            onChange={(event) =>
+                              setPackApiKey(event.target.value)
+                            }
+                          />
+                        </InputVertical>
+                        <Button
+                          type="button"
+                          disabled={gatewayBusy || !selectedPackSlug}
+                          data-testid="mcp-gateway-bind"
+                          onClick={() =>
+                            void handleBindGateway(
+                              formikProps.values.server_url
+                            )
+                          }
+                        >
+                          {gatewayBusy
+                            ? t("addMcpModal.gatewayBind.binding")
+                            : t("addMcpModal.gatewayBind.bindButton")}
+                        </Button>
+                      </>
                     )}
-                  </>
+                  </div>
                 )}
 
                 {isEditMode &&

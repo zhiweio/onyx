@@ -233,6 +233,7 @@ def list_cache_entries(
     q: str | None = None,
     sort: str = "last_accessed",
     limit: int = 50,
+    offset: int = 0,
     cursor_accessed_at: datetime.datetime | None = None,
     cursor_id: int | None = None,
 ) -> list[MCPGatewayCacheEntry]:
@@ -266,7 +267,7 @@ def list_cache_entries(
             desc(MCPGatewayCacheEntry.last_accessed_at),
             desc(MCPGatewayCacheEntry.id),
         )
-        if cursor_accessed_at is not None and cursor_id is not None:
+        if offset <= 0 and cursor_accessed_at is not None and cursor_id is not None:
             stmt = stmt.where(
                 (MCPGatewayCacheEntry.last_accessed_at < cursor_accessed_at)
                 | (
@@ -274,7 +275,7 @@ def list_cache_entries(
                     & (MCPGatewayCacheEntry.id < cursor_id)
                 )
             )
-    stmt = stmt.limit(min(max(limit, 1), 100))
+    stmt = stmt.offset(max(offset, 0)).limit(min(max(limit, 1), 100))
     return list(db_session.scalars(stmt).all())
 
 
@@ -369,9 +370,7 @@ def insert_call_log__no_commit(
     return row
 
 
-def _stats_from_rows(
-    rows: list[tuple[Any, int, int, int]],
-) -> dict[str, Any]:
+def _stats_from_rows(rows: list[Any]) -> dict[str, Any]:
     by_outcome: dict[str, int] = {}
     billed = 0
     total = 0
@@ -501,22 +500,20 @@ def _merge_stats(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def list_call_logs(
-    db_session: Session,
+def _call_log_filters(
+    stmt: Any,
     *,
     from_time: datetime.datetime,
     to_time: datetime.datetime,
-    catalog_slug: str | None = None,
-    tool_name: str | None = None,
-    outcome: MCPGatewayCallOutcome | None = None,
-    user_email: str | None = None,
-    session_id: str | None = None,
-    cache_key: str | None = None,
-    limit: int = 50,
-    cursor_created_at: datetime.datetime | None = None,
-    cursor_id: int | None = None,
-) -> list[MCPGatewayCallLog]:
-    stmt = select(MCPGatewayCallLog).where(
+    catalog_slug: str | None,
+    tool_name: str | None,
+    outcome: MCPGatewayCallOutcome | None,
+    user_email: str | None,
+    session_id: str | None,
+    cache_key: str | None,
+    q: str | None,
+) -> Any:
+    stmt = stmt.where(
         MCPGatewayCallLog.created_at >= from_time,
         MCPGatewayCallLog.created_at < to_time,
     )
@@ -532,7 +529,48 @@ def list_call_logs(
         stmt = stmt.where(MCPGatewayCallLog.session_id == session_id)
     if cache_key:
         stmt = stmt.where(MCPGatewayCallLog.cache_key == cache_key)
-    if cursor_created_at is not None and cursor_id is not None:
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(
+            MCPGatewayCallLog.effective_tool_name.ilike(pattern)
+            | MCPGatewayCallLog.tool_name.ilike(pattern)
+            | MCPGatewayCallLog.catalog_slug.ilike(pattern)
+            | MCPGatewayCallLog.user_email.ilike(pattern)
+            | MCPGatewayCallLog.arguments_digest.ilike(pattern)
+        )
+    return stmt
+
+
+def list_call_logs(
+    db_session: Session,
+    *,
+    from_time: datetime.datetime,
+    to_time: datetime.datetime,
+    catalog_slug: str | None = None,
+    tool_name: str | None = None,
+    outcome: MCPGatewayCallOutcome | None = None,
+    user_email: str | None = None,
+    session_id: str | None = None,
+    cache_key: str | None = None,
+    q: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    cursor_created_at: datetime.datetime | None = None,
+    cursor_id: int | None = None,
+) -> list[MCPGatewayCallLog]:
+    stmt = _call_log_filters(
+        select(MCPGatewayCallLog),
+        from_time=from_time,
+        to_time=to_time,
+        catalog_slug=catalog_slug,
+        tool_name=tool_name,
+        outcome=outcome,
+        user_email=user_email,
+        session_id=session_id,
+        cache_key=cache_key,
+        q=q,
+    )
+    if offset <= 0 and cursor_created_at is not None and cursor_id is not None:
         stmt = stmt.where(
             (MCPGatewayCallLog.created_at < cursor_created_at)
             | (
@@ -540,10 +578,40 @@ def list_call_logs(
                 & (MCPGatewayCallLog.id < cursor_id)
             )
         )
-    stmt = stmt.order_by(
-        desc(MCPGatewayCallLog.created_at), desc(MCPGatewayCallLog.id)
-    ).limit(min(max(limit, 1), 100))
+    stmt = (
+        stmt.order_by(desc(MCPGatewayCallLog.created_at), desc(MCPGatewayCallLog.id))
+        .offset(max(offset, 0))
+        .limit(min(max(limit, 1), 100))
+    )
     return list(db_session.scalars(stmt).all())
+
+
+def count_call_logs(
+    db_session: Session,
+    *,
+    from_time: datetime.datetime,
+    to_time: datetime.datetime,
+    catalog_slug: str | None = None,
+    tool_name: str | None = None,
+    outcome: MCPGatewayCallOutcome | None = None,
+    user_email: str | None = None,
+    session_id: str | None = None,
+    cache_key: str | None = None,
+    q: str | None = None,
+) -> int:
+    stmt = _call_log_filters(
+        select(func.count()).select_from(MCPGatewayCallLog),
+        from_time=from_time,
+        to_time=to_time,
+        catalog_slug=catalog_slug,
+        tool_name=tool_name,
+        outcome=outcome,
+        user_email=user_email,
+        session_id=session_id,
+        cache_key=cache_key,
+        q=q,
+    )
+    return int(db_session.scalar(stmt) or 0)
 
 
 def get_call_log(db_session: Session, call_id: int) -> MCPGatewayCallLog | None:
@@ -595,9 +663,7 @@ def top_call_tools(
     return [(str(name), int(count)) for name, count in db_session.execute(stmt).all()]
 
 
-def upsert_daily_call_stats(
-    db_session: Session, *, day: datetime.date
-) -> int:
+def upsert_daily_call_stats(db_session: Session, *, day: datetime.date) -> int:
     """Roll one UTC day from the raw log into the daily table."""
     day_start = datetime.datetime.combine(
         day, datetime.time.min, tzinfo=datetime.timezone.utc

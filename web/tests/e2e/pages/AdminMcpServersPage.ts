@@ -65,9 +65,7 @@ export class AdminMcpServersPage {
   // ---------------------------------------------------------------------------
 
   private apiRoot(): string {
-    return this.surface === "personal"
-      ? "/api/mcp/personal"
-      : "/api/admin/mcp";
+    return this.surface === "personal" ? "/api/mcp/personal" : "/api/admin/mcp";
   }
 
   async goto(): Promise<void> {
@@ -411,12 +409,58 @@ export class AdminMcpServersPage {
     await this.page.waitForURL("**/admin/mcp-gateway**");
   }
 
+  async openManageModal(serverName: string): Promise<void> {
+    const card = this.serverCard(serverName);
+    await expect(card).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    const manage = card.getByRole("button", {
+      name: new RegExp(
+        `Manage ${serverName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} server`,
+        "i"
+      ),
+    });
+    await expect(manage).toBeVisible();
+    // The actions column can sit over the manage control on a crowded page.
+    await manage.evaluate((element) => element.click());
+    await expect(this.page.getByRole("dialog")).toBeVisible();
+    await expect(this.page.getByTestId("mcp-gateway-section")).toBeVisible();
+  }
+
+  gatewaySection(): Locator {
+    return this.page.getByTestId("mcp-gateway-section");
+  }
+
+  async bindToGateway(slug?: string): Promise<void> {
+    if (slug) {
+      await this.fillGatewaySlug(slug);
+    }
+    const bind = this.page.getByTestId("mcp-gateway-bind");
+    await expect(bind).toBeVisible();
+    await bind.click();
+    await expect(this.page.getByTestId("mcp-gateway-path")).toBeVisible();
+  }
+
+  async unbindFromGateway(): Promise<void> {
+    const unbind = this.page.getByTestId("mcp-gateway-unbind");
+    await expect(unbind).toBeVisible();
+    await unbind.click();
+    const confirm = this.page.getByTestId("mcp-gateway-unbind-confirm");
+    await expect(confirm).toBeVisible();
+    await confirm.click();
+    await expect(this.page.getByTestId("mcp-gateway-bind")).toBeVisible();
+  }
+
+  async closeManageModal(): Promise<void> {
+    await this.page.getByRole("button", { name: /^Cancel$/i }).click();
+    await expect(this.page.getByTestId("mcp-gateway-section")).toHaveCount(0);
+  }
+
   async expectCatalogAbsentFromSidebar(): Promise<void> {
     await expect(
       this.page.getByRole("link", { name: /System MCP/i })
     ).toHaveCount(0);
-    await expect(
-      this.page.locator('a[href="/admin/mcp-catalog"]')
-    ).toHaveCount(0);
+    await expect(this.page.locator('a[href="/admin/mcp-catalog"]')).toHaveCount(
+      0
+    );
   }
 }

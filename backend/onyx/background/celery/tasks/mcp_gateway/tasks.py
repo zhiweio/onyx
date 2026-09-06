@@ -156,6 +156,9 @@ def rollup_mcp_gateway_call_stats(*, tenant_id: str) -> None:  # noqa: ARG001
     queue=OnyxCeleryQueues.MCP_GATEWAY,
 )
 def prune_mcp_gateway_call_logs(*, tenant_id: str) -> None:  # noqa: ARG001
+    if MCP_GATEWAY_CALL_LOG_RETENTION_DAYS <= 0:
+        logger.info("MCP gateway call log retention is unlimited; skip prune")
+        return
     cutoff = datetime.now(timezone.utc) - timedelta(
         days=MCP_GATEWAY_CALL_LOG_RETENTION_DAYS
     )

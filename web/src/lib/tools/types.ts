@@ -71,6 +71,8 @@ export interface MCPServer {
   catalog_slug?: string | null;
   pack_slug?: string | null;
   gateway_bound?: boolean;
+  upstream_url?: string | null;
+  discovery_error?: string | null;
 }
 
 export interface MCPAuthTemplate {
@@ -92,6 +94,8 @@ export interface MCPGatewayBindingRequest {
   pack_slug?: string;
   upstream_url?: string;
   credentials?: Record<string, string>;
+  policy_overrides?: Record<string, unknown>;
+  auth_adapter?: string;
 }
 
 export interface MCPServerCreateRequest {

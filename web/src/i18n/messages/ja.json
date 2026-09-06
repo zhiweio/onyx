@@ -121,7 +121,9 @@
         "invalid": "有効な URL を入力してください",
         "required": "サーバー URL は必須です",
         "subDescription": "信頼できるサーバーにのみ接続してください。この接続で実行される操作と、ツールを最新の状態に保つ責任はお客様にあります。",
-        "title": "MCP サーバー URL"
+        "title": "MCP サーバー URL",
+        "upstreamTitle": "Upstream URL",
+        "upstreamSubDescription": "The real MCP server. The gateway path stays the same."
       },
       "submitButton": {
         "addLabel": "サーバーを追加",
@@ -133,7 +135,13 @@
         "createFailed": "MCP サーバーの作成に失敗しました",
         "serverCreated": "MCP サーバーを作成しました",
         "serverUpdated": "MCP サーバーを更新しました",
-        "updateFailed": "MCP サーバーの更新に失敗しました"
+        "updateFailed": "MCP サーバーの更新に失敗しました",
+        "bound": "Server now routes through the gateway",
+        "unbound": "Server now connects directly",
+        "bindFailed": "Failed to bind to the gateway",
+        "unbindFailed": "Failed to unbind from the gateway",
+        "bindingUpdated": "Gateway binding updated",
+        "discoveryFailed": "Bound, but tool discovery failed: {error}"
       },
       "installMode": {
         "custom": "カスタム URL",
@@ -172,6 +180,21 @@
         "patsnap": "Patent search, patent detail, and generative research tools.",
         "qixinbao": "Chinese company registry, risk, and litigation lookups.",
         "tianyancha": "Chinese company registry, IP, judicial, and financial data."
+      },
+      "gatewayBind": {
+        "title": "Route through MCP Gateway",
+        "bindButton": "Bind to gateway",
+        "binding": "Binding...",
+        "unbindButton": "Unbind to direct",
+        "unbinding": "Unbinding...",
+        "updateButton": "Update binding",
+        "updating": "Updating...",
+        "pathLabel": "Gateway path",
+        "confirmPack": "This pack will lose its cache policy and stored organization credentials. The server will call the upstream URL directly.",
+        "confirmDirect": "This server will call the upstream URL directly. The gateway path and cached results will be removed.",
+        "confirmAction": "Unbind",
+        "cancelConfirm": "Keep bound",
+        "perUserBlocked": "Servers that use per-user tokens cannot use the gateway."
       }
     },
     "addOpenApiModal": {
@@ -416,10 +439,17 @@
         "tooltip": "ツールを更新"
       },
       "badge": {
-        "direct": "Direct",
-        "gateway": "Gateway",
-        "gatewayOff": "Gateway off"
-      }
+        "direct": "直接",
+        "gateway": "ゲートウェイ",
+        "gatewayOff": "ゲートウェイオフ"
+      },
+      "access": {
+        "public": "すべてのユーザーに公開",
+        "restricted": "制限付き — グループ未割当",
+        "restrictedGroups": "{count} グループに制限",
+        "restrictedNamed": "{names} に制限"
+      },
+      "unavailable": "ゲートウェイがオフの間は利用できません"
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -5666,9 +5696,9 @@
     "mcpActions": {
       "header": {
         "description": "MCP（Model Context Protocol）サーバーを接続して、エージェント用のカスタムアクションとツールを追加します。",
-        "gatewayLink": "MCP Gateway",
-        "gatewayOn": "Gateway on",
-        "gatewayOff": "Gateway off"
+        "gatewayLink": "MCP ゲートウェイ",
+        "gatewayOn": "ゲートウェイ オン",
+        "gatewayOff": "ゲートウェイ オフ"
       }
     },
     "modals": {
@@ -8131,62 +8161,104 @@
     },
     "mcpGateway": {
       "header": {
-        "title": "MCP Gateway",
-        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
-      },
-      "stats": {
-        "title": "Usage",
-        "total": "Total calls",
-        "hits": "Cache hits",
-        "billed": "Upstream billed",
-        "saved": "Calls saved",
-        "hitRate": "Hit rate"
-      },
-      "cache": {
-        "title": "Cached calls",
-        "invalidate": "Invalidate",
-        "refresh": "Refresh",
-        "empty": "No cache entries.",
-        "hits": "hits"
-      },
-      "toasts": {
-        "invalidated": "Cache invalidated",
-        "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data",
-        "updated": "Gateway setting updated"
-      },
-      "filter": {
-        "title": "Server",
-        "all": "All",
-        "empty": "No system MCP servers yet.",
-        "toolPlaceholder": "Tool name"
-      },
-      "storage": {
-        "title": "Stored results",
-        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
-        "results": "Results",
-        "stored": "Stored",
-        "transferred": "Transferred"
+        "title": "MCP ゲートウェイ",
+        "description": "ゲートウェイ経由の組織 MCP サーバーの運用です。"
       },
       "tabs": {
-        "overview": "Overview",
-        "cache": "Cache",
-        "calls": "Calls"
-      },
-      "window": {
-        "label": "Time window",
-        "24h": "24 hours",
-        "7d": "7 days",
-        "30d": "30 days"
+        "overview": "概要",
+        "cache": "キャッシュ",
+        "calls": "呼び出し"
       },
       "module": {
-        "label": "Enable MCP Gateway",
-        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
-        "retention": "Call logs are kept for {days} days."
+        "label": "MCP ゲートウェイを有効にする",
+        "description": "オフにすると、ゲートウェイにバインドされた組織 MCP サーバーは停止します。直接接続のサーバーは利用できます。",
+        "retention": "呼び出しログは {days} 日間保持されます。",
+        "retentionAll": "呼び出しログは期限なく保持されます。",
+        "confirmEnableTitle": "MCP ゲートウェイをオンにしますか？",
+        "confirmEnableBody": "バインドされた組織 MCP サーバーが再び利用できます。直接接続のサーバーは変わりません。",
+        "confirmEnableAction": "オンにする",
+        "confirmDisableTitle": "MCP ゲートウェイをオフにしますか？",
+        "confirmDisableBody": "バインドされた組織 MCP サーバーは全ユーザーで停止します。直接接続のサーバーは利用できます。",
+        "confirmDisableAction": "オフにする",
+        "confirmCancel": "キャンセル"
       },
-      "emptyBound": "No organization MCP is bound to the gateway yet.",
-      "openActions": "Add from a pack",
-      "loadMore": "Load more"
+      "emptyBound": "ゲートウェイにバインドされた組織 MCP はまだありません。",
+      "openActions": "パックから追加",
+      "stats": {
+        "title": "使用量",
+        "total": "総呼び出し",
+        "hits": "キャッシュヒット",
+        "billed": "上流課金",
+        "saved": "節約した呼び出し",
+        "hitRate": "ヒット率"
+      },
+      "cache": {
+        "title": "キャッシュされた呼び出し",
+        "tool": "ツール",
+        "server": "サーバー",
+        "hits": "ヒット",
+        "size": "サイズ",
+        "lastAccess": "最終アクセス",
+        "status": "更新状態",
+        "actions": "操作",
+        "invalidate": "無効化",
+        "refresh": "更新",
+        "empty": "キャッシュ項目はありません。",
+        "searchPlaceholder": "キャッシュを検索"
+      },
+      "calls": {
+        "time": "時刻",
+        "server": "サーバー",
+        "tool": "ツール",
+        "outcome": "結果",
+        "latency": "遅延",
+        "latencyMs": "{ms} ミリ秒",
+        "size": "サイズ",
+        "billed": "課金",
+        "preview": "引数",
+        "empty": "この期間の呼び出しはありません。",
+        "searchPlaceholder": "呼び出しを検索",
+        "detailTitle": "呼び出しの詳細",
+        "billedYes": "はい",
+        "billedNo": "いいえ",
+        "outcomes": {
+          "hit": "ヒット",
+          "miss": "ミス",
+          "swr": "期限切れ再利用",
+          "refresh": "更新",
+          "bypass": "バイパス",
+          "error": "エラー"
+        }
+      },
+      "toasts": {
+        "invalidated": "キャッシュを無効化しました",
+        "refreshed": "更新をキューに入れました",
+        "loadFailed": "ゲートウェイデータを読み込めませんでした",
+        "updated": "ゲートウェイ設定を更新しました"
+      },
+      "filter": {
+        "server": "サーバー",
+        "time": "期間",
+        "all": "すべて",
+        "empty": "バインドされた MCP サーバーはまだありません。",
+        "serverSearch": "サーバーを検索",
+        "tool": "ツール",
+        "toolAll": "すべてのツール",
+        "toolPlaceholder": "ツールを選択",
+        "toolSearch": "ツールを検索",
+        "toolDisabled": "サーバーを選ぶとツールを表示します"
+      },
+      "table": {
+        "footerUnits": "行",
+        "loading": "読み込み中…"
+      },
+      "storage": {
+        "title": "保存された結果",
+        "description": "小さい結果は Postgres に残り、大きい結果はファイルストアに移ります。モデルは常に元の結果を受け取ります。",
+        "results": "結果数",
+        "stored": "保存済み",
+        "transferred": "転送済み"
+      }
     },
     "mcpCatalog": {
       "header": {

@@ -21,6 +21,9 @@ import {
 } from "@/lib/tools/types";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { useSettings } from "@/lib/settings/hooks";
+import { useUserGroups } from "@/lib/hooks";
+import { useTierAtLeast } from "@/hooks/useTierAtLeast";
+import { Tier } from "@/lib/settings/types";
 import useServerTools from "@/hooks/useServerTools";
 import { can } from "@/lib/permissions/resource-actions";
 import { KeyedMutator } from "swr";
@@ -114,6 +117,36 @@ export default function MCPActionCard({
   const t = useTranslations("actions");
   const tGateway = useTranslations("admin.mcpActions");
   const settings = useSettings();
+  const businessTier = useTierAtLeast(Tier.BUSINESS);
+  const { data: userGroups } = useUserGroups();
+  const accessLabel = useMemo(() => {
+    if (surface !== "admin" || !businessTier) return null;
+    if (server.is_public) return t("mcpCard.access.public");
+    const groupIds = server.groups ?? [];
+    const names = (userGroups ?? [])
+      .filter((group) => groupIds.includes(group.id))
+      .map((group) => group.name);
+    if (names.length > 0) {
+      return t("mcpCard.access.restrictedNamed", { names: names.join(", ") });
+    }
+    if (groupIds.length > 0) {
+      return t("mcpCard.access.restrictedGroups", {
+        count: groupIds.length,
+      });
+    }
+    return t("mcpCard.access.restricted");
+  }, [businessTier, server.groups, server.is_public, surface, t, userGroups]);
+  const gatewayUnavailable =
+    surface === "admin" &&
+    Boolean(server.gateway_bound) &&
+    settings.mcp_gateway_enabled !== true;
+  const cardDescription = [
+    description,
+    accessLabel,
+    gatewayUnavailable ? t("mcpCard.unavailable") : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" · ");
   const cardTitle =
     surface === "admin"
       ? `${title} · ${
@@ -285,7 +318,7 @@ export default function MCPActionCard({
 
     return (
       <div className="flex items-center gap-2">
-        {canManageStatus && (
+        {canManageStatus && !gatewayUnavailable && (
           <Button
             icon={isToolsRefreshing ? SvgSimpleLoader : SvgRefreshCw}
             prominence="internal"
@@ -311,12 +344,15 @@ export default function MCPActionCard({
     );
   }, [
     canManageStatus,
+    gatewayUnavailable,
+    server.catalog_slug,
+    server.gateway_bound,
     server.last_refreshed_at,
-    server.scope,
     serverId,
     mutate,
     onRefreshTools,
     isToolsRefreshing,
+    surface,
     t,
     tGateway,
   ]);
@@ -325,7 +361,7 @@ export default function MCPActionCard({
     <>
       <ActionCard
         title={cardTitle}
-        description={description}
+        description={cardDescription}
         icon={icon}
         status={status}
         actions={actionsComponent}
@@ -351,7 +387,9 @@ export default function MCPActionCard({
           onUpdateToolsStatus={
             // Bulk toggles all tools; the status route 403s the whole batch unless every
             // tool is manageable, so only offer it when the user can toggle each one.
-            tools.length > 0 && tools.every((tool) => can(tool, "toggle"))
+            !gatewayUnavailable &&
+            tools.length > 0 &&
+            tools.every((tool) => can(tool, "toggle"))
               ? (enabled) => {
                   const toolIds = tools.map((tool) => parseInt(tool.id));
                   onUpdateToolsStatus?.(serverId, toolIds, enabled, mutate);
@@ -372,7 +410,7 @@ export default function MCPActionCard({
               icon={tool.icon}
               isAvailable={tool.isAvailable}
               isEnabled={tool.isEnabled}
-              canToggle={can(tool, "toggle")}
+              canToggle={can(tool, "toggle") && !gatewayUnavailable}
               onToggle={(enabled) =>
                 onToolToggle?.(serverId, tool.id, enabled, mutate)
               }

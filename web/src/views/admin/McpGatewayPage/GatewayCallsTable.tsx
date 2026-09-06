@@ -1,0 +1,226 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
+import {
+  InputTypeIn,
+  Modal,
+  Table,
+  createTableColumns,
+} from "@opal/components";
+import { IllustrationContent, toast } from "@opal/layouts";
+import SvgNoResult from "@opal/illustrations/no-result";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import { getMcpGatewayCall, listMcpGatewayCalls } from "@/lib/mcp-catalog/api";
+import type {
+  McpGatewayCallDetail,
+  McpGatewayCallItem,
+} from "@/lib/mcp-catalog/types";
+import type { DateRange } from "@/refresh-components/DateRangePicker";
+import { errorMessage, formatBytes, PAGE_SIZE } from "./format";
+import { useDebouncedValue } from "./useDebouncedValue";
+
+const tc = createTableColumns<McpGatewayCallItem>();
+
+interface GatewayCallsTableProps {
+  dateRange: DateRange;
+  catalogSlug: string;
+  tool: string;
+}
+
+function outcomeLabel(
+  t: ReturnType<typeof useTranslations<"admin.mcpGateway">>,
+  outcome: string
+): string {
+  switch (outcome) {
+    case "hit":
+      return t("calls.outcomes.hit");
+    case "miss":
+      return t("calls.outcomes.miss");
+    case "swr":
+      return t("calls.outcomes.swr");
+    case "refresh":
+      return t("calls.outcomes.refresh");
+    case "bypass":
+      return t("calls.outcomes.bypass");
+    case "error":
+      return t("calls.outcomes.error");
+    default:
+      return outcome;
+  }
+}
+
+export default function GatewayCallsTable({
+  dateRange,
+  catalogSlug,
+  tool,
+}: GatewayCallsTableProps) {
+  const t = useTranslations("admin.mcpGateway");
+  const format = useFormatter();
+  const [searchInput, setSearchInput] = useState("");
+  const searchTerm = useDebouncedValue(searchInput);
+  const fromIso = dateRange?.from.toISOString();
+  const toIso = dateRange?.to.toISOString();
+  const filterKey = `${fromIso}\0${toIso}\0${catalogSlug}\0${tool}\0${searchTerm}`;
+  const [filterSnapshot, setFilterSnapshot] = useState(filterKey);
+  const [pageIndex, setPageIndex] = useState(0);
+  const nextPageIndex = filterSnapshot !== filterKey ? 0 : pageIndex;
+  if (filterSnapshot !== filterKey) {
+    setFilterSnapshot(filterKey);
+    setPageIndex(0);
+  }
+  const [rows, setRows] = useState<McpGatewayCallItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [detail, setDetail] = useState<McpGatewayCallDetail | null>(null);
+  const requestId = useRef(0);
+
+  const load = useCallback(async () => {
+    if (!fromIso || !toIso) return;
+    const id = ++requestId.current;
+    setIsLoading(true);
+    try {
+      const result = await listMcpGatewayCalls({
+        from: fromIso,
+        to: toIso,
+        catalog_slug: catalogSlug || undefined,
+        tool: tool || undefined,
+        q: searchTerm || undefined,
+        offset: nextPageIndex * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      });
+      if (id !== requestId.current) return;
+      setRows(result.items);
+      setTotal(result.total);
+    } catch (error) {
+      if (id !== requestId.current) return;
+      toast.error(errorMessage(error, t("toasts.loadFailed")));
+    } finally {
+      if (id === requestId.current) setIsLoading(false);
+    }
+  }, [fromIso, toIso, catalogSlug, tool, searchTerm, nextPageIndex, t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const columns = useMemo(
+    () => [
+      tc.column("created_at", {
+        header: t("calls.time"),
+        weight: 16,
+        enableSorting: false,
+        cell: (value) =>
+          format.dateTime(new Date(value), {
+            dateStyle: "short",
+            timeStyle: "medium",
+          }),
+      }),
+      tc.column("catalog_slug", {
+        header: t("calls.server"),
+        weight: 12,
+        enableSorting: false,
+      }),
+      tc.column("effective_tool_name", {
+        header: t("calls.tool"),
+        weight: 14,
+        enableSorting: false,
+      }),
+      tc.column("outcome", {
+        header: t("calls.outcome"),
+        weight: 12,
+        enableSorting: false,
+        cell: (value) => outcomeLabel(t, value),
+      }),
+      tc.column("latency_ms", {
+        header: t("calls.latency"),
+        weight: 8,
+        enableSorting: false,
+        cell: (value) => t("calls.latencyMs", { ms: value }),
+      }),
+      tc.column("response_bytes", {
+        header: t("calls.size"),
+        weight: 8,
+        enableSorting: false,
+        cell: (value) => formatBytes(value),
+      }),
+      tc.column("upstream_billed", {
+        header: t("calls.billed"),
+        weight: 8,
+        enableSorting: false,
+        cell: (value) => (value ? t("calls.billedYes") : t("calls.billedNo")),
+      }),
+      tc.column("arguments_preview", {
+        header: t("calls.preview"),
+        weight: 22,
+        enableSorting: false,
+      }),
+    ],
+    [format, t]
+  );
+
+  return (
+    <div
+      className="flex flex-col gap-3 pt-4"
+      data-testid="mcp-gateway-calls-table"
+    >
+      <InputTypeIn
+        searchIcon
+        value={searchInput}
+        onChange={(event) => setSearchInput(event.target.value)}
+        placeholder={t("calls.searchPlaceholder")}
+        aria-label={t("calls.searchPlaceholder")}
+        data-testid="mcp-gateway-calls-search"
+      />
+      <Table
+        key={`${fromIso}|${toIso}|${catalogSlug}|${tool}`}
+        data={rows}
+        columns={columns}
+        getRowId={(row) => String(row.id)}
+        pageSize={PAGE_SIZE}
+        variant="cards"
+        searchTerm={searchTerm}
+        footer={{ units: t("table.footerUnits") }}
+        onRowClick={(row) =>
+          void getMcpGatewayCall(row.id)
+            .then(setDetail)
+            .catch((error) =>
+              toast.error(errorMessage(error, t("toasts.loadFailed")))
+            )
+        }
+        emptyState={
+          <IllustrationContent
+            illustration={SvgNoResult}
+            title={isLoading ? t("table.loading") : t("calls.empty")}
+          />
+        }
+        serverSide={{
+          totalItems: total,
+          isLoading,
+          onSortingChange: () => undefined,
+          onPaginationChange: (nextPage) => setPageIndex(nextPage),
+          onSearchTermChange: () => undefined,
+        }}
+      />
+      {detail ? (
+        <Modal open onOpenChange={(open) => !open && setDetail(null)}>
+          <Modal.Content width="md">
+            <Modal.Header
+              icon={ADMIN_ROUTES.MCP_GATEWAY.icon}
+              title={t("calls.detailTitle")}
+              onClose={() => setDetail(null)}
+            />
+            <Modal.Body>
+              <pre
+                className="max-h-96 overflow-auto text-sm"
+                data-testid="mcp-gateway-call-detail"
+              >
+                {JSON.stringify(detail.arguments, null, 2)}
+              </pre>
+            </Modal.Body>
+          </Modal.Content>
+        </Modal>
+      ) : null}
+    </div>
+  );
+}

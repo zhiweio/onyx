@@ -121,7 +121,9 @@
         "invalid": "Deve ser uma URL válida",
         "required": "A URL do servidor é obrigatória",
         "subDescription": "Conecte-se apenas a servidores em que você confia. Você é responsável pelas ações realizadas com esta conexão e por manter suas ferramentas atualizadas.",
-        "title": "URL do servidor MCP"
+        "title": "URL do servidor MCP",
+        "upstreamTitle": "Upstream URL",
+        "upstreamSubDescription": "The real MCP server. The gateway path stays the same."
       },
       "submitButton": {
         "addLabel": "Adicionar servidor",
@@ -133,7 +135,13 @@
         "createFailed": "Falha ao criar o servidor MCP",
         "serverCreated": "Servidor MCP criado com sucesso",
         "serverUpdated": "Servidor MCP atualizado com sucesso",
-        "updateFailed": "Falha ao atualizar o servidor MCP"
+        "updateFailed": "Falha ao atualizar o servidor MCP",
+        "bound": "Server now routes through the gateway",
+        "unbound": "Server now connects directly",
+        "bindFailed": "Failed to bind to the gateway",
+        "unbindFailed": "Failed to unbind from the gateway",
+        "bindingUpdated": "Gateway binding updated",
+        "discoveryFailed": "Bound, but tool discovery failed: {error}"
       },
       "installMode": {
         "custom": "URL personalizada",
@@ -172,6 +180,21 @@
         "patsnap": "Patent search, patent detail, and generative research tools.",
         "qixinbao": "Chinese company registry, risk, and litigation lookups.",
         "tianyancha": "Chinese company registry, IP, judicial, and financial data."
+      },
+      "gatewayBind": {
+        "title": "Route through MCP Gateway",
+        "bindButton": "Bind to gateway",
+        "binding": "Binding...",
+        "unbindButton": "Unbind to direct",
+        "unbinding": "Unbinding...",
+        "updateButton": "Update binding",
+        "updating": "Updating...",
+        "pathLabel": "Gateway path",
+        "confirmPack": "This pack will lose its cache policy and stored organization credentials. The server will call the upstream URL directly.",
+        "confirmDirect": "This server will call the upstream URL directly. The gateway path and cached results will be removed.",
+        "confirmAction": "Unbind",
+        "cancelConfirm": "Keep bound",
+        "perUserBlocked": "Servers that use per-user tokens cannot use the gateway."
       }
     },
     "addOpenApiModal": {
@@ -416,10 +439,17 @@
         "tooltip": "Atualizar ferramentas"
       },
       "badge": {
-        "direct": "Direct",
+        "direct": "Direto",
         "gateway": "Gateway",
-        "gatewayOff": "Gateway off"
-      }
+        "gatewayOff": "Gateway desligado"
+      },
+      "access": {
+        "public": "Público para todos os usuários",
+        "restricted": "Restrito — nenhum grupo atribuído",
+        "restrictedGroups": "Restrito a {count, plural, one {# grupo} other {# grupos}}",
+        "restrictedNamed": "Restrito a {names}"
+      },
+      "unavailable": "Indisponível enquanto o gateway estiver desligado"
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -5666,9 +5696,9 @@
     "mcpActions": {
       "header": {
         "description": "Conecte servidores MCP (Model Context Protocol) para adicionar ações e ferramentas personalizadas aos seus agentes.",
-        "gatewayLink": "MCP Gateway",
-        "gatewayOn": "Gateway on",
-        "gatewayOff": "Gateway off"
+        "gatewayLink": "Gateway MCP",
+        "gatewayOn": "Gateway ligado",
+        "gatewayOff": "Gateway desligado"
       }
     },
     "modals": {
@@ -8131,62 +8161,104 @@
     },
     "mcpGateway": {
       "header": {
-        "title": "MCP Gateway",
-        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
-      },
-      "stats": {
-        "title": "Usage",
-        "total": "Total calls",
-        "hits": "Cache hits",
-        "billed": "Upstream billed",
-        "saved": "Calls saved",
-        "hitRate": "Hit rate"
-      },
-      "cache": {
-        "title": "Cached calls",
-        "invalidate": "Invalidate",
-        "refresh": "Refresh",
-        "empty": "No cache entries.",
-        "hits": "hits"
-      },
-      "toasts": {
-        "invalidated": "Cache invalidated",
-        "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data",
-        "updated": "Gateway setting updated"
-      },
-      "filter": {
-        "title": "Server",
-        "all": "All",
-        "empty": "No system MCP servers yet.",
-        "toolPlaceholder": "Tool name"
-      },
-      "storage": {
-        "title": "Stored results",
-        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
-        "results": "Results",
-        "stored": "Stored",
-        "transferred": "Transferred"
+        "title": "Gateway MCP",
+        "description": "Operações dos servidores MCP da organização que passam pelo gateway."
       },
       "tabs": {
-        "overview": "Overview",
+        "overview": "Visão geral",
         "cache": "Cache",
-        "calls": "Calls"
-      },
-      "window": {
-        "label": "Time window",
-        "24h": "24 hours",
-        "7d": "7 days",
-        "30d": "30 days"
+        "calls": "Chamadas"
       },
       "module": {
-        "label": "Enable MCP Gateway",
-        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
-        "retention": "Call logs are kept for {days} days."
+        "label": "Ativar o Gateway MCP",
+        "description": "Quando desligado, os servidores MCP da organização vinculados param. Os servidores diretos permanecem disponíveis.",
+        "retention": "Os registros de chamadas são mantidos por {days} dias.",
+        "retentionAll": "Os registros de chamadas são mantidos sem limite de tempo.",
+        "confirmEnableTitle": "Ativar o Gateway MCP?",
+        "confirmEnableBody": "Os servidores MCP da organização vinculados voltarão a funcionar. Os servidores diretos permanecem disponíveis.",
+        "confirmEnableAction": "Ativar",
+        "confirmDisableTitle": "Desativar o Gateway MCP?",
+        "confirmDisableBody": "Os servidores MCP da organização vinculados pararão para todos os usuários. Os servidores diretos permanecem disponíveis.",
+        "confirmDisableAction": "Desativar",
+        "confirmCancel": "Cancelar"
       },
-      "emptyBound": "No organization MCP is bound to the gateway yet.",
-      "openActions": "Add from a pack",
-      "loadMore": "Load more"
+      "emptyBound": "Nenhum MCP da organização está vinculado ao gateway ainda.",
+      "openActions": "Adicionar de um pacote",
+      "stats": {
+        "title": "Uso",
+        "total": "Chamadas totais",
+        "hits": "Acertos de cache",
+        "billed": "Cobrado no origem",
+        "saved": "Chamadas economizadas",
+        "hitRate": "Taxa de acertos"
+      },
+      "cache": {
+        "title": "Chamadas em cache",
+        "tool": "Ferramenta",
+        "server": "Servidor",
+        "hits": "Acertos",
+        "size": "Tamanho",
+        "lastAccess": "Último acesso",
+        "status": "Status de atualização",
+        "actions": "Ações",
+        "invalidate": "Invalidar",
+        "refresh": "Atualizar",
+        "empty": "Nenhuma entrada de cache.",
+        "searchPlaceholder": "Pesquisar cache"
+      },
+      "calls": {
+        "time": "Hora",
+        "server": "Servidor",
+        "tool": "Ferramenta",
+        "outcome": "Resultado",
+        "latency": "Latência",
+        "latencyMs": "{ms} ms",
+        "size": "Tamanho",
+        "billed": "Cobrado",
+        "preview": "Argumentos",
+        "empty": "Nenhuma chamada neste intervalo.",
+        "searchPlaceholder": "Pesquisar chamadas",
+        "detailTitle": "Detalhes da chamada",
+        "billedYes": "Sim",
+        "billedNo": "Não",
+        "outcomes": {
+          "hit": "Acerto",
+          "miss": "Falha",
+          "swr": "Revalidação em segundo plano",
+          "refresh": "Atualização",
+          "bypass": "Ignorar",
+          "error": "Erro"
+        }
+      },
+      "toasts": {
+        "invalidated": "Cache invalidado",
+        "refreshed": "Atualização na fila",
+        "loadFailed": "Não foi possível carregar os dados do gateway",
+        "updated": "Configuração do gateway atualizada"
+      },
+      "filter": {
+        "server": "Servidor",
+        "time": "Período",
+        "all": "Todos",
+        "empty": "Ainda não há servidores MCP vinculados.",
+        "serverSearch": "Pesquisar servidores",
+        "tool": "Ferramenta",
+        "toolAll": "Todas as ferramentas",
+        "toolPlaceholder": "Selecionar ferramenta",
+        "toolSearch": "Pesquisar ferramentas",
+        "toolDisabled": "Selecione um servidor para listar as ferramentas"
+      },
+      "table": {
+        "footerUnits": "linhas",
+        "loading": "Carregando…"
+      },
+      "storage": {
+        "title": "Resultados armazenados",
+        "description": "Resultados pequenos ficam no Postgres; os grandes vão para o armazenamento de arquivos. O modelo sempre recebe o resultado original.",
+        "results": "Resultados",
+        "stored": "Armazenado",
+        "transferred": "Transferido"
+      }
     },
     "mcpCatalog": {
       "header": {

@@ -121,7 +121,9 @@
         "invalid": "يجب أن يكون عنوان URL صالحًا",
         "required": "عنوان URL للخادم مطلوب",
         "subDescription": "لا تتصل إلا بالخوادم التي تثق بها. أنت مسؤول عن الإجراءات المنفذة عبر هذا الاتصال وعن تحديث أدواتك.",
-        "title": "عنوان URL لخادم MCP"
+        "title": "عنوان URL لخادم MCP",
+        "upstreamTitle": "Upstream URL",
+        "upstreamSubDescription": "The real MCP server. The gateway path stays the same."
       },
       "submitButton": {
         "addLabel": "إضافة خادم",
@@ -133,7 +135,13 @@
         "createFailed": "فشل إنشاء خادم MCP",
         "serverCreated": "تم إنشاء خادم MCP بنجاح",
         "serverUpdated": "تم تحديث خادم MCP بنجاح",
-        "updateFailed": "فشل تحديث خادم MCP"
+        "updateFailed": "فشل تحديث خادم MCP",
+        "bound": "Server now routes through the gateway",
+        "unbound": "Server now connects directly",
+        "bindFailed": "Failed to bind to the gateway",
+        "unbindFailed": "Failed to unbind from the gateway",
+        "bindingUpdated": "Gateway binding updated",
+        "discoveryFailed": "Bound, but tool discovery failed: {error}"
       },
       "installMode": {
         "custom": "عنوان URL مخصص",
@@ -172,6 +180,21 @@
         "patsnap": "Patent search, patent detail, and generative research tools.",
         "qixinbao": "Chinese company registry, risk, and litigation lookups.",
         "tianyancha": "Chinese company registry, IP, judicial, and financial data."
+      },
+      "gatewayBind": {
+        "title": "Route through MCP Gateway",
+        "bindButton": "Bind to gateway",
+        "binding": "Binding...",
+        "unbindButton": "Unbind to direct",
+        "unbinding": "Unbinding...",
+        "updateButton": "Update binding",
+        "updating": "Updating...",
+        "pathLabel": "Gateway path",
+        "confirmPack": "This pack will lose its cache policy and stored organization credentials. The server will call the upstream URL directly.",
+        "confirmDirect": "This server will call the upstream URL directly. The gateway path and cached results will be removed.",
+        "confirmAction": "Unbind",
+        "cancelConfirm": "Keep bound",
+        "perUserBlocked": "Servers that use per-user tokens cannot use the gateway."
       }
     },
     "addOpenApiModal": {
@@ -416,10 +439,17 @@
         "tooltip": "تحديث الأدوات"
       },
       "badge": {
-        "direct": "Direct",
-        "gateway": "Gateway",
-        "gatewayOff": "Gateway off"
-      }
+        "direct": "مباشر",
+        "gateway": "بوابة",
+        "gatewayOff": "البوابة متوقفة"
+      },
+      "access": {
+        "public": "عام لجميع المستخدمين",
+        "restricted": "مقيّد — لم تُعيَّن مجموعات",
+        "restrictedGroups": "مقيّد على {count, plural, one {مجموعة واحدة} other {# مجموعات}}",
+        "restrictedNamed": "مقيّد على {names}"
+      },
+      "unavailable": "غير متاح أثناء إيقاف البوابة"
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -5666,9 +5696,9 @@
     "mcpActions": {
       "header": {
         "description": "اربط خوادم MCP (بروتوكول سياق النموذج) لإضافة إجراءات وأدوات مخصصة لوكلائك.",
-        "gatewayLink": "MCP Gateway",
-        "gatewayOn": "Gateway on",
-        "gatewayOff": "Gateway off"
+        "gatewayLink": "بوابة MCP",
+        "gatewayOn": "البوابة قيد التشغيل",
+        "gatewayOff": "البوابة متوقفة"
       }
     },
     "modals": {
@@ -8131,62 +8161,104 @@
     },
     "mcpGateway": {
       "header": {
-        "title": "MCP Gateway",
-        "description": "Cache hit rate, stored result size, and cache control for system MCP servers."
-      },
-      "stats": {
-        "title": "Usage",
-        "total": "Total calls",
-        "hits": "Cache hits",
-        "billed": "Upstream billed",
-        "saved": "Calls saved",
-        "hitRate": "Hit rate"
-      },
-      "cache": {
-        "title": "Cached calls",
-        "invalidate": "Invalidate",
-        "refresh": "Refresh",
-        "empty": "No cache entries.",
-        "hits": "hits"
-      },
-      "toasts": {
-        "invalidated": "Cache invalidated",
-        "refreshed": "Refresh queued",
-        "loadFailed": "Could not load gateway data",
-        "updated": "Gateway setting updated"
-      },
-      "filter": {
-        "title": "Server",
-        "all": "All",
-        "empty": "No system MCP servers yet.",
-        "toolPlaceholder": "Tool name"
-      },
-      "storage": {
-        "title": "Stored results",
-        "description": "Small results stay in Postgres; large ones move to the file store. The model always receives the original tool result.",
-        "results": "Results",
-        "stored": "Stored",
-        "transferred": "Transferred"
+        "title": "بوابة MCP",
+        "description": "عمليات خوادم MCP الخاصة بالمؤسسة التي تمر عبر البوابة."
       },
       "tabs": {
-        "overview": "Overview",
-        "cache": "Cache",
-        "calls": "Calls"
-      },
-      "window": {
-        "label": "Time window",
-        "24h": "24 hours",
-        "7d": "7 days",
-        "30d": "30 days"
+        "overview": "نظرة عامة",
+        "cache": "ذاكرة التخزين",
+        "calls": "الاستدعاءات"
       },
       "module": {
-        "label": "Enable MCP Gateway",
-        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
-        "retention": "Call logs are kept for {days} days."
+        "label": "تفعيل بوابة MCP",
+        "description": "عند الإيقاف، تتوقف خوادم MCP المرتبطة بالمؤسسة. تبقى الخوادم المباشرة متاحة.",
+        "retention": "تُحفظ سجلات الاستدعاء لمدة {days} يومًا.",
+        "retentionAll": "تُحفظ سجلات الاستدعاء دون حد زمني.",
+        "confirmEnableTitle": "تشغيل بوابة MCP؟",
+        "confirmEnableBody": "ستعمل خوادم MCP المرتبطة مجددًا. تبقى الخوادم المباشرة متاحة.",
+        "confirmEnableAction": "تشغيل",
+        "confirmDisableTitle": "إيقاف بوابة MCP؟",
+        "confirmDisableBody": "ستتوقف خوادم MCP المرتبطة لكل المستخدمين. تبقى الخوادم المباشرة متاحة.",
+        "confirmDisableAction": "إيقاف",
+        "confirmCancel": "إلغاء"
       },
-      "emptyBound": "No organization MCP is bound to the gateway yet.",
-      "openActions": "Add from a pack",
-      "loadMore": "Load more"
+      "emptyBound": "لا يوجد MCP مؤسسة مرتبط بالبوابة بعد.",
+      "openActions": "إضافة من حزمة",
+      "stats": {
+        "title": "الاستخدام",
+        "total": "إجمالي الاستدعاءات",
+        "hits": "إصابات التخزين",
+        "billed": "فوترة المصدر",
+        "saved": "استدعاءات موفّرة",
+        "hitRate": "معدل الإصابة"
+      },
+      "cache": {
+        "title": "استدعاءات مخزّنة",
+        "tool": "أداة",
+        "server": "خادم",
+        "hits": "إصابات",
+        "size": "الحجم",
+        "lastAccess": "آخر وصول",
+        "status": "حالة التحديث",
+        "actions": "إجراءات",
+        "invalidate": "إبطال",
+        "refresh": "تحديث",
+        "empty": "لا توجد عناصر تخزين.",
+        "searchPlaceholder": "البحث في التخزين"
+      },
+      "calls": {
+        "time": "الوقت",
+        "server": "خادم",
+        "tool": "أداة",
+        "outcome": "النتيجة",
+        "latency": "الكمون",
+        "latencyMs": "{ms} مللي ثانية",
+        "size": "الحجم",
+        "billed": "مفوتر",
+        "preview": "المعاملات",
+        "empty": "لا استدعاءات في هذا النطاق.",
+        "searchPlaceholder": "البحث في الاستدعاءات",
+        "detailTitle": "تفاصيل الاستدعاء",
+        "billedYes": "نعم",
+        "billedNo": "لا",
+        "outcomes": {
+          "hit": "إصابة",
+          "miss": "تفويت",
+          "swr": "إعادة التحقق في الخلفية",
+          "refresh": "تحديث",
+          "bypass": "تجاوز",
+          "error": "خطأ"
+        }
+      },
+      "toasts": {
+        "invalidated": "تم إبطال التخزين",
+        "refreshed": "وُضع التحديث في قائمة الانتظار",
+        "loadFailed": "تعذّر تحميل بيانات البوابة",
+        "updated": "تم تحديث إعداد البوابة"
+      },
+      "filter": {
+        "server": "خادم",
+        "time": "الفترة",
+        "all": "الكل",
+        "empty": "لا توجد خوادم MCP مرتبطة بعد.",
+        "serverSearch": "البحث عن خوادم",
+        "tool": "أداة",
+        "toolAll": "كل الأدوات",
+        "toolPlaceholder": "اختر أداة",
+        "toolSearch": "البحث عن أدوات",
+        "toolDisabled": "اختر خادمًا لعرض الأدوات"
+      },
+      "table": {
+        "footerUnits": "صفوف",
+        "loading": "جارٍ التحميل…"
+      },
+      "storage": {
+        "title": "النتائج المخزّنة",
+        "description": "النتائج الصغيرة تبقى في Postgres؛ الكبيرة تنتقل إلى مخزن الملفات. يتلقى النموذج النتيجة الأصلية دائمًا.",
+        "results": "النتائج",
+        "stored": "مخزّن",
+        "transferred": "منقول"
+      }
     },
     "mcpCatalog": {
       "header": {

@@ -29,9 +29,73 @@ def test_calls_require_a_time_window(admin_user: DATestUser) -> None:
     body = windowed.json()
     assert "items" in body
     assert "next_cursor" in body
+    assert "total" in body
     for row in body["items"]:
         assert "arguments" not in row
         assert "arguments_preview" in row
+
+
+def test_calls_accept_preset_and_custom_windows(admin_user: DATestUser) -> None:
+    now = datetime.now(timezone.utc)
+    for days in (1, 7, 30, 90, 180):
+        windowed = client.get(
+            f"{OPS}/calls",
+            params={
+                "from": (now - timedelta(days=days)).isoformat(),
+                "to": now.isoformat(),
+                "q": "nonexistent-tool",
+                "offset": 0,
+                "limit": 20,
+            },
+            headers=admin_user.headers,
+            cookies=admin_user.cookies,
+        )
+        windowed.raise_for_status()
+        body = windowed.json()
+        assert body["total"] == 0
+        assert body["items"] == []
+
+
+def test_stats_report_unlimited_retention(admin_user: DATestUser) -> None:
+    now = datetime.now(timezone.utc)
+    windowed = client.get(
+        f"{OPS}/stats",
+        params={
+            "from": (now - timedelta(days=90)).isoformat(),
+            "to": now.isoformat(),
+        },
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    windowed.raise_for_status()
+    body = windowed.json()
+    assert body["retention_days"] in (None, 0)
+
+
+def test_cache_accepts_offset_and_search(admin_user: DATestUser) -> None:
+    listed = client.get(
+        f"{OPS}/cache",
+        params={"q": "nonexistent-tool", "offset": 0, "limit": 20},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    listed.raise_for_status()
+    body = listed.json()
+    assert "items" in body
+    assert "total" in body
+    assert body["total"] == 0
+
+    paged = client.get(
+        f"{OPS}/cache",
+        params={"offset": 20, "limit": 20},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    paged.raise_for_status()
+    paged_body = paged.json()
+    assert isinstance(paged_body["items"], list)
+    assert isinstance(paged_body["total"], int)
+    assert len(paged_body["items"]) <= 20
 
 
 def test_stats_require_a_time_window(admin_user: DATestUser) -> None:

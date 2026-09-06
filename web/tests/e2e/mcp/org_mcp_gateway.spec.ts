@@ -11,6 +11,7 @@ test.describe("Organization MCP and Gateway", () => {
   let packServerName = "";
   let packSlug = "";
   let uiPackServerId: number | null = null;
+  let bindServerId: number | null = null;
 
   test.beforeAll(async ({ browser }) => {
     const adminContext = await browser.newContext({
@@ -28,7 +29,7 @@ test.describe("Organization MCP and Gateway", () => {
       storageState: "admin_auth.json",
     });
     const adminClient = new OnyxApiClient(adminContext.request);
-    for (const id of [packServerId, uiPackServerId]) {
+    for (const id of [packServerId, uiPackServerId, bindServerId]) {
       if (id !== null) {
         await adminClient.deleteMcpServer(id);
       }
@@ -99,14 +100,41 @@ test.describe("Organization MCP and Gateway", () => {
     const gateway = new AdminMcpGatewayPage(page);
     await gateway.goto();
     await gateway.expectLoaded();
-    await gateway.expectTimeWindowVisible();
+    await gateway.expectDateRangeVisible();
     await gateway.selectSevenDayWindow();
+    await gateway.expectConfirmOnToggle();
 
     await gateway.openTab("cache");
     await gateway.expectCacheTable();
+    await gateway.searchCache("preview");
 
     await gateway.openTab("calls");
     await gateway.expectCallsPreviewOnly();
+  });
+
+  test("manage modal binds a direct server then unbinds it", async ({
+    page,
+  }) => {
+    const client = new OnyxApiClient(page.request);
+    const serverName = `PW Bind ${Date.now()}`;
+    bindServerId = await client.createMcpServer(
+      serverName,
+      "http://127.0.0.1:9/mcp"
+    );
+
+    const adminMcp = new AdminMcpServersPage(page);
+    await adminMcp.goto();
+    await adminMcp.expectDirectBadge(serverName);
+
+    await adminMcp.openManageModal(serverName);
+    await adminMcp.bindToGateway(`pw-bind-${Date.now()}`);
+    await adminMcp.closeManageModal();
+    await adminMcp.expectGatewayBadge(serverName);
+
+    await adminMcp.openManageModal(serverName);
+    await adminMcp.unbindFromGateway();
+    await adminMcp.closeManageModal();
+    await adminMcp.expectDirectBadge(serverName);
   });
 
   test("from-pack API server shows a Gateway badge", async ({ page }) => {

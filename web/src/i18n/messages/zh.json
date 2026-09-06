@@ -121,7 +121,9 @@
         "invalid": "必须是有效的 URL",
         "required": "必须填写服务器 URL",
         "subDescription": "只连接您信任的服务器。您需要对通过此连接执行的操作负责，并负责及时更新工具。",
-        "title": "MCP 服务器 URL"
+        "title": "MCP 服务器 URL",
+        "upstreamTitle": "上游 URL",
+        "upstreamSubDescription": "真实的 MCP 服务器地址。网关 path 保持不变。"
       },
       "submitButton": {
         "addLabel": "添加服务器",
@@ -133,7 +135,13 @@
         "createFailed": "创建 MCP 服务器失败",
         "serverCreated": "MCP 服务器创建成功",
         "serverUpdated": "MCP 服务器更新成功",
-        "updateFailed": "更新 MCP 服务器失败"
+        "updateFailed": "更新 MCP 服务器失败",
+        "bound": "服务器已改为通过网关接入",
+        "unbound": "服务器已改回直连",
+        "bindFailed": "绑定到网关失败",
+        "unbindFailed": "解绑网关失败",
+        "bindingUpdated": "网关绑定已更新",
+        "discoveryFailed": "已绑定，但工具发现失败：{error}"
       },
       "installMode": {
         "custom": "自定义 URL",
@@ -172,6 +180,21 @@
         "patsnap": "专利检索、专利详情和生成式研究工具。",
         "qixinbao": "中国企业工商、风险和诉讼查询。",
         "tianyancha": "中国企业工商、知识产权、司法和财务数据。"
+      },
+      "gatewayBind": {
+        "title": "通过 MCP 网关接入",
+        "bindButton": "绑定到网关",
+        "binding": "正在绑定...",
+        "unbindButton": "解绑回直连",
+        "unbinding": "正在解绑...",
+        "updateButton": "更新绑定",
+        "updating": "正在更新...",
+        "pathLabel": "网关 path",
+        "confirmPack": "此 Pack 将失去缓存策略和已存储的组织凭据。服务器将直接调用上游 URL。",
+        "confirmDirect": "此服务器将直接调用上游 URL。网关 path 和缓存结果将被移除。",
+        "confirmAction": "解绑",
+        "cancelConfirm": "保持绑定",
+        "perUserBlocked": "使用按用户 token 的服务器不能走网关。"
       }
     },
     "addOpenApiModal": {
@@ -416,9 +439,16 @@
         "tooltip": "刷新工具"
       },
       "badge": {
-        "direct": "Direct",
-        "gateway": "Gateway",
-        "gatewayOff": "Gateway off"
+        "direct": "直连",
+        "gateway": "网关",
+        "gatewayOff": "网关已关闭"
+      },
+      "unavailable": "网关关闭期间不可用",
+      "access": {
+        "public": "对所有用户公开",
+        "restricted": "受限 — 未分配用户组",
+        "restrictedGroups": "仅限 {count} 个用户组",
+        "restrictedNamed": "仅限用户组：{names}"
       }
     },
     "mcpOauthCallback": {
@@ -5666,9 +5696,9 @@
     "mcpActions": {
       "header": {
         "description": "连接 MCP（Model Context Protocol）服务器，为您的智能体添加自定义操作和工具。",
-        "gatewayLink": "MCP Gateway",
-        "gatewayOn": "Gateway on",
-        "gatewayOff": "Gateway off"
+        "gatewayLink": "MCP 网关",
+        "gatewayOn": "网关已开启",
+        "gatewayOff": "网关已关闭"
       }
     },
     "modals": {
@@ -8132,8 +8162,28 @@
     "mcpGateway": {
       "header": {
         "title": "MCP 网关",
-        "description": "系统 MCP 服务器的缓存命中率、结果存储量与缓存控制。"
+        "description": "查看通过网关接入的组织 MCP 服务器的缓存、调用与控制。"
       },
+      "tabs": {
+        "overview": "概览",
+        "cache": "缓存",
+        "calls": "调用"
+      },
+      "module": {
+        "label": "启用 MCP 网关",
+        "description": "关闭后，所有走网关的组织 MCP 服务器将停止工作。直连服务器不受影响。",
+        "retention": "调用日志保留 {days} 天。",
+        "retentionAll": "调用日志长期保留，不设时间上限。",
+        "confirmEnableTitle": "开启 MCP 网关？",
+        "confirmEnableBody": "走网关的组织 MCP 服务器将重新可用。直连服务器不受影响。",
+        "confirmEnableAction": "开启",
+        "confirmDisableTitle": "关闭 MCP 网关？",
+        "confirmDisableBody": "走网关的组织 MCP 服务器将对所有用户停止工作。直连服务器不受影响。",
+        "confirmDisableAction": "关闭",
+        "confirmCancel": "取消"
+      },
+      "emptyBound": "还没有组织 MCP 绑定到网关。",
+      "openActions": "从 Pack 添加",
       "stats": {
         "title": "用量",
         "total": "总调用",
@@ -8144,22 +8194,63 @@
       },
       "cache": {
         "title": "缓存调用",
+        "tool": "工具",
+        "server": "服务器",
+        "hits": "命中",
+        "size": "大小",
+        "lastAccess": "最近访问",
+        "status": "刷新状态",
+        "actions": "操作",
         "invalidate": "失效",
         "refresh": "刷新",
         "empty": "没有缓存条目。",
-        "hits": "命中"
+        "searchPlaceholder": "搜索缓存"
+      },
+      "calls": {
+        "time": "时间",
+        "server": "服务器",
+        "tool": "工具",
+        "outcome": "结果",
+        "latency": "延迟",
+        "latencyMs": "{ms} 毫秒",
+        "size": "大小",
+        "billed": "计费",
+        "preview": "参数",
+        "empty": "此时间范围内没有调用。",
+        "searchPlaceholder": "搜索调用",
+        "detailTitle": "调用详情",
+        "billedYes": "是",
+        "billedNo": "否",
+        "outcomes": {
+          "hit": "命中",
+          "miss": "未命中",
+          "swr": "过期复用",
+          "refresh": "刷新",
+          "bypass": "绕过",
+          "error": "错误"
+        }
       },
       "toasts": {
         "invalidated": "缓存已失效",
         "refreshed": "已排队刷新",
         "loadFailed": "无法加载网关数据",
-        "updated": "Gateway setting updated"
+        "updated": "网关设置已更新"
       },
       "filter": {
-        "title": "服务器",
+        "server": "服务器",
+        "time": "时间",
         "all": "全部",
-        "empty": "还没有系统 MCP 服务器。",
-        "toolPlaceholder": "Tool name"
+        "empty": "还没有绑定到网关的 MCP 服务器。",
+        "serverSearch": "搜索服务器",
+        "tool": "工具",
+        "toolAll": "全部工具",
+        "toolPlaceholder": "选择工具",
+        "toolSearch": "搜索工具",
+        "toolDisabled": "先选择服务器以列出工具"
+      },
+      "table": {
+        "footerUnits": "行",
+        "loading": "加载中…"
       },
       "storage": {
         "title": "结果存储",
@@ -8167,26 +8258,7 @@
         "results": "结果数",
         "stored": "已存储",
         "transferred": "已传输"
-      },
-      "tabs": {
-        "overview": "Overview",
-        "cache": "Cache",
-        "calls": "Calls"
-      },
-      "window": {
-        "label": "Time window",
-        "24h": "24 hours",
-        "7d": "7 days",
-        "30d": "30 days"
-      },
-      "module": {
-        "label": "Enable MCP Gateway",
-        "description": "When off, bound organization MCP servers stop working. Direct servers stay available.",
-        "retention": "Call logs are kept for {days} days."
-      },
-      "emptyBound": "No organization MCP is bound to the gateway yet.",
-      "openActions": "Add from a pack",
-      "loadMore": "Load more"
+      }
     },
     "mcpCatalog": {
       "header": {

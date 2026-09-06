@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { endOfDay, format, isSameDay, startOfDay, subDays } from "date-fns";
 import { Calendar, Popover, SelectButton } from "@opal/components";
 import { SvgCalendar } from "@opal/icons";
+import { cn } from "@opal/utils";
 
 export const THIRTY_DAYS = "1M";
 
@@ -94,10 +95,12 @@ export const DateRangePicker = memo(function DateRangePicker({
   value,
   onValueChange,
   size = "md",
+  className,
 }: {
   value: DateRange;
   onValueChange: (value: DateRange) => void;
   size?: SelectorSize;
+  className?: string;
 }) {
   const t = useTranslations("common.dateRange");
   const buttonSize = size === "sm" ? "sm" : "md";
@@ -127,7 +130,11 @@ export const DateRangePicker = memo(function DateRangePicker({
 
   return (
     <div
-      className="inline-flex max-w-full shrink-0 items-center overflow-x-auto rounded-12 border border-border-02 bg-background-tint-03 p-0.5"
+      className={cn(
+        "inline-flex max-w-full shrink-0 items-center overflow-x-auto p-0.5",
+        className ??
+          "rounded-12 border border-border-02 bg-background-tint-03"
+      )}
       role="group"
       aria-label={t("group.ariaLabel")}
       data-testid="admin-date-range-selector"

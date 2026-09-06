@@ -97,7 +97,10 @@ from onyx.server.features.mcp.credentials import (
 from onyx.server.features.mcp.gateway_bind import (
     bind_org_server_to_gateway,
     create_org_server_from_pack,
+    discover_and_store_bound_tools,
+    rediscover_direct_tools,
     unbind_org_server_from_gateway,
+    upsert_org_server_gateway_binding,
 )
 from onyx.server.features.mcp.models import (
     MCPApiKeyResponse,
@@ -1202,6 +1205,7 @@ def _db_mcp_server_to_api_mcp_server(
     permissions: dict[str, bool] | None = None,
     craft_connected: bool | None = None,
     user_configs: Mapping[int, MCPConnectionConfig] | None = None,
+    discovery_error: str | None = None,
 ) -> MCPServer:
     """Convert database MCP server to API model.
 
@@ -1336,6 +1340,12 @@ def _db_mcp_server_to_api_mcp_server(
             db_server.catalog_entry.pack_slug if db_server.catalog_entry else None
         ),
         gateway_bound=db_server.catalog_entry_id is not None,
+        upstream_url=(
+            db_server.catalog_entry.upstream_url
+            if can_view_server_details and db_server.catalog_entry
+            else None
+        ),
+        discovery_error=discovery_error,
     )
 
 
@@ -2147,6 +2157,10 @@ def _upsert_mcp_server(
 
     if not changing_connection_config:
         db_session.commit()
+        if mcp_server.catalog_entry is not None:
+            discover_and_store_bound_tools(
+                db_session, mcp_server.catalog_entry, mcp_server.id
+            )
         _hot_reload_craft_sessions(users_to_reload, db_session)
         return mcp_server
 
@@ -2215,6 +2229,10 @@ def _upsert_mcp_server(
         bind_org_server_to_gateway(db_session, mcp_server, request.gateway_binding)
 
     db_session.commit()
+    if mcp_server.catalog_entry is not None:
+        discover_and_store_bound_tools(
+            db_session, mcp_server.catalog_entry, mcp_server.id
+        )
     _hot_reload_craft_sessions(users_to_reload, db_session)
     return mcp_server
 
@@ -2421,7 +2439,7 @@ def create_org_mcp_from_pack(
         require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
     ),
 ) -> MCPServer:
-    server, _entry, _error = create_org_server_from_pack(
+    server, _entry, error = create_org_server_from_pack(
         db_session,
         user,
         request,
@@ -2434,6 +2452,7 @@ def create_org_mcp_from_pack(
         permissions=mcp_server_permissions(
             can_manage=can_manage_mcp_server(user, server),
         ),
+        discovery_error=error,
     )
 
 
@@ -2452,8 +2471,10 @@ def bind_org_mcp_gateway(
         raise HTTPException(status_code=404, detail="MCP server not found")
     _reject_personal_on_admin(server)
     _ensure_mcp_server_owner_or_admin(server, user)
-    bind_org_server_to_gateway(db_session, server, request)
+    entry = upsert_org_server_gateway_binding(db_session, server, request)
     db_session.commit()
+    db_session.refresh(server)
+    error = discover_and_store_bound_tools(db_session, entry, server.id)
     return _db_mcp_server_to_api_mcp_server(
         server,
         db_session,
@@ -2461,6 +2482,7 @@ def bind_org_mcp_gateway(
         permissions=mcp_server_permissions(
             can_manage=can_manage_mcp_server(user, server),
         ),
+        discovery_error=error,
     )
 
 
@@ -2480,6 +2502,8 @@ def unbind_org_mcp_gateway(
     _ensure_mcp_server_owner_or_admin(server, user)
     unbind_org_server_from_gateway(db_session, server)
     db_session.commit()
+    db_session.refresh(server)
+    error = rediscover_direct_tools(db_session, server)
     return _db_mcp_server_to_api_mcp_server(
         server,
         db_session,
@@ -2487,6 +2511,7 @@ def unbind_org_mcp_gateway(
         permissions=mcp_server_permissions(
             can_manage=can_manage_mcp_server(user, server),
         ),
+        discovery_error=error,
     )
 
 
@@ -2704,6 +2729,12 @@ def create_mcp_server_simple(
 
     db_session.commit()
 
+    error = None
+    if mcp_server.catalog_entry is not None:
+        error = discover_and_store_bound_tools(
+            db_session, mcp_server.catalog_entry, mcp_server.id
+        )
+
     return _db_mcp_server_to_api_mcp_server(
         mcp_server,
         db_session,
@@ -2711,6 +2742,7 @@ def create_mcp_server_simple(
         permissions=mcp_server_permissions(
             can_manage=can_manage_mcp_server(user, mcp_server),
         ),
+        discovery_error=error,
     )
 
 
@@ -2734,13 +2766,18 @@ def update_mcp_server_simple(
 
     _validate_mcp_server_url(request.server_url, "server_url", require_https=False)
 
-    # Update only provided fields
+    bound = mcp_server.catalog_entry_id is not None
+    if bound and request.server_url and mcp_server.catalog_entry is not None:
+        mcp_server.catalog_entry.upstream_url = request.server_url
+
+    # Update only provided fields. A bound server_url is the gateway path;
+    # treat a submitted URL as the upstream and leave the gateway path alone.
     updated_server = update_mcp_server__no_commit(
         server_id=server_id,
         db_session=db_session,
         name=request.name,
         description=request.description,
-        server_url=request.server_url,
+        server_url=None if bound else request.server_url,
         available_in_craft=request.available_in_craft,
     )
 

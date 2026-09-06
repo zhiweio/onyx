@@ -7,7 +7,7 @@ Catalog install and user routers in this module are leftover and not mounted.
 Organization MCP is created from `/admin/mcp`.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -50,6 +50,7 @@ from onyx.db.mcp_gateway import (
     blob_storage_summary,
     call_stats_windowed,
     count_cache_entries,
+    count_call_logs,
     delete_cache_entries,
     get_call_log,
     list_cache_entries,
@@ -385,9 +386,6 @@ def list_entry_policies(
 # Admin: gateway operations
 # ---------------------------------------------------------------------------
 
-_MAX_CALL_WINDOW = timedelta(days=7)
-
-
 def _parse_window(
     from_time: datetime | None, to_time: datetime | None
 ) -> tuple[datetime, datetime]:
@@ -398,11 +396,6 @@ def _parse_window(
         )
     if to_time <= from_time:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "to must be after from.")
-    if to_time - from_time > _MAX_CALL_WINDOW:
-        raise OnyxError(
-            OnyxErrorCode.INVALID_INPUT,
-            "The time window cannot exceed 7 days.",
-        )
     return from_time, to_time
 
 
@@ -455,6 +448,7 @@ def list_gateway_cache(
     q: str | None = None,
     sort: str = "last_accessed",
     limit: int = 50,
+    offset: int = 0,
     cursor: str | None = None,
     db_session: Session = Depends(get_session),
     _: User = Depends(_MANAGE),
@@ -467,6 +461,7 @@ def list_gateway_cache(
         q=q,
         sort=sort,
         limit=min(limit, 100),
+        offset=offset,
         cursor_accessed_at=accessed_at,
         cursor_id=cursor_id,
     )
@@ -549,7 +544,9 @@ def list_gateway_calls(
     user_email: str | None = None,
     session: str | None = None,
     cache_key: str | None = None,
+    q: str | None = None,
     limit: int = 50,
+    offset: int = 0,
     cursor: str | None = None,
     db_session: Session = Depends(get_session),
     _: User = Depends(_MANAGE),
@@ -566,14 +563,29 @@ def list_gateway_calls(
         user_email=user_email,
         session_id=session,
         cache_key=cache_key,
+        q=q,
         limit=min(limit, 100),
+        offset=offset,
         cursor_created_at=created_at,
         cursor_id=cursor_id,
+    )
+    total = count_call_logs(
+        db_session,
+        from_time=start,
+        to_time=end,
+        catalog_slug=catalog_slug,
+        tool_name=tool,
+        outcome=outcome,
+        user_email=user_email,
+        session_id=session,
+        cache_key=cache_key,
+        q=q,
     )
     next_cursor = _call_cursor(items[-1]) if len(items) >= min(limit, 100) else None
     return CallLogListResponse(
         items=[_call_item(row) for row in items],
         next_cursor=next_cursor,
+        total=total,
     )
 
 
@@ -611,7 +623,11 @@ def gateway_stats(
         blob_total_count=blobs["total_count"],
         blob_total_bytes=blobs["total_bytes"],
         blob_by_storage=blobs["by_storage"],
-        retention_days=MCP_GATEWAY_CALL_LOG_RETENTION_DAYS,
+        retention_days=(
+            MCP_GATEWAY_CALL_LOG_RETENTION_DAYS
+            if MCP_GATEWAY_CALL_LOG_RETENTION_DAYS > 0
+            else None
+        ),
         top_servers=[
             {"slug": slug, "count": count}
             for slug, count in top_call_slugs(db_session, from_time=start, to_time=end)

@@ -146,7 +146,7 @@ class StatsResponse(BaseModel):
     blob_total_count: int
     blob_total_bytes: int
     blob_by_storage: dict[str, dict[str, int]]
-    retention_days: int = 30
+    retention_days: int | None = None
     top_servers: list[dict[str, Any]] = Field(default_factory=list)
     top_tools: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -177,6 +177,7 @@ class CallLogListItem(BaseModel):
 class CallLogListResponse(BaseModel):
     items: list[CallLogListItem]
     next_cursor: str | None = None
+    total: int = 0
 
 
 class CallLogDetailResponse(CallLogListItem):

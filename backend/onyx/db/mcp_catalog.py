@@ -145,9 +145,21 @@ def update_catalog_entry__no_commit(
     return entry
 
 
+def delete_catalog_entry__no_commit(
+    db_session: Session, entry: MCPCatalogEntry
+) -> None:
+    """Delete an entry without owning the transaction.
+
+    Callers that keep a projected MCPServer must null ``catalog_entry_id``
+    first. The FK cascades and would otherwise delete the server.
+    """
+    db_session.delete(entry)
+    db_session.flush()
+
+
 def delete_catalog_entry(db_session: Session, entry: MCPCatalogEntry) -> None:
     """Delete an entry. The projected MCPServer and its tools cascade."""
-    db_session.delete(entry)
+    delete_catalog_entry__no_commit(db_session, entry)
     db_session.commit()
 
 
