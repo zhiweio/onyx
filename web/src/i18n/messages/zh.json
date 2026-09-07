@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "已上传"
         },
+        "fileSearch": {
+          "placeholder": "搜索文件"
+        },
+        "fileFilter": {
+          "all": "全部",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "其他",
+          "table": "表格"
+        },
+        "fileKind": {
+          "generated": "生成文件",
+          "mcp": "MCP 输出"
+        },
+        "fileFolder": {
+          "root": "项目根目录"
+        },
+        "noMatchingFiles": {
+          "description": "没有匹配的文件。"
+        },
+        "preview": {
+          "aria": "预览 {name}",
+          "cannotPreview": "无法预览此文件类型。请下载后查看。",
+          "next": "下一个文件",
+          "previous": "上一个文件",
+          "tooLarge": "文件过大，无法预览。请下载后查看。"
+        },
+        "sessionRole": {
+          "clinical": "临床",
+          "cmc": "CMC",
+          "fto": "自由实施",
+          "literature": "文献",
+          "patent": "专利"
+        },
+        "sessionStatus": {
+          "active": "进行中",
+          "failed": "失败",
+          "idle": "空闲",
+          "initializing": "启动中"
+        },
         "startChat": {
           "label": "开始对话"
         },

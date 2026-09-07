@@ -13238,6 +13238,46 @@
         "sourceUpload": {
           "label": "Uploaded"
         },
+        "fileSearch": {
+          "placeholder": "Search files"
+        },
+        "fileFilter": {
+          "all": "All",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "Other",
+          "table": "Tables"
+        },
+        "fileKind": {
+          "generated": "Generated output",
+          "mcp": "MCP output"
+        },
+        "fileFolder": {
+          "root": "Project root"
+        },
+        "noMatchingFiles": {
+          "description": "No files match this search."
+        },
+        "preview": {
+          "aria": "Preview {name}",
+          "cannotPreview": "This file type cannot be previewed. Download it to view the contents.",
+          "next": "Next file",
+          "previous": "Previous file",
+          "tooLarge": "This file is too large to preview. Download it to view the contents."
+        },
+        "sessionRole": {
+          "clinical": "Clinical",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "Literature",
+          "patent": "Patent"
+        },
+        "sessionStatus": {
+          "active": "Active",
+          "failed": "Failed",
+          "idle": "Idle",
+          "initializing": "Starting"
+        },
         "startChat": {
           "label": "Start chat"
         },

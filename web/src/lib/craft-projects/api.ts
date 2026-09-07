@@ -4,6 +4,10 @@ import type {
   CraftProjectListResponse,
   CraftProjectUpsert,
 } from "@/lib/craft-projects/types";
+import {
+  PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES,
+  projectFilePreviewKind,
+} from "@/lib/craft-projects/display";
 
 const PROJECTS_URL = "/api/craft-projects";
 
@@ -90,6 +94,39 @@ export function craftProjectFileUrl(
   fileId: string
 ): string {
   return `${PROJECTS_URL}/${projectId}/files/${fileId}`;
+}
+
+export type CraftProjectFilePreviewPayload =
+  | { status: "text"; text: string }
+  | { status: "image"; blob: Blob }
+  | { status: "too-large"; sizeBytes: number }
+  | { status: "unsupported" };
+
+export async function fetchCraftProjectFileContent(
+  projectId: string,
+  file: CraftProjectFile
+): Promise<CraftProjectFilePreviewPayload> {
+  const kind = projectFilePreviewKind(file);
+  if (kind === "unsupported") {
+    return { status: "unsupported" };
+  }
+  const knownSize = file.size_bytes ?? 0;
+  if (kind !== "image" && knownSize > PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES) {
+    return { status: "too-large", sizeBytes: knownSize };
+  }
+
+  const response = await fetch(craftProjectFileUrl(projectId, file.id));
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+  const length = Number(response.headers.get("content-length") ?? 0);
+  if (kind !== "image" && length > PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES) {
+    return { status: "too-large", sizeBytes: length };
+  }
+  if (kind === "image") {
+    return { status: "image", blob: await response.blob() };
+  }
+  return { status: "text", text: await response.text() };
 }
 
 export async function deleteCraftProjectFile(

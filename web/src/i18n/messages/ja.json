@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "アップロード済み"
         },
+        "fileSearch": {
+          "placeholder": "ファイルを検索"
+        },
+        "fileFilter": {
+          "all": "すべて",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "その他",
+          "table": "表"
+        },
+        "fileKind": {
+          "generated": "生成ファイル",
+          "mcp": "MCP 出力"
+        },
+        "fileFolder": {
+          "root": "プロジェクトのルート"
+        },
+        "noMatchingFiles": {
+          "description": "この検索に合うファイルはありません。"
+        },
+        "preview": {
+          "aria": "{name} をプレビュー",
+          "cannotPreview": "このファイル形式はプレビューできません。ダウンロードして確認してください。",
+          "next": "次のファイル",
+          "previous": "前のファイル",
+          "tooLarge": "ファイルが大きすぎてプレビューできません。ダウンロードして確認してください。"
+        },
+        "sessionRole": {
+          "clinical": "臨床",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "文献",
+          "patent": "特許"
+        },
+        "sessionStatus": {
+          "active": "実行中",
+          "failed": "失敗",
+          "idle": "待機",
+          "initializing": "起動中"
+        },
         "startChat": {
           "label": "チャットを開始"
         },

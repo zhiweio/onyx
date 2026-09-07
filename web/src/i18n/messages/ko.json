@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "업로드됨"
         },
+        "fileSearch": {
+          "placeholder": "파일 검색"
+        },
+        "fileFilter": {
+          "all": "전체",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "기타",
+          "table": "표"
+        },
+        "fileKind": {
+          "generated": "생성된 파일",
+          "mcp": "MCP 출력"
+        },
+        "fileFolder": {
+          "root": "프로젝트 루트"
+        },
+        "noMatchingFiles": {
+          "description": "이 검색에 맞는 파일이 없습니다."
+        },
+        "preview": {
+          "aria": "{name} 미리보기",
+          "cannotPreview": "이 파일 형식은 미리볼 수 없습니다. 다운로드하여 확인하세요.",
+          "next": "다음 파일",
+          "previous": "이전 파일",
+          "tooLarge": "파일이 너무 커서 미리볼 수 없습니다. 다운로드하여 확인하세요."
+        },
+        "sessionRole": {
+          "clinical": "임상",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "문헌",
+          "patent": "특허"
+        },
+        "sessionStatus": {
+          "active": "진행 중",
+          "failed": "실패",
+          "idle": "대기",
+          "initializing": "시작 중"
+        },
         "startChat": {
           "label": "채팅 시작"
         },

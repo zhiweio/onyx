@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "Importé"
         },
+        "fileSearch": {
+          "placeholder": "Rechercher des fichiers"
+        },
+        "fileFilter": {
+          "all": "Tous",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "Autres",
+          "table": "Tableaux"
+        },
+        "fileKind": {
+          "generated": "Sortie générée",
+          "mcp": "Sortie MCP"
+        },
+        "fileFolder": {
+          "root": "Racine du projet"
+        },
+        "noMatchingFiles": {
+          "description": "Aucun fichier ne correspond à cette recherche."
+        },
+        "preview": {
+          "aria": "Aperçu {name}",
+          "cannotPreview": "Ce type de fichier ne peut pas être prévisualisé. Téléchargez-le pour le consulter.",
+          "next": "Fichier suivant",
+          "previous": "Fichier précédent",
+          "tooLarge": "Ce fichier est trop volumineux pour l'aperçu. Téléchargez-le pour le consulter."
+        },
+        "sessionRole": {
+          "clinical": "Clinique",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "Littérature",
+          "patent": "Brevet"
+        },
+        "sessionStatus": {
+          "active": "Actif",
+          "failed": "Échec",
+          "idle": "Inactif",
+          "initializing": "Démarrage"
+        },
         "startChat": {
           "label": "Démarrer une discussion"
         },

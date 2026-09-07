@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "Uploaded"
         },
+        "fileSearch": {
+          "placeholder": "Search files"
+        },
+        "fileFilter": {
+          "all": "All",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "Other",
+          "table": "Tables"
+        },
+        "fileKind": {
+          "generated": "Generated output",
+          "mcp": "MCP output"
+        },
+        "fileFolder": {
+          "root": "جذر المشروع"
+        },
+        "noMatchingFiles": {
+          "description": "لا توجد ملفات تطابق هذا البحث."
+        },
+        "preview": {
+          "aria": "معاينة {name}",
+          "cannotPreview": "لا يمكن معاينة هذا النوع من الملفات. نزّله للعرض.",
+          "next": "الملف التالي",
+          "previous": "الملف السابق",
+          "tooLarge": "هذا الملف كبير جدًا للمعاينة. نزّله للعرض."
+        },
+        "sessionRole": {
+          "clinical": "Clinical",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "Literature",
+          "patent": "Patent"
+        },
+        "sessionStatus": {
+          "active": "Active",
+          "failed": "Failed",
+          "idle": "Idle",
+          "initializing": "Starting"
+        },
         "startChat": {
           "label": "Start chat"
         },

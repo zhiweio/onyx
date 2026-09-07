@@ -13232,6 +13232,46 @@
         "sourceUpload": {
           "label": "Cargado"
         },
+        "fileSearch": {
+          "placeholder": "Buscar archivos"
+        },
+        "fileFilter": {
+          "all": "Todos",
+          "json": "JSON",
+          "markdown": "Markdown",
+          "other": "Otros",
+          "table": "Tablas"
+        },
+        "fileKind": {
+          "generated": "Salida generada",
+          "mcp": "Salida MCP"
+        },
+        "fileFolder": {
+          "root": "Raíz del proyecto"
+        },
+        "noMatchingFiles": {
+          "description": "Ningún archivo coincide con esta búsqueda."
+        },
+        "preview": {
+          "aria": "Vista previa de {name}",
+          "cannotPreview": "No se puede previsualizar este tipo de archivo. Descárgalo para verlo.",
+          "next": "Archivo siguiente",
+          "previous": "Archivo anterior",
+          "tooLarge": "Este archivo es demasiado grande para previsualizar. Descárgalo para verlo."
+        },
+        "sessionRole": {
+          "clinical": "Clínico",
+          "cmc": "CMC",
+          "fto": "FTO",
+          "literature": "Literatura",
+          "patent": "Patente"
+        },
+        "sessionStatus": {
+          "active": "Activo",
+          "failed": "Error",
+          "idle": "Inactivo",
+          "initializing": "Iniciando"
+        },
         "startChat": {
           "label": "Iniciar chat"
         },
