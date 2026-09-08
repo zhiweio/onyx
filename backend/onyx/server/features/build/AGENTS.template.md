@@ -28,10 +28,10 @@ Ephemeral VM with Python 3.13 and Node. Image venv: `/workspace/.venv`
 (pandas, matplotlib, pdfplumber, python-pptx, httpx, pypdf, markitdown,
 seaborn). Session venv at `.venv` (session root, first on `PATH`). Use
 preinstalled tools first. Install extras with `pip` / `uv pip` into `.venv`,
-or `npm` / `bun` from the session root or `outputs/tools/`. After a Python
-install, write `.venv-lock/requirements.txt` with `pip freeze`. No sudo or
-apt. If a system package is missing, record it under `outputs/exceptions/`
-and continue. Your LLM is {{LLM_PROVIDER_NAME}} / {{LLM_MODEL_NAME}}.
+or `npm` / `bun` from the session root. After a Python install, write
+`.venv-lock/requirements.txt` with `pip freeze`. No sudo or apt. If a system
+package is missing, note it in the reply and continue. Your LLM is
+{{LLM_PROVIDER_NAME}} / {{LLM_MODEL_NAME}}.
 
 Working directory is this session root. Deliverables go under `outputs/`.
 Do not list, glob, or find `/workspace/sessions`. Other sessions are
@@ -39,14 +39,18 @@ denied on purpose. Use relative paths from this directory.
 
 ```
 ./
-├── AGENTS.md              # this file
-├── attachments/           # files attached to THIS session
+├── attachments/           # files attached to THIS session (may be empty)
 ├── user_library/          # persistent library (symlink)
-├── project/               # durable project files
+├── project/               # shared project files (only when the project has some)
 ├── .venv/                 # session Python installs
-├── outputs/               # ALL deliverables (shared across job lanes)
+├── outputs/               # create files here when the task needs them
 └── .opencode/skills/      # installed skills (load on demand)
 ```
+
+Keep the workspace small. Create a subdirectory only when you write a file
+into it. Prefer updating an existing file over adding a new copy. Put
+scratch work under `outputs/` next to the deliverable, not at the session
+root.
 
 ## Connectable apps
 
@@ -64,8 +68,7 @@ All outbound traffic goes through the egress proxy (`HTTP_PROXY` /
 If the host brief names a search MCP, that tool is the primary public
 search. Do not start with `webfetch`, `websearch`, or bash/`curl`. Use
 `webfetch` (`format: "text"`) only to open a URL a search tool already
-returned. After HTTP 403, do not retry the same URL. Write the miss
-under `outputs/exceptions/` and continue.
+returned. After HTTP 403, do not retry the same URL.
 
 External-state actions may pause for user approval up to
 **{{APPROVAL_WAIT_TIMEOUT_SECONDS}} seconds**. Use a client timeout of at
@@ -78,37 +81,43 @@ or a disabled action, the call returns HTTP 403 with `user_rejected`,
 When the request relates to the user's work, use the `company-search` skill.
 Cite every source by title and URL. If results are empty or weak, say so.
 
-## Files & attachments
+## Files
 
-- `attachments/` — files attached to this session; check them first.
+- If `attachments/` has files, read them first. The user chose them.
 - `user_library/` — the user's persistent library across sessions.
+- If `PROJECT.md` exists, read it at the start of the turn.
+- `project/` appears only when this project already has shared files.
 
 ## Outputs
 
-Write under `outputs/`. Pick the format that answers the request: web app
-(`webapp` start first), slides (`pptx` skill), image (`image-generation`),
-markdown (`outputs/markdown/*.md`), or a direct reply. Give files
+Write under `outputs/` when the task needs a file. Pick the format that
+answers the request: web app (`webapp` start first), slides (`pptx` skill),
+image (`image-generation`), markdown, or a direct reply. Give files
 human-readable names. Chat holds a digest and a path, not a whole file.
+
+Create paths as you write (`outputs/markdown/…`, `outputs/research/…`,
+`outputs/exceptions/…` for a hard miss). Do not inventory empty trees.
 
 ## How to work
 
 1. Understand the user request. Do the research or build work first.
 2. Produce the deliverable. Ground facts in sources.
-3. Update PLAN.md / TODO.md silently. Do not discuss those files in chat.
+3. Do not start planning files unless the host brief asks for a long job.
 
 Each turn has a budget. `[Onyx turn budget]` notices on tool results are
 authoritative. Converge: stop opening work and finish from what you have.
 
 ## Long jobs
 
-The host owns the loop. You choose the graph in `outputs/plan/PLAN.json`.
-The host compiles only what you write. Do not assume a report.
+The host owns the loop. Follow the host brief for the current node. Write
+only the files that brief asks for. You choose the graph in
+`outputs/plan/PLAN.json` when the brief asks for a plan. When the user
+goal is met, write `outputs/DONE.json`.
 
-If the user or the host brief named a search MCP, call that tool. Do not
-inventory session directories or intermediate caches.
+If the user or the host brief named a search MCP, call that tool.
 
 Stop when this node's required files are on disk. The host starts the next
-node. When the user goal is met, write `outputs/DONE.json`.
+node.
 
 ## Before you finish
 

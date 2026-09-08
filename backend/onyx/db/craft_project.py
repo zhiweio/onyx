@@ -8,12 +8,18 @@ import re
 from io import BytesIO
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from onyx.configs.constants import FileOrigin
 from onyx.db.enums import CraftProjectFileSource
-from onyx.db.models import BuildSession, CraftProject, CraftProjectFile, User
+from onyx.db.models import (
+    BuildSession,
+    CraftProject,
+    CraftProjectFile,
+    User,
+    User__UserGroup,
+)
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
@@ -26,6 +32,7 @@ from onyx.server.features.build.configs import (
 )
 
 _PATH_SEGMENT = re.compile(r"[^A-Za-z0-9._\- ]+")
+CRAFT_PROJECT_STORE_PREFIX = "craft/projects"
 
 
 def project_file_limit(db_session: Session, project_id: UUID) -> int:
@@ -36,7 +43,6 @@ def project_file_limit(db_session: Session, project_id: UUID) -> int:
     if project_has_craft_job(db_session, project_id):
         return CRAFT_DEEP_JOB_PROJECT_MAX_FILES
     return CRAFT_PROJECT_MAX_FILES
-
 
 
 def sanitize_project_path(path: str) -> str:
@@ -52,23 +58,103 @@ def sanitize_project_path(path: str) -> str:
     return "/" + "/".join(parts)
 
 
+def _membership(
+    db_session: Session, user_id: UUID, group_id: int
+) -> User__UserGroup | None:
+    return db_session.scalar(
+        select(User__UserGroup).where(
+            User__UserGroup.user_id == user_id,
+            User__UserGroup.user_group_id == group_id,
+        )
+    )
+
+
+def user_can_read_project(
+    db_session: Session, project: CraftProject, user: User
+) -> bool:
+    if project.user_id == user.id:
+        return True
+    if project.user_group_id is None:
+        return False
+    return _membership(db_session, user.id, project.user_group_id) is not None
+
+
+def user_can_write_project(
+    db_session: Session, project: CraftProject, user: User
+) -> bool:
+    if project.user_id == user.id:
+        return True
+    if project.user_group_id is None:
+        return False
+    membership = _membership(db_session, user.id, project.user_group_id)
+    if membership is None:
+        return False
+    return membership.is_curator or membership.is_manager
+
+
 def require_project_for_user(
     db_session: Session, project_id: UUID, user: User
 ) -> CraftProject:
     project = db_session.get(CraftProject, project_id)
-    if project is None or project.user_id != user.id:
+    if project is None or not user_can_read_project(db_session, project, user):
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Project not found")
+    return project
+
+
+def require_project_write_for_user(
+    db_session: Session, project_id: UUID, user: User
+) -> CraftProject:
+    project = require_project_for_user(db_session, project_id, user)
+    if not user_can_write_project(db_session, project, user):
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Project not found")
     return project
 
 
 def list_projects_for_user(db_session: Session, user: User) -> list[CraftProject]:
+    group_ids = select(User__UserGroup.user_group_id).where(
+        User__UserGroup.user_id == user.id
+    )
     return list(
         db_session.scalars(
             select(CraftProject)
-            .where(CraftProject.user_id == user.id)
+            .where(
+                or_(
+                    CraftProject.user_id == user.id,
+                    CraftProject.user_group_id.in_(group_ids),
+                )
+            )
             .order_by(CraftProject.updated_at.desc())
         )
     )
+
+
+def create_project__no_commit(
+    db_session: Session,
+    *,
+    user: User,
+    name: str,
+    description: str = "",
+    instructions: str | None = None,
+    user_group_id: int | None = None,
+) -> CraftProject:
+    trimmed = name.strip()
+    if not trimmed:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Name is required")
+    if (
+        user_group_id is not None
+        and _membership(db_session, user.id, user_group_id) is None
+    ):
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Not a member of that group")
+    project = CraftProject(
+        user_id=user.id,
+        name=trimmed[:128],
+        description=description.strip(),
+        instructions=instructions.strip() if instructions else None,
+        user_group_id=user_group_id,
+    )
+    db_session.add(project)
+    db_session.flush()
+    return project
 
 
 def create_project(
@@ -78,17 +164,16 @@ def create_project(
     name: str,
     description: str = "",
     instructions: str | None = None,
+    user_group_id: int | None = None,
 ) -> CraftProject:
-    trimmed = name.strip()
-    if not trimmed:
-        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Name is required")
-    project = CraftProject(
-        user_id=user.id,
-        name=trimmed[:128],
-        description=description.strip(),
-        instructions=instructions.strip() if instructions else None,
+    project = create_project__no_commit(
+        db_session,
+        user=user,
+        name=name,
+        description=description,
+        instructions=instructions,
+        user_group_id=user_group_id,
     )
-    db_session.add(project)
     db_session.commit()
     db_session.refresh(project)
     return project
@@ -101,6 +186,9 @@ def update_project(
     name: str | None = None,
     description: str | None = None,
     instructions: str | None = None,
+    user_group_id: int | None = None,
+    set_user_group: bool = False,
+    acting_user: User | None = None,
 ) -> CraftProject:
     if name is not None:
         trimmed = name.strip()
@@ -111,6 +199,15 @@ def update_project(
         project.description = description.strip()
     if instructions is not None:
         project.instructions = instructions.strip() or None
+    if set_user_group:
+        if acting_user is None or acting_user.id != project.user_id:
+            raise OnyxError(OnyxErrorCode.NOT_FOUND, "Project not found")
+        if (
+            user_group_id is not None
+            and _membership(db_session, acting_user.id, user_group_id) is None
+        ):
+            raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Not a member of that group")
+        project.user_group_id = user_group_id
     db_session.commit()
     db_session.refresh(project)
     return project
@@ -246,7 +343,11 @@ def store_uploaded_project_file(
         display_name=path.rsplit("/", 1)[-1],
         file_origin=FileOrigin.CRAFT_PROJECT,
         file_type=mime_type or "application/octet-stream",
-        file_metadata={"project_id": str(project.id), "path": path},
+        file_metadata={
+            "project_id": str(project.id),
+            "path": path,
+            "prefix": f"{CRAFT_PROJECT_STORE_PREFIX}/{project.id}",
+        },
     )
     row = upsert_project_file(
         db_session,
@@ -279,9 +380,7 @@ def count_project_sessions(db_session: Session, project_id: UUID) -> int:
     )
 
 
-def list_project_sessions(
-    db_session: Session, project_id: UUID
-) -> list[BuildSession]:
+def list_project_sessions(db_session: Session, project_id: UUID) -> list[BuildSession]:
     return list(
         db_session.scalars(
             select(BuildSession)
@@ -291,9 +390,7 @@ def list_project_sessions(
     )
 
 
-def build_project_fileset(
-    db_session: Session, project_id: UUID
-) -> dict[str, bytes]:
+def build_project_fileset(db_session: Session, project_id: UUID) -> dict[str, bytes]:
     files: dict[str, bytes] = {}
     file_store = get_default_file_store()
     for row in list_project_files(db_session, project_id):

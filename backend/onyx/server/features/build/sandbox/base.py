@@ -100,10 +100,10 @@ class SandboxManager(_ServeMixin, ABC):
         ├── managed/skills/            # Pushed skills, symlinked per session
         └── sessions/
             ├── $session_id_1/         # Per-session workspace
-            │   ├── outputs/           # Agent output for this session
+            │   ├── outputs/           # Empty at setup; agent writes files here
             │   │   └── web/           # Next.js app (scaffolded lazily by
             │   │                      # start-webapp.sh, not at setup)
-            │   ├── venv/              # Python virtual environment
+            │   ├── .venv/             # Session Python virtual environment
             │   ├── .opencode/skills   # Symlink → managed/skills
             │   ├── AGENTS.md          # Agent instructions
             │   ├── start-webapp.sh    # Bootstrap script, chmod 444 (present

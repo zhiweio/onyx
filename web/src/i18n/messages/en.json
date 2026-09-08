@@ -12351,6 +12351,9 @@
       },
       "projectsSection": {
         "title": "Projects"
+      },
+      "sessionsByProject": {
+        "ungrouped": "Other sessions"
       }
     },
     "skillsStale": {

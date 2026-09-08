@@ -26,6 +26,11 @@ from onyx.cache.factory import get_cache_backend
 from onyx.configs.app_configs import WEB_DOMAIN
 from onyx.configs.constants import MessageType
 from onyx.db.craft_job import get_specialist_for_session
+from onyx.db.craft_project import (
+    create_project,
+    create_project__no_commit,
+    require_project_for_user,
+)
 from onyx.db.enums import BuildSessionStatus, SandboxStatus, SessionOrigin
 from onyx.db.external_app import get_connectable_apps_for_user
 from onyx.db.llm import (
@@ -165,6 +170,10 @@ HIDDEN_PATTERNS = {
     "node_modules",
     ".DS_Store",
     "opencode.json",
+    "AGENTS.md",
+    "PROJECT.md",
+    "start-webapp.sh",
+    "bin",
     ".env",
     ".gitignore",
     "nextjs.log",
@@ -565,6 +574,10 @@ class SessionManager:
         llm_config = self.build_llm_configs(user)
         self._db_session.commit()
 
+        project_id = self._ensure_project_id(
+            user, project_id, name, commit_project=True
+        )
+
         sandbox, _outcome = self._ready_sandbox(user)
 
         # Reservation: commit the INITIALIZING identity and port before the
@@ -644,6 +657,7 @@ class SessionManager:
         if existing is None:
             # Validates the model configuration before any external work.
             llm_config = self.build_llm_configs(user)
+            project_id = self._ensure_project_id(user, None, name, commit_project=False)
             session = create_build_session__no_commit(
                 user_id,
                 self._db_session,
@@ -651,6 +665,7 @@ class SessionManager:
                 agent_provider=llm_config.provider,
                 agent_model=llm_config.model_name,
                 scenario_id=scenario_id,
+                project_id=project_id,
             )
             if not headless:
                 reserve_nextjs_port__no_commit(self._db_session, session)
@@ -665,6 +680,10 @@ class SessionManager:
             session.name = name
         if scenario_id is not None:
             session.scenario_id = scenario_id
+        if session.project_id is None:
+            session.project_id = self._ensure_project_id(
+                user, None, name or session.name, commit_project=False
+            )
         self._db_session.commit()
         logger.info(
             "Found existing empty session %s (status=%s) for user %s",
@@ -1364,6 +1383,75 @@ class SessionManager:
     # Artifact Operations
     # =========================================================================
 
+    def _ensure_project_id(
+        self,
+        user: User,
+        project_id: UUID | None,
+        name: str | None,
+        *,
+        commit_project: bool,
+    ) -> UUID:
+        """Bind a Craft Project. Create one when the caller omitted ``project_id``."""
+        if project_id is not None:
+            require_project_for_user(self._db_session, project_id, user)
+            return project_id
+        project_name = (name or "").strip() or "Untitled project"
+        if commit_project:
+            return create_project(self._db_session, user=user, name=project_name).id
+        return create_project__no_commit(
+            self._db_session, user=user, name=project_name
+        ).id
+
+    @staticmethod
+    def _sandbox_is_hot(sandbox: Sandbox) -> bool:
+        return sandbox.status == SandboxStatus.RUNNING
+
+    def _zip_byte_pairs(self, pairs: list[tuple[str, bytes]]) -> bytes:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for arcname, content in pairs:
+                zip_file.writestr(arcname, content)
+        return buffer.getvalue()
+
+    def _catalog_upload_stats(self, session_id: UUID) -> tuple[int, int]:
+        from onyx.server.features.build.db.artifact import get_session_artifacts
+        from onyx.server.features.build.session.artifact_persist import (
+            ATTACHMENTS_PREFIX,
+        )
+
+        count = 0
+        total = 0
+        for artifact in get_session_artifacts(self._db_session, session_id=session_id):
+            if not artifact.archive_file_id:
+                continue
+            if not artifact.path.startswith(ATTACHMENTS_PREFIX):
+                continue
+            count += 1
+            total += artifact.size_bytes or 0
+        return count, total
+
+    def _archive_attachment(
+        self,
+        session_id: UUID,
+        filename: str,
+        content: bytes,
+        *,
+        pending_hydrate: bool,
+    ) -> None:
+        from onyx.server.features.build.session.artifact_persist import (
+            ATTACHMENTS_PREFIX,
+            archive_bytes_to_catalog,
+        )
+
+        archive_bytes_to_catalog(
+            self._db_session,
+            session_id=session_id,
+            catalog_path=f"{ATTACHMENTS_PREFIX}{filename}",
+            name=filename,
+            content=content,
+            pending_hydrate=pending_hydrate,
+        )
+
     def _resolve_owned_session_and_sandbox(
         self, session_id: UUID, user_id: UUID
     ) -> tuple[BuildSession, Sandbox] | None:
@@ -1552,38 +1640,43 @@ class SessionManager:
         Raises:
             ValueError: If path traversal attempted or path is a directory
         """
+        from onyx.server.features.build.session.artifact_persist import (
+            read_catalog_file,
+            validate_workspace_rel_path,
+        )
+
         resolved = self._resolve_owned_session_and_sandbox(session_id, user_id)
         if resolved is None:
             return None
         _, sandbox = resolved
 
-        # Extract filename from path
+        path = validate_workspace_rel_path(path)
         filename = Path(path).name
 
         # Filter out opencode.json files
         if filename == "opencode.json":
             return None
 
-        # Use sandbox manager to read file (works for both local and K8s)
-        try:
-            content = self._sandbox_manager.read_file(
-                sandbox_id=sandbox.id,
-                session_id=session_id,
-                path=path,
+        content: bytes | None = None
+        if self._sandbox_is_hot(sandbox):
+            try:
+                content = self._sandbox_manager.read_file(
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    path=path,
+                )
+            except ValueError as e:
+                if "Not a file" in str(e):
+                    raise ValueError("Cannot download directory")
+                content = None
+            except Exception:
+                content = None
+        if content is None:
+            content = read_catalog_file(
+                self._db_session, session_id=session_id, path=path
             )
-        except ValueError as e:
-            # read_file raises ValueError for not found or directory
-            if "Not a file" in str(e):
-                raise ValueError("Cannot download directory")
-            archived = self._read_archived_artifact(session_id, path)
-            if archived is None:
-                return None
-            content = archived
-        except Exception:
-            archived = self._read_archived_artifact(session_id, path)
-            if archived is None:
-                return None
-            content = archived
+        if content is None:
+            return None
 
         mime_type, _ = mimetypes.guess_type(filename)
 
@@ -1888,30 +1981,46 @@ class SessionManager:
         Raises:
             ValueError: If path traversal attempted or path is not a directory
         """
+        from onyx.server.features.build.session.artifact_persist import (
+            catalog_file_pairs,
+            validate_workspace_rel_path,
+        )
+
         resolved = self._resolve_owned_session_and_sandbox(session_id, user_id)
         if resolved is None:
             return None
         _, sandbox = resolved
 
-        try:
-            self._sandbox_manager.list_directory(
-                sandbox_id=sandbox.id,
-                session_id=session_id,
-                path=path,
+        path = validate_workspace_rel_path(path)
+        if self._sandbox_is_hot(sandbox):
+            try:
+                self._sandbox_manager.list_directory(
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    path=path,
+                )
+            except ValueError:
+                return None
+
+            prefix_len = len(path) + 1  # +1 for trailing slash
+            files = self._walk_sandbox_dir(
+                sandbox.id,
+                session_id,
+                path,
+                arcname_for=lambda p: p[prefix_len:],
             )
-        except ValueError:
-            return None
+            zip_bytes = self._zip_files(sandbox.id, session_id, files)
+        else:
+            pairs = catalog_file_pairs(
+                self._db_session, session_id=session_id, path=path
+            )
+            if not pairs:
+                return None
+            zip_bytes = self._zip_byte_pairs(pairs)
 
-        prefix_len = len(path) + 1  # +1 for trailing slash
-        files = self._walk_sandbox_dir(
-            sandbox.id,
-            session_id,
-            path,
-            arcname_for=lambda p: p[prefix_len:],
+        safe_name = _sanitize_zip_basename(
+            Path(path).name or "workspace", allow_dots=True
         )
-        zip_bytes = self._zip_files(sandbox.id, session_id, files)
-
-        safe_name = _sanitize_zip_basename(Path(path).name, allow_dots=True)
         return zip_bytes, f"{safe_name}.zip"
 
     # =========================================================================
@@ -1938,33 +2047,37 @@ class SessionManager:
         Raises:
             ValueError: If path traversal attempted or path is not a directory
         """
+        from onyx.server.features.build.session.artifact_persist import (
+            list_catalog_directory,
+            validate_workspace_rel_path,
+        )
+
         resolved = self._resolve_owned_session_and_sandbox(session_id, user_id)
         if resolved is None:
             return None
         _, sandbox = resolved
 
-        # Use sandbox manager to list directory (works for both local and K8s)
-        # If the directory doesn't exist (e.g., session workspace not yet loaded),
-        # return an empty listing rather than erroring out.
-        try:
-            raw_entries = self._sandbox_manager.list_directory(
-                sandbox_id=sandbox.id,
-                session_id=session_id,
-                path=path,
+        path = validate_workspace_rel_path(path)
+        if self._sandbox_is_hot(sandbox):
+            try:
+                raw_entries = self._sandbox_manager.list_directory(
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    path=path,
+                )
+            except ValueError as e:
+                if "path traversal" in str(e).lower():
+                    raise
+                return DirectoryListing(path=path, entries=[])
+        else:
+            raw_entries = list_catalog_directory(
+                self._db_session, session_id=session_id, path=path
             )
-        except ValueError as e:
-            if "path traversal" in str(e).lower():
-                raise
-            return DirectoryListing(path=path, entries=[])
 
-        # Filter hidden files and directories
         entries: list[FilesystemEntry] = [
             entry for entry in raw_entries if not _is_hidden_workspace_entry(entry)
         ]
-
-        # Sort: directories first, then files, both alphabetically
         entries.sort(key=lambda e: (not e.is_directory, e.name.lower()))
-
         return DirectoryListing(path=path, entries=entries)
 
     def get_upload_stats(
@@ -1989,11 +2102,12 @@ class SessionManager:
         """
         _, sandbox = self._require_session_and_sandbox(session_id, user_id)
 
-        # Delegate to sandbox manager (handles both local and K8s)
-        return self._sandbox_manager.get_upload_stats(
-            sandbox_id=sandbox.id,
-            session_id=session_id,
-        )
+        if self._sandbox_is_hot(sandbox):
+            return self._sandbox_manager.get_upload_stats(
+                sandbox_id=sandbox.id,
+                session_id=session_id,
+            )
+        return self._catalog_upload_stats(session_id)
 
     def upload_file(
         self,
@@ -2019,9 +2133,15 @@ class SessionManager:
         Raises:
             ValueError: If session not found or upload limits exceeded
         """
-        _, sandbox = self._require_session_and_sandbox(session_id, user_id)
+        from onyx.server.features.build.session.artifact_persist import (
+            validate_workspace_rel_path,
+        )
 
-        # Check upload limits
+        _, sandbox = self._require_session_and_sandbox(session_id, user_id)
+        filename = validate_workspace_rel_path(filename)
+        if not filename or "/" in filename:
+            raise ValueError("path traversal")
+
         file_count, total_size = self.get_upload_stats(session_id, user_id)
 
         if file_count >= MAX_UPLOAD_FILES_PER_SESSION:
@@ -2035,19 +2155,29 @@ class SessionManager:
                 f"Total upload size limit ({max_mb}MB) exceeded"
             )
 
-        # Delegate to sandbox manager (handles both local and K8s)
-        relative_path = self._sandbox_manager.upload_file(
-            sandbox_id=sandbox.id,
-            session_id=session_id,
-            filename=filename,
-            content=content,
-        )
+        if self._sandbox_is_hot(sandbox):
+            relative_path = self._sandbox_manager.upload_file(
+                sandbox_id=sandbox.id,
+                session_id=session_id,
+                filename=filename,
+                content=content,
+            )
+            try:
+                self._archive_attachment(
+                    session_id,
+                    Path(relative_path).name,
+                    content,
+                    pending_hydrate=False,
+                )
+            except Exception:
+                logger.exception("Could not archive upload for session %s", session_id)
+            update_sandbox_heartbeat(self._db_session, sandbox.id)
+            self._db_session.commit()
+            return relative_path, len(content)
 
-        # Update heartbeat - file upload is user activity that keeps sandbox alive
-        update_sandbox_heartbeat(self._db_session, sandbox.id)
+        self._archive_attachment(session_id, filename, content, pending_hydrate=True)
         self._db_session.commit()
-
-        return relative_path, len(content)
+        return f"attachments/{filename}", len(content)
 
     def delete_file(
         self,
@@ -2071,9 +2201,13 @@ class SessionManager:
         Raises:
             ValueError: If session not found or path traversal attempted
         """
-        _, sandbox = self._require_session_and_sandbox(session_id, user_id)
+        from onyx.server.features.build.session.artifact_persist import (
+            validate_workspace_rel_path,
+        )
 
-        # Delegate to sandbox manager (handles both local and K8s)
+        _, sandbox = self._require_session_and_sandbox(session_id, user_id)
+        path = validate_workspace_rel_path(path)
+
         deleted = self._sandbox_manager.delete_file(
             sandbox_id=sandbox.id,
             session_id=session_id,

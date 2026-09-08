@@ -7196,6 +7196,11 @@ class CraftProject(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_group_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("user_group.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -7207,6 +7212,7 @@ class CraftProject(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="craft_projects")
+    user_group: Mapped["UserGroup | None"] = relationship("UserGroup")
     files: Mapped[list["CraftProjectFile"]] = relationship(
         "CraftProjectFile",
         back_populates="project",
@@ -7221,6 +7227,7 @@ class CraftProject(Base):
 
     __table_args__ = (
         Index("ix_craft_project_user_created", "user_id", desc("created_at")),
+        Index("ix_craft_project_user_group_id", "user_group_id"),
     )
 
 
@@ -7694,6 +7701,11 @@ class Artifact(Base):
     # Reserved for archived bytes served without the sandbox. NULL until an
     # archive exists.
     archive_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # True when FileStore has bytes that the sandbox has not received yet
+    # (upload while the sandbox is sleeping).
+    pending_hydrate: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

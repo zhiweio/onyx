@@ -30,6 +30,12 @@ class SessionCreateRequest(BaseModel):
     project_id: str | None = None
 
 
+class PromoteWorkspacePathRequest(BaseModel):
+    """Promote one session catalog file into the bound Craft Project."""
+
+    path: str = Field(min_length=1, max_length=1024)
+
+
 class SessionUpdateRequest(BaseModel):
     """Request to update a build session.
 

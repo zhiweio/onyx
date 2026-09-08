@@ -28,7 +28,16 @@ _VISIBLE_POLICY = (
 )
 _STAY_IN_SESSION = (
     "Working directory is this session root. Use relative outputs/. "
+    "Create a directory only when you write a file into it. "
+    "Do not list unused output trees. "
     "Do not list, glob, or find /workspace/sessions."
+)
+_PROJECT_HINT = (
+    "If PROJECT.md exists, read it. Shared files live in project/ when present."
+)
+_DURABILITY_HINT = (
+    "Write PLAN.md and TODO.md with this job's real plan, not stubs. "
+    "Write MEMORY.md only with facts later nodes need."
 )
 
 
@@ -77,6 +86,9 @@ def assemble_brief(
     lines.append("The host owns the loop. Do not start the next node.")
     lines.append(_VISIBLE_POLICY)
     lines.append(_STAY_IN_SESSION)
+    lines.append(_PROJECT_HINT)
+    if node.kind == "plan":
+        lines.append(_DURABILITY_HINT)
     lines.append(_search_instruction(visible_tools, goal))
     if node.success_criteria:
         lines.append(f"Success: {node.success_criteria}")

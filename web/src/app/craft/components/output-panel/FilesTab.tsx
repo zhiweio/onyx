@@ -26,6 +26,33 @@ import {
 import { Section } from "@/layouts/general-layouts";
 import { InlineFilePreview } from "@/app/craft/components/output-panel/FilePreviewContent";
 
+const HIDDEN_WORKSPACE_NAMES = new Set([
+  ".venv",
+  ".git",
+  ".next",
+  "__pycache__",
+  "node_modules",
+  ".DS_Store",
+  "opencode.json",
+  "AGENTS.md",
+  "PROJECT.md",
+  "start-webapp.sh",
+  "bin",
+  ".env",
+  ".gitignore",
+  "nextjs.log",
+  "nextjs.pid",
+]);
+
+function visibleWorkspaceEntries(
+  entries: FileSystemEntry[]
+): FileSystemEntry[] {
+  return entries.filter(
+    (entry) =>
+      !HIDDEN_WORKSPACE_NAMES.has(entry.name) && !entry.name.startsWith(".")
+  );
+}
+
 interface FilesTabProps {
   sessionId: string | null;
   onFileClick?: (path: string, fileName: string) => void;
@@ -437,7 +464,7 @@ export default function FilesTab({
       >
         {/* Background to prevent content showing through sticky gap */}
         <div className="sticky top-0 start-0 end-0 h-2 bg-background-neutral-00 -mx-2 z-101" />
-        {rootListing.entries.length === 0 ? (
+        {visibleWorkspaceEntries(rootListing.entries).length === 0 ? (
           <Section
             height="full"
             alignItems="center"
@@ -451,7 +478,7 @@ export default function FilesTab({
         ) : (
           <div className="font-mono text-sm">
             <FileTreeNode
-              entries={rootListing.entries}
+              entries={visibleWorkspaceEntries(rootListing.entries)}
               depth={0}
               expandedPaths={expandedPaths}
               directoryCache={directoryCache}
@@ -506,7 +533,9 @@ function FileTreeNode({
       {sortedEntries.map((entry, index) => {
         const isExpanded = expandedPaths.has(entry.path);
         const isLast = index === sortedEntries.length - 1;
-        const childEntries = directoryCache.get(entry.path) || [];
+        const childEntries = visibleWorkspaceEntries(
+          directoryCache.get(entry.path) || []
+        );
         const FileIcon = getFileIcon(entry.name);
 
         // Row height for sticky offset calculation

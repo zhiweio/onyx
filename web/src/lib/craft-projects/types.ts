@@ -34,6 +34,7 @@ export interface CraftProject {
   name: string;
   description: string;
   instructions: string | null;
+  user_group_id?: number | null;
   file_count: number;
   session_count: number;
   created_at: string;
@@ -50,4 +51,5 @@ export interface CraftProjectUpsert {
   name: string;
   description?: string;
   instructions?: string | null;
+  user_group_id?: number | null;
 }

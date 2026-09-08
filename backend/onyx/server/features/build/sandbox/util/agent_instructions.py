@@ -45,34 +45,8 @@ def get_provider_display_name(provider: str | None) -> str | None:
 # Content for the attachments section when user has uploaded files
 ATTACHMENTS_SECTION_CONTENT = """## Attachments (PRIORITY)
 
-The `attachments/` directory contains files that the user has explicitly
-uploaded during this session. **These files are critically important** and
-should be treated as high-priority context.
-
-### Why Attachments Matter
-
-- The user deliberately chose to upload these files, signaling they are directly relevant to the task
-- These files often contain the specific data, requirements, or examples the user wants you to work with
-- They may include spreadsheets, documents, images, or code that should inform your work
-
-### Required Actions
-
-**At the start of every task, you MUST:**
-
-1. **Check for attachments**: List the contents of `attachments/` to see what the user has provided
-2. **Read and analyze each file**: Thoroughly examine every attachment to understand its contents and relevance
-3. **Reference attachment content**: Use the information from attachments to inform your responses and outputs
-
-### File Handling
-
-- Uploaded files may be in various formats: CSV, JSON, PDF, images, text files, etc.
-- For spreadsheets and data files, examine the structure, columns, and sample data
-- For documents, extract key information and requirements
-- For images, analyze and describe their content
-- For code files, understand the logic and patterns
-
-**Do NOT ignore user uploaded files.** They are there for a reason and likely
-contain exactly what you need to complete the task successfully."""
+The user uploaded files into `attachments/`. Read them before other sources.
+Use their data in the deliverable. Do not ignore them."""
 
 
 def build_connectable_apps_list(apps: Iterable[ExternalApp]) -> str:

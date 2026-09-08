@@ -114,11 +114,11 @@ class TestUserLibraryFileset:
         push_managed_content(stub_sandbox_manager, sandbox_row.id, payload)
 
         assert payload.library_files == {"docs/readme.md": b"hello"}
-        assert stub_sandbox_manager.last_write_files_to_sandbox_payload == {
-            "sandbox_id": sandbox_row.id,
-            "mount_path": USER_LIBRARY_MOUNT_PATH,
-            "files": {"docs/readme.md": b"hello"},
-        }
+        assert stub_sandbox_manager.write_files_to_sandbox_count == 3
+        assert stub_sandbox_manager.last_write_files_to_sandbox_payload is not None
+        assert stub_sandbox_manager.last_write_files_to_sandbox_payload[
+            "sandbox_id"
+        ] == sandbox_row.id
 
     def test_sync_user_library_pushes_to_running_sandbox(
         self,

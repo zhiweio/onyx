@@ -133,3 +133,32 @@ def get_session_artifacts(
     if not include_deleted:
         query = query.where(Artifact.deleted.is_(False))
     return list(db_session.scalars(query.order_by(desc(Artifact.created_at))))
+
+
+def set_artifact_pending_hydrate(
+    db_session: Session,
+    *,
+    session_id: UUID,
+    path: str,
+    pending_hydrate: bool,
+) -> Artifact | None:
+    artifact = db_session.scalar(
+        select(Artifact).where(Artifact.session_id == session_id, Artifact.path == path)
+    )
+    if artifact is None:
+        return None
+    artifact.pending_hydrate = pending_hydrate
+    db_session.flush()
+    return artifact
+
+
+def clear_pending_hydrate_for_session(db_session: Session, session_id: UUID) -> None:
+    artifacts = db_session.scalars(
+        select(Artifact).where(
+            Artifact.session_id == session_id,
+            Artifact.pending_hydrate.is_(True),
+        )
+    )
+    for artifact in artifacts:
+        artifact.pending_hydrate = False
+    db_session.flush()

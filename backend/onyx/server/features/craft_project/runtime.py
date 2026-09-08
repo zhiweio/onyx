@@ -10,6 +10,16 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 
+def project_has_workspace_brief(
+    *,
+    description: str,
+    instructions: str | None,
+    file_names: list[str],
+) -> bool:
+    """True when the project has content the agent should see on disk."""
+    return bool(description.strip() or (instructions or "").strip() or file_names)
+
+
 def render_project_markdown(
     name: str, description: str, instructions: str | None, file_names: list[str]
 ) -> str:
@@ -42,13 +52,18 @@ def write_project_to_session(
     project = require_project_for_user(db_session, project_id, user)
     files = build_project_fileset(db_session, project.id)
     names = sorted(files.keys())
-    sandbox_manager.write_sandbox_file(
-        sandbox_id,
-        f"sessions/{session_id}/PROJECT.md",
-        render_project_markdown(
-            project.name, project.description, project.instructions, names
-        ),
-    )
+    if project_has_workspace_brief(
+        description=project.description,
+        instructions=project.instructions,
+        file_names=names,
+    ):
+        sandbox_manager.write_sandbox_file(
+            sandbox_id,
+            f"sessions/{session_id}/PROJECT.md",
+            render_project_markdown(
+                project.name, project.description, project.instructions, names
+            ),
+        )
     if files:
         result = sandbox_manager.push_to_sandbox(
             sandbox_id=sandbox_id,

@@ -109,6 +109,7 @@ export interface SessionHistoryItem {
   id: string;
   title: string;
   createdAt: Date;
+  projectId: string | null;
 }
 
 // =============================================================================
@@ -151,6 +152,7 @@ export interface ApiSessionResponse {
   opencode_session_id?: string | null;
   skills_stale: boolean;
   scenario_id?: string | null;
+  project_id?: string | null;
 }
 
 export interface ApiSessionSkillsState {

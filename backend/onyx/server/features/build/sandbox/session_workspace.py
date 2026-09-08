@@ -3,9 +3,11 @@ sandbox managers.
 
 The script is replay-safe: the whole setup is serialized per session with an
 in-sandbox ``flock``, and an in-progress marker distinguishes a partial
-directory from a complete workspace. Setup is lazy with respect to the web
-app: it writes the tamper-hardened ``start-webapp.sh`` (when the session has
-a port) but never scaffolds the template, installs dependencies, or starts a
+directory from a complete workspace. Setup stays small: empty ``outputs/`` and
+``attachments/``, plus the session venv and agent config. It does not create
+job trees or seed PLAN/TODO/MEMORY files. The web app stays lazy too: it
+writes the tamper-hardened ``start-webapp.sh`` (when the session has a port)
+but never scaffolds the template, installs dependencies, or starts a
 dev server itself. Re-running the script after an interruption converges on
 the same completed workspace.
 """
@@ -13,11 +15,6 @@ the same completed workspace.
 import shlex
 from pathlib import Path
 
-from onyx.server.features.build.jobs.durability import (
-    SEED_MEMORY_MD,
-    SEED_PLAN_MD,
-    SEED_TODO_MD,
-)
 from onyx.server.features.build.sandbox.nextjs_dev import (
     build_webapp_script_write_snippet,
 )
@@ -85,28 +82,10 @@ fi
 ln -sfn {quoted_shared} {session_path}/outputs
 """
     else:
+        # Empty outputs/ only. Job trees and seed PLAN/TODO/MEMORY files are
+        # created when the agent or host actually writes them.
         outputs_snippet = f"""
 mkdir -p {session_path}/outputs
-mkdir -p {session_path}/outputs/tmp
-mkdir -p {session_path}/outputs/lanes
-mkdir -p {session_path}/outputs/normalized
-mkdir -p {session_path}/outputs/markdown
-mkdir -p {session_path}/outputs/exceptions
-mkdir -p {session_path}/outputs/extracted
-mkdir -p {session_path}/outputs/mcp
-mkdir -p {session_path}/outputs/commands
-mkdir -p {session_path}/outputs/reconcile
-mkdir -p {session_path}/outputs/plan
-mkdir -p {session_path}/outputs/tools
-if [ ! -s {session_path}/outputs/PLAN.md ]; then
-  printf '%s' {shlex.quote(SEED_PLAN_MD)} > {session_path}/outputs/PLAN.md
-fi
-if [ ! -s {session_path}/outputs/TODO.md ]; then
-  printf '%s' {shlex.quote(SEED_TODO_MD)} > {session_path}/outputs/TODO.md
-fi
-if [ ! -s {session_path}/outputs/MEMORY.md ]; then
-  printf '%s' {shlex.quote(SEED_MEMORY_MD)} > {session_path}/outputs/MEMORY.md
-fi
 """
     ripgrep_fallback_snippet = (
         "if ! command -v rg >/dev/null 2>&1 || ! rg --version >/dev/null 2>&1; then\n"
@@ -135,7 +114,6 @@ chmod 755 {session_path}
 touch {session_path}/{SETUP_IN_PROGRESS_MARKER}
 {outputs_snippet}
 mkdir -p {session_path}/.venv-lock
-mkdir -p {session_path}/project
 mkdir -p {session_path}/attachments
 if [ ! -x {session_path}/.venv/bin/python ]; then
   python3 -m venv --system-site-packages {session_path}/.venv

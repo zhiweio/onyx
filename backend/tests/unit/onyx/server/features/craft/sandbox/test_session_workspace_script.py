@@ -87,19 +87,19 @@ class TestSetupScriptReplaySafety:
         script = _setup_script(nextjs_port=None)
         assert "bun run dev" not in script
 
-    def test_creates_session_venv_and_durable_dirs(self) -> None:
+    def test_creates_session_venv_without_job_scaffold(self) -> None:
         script = _setup_script(nextjs_port=None)
         assert f"chmod 755 {_SESSION_PATH}" in script
         assert f"mkdir -p {_SESSION_PATH}/.venv-lock" in script
-        assert f"mkdir -p {_SESSION_PATH}/project" in script
-        assert f"mkdir -p {_SESSION_PATH}/outputs/tmp" in script
-        assert f"mkdir -p {_SESSION_PATH}/outputs/research" not in script
-        assert f"mkdir -p {_SESSION_PATH}/outputs/lanes" in script
-        assert f"mkdir -p {_SESSION_PATH}/outputs/commands" in script
-        assert f"[ ! -s {_SESSION_PATH}/outputs/PLAN.md ]" in script
-        assert f"{_SESSION_PATH}/outputs/PLAN.md" in script
-        assert f"{_SESSION_PATH}/outputs/TODO.md" in script
-        assert f"{_SESSION_PATH}/outputs/MEMORY.md" in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs" in script
+        assert f"mkdir -p {_SESSION_PATH}/attachments" in script
+        assert f"mkdir -p {_SESSION_PATH}/project" not in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/tmp" not in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/lanes" not in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/commands" not in script
+        assert f"{_SESSION_PATH}/outputs/PLAN.md" not in script
+        assert f"{_SESSION_PATH}/outputs/TODO.md" not in script
+        assert f"{_SESSION_PATH}/outputs/MEMORY.md" not in script
         assert "python3 -m venv --system-site-packages" in script
         assert f"{_SESSION_PATH}/.venv" in script
         assert f"{_SESSION_PATH}/outputs/.venv" not in script

@@ -41,6 +41,7 @@ from onyx.server.features.build.sandbox.user_library import (
     USER_LIBRARY_MOUNT_PATH,
     build_user_library_fileset,
 )
+from onyx.skills.push import TEAM_SKILLS_MOUNT_PATH
 from onyx.server.features.build.sandbox.util.mcp_config import (
     craft_mcp_fingerprint,
     resolve_craft_mcp_servers,
@@ -80,6 +81,7 @@ def _hydrate_managed_content_for_test(
     payload = ManagedContentPayload(
         connectable_apps_section=connectable_apps_section,
         skills_files=skills_files,
+        team_skills_files={},
         skills_hash=compute_skill_runtime_hash(skills_files, connectable_apps_section),
         mcp_fingerprint=craft_mcp_fingerprint(
             resolve_craft_mcp_servers(db_session, user)
@@ -250,6 +252,7 @@ class TestCreateSession:
         # provision() was called exactly once for this first creation.
         assert stub_sandbox_manager.provision_count == 1
         assert build_session.user_id == test_user.id
+        assert build_session.project_id is not None
         assert build_session.opencode_session_id == "stub-opencode-session"
         assert build_session.skills_hash == sandbox_row.skills_hash
         assert build_session.skills_hash is not None
@@ -338,6 +341,7 @@ class TestEmptySessionReuse:
         )
         stub_sandbox_manager.read_file_returns = b"{}"
         stub_sandbox_manager.write_files_to_sandbox_silent = True
+        stub_sandbox_manager.write_sandbox_file_silent = True
         stub_sandbox_manager.regenerate_session_config_silent = True
         stub_sandbox_manager.dispose_opencode_instance_silent = True
 
@@ -1371,10 +1375,9 @@ class TestRestoreSession:
             "skills_section" not in stub_sandbox_manager.last_restore_snapshot_payload
         )
         assert stub_sandbox_manager.last_write_files_to_sandbox_payload is not None
-        assert (
-            stub_sandbox_manager.last_write_files_to_sandbox_payload["mount_path"]
-            == USER_LIBRARY_MOUNT_PATH
-        )
+        assert stub_sandbox_manager.last_write_files_to_sandbox_payload[
+            "mount_path"
+        ] in {USER_LIBRARY_MOUNT_PATH, TEAM_SKILLS_MOUNT_PATH}
 
     def test_restore_preserves_port_exhaustion_onyx_error(
         self,

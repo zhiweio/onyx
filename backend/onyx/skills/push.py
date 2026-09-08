@@ -20,8 +20,10 @@ from onyx.db.skill import (
     SkillValidityUpdate,
     affected_user_ids_for_skill,
     list_runtime_skills_for_user,
+    list_skills_shared_with_group,
     persist_skill_validity,
 )
+from onyx.db.users import batch_get_user_groups
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
@@ -51,6 +53,7 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 SKILLS_MOUNT_PATH = "/workspace/managed/skills"
+TEAM_SKILLS_MOUNT_PATH = "/workspace/managed/team_skills"
 
 _EXCLUDED_DIR_NAMES: frozenset[str] = frozenset({"__pycache__"})
 
@@ -242,14 +245,33 @@ def build_skills_fileset_for_user(user: User, db_session: Session) -> FileSet:
     return _assemble_fileset(skills, user, db_session)
 
 
+def build_team_skills_fileset(
+    db_session: Session, user: User, user_group_id: int
+) -> FileSet:
+    skills = list_skills_shared_with_group(db_session, user_group_id)
+    return _assemble_fileset(skills, user, db_session)
+
+
+def build_team_skills_for_user(user: User, db_session: Session) -> FileSet:
+    """Union of skills shared with every group the user belongs to."""
+    files: FileSet = {}
+    groups = batch_get_user_groups(db_session, [user.id], include_default=False)
+    for group_id, _name in groups.get(user.id, []):
+        files.update(build_team_skills_fileset(db_session, user, group_id))
+    return files
+
+
 def build_user_skills_payload(user: User, db_session: Session) -> tuple[str, FileSet]:
     """Return the connectable-apps section and skill fileset.
 
     The connectable-apps section lists org apps the user has not connected yet,
-    so the agent can offer to set one up through the connect tool.
+    so the agent can offer to set one up through the connect tool. Team-shared
+    skills are merged first so a personal enablement still wins on name clash.
     """
     skills = list_runtime_skills_for_user(user=user, db_session=db_session)
-    files = _assemble_fileset(skills, user, db_session)
+    files: FileSet = {}
+    files.update(build_team_skills_for_user(user, db_session))
+    files.update(_assemble_fileset(skills, user, db_session))
     connectable_apps_section = build_connectable_apps_list(
         get_connectable_apps_for_user(db_session, user)
     )

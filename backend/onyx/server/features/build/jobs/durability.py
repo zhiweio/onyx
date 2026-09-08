@@ -37,6 +37,7 @@ _MAX_CACHE_PATHS = 24
 _MAX_WALK_DEPTH = 2
 _SKIP_DIR_NAMES = {".venv", "node_modules"}
 
+# Templates for agents and tests. Session setup does not write these.
 SEED_PLAN_MD = "# Plan\n"
 SEED_TODO_MD = "# Todo\n"
 SEED_MEMORY_MD = (

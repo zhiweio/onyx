@@ -11,12 +11,14 @@ class CraftProjectUpsertRequest(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
     instructions: str | None = None
+    user_group_id: int | None = None
 
 
 class CraftProjectPatchRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
     instructions: str | None = None
+    user_group_id: int | None = None
 
 
 class CraftProjectFileResponse(BaseModel):
@@ -74,6 +76,7 @@ class CraftProjectResponse(BaseModel):
     name: str
     description: str
     instructions: str | None
+    user_group_id: int | None = None
     file_count: int
     session_count: int
     created_at: datetime
@@ -96,6 +99,7 @@ class CraftProjectResponse(BaseModel):
             name=project.name,
             description=project.description,
             instructions=project.instructions,
+            user_group_id=project.user_group_id,
             file_count=file_count,
             session_count=session_count,
             created_at=project.created_at,

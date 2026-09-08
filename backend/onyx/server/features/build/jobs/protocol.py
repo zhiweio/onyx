@@ -105,6 +105,7 @@ def specialist_prompt(*, role: str, user_prompt: str, job_name: str) -> str:
     return (
         f"You are the `{role}` specialist for long job `{job_name}`.\n"
         "Work only on this role. Write notes under this lane directory "
-        "as `NOTES.md` and cache extracts under `outputs/extracted/`.\n"
+        "as `NOTES.md`. Create `outputs/extracted/` only if you cache a "
+        "large extract.\n"
         f"{user_prompt.strip()}"
     )

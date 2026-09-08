@@ -405,6 +405,15 @@ def after_lane_turn(
             )
         persist_state(job, state)
         _safe_commit(db_session)
+        if specialist_ok:
+            sandbox_id = _sandbox_id_for_session(db_session, job.session_id, user_id)
+            if sandbox_id is not None:
+                _persist_job_workspace(
+                    db_session,
+                    user_id=user_id,
+                    sandbox_id=sandbox_id,
+                    session_id=job.session_id,
+                )
     if job.status == CraftJobStatus.INTERRUPTED or state.interrupt is not None:
         return
     if not specialists_all_terminal(job):
@@ -679,6 +688,12 @@ def _dispatch_next(
         mark_job_finished(job, status=CraftJobStatus.SUCCEEDED)
         persist_state(job, state)
         _safe_commit(db_session)
+        _persist_job_workspace(
+            db_session,
+            user_id=user_id,
+            sandbox_id=sandbox_id,
+            session_id=session_id,
+        )
         return
 
     lanes = [node for node in ready if is_lane_kind(node.kind)]
@@ -1194,6 +1209,30 @@ def _emit_lane_task_card(
         )
     except Exception:
         logger.exception("Could not persist lane task card for %s", node_id)
+
+
+def _persist_job_workspace(
+    db_session: Session,
+    *,
+    user_id: UUID,
+    sandbox_id: UUID,
+    session_id: UUID,
+) -> None:
+    """Archive the session tree after a lane or job finishes."""
+    try:
+        from onyx.server.features.build.session.artifact_persist import (
+            persist_session_workspace_files,
+        )
+
+        persist_session_workspace_files(
+            db_session,
+            get_sandbox_manager(),
+            sandbox_id=sandbox_id,
+            session_id=session_id,
+            user_id=user_id,
+        )
+    except Exception:
+        logger.exception("Could not persist workspace for session %s", session_id)
 
 
 def _sandbox_id_for_session(

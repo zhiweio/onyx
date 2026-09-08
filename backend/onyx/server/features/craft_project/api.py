@@ -15,6 +15,7 @@ from onyx.db.craft_project import (
     list_project_sessions,
     list_projects_for_user,
     require_project_for_user,
+    require_project_write_for_user,
     store_uploaded_project_file,
     update_project,
 )
@@ -90,6 +91,7 @@ def create_craft_project(
         name=request.name,
         description=request.description,
         instructions=request.instructions,
+        user_group_id=request.user_group_id,
     )
     return _detail(db_session, project)
 
@@ -111,13 +113,16 @@ def patch_craft_project(
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> CraftProjectResponse:
-    project = require_project_for_user(db_session, project_id, user)
+    project = require_project_write_for_user(db_session, project_id, user)
     project = update_project(
         db_session,
         project,
         name=request.name,
         description=request.description,
         instructions=request.instructions,
+        user_group_id=request.user_group_id,
+        set_user_group="user_group_id" in request.model_fields_set,
+        acting_user=user,
     )
     return _detail(db_session, project)
 
@@ -128,7 +133,7 @@ def delete_craft_project(
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> Response:
-    project = require_project_for_user(db_session, project_id, user)
+    project = require_project_write_for_user(db_session, project_id, user)
     delete_project(db_session, project)
     return Response(status_code=204)
 
@@ -153,7 +158,7 @@ def upload_craft_project_file(
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> CraftProjectFileResponse:
-    project = require_project_for_user(db_session, project_id, user)
+    project = require_project_write_for_user(db_session, project_id, user)
     content = file.file.read()
     row = store_uploaded_project_file(
         db_session,
@@ -190,7 +195,7 @@ def delete_craft_project_file_endpoint(
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> Response:
-    project = require_project_for_user(db_session, project_id, user)
+    project = require_project_write_for_user(db_session, project_id, user)
     row = get_project_file(db_session, project.id, file_id)
     delete_project_file(db_session, row)
     return Response(status_code=204)

@@ -281,6 +281,15 @@ CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES = (
     CRAFT_PROJECT_MAX_TOTAL_SIZE_GB * 1024 * 1024 * 1024
 )
 CRAFT_PROJECT_MAX_FILES = int(os.environ.get("CRAFT_PROJECT_MAX_FILES", "50"))
+WORKSPACE_CATALOG_MAX_FILES = int(
+    os.environ.get("WORKSPACE_CATALOG_MAX_FILES", "5000")
+)
+WORKSPACE_CATALOG_MAX_BYTES = int(
+    os.environ.get(
+        "WORKSPACE_CATALOG_MAX_BYTES",
+        str(CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES),
+    )
+)
 
 # Deep-job profile. Off by default so ordinary Craft stays on 1 CPU / 2Gi
 # and the 50-file project cap. Turn on only for document + MCP long jobs.

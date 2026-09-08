@@ -52,6 +52,7 @@ from onyx.server.features.build.session.models import (
     OpencodeHistorySnapshotResponse,
     PptxPreviewResponse,
     PreProvisionedCheckResponse,
+    PromoteWorkspacePathRequest,
     SandboxStatusResponse,
     SessionCreateRequest,
     SessionListResponse,
@@ -885,6 +886,34 @@ def upload_file_endpoint(
         path=relative_path,
         size_bytes=len(content),
     )
+
+
+@router.post("/{session_id}/promote-to-project")
+def promote_workspace_path_to_project_endpoint(
+    session_id: UUID,
+    request: PromoteWorkspacePathRequest,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> ArtifactResponse:
+    """Copy one session catalog file into the bound Craft Project."""
+    session = get_build_session(session_id, user.id, db_session)
+    if session is None or session.project_id is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Session not found")
+    from onyx.db.craft_project import require_project_write_for_user
+    from onyx.server.features.build.session.artifact_persist import (
+        promote_workspace_path_to_project,
+        validate_workspace_rel_path,
+    )
+
+    try:
+        path = validate_workspace_rel_path(request.path)
+    except ValueError as exc:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, str(exc)) from exc
+    require_project_write_for_user(db_session, session.project_id, user)
+    artifact = promote_workspace_path_to_project(db_session, session, path)
+    if artifact is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "File not found")
+    return ArtifactResponse.from_model(artifact)
 
 
 @router.delete("/{session_id}/files/{path:path}", response_model=None)

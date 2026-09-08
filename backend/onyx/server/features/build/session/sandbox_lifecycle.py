@@ -91,6 +91,8 @@ from onyx.server.metrics.craft_sandbox import (
 )
 from onyx.skills.push import (
     SKILLS_MOUNT_PATH,
+    TEAM_SKILLS_MOUNT_PATH,
+    build_team_skills_for_user,
     build_user_skills_payload,
     compute_skill_runtime_hash,
 )
@@ -143,6 +145,7 @@ class ManagedContentPayload:
 
     connectable_apps_section: str
     skills_files: FileSet
+    team_skills_files: FileSet
     skills_hash: str
     mcp_fingerprint: str
     library_files: FileSet
@@ -221,9 +224,11 @@ def build_managed_content_payload(
     """Read-only assembly of the skills/user-library payload and its hashes.
     Callers must close the read transaction before pushing externally."""
     connectable_apps_section, skills_files = build_user_skills_payload(user, db_session)
+    team_skills_files = build_team_skills_for_user(user, db_session)
     return ManagedContentPayload(
         connectable_apps_section=connectable_apps_section,
         skills_files=skills_files,
+        team_skills_files=team_skills_files,
         skills_hash=compute_skill_runtime_hash(skills_files, connectable_apps_section),
         mcp_fingerprint=craft_mcp_fingerprint(
             resolve_craft_mcp_servers(db_session, user)
@@ -270,6 +275,16 @@ def push_managed_content(
     except Exception:
         logger.warning(
             "Failed to push user library to sandbox %s", sandbox_id, exc_info=True
+        )
+    try:
+        sandbox_manager.push_to_sandbox(
+            sandbox_id=sandbox_id,
+            mount_path=TEAM_SKILLS_MOUNT_PATH,
+            files=payload.team_skills_files,
+        )
+    except Exception:
+        logger.warning(
+            "Failed to push team skills to sandbox %s", sandbox_id, exc_info=True
         )
     return skills_hydrated
 

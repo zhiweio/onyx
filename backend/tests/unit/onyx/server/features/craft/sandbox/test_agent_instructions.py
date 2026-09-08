@@ -139,6 +139,8 @@ def test_generate_agent_instructions_keeps_connectable_blurb_when_empty() -> Non
 
     assert "## Connectable apps" in content  # blurb stays regardless of app count
     assert "Do not list, glob, or find `/workspace/sessions`" in content
+    assert "Create a subdirectory only when you write a file" in content
+    assert "Update PLAN.md / TODO.md silently" not in content
     assert _unresolved_placeholders(content) == set()
 
 

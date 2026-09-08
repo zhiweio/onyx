@@ -12343,6 +12343,9 @@
       "projectsSection": {
         "title": "项目"
       },
+      "sessionsByProject": {
+        "ungrouped": "其他会话"
+      },
       "mcpActions": {
         "label": "MCP 操作"
       }

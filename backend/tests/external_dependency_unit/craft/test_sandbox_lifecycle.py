@@ -43,7 +43,7 @@ from onyx.server.features.build.session.sandbox_lifecycle import (
     ensure_sandbox_ready,
     is_sandbox_idle,
 )
-from onyx.skills.push import SKILLS_MOUNT_PATH
+from onyx.skills.push import SKILLS_MOUNT_PATH, TEAM_SKILLS_MOUNT_PATH
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE
 from tests.common.craft.stubs import StubSandboxManager
 from tests.external_dependency_unit.craft.db_helpers import make_sandbox, make_user
@@ -515,6 +515,7 @@ class _PushRecordingStub(StubSandboxManager):
         connectable_apps_section: str,
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         self.ops.append("render_workspace")
         super().setup_session_workspace(
@@ -525,6 +526,7 @@ class _PushRecordingStub(StubSandboxManager):
             connectable_apps_section,
             user_name,
             mcp_servers,
+            share_workspace_from,
         )
 
     def restore_snapshot(
@@ -584,6 +586,7 @@ class TestManagedContentPushOrdering:
         assert [mount for mount, _ in stub.pushes] == [
             SKILLS_MOUNT_PATH,
             USER_LIBRARY_MOUNT_PATH,
+            TEAM_SKILLS_MOUNT_PATH,
         ]
         # Every push landed while the row had not yet flipped to RUNNING.
         assert all(status == SandboxStatus.PROVISIONING for _, status in stub.pushes)
@@ -665,6 +668,7 @@ class TestManagedContentPushOrdering:
         assert stub.ops == [
             f"push:{SKILLS_MOUNT_PATH}",
             f"push:{USER_LIBRARY_MOUNT_PATH}",
+            f"push:{TEAM_SKILLS_MOUNT_PATH}",
             "render_workspace",
         ]
         assert all(status == SandboxStatus.PROVISIONING for _, status in stub.pushes)

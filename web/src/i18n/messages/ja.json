@@ -12343,6 +12343,9 @@
       "projectsSection": {
         "title": "プロジェクト"
       },
+      "sessionsByProject": {
+        "ungrouped": "その他のセッション"
+      },
       "mcpActions": {
         "label": "MCP Actions"
       }

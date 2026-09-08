@@ -186,7 +186,25 @@ export async function fetchSessionHistory(): Promise<SessionHistoryItem[]> {
     id: s.id,
     title: s.name || `Session ${s.id.slice(0, 8)}...`,
     createdAt: new Date(s.created_at),
+    projectId: s.project_id ?? null,
   }));
+}
+
+export async function promoteWorkspacePath(
+  sessionId: string,
+  path: string
+): Promise<void> {
+  const res = await fetch(
+    `${BUILD_API_BASE}/sessions/${sessionId}/promote-to-project`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(await errorDetail(res, "Failed to save file to project"));
+  }
 }
 
 export async function generateSessionName(sessionId: string): Promise<string> {

@@ -14,7 +14,7 @@ from onyx.db.models import Skill, User, UserGroup
 from onyx.db.skill import set_skill_enabled_for_user
 from onyx.skills import built_in as built_in_module
 from onyx.skills.built_in import BuiltInSkillDefinition
-from onyx.skills.push import build_skills_fileset_for_user
+from onyx.skills.push import build_skills_fileset_for_user, build_user_skills_payload
 from tests.external_dependency_unit.craft.db_helpers import (
     add_user_to_group,
     make_built_in_skill_row,
@@ -230,6 +230,34 @@ class TestCustomSkillFileset:
 
         assert b"custom body" in files[f"{name}/SKILL.md"]
         assert files[f"{name}/nested/file.txt"] == b"nested body"
+
+
+class TestTeamSkillsFileset:
+    def test_group_shared_skill_is_merged_without_enablement(
+        self,
+        db_session: Session,
+        test_user: User,
+        seeded_skill: Callable[..., Skill],
+    ) -> None:
+        name = f"team-shared-{uuid4().hex[:8]}"
+        team_group: UserGroup = make_group(db_session)
+        add_user_to_group(db_session, test_user, team_group)
+        db_session.commit()
+        seeded_skill(
+            name=name,
+            public=False,
+            groups=[team_group],
+            bundle_files={
+                "SKILL.md": f"---\nname: {name}\ndescription: t\n---\nteam body",
+            },
+        )
+        db_session.commit()
+
+        personal = build_skills_fileset_for_user(test_user, db_session)
+        assert f"{name}/SKILL.md" not in personal
+
+        _section, files = build_user_skills_payload(test_user, db_session)
+        assert b"team body" in files[f"{name}/SKILL.md"]
 
 
 class TestUnknownBuiltInRowIsSkipped:

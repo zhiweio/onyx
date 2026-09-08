@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState, useEffect, useRef } from "react";
+import { memo, useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Route } from "next";
 import { useRouter, usePathname } from "next/navigation";
@@ -321,6 +321,32 @@ const MemoizedBuildSidebarInner = memo(() => {
     (state) => state.returnToMainAgent
   );
   const { data: projects } = useCraftProjects();
+  const projectNameById = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const project of projects) {
+      names.set(project.id, project.name);
+    }
+    return names;
+  }, [projects]);
+  const groupedHistory = useMemo(() => {
+    const named = new Map<string, SessionHistoryItem[]>();
+    const ungrouped: SessionHistoryItem[] = [];
+    for (const item of sessionHistory) {
+      if (item.projectId) {
+        const bucket = named.get(item.projectId) ?? [];
+        bucket.push(item);
+        named.set(item.projectId, bucket);
+      } else {
+        ungrouped.push(item);
+      }
+    }
+    const namedGroups = [...named.entries()].sort(([aId], [bId]) => {
+      const aName = projectNameById.get(aId) ?? "";
+      const bName = projectNameById.get(bId) ?? "";
+      return aName.localeCompare(bName);
+    });
+    return { namedGroups, ungrouped };
+  }, [sessionHistory, projectNameById]);
 
   // Fetch session history on mount
   useEffect(() => {
@@ -347,6 +373,40 @@ const MemoizedBuildSidebarInner = memo(() => {
       });
     },
     [requestNavigation, router, returnToMainAgent]
+  );
+
+  const renderHistoryItem = useCallback(
+    (historyItem: SessionHistoryItem) => (
+      <BuildSessionButton
+        key={historyItem.id}
+        historyItem={historyItem}
+        isActive={
+          !pathname.startsWith(CRAFT_TASKS_PATH) &&
+          !pathname.startsWith(CRAFT_SKILLS_PATH) &&
+          !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
+          !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
+          !pathname.startsWith(CRAFT_PROJECTS_PATH) &&
+          !pathname.startsWith(CRAFT_APPS_PATH) &&
+          session?.id === historyItem.id
+        }
+        onLoad={() => handleLoadSession(historyItem.id)}
+        onRename={(newName) => renameBuildSession(historyItem.id, newName)}
+        onDelete={() => deleteBuildSession(historyItem.id)}
+        onDeleteActiveSession={
+          session?.id === historyItem.id
+            ? () => navigate(CRAFT_PATH)
+            : undefined
+        }
+      />
+    ),
+    [
+      deleteBuildSession,
+      handleLoadSession,
+      navigate,
+      pathname,
+      renameBuildSession,
+      session?.id,
+    ]
   );
 
   const showLogoWhenFolded = useShowLogoWhenFolded();
@@ -448,31 +508,28 @@ const MemoizedBuildSidebarInner = memo(() => {
                 <Text color="text-01">{t("sessions.empty")}</Text>
               </div>
             ) : (
-              sessionHistory.map((historyItem) => (
-                <BuildSessionButton
-                  key={historyItem.id}
-                  historyItem={historyItem}
-                  isActive={
-                    !pathname.startsWith(CRAFT_TASKS_PATH) &&
-                    !pathname.startsWith(CRAFT_SKILLS_PATH) &&
-                    !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
-                    !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
-                    !pathname.startsWith(CRAFT_PROJECTS_PATH) &&
-                    !pathname.startsWith(CRAFT_APPS_PATH) &&
-                    session?.id === historyItem.id
-                  }
-                  onLoad={() => handleLoadSession(historyItem.id)}
-                  onRename={(newName) =>
-                    renameBuildSession(historyItem.id, newName)
-                  }
-                  onDelete={() => deleteBuildSession(historyItem.id)}
-                  onDeleteActiveSession={
-                    session?.id === historyItem.id
-                      ? () => navigate(CRAFT_PATH)
-                      : undefined
-                  }
-                />
-              ))
+              <>
+                {groupedHistory.namedGroups.map(([projectId, items]) => {
+                  const projectTitle = sidebarListTitle(
+                    projectNameById.get(projectId) ??
+                      t("sessionsByProject.ungrouped")
+                  );
+                  return (
+                    <div key={projectId}>
+                      <SidebarLayouts.Section title={projectTitle.text} />
+                      {items.map(renderHistoryItem)}
+                    </div>
+                  );
+                })}
+                {groupedHistory.ungrouped.length > 0 && (
+                  <div>
+                    <SidebarLayouts.Section
+                      title={t("sessionsByProject.ungrouped")}
+                    />
+                    {groupedHistory.ungrouped.map(renderHistoryItem)}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

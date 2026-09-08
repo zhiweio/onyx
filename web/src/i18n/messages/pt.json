@@ -12343,6 +12343,9 @@
       "projectsSection": {
         "title": "Projetos"
       },
+      "sessionsByProject": {
+        "ungrouped": "Outras sessões"
+      },
       "mcpActions": {
         "label": "MCP Actions"
       }

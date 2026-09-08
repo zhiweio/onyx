@@ -348,6 +348,29 @@ def list_runtime_skills_for_user(
     )
 
 
+def list_skills_shared_with_group(
+    db_session: Session, user_group_id: int
+) -> list[Skill]:
+    """Skills shared with a user group, ignoring per-user enablement."""
+    stmt = (
+        _skill_select_with_eager_load(order_by_name=True)
+        .join(Skill__UserGroup, Skill__UserGroup.skill_id == Skill.id)
+        .where(Skill__UserGroup.user_group_id == user_group_id)
+        .where(
+            or_(
+                Skill.built_in_skill_id.isnot(None),
+                Skill.is_valid.is_(None),
+                Skill.is_valid.is_(True),
+            )
+        )
+    )
+    return list(
+        db_session.scalars(
+            _exclude_unavailable_built_in_skills(stmt, db_session)
+        ).unique()
+    )
+
+
 def fetch_skill(
     skill_id: UUID,
     *,

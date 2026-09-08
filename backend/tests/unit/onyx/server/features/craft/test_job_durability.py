@@ -77,6 +77,8 @@ def test_snapshot_injects_file_bodies_and_cache_index() -> None:
     assert "\nConstraints:" in brief
     assert "\nDone when:" in brief
     assert "Do not list, glob, or find /workspace/sessions" in brief
+    assert "Create a directory only when you write a file into it" in brief
+    assert "Write PLAN.md and TODO.md with this job's real plan" in brief
     assert "Visible tools in this session" not in brief
 
 

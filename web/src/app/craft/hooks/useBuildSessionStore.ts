@@ -696,6 +696,7 @@ export interface BuildSessionData {
   /** Incremented only with skillsStale so async refreshes can reject stale responses. */
   skillsStaleRevision: number;
   origin: SessionOrigin;
+  projectId: string | null;
   abortController: AbortController;
   lastAccessed: Date;
   isLoaded: boolean;
@@ -947,6 +948,7 @@ const createInitialSessionData = (
   skillsStale: false,
   skillsStaleRevision: 0,
   origin: "INTERACTIVE",
+  projectId: null,
   abortController: new AbortController(),
   lastAccessed: new Date(),
   isLoaded: false,
@@ -961,7 +963,7 @@ const createInitialSessionData = (
   activeOutputTab: "preview",
   activePanelTabId: null,
   filesTabState: {
-    expandedPaths: [],
+    expandedPaths: ["outputs"],
     scrollTop: 0,
     directoryCache: {},
     lastRefreshGeneration: 0,
@@ -1635,6 +1637,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         ...(sessionData.skills_stale &&
           canApplySkillsStale() && { skillsStale: true }),
         origin: sessionData.origin,
+        projectId: sessionData.project_id ?? null,
         activeTurnId: resolvedActiveTurnId,
         activeTurnIndex: resolvedActiveTurnIndex,
         activeTurnLocalOwner: useDbMessages
@@ -1911,6 +1914,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
               id: sessionId,
               title: "Fresh Craft",
               createdAt: new Date(),
+              projectId: get().sessions.get(sessionId)?.projectId ?? null,
             },
             ...sessionHistory,
           ],
@@ -2692,7 +2696,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 // Stable empty references for SSR hydration (prevents infinite loop)
 const EMPTY_PANEL_TABS: PanelTab[] = [];
 const EMPTY_FILES_TAB_STATE: FilesTabState = {
-  expandedPaths: [],
+  expandedPaths: ["outputs"],
   scrollTop: 0,
   directoryCache: {},
   lastRefreshGeneration: 0,
