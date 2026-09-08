@@ -312,6 +312,22 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         tags=("试验设计", "终点", "样本量"),
         built_in_skill_id="biomed-trial-design",
     ),
+    BuiltInSkillEntry(
+        slug="biomed-adc-dac-initiation",
+        name="ADC/DAC 立项深度调研",
+        description="基于公开检索与用户文件，撰写含序列簇、表位、payload 与 Go/No-Go 的 ADC/DAC 立项报告。",
+        category=SystemCatalogCategory.BIOMED,
+        tags=("ADC", "DAC", "立项", "表位", "payload"),
+        built_in_skill_id="biomed-adc-dac-initiation",
+    ),
+    BuiltInSkillEntry(
+        slug="biomed-clinical-initiation",
+        name="临床期立项深度调研",
+        description="基于公开检索与用户文件，撰写含患者池、PoS、注册路径、销售双情景与 Go/No-Go 的临床期立项报告。",
+        category=SystemCatalogCategory.BIOMED,
+        tags=("临床期", "立项", "PoS", "销售预测", "注册"),
+        built_in_skill_id="biomed-clinical-initiation",
+    ),
 )
 
 
@@ -694,6 +710,41 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         skill_slugs=("biomed-regulatory", "biomed-cmc-quality", "research-brief", "docx"),
         report_template_slug="regulatory_pathway",
         playbook_file="biomed-regulatory-path.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="biomed-adc-dac-initiation",
+        name="ADC/DAC 立项深度调研",
+        description="公开数据库与已安装检索工具支撑的 ADC/DAC 立项报告，含序列簇、表位与 payload。",
+        category=SystemCatalogCategory.BIOMED,
+        tags=("ADC", "DAC", "立项"),
+        skill_slugs=(
+            "biomed-adc-dac-initiation",
+            "biomed-literature",
+            "biomed-clinical-intel",
+            "biomed-patent-fto",
+            "document-ingest",
+            "docx",
+        ),
+        report_template_slug="initiation_report",
+        playbook_file="biomed-adc-dac-initiation.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="biomed-clinical-initiation",
+        name="临床期立项深度调研",
+        description="公开数据库与已安装检索工具支撑的临床期立项报告，含患者池、PoS、注册路径与销售双情景。",
+        category=SystemCatalogCategory.BIOMED,
+        tags=("临床期", "立项", "PoS"),
+        skill_slugs=(
+            "biomed-clinical-initiation",
+            "biomed-literature",
+            "biomed-clinical-intel",
+            "biomed-patent-fto",
+            "biomed-regulatory",
+            "document-ingest",
+            "docx",
+        ),
+        report_template_slug="initiation_report",
+        playbook_file="biomed-clinical-initiation.yaml",
     ),
     # ── general office ───────────────────────────────────────────────────
     BuiltInScenarioEntry(

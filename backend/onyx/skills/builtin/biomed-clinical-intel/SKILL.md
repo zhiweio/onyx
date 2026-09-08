@@ -15,9 +15,10 @@ mechanism and phase; how competitor trials are designed; when key readouts and
 completions are expected; and how feasible enrollment looks.
 
 Does not cover: single-trial design critique (use `biomed-trial-design`), the
-approval pathway (use `biomed-regulatory`), or preclinical literature (use
-`biomed-literature`). Registry data is self-reported and often stale — treat it as
-a lead, not truth.
+approval pathway (use `biomed-regulatory`), preclinical literature (use
+`biomed-literature`), or a full clinical-stage initiation / PoS / sales report
+(use `biomed-clinical-initiation`). Registry data is self-reported and often
+stale — treat it as a lead, not truth.
 
 ## Workflow
 

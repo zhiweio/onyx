@@ -1,0 +1,43 @@
+domain: biomed
+objective: Reach a cited go / conditional-go / no-go for one clinical-stage asset
+required_inputs:
+  - drug
+  - sponsor
+  - current_phase
+  - indication
+  - line_of_therapy
+  - decision_question
+  - decision_date
+suggested_lanes:
+  - role: literature
+    skill_id: biomed-literature
+  - role: clinical
+    skill_id: biomed-clinical-intel
+  - role: patent
+    skill_id: biomed-patent-fto
+  - role: regulatory
+    skill_id: biomed-regulatory
+  - role: clinical-initiation
+    skill_id: biomed-clinical-initiation
+phases:
+  - id: collect
+    done_when: Public papers, trials, approvals, patents, and epidemiology records are listed with identifiers
+  - id: freeze
+    done_when: Source, pipeline, readout, assumption, and risk ledgers are filled
+  - id: report
+    done_when: outputs/markdown/clinical-initiation-report.md states a decision
+deliverables:
+  - outputs/markdown/clinical-initiation-report.md
+  - outputs/normalized/sources.csv
+  - outputs/normalized/pipeline.csv
+  - outputs/normalized/readouts.csv
+  - outputs/normalized/assumptions.csv
+  - outputs/normalized/risks.csv
+quality_gates:
+  - Every material claim has a fetched identifier
+  - Derived sales, PoS, and cost figures are labeled as estimates
+  - Public facts come from the installed search MCP and public databases only
+refusal_rules:
+  - Do not invent NCT IDs, PMIDs, patent numbers, deal values, or prevalence
+  - Do not fill missing sales or PoS fields from model memory
+  - Do not give a legal FTO opinion

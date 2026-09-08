@@ -1,12 +1,12 @@
 ---
 name: biomed-initiation
-description: Orchestrate a full drug-program initiation (立项) report that fans out to the six biomed sub-skills and composes a cited go/no-go memo under an explicit decision framework. Use for 立项, 立项报告, 靶点评估, 项目决策, target brief, target product profile, go/no-go, or program initiation.
+description: Orchestrate a full drug-program initiation (立项) report that fans out to the biomed sub-skills and composes a cited go/no-go memo under an explicit decision framework. Use for 立项, 立项报告, 靶点评估, 项目决策, target brief, target product profile, go/no-go, or program initiation.
 ---
 
 # biomed-initiation
 
 Run a multi-source 立项 assessment and write a cited go/no-go memo. This is the
-orchestrator; it fans out to the six biomed sub-skills.
+orchestrator; it fans out to the biomed sub-skills.
 Parse supplied files with `document-ingest`.
 
 ## Scope
@@ -24,7 +24,7 @@ This is R&D decision support, not medical, legal, or regulatory advice.
    geography, differentiation hypothesis, and the decision question. Write the
    outline and the sub-skill assignment to `outputs/PLAN.md`; seed
    `outputs/TODO.md` with one task per sub-skill.
-   **Done when:** PLAN.md holds the TPP and the six assignments.
+   **Done when:** PLAN.md holds the TPP and the in-scope assignments.
 
 2. **Fan out** — Give each sub-skill a closed question list; each writes to its own
    `outputs/research/<role>/` notes and normalized CSVs (do not re-do their work
@@ -36,6 +36,13 @@ This is R&D decision support, not medical, legal, or regulatory advice.
    - `biomed-regulatory` → pathway and evidence bar → `research/regulatory/`
    - `biomed-trial-design` → feasibility of the pivotal design, when in scope →
      `research/trial-design/`
+   - `biomed-adc-dac-initiation` → when the modality is ADC, DAC, or another
+     antibody-directed payload: sequence clusters, epitope layers, and payload
+     rationale → `research/adc-dac/`
+   - `biomed-clinical-initiation` → when the asset already has human clinical
+     data (Phase I to NDA or post-approval expansion): patient pool, PoS,
+     registration path, dual-scenario sales, and risk matrix →
+     `research/clinical-initiation/`
    **Done when:** every in-scope role has notes with citations.
 
 3. **Score** — Apply the decision framework below; record a rating and the evidence
