@@ -255,17 +255,24 @@ def update_user_personalization(
     memories: list[MemoryItem],
     user_preferences: str | None,
     db_session: Session,
+    craft_use_long_term_memory: bool | None = None,
+    chat_memory_mode: str | None = None,
 ) -> None:
+    values: dict[str, object] = {
+        "personal_name": personal_name,
+        "personal_role": personal_role,
+        "use_memories": use_memories,
+        "enable_memory_tool": enable_memory_tool,
+        "user_preferences": user_preferences,
+    }
+    if craft_use_long_term_memory is not None:
+        values["craft_use_long_term_memory"] = craft_use_long_term_memory
+    if chat_memory_mode is not None:
+        values["chat_memory_mode"] = chat_memory_mode
     db_session.execute(
         update(User)
         .where(User.id == user_id)  # ty: ignore[invalid-argument-type]
-        .values(
-            personal_name=personal_name,
-            personal_role=personal_role,
-            use_memories=use_memories,
-            enable_memory_tool=enable_memory_tool,
-            user_preferences=user_preferences,
-        )
+        .values(**values)
     )
 
     # ID-based upsert: use real DB IDs from the frontend to match memories.

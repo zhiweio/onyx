@@ -14091,6 +14091,23 @@
         "description": "允许 Onyx 生成并更新已存储的记忆。",
         "title": "更新记忆"
       },
+      "chatMode": {
+        "title": "聊天记忆",
+        "description": "短期使用现有的 10 条笔记。长期与 Craft 共用同一向量库。",
+        "shortTerm": "短期（默认）",
+        "longTerm": "长期（与 Craft 共用）"
+      },
+      "craftLongTerm": {
+        "title": "在 Craft 中使用长期记忆",
+        "description": "在 Craft 会话之间召回并留下稳定事实。默认关闭。"
+      },
+      "longTerm": {
+        "listTitle": "长期记忆",
+        "listDescription": "打开长期记忆后，Chat 与 Craft 会召回这些事实。",
+        "addPlaceholder": "添加一条稳定事实（至少 12 个字符）",
+        "add": "添加记忆",
+        "delete": "删除记忆"
+      },
       "viewAll": {
         "description": "全部记忆",
         "title": "查看/添加"

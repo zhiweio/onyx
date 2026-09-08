@@ -10,6 +10,8 @@ const DEFAULT_PERSONALIZATION: UserPersonalization = {
   use_memories: true,
   enable_memory_tool: true,
   user_preferences: "",
+  craft_use_long_term_memory: false,
+  chat_memory_mode: "short_term",
 };
 
 function derivePersonalizationFromUser(user: User | null): UserPersonalization {
@@ -27,6 +29,9 @@ function derivePersonalizationFromUser(user: User | null): UserPersonalization {
       user.personalization.enable_memory_tool ??
       DEFAULT_PERSONALIZATION.enable_memory_tool,
     user_preferences: user.personalization.user_preferences ?? "",
+    craft_use_long_term_memory:
+      user.personalization.craft_use_long_term_memory ?? false,
+    chat_memory_mode: user.personalization.chat_memory_mode ?? "short_term",
   };
 }
 

@@ -18,7 +18,8 @@
 #   SANDBOX_IMAGE_PULL_POLICY=Never
 #
 # Third-party images (Postgres, Redis, OpenSearch, MinIO, nginx, model-server)
-# still come from their registries.
+# still come from their registries. Keep the existing Alpine Postgres volume:
+# debian `pgvector/pgvector:pg15` cannot reuse that data directory.
 
 x-onyx-backend-build: &onyx_backend_build
   image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:local}
@@ -53,6 +54,16 @@ services:
     build:
       context: ../../web
       dockerfile: Dockerfile
+      args:
+        - SKIP_TYPE_CHECK=${SKIP_TYPE_CHECK:-1}
+        - NODE_OPTIONS=${NODE_OPTIONS:-"--max-old-space-size=8192"}
+
+  relational_db:
+    image: onyx-postgres-pgvector:15.2
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: postgres-pgvector.Dockerfile
 
   sandbox-image-prepull:
     image: ${SANDBOX_CONTAINER_IMAGE:-onyxdotapp/sandbox:local}

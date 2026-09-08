@@ -578,10 +578,15 @@ def yield_sandbox_events(
             turn_timeout_seconds=turn_timeout_seconds,
         )
     else:
+        from onyx.memory.long_term import maybe_craft_recall_prompt
+
+        prompt_content = maybe_craft_recall_prompt(
+            db_session, session_id, user_message_content
+        )
         event_stream = sandbox_manager.send_message(
             sandbox_id,
             session_id,
-            user_message_content,
+            prompt_content,
             attachments=attachments,
             opencode_session_id=opencode_session_id,
             agent_provider=agent_provider,

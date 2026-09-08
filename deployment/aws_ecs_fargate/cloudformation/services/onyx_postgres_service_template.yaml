@@ -135,7 +135,7 @@ Resources:
                   Fn::Sub: "${Environment}-onyx-efs-PostgresDataEfsAccessPoint"
       ContainerDefinitions:
         - Name: !Ref ServiceName
-          Image: postgres:15.2-alpine
+          Image: pgvector/pgvector:pg15
           Cpu: 0
           Essential: true
           StopTimeout: 30

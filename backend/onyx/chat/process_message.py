@@ -850,6 +850,25 @@ def build_chat_turn(
     skip_clarification = is_last_assistant_message_clarification(chat_history)
 
     user_memory_context = get_memories(user, db_session)
+    if (
+        user.chat_memory_mode == "long_term"
+        and user.use_memories
+        and message_text.strip()
+    ):
+        from onyx.memory.long_term import recall
+
+        recalled = recall(db_session, user.id, message_text)
+        user_memory_context = user_memory_context.model_copy(
+            update={"memories": tuple(item.text for item in recalled)}
+        )
+        user_message_count = sum(
+            1 for msg in chat_history if msg.message_type == MessageType.USER
+        )
+        from onyx.memory.long_term import maybe_retain_after_chat_turn
+
+        maybe_retain_after_chat_turn(
+            db_session, user, message_text, user_message_count
+        )
 
     # This prompt may come from the Agent or Project. Fetched here (before run_llm_loop)
     # because the inner loop shouldn't need to access the DB-form chat history, but we

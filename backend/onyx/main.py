@@ -94,6 +94,7 @@ from onyx.server.features.input_prompt.api import (
     admin_router as admin_input_prompt_router,
 )
 from onyx.server.features.input_prompt.api import basic_router as input_prompt_router
+from onyx.server.features.long_term_memory.api import router as long_term_memory_router
 from onyx.server.features.mcp.api import admin_router as mcp_admin_router
 from onyx.server.features.mcp.api import router as mcp_router
 from onyx.server.features.mcp.personal_api import personal_router as mcp_personal_router
@@ -650,6 +651,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
         application, system_catalog_admin_router
     )
     include_router_with_global_prefix_prepended(application, craft_project_router)
+    include_router_with_global_prefix_prepended(application, long_term_memory_router)
 
     include_router_with_global_prefix_prepended(application, pat_router)
     include_router_with_global_prefix_prepended(application, captcha_router)

@@ -1262,7 +1262,29 @@ def run_llm_loop(
                     else:
                         persisted_memory_id: int | None = None
                         if user_memory_context and user_memory_context.user_id:
-                            if tool_response.rich_response.index_to_replace is not None:
+                            if user_memory_context.chat_memory_mode == "long_term":
+                                from onyx.memory.long_term import (
+                                    MemoryFact,
+                                    upsert_facts,
+                                )
+
+                                with get_session_with_current_tenant() as memory_db:
+                                    ids = upsert_facts(
+                                        memory_db,
+                                        user_memory_context.user_id,
+                                        [
+                                            MemoryFact(
+                                                text=tool_response.rich_response.memory_text
+                                            )
+                                        ],
+                                        source="agent",
+                                        source_surface="chat",
+                                    )
+                                    memory_db.commit()
+                                    persisted_memory_id = ids[0] if ids else None
+                            elif (
+                                tool_response.rich_response.index_to_replace is not None
+                            ):
                                 persisted_memory_id = update_memory_at_index(
                                     user_id=user_memory_context.user_id,
                                     index=tool_response.rich_response.index_to_replace,

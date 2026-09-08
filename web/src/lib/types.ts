@@ -43,6 +43,8 @@ export interface MemoryItem {
   content: string;
 }
 
+export type ChatMemoryMode = "short_term" | "long_term";
+
 export interface UserPersonalization {
   name: string;
   role: string;
@@ -50,6 +52,19 @@ export interface UserPersonalization {
   use_memories: boolean;
   enable_memory_tool: boolean;
   user_preferences: string;
+  craft_use_long_term_memory: boolean;
+  chat_memory_mode: ChatMemoryMode;
+}
+
+export interface LongTermMemoryItem {
+  id: number;
+  text: string;
+  kind: string;
+  source: string;
+  source_surface: string;
+  project_id: string | null;
+  created_at: string;
+  last_used_at: string;
 }
 
 export enum AccountType {

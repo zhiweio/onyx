@@ -34,7 +34,13 @@ import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { Switch } from "@opal/components";
 import { useUser } from "@/providers/UserProvider";
 import { useTheme } from "next-themes";
-import { MemoryItem, Permission, ThemePreference } from "@/lib/types";
+import {
+  ChatMemoryMode,
+  MemoryItem,
+  Permission,
+  ThemePreference,
+} from "@/lib/types";
+import LongTermMemoryPanel from "@/sections/settings/LongTermMemoryPanel";
 import {
   DEFAULT_LOCALE,
   LOCALE_ENDONYMS,
@@ -1560,11 +1566,53 @@ function ChatPreferencesSettings() {
 
             {(personalizationValues.use_memories ||
               personalizationValues.enable_memory_tool ||
-              personalizationValues.memories.length > 0) && (
-              <Memories
-                memories={personalizationValues.memories}
-                onSaveMemories={handleSaveMemories}
+              personalizationValues.memories.length > 0) &&
+              personalizationValues.chat_memory_mode === "short_term" && (
+                <Memories
+                  memories={personalizationValues.memories}
+                  onSaveMemories={handleSaveMemories}
+                />
+              )}
+            <InputHorizontal
+              title={t("memory.chatMode.title")}
+              description={t("memory.chatMode.description")}
+              withLabel
+            >
+              <InputSelect
+                value={personalizationValues.chat_memory_mode}
+                onValueChange={(value) => {
+                  const mode = value as ChatMemoryMode;
+                  void handleSavePersonalization({ chat_memory_mode: mode });
+                }}
+              >
+                <InputSelect.Trigger />
+                <InputSelect.Content>
+                  <InputSelect.Item value="short_term">
+                    {t("memory.chatMode.shortTerm")}
+                  </InputSelect.Item>
+                  <InputSelect.Item value="long_term">
+                    {t("memory.chatMode.longTerm")}
+                  </InputSelect.Item>
+                </InputSelect.Content>
+              </InputSelect>
+            </InputHorizontal>
+            <InputHorizontal
+              title={t("memory.craftLongTerm.title")}
+              description={t("memory.craftLongTerm.description")}
+              withLabel
+            >
+              <Switch
+                checked={personalizationValues.craft_use_long_term_memory}
+                onCheckedChange={(checked) => {
+                  void handleSavePersonalization({
+                    craft_use_long_term_memory: checked,
+                  });
+                }}
               />
+            </InputHorizontal>
+            {(personalizationValues.chat_memory_mode === "long_term" ||
+              personalizationValues.craft_use_long_term_memory) && (
+              <LongTermMemoryPanel />
             )}
           </Section>
         </Card>

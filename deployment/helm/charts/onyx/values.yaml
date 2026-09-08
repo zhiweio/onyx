@@ -111,6 +111,8 @@ postgresql:
     create: false
   cluster:
     instances: 1
+    # Use a CNPG image that ships pgvector when this chart creates the cluster.
+    # imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16.6-v0.3.1
     storage:
       storageClass: ""
       size: 10Gi

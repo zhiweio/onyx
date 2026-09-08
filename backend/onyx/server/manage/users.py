@@ -1341,6 +1341,14 @@ def update_user_personalization_api(
         if request.user_preferences is not None
         else user.user_preferences
     )
+    new_chat_memory_mode = request.chat_memory_mode
+    if new_chat_memory_mode is not None and new_chat_memory_mode not in {
+        "short_term",
+        "long_term",
+    }:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "chat_memory_mode must be short_term or long_term"
+        )
 
     update_user_personalization(
         user.id,
@@ -1351,6 +1359,8 @@ def update_user_personalization_api(
         memories=new_memories,
         user_preferences=new_user_preferences,
         db_session=db_session,
+        craft_use_long_term_memory=request.craft_use_long_term_memory,
+        chat_memory_mode=new_chat_memory_mode,
     )
 
 

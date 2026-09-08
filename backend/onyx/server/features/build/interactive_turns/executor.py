@@ -607,6 +607,17 @@ def _drive_interactive_turn(
                 status=TURN_STATUS_SUCCEEDED,
                 runner_id=runner_id,
             )
+            if kind != "compact":
+                from onyx.memory.long_term import maybe_retain_after_craft_turn
+
+                maybe_retain_after_craft_turn(
+                    db_session,
+                    user_id,
+                    session_id,
+                    prompt,
+                    turn_index,
+                )
+                db_session.commit()
         except Exception as exc:
             db_session.rollback()
             logger.exception("Interactive turn %s failed", turn_id)

@@ -812,6 +812,8 @@ def _enqueue_node(
     from onyx.server.features.build.jobs.continuation import _enqueue_or_remember
 
     phase = _phase_dict(job, node.id)
+    from onyx.memory.long_term import recall_texts_for_craft_job
+
     prompt = assemble_brief(
         node=node,
         state=state,
@@ -821,6 +823,12 @@ def _enqueue_node(
         missing=missing,
         snapshot=_job_snapshot(db_session, job, user_id),
         visible_tools=_visible_tools(db_session, user_id),
+        recalled_memories=recall_texts_for_craft_job(
+            db_session,
+            user_id,
+            state.goal or job.name,
+            project_id=job.project_id,
+        ),
     )
     state = apply_writes(
         state,
@@ -915,6 +923,8 @@ def _spawn_lanes(
             headless=True,
             share_workspace_from=job.session_id,
         )
+        from onyx.memory.long_term import recall_texts_for_craft_job
+
         prompt = assemble_brief(
             node=node,
             state=state,
@@ -923,6 +933,12 @@ def _spawn_lanes(
             user_prompt=state.goal,
             snapshot=_job_snapshot(db_session, job, user_id),
             visible_tools=_visible_tools(db_session, user_id),
+            recalled_memories=recall_texts_for_craft_job(
+                db_session,
+                user_id,
+                state.goal or job.name,
+                project_id=job.project_id,
+            ),
         )
         add_specialist(
             db_session,

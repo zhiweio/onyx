@@ -132,6 +132,8 @@ def create_job(
         plan_node = graph.get("plan")
         state = load_state(job)
         sandbox = get_sandbox_by_user_id(db_session, user.id)
+        from onyx.memory.long_term import recall_texts_for_craft_job
+
         prompt = (
             assemble_brief(
                 node=plan_node,
@@ -144,6 +146,12 @@ def create_job(
                     session_id=session.id,
                 ),
                 visible_tools=_start_visible_tools(db_session, user),
+                recalled_memories=recall_texts_for_craft_job(
+                    db_session,
+                    user.id,
+                    goal,
+                    project_id=job.project_id,
+                ),
             )
             if plan_node is not None
             else goal

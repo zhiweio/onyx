@@ -14091,6 +14091,23 @@
         "description": "Onyx가 저장된 메모리를 생성하고 갱신하도록 합니다.",
         "title": "메모리 갱신"
       },
+      "chatMode": {
+        "title": "Chat memory",
+        "description": "Short-term keeps the 10-note list. Long-term uses the same vector store as Craft.",
+        "shortTerm": "Short-term (default)",
+        "longTerm": "Long-term (shared with Craft)"
+      },
+      "craftLongTerm": {
+        "title": "Use long-term memory in Craft",
+        "description": "Recall and retain durable facts across Craft sessions. Off by default."
+      },
+      "longTerm": {
+        "listTitle": "Long-term memories",
+        "listDescription": "Facts recalled in Chat and Craft when long-term memory is on.",
+        "addPlaceholder": "Add a durable fact (at least 12 characters)",
+        "add": "Add memory",
+        "delete": "Delete memory"
+      },
       "viewAll": {
         "description": "모든 메모리",
         "title": "보기/추가"

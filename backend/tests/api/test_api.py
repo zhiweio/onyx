@@ -151,7 +151,7 @@ def test_versions_endpoint(client: TestClient) -> None:
 
     # Verify migration has expected values
     assert migration["onyx"] == "airgapped-intfloat-nomic-migration"
-    assert migration["relational_db"] == "postgres:15.2-alpine"
+    assert migration["relational_db"] == "pgvector/pgvector:pg15"
     assert migration["index"] == "vespaengine/vespa:8.277.17"
     assert migration["nginx"] == "nginx:1.25.5-alpine"
 

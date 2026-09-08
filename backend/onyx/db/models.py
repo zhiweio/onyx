@@ -75,6 +75,7 @@ from onyx.db.enums import (
     BuildSessionStatus,
     CapabilityCheckTrigger,
     CapabilityReportRunStatus,
+    ChatMemoryMode,
     ChatSessionSharedStatus,
     ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
@@ -418,6 +419,19 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     enable_memory_tool: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )
+    craft_use_long_term_memory: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    chat_memory_mode: Mapped[ChatMemoryMode] = mapped_column(
+        Enum(
+            ChatMemoryMode,
+            native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=ChatMemoryMode.SHORT_TERM,
+        server_default="short_term",
+    )
     user_preferences: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     chosen_assistants: Mapped[list[int] | None] = mapped_column(
@@ -520,6 +534,11 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
         cascade="all, delete-orphan",
         order_by="desc(Memory.id)",
     )
+    long_term_memories: Mapped[list["LongTermMemory"]] = relationship(
+        "LongTermMemory",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     oauth_user_tokens: Mapped[list["OAuthUserToken"]] = relationship(
         "OAuthUserToken",
         back_populates="user",
@@ -570,6 +589,49 @@ class Memory(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="memories")
+
+
+class LongTermMemory(Base):
+    """Host-owned durable fact. Embedding lives on the same row (pgvector)."""
+
+    __tablename__ = "long_term_memory"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    kind: Mapped[str] = mapped_column(String, nullable=False, default="semantic")
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False, default="extract")
+    source_surface: Mapped[str] = mapped_column(String, nullable=False)
+    source_session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    importance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    embedding_dims: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="long_term_memories")
+
+    __table_args__ = (
+        Index("ix_long_term_memory_user_deleted", "user_id", "deleted_at"),
+    )
 
 
 class ApiKey(Base):

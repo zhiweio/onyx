@@ -1025,3 +1025,10 @@ class CapabilityReportRunStatus(str, PyEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED_TO_RUN = "failed_to_run"
+
+
+class ChatMemoryMode(str, PyEnum):
+    """Chat recall source. Short-term is the existing 10-row notepad."""
+
+    SHORT_TERM = "short_term"
+    LONG_TERM = "long_term"

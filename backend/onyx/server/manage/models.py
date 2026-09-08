@@ -9,6 +9,7 @@ from onyx.auth.permissions import SCOPED_MANAGER_PERMISSIONS_EXPANDED
 from onyx.context.search.models import SavedSearchSettings
 from onyx.db.enums import (
     AccountType,
+    ChatMemoryMode,
     DefaultAppMode,
     SSOProviderType,
     SupportedLanguage,
@@ -138,6 +139,8 @@ class UserPersonalization(BaseModel):
     enable_memory_tool: bool = True
     memories: list[MemoryItem] = Field(default_factory=list)
     user_preferences: str = ""
+    craft_use_long_term_memory: bool = False
+    chat_memory_mode: str = "short_term"
 
 
 class TenantSnapshot(BaseModel):
@@ -248,6 +251,12 @@ class UserInfo(BaseModel):
                 enable_memory_tool=user.enable_memory_tool,
                 memories=memories or [],
                 user_preferences=user.user_preferences or "",
+                craft_use_long_term_memory=user.craft_use_long_term_memory,
+                chat_memory_mode=(
+                    user.chat_memory_mode.value
+                    if isinstance(user.chat_memory_mode, ChatMemoryMode)
+                    else str(user.chat_memory_mode)
+                ),
             ),
         )
 
@@ -319,6 +328,8 @@ class PersonalizationUpdateRequest(BaseModel):
     enable_memory_tool: bool | None = None
     memories: list[MemoryItem] | None = None
     user_preferences: str | None = Field(default=None, max_length=500)
+    craft_use_long_term_memory: bool | None = None
+    chat_memory_mode: str | None = None
 
     @field_validator("memories", mode="before")
     @classmethod

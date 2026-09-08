@@ -412,7 +412,7 @@ services:
         max-file: "6"
 
   relational_db:
-    image: ${BASE_IMAGE_REGISTRY:-docker.io}/library/postgres:15.2-alpine
+    image: ${BASE_IMAGE_REGISTRY:-docker.io}/pgvector/pgvector:pg15
     shm_size: 1g
     command: -c 'max_connections=250'
     restart: unless-stopped
