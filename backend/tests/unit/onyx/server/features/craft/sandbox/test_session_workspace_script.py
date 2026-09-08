@@ -87,6 +87,41 @@ class TestSetupScriptReplaySafety:
         script = _setup_script(nextjs_port=None)
         assert "bun run dev" not in script
 
+    def test_creates_session_venv_and_durable_dirs(self) -> None:
+        script = _setup_script(nextjs_port=None)
+        assert f"chmod 755 {_SESSION_PATH}" in script
+        assert f"mkdir -p {_SESSION_PATH}/.venv-lock" in script
+        assert f"mkdir -p {_SESSION_PATH}/project" in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/tmp" in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/research" not in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/lanes" in script
+        assert f"mkdir -p {_SESSION_PATH}/outputs/commands" in script
+        assert f"[ ! -s {_SESSION_PATH}/outputs/PLAN.md ]" in script
+        assert f"{_SESSION_PATH}/outputs/PLAN.md" in script
+        assert f"{_SESSION_PATH}/outputs/TODO.md" in script
+        assert f"{_SESSION_PATH}/outputs/MEMORY.md" in script
+        assert "python3 -m venv --system-site-packages" in script
+        assert f"{_SESSION_PATH}/.venv" in script
+        assert f"{_SESSION_PATH}/outputs/.venv" not in script
+        assert f"{_SESSION_PATH}/.session-env" in script
+
+    def test_shared_outputs_link_does_not_seed_plan(self) -> None:
+        parent_outputs = (
+            "/workspace/sessions/11111111-1111-1111-1111-111111111111/outputs"
+        )
+        script = build_session_workspace_setup_script(
+            session_path=_SESSION_PATH,
+            agents_md="x",
+            session_opencode_config_json="{}",
+            nextjs_port=None,
+            shared_outputs_path=parent_outputs,
+        )
+        assert f"mkdir -p {parent_outputs}" in script
+        assert f"ln -sfn {parent_outputs} {_SESSION_PATH}/outputs" in script
+        assert f"{_SESSION_PATH}/outputs/PLAN.md" not in script
+        assert f"{_SESSION_PATH}/.venv" in script
+        assert f"{_SESSION_PATH}/outputs/.venv" not in script
+
 
 class TestNextjsStartReplaySafety:
     def test_reuses_live_server_instead_of_spawning_duplicate(self) -> None:

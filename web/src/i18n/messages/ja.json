@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "長時間ジョブ",
+      "toggle": "長時間ジョブとして実行",
+      "cancel": "キャンセル",
+      "approve": "計画を承認",
+      "expand": "ジョブの詳細を表示",
+      "collapse": "ジョブの詳細を隠す",
+      "askBar": {
+        "needChoice": "続けるには選択が必要です。",
+        "reviewResult": "結果を確認してください。",
+        "start": "開始",
+        "changeDirection": "方向を変える",
+        "cancel": "キャンセル",
+        "accept": "承認",
+        "requestChanges": "変更を依頼",
+        "continue": "続ける",
+        "reject": "拒否"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "現在：{phase}",
+        "waitingSpecialists": "専門セッションを待機中",
+        "waitingLanes": "並列レーン実行中",
+        "interrupted": "選択待ち",
+        "succeeded": "完了",
+        "failed": "失敗",
+        "cancelled": "キャンセル済み"
+      },
+      "timeline": {
+        "plan": "計画",
+        "ingest": "資料処理",
+        "lanes": "レーン",
+        "reconcile": "突合",
+        "work": "作業",
+        "compose": "原稿",
+        "review": "レビュー",
+        "revise": "改訂"
+      },
+      "goal": "目標",
+      "domain": "領域",
+      "specialists": "専門経路",
+      "error": "失敗理由",
+      "errorFallback": "ジョブは停止しました。チャットで最後の手順を確認してください。",
+      "specialistStatus": {
+        "pending": "未着手",
+        "running": "実行中",
+        "succeeded": "完了",
+        "failed": "失敗"
       }
     },
     "setupCard": {

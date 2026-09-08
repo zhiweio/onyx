@@ -20,6 +20,7 @@ Coverage targets:
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 from collections.abc import Generator
@@ -905,6 +906,156 @@ def test_send_message_auto_allows_permission_asks(bus: PodEventBus) -> None:
     assert len(permission_posts) == 1
     assert permission_posts[0]["path"].endswith(f"/{_SESSION}/permissions/perm_42")
     assert permission_posts[0]["body"] == {"response": "once"}
+
+
+def test_send_message_parks_question_asked(bus: PodEventBus, monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenCode 1.18 emits ``question.asked`` (not permission.asked). Park it
+    for the AskBar; do not auto-allow or POST a permission reply."""
+    announced: list[Any] = []
+    monkeypatch.setattr(serve_client, "get_cache_backend", lambda **_kwargs: object())
+    monkeypatch.setattr(serve_client, "get_current_tenant_id", lambda: "public")
+    monkeypatch.setattr(serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        serve_client.question_ask,
+        "announce_request",
+        lambda _sid, request, _cache: announced.append(request),
+    )
+    permission_posts: list[str] = []
+    question_posts: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if "/permissions/" in path:
+            permission_posts.append(path)
+        if "/question/" in path:
+            question_posts.append(path)
+        return httpx.Response(204)
+
+    transport = _RecordingTransport(handler)
+    client = _make_client(bus, transport)
+    events, t = _run_send_message(client, timeout=3.0)
+    try:
+        assert _wait_for(lambda: _prompt_async_posted(transport))
+        bus._dispatch(
+            {
+                "type": "question.asked",
+                "properties": {
+                    "id": "que_abc",
+                    "sessionID": _SESSION,
+                    "questions": [
+                        {
+                            "header": "Modality",
+                            "question": "Which modality?",
+                            "options": [
+                                {"label": "Oral", "description": "small molecule"}
+                            ],
+                        },
+                        {
+                            "header": "Indication",
+                            "question": "Which indication?",
+                            "options": [{"label": "Obesity", "description": "weight"}],
+                        },
+                    ],
+                },
+            }
+        )
+        bus._dispatch(
+            {
+                "type": "message.updated",
+                "properties": {
+                    "sessionID": _SESSION,
+                    "info": {
+                        "id": "msg1",
+                        "sessionID": _SESSION,
+                        "role": "assistant",
+                        "time": {"completed": 1},
+                    },
+                },
+            }
+        )
+        _dispatch_session_idle(bus)
+        assert _wait_for(lambda: any(isinstance(e, PromptResponse) for e in events))
+    finally:
+        t.join(timeout=3.0)
+
+    assert permission_posts == []
+    assert question_posts == []
+    assert len(announced) == 1
+    assert announced[0].prompt == "Which modality?"
+    assert announced[0].options == ["Oral"]
+    assert [item.prompt for item in announced[0].questions] == [
+        "Which modality?",
+        "Which indication?",
+    ]
+
+
+def test_send_message_parks_question_asked_data_envelope(
+    bus: PodEventBus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    announced: list[Any] = []
+    monkeypatch.setattr(serve_client, "get_cache_backend", lambda **_kwargs: object())
+    monkeypatch.setattr(serve_client, "get_current_tenant_id", lambda: "public")
+    monkeypatch.setattr(serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        serve_client.question_ask,
+        "announce_request",
+        lambda _sid, request, _cache: announced.append(request),
+    )
+    transport = _RecordingTransport(_ok_response)
+    client = _make_client(bus, transport)
+    events, t = _run_send_message(client, timeout=3.0)
+    try:
+        assert _wait_for(lambda: _prompt_async_posted(transport))
+        bus._dispatch(
+            {
+                "type": "question.asked",
+                "data": {
+                    "id": "que_data",
+                    "sessionID": _SESSION,
+                    "questions": [
+                        {
+                            "question": "Pick one",
+                            "header": "Pick",
+                            "options": [{"label": "A", "description": "a"}],
+                        }
+                    ],
+                },
+            }
+        )
+        _dispatch_session_idle(bus)
+        assert _wait_for(lambda: any(isinstance(e, PromptResponse) for e in events))
+    finally:
+        t.join(timeout=3.0)
+    assert announced and announced[0].prompt == "Pick one"
+
+
+def test_answer_question_posts_reply_and_reject(bus: PodEventBus) -> None:
+    posts: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/question/" in request.url.path:
+            body = request.content.decode() if request.content else ""
+            posts.append({"path": request.url.path, "body": body})
+        return httpx.Response(204)
+
+    client = _make_client(bus, _RecordingTransport(handler))
+    assert client.answer_question(
+        _SESSION,
+        "que_1",
+        allow=True,
+        answers=[["Oral"], ["Obesity"]],
+        directory=_DIRECTORY,
+    )
+    assert client.answer_question(
+        _SESSION,
+        "que_1",
+        allow=False,
+        answers=None,
+        directory=_DIRECTORY,
+    )
+    assert posts[0]["path"].endswith(f"/{_SESSION}/question/que_1/reply")
+    assert json.loads(posts[0]["body"]) == {"answers": [["Oral"], ["Obesity"]]}
+    assert posts[1]["path"].endswith(f"/{_SESSION}/question/que_1/reject")
 
 
 # ---------------------------------------------------------------------------

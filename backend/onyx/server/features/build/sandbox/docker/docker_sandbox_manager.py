@@ -800,6 +800,20 @@ class DockerSandboxManager(SandboxManager):
         )
         return volume_name
 
+    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:
+        container = self._get_container(sandbox_id)
+        if container is None:
+            return
+        try:
+            container.update(
+                mem_limit=CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT,
+                nano_cpus=int(CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT * 1_000_000_000),
+            )
+        except Exception:
+            logger.exception(
+                "Could not apply deep-job resources to sandbox %s", sandbox_id
+            )
+
     def _get_container(self, sandbox_id: UUID) -> Container | None:
         try:
             return self._docker.containers.get(_sandbox_container_name(sandbox_id))
@@ -1108,6 +1122,7 @@ class DockerSandboxManager(SandboxManager):
         connectable_apps_section: str,
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         container = self._require_container(sandbox_id)
         session_path = f"{SESSIONS_ROOT}/{session_id}"
@@ -1123,6 +1138,11 @@ class DockerSandboxManager(SandboxManager):
                 disabled_tools=get_opencode_disabled_tools(),
                 mcp_servers=mcp_servers,
                 session_id=str(session_id),
+                share_workspace_from=(
+                    str(share_workspace_from)
+                    if share_workspace_from is not None
+                    else None
+                ),
             )
         )
         setup_script = build_session_workspace_setup_script(
@@ -1130,6 +1150,11 @@ class DockerSandboxManager(SandboxManager):
             agents_md=agents_md,
             session_opencode_config_json=session_opencode_config,
             nextjs_port=nextjs_port,
+            shared_outputs_path=(
+                f"{SESSIONS_ROOT}/{share_workspace_from}/outputs"
+                if share_workspace_from is not None
+                else None
+            ),
         )
 
         logger.info(
@@ -1530,6 +1555,7 @@ fi
         user_name: str | None = None,
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Rewrite generated session configuration and managed symlinks."""
         # nextjs_port stays in the signature to match the abstract contract
@@ -1551,6 +1577,11 @@ fi
                     disabled_tools=get_opencode_disabled_tools(),
                     mcp_servers=mcp_servers,
                     session_id=str(session_id),
+                    share_workspace_from=(
+                        str(share_workspace_from)
+                        if share_workspace_from is not None
+                        else None
+                    ),
                 )
             )
             if llm_config is not None
@@ -1941,6 +1972,21 @@ echo WRITE_OK"""
             except ValueError:
                 return 0, 0
         return 0, 0
+
+    def run_workspace_command(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        command: list[str],
+    ) -> int:
+        container = self._require_container(sandbox_id)
+        result = _run_in_container_as_sandbox_user(
+            container,
+            command,
+            workdir=f"{SESSIONS_ROOT}/{session_id}",
+            check=False,
+        )
+        return result.exit_code
 
     def write_files_to_sandbox(
         self,

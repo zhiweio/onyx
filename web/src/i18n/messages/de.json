@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "Langer Auftrag",
+      "toggle": "Als langen Auftrag ausführen",
+      "cancel": "Abbrechen",
+      "approve": "Plan genehmigen",
+      "expand": "Jobdetails anzeigen",
+      "collapse": "Jobdetails ausblenden",
+      "askBar": {
+        "needChoice": "Eine Wahl ist nötig, um fortzufahren.",
+        "reviewResult": "Ergebnis prüfen.",
+        "start": "Starten",
+        "changeDirection": "Richtung ändern",
+        "cancel": "Abbrechen",
+        "accept": "Annehmen",
+        "requestChanges": "Änderungen anfordern",
+        "continue": "Weiter",
+        "reject": "Ablehnen"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "Jetzt: {phase}",
+        "waitingSpecialists": "Warten auf Spezialsitzungen",
+        "waitingLanes": "Parallele Bahnen aktiv",
+        "interrupted": "Warten auf eine Wahl",
+        "succeeded": "Fertig",
+        "failed": "Fehlgeschlagen",
+        "cancelled": "Abgebrochen"
+      },
+      "timeline": {
+        "plan": "Plan",
+        "ingest": "Dokumente",
+        "lanes": "Bahnen",
+        "reconcile": "Abgleich",
+        "work": "Arbeit",
+        "compose": "Entwurf",
+        "review": "Prüfung",
+        "revise": "Überarbeitung"
+      },
+      "goal": "Ziel",
+      "domain": "Bereich",
+      "specialists": "Fachwege",
+      "error": "Fehlerursache",
+      "errorFallback": "Der Auftrag wurde beendet. Öffnen Sie den Chat für den letzten Schritt.",
+      "specialistStatus": {
+        "pending": "Ausstehend",
+        "running": "Läuft",
+        "succeeded": "Fertig",
+        "failed": "Fehlgeschlagen"
       }
     },
     "setupCard": {

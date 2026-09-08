@@ -105,6 +105,14 @@ export type StreamItem =
       externalAppId: number;
       reason: string | null;
     }
+  | {
+      type: "question_ask";
+      id: string;
+      requestId: string;
+      prompt: string;
+      options: string[];
+      questions: { prompt: string; options: string[] }[];
+    }
   | { type: "compaction"; id: string; summary: string | null }
   | {
       type: "error";

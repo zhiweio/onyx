@@ -44,14 +44,19 @@ jest.mock("@/sections/input/BaseInputBar", () => {
       (
         {
           onQueueMessage,
+          bottomLeftSlot,
         }: {
           onQueueMessage?: (message: string) => void;
+          bottomLeftSlot?: React.ReactNode;
         },
         _ref
       ) => (
-        <button onClick={() => onQueueMessage?.("queued prompt")}>
-          Queue message
-        </button>
+        <div>
+          {bottomLeftSlot}
+          <button onClick={() => onQueueMessage?.("queued prompt")}>
+            Queue message
+          </button>
+        </div>
       )
     ),
   };
@@ -148,5 +153,22 @@ describe("CraftInputBar queued attachments", () => {
 
     expect(onQueueMessage).toHaveBeenCalledWith("queued prompt", attachedFiles);
     expect(mockClearFiles).toHaveBeenCalledWith({ suppressRefetch: true });
+  });
+
+  it("places the long-job toggle next to the plus menu", () => {
+    const onLongJobEnabledChange = jest.fn();
+    render(
+      <CraftInputBar
+        onSubmit={jest.fn()}
+        isRunning={false}
+        longJobEnabled={false}
+        onLongJobEnabledChange={onLongJobEnabledChange}
+      />
+    );
+    const toggle = screen.getByTestId("craft-long-job-toggle");
+    const button = toggle.querySelector("button");
+    expect(button).not.toBeNull();
+    fireEvent.click(button!);
+    expect(onLongJobEnabledChange).toHaveBeenCalledWith(true);
   });
 });

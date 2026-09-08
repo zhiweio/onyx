@@ -6,8 +6,8 @@ description: Check a batch of Chinese VAT invoices (增值税专用发票/普通
 # tax-invoice-compliance
 
 Turn a pile of invoices into one exception list a 财务/税务 reviewer can act on.
-Prefer code and rules over the model. Follow `long-job-protocol` for the phase
-layout and `document-ingest` for parsing. Never invent a 发票号码, 税号, amount,
+Prefer code and rules over the model. Use `document-ingest` for parsing.
+Never invent a 发票号码, 税号, amount,
 or 校验码 — if a value cannot be read, record it as missing, not guessed.
 
 ## Inputs contract
@@ -27,7 +27,7 @@ because one file will not parse.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the invoice roots, the reporting
+1. **plan** — Write `outputs/PLAN.md`: the invoice roots, the reporting
    period, the taxpayer's own 税号, and which optional cross-checks are possible
    given the files present. Done when the plan lists every input path.
 2. **ingest** — Run `document-ingest`. Digital PDF/OFD/XML parse with code; scans

@@ -7388,7 +7388,7 @@ class BuildSession(Base):
 
 
 class CraftJob(Base):
-    """Multi-phase Craft long job. Disk is the source of truth between turns."""
+    """Host-owned Craft long job. Channels in ``state`` are the source of truth."""
 
     __tablename__ = "craft_job"
 
@@ -7421,12 +7421,21 @@ class CraftJob(Base):
         default=CraftJobStatus.PENDING,
         server_default="pending",
     )
+    # Compiled graph snapshot (node contracts). Read-only after compile.
     phases: Mapped[list[dict[str, Any]]] = mapped_column(
         postgresql.JSONB(), nullable=False, default=list
     )
     current_phase_index: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    state: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    drain_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     phase_budget_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -7459,6 +7468,16 @@ class CraftJob(Base):
         back_populates="job",
         cascade="all, delete-orphan",
     )
+    checkpoints: Mapped[list["CraftJobCheckpoint"]] = relationship(
+        "CraftJobCheckpoint",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    events: Mapped[list["CraftJobEvent"]] = relationship(
+        "CraftJobEvent",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_craft_job_user_created", "user_id", desc("created_at")),
@@ -7487,6 +7506,12 @@ class CraftJobSpecialist(Base):
     )
     role: Mapped[str] = mapped_column(String(64), nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    node_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    checkpoint_ns: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    input_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    output_artifact_ids: Mapped[list[str]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list
+    )
     status: Mapped[CraftJobSpecialistStatus] = mapped_column(
         Enum(
             CraftJobSpecialistStatus,
@@ -7516,6 +7541,61 @@ class CraftJobSpecialist(Base):
         Index("ix_craft_job_specialist_job_id", "job_id"),
         UniqueConstraint("session_id", name="uq_craft_job_specialist_session_id"),
     )
+
+
+class CraftJobCheckpoint(Base):
+    """Delta writes for one superstep. Replay rebuilds channel state."""
+
+    __tablename__ = "craft_job_checkpoint"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_job.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ns: Mapped[str] = mapped_column(String(128), nullable=False, default="job")
+    step: Mapped[int] = mapped_column(Integer, nullable=False)
+    writes: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    job: Mapped[CraftJob] = relationship("CraftJob", back_populates="checkpoints")
+
+    __table_args__ = (
+        Index("ix_craft_job_checkpoint_job_step", "job_id", "ns", "step"),
+    )
+
+
+class CraftJobEvent(Base):
+    """Append-only run journal for a Craft job."""
+
+    __tablename__ = "craft_job_event"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    job_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_job.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    job: Mapped[CraftJob] = relationship("CraftJob", back_populates="events")
+
+    __table_args__ = (Index("ix_craft_job_event_job_created", "job_id", "created_at"),)
 
 
 class Sandbox(Base):

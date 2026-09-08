@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "장기 작업",
+      "toggle": "장기 작업으로 실행",
+      "cancel": "취소",
+      "approve": "계획 승인",
+      "expand": "작업 세부정보 표시",
+      "collapse": "작업 세부정보 숨기기",
+      "askBar": {
+        "needChoice": "계속하려면 선택이 필요합니다.",
+        "reviewResult": "결과를 검토하세요.",
+        "start": "시작",
+        "changeDirection": "방향 변경",
+        "cancel": "취소",
+        "accept": "수락",
+        "requestChanges": "수정 요청",
+        "continue": "계속",
+        "reject": "거부"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "현재: {phase}",
+        "waitingSpecialists": "전문 세션 대기 중",
+        "waitingLanes": "병렬 레인 진행 중",
+        "interrupted": "선택 대기",
+        "succeeded": "완료",
+        "failed": "실패",
+        "cancelled": "취소됨"
+      },
+      "timeline": {
+        "plan": "계획",
+        "ingest": "자료 처리",
+        "lanes": "레인",
+        "reconcile": "대사",
+        "work": "작업",
+        "compose": "초안",
+        "review": "검토",
+        "revise": "수정"
+      },
+      "goal": "목표",
+      "domain": "영역",
+      "specialists": "전문 경로",
+      "error": "실패 원인",
+      "errorFallback": "작업이 중지되었습니다. 채팅에서 마지막 단계를 확인하세요.",
+      "specialistStatus": {
+        "pending": "대기",
+        "running": "진행 중",
+        "succeeded": "완료",
+        "failed": "실패"
       }
     },
     "setupCard": {

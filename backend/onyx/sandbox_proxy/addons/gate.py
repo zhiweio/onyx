@@ -9,6 +9,7 @@ import base64
 import binascii
 import ipaddress
 import operator
+import os
 import socket
 import threading
 from collections.abc import Callable
@@ -41,6 +42,10 @@ from onyx.sandbox_proxy.credential_injection import (
 )
 from onyx.sandbox_proxy.errors import SandboxProxyError, http_403
 from onyx.sandbox_proxy.identity import ResolvedSandbox, SessionContext
+from onyx.sandbox_proxy.research_hosts import (
+    apply_research_user_agent,
+    is_public_research_host,
+)
 from onyx.sandbox_proxy.logging_utils import (
     APPROVAL_DECIDED_FIELDS,
     EGRESS_APPROVAL_MATCHED_FIELDS,
@@ -74,6 +79,41 @@ logger = setup_logger()
 # genuinely oversized request gets the upstream's own 413, not an opaque 403.
 PARSER_MAX_BODY_BYTES = 32 * 1024 * 1024
 
+_WRITE_ACTION_TOKENS = frozenset(
+    {
+        "create",
+        "post",
+        "send",
+        "delete",
+        "update",
+        "write",
+        "upload",
+        "publish",
+        "comment",
+        "reply",
+        "invite",
+        "remove",
+        "patch",
+        "insert",
+        "edit",
+        "mail",
+        "email",
+    }
+)
+
+
+def matched_actions_look_like_writes(matched_actions: AllMatchedActions) -> bool:
+    """True when any matched action looks like a mutating write."""
+    for action in matched_actions.actions:
+        tokens = {
+            token
+            for token in action.action_type.lower().replace(".", " ").replace("_", " ").split()
+            if token
+        }
+        if tokens & _WRITE_ACTION_TOKENS:
+            return True
+    return False
+
 
 # --- internal-destination egress lockdown: closes the proxy-relay path ---
 # A sandbox can only egress via the proxy, so the proxy is the single layer that can
@@ -90,16 +130,31 @@ PARSER_MAX_BODY_BYTES = 32 * 1024 * 1024
 # proxy (PAT-injected). Matched by host AND port so it works even when it's an
 # in-cluster name resolving to an internal IP, while still denying every other port
 # on that host (e.g. a co-located Redis/Postgres reachable at the same hostname).
-def _parse_api_server() -> tuple[str | None, int | None]:
-    if not ONYX_SERVER_URL:
+def _parse_internal_http_service(url: str) -> tuple[str | None, int | None]:
+    if not url:
         return None, None
-    parsed = urlparse(ONYX_SERVER_URL)
+    parsed = urlparse(url)
     host = (parsed.hostname or "").lower() or None
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     return host, port
 
 
+def _parse_api_server() -> tuple[str | None, int | None]:
+    return _parse_internal_http_service(ONYX_SERVER_URL)
+
+
 _API_SERVER_HOST, _API_SERVER_PORT = _parse_api_server()
+
+# Craft MCP servers are stored as ``{MCP_GATEWAY_PUBLIC_URL}/p/<slug>``.
+# The sandbox must reach that host through this proxy so credentials can
+# be injected. Same host+port scoping as the api-server exception.
+_MCP_GATEWAY_HOST, _MCP_GATEWAY_PORT = _parse_internal_http_service(
+    os.environ.get("MCP_GATEWAY_PUBLIC_URL", "http://mcp_gateway:8091")
+)
+
+# Clash / Surge / sing-box fake-ip (RFC 2544 benchmark range). Host DNS
+# returns these for public names; they are not a real internal network.
+_FAKE_IP_NETWORKS = (ipaddress.ip_network("198.18.0.0/15"),)
 
 
 def _is_api_server(host: str, port: int) -> bool:
@@ -107,6 +162,14 @@ def _is_api_server(host: str, port: int) -> bool:
         _API_SERVER_HOST is not None
         and host == _API_SERVER_HOST
         and port == _API_SERVER_PORT
+    )
+
+
+def _is_mcp_gateway(host: str, port: int) -> bool:
+    return (
+        _MCP_GATEWAY_HOST is not None
+        and host == _MCP_GATEWAY_HOST
+        and port == _MCP_GATEWAY_PORT
     )
 
 
@@ -126,6 +189,8 @@ def _ip_is_internal(ip_str: str) -> bool:
     mapped = getattr(ip, "ipv4_mapped", None)  # ods: ignore[getattr]
     if mapped is not None:
         ip = mapped
+    if any(ip in network for network in _FAKE_IP_NETWORKS):
+        return False
     return not ip.is_global
 
 
@@ -133,16 +198,17 @@ def destination_is_blocked(host: str, port: int) -> bool:
     """True if the sandbox must not be relayed to ``host:port``.
 
     Denied: anything that is, or resolves to, an internal address. Allowed: the
-    api-server (host + port) and any public address. Fail closed: a resolution
-    failure denies (with a warning) — a transient resolver error must not become
-    an opening to an internal service. If a name resolves to a mix of public and
+    api-server (host + port), the MCP gateway (host + port), RFC 2544 fake-ip
+    (198.18.0.0/15), and any public address. Fail closed: a resolution failure
+    denies (with a warning) — a transient resolver error must not become an
+    opening to an internal service. If a name resolves to a mix of public and
     internal addresses, deny — an attacker could otherwise steer the connection
     to the internal one.
     """
     host = (host or "").strip().lower()
     if not host:
         return False
-    if _is_api_server(host, port):
+    if _is_api_server(host, port) or _is_mcp_gateway(host, port):
         return False
     try:
         ipaddress.ip_address(host)  # literal-IP destination: check directly, no DNS
@@ -152,6 +218,17 @@ def destination_is_blocked(host: str, port: int) -> bool:
     try:
         infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
     except OSError as exc:
+        if is_public_research_host(host):
+            # A flaky resolver must not look like an internal-network deny for
+            # FDA / PubMed / similar public APIs. mitmproxy still has to resolve
+            # the name to connect; this only skips the fail-closed 403.
+            logger.warning(
+                "egress_destination_resolution_failed host=%s error=%s "
+                "allowing_known_public_research_host",
+                host,
+                exc,
+            )
+            return False
         logger.warning(
             "egress_destination_resolution_failed host=%s error=%s", host, exc
         )
@@ -378,6 +455,8 @@ class GateAddon:
             )
             flow.response = http_403(SandboxProxyError.DESTINATION_BLOCKED)
             return
+
+        apply_research_user_agent(flow.request.headers, flow.request.host)
 
         gate_target = await self._resolve_and_match(flow)
         # Strip the in-band session tags so they never reach the origin
@@ -714,8 +793,10 @@ class GateAddon:
     ) -> _ApprovalGrant | None:
         """Resolve a gated request to a reusable approval grant, or ``None``."""
         # Grant sources are checked in order, first hit wins.
-        return self._scheduled_task_grant(db, ctx, matched_actions) or (
-            self._session_grant(db, ctx, matched_actions)
+        return (
+            self._scheduled_task_grant(db, ctx, matched_actions)
+            or self._craft_job_grant(db, ctx, matched_actions)
+            or self._session_grant(db, ctx, matched_actions)
         )
 
     @cachedmethod(
@@ -750,6 +831,24 @@ class GateAddon:
                 "target_id": target.id,
             },
         )
+
+    def _craft_job_grant(
+        self, db: Session, ctx: SessionContext, matched_actions: AllMatchedActions
+    ) -> _ApprovalGrant | None:
+        """Grant read-only MCP / fetch calls for the life of a Craft job."""
+        from onyx.db.craft_job import session_has_open_craft_job
+        from onyx.db.enums import GatedAppKind
+
+        if matched_actions_look_like_writes(matched_actions):
+            return None
+        if matched_actions.target.kind not in {
+            GatedAppKind.MCP_SERVER,
+            GatedAppKind.EXTERNAL_APP,
+        }:
+            return None
+        if not session_has_open_craft_job(db, ctx.session_id):
+            return None
+        return _ApprovalGrant(decided_via=ApprovalDecidedVia.CRAFT_JOB_GRANT)
 
     def _session_grant(
         self, db: Session, ctx: SessionContext, matched_actions: AllMatchedActions

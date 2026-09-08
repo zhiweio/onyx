@@ -17,6 +17,10 @@ export class CraftWelcomePage {
   readonly messageInput: Locator;
   readonly providerModal: Locator;
   readonly longJobToggle: Locator;
+  readonly jobBanner: Locator;
+  readonly jobAskBar: Locator;
+  readonly jobAskApprove: Locator;
+  readonly jobAskReject: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -28,6 +32,10 @@ export class CraftWelcomePage {
     this.messageInput = page.getByRole("textbox");
     this.providerModal = page.getByRole("dialog");
     this.longJobToggle = page.getByTestId("craft-long-job-toggle");
+    this.jobBanner = page.getByTestId("craft-job-banner");
+    this.jobAskBar = page.getByTestId("craft-ask-bar");
+    this.jobAskApprove = page.getByTestId("craft-ask-approve");
+    this.jobAskReject = page.getByTestId("craft-ask-reject");
   }
 
   async goto(): Promise<void> {
@@ -78,8 +86,7 @@ export class CraftWelcomePage {
 
   async enableLongJob(): Promise<void> {
     await expect(this.longJobToggle).toBeVisible({ timeout: 15000 });
-    await this.longJobToggle.check();
-    await expect(this.longJobToggle).toBeChecked();
+    await this.longJobToggle.click();
   }
 
   async submitMessage(text: string): Promise<void> {

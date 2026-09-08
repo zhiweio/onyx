@@ -53,6 +53,9 @@ _PERMISSIONS_TEMPLATE: dict[str, Any] = {
         "base64": "deny",
         "*": "allow",
         "*start-webapp.sh*": "deny",
+        "* /.opencode-data*": "deny",
+        "*/workspace/.opencode-data*": "deny",
+        "*/workspace/sessions/*": "deny",
         # The webapp plugin starts the script via child_process, not the bash
         # tool. These are the two documented direct fallbacks for the agent.
         "bash start-webapp.sh": "allow",
@@ -64,26 +67,44 @@ _PERMISSIONS_TEMPLATE: dict[str, Any] = {
         "*": "allow",
         "opencode.json": "deny",
         "**/opencode.json": "deny",
+        "/workspace/.opencode-data": "deny",
+        "/workspace/.opencode-data/**": "deny",
+        "/workspace/sessions/*": "deny",
+        "/workspace/sessions/*/**": "deny",
     },
     "grep": {
         "*": "allow",
         "opencode.json": "deny",
         "**/opencode.json": "deny",
+        "/workspace/.opencode-data/**": "deny",
+        "/workspace/sessions/*": "deny",
+        "/workspace/sessions/*/**": "deny",
     },
     "glob": {
         "*": "allow",
         "opencode.json": "deny",
         "**/opencode.json": "deny",
+        "/workspace/.opencode-data/**": "deny",
+        "/workspace/sessions/*": "deny",
+        "/workspace/sessions/*/**": "deny",
     },
-    "list": "allow",
+    "list": {
+        "*": "allow",
+        "opencode.json": "deny",
+        "**/opencode.json": "deny",
+        "/workspace/.opencode-data/**": "deny",
+        "/workspace/sessions/*": "deny",
+        "/workspace/sessions/*/**": "deny",
+    },
     "lsp": "allow",
     "patch": _PROTECTED_FILE_RULES,
     # Deny opencode's built-in customize-opencode skill (edits opencode.json
     # via the skill tool, bypassing our edit/write denies). "*" must precede
     # the named deny — opencode evaluates skill rules with findLast().
     "skill": {"*": "allow", "customize-opencode": "deny"},
-    "question": "allow",
+    "question": "ask",
     "webfetch": "allow",
+    "websearch": "allow",
     # Connect-app tool: a no-op tool the agent calls to request connecting an
     # external app it isn't set up for.
     "connect_app": "ask",
@@ -99,10 +120,26 @@ _TMP_EXTERNAL_DIRECTORY_RULES: dict[str, str] = {
 }
 
 
+_SESSION_TREE_TOOLS = ("read", "grep", "glob", "list")
+
+
+def _allow_session_tree(permissions: dict[str, Any], root: str) -> None:
+    for tool_name in _SESSION_TREE_TOOLS:
+        rules = permissions[tool_name]
+        if isinstance(rules, dict):
+            rules[root] = "allow"
+            rules[f"{root}/**"] = "allow"
+    bash_rules = permissions["bash"]
+    if isinstance(bash_rules, dict):
+        bash_rules[f"*{root}*"] = "allow"
+
+
 def _build_permissions(
     disabled_tools: list[str] | None,
     dev_mode: bool,
     mcp_servers: Sequence[CraftMCPServerConfig] = (),
+    session_id: str | None = None,
+    share_workspace_from: str | None = None,
 ) -> dict[str, Any]:
     permissions: dict[str, Any] = {
         k: (v.copy() if isinstance(v, dict) else v)
@@ -111,6 +148,12 @@ def _build_permissions(
     permissions["external_directory"] = (
         "allow" if dev_mode else _TMP_EXTERNAL_DIRECTORY_RULES.copy()
     )
+    if session_id:
+        _allow_session_tree(permissions, f"/workspace/sessions/{session_id}")
+    if share_workspace_from and share_workspace_from != session_id:
+        _allow_session_tree(
+            permissions, f"/workspace/sessions/{share_workspace_from}/outputs"
+        )
     if disabled_tools:
         for tool in disabled_tools:
             permissions[tool] = "deny"
@@ -222,6 +265,7 @@ def build_provider_opencode_config(
     plugins: list[str] | None = None,
     mcp_servers: Sequence[CraftMCPServerConfig] = (),
     session_id: str | None = None,
+    share_workspace_from: str | None = None,
 ) -> dict[str, Any]:
     """Per-session ``opencode.json``: the gateway provider catalog + default
     model, plus the craft MCP servers (session-tagged) and their per-tool
@@ -243,7 +287,13 @@ def build_provider_opencode_config(
             llm_provider_config.provider: _build_provider_block(llm_provider_config)
         },
         "enabled_providers": [llm_provider_config.provider],
-        "permission": _build_permissions(disabled_tools, dev_mode, mcp_servers),
+        "permission": _build_permissions(
+            disabled_tools,
+            dev_mode,
+            mcp_servers,
+            session_id,
+            share_workspace_from,
+        ),
     }
     if plugins:
         config["plugin"] = list(plugins)

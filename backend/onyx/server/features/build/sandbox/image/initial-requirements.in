@@ -1,7 +1,10 @@
+beautifulsoup4
 cryptography
 defusedxml
 fastapi
+httpx
 lxml
+markitdown
 matplotlib
 matplotlib-inline
 numpy
@@ -11,7 +14,13 @@ pandas
 pdfplumber
 pillow
 pydantic
+pypdf
+python-dateutil
 python-docx
 python-pptx
 requests
+scipy
+seaborn
+tabulate
 uvicorn[standard]
+xlrd

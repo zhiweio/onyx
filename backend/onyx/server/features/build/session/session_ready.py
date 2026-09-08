@@ -33,6 +33,7 @@ from onyx.server.features.build.sandbox.util.mcp_config import (
 )
 from onyx.server.features.build.session.manager import (
     SessionManager,
+    _share_workspace_from_session,
     mark_opencode_dispose_pending,
 )
 from onyx.server.features.build.session.sandbox_lifecycle import (
@@ -152,6 +153,9 @@ def ensure_session_ready(
                 nextjs_port=nextjs_port,
                 connectable_apps_section=connectable_apps_section,
                 mcp_servers=mcp_servers,
+                share_workspace_from=_share_workspace_from_session(
+                    db_session, session_id
+                ),
             )
         if session.scenario_id is not None:
             write_scenario_md_to_session(

@@ -6,7 +6,7 @@ description: Build a cited target, mechanism, or competitive-landscape brief fro
 # biomed-literature
 
 Turn a 靶点 / mechanism / 适应症 question into a cited, theme-organized brief.
-Follow `long-job-protocol`; parse any supplied files with `document-ingest`.
+Parse any supplied files with `document-ingest`.
 
 ## Scope
 
@@ -21,10 +21,9 @@ patent or FTO analysis (use `biomed-patent-fto`), or regulatory pathway mapping
 ## Workflow
 
 1. **Scope** — Fix the target, molecule, indication, and species, and the question
-   type (target validation, MoA, biomarker, safety signal, landscape). Write it,
-   the date window, and out-of-scope items to `outputs/plan/PLAN.md`; seed
-   `outputs/plan/TODO.json`.
-   **Done when:** PLAN.md states the PICO-style question and inclusion criteria.
+   type (target validation, MoA, biomarker, safety signal, landscape). Record the
+   date window and out-of-scope items in the notes.
+   **Done when:** the search question and inclusion criteria are stated.
 
 2. **Query design** — Build one structured query per database. Separate controlled
    vocabulary (MeSH / Emtree) from free-text `[tiab]` synonyms; join synonyms with
@@ -33,10 +32,13 @@ patent or FTO analysis (use `biomed-patent-fto`), or regulatory pathway mapping
    to `outputs/research/literature/queries.md`.
    **Done when:** each planned database has a saved, reproducible query.
 
-3. **Retrieve** — Execute in the source order below. For every hit capture PMID
-   (or DOI / PMCID), title, journal, year, and study type. Save raw MCP/API bodies
-   to `outputs/mcp/<server>/<call>.json`; failed fetches to
-   `outputs/exceptions/literature.csv`. Deduplicate on DOI, then on title+year.
+3. **Retrieve** — If the host brief names a search MCP (for example
+   `parallel-search-382_web_search`), call that tool first. Do not start with
+   `webfetch`, OpenCode `websearch`, or bash/`curl`. Use `webfetch` only to
+   open a URL the search tool already returned. If a host returns HTTP 403,
+   record the miss in `outputs/exceptions/literature.csv` and continue. For
+   every hit capture PMID (or DOI / PMCID), title, journal, year, and study
+   type. Deduplicate on DOI, then on title+year.
    **Done when:** `outputs/normalized/papers.csv` holds the deduplicated hit set.
 
 4. **Appraise** — Tag each record primary vs secondary and grade it (see Evidence

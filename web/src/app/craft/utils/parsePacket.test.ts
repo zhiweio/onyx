@@ -181,6 +181,30 @@ describe("parsePacket", () => {
     });
   });
 
+  it("parses question_ask chips including a questions list", () => {
+    expect(
+      parsePacket({
+        type: "question_ask",
+        request_id: "req-q",
+        prompt: "Which modality?",
+        options: ["Oral"],
+        questions: [
+          { prompt: "Which modality?", options: ["Oral", "Injection"] },
+          { prompt: "Which indication?", options: ["Obesity"] },
+        ],
+      })
+    ).toEqual({
+      type: "question_ask",
+      requestId: "req-q",
+      prompt: "Which modality?",
+      options: ["Oral"],
+      questions: [
+        { prompt: "Which modality?", options: ["Oral", "Injection"] },
+        { prompt: "Which indication?", options: ["Obesity"] },
+      ],
+    });
+  });
+
   it("parses compaction packets, defaulting a missing summary to null", () => {
     expect(
       parsePacket({ type: "compaction", summary: "Recap of earlier work" })

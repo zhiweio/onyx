@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "Trabajo largo",
+      "toggle": "Ejecutar como trabajo largo",
+      "cancel": "Cancelar",
+      "approve": "Aprobar el plan",
+      "expand": "Mostrar detalles del trabajo",
+      "collapse": "Ocultar detalles del trabajo",
+      "askBar": {
+        "needChoice": "Se necesita una eleccion para continuar.",
+        "reviewResult": "Revisar el resultado.",
+        "start": "Empezar",
+        "changeDirection": "Cambiar de rumbo",
+        "cancel": "Cancelar",
+        "accept": "Aceptar",
+        "requestChanges": "Pedir cambios",
+        "continue": "Continuar",
+        "reject": "Rechazar"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "Ahora: {phase}",
+        "waitingSpecialists": "Esperando sesiones especializadas",
+        "waitingLanes": "Vías paralelas en curso",
+        "interrupted": "Esperando una eleccion",
+        "succeeded": "Terminado",
+        "failed": "Error",
+        "cancelled": "Cancelado"
+      },
+      "timeline": {
+        "plan": "Plan",
+        "ingest": "Documentos",
+        "lanes": "Vías",
+        "reconcile": "Conciliación",
+        "work": "Trabajo",
+        "compose": "Redacción",
+        "review": "Revisión",
+        "revise": "Corrección"
+      },
+      "goal": "Objetivo",
+      "domain": "Dominio",
+      "specialists": "Especialistas",
+      "error": "Qué falló",
+      "errorFallback": "El trabajo se detuvo. Abra el chat para ver el último paso.",
+      "specialistStatus": {
+        "pending": "Pendiente",
+        "running": "En curso",
+        "succeeded": "Hecho",
+        "failed": "Fallido"
       }
     },
     "setupCard": {

@@ -4,39 +4,52 @@ from __future__ import annotations
 
 from typing import Any, Final
 
+from onyx.server.features.build.jobs.plan import (
+    DONE_JSON_PATH,
+    PLAN_JSON_PATH,
+    PLAN_MD_PATH,
+    TODO_MD_PATH,
+)
+
 PHASE_DONE_PATH: Final[str] = "outputs/plan/PHASE_DONE"
-PLAN_PATH: Final[str] = "outputs/plan/PLAN.md"
-PLAN_JSON_PATH: Final[str] = "outputs/plan/PLAN.json"
-TODO_PATH: Final[str] = "outputs/plan/TODO.json"
+PLAN_PATH: Final[str] = PLAN_MD_PATH
+TODO_PATH: Final[str] = TODO_MD_PATH
 MANIFEST_PATH: Final[str] = "outputs/ingest/MANIFEST.json"
 
-DOCUMENT_PHASES: Final[tuple[dict[str, str], ...]] = (
-    {"id": "plan", "name": "Plan", "kind": "plan"},
-    {"id": "ingest", "name": "Ingest documents", "kind": "ingest"},
-    {"id": "analyze", "name": "Analyze", "kind": "analyze"},
-    {"id": "compose", "name": "Compose report", "kind": "compose"},
-    {"id": "review", "name": "Review", "kind": "review"},
-)
 
-RESEARCH_PHASES: Final[tuple[dict[str, str], ...]] = (
-    {"id": "plan", "name": "Plan", "kind": "plan"},
-    {"id": "research", "name": "Research", "kind": "research"},
-    {"id": "compose", "name": "Compose report", "kind": "compose"},
-    {"id": "review", "name": "Review", "kind": "review"},
-)
+def infer_job_domain(_prompt: str, explicit: str | None = None) -> str:
+    """Label only. Never infer a scene from the prompt."""
+    if explicit and explicit.strip():
+        return explicit.strip().lower()
+    return "general"
 
-RESEARCH_DOMAINS: Final[frozenset[str]] = frozenset({"biomed"})
 
-DEFAULT_SPECIALIST_ROLES: Final[dict[str, tuple[str, ...]]] = {
-    "biomed": ("literature", "clinical", "patent", "cmc"),
-    "tax": ("xlsx_parser", "pdf_vision", "reconcilier", "exception_writer"),
-    "general": ("ingest", "analyze", "exception_writer"),
-}
+def suggested_lanes_from_rules(rules: dict[str, Any] | None) -> list[dict[str, str]]:
+    """Read optional playbook hints. The host does not compile these as nodes."""
+    if not rules:
+        return []
+    raw = rules.get("suggested_lanes")
+    if not isinstance(raw, list):
+        return []
+    lanes: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip()
+        if not role:
+            continue
+        entry: dict[str, str] = {"role": role}
+        skill_id = str(item.get("skill_id") or "").strip()
+        if skill_id:
+            entry["skill_id"] = skill_id
+        lanes.append(entry)
+    return lanes
 
 
 def default_phases_for_domain(domain: str) -> list[dict[str, Any]]:
-    source = RESEARCH_PHASES if domain in RESEARCH_DOMAINS else DOCUMENT_PHASES
-    return [{**phase, "status": "pending"} for phase in source]
+    from onyx.server.features.build.jobs.graph import compile_graph
+
+    return compile_graph(domain).to_phase_list()
 
 
 def current_phase(
@@ -55,9 +68,10 @@ def phase_index_by_id(job_phases: list[dict[str, Any]], phase_id: str) -> int | 
 
 
 def compose_phase_index(job_phases: list[dict[str, Any]]) -> int:
-    found = phase_index_by_id(job_phases, "compose")
-    if found is not None:
-        return found
+    for key in ("work", "compose", "review"):
+        found = phase_index_by_id(job_phases, key)
+        if found is not None:
+            return found
     return max(0, len(job_phases) - 1)
 
 
@@ -66,37 +80,31 @@ def continuation_prompt(*, phase: dict[str, Any], domain: str, job_name: str) ->
     phase_name = str(phase.get("name") or phase_id)
     return (
         f"Continue the long job `{job_name}` ({domain}).\n"
-        f"You are starting phase `{phase_id}` ({phase_name}).\n"
-        "Read `outputs/plan/PLAN.json` and `outputs/plan/TODO.json` first. "
-        "Read only the input files this phase needs. "
-        "Do not restart finished phases. "
-        "Extract tables with the document-ingest skill; never load a whole "
-        "workbook into chat. Write large MCP and extract results to disk and "
-        "reply with a digest plus the path.\n"
-        f"When this phase meets its done-when, write `{PHASE_DONE_PATH}` "
-        f"with the single line `{phase_id}` and stop."
+        f"Current node: `{phase_id}` ({phase_name}).\n"
+        "Read the living plan and todo on disk if you need them. "
+        f"Use {DONE_JSON_PATH} when the goal is met. "
+        "Do not start the next node. "
+        "The user-visible reply is about their task, not these files."
     )
 
 
 def first_phase_prompt(*, user_prompt: str, domain: str, job_name: str) -> str:
     return (
         f"Start the long job `{job_name}` ({domain}).\n"
-        "Follow `long-job-protocol`. Create `outputs/plan/PLAN.json` "
-        "(and a PLAN.md render) plus `outputs/plan/TODO.json` if they "
-        "are missing.\n"
+        f"Write `{PLAN_JSON_PATH}` so the host can compile THIS job. "
+        "Optional: phases, lanes, inputs, ask_delivery. "
+        "Do not assume a report.\n"
         "User request:\n"
         f"{user_prompt.strip()}\n"
-        f"When the plan phase is done, write `{PHASE_DONE_PATH}` with the "
-        "single line `plan` and stop."
+        "Stop after the plan node. Do not start later work. "
+        "The user-visible reply is about their task, not these files."
     )
 
 
 def specialist_prompt(*, role: str, user_prompt: str, job_name: str) -> str:
     return (
         f"You are the `{role}` specialist for long job `{job_name}`.\n"
-        "Work only on this role. Write findings under "
-        f"`project/research/{role}/FINDINGS.md` and extracted tables "
-        "under `project/extracted/`. "
-        "Cite source file paths. Do not compose the final report.\n"
+        "Work only on this role. Write notes under this lane directory "
+        "as `NOTES.md` and cache extracts under `outputs/extracted/`.\n"
         f"{user_prompt.strip()}"
     )

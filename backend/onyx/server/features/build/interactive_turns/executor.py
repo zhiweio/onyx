@@ -257,7 +257,10 @@ def _drive_interactive_turn(
     deadline_exceeded = False
     cancelled = False
     sandbox_id: UUID | None = None
-    with get_session_with_current_tenant() as db_session:
+    skip_job_continue = kind == "compact"
+    ownership_lost_for_continue = False
+    try:
+      with get_session_with_current_tenant() as db_session:
         session_manager = SessionManager(db_session)
         sandbox = _ready_session_runtime(db_session, session_id, user_id)
         sandbox_id = sandbox.id
@@ -275,9 +278,15 @@ def _drive_interactive_turn(
         budgets = job_turn_budgets(job)
         if budgets is not None:
             _soft_budget_seconds, budget_seconds = budgets
+        if job is not None:
+            from onyx.server.features.build.jobs.kernel import renew_lease
+
+            renew_lease(job, owner=str(turn_id), seconds=budget_seconds)
+            db_session.commit()
 
         if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
             logger.info("Interactive turn %s runner ownership lost", turn_id)
+            skip_job_continue = True
             return
 
         state = BuildStreamingState(turn_index=turn_index)
@@ -347,6 +356,7 @@ def _drive_interactive_turn(
                 runner_id=runner_id,
             )
             prompt_slot_cm.__exit__(None, None, None)
+            skip_job_continue = True
             return
 
         try:
@@ -355,6 +365,7 @@ def _drive_interactive_turn(
             # runner steal the turn — it must not reach the prompt POST.
             if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
                 logger.info("Interactive turn %s runner ownership lost", turn_id)
+                skip_job_continue = True
                 return
 
             session = session_manager.get_session(session_id, user_id)
@@ -403,7 +414,7 @@ def _drive_interactive_turn(
                 turn-ending failure. On the recoverable inactivity timeout it
                 returns TIMED_OUT (only while ``can_continue``); failures finish
                 the turn here and return TERMINATED so the caller just returns."""
-                nonlocal deadline_exceeded
+                nonlocal deadline_exceeded, ownership_lost_for_continue
                 ownership_lost = False
                 final_event_seen = False
                 cancelled_event_seen = False
@@ -439,6 +450,7 @@ def _drive_interactive_turn(
                             "Interactive turn %s runner ownership lost", turn_id
                         )
                         ownership_lost = True
+                        ownership_lost_for_continue = True
                         return _PromptResult(_PromptOutcome.TERMINATED)
                     slot.extend()
                     if slot.lost:
@@ -532,6 +544,8 @@ def _drive_interactive_turn(
                     current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
 
             if result.outcome is _PromptOutcome.TERMINATED:
+                if ownership_lost_for_continue:
+                    skip_job_continue = True
                 return
 
             session_manager.finalize_persist(session_id, state)
@@ -654,23 +668,24 @@ def _drive_interactive_turn(
                     )
                 session_manager.clear_turn_deadline(sandbox.id, session_id)
             prompt_slot_cm.__exit__(None, None, None)
+    finally:
+        if sandbox_id is not None and not skip_job_continue:
+            try:
+                from onyx.server.features.build.jobs.continuation import (
+                    maybe_continue_craft_job,
+                )
 
-    if sandbox_id is None or kind == "compact":
-        return
-    try:
-        from onyx.server.features.build.jobs.continuation import (
-            maybe_continue_craft_job,
-        )
-
-        with get_session_with_current_tenant() as continue_session:
-            maybe_continue_craft_job(
-                continue_session,
-                session_id=session_id,
-                user_id=user_id,
-                sandbox_id=sandbox_id,
-                turn_succeeded=turn_succeeded,
-                deadline_exceeded=deadline_exceeded,
-                cancelled=cancelled,
-            )
-    except Exception:
-        logger.exception("Failed to continue Craft job after turn %s", turn_id)
+                with get_session_with_current_tenant() as continue_session:
+                    maybe_continue_craft_job(
+                        continue_session,
+                        session_id=session_id,
+                        user_id=user_id,
+                        sandbox_id=sandbox_id,
+                        turn_succeeded=turn_succeeded,
+                        deadline_exceeded=deadline_exceeded,
+                        cancelled=cancelled,
+                    )
+            except Exception:
+                logger.exception(
+                    "Failed to continue Craft job after turn %s", turn_id
+                )

@@ -82,6 +82,7 @@ export function toPickerSections(
   const mcp: PickerMcpServer[] = [];
   for (const b of skillsData?.builtins ?? []) {
     if (!b.is_available || !b.enabled) continue;
+    if (b.name === "long-job-protocol") continue;
     skills.push({
       kind: "skill",
       slug: b.name,

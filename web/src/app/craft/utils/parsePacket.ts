@@ -77,6 +77,35 @@ export function parsePacket(raw: unknown): ParsedPacket {
           | null,
       };
 
+    case "question_ask": {
+      const options = Array.isArray(p.options)
+        ? p.options.filter((item): item is string => typeof item === "string")
+        : [];
+      const questions = Array.isArray(p.questions)
+        ? p.questions.flatMap((raw) => {
+            if (!raw || typeof raw !== "object") {
+              return [];
+            }
+            const item = raw as Record<string, unknown>;
+            const prompt = typeof item.prompt === "string" ? item.prompt : "";
+            const itemOptions = Array.isArray(item.options)
+              ? item.options.filter((opt): opt is string => typeof opt === "string")
+              : [];
+            if (!prompt && itemOptions.length === 0) {
+              return [];
+            }
+            return [{ prompt, options: itemOptions }];
+          })
+        : [];
+      return {
+        type: "question_ask",
+        requestId: (p.request_id ?? p.requestId ?? "") as string,
+        prompt: (p.prompt ?? "") as string,
+        options,
+        questions,
+      };
+    }
+
     case "connect_app_request": {
       const externalAppId = p.external_app_id;
       if (

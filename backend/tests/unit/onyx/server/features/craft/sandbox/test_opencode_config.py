@@ -10,7 +10,10 @@ from onyx.server.features.build.sandbox.models import (
     CraftLLMProviderConfig,
     CraftMCPServerConfig,
 )
-from onyx.server.features.build.sandbox.util.mcp_config import craft_mcp_fingerprint
+from onyx.server.features.build.sandbox.util.mcp_config import (
+    craft_mcp_fingerprint,
+    opencode_mcp_tool_id,
+)
 from onyx.server.features.build.sandbox.util.opencode_config import (
     build_opencode_base_config,
     build_provider_opencode_config,
@@ -171,6 +174,13 @@ def test_default_must_exist_in_gateway_catalog() -> None:
         build_provider_opencode_config(_gateway(default="missing"))
 
 
+def test_question_permission_asks_when_enabled() -> None:
+    config = build_provider_opencode_config(_gateway())
+    assert config["permission"]["question"] == "ask"
+    assert config["permission"]["webfetch"] == "allow"
+    assert config["permission"]["websearch"] == "allow"
+
+
 def test_session_config_is_json_for_gateway() -> None:
     rendered = json.dumps(
         build_provider_opencode_config(_gateway(), disabled_tools=["question"])
@@ -186,6 +196,7 @@ def test_base_config_keeps_sandbox_permissions_and_plugins() -> None:
     assert config["plugin"] == ["/workspace/plugin.ts"]
     assert config["permission"]["question"] == "deny"
     assert config["permission"]["webfetch"] == "deny"
+    assert config["permission"]["websearch"] == "allow"
     assert config["permission"]["external_directory"] == {
         "*": "deny",
         "/tmp": "allow",
@@ -277,6 +288,60 @@ def test_mcp_tool_curation_maps_to_wildcard_allow_and_deny_permissions() -> None
     assert permission["linear-7_delete_issue"] == "deny"
 
 
+def test_permissions_deny_other_sessions_and_allow_current() -> None:
+    config = build_provider_opencode_config(
+        _gateway(), session_id="83f40b37-7f00-41dd-b7db-fe5c0b426068"
+    )
+    permission = config["permission"]
+    bash = permission["bash"]
+    assert bash["*/workspace/.opencode-data*"] == "deny"
+    assert bash["*/workspace/sessions/*"] == "deny"
+    assert bash["*/workspace/sessions/83f40b37-7f00-41dd-b7db-fe5c0b426068*"] == "allow"
+    read = permission["read"]
+    assert read["/workspace/.opencode-data/**"] == "deny"
+    assert read["/workspace/sessions/*/**"] == "deny"
+    current = "/workspace/sessions/83f40b37-7f00-41dd-b7db-fe5c0b426068"
+    assert read[current] == "allow"
+    assert read[f"{current}/**"] == "allow"
+    assert permission["grep"]["/workspace/sessions/*"] == "deny"
+    assert permission["grep"][f"{current}/**"] == "allow"
+    assert permission["glob"]["/workspace/sessions/*/**"] == "deny"
+    assert permission["glob"][f"{current}/**"] == "allow"
+    assert permission["list"]["/workspace/sessions/*"] == "deny"
+    assert permission["list"]["/workspace/sessions/*/**"] == "deny"
+    assert permission["list"][current] == "allow"
+    assert permission["list"][f"{current}/**"] == "allow"
+    assert (
+        "/workspace/sessions/11111111-1111-1111-1111-111111111111"
+        not in permission["list"]
+    )
+
+
+def test_lane_permissions_allow_parent_outputs_only() -> None:
+    parent = "11111111-1111-1111-1111-111111111111"
+    lane = "22222222-2222-2222-2222-222222222222"
+    config = build_provider_opencode_config(
+        _gateway(), session_id=lane, share_workspace_from=parent
+    )
+    permission = config["permission"]
+    parent_root = f"/workspace/sessions/{parent}"
+    parent_outputs = f"{parent_root}/outputs"
+    lane_root = f"/workspace/sessions/{lane}"
+    for tool_name in ("read", "grep", "glob", "list"):
+        rules = permission[tool_name]
+        assert rules["/workspace/sessions/*/**"] == "deny"
+        assert rules[lane_root] == "allow"
+        assert rules[f"{lane_root}/**"] == "allow"
+        assert rules[parent_outputs] == "allow"
+        assert rules[f"{parent_outputs}/**"] == "allow"
+        assert parent_root not in rules
+    bash = permission["bash"]
+    assert bash["*/workspace/sessions/*"] == "deny"
+    assert bash[f"*{lane_root}*"] == "allow"
+    assert bash[f"*{parent_outputs}*"] == "allow"
+    assert f"*{parent_root}*" not in bash
+
+
 def test_uncurated_mcp_server_still_gets_wildcard_allow() -> None:
     # Zero Tool rows: the wildcard must still allow so runtime-discovered tools
     # don't fall through to opencode's default "ask".
@@ -296,6 +361,13 @@ def _srv(
         url=url,
         disabled_tools=disabled_tools,
         server_id=server_id,
+    )
+
+
+def test_opencode_mcp_tool_id_matches_permission_wildcard() -> None:
+    assert (
+        opencode_mcp_tool_id("parallel-search-382", "web_search")
+        == "parallel-search-382_web_search"
     )
 
 

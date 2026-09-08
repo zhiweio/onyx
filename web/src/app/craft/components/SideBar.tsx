@@ -62,6 +62,11 @@ import {
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
 import { useCraftProjects } from "@/lib/craft-projects/hooks";
+import {
+  isKnownSessionRole,
+  sessionListLabel,
+  sidebarListTitle,
+} from "@/lib/craft-projects/display";
 
 // ============================================================================
 // Build Session Button
@@ -121,6 +126,7 @@ function BuildSessionButton({
   onDeleteActiveSession,
 }: BuildSessionButtonProps) {
   const t = useTranslations("craft.sideBar");
+  const roleT = useTranslations("craft.projects.detail.sessionRole");
   const [renaming, setRenaming] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -177,6 +183,13 @@ function BuildSessionButton({
       t,
     ]
   );
+
+  const lane = sessionListLabel(historyItem.title);
+  const listTitle = sidebarListTitle(historyItem.title);
+  const sessionLabel =
+    lane.role && isKnownSessionRole(lane.role)
+      ? roleT(lane.role)
+      : listTitle.text;
 
   const rightMenu = (
     <>
@@ -240,6 +253,7 @@ function BuildSessionButton({
               onClick={renaming ? undefined : onLoad}
               selected={isActive}
               rightChildren={rightMenu}
+              tooltip={listTitle.tooltip || undefined}
             >
               {renaming ? (
                 <ButtonRenaming
@@ -252,18 +266,18 @@ function BuildSessionButton({
                 <RefreshText
                   as="p"
                   data-state={isActive ? "active" : "inactive"}
-                  className="line-clamp-1 break-all text-start"
+                  className="min-w-0 flex-1 overflow-hidden truncate text-start"
                   mainUiBody
                 >
                   <TypewriterText
-                    text={historyItem.title}
+                    text={sessionLabel}
                     charSpeed={25}
                     animateOnMount={true}
                     onAnimationComplete={() => setShouldAnimate(false)}
                   />
                 </RefreshText>
               ) : (
-                historyItem.title
+                sessionLabel
               )}
             </SidebarTab>
           </Hoverable.Root>
@@ -404,19 +418,28 @@ const MemoizedBuildSidebarInner = memo(() => {
             {projects.length > 0 && (
               <>
                 <SidebarLayouts.Section title={t("projectsSection.title")} />
-                {projects.slice(0, 8).map((project) => (
-                  <LineItemButton
-                    key={project.id}
-                    sizePreset="main-ui"
-                    rounding={2}
-                    icon={SvgFolder}
-                    title={project.name}
-                    onClick={() =>
-                      // SAFETY: project.id is a UUID path segment under /craft/v1/projects.
-                      navigate(`${CRAFT_PROJECTS_PATH}/${project.id}` as Route)
-                    }
-                  />
-                ))}
+                {projects.slice(0, 8).map((project) => {
+                  const listTitle = sidebarListTitle(project.name);
+                  return (
+                    <LineItemButton
+                      key={project.id}
+                      sizePreset="main-ui"
+                      rounding={2}
+                      width="full"
+                      icon={SvgFolder}
+                      title={listTitle.text}
+                      titleMaxLines={1}
+                      tooltip={listTitle.tooltip || undefined}
+                      tooltipSide="right"
+                      onClick={() =>
+                        // SAFETY: project.id is a UUID path segment under /craft/v1/projects.
+                        navigate(
+                          `${CRAFT_PROJECTS_PATH}/${project.id}` as Route
+                        )
+                      }
+                    />
+                  );
+                })}
               </>
             )}
             <SidebarLayouts.Section title={t("sessions.title")} />

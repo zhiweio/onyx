@@ -30,7 +30,7 @@ from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.db.enums import SandboxStatus
 from onyx.db.models import BuildSession
 from onyx.sandbox_proxy import approval_cache
-from onyx.server.features.build import connect_app
+from onyx.server.features.build import connect_app, question_ask
 from onyx.server.features.build.configs import (
     SANDBOX_HEARTBEAT_REFRESH_INTERVAL_SECONDS,
 )
@@ -51,6 +51,7 @@ from onyx.server.features.build.packets import (
     ConnectAppRequestPacket,
     ContextUsagePacket,
     ErrorPacket,
+    QuestionAskPacket,
     SubagentStartedPacket,
 )
 from onyx.server.features.build.sandbox.base import SandboxManager
@@ -284,6 +285,7 @@ def event_to_sse(event: Any) -> str:
             ErrorPacket,
             SubagentStartedPacket,
             ConnectAppRequestPacket,
+            QuestionAskPacket,
             ContextUsagePacket,
             CompactionPacket,
         ),
@@ -370,6 +372,31 @@ def merge_events_with_announces(
                 )
             )
 
+    def drive_question_ask_announces() -> None:
+        cache = get_cache_backend(tenant_id=tenant_id)
+        while not stop.is_set():
+            try:
+                request = question_ask.pop_announcement(
+                    str(session_id), timeout_s=1, cache=cache
+                )
+            except Exception:
+                logger.exception(
+                    "question_ask.announce_poll_failed session_id=%s", session_id
+                )
+                time.sleep(1)
+                continue
+            if request is None:
+                continue
+            question_ask.mark_seen(str(session_id), cache)
+            output.put(
+                QuestionAskPacket(
+                    request_id=request.request_id,
+                    prompt=request.prompt,
+                    options=list(request.options),
+                    questions=list(request.questions),
+                )
+            )
+
     # Spawn via the context-preserving helper so the event iterator's lazy
     # tenant-scoped DB access (e.g. event-bus creation) sees the caller's
     # contextvars instead of raising "Tenant ID is not set".
@@ -388,6 +415,11 @@ def merge_events_with_announces(
     start_thread_with_context(
         drive_connect_app_announces,
         name=f"connect-app-pump-{session_id}",
+        daemon=True,
+    )
+    start_thread_with_context(
+        drive_question_ask_announces,
+        name=f"question-ask-pump-{session_id}",
         daemon=True,
     )
     try:

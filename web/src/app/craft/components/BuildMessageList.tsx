@@ -30,6 +30,10 @@ import {
   ToolCallState,
   TodoListState,
 } from "@/app/craft/types/displayTypes";
+import {
+  isHiddenJobTool,
+  isHostContinueMessage,
+} from "@/lib/craft-jobs/display";
 
 /**
  * A render unit: a run of consecutive non-task tool calls (the "Working" block),
@@ -135,6 +139,12 @@ export default function BuildMessageList({
         return false;
       }
       if (opts.extractLatestTodo && it.type === "todo_list") {
+        return false;
+      }
+      if (it.type === "question_ask") {
+        return false;
+      }
+      if (it.type === "tool_call" && isHiddenJobTool(it.toolCall)) {
         return false;
       }
       return true;
@@ -372,6 +382,9 @@ export default function BuildMessageList({
       <div className="w-full max-w-[720px] rounded-16 p-4">
         {messages.map((message, idx) => {
           if (message.type === "user") {
+            if (isHostContinueMessage(message.message_metadata)) {
+              return null;
+            }
             return (
               <div key={message.id} className="py-4">
                 {sessionId && message.attachments && (

@@ -378,22 +378,27 @@ def _auth_token(auth: httpx.Auth | None) -> str | None:
         return None
 
 
-def _extract_session_id(evt: dict[str, Any]) -> str | None:
-    """opencode events expose sessionID at ``properties.sessionID`` for
-    most types, but composite payloads (Message, PermissionRequest) carry
-    it on the inner object — try both."""
-    props = evt.get("properties")
-    if not isinstance(props, dict):
+def _session_id_from_mapping(mapping: object) -> str | None:
+    if not isinstance(mapping, dict):
         return None
-    sid = props.get("sessionID")
+    sid = mapping.get("sessionID")
     if isinstance(sid, str) and sid:
         return sid
-    info = props.get("info")
+    info = mapping.get("info")
     if isinstance(info, dict):
         nested = info.get("sessionID")
         if isinstance(nested, str) and nested:
             return nested
     return None
+
+
+def _extract_session_id(evt: dict[str, Any]) -> str | None:
+    """opencode events expose sessionID at ``properties.sessionID`` for
+    most types. Durable / v2 envelopes use ``data.sessionID``. Composite
+    payloads (Message, PermissionRequest) carry it on the inner object."""
+    return _session_id_from_mapping(evt.get("properties")) or _session_id_from_mapping(
+        evt.get("data")
+    )
 
 
 def _is_unscoped_terminal_event(event: dict[str, Any]) -> bool:

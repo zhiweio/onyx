@@ -194,6 +194,19 @@ export interface ParsedConnectAppRequest {
   reason: string | null;
 }
 
+export interface ParsedQuestionAskItem {
+  prompt: string;
+  options: string[];
+}
+
+export interface ParsedQuestionAsk {
+  type: "question_ask";
+  requestId: string;
+  prompt: string;
+  options: string[];
+  questions: ParsedQuestionAskItem[];
+}
+
 export interface ParsedContextUsage {
   type: "context_usage";
   usedTokens: number;
@@ -218,6 +231,7 @@ export type ParsedPacket =
   | ParsedApprovalRequested
   | ParsedSubagentStarted
   | ParsedConnectAppRequest
+  | ParsedQuestionAsk
   | ParsedContextUsage
   | ParsedCompaction
   | ParsedError

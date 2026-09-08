@@ -21,6 +21,8 @@ import InterruptHint from "@/app/craft/components/InterruptHint";
 import ContextRing from "@/app/craft/components/ContextRing";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
+import { SelectButton } from "@opal/components";
+import { SvgHourglass } from "@opal/icons";
 import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
 import UserLibraryModal from "@/app/craft/components/UserLibraryModal";
 import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
@@ -71,6 +73,9 @@ export interface CraftInputBarProps {
   initialEntries?: PickerEntry[];
   compactAvailable?: boolean;
   onCompact?: () => void;
+  longJobEnabled?: boolean;
+  onLongJobEnabledChange?: (enabled: boolean) => void;
+  longJobLocked?: boolean;
 }
 
 function withEntryPrefixes(message: string, entries: PickerEntry[]): string {
@@ -97,10 +102,14 @@ const CraftInputBar = memo(
         initialEntries,
         compactAvailable = false,
         onCompact,
+        longJobEnabled = false,
+        onLongJobEnabledChange,
+        longJobLocked = false,
       },
       ref
     ) => {
       const t = useTranslations("craft.inputBar");
+      const longJobT = useTranslations("craft.longJob");
       const entryMenuT = useTranslations("craft.entryMenu");
       const baseRef = useRef<BaseInputBarHandle>(null);
       const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,8 +232,9 @@ const CraftInputBar = memo(
             return true;
           }
           const entry =
-            pickerSections.skills.find((candidate) => candidate.slug === slug) ??
-            null;
+            pickerSections.skills.find(
+              (candidate) => candidate.slug === slug
+            ) ?? null;
           if (entry) {
             addEntry(entry);
             return true;
@@ -296,6 +306,24 @@ const CraftInputBar = memo(
             disabled={disabled}
             tooltip={t("plusMenu.tooltip")}
           />
+          {onLongJobEnabledChange && (
+            <span data-testid="craft-long-job-toggle">
+              <SelectButton
+                disabled={disabled || longJobLocked}
+                variant="select-light"
+                icon={SvgHourglass}
+                onClick={() => {
+                  if (!longJobLocked) {
+                    onLongJobEnabledChange(!longJobEnabled);
+                  }
+                }}
+                state={longJobEnabled || longJobLocked ? "selected" : "empty"}
+                foldable={!longJobEnabled && !longJobLocked}
+              >
+                {longJobT("toggle")}
+              </SelectButton>
+            </span>
+          )}
           {interruptible && <InterruptHint interrupting={isInterrupting} />}
         </>
       );

@@ -6,7 +6,7 @@ description: Compare departmental operating expense across periods on a normaliz
 # tax-opex-variance
 
 Explain why operating expense moved between periods, using only moves you can tie
-to a source line. Follow `long-job-protocol` and `document-ingest`. Use `xlsx` to
+to a source line. Use `document-ingest`. Use `xlsx` to
 read the period workbooks (recalculate first if formulas may be stale). Do not
 explain a swing you cannot trace; flag it.
 
@@ -30,7 +30,7 @@ compare against a period you do not have.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the periods, the entities/部门 in
+1. **plan** — Write `outputs/PLAN.md`: the periods, the entities/部门 in
    scope, the comparison type(s), and the materiality threshold. Done when the base
    period for every comparison is named.
 2. **ingest** — Run `document-ingest` on the period workbooks. Done when every

@@ -367,16 +367,21 @@ export async function fetchMessages(
   }
 
   const data = await res.json();
-  return data.messages.map((m: ApiMessageResponse) => ({
-    id: m.id,
-    type: m.type,
-    turn_index: m.turn_index,
-    // Content is stored in message_metadata, not as a separate field
-    content: m.content || extractContentFromMetadata(m.message_metadata),
-    attachments: extractAttachmentsFromMetadata(m.message_metadata),
-    message_metadata: m.message_metadata,
-    timestamp: new Date(m.created_at),
-  }));
+  return data.messages
+    .filter(
+      (m: ApiMessageResponse) =>
+        m.message_metadata?.craft_job_continue !== true
+    )
+    .map((m: ApiMessageResponse) => ({
+      id: m.id,
+      type: m.type,
+      turn_index: m.turn_index,
+      // Content is stored in message_metadata, not as a separate field
+      content: m.content || extractContentFromMetadata(m.message_metadata),
+      attachments: extractAttachmentsFromMetadata(m.message_metadata),
+      message_metadata: m.message_metadata,
+      timestamp: new Date(m.created_at),
+    }));
 }
 
 // 429 JSON body emitted by the backend usage rate-limiter (token/cost budgets).
@@ -848,6 +853,8 @@ export type CraftJobStatus =
   | "pending"
   | "running"
   | "waiting_specialists"
+  | "waiting_lanes"
+  | "interrupted"
   | "succeeded"
   | "failed"
   | "cancelled";
@@ -864,6 +871,27 @@ export interface CraftJobSpecialistResponse {
   session_id: string;
   role: string;
   status: string;
+  error_detail?: string | null;
+  node_id?: string | null;
+}
+
+export interface CraftJobTimelineItem {
+  id: string;
+  kind: string;
+  status: string;
+  label: string;
+}
+
+export interface CraftJobArtifactResponse {
+  path: string;
+  summary: string;
+  producer_node?: string;
+}
+
+export interface CraftJobEventResponse {
+  type: string;
+  created_at?: string | null;
+  payload?: Record<string, unknown>;
 }
 
 export interface CraftJobResponse {
@@ -880,6 +908,10 @@ export interface CraftJobResponse {
   phase_budget_seconds: number;
   error_detail: string | null;
   specialists: CraftJobSpecialistResponse[];
+  timeline?: CraftJobTimelineItem[];
+  artifacts?: CraftJobArtifactResponse[];
+  events?: CraftJobEventResponse[];
+  interrupt?: { kind: string; payload?: Record<string, unknown> } | null;
 }
 
 export async function createCraftJob(body: {
@@ -887,6 +919,9 @@ export async function createCraftJob(body: {
   prompt?: string;
   domain?: string;
   start?: boolean;
+  provider?: string;
+  provider_id?: number;
+  model?: string;
 }): Promise<{ job: CraftJobResponse; turn_id: string | null }> {
   const res = await fetch(`${BUILD_API_BASE}/jobs`, {
     method: "POST",
@@ -898,6 +933,81 @@ export async function createCraftJob(body: {
     throw new Error(errorData.detail || `Failed to start long job: ${res.status}`);
   }
   return res.json();
+}
+
+export async function resumeCraftJob(
+  jobId: string,
+  action: "approve" | "revise" | "reject" = "approve",
+  note?: string
+): Promise<CraftJobResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs/${jobId}/resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, note }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to resume long job: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchCraftQuestionAsk(
+  sessionId: string
+): Promise<{
+  requestId: string;
+  prompt: string;
+  options: string[];
+  questions: { prompt: string; options: string[] }[];
+} | null> {
+  const res = await fetch(
+    `${BUILD_API_BASE}/jobs/asks/current?session_id=${encodeURIComponent(sessionId)}`
+  );
+  if (!res.ok) {
+    return null;
+  }
+  const body = (await res.json()) as {
+    request_id?: string;
+    prompt?: string;
+    options?: string[];
+    questions?: { prompt?: string; options?: string[] }[];
+  } | null;
+  if (!body?.request_id) {
+    return null;
+  }
+  return {
+    requestId: body.request_id,
+    prompt: body.prompt ?? "",
+    options: Array.isArray(body.options) ? body.options : [],
+    questions: Array.isArray(body.questions)
+      ? body.questions.map((item) => ({
+          prompt: item.prompt ?? "",
+          options: Array.isArray(item.options) ? item.options : [],
+        }))
+      : [],
+  };
+}
+
+export async function answerCraftQuestionAsk(
+  requestId: string,
+  allow: boolean,
+  answers?: string[][]
+): Promise<void> {
+  const res = await fetch(`${BUILD_API_BASE}/jobs/asks/${requestId}/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      allow,
+      answers,
+      answer: answers?.[0]?.[0],
+    }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || `Failed to answer question: ${res.status}`
+    );
+  }
 }
 
 export async function cancelCraftJob(jobId: string): Promise<CraftJobResponse> {

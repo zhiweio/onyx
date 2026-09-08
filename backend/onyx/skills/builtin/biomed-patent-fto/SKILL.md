@@ -6,7 +6,7 @@ description: Build a claim-level freedom-to-operate and patent-landscape brief f
 # biomed-patent-fto
 
 Map the patents that could block or enable a contemplated product, claim by claim.
-Follow `long-job-protocol`.
+Cite source files. Do not invent a patent number.
 
 ## Scope
 
@@ -21,15 +21,14 @@ qualified patent attorney must clear any launch decision.
 ## Workflow
 
 1. **Define the product** — Fix the compound (and salt / polymorph), formulation,
-   dose, indication (method of use), process, and target jurisdictions. Write the
-   product definition to `outputs/plan/PLAN.md`.
-   **Done when:** PLAN.md lists each product feature a claim could read on.
+   dose, indication (method of use), process, and target jurisdictions.
+   **Done when:** each product feature a claim could read on is listed.
 
 2. **Search** — Query the sources below by compound, target, assignee, and
    classification (IPC/CPC, e.g. A61K). If a **Patsnap MCP** server is configured,
-   query it for families and legal status and save bodies to
-   `outputs/mcp/patsnap/<call>.json`; if not, use public registers and state that
-   the commercial feed is missing. Log dead ends to `outputs/exceptions/patent.csv`.
+   query it for families and legal status; if not, use public registers and state
+   that the commercial feed is missing. Log dead ends to
+   `outputs/exceptions/patent.csv`.
    **Done when:** the candidate family set is saved to
    `outputs/normalized/families.csv`.
 

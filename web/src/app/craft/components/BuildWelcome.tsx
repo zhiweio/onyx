@@ -10,7 +10,6 @@ import CraftInputBar, {
   CraftInputBarHandle,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
-import LongJobToggle from "@/app/craft/components/LongJobToggle";
 import SuggestedPrompts from "@/app/craft/components/SuggestedPrompts";
 import ConnectDataBanner from "@/app/craft/components/ConnectDataBanner";
 import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
@@ -95,10 +94,6 @@ export default function BuildWelcome({
               </Text>
             </button>
             <div className="flex items-center gap-3">
-              <LongJobToggle
-                checked={longJobEnabled}
-                onChange={onLongJobEnabledChange}
-              />
               <ModelPickerButton
                 selection={selectedModel}
                 onChange={setSelectedModel}
@@ -120,6 +115,8 @@ export default function BuildWelcome({
             placeholder={t("input.placeholder")}
             sandboxInitializing={sandboxInitializing}
             disabled={!hasAnyProvider}
+            longJobEnabled={longJobEnabled}
+            onLongJobEnabledChange={onLongJobEnabledChange}
           />
         </div>
       </div>

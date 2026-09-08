@@ -20,7 +20,7 @@ if _env_sandbox_backend:
             f"image versions."
         )
 
-_disabled_tools_str = os.environ.get("OPENCODE_DISABLED_TOOLS", "question")
+_disabled_tools_str = os.environ.get("OPENCODE_DISABLED_TOOLS", "")
 OPENCODE_DISABLED_TOOLS: list[str] = [
     t.strip() for t in _disabled_tools_str.split(",") if t.strip()
 ]
@@ -297,16 +297,16 @@ CRAFT_DEEP_JOB_PROJECT_MAX_FILES = int(
     os.environ.get("CRAFT_DEEP_JOB_PROJECT_MAX_FILES", "500")
 )
 CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS = int(
-    os.environ.get("CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS", str(120 * 60))
+    os.environ.get("CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS", str(4 * 60 * 60))
 )
 CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS = int(
-    os.environ.get("CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS", str(25 * 60))
+    os.environ.get("CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS", str(30 * 60))
 )
 CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION = float(
     os.environ.get("CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION", "0.75")
 )
 CRAFT_DEEP_JOB_MAX_SPECIALISTS = int(
-    os.environ.get("CRAFT_DEEP_JOB_MAX_SPECIALISTS", "3")
+    os.environ.get("CRAFT_DEEP_JOB_MAX_SPECIALISTS", "8")
 )
 
 USER_LIBRARY_CONNECTOR_NAME = "User Library"

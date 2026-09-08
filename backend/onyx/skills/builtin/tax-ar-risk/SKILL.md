@@ -5,8 +5,8 @@ description: Rank high-risk 应收账款 customers by combining 账龄分桶, �
 
 # tax-ar-risk
 
-Score and rank receivable customers by collection risk. Follow `long-job-protocol`
-and `document-ingest`. When a credit MCP is configured, save every raw body under
+Score and rank receivable customers by collection risk. Use `document-ingest`.
+When a credit MCP is configured, save every raw body under
 `outputs/mcp/<server>/<call>.json` and cite that file for each external claim.
 Never invent a 被执行 record, a 案号, or a rating.
 
@@ -32,7 +32,7 @@ only — do not fabricate them.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the AR source, whether 收入/回款/账期
+1. **plan** — Write `outputs/PLAN.md`: the AR source, whether 收入/回款/账期
    are available, the aging buckets, and whether a credit MCP is configured. Done
    when the scoring inputs are enumerated.
 2. **ingest** — Run `document-ingest` on the AR and collection files. Done when

@@ -68,14 +68,16 @@ def _gateway_token_limits(
     model: ModelConfigurationView,
 ) -> tuple[int | None, int | None]:
     capability_model_name = _capability_model_name(model_map, provider, model)
-    if find_model_obj(model_map, provider.provider, capability_model_name) is None:
-        return None, None
-
-    max_input_tokens = model.configured_max_input_tokens or llm_max_input_tokens(
-        model_map=model_map,
-        model_name=capability_model_name,
-        model_provider=provider.provider,
-    )
+    known = find_model_obj(model_map, provider.provider, capability_model_name) is not None
+    max_input_tokens = model.configured_max_input_tokens
+    if max_input_tokens is None:
+        if not known:
+            return None, None
+        max_input_tokens = llm_max_input_tokens(
+            model_map=model_map,
+            model_name=capability_model_name,
+            model_provider=provider.provider,
+        )
     max_output_tokens = get_llm_max_output_tokens(
         model_map=model_map,
         model_name=capability_model_name,

@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "مهمة طويلة",
+      "toggle": "تشغيل كمهمة طويلة",
+      "cancel": "إلغاء",
+      "approve": "اعتماد الخطة",
+      "expand": "عرض تفاصيل المهمة",
+      "collapse": "إخفاء تفاصيل المهمة",
+      "askBar": {
+        "needChoice": "يلزم اختيار للمتابعة.",
+        "reviewResult": "راجع النتيجة.",
+        "start": "ابدأ",
+        "changeDirection": "غيّر الاتجاه",
+        "cancel": "إلغاء",
+        "accept": "قبول",
+        "requestChanges": "اطلب تعديلات",
+        "continue": "متابعة",
+        "reject": "رفض"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "الآن: {phase}",
+        "waitingSpecialists": "في انتظار جلسات المتخصصين",
+        "waitingLanes": "مسارات متوازية قيد التشغيل",
+        "interrupted": "في انتظار اختيار",
+        "succeeded": "انتهى",
+        "failed": "فشل",
+        "cancelled": "أُلغي"
+      },
+      "timeline": {
+        "plan": "الخطة",
+        "ingest": "المستندات",
+        "lanes": "المسارات",
+        "reconcile": "المطابقة",
+        "work": "العمل",
+        "compose": "الصياغة",
+        "review": "المراجعة",
+        "revise": "التعديل"
+      },
+      "goal": "الهدف",
+      "domain": "المجال",
+      "specialists": "المسارات",
+      "error": "سبب الفشل",
+      "errorFallback": "توقف العمل. افتح المحادثة لآخر خطوة.",
+      "specialistStatus": {
+        "pending": "قيد الانتظار",
+        "running": "جارٍ",
+        "succeeded": "تم",
+        "failed": "فشل"
       }
     },
     "setupCard": {

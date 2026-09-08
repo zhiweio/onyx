@@ -5,7 +5,7 @@ description: Produce a cited China tax compliance risk brief for a named company
 
 # tax-compliance
 
-Produce a cited China tax compliance risk brief. Follow `long-job-protocol`.
+Produce a cited China tax compliance risk brief.
 Prefer live sources over memory. Save raw MCP bodies under
 `outputs/mcp/<server>/<call>.json` and keep only a digest inline. Never invent a
 文号, 案号, 处罚决定书, penalty amount, or policy document — a citation you cannot
@@ -42,7 +42,7 @@ commercial MCP result is corroboration, not an STA filing.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the entity + 税号, the scope, and which
+1. **plan** — Write `outputs/PLAN.md`: the entity + 税号, the scope, and which
    MCP servers are configured. Done when the entity is unambiguous and the source
    set is listed.
 2. **gather** — Query official registries/judicial sites (browser or web search)

@@ -159,14 +159,6 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         built_in_skill_id="research-brief",
     ),
     BuiltInSkillEntry(
-        slug="long-job-protocol",
-        name="长任务协作规范",
-        description="把长时间任务拆成计划、执行、复核阶段并留存中间产物。",
-        category=SystemCatalogCategory.GENERAL,
-        tags=("流程", "长任务"),
-        built_in_skill_id="long-job-protocol",
-    ),
-    BuiltInSkillEntry(
         slug="document-ingest",
         name="文档导入",
         description="把上传的文档解析成可检索、可引用的结构化内容。",
@@ -544,7 +536,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.TAX,
         tags=("发票", "审查"),
         skill_slugs=(
-            "long-job-protocol",
             "document-ingest",
             "tax-invoice-compliance",
             "xlsx",
@@ -562,7 +553,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.TAX,
         tags=("对账", "供应商"),
         skill_slugs=(
-            "long-job-protocol",
             "document-ingest",
             "tax-recon-supplier",
             "xlsx",
@@ -580,7 +570,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.TAX,
         tags=("银行", "流水"),
         skill_slugs=(
-            "long-job-protocol",
             "document-ingest",
             "tax-bank-ledger",
             "xlsx",
@@ -597,7 +586,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.TAX,
         tags=("费用", "归集"),
         skill_slugs=(
-            "long-job-protocol",
             "document-ingest",
             "tax-expense-rollup",
             "xlsx",
@@ -614,7 +602,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.TAX,
         tags=("费用", "波动"),
         skill_slugs=(
-            "long-job-protocol",
             "document-ingest",
             "tax-opex-variance",
             "data-analysis",
@@ -630,7 +617,7 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         description="账龄、回款与外部征信汇总。",
         category=SystemCatalogCategory.TAX,
         tags=("应收", "风险"),
-        skill_slugs=("long-job-protocol", "document-ingest", "tax-ar-risk", "docx"),
+        skill_slugs=("document-ingest", "tax-ar-risk", "docx"),
         report_template_slug="ar_risk",
         playbook_file="tax-ar-risk-pack.yaml",
         adopt_runtime_name="应收高风险客户",
@@ -643,7 +630,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         category=SystemCatalogCategory.BIOMED,
         tags=("立项", "研发"),
         skill_slugs=(
-            "long-job-protocol",
             "biomed-initiation",
             "biomed-literature",
             "biomed-clinical-intel",

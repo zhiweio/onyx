@@ -522,6 +522,29 @@ class _ServeMixin:
         finally:
             client.close()
 
+    def answer_question_ask(
+        self,
+        sandbox_id: UUID,
+        *,
+        opencode_session_id: str,
+        request_id: str,
+        directory: str,
+        allow: bool,
+        answers: list[list[str]],
+    ) -> bool:
+        """Reply to a pending OpenCode ``que_*`` question from the AskBar."""
+        client = self._build_serve_client(sandbox_id, directory, with_event_bus=False)
+        try:
+            return client.answer_question(
+                opencode_session_id,
+                request_id,
+                allow=allow,
+                answers=answers,
+                directory=directory,
+            )
+        finally:
+            client.close()
+
     def _close_session_buses(self, sandbox_id: UUID, session_id: UUID) -> None:
         """Release the per-(sandbox, session) bus. Call from
         ``cleanup_session_workspace`` — without this the reader thread +

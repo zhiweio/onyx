@@ -171,6 +171,19 @@ function convertMessagesToStreamItems(messages: BuildMessage[]): StreamItem[] {
         }
         break;
 
+      case "question_ask":
+        if (packet.requestId) {
+          items.push({
+            type: "question_ask",
+            id: packet.requestId,
+            requestId: packet.requestId,
+            prompt: packet.prompt,
+            options: packet.options,
+            questions: packet.questions,
+          });
+        }
+        break;
+
       case "compaction":
         items.push({
           type: "compaction",

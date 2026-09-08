@@ -12196,12 +12196,49 @@
       "label": "长作业",
       "toggle": "按长作业运行",
       "cancel": "取消",
+      "approve": "批准计划",
+      "expand": "显示作业详情",
+      "collapse": "隐藏作业详情",
+      "askBar": {
+        "needChoice": "需要你选择后才能继续。",
+        "reviewResult": "请复核结果。",
+        "start": "开始",
+        "changeDirection": "改方向",
+        "cancel": "取消",
+        "accept": "接受",
+        "requestChanges": "要求修改",
+        "continue": "继续",
+        "reject": "拒绝"
+      },
       "status": {
-        "running": "阶段：{phase}",
+        "running": "当前：{phase}",
         "waitingSpecialists": "等待专家会话",
+        "waitingLanes": "分路执行中",
+        "interrupted": "等待选择",
         "succeeded": "已完成",
         "failed": "失败",
         "cancelled": "已取消"
+      },
+      "timeline": {
+        "plan": "计划",
+        "ingest": "处理资料",
+        "lanes": "分路",
+        "reconcile": "对账",
+        "work": "执行",
+        "compose": "成稿",
+        "review": "复核",
+        "revise": "修订"
+      },
+      "goal": "目标",
+      "domain": "领域",
+      "specialists": "分路",
+      "error": "失败原因",
+      "errorFallback": "作业已停止。打开对话查看最后一步。",
+      "specialistStatus": {
+        "pending": "待开始",
+        "running": "进行中",
+        "succeeded": "已完成",
+        "failed": "失败"
       }
     },
     "setupCard": {

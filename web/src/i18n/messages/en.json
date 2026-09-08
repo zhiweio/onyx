@@ -12202,12 +12202,49 @@
       "label": "Long job",
       "toggle": "Run as a long job",
       "cancel": "Cancel",
+      "approve": "Approve plan",
+      "expand": "Show job details",
+      "collapse": "Hide job details",
+      "askBar": {
+        "needChoice": "Need a choice to continue.",
+        "reviewResult": "Review the result.",
+        "start": "Start",
+        "changeDirection": "Change direction",
+        "cancel": "Cancel",
+        "accept": "Accept",
+        "requestChanges": "Request changes",
+        "continue": "Continue",
+        "reject": "Reject"
+      },
       "status": {
-        "running": "Phase: {phase}",
+        "running": "Now: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",
+        "waitingLanes": "Parallel lanes running",
+        "interrupted": "Waiting for a choice",
         "succeeded": "Finished",
         "failed": "Failed",
         "cancelled": "Cancelled"
+      },
+      "timeline": {
+        "plan": "Plan",
+        "ingest": "Ingest",
+        "lanes": "Lanes",
+        "reconcile": "Reconcile",
+        "work": "Work",
+        "compose": "Compose",
+        "review": "Review",
+        "revise": "Revise"
+      },
+      "goal": "Goal",
+      "domain": "Domain",
+      "specialists": "Specialists",
+      "error": "What failed",
+      "errorFallback": "The job stopped. Open the chat for the last step.",
+      "specialistStatus": {
+        "pending": "Pending",
+        "running": "Running",
+        "succeeded": "Done",
+        "failed": "Failed"
       }
     },
     "setupCard": {

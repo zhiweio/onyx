@@ -27,13 +27,13 @@ class SnapshotError(RuntimeError):
     """Raised when tar or bun fails so the manager can see the cause."""
 
 
-_SNAPSHOT_ROOTS = frozenset({"outputs", "attachments"})
-_SNAPSHOT_GENERATED_DIR_NAMES = frozenset({"node_modules", ".next"})
+_SNAPSHOT_ROOTS = frozenset({"outputs", "attachments", "project"})
+_SNAPSHOT_GENERATED_DIR_NAMES = frozenset({"node_modules", ".next", ".venv"})
 # Excluded so a restore can't reintroduce a stale port/pid that would mislead
 # the webapp tool's liveness check when auto-start is skipped.
 _SNAPSHOT_GENERATED_FILE_NAMES = frozenset({".nextjs-port", "nextjs.pid"})
-MAX_SNAPSHOT_ARCHIVE_BYTES = 100 * 1024 * 1024
-MAX_SNAPSHOT_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
+MAX_SNAPSHOT_ARCHIVE_BYTES = 500 * 1024 * 1024
+MAX_SNAPSHOT_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
 _ARCHIVE_CHUNK_BYTES = 1024 * 1024
 _SKIPPED_PATH_LOG_SAMPLE_LIMIT = 20
 
@@ -60,6 +60,18 @@ def _safe_session_path(session_id: UUID, *, create: bool) -> Path:
     return session_path
 
 
+def _is_shared_outputs_link(outputs_path: Path) -> bool:
+    """True when outputs points at another session's outputs under SESSIONS_ROOT."""
+    if not outputs_path.is_symlink():
+        return False
+    try:
+        target = outputs_path.resolve(strict=True)
+        rel = target.relative_to(SESSIONS_ROOT.resolve())
+    except (OSError, ValueError):
+        return False
+    return len(rel.parts) >= 2 and rel.parts[1] == "outputs"
+
+
 def _snapshot_dirs(session_path: Path) -> list[str]:
     """Return session-relative directories that should be archived.
 
@@ -73,26 +85,33 @@ def _snapshot_dirs(session_path: Path) -> list[str]:
     if session_path.exists() and not session_path.is_dir():
         raise SnapshotError("session path is not a directory")
     if outputs_path.is_symlink():
+        if _is_shared_outputs_link(outputs_path):
+            dirs: list[str] = []
+            for name in ("attachments", "project"):
+                candidate = session_path / name
+                if candidate.is_symlink():
+                    raise SnapshotError(f"{name} is a symlink; refusing to snapshot")
+                if candidate.is_dir() and any(candidate.iterdir()):
+                    dirs.append(name)
+            return dirs
         raise SnapshotError("outputs is a symlink; refusing to snapshot")
     if not outputs_path.is_dir():
         return []
 
     dirs = ["outputs"]
-    candidate = session_path / "attachments"
-    if candidate.is_symlink():
-        raise SnapshotError("attachments is a symlink; refusing to snapshot")
-    if candidate.is_dir() and any(candidate.iterdir()):
-        dirs.append("attachments")
+    for name in ("attachments", "project"):
+        candidate = session_path / name
+        if candidate.is_symlink():
+            raise SnapshotError(f"{name} is a symlink; refusing to snapshot")
+        if candidate.is_dir() and any(candidate.iterdir()):
+            dirs.append(name)
     return dirs
 
 
 def _is_excluded_snapshot_dir(relative_path: Path) -> bool:
-    """True for generated dependency/build directories, or excluded runtime
-    scratch files, under outputs/."""
+    """True for generated dependency/build directories or scratch files."""
     parts = relative_path.parts
-    if len(parts) < 2 or parts[0] != "outputs":
-        return False
-    if any(part in _SNAPSHOT_GENERATED_DIR_NAMES for part in parts[1:]):
+    if any(part in _SNAPSHOT_GENERATED_DIR_NAMES for part in parts):
         return True
     return relative_path.name in _SNAPSHOT_GENERATED_FILE_NAMES
 
@@ -339,6 +358,42 @@ def _extract_snapshot_archive(archive_path: Path, session_path: Path) -> None:
         raise SnapshotError(f"invalid snapshot archive: {e}") from e
 
 
+def _persist_session_venv_lock(session_path: Path) -> None:
+    venv_python = session_path / "outputs" / ".venv" / "bin" / "python"
+    if not venv_python.is_file():
+        return
+    lock_dir = session_path / "outputs" / ".venv-lock"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.run(
+        [str(venv_python), "-m", "pip", "freeze"],
+        cwd=session_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode == 0 and proc.stdout.strip():
+        (lock_dir / "requirements.txt").write_text(proc.stdout)
+
+
+def _restore_session_venv(session_path: Path) -> None:
+    requirements = session_path / "outputs" / ".venv-lock" / "requirements.txt"
+    if not requirements.is_file():
+        return
+    venv_dir = session_path / "outputs" / ".venv"
+    python_bin = venv_dir / "bin" / "python"
+    if not python_bin.is_file():
+        subprocess.run(
+            ["python3", "-m", "venv", "--system-site-packages", str(venv_dir)],
+            check=False,
+        )
+    pip_bin = venv_dir / "bin" / "pip"
+    if pip_bin.is_file():
+        subprocess.run(
+            [str(pip_bin), "install", "-r", str(requirements)],
+            check=False,
+        )
+
+
 def has_snapshot_content(session_id: UUID) -> bool:
     """True when a session has an outputs/ tree worth snapshotting."""
     session_path = _safe_session_path(session_id, create=False)
@@ -352,6 +407,7 @@ def iter_snapshot_archive(session_id: UUID) -> Iterator[bytes]:
     api-server, not the sidecar.
     """
     session_path = _safe_session_path(session_id, create=False)
+    _persist_session_venv_lock(session_path)
     dirs = _snapshot_dirs(session_path)
     if not dirs:
         return
@@ -428,6 +484,7 @@ fi
 
     try:
         _extract_snapshot_archive(archive_path, session_path)
+        _restore_session_venv(session_path)
         subprocess.run(
             ["/bin/bash", "-c", script],
             check=True,

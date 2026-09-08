@@ -5,7 +5,7 @@ description: Drive a Chinese month-end or period-end close as a tracked checklis
 
 # tax-closing-checklist
 
-Run a period close as a tracked checklist, not prose. Follow `long-job-protocol`.
+Run a period close as a tracked checklist, not prose.
 Delegate the heavy reconciliations to the sibling skills and pull their results
 back into the checklist. An unexplained difference blocks the close — record it as
 blocking; do not close around it.
@@ -25,7 +25,7 @@ silently skip a module or mark it done without evidence.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: entity, period, 币种, deadline, and the
+1. **plan** — Write `outputs/PLAN.md`: entity, period, 币种, deadline, and the
    modules in scope. Done when scope and deadline are fixed.
 2. **ingest** — Run `document-ingest` on the module inputs. Done when every input
    has a MANIFEST row.

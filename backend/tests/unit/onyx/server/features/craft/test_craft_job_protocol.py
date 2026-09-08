@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from onyx.server.features.build.jobs.protocol import (
-    PHASE_DONE_PATH,
     compose_phase_index,
     continuation_prompt,
     current_phase,
@@ -13,22 +12,13 @@ from onyx.server.features.build.jobs.protocol import (
 )
 
 
-def test_default_phases_split_research_and_document() -> None:
+def test_default_phases_are_domain_agnostic_skeleton() -> None:
     biomed = default_phases_for_domain("biomed")
     tax = default_phases_for_domain("tax")
-    assert [phase["id"] for phase in biomed] == [
-        "plan",
-        "research",
-        "compose",
-        "review",
-    ]
-    assert [phase["id"] for phase in tax] == [
-        "plan",
-        "ingest",
-        "analyze",
-        "compose",
-        "review",
-    ]
+    general = default_phases_for_domain("general")
+    assert [phase["id"] for phase in biomed] == ["plan"]
+    assert [phase["id"] for phase in tax] == ["plan"]
+    assert [phase["id"] for phase in general] == ["plan"]
     assert all(phase["status"] == "pending" for phase in tax)
 
 
@@ -36,8 +26,8 @@ def test_phase_helpers() -> None:
     phases = default_phases_for_domain("tax")
     assert current_phase(phases, 0)["id"] == "plan"
     assert current_phase(phases, 99) is None
-    assert phase_index_by_id(phases, "analyze") == 2
-    assert compose_phase_index(phases) == 3
+    assert phase_index_by_id(phases, "compose") is None
+    assert compose_phase_index(phases) == 0
 
 
 def test_continuation_prompt_names_phase_done() -> None:
@@ -47,8 +37,9 @@ def test_continuation_prompt_names_phase_done() -> None:
         job_name="Supplier recon",
     )
     assert "ingest" in prompt
-    assert PHASE_DONE_PATH in prompt
-    assert "document-ingest" in prompt
+    assert "Current node: `ingest`" in prompt
+    assert "DONE.json" in prompt
+    assert "user-visible reply" in prompt.lower()
 
 
 def test_first_phase_prompt_includes_user_text() -> None:

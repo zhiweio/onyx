@@ -75,3 +75,42 @@ def test_catalog_filters_and_resolves_effective_gateway_capabilities() -> None:
     assert text_model.provider == "openai"
     assert text_model.capabilities.input_modalities == ("text",)
     assert text_model.capabilities.supports_reasoning is False
+
+
+def test_catalog_uses_admin_configured_max_input_tokens() -> None:
+    local = _provider(
+        1,
+        "openai_compatible",
+        "DeepSeek",
+        [
+            ModelConfigurationView(
+                name="deepseek-v4-pro",
+                display_name="DeepSeek V4 Pro",
+                is_visible=True,
+                supports_image_input=False,
+                max_input_tokens=1_000_000,
+                configured_max_input_tokens=1_000_000,
+            )
+        ],
+    )
+    catalog = build_gateway_model_catalog([local])
+    assert catalog[0].max_input_tokens == 1_000_000
+    assert catalog[0].max_output_tokens is not None
+
+    limited = _provider(
+        1,
+        "openai_compatible",
+        "DeepSeek",
+        [
+            ModelConfigurationView(
+                name="deepseek-v4-pro",
+                display_name="DeepSeek V4 Pro",
+                is_visible=True,
+                supports_image_input=False,
+                max_input_tokens=131_072,
+                configured_max_input_tokens=131_072,
+            )
+        ],
+    )
+    limited_catalog = build_gateway_model_catalog([limited])
+    assert limited_catalog[0].max_input_tokens == 131_072

@@ -63,6 +63,22 @@ from tests.unit.sandbox_proxy.conftest import (
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _public_dns_for_request_tests(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    """Request-path tests must not depend on live DNS for slack.com.
+
+    ``destination_is_blocked`` fail-closes on resolver errors. Those tests
+    live in this file and pin getaddrinfo themselves.
+    """
+    if request.node.name.startswith("test_destination_is_blocked"):
+        return
+    monkeypatch.setattr(
+        gate.socket, "getaddrinfo", lambda *_a, **_k: _addrinfo("93.184.216.34")
+    )
+
+
 class _StubMatcher(RequestEvaluator):
     def __init__(
         self,
@@ -1084,6 +1100,28 @@ def test_destination_is_blocked_literal_ips() -> None:
     assert gate.destination_is_blocked("::ffff:10.0.0.1", 443) is True  # mapped v4
     assert gate.destination_is_blocked("8.8.8.8", 443) is False
     assert gate.destination_is_blocked("", 443) is False
+    # Clash / Surge fake-ip (RFC 2544). Not a real internal network.
+    assert gate.destination_is_blocked("198.18.40.69", 443) is False
+
+
+def test_destination_is_blocked_allows_fake_ip_resolved_public_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        gate.socket, "getaddrinfo", lambda *_a, **_k: _addrinfo("198.18.1.33")
+    )
+    assert gate.destination_is_blocked("html.duckduckgo.com", 443) is False
+    assert gate.destination_is_blocked("eutils.ncbi.nlm.nih.gov", 443) is False
+
+
+def test_mcp_gateway_exception_is_port_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gate, "_MCP_GATEWAY_HOST", "mcp_gateway")
+    monkeypatch.setattr(gate, "_MCP_GATEWAY_PORT", 8091)
+    monkeypatch.setattr(
+        gate.socket, "getaddrinfo", lambda *_a, **_k: _addrinfo("192.168.96.8")
+    )
+    assert gate.destination_is_blocked("mcp_gateway", 8091) is False
+    assert gate.destination_is_blocked("mcp_gateway", 5432) is True
 
 
 def test_destination_is_blocked_resolves_to_internal(
@@ -1114,6 +1152,19 @@ def test_destination_is_blocked_fails_closed_on_resolution_error(
 
     monkeypatch.setattr(gate.socket, "getaddrinfo", _boom)
     assert gate.destination_is_blocked("flaky-host.example", 443) is True
+
+
+def test_destination_is_blocked_allows_research_host_on_resolution_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FDA / PubMed must not look internally blocked when DNS is flaky."""
+
+    def _boom(*_args: Any, **_kwargs: Any) -> Any:
+        raise OSError("temporary DNS failure")
+
+    monkeypatch.setattr(gate.socket, "getaddrinfo", _boom)
+    assert gate.destination_is_blocked("api.fda.gov", 443) is False
+    assert gate.destination_is_blocked("eutils.ncbi.nlm.nih.gov", 443) is False
 
 
 def test_api_server_exception_is_port_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1759,3 +1810,77 @@ def test_terminalize_wake_failure_swallowed(
 
     # Should not raise.
     addon._terminalize_after_unhandled_error(approval_id, "tenant-1")
+
+
+def test_matched_actions_look_like_writes() -> None:
+    from onyx.sandbox_proxy.addons.gate import matched_actions_look_like_writes
+
+    assert matched_actions_look_like_writes(_MATCH) is True
+    assert matched_actions_look_like_writes(_MATCH_MCP) is True
+    read_mcp = AllMatchedActions(
+        actions=(
+            MatchedAction(
+                action_type="pubmed.search",
+                display_name="Search PubMed",
+                description="Search",
+                policy=EndpointPolicy.ASK,
+            ),
+        ),
+        target=GatedTarget(kind=GatedAppKind.MCP_SERVER, id=9, app_name="PubMed"),
+        payload={},
+    )
+    assert matched_actions_look_like_writes(read_mcp) is False
+
+
+def test_craft_job_grant_covers_read_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    addon = _build(resolver=StubResolver(), matcher=_StubMatcher())
+    monkeypatch.setattr(
+        "onyx.db.craft_job.session_has_open_craft_job", lambda *_a, **_k: True
+    )
+    read_mcp = AllMatchedActions(
+        actions=(
+            MatchedAction(
+                action_type="pubmed.search",
+                display_name="Search PubMed",
+                description="Search",
+                policy=EndpointPolicy.ASK,
+            ),
+        ),
+        target=GatedTarget(kind=GatedAppKind.MCP_SERVER, id=9, app_name="PubMed"),
+        payload={},
+    )
+    grant = addon._craft_job_grant(MagicMock(spec=Session), _ctx(), read_mcp)
+    assert grant is not None
+    assert grant.decided_via == ApprovalDecidedVia.CRAFT_JOB_GRANT
+
+
+def test_craft_job_grant_skips_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    addon = _build(resolver=StubResolver(), matcher=_StubMatcher())
+    monkeypatch.setattr(
+        "onyx.db.craft_job.session_has_open_craft_job", lambda *_a, **_k: True
+    )
+    grant = addon._craft_job_grant(MagicMock(spec=Session), _ctx(), _MATCH)
+    assert grant is None
+
+
+def test_craft_job_grant_skips_when_no_open_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    addon = _build(resolver=StubResolver(), matcher=_StubMatcher())
+    monkeypatch.setattr(
+        "onyx.db.craft_job.session_has_open_craft_job", lambda *_a, **_k: False
+    )
+    read_mcp = AllMatchedActions(
+        actions=(
+            MatchedAction(
+                action_type="webfetch",
+                display_name="Fetch",
+                description="Fetch",
+                policy=EndpointPolicy.ASK,
+            ),
+        ),
+        target=GatedTarget(kind=GatedAppKind.MCP_SERVER, id=3, app_name="Web"),
+        payload={},
+    )
+    grant = addon._craft_job_grant(MagicMock(spec=Session), _ctx(), read_mcp)
+    assert grant is None

@@ -6,7 +6,7 @@ description: Consolidate subsidiary or departmental 报销单/expense claims (do
 # tax-expense-rollup
 
 Pull many expense claims into one table, fill the target template, and surface the
-claims a reviewer should look at. Follow `long-job-protocol` and `document-ingest`.
+claims a reviewer should look at. Use `document-ingest`.
 Use `xlsx` to read and write workbooks; use `tax-invoice-compliance` for the
 attached 发票, do not re-validate invoices here.
 
@@ -30,7 +30,7 @@ because it did not parse.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the claim roots, the target template
+1. **plan** — Write `outputs/PLAN.md`: the claim roots, the target template
    fields, and which policy standards are available. Done when every template
    field maps to a claim field (or is marked derived / missing).
 2. **ingest** — Run `document-ingest`. Done when every claim file has a MANIFEST

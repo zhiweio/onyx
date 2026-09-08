@@ -452,11 +452,13 @@ class SessionOrigin(str, PyEnum):
 
 
 class CraftJobStatus(str, PyEnum):
-    """Lifecycle of a multi-phase Craft long job."""
+    """Lifecycle of a host-owned Craft long job."""
 
     PENDING = "pending"
     RUNNING = "running"
     WAITING_SPECIALISTS = "waiting_specialists"
+    WAITING_LANES = "waiting_lanes"
+    INTERRUPTED = "interrupted"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -487,6 +489,7 @@ class ApprovalDecidedVia(str, PyEnum):
     USER = "USER"
     PRE_APPROVAL = "PRE_APPROVAL"
     SESSION_GRANT = "SESSION_GRANT"
+    CRAFT_JOB_GRANT = "CRAFT_JOB_GRANT"
 
 
 class ScheduledTaskStatus(str, PyEnum):

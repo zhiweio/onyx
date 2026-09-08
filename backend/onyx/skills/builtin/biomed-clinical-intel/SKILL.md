@@ -6,7 +6,7 @@ description: Map the clinical pipeline and competing trials for an indication or
 # biomed-clinical-intel
 
 Build a cited scan of who runs what trial, at what phase, with which design, and
-when it reads out. Follow `long-job-protocol`.
+when it reads out.
 
 ## Scope
 
@@ -21,15 +21,14 @@ a lead, not truth.
 
 ## Workflow
 
-1. **Scope** — Fix indication, mechanism/target, phase range, and geography. Write
-   to `outputs/plan/PLAN.md`; seed `outputs/plan/TODO.json`.
-   **Done when:** PLAN.md names the indication and the mechanisms in scope.
+1. **Scope** — Fix indication, mechanism/target, phase range, and geography.
+   **Done when:** the indication and the mechanisms in scope are named.
 
 2. **Search registries** — Query each registry in the source order below with
-   condition + intervention + mechanism terms. Save raw result bodies to
-   `outputs/mcp/<server>/<call>.json`; unfetchable pages to
+   condition + intervention + mechanism terms. If the host brief names a search
+   MCP, call that tool first. Record unfetchable pages in
    `outputs/exceptions/clinical.csv`.
-   **Done when:** every in-scope registry has been queried and logged.
+   **Done when:** every in-scope registry has been queried.
 
 3. **Extract** — One row per trial in `outputs/normalized/trials.csv`. Capture the
    registry ID exactly (see Identifier formats), sponsor, phase, status,

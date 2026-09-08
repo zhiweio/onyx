@@ -1380,6 +1380,7 @@ class KubernetesSandboxManager(SandboxManager):
         connectable_apps_section: str,
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Set up a session workspace within an existing sandbox pod.
 
@@ -1422,6 +1423,11 @@ class KubernetesSandboxManager(SandboxManager):
                 disabled_tools=disabled_tools,
                 mcp_servers=mcp_servers,
                 session_id=str(session_id),
+                share_workspace_from=(
+                    str(share_workspace_from)
+                    if share_workspace_from is not None
+                    else None
+                ),
             )
         )
         setup_script = build_session_workspace_setup_script(
@@ -1429,6 +1435,11 @@ class KubernetesSandboxManager(SandboxManager):
             agents_md=agent_instructions,
             session_opencode_config_json=session_opencode_config,
             nextjs_port=nextjs_port,
+            shared_outputs_path=(
+                f"{SESSIONS_ROOT}/{share_workspace_from}/outputs"
+                if share_workspace_from is not None
+                else None
+            ),
         )
 
         logger.info(
@@ -1897,6 +1908,7 @@ echo "Session cleanup complete"
         user_name: str | None = None,
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Rewrite generated session configuration and managed symlinks."""
         # nextjs_port stays in the signature to match the abstract contract
@@ -1922,6 +1934,11 @@ echo "Session cleanup complete"
                     disabled_tools=disabled_tools,
                     mcp_servers=mcp_servers,
                     session_id=str(session_id),
+                    share_workspace_from=(
+                        str(share_workspace_from)
+                        if share_workspace_from is not None
+                        else None
+                    ),
                 )
             )
             if llm_config is not None
@@ -2612,6 +2629,32 @@ fi
             f"failed to resolve proxy ClusterIP for SANDBOX_PROXY_HOST={host!r} "
             f"after {_PROXY_RESOLVE_RETRY_ATTEMPTS} attempts: {last_err}"
         )
+
+    def run_workspace_command(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        command: list[str],
+    ) -> int:
+        pod_name = self._get_pod_name(str(sandbox_id))
+        session_path = f"{SESSIONS_ROOT}/{session_id}"
+        quoted = " ".join(shlex.quote(part) for part in command)
+        exec_command = ["/bin/sh", "-c", f"cd {session_path} && {quoted}"]
+        try:
+            k8s_stream(
+                self._stream_core_api.connect_get_namespaced_pod_exec,
+                name=pod_name,
+                namespace=self._namespace,
+                container=_SANDBOX_CONTAINER_NAME,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
+            return 0
+        except Exception:
+            return 1
 
     def write_files_to_sandbox(
         self,

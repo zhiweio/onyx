@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session as DBSession
 from onyx.cache.factory import get_cache_backend
 from onyx.configs.app_configs import WEB_DOMAIN
 from onyx.configs.constants import MessageType
+from onyx.db.craft_job import get_specialist_for_session
 from onyx.db.enums import BuildSessionStatus, SandboxStatus, SessionOrigin
 from onyx.db.external_app import get_connectable_apps_for_user
 from onyx.db.llm import (
@@ -82,7 +83,6 @@ from onyx.server.features.build.sandbox.util.opencode_config import (
     build_provider_opencode_config,
 )
 from onyx.server.features.build.session import streaming as _streaming
-from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.server.features.build.session.errors import (
     StaleProvisioningAttemptError,
     UploadLimitExceededError,
@@ -109,6 +109,7 @@ from onyx.server.features.build.timeouts import (
     PROVISION_WAIT_SECONDS,
 )
 from onyx.server.features.build.utils import get_opencode_disabled_tools
+from onyx.server.features.scenario.runtime import write_scenario_md_to_session
 from onyx.server.metrics.craft_sandbox import SandboxReadyOutcome
 from onyx.utils.logger import setup_logger
 from onyx.utils.threadpool_concurrency import start_thread_with_context
@@ -121,6 +122,22 @@ _DISPOSE_PENDING_TTL_SECONDS = 24 * 3600
 
 def _dispose_pending_key(session_id: UUID) -> str:
     return f"craft:llm_config_dispose_pending:{session_id}"
+
+
+def _share_workspace_from_session(
+    db_session: DBSession, session_id: UUID
+) -> UUID | None:
+    """Parent job session id when this session is a lane child."""
+    specialist = get_specialist_for_session(db_session, session_id)
+    if specialist is None:
+        return None
+    job = specialist.job
+    if job is None:
+        return None
+    parent_id = job.session_id
+    if not isinstance(parent_id, UUID) or parent_id == session_id:
+        return None
+    return parent_id
 
 
 def mark_opencode_dispose_pending(session_id: UUID) -> None:
@@ -287,12 +304,20 @@ class SessionManager:
     ) -> None:
         llm_config = self.session_llm_config(session, user)
         mcp_servers = resolve_craft_mcp_servers(self._db_session, user)
+        share_workspace_from = _share_workspace_from_session(
+            self._db_session, session.id
+        )
         expected = json.dumps(
             build_provider_opencode_config(
                 llm_config,
                 disabled_tools=get_opencode_disabled_tools(),
                 mcp_servers=mcp_servers,
                 session_id=str(session.id),
+                share_workspace_from=(
+                    str(share_workspace_from)
+                    if share_workspace_from is not None
+                    else None
+                ),
             )
         )
 
@@ -351,6 +376,7 @@ class SessionManager:
             user_name=user.personal_name,
             llm_config=llm_config,
             mcp_servers=mcp_servers,
+            share_workspace_from=share_workspace_from,
         )
         if session.opencode_session_id is not None:
             self._sandbox_manager.dispose_opencode_instance(sandbox.id, session.id)
@@ -416,6 +442,9 @@ class SessionManager:
                         user_name=user.personal_name,
                         llm_config=llm_config,
                         mcp_servers=mcp_servers,
+                        share_workspace_from=_share_workspace_from_session(
+                            self._db_session, session_id
+                        ),
                     )
                     if session.opencode_session_id is not None:
                         self._sandbox_manager.dispose_opencode_instance(
@@ -503,6 +532,7 @@ class SessionManager:
         scenario_id: UUID | None = None,
         project_id: UUID | None = None,
         headless: bool = False,
+        share_workspace_from: UUID | None = None,
     ) -> BuildSession:
         """Create a new build session with a ready sandbox.
 
@@ -563,7 +593,13 @@ class SessionManager:
             build_session.nextjs_port,
         )
 
-        self._reconcile_session(sandbox, build_session, user, llm_config)
+        self._reconcile_session(
+            sandbox,
+            build_session,
+            user,
+            llm_config,
+            share_workspace_from=share_workspace_from,
+        )
         return build_session
 
     def get_or_create_empty_session(
@@ -714,6 +750,7 @@ class SessionManager:
         session: BuildSession,
         user: User,
         llm_config: CraftLLMProviderConfig,
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Build the workspace and OpenCode session for a committed
         ``INITIALIZING`` session, then mark it ``ACTIVE`` (a no-op if the
@@ -750,6 +787,7 @@ class SessionManager:
                 connectable_apps_section=connectable_apps_section,
                 user_name=user_name,
                 mcp_servers=mcp_servers,
+                share_workspace_from=share_workspace_from,
             )
             if session.scenario_id is not None:
                 try:

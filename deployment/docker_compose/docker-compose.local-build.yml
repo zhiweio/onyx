@@ -60,6 +60,8 @@ services:
     build:
       context: ../../backend/onyx/server/features/build/sandbox/image
       dockerfile: Dockerfile
+      args:
+        WARM_BUN_CACHE: ${WARM_BUN_CACHE:-true}
     deploy:
       replicas: 0
     entrypoint: ["/bin/true"]

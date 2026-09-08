@@ -152,7 +152,7 @@ SANDBOX_BACKEND=kubernetes|docker          # Default: kubernetes
 # OpenCode configuration
 # Fallback default when PostHog is unavailable or the
 # onyx-craft-opencode-disabled-tools flag's variant is unset/unrecognized.
-OPENCODE_DISABLED_TOOLS=question           # Comma-separated list, default: question
+OPENCODE_DISABLED_TOOLS=                   # Comma-separated list, default: empty
 ```
 
 ### Kubernetes Settings

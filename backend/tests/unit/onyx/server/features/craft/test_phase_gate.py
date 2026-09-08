@@ -40,6 +40,7 @@ def _job(**kwargs):
     phases = default_phases_for_domain("tax")
     phases[0]["status"] = "running"
     values = {
+        "id": uuid4(),
         "session_id": uuid4(),
         "domain": "tax",
         "name": "golden",
@@ -50,6 +51,10 @@ def _job(**kwargs):
         "total_budget_seconds": 7200,
         "phase_budget_seconds": 1500,
         "error_detail": None,
+        "specialists": [],
+        "state": {},
+        "project_id": uuid4(),
+        "scenario_id": None,
     }
     values.update(kwargs)
     return SimpleNamespace(**values)
@@ -151,10 +156,14 @@ def test_golden_path_does_not_advance_without_done_when(monkeypatch) -> None:
     """Silent phase advance is a fail. Missing PLAN.json keeps index at 0."""
     job = _job()
     enqueued: list[str] = []
-    monkeypatch.setattr(
+    empty = _FakeManager({})
+    for target in (
         "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
-        lambda: _FakeManager({}),
-    )
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=empty: _fake)
     monkeypatch.setattr(
         continuation_mod,
         "get_specialist_for_session",
@@ -210,17 +219,21 @@ def test_golden_path_advances_only_after_artifacts(monkeypatch) -> None:
     files = {
         PHASE_DONE_PATH: b"plan\n",
         PLAN_JSON_PATH: json.dumps(plan).encode(),
+        "outputs/PLAN.md": b"# Plan\n\nTwo lanes.\n",
+        "outputs/TODO.md": b"- [x] Write the plan\n",
     }
     job = _job()
     enqueued: list[str] = []
-    monkeypatch.setattr(
+    fake = _FakeManager(files)
+    for target in (
         "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
-        lambda: _FakeManager(files),
-    )
-    monkeypatch.setattr(
         "onyx.server.features.build.jobs.continuation.get_sandbox_manager",
-        lambda: _FakeManager(files),
-    )
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.host_workers.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=fake: _fake)
     monkeypatch.setattr(
         continuation_mod,
         "get_specialist_for_session",
@@ -238,13 +251,17 @@ def test_golden_path_advances_only_after_artifacts(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         continuation_mod,
-        "advance_job_phase",
-        lambda job_obj, next_index: setattr(job_obj, "current_phase_index", next_index),
-    )
-    monkeypatch.setattr(
-        continuation_mod,
         "_enqueue_or_remember",
         lambda *_args, **kwargs: enqueued.append(kwargs["prompt"]) or uuid4(),
+    )
+    spawned: list[str] = []
+
+    def _spawn(_db_session, *, job, user_id, state, lanes):  # noqa: ARG001
+        job.status = CraftJobStatus.WAITING_LANES
+        spawned.extend(node.id for node in lanes)
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel._spawn_lanes", _spawn
     )
     db = SimpleNamespace(commit=lambda: None)
     continuation_mod.maybe_continue_craft_job(
@@ -256,12 +273,20 @@ def test_golden_path_advances_only_after_artifacts(monkeypatch) -> None:
         deadline_exceeded=False,
         cancelled=False,
     )
-    assert job.current_phase_index == 1
-    assert any("ingest" in prompt or "analyze" in prompt for prompt in enqueued)
+    assert spawned == ["lane:a", "lane:b"]
+    assert job.status == CraftJobStatus.WAITING_LANES
+    assert not enqueued
 
 
 def test_deadline_retries_same_phase(monkeypatch) -> None:
     job = _job()
+    empty = _FakeManager({})
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=empty: _fake)
     monkeypatch.setattr(
         continuation_mod,
         "get_specialist_for_session",
@@ -296,3 +321,43 @@ def test_deadline_retries_same_phase(monkeypatch) -> None:
     assert job.current_phase_index == 0
     assert job.status == CraftJobStatus.RUNNING
     assert enqueued
+
+
+def test_retry_limit_error_keeps_a_reason() -> None:
+    from onyx.server.features.build.jobs.gates import (
+        ContractGateResult,
+        GateMissing,
+        gate_retry_limit_detail,
+        retry_limit_error_detail,
+    )
+
+    assert retry_limit_error_detail() == "Phase gate retry limit reached: unknown"
+    assert (
+        gate_retry_limit_detail(ContractGateResult(passed=False), "review")
+        == "Phase gate retry limit reached: review"
+    )
+    assert (
+        gate_retry_limit_detail(
+            ContractGateResult(
+                passed=False,
+                missing=[
+                    GateMissing(
+                        path="",
+                        reason="retry limit reached",
+                        owner_node="review",
+                    )
+                ],
+            ),
+            "review",
+        )
+        == "Phase gate retry limit reached: retry limit reached"
+    )
+
+
+def test_parse_review_accepts_done_true() -> None:
+    from onyx.server.features.build.jobs.gates import _parse_review
+
+    payload = _parse_review(
+        b'{"node":"review","done":true,"verdict":"conditional_defer_no_go"}'
+    )
+    assert payload["passed"] is True

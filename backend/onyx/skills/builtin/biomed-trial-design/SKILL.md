@@ -6,7 +6,7 @@ description: Review or draft the core design of a clinical trial — estimand, p
 # biomed-trial-design
 
 Review or draft the design elements that decide whether a trial can answer its
-question. Follow `long-job-protocol`.
+question.
 
 ## Scope
 
@@ -24,7 +24,7 @@ agency). This is a design review, not medical advice or a regulatory commitment.
 1. **Frame the question** — Write the **estimand** (ICH E9(R1)): treatment,
    population, endpoint (variable), intercurrent-event strategy, and population-level
    summary; then the **PICO** (population, intervention, comparator, outcome, time).
-   Save to `outputs/plan/PLAN.md`.
+   Save to `outputs/PLAN.md`.
    **Done when:** PLAN.md states one estimand and its PICO.
 
 2. **Work each element** — Assess population, endpoints, control, randomization /

@@ -5,8 +5,8 @@ description: Analyze tabular data and report findings with the numbers and metho
 
 # data-analysis
 
-Analyze a table and report what the numbers actually show. Follow
-`long-job-protocol` for anything that spans more than one turn.
+Analyze a table and report what the numbers actually show. Write
+intermediate extracts to disk when the work spans more than one turn.
 
 ## Scope
 
@@ -19,7 +19,7 @@ the finished document (use `docx` / `pptx`).
 ## Workflow
 
 1. **State the question** — Write the question, the metric definition, the grain
-   (one row = what?), and the time window into `outputs/plan/PLAN.md`. If the ask
+   (one row = what?), and the time window into `outputs/PLAN.md`. If the ask
    is vague, pick one specific reading and record which.
    **Done when:** PLAN.md names the metric, the grain, and the window.
 

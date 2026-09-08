@@ -322,6 +322,7 @@ class StubSandboxManager(SandboxManager):
         connectable_apps_section: str,
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         self.setup_session_workspace_count += 1
         self.last_setup_session_workspace_payload = {
@@ -332,6 +333,7 @@ class StubSandboxManager(SandboxManager):
             "connectable_apps_section": connectable_apps_section,
             "user_name": user_name,
             "mcp_servers": mcp_servers,
+            "share_workspace_from": share_workspace_from,
         }
         if not self.setup_session_workspace_silent:
             raise _not_configured("setup_session_workspace")
@@ -361,6 +363,7 @@ class StubSandboxManager(SandboxManager):
         user_name: str | None = None,
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         self.session_runtime_call_order.append("regenerate_session_config")
         self.regenerate_session_config_count += 1
@@ -374,6 +377,7 @@ class StubSandboxManager(SandboxManager):
             "user_name": user_name,
             "llm_config": llm_config,
             "mcp_servers": mcp_servers,
+            "share_workspace_from": share_workspace_from,
         }
         if not self.regenerate_session_config_silent:
             raise _not_configured("regenerate_session_config")

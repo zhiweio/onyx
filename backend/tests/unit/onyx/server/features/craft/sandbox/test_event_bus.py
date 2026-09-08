@@ -91,6 +91,14 @@ def test_extract_session_id_returns_none_for_global_events() -> None:
     assert _extract_session_id({"type": "server.connected", "properties": {}}) is None
 
 
+def test_extract_session_id_from_data_envelope() -> None:
+    evt = {
+        "type": "question.asked",
+        "data": {"id": "que_1", "sessionID": "ses_Q"},
+    }
+    assert _extract_session_id(evt) == "ses_Q"
+
+
 def test_extract_session_id_returns_none_when_properties_missing() -> None:
     assert _extract_session_id({"type": "something"}) is None
 

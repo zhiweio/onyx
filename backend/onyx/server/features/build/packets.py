@@ -29,6 +29,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from onyx.server.features.build.question_ask import QuestionAskItem
+
 # =============================================================================
 # Base Packet Type
 # =============================================================================
@@ -89,6 +91,16 @@ class ConnectAppRequestPacket(BasePacket):
     reason: str | None = None
 
 
+class QuestionAskPacket(BasePacket):
+    """The agent's ``question`` tool is waiting for a chip choice."""
+
+    type: Literal["question_ask"] = "question_ask"
+    request_id: str
+    prompt: str
+    options: list[str] = []
+    questions: list[QuestionAskItem] = []
+
+
 class ContextUsagePacket(BasePacket):
     type: Literal["context_usage"] = "context_usage"
     used_tokens: int
@@ -109,6 +121,7 @@ BuildPacket = (
     | ApprovalRequestedPacket
     | SubagentStartedPacket
     | ConnectAppRequestPacket
+    | QuestionAskPacket
     | ContextUsagePacket
     | CompactionPacket
 )

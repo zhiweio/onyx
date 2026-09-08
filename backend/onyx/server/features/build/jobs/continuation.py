@@ -9,14 +9,11 @@ from sqlalchemy.orm import Session
 from onyx.cache.factory import get_cache_backend
 from onyx.configs.constants import MessageType
 from onyx.db.craft_job import (
-    advance_job_phase,
     get_open_job_for_session,
     get_specialist_for_session,
     job_total_budget_exhausted,
     mark_job_finished,
-    mark_job_running,
     mark_specialist_finished,
-    specialists_all_terminal,
     specialists_any_failed,
 )
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus
@@ -36,22 +33,17 @@ from onyx.server.features.build.interactive_turns.state import (
 )
 from onyx.server.features.build.jobs.phase_gate import (
     DEFAULT_PHASE_RETRY_LIMIT,
-    evaluate_phase_gate,
     increment_gate_retries,
     pop_pending_enqueue_prompt,
-    retry_prompt,
     set_pending_enqueue_prompt,
 )
+from onyx.server.features.build.jobs.gates import retry_brief, retry_limit_error_detail
 from onyx.server.features.build.jobs.plan import (
     PLAN_JSON_PATH,
     apply_plan_to_job_phases,
     parse_plan_bytes,
 )
-from onyx.server.features.build.jobs.protocol import (
-    compose_phase_index,
-    continuation_prompt,
-    current_phase,
-)
+from onyx.server.features.build.jobs.protocol import current_phase
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.utils.logger import setup_logger
 
@@ -86,7 +78,15 @@ def maybe_continue_craft_job(
         mark_job_finished(job, status=CraftJobStatus.CANCELLED)
         db_session.commit()
         return
-    if job.status == CraftJobStatus.WAITING_SPECIALISTS:
+    if job.status in {
+        CraftJobStatus.WAITING_SPECIALISTS,
+        CraftJobStatus.WAITING_LANES,
+        CraftJobStatus.INTERRUPTED,
+    }:
+        if job.status == CraftJobStatus.WAITING_LANES:
+            from onyx.server.features.build.jobs.kernel import reap_inactive_lanes
+
+            reap_inactive_lanes(db_session, job=job, user_id=user_id)
         return
     if not turn_succeeded and not deadline_exceeded:
         mark_job_finished(
@@ -105,51 +105,15 @@ def maybe_continue_craft_job(
         db_session.commit()
         return
 
-    phase = current_phase(job.phases, job.current_phase_index)
-    if phase is None:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
-            error_detail="Job has no current phase",
-        )
-        db_session.commit()
-        return
+    from onyx.server.features.build.jobs.kernel import after_worker_turn
 
-    gate = evaluate_phase_gate(
-        sandbox_id=sandbox_id,
-        session_id=session_id,
-        phase=phase,
-        deadline_exceeded=deadline_exceeded,
-    )
-    if not gate.passed:
-        _retry_or_fail_phase(
-            db_session,
-            job=job,
-            user_id=user_id,
-            phase=phase,
-            missing=gate.missing,
-        )
-        return
-
-    _apply_disk_plan(job, sandbox_id=sandbox_id, session_id=session_id)
-    next_index = job.current_phase_index + 1
-    if next_index >= len(job.phases):
-        mark_job_finished(job, status=CraftJobStatus.SUCCEEDED)
-        db_session.commit()
-        return
-
-    advance_job_phase(job, next_index)
-    db_session.commit()
-    next_phase = current_phase(job.phases, next_index)
-    if next_phase is None:
-        return
-    prompt = continuation_prompt(phase=next_phase, domain=job.domain, job_name=job.name)
-    _enqueue_or_remember(
+    after_worker_turn(
         db_session,
         job=job,
         user_id=user_id,
-        phase=next_phase,
-        prompt=prompt,
+        sandbox_id=sandbox_id,
+        session_id=session_id,
+        deadline_exceeded=deadline_exceeded,
     )
 
 
@@ -191,13 +155,15 @@ def _retry_or_fail_phase(
         mark_job_finished(
             job,
             status=CraftJobStatus.FAILED,
-            error_detail="Phase gate retry limit reached: " + ", ".join(missing),
+            error_detail=retry_limit_error_detail(
+                *(missing or [str(phase.get("id") or "")])
+            ),
         )
         db_session.commit()
         return
     db_session.commit()
     phase_id = str(phase.get("id") or "")
-    prompt = retry_prompt(phase_id, missing)
+    prompt = retry_brief(phase_id, missing)
     _enqueue_or_remember(
         db_session,
         job=job,
@@ -272,15 +238,7 @@ def _finish_specialist_turn(
     db_session.commit()
 
     job = specialist.job
-    if job is None or not specialists_all_terminal(job):
-        return
-    if specialists_any_failed(job):
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
-            error_detail="A specialist session failed",
-        )
-        db_session.commit()
+    if job is None:
         return
     if job_total_budget_exhausted(job):
         mark_job_finished(
@@ -291,24 +249,14 @@ def _finish_specialist_turn(
         db_session.commit()
         return
 
-    compose_index = compose_phase_index(job.phases)
-    advance_job_phase(job, compose_index)
-    mark_job_running(job)
-    db_session.commit()
-    phase = current_phase(job.phases, compose_index)
-    if phase is None:
-        return
-    prompt = continuation_prompt(phase=phase, domain=job.domain, job_name=job.name)
-    prompt += (
-        "\nSpecialists finished. Read `project/research/` and "
-        "`project/extracted/` before you write the report."
-    )
-    _enqueue_or_remember(
+    from onyx.server.features.build.jobs.kernel import after_lane_turn
+
+    after_lane_turn(
         db_session,
         job=job,
         user_id=user_id,
-        phase=phase,
-        prompt=prompt,
+        specialist_ok=turn_succeeded and not cancelled and not specialists_any_failed(job),
+        node_id=specialist.node_id,
     )
 
 
@@ -318,9 +266,14 @@ def enqueue_job_phase_turn(
     session_id: UUID,
     user_id: UUID,
     prompt: str,
+    visible_user_text: str | None = None,
 ) -> UUID | None:
     return _enqueue_phase_turn(
-        db_session, session_id=session_id, user_id=user_id, prompt=prompt
+        db_session,
+        session_id=session_id,
+        user_id=user_id,
+        prompt=prompt,
+        visible_user_text=visible_user_text,
     )
 
 
@@ -330,6 +283,7 @@ def _enqueue_phase_turn(
     session_id: UUID,
     user_id: UUID,
     prompt: str,
+    visible_user_text: str | None = None,
 ) -> UUID | None:
     cache = get_cache_backend()
     try:
@@ -344,14 +298,18 @@ def _enqueue_phase_turn(
             )
             return None
         turn_index = count_user_messages(session_id, db_session)
+        visible = visible_user_text.strip() if visible_user_text else ""
         create_message(
             session_id=session_id,
             message_type=MessageType.USER,
             turn_index=turn_index,
             message_metadata={
                 "type": "user_message",
-                "content": {"type": "text", "text": prompt},
-                "craft_job_continue": True,
+                "content": {
+                    "type": "text",
+                    "text": visible,
+                },
+                "craft_job_continue": not bool(visible),
             },
             db_session=db_session,
         )
@@ -379,20 +337,9 @@ def job_turn_budgets(job: CraftJob | None) -> tuple[int, int] | None:
     """Return (soft_budget, hard_cap) for a job turn, or None for defaults."""
     if job is None:
         return None
-    from onyx.server.features.build.configs import (
-        CRAFT_DEEP_JOB_RESOURCES,
-        CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION,
-    )
-    from onyx.server.features.build.timeouts import (
-        INTERACTIVE_TURN_HARD_CAP_SECONDS,
-        TURN_SOFT_BUDGET_FRACTION,
-    )
+    from onyx.server.features.build.configs import CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION
+    from onyx.server.features.build.timeouts import INTERACTIVE_TURN_HARD_CAP_SECONDS
 
     hard = min(job.phase_budget_seconds, INTERACTIVE_TURN_HARD_CAP_SECONDS)
-    fraction = (
-        CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION
-        if CRAFT_DEEP_JOB_RESOURCES
-        else TURN_SOFT_BUDGET_FRACTION
-    )
-    soft = max(1, int(fraction * hard))
+    soft = max(1, int(CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION * hard))
     return soft, hard

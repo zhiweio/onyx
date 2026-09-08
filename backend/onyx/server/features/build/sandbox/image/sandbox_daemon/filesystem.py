@@ -57,6 +57,16 @@ def _resolved_user_library_root() -> Path | None:
     return None
 
 
+def _is_shared_session_outputs(resolved: Path) -> bool:
+    """True when resolved path is another session's outputs under SESSIONS_ROOT."""
+    try:
+        sessions_root = SESSIONS_ROOT.resolve(strict=True)
+        rel = resolved.relative_to(sessions_root)
+    except (OSError, ValueError):
+        return False
+    return len(rel.parts) >= 2 and rel.parts[1] == "outputs"
+
+
 def _resolve_allowed_directory(
     path: Path,
     session_root_resolved: Path,
@@ -72,6 +82,9 @@ def _resolve_allowed_directory(
         return None
 
     if resolved.is_relative_to(session_root_resolved):
+        return resolved
+
+    if _is_shared_session_outputs(resolved):
         return resolved
 
     if allow_user_library:

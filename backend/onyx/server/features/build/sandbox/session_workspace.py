@@ -11,10 +11,19 @@ the same completed workspace.
 """
 
 import shlex
+from pathlib import Path
 
+from onyx.server.features.build.jobs.durability import (
+    SEED_MEMORY_MD,
+    SEED_PLAN_MD,
+    SEED_TODO_MD,
+)
 from onyx.server.features.build.sandbox.nextjs_dev import (
     build_webapp_script_write_snippet,
 )
+
+_RG_SHIM_SOURCE = Path(__file__).with_name("ripgrep_shim.py")
+_RG_SHIM_DEST = "/workspace/.venv/bin/rg"
 
 SESSIONS_ROOT = "/workspace/sessions"
 MANAGED_SKILLS_PATH = "/workspace/managed/skills"
@@ -48,11 +57,15 @@ def build_session_workspace_setup_script(
     agents_md: str,
     session_opencode_config_json: str,
     nextjs_port: int | None,
+    shared_outputs_path: str | None = None,
 ) -> str:
     """Build the shell script that creates a session workspace.
 
     Headless callers (scheduled tasks) pass ``nextjs_port=None`` — the agent's
     tools work without a dev server, and no ``start-webapp.sh`` is written.
+    Job lanes pass ``shared_outputs_path`` so ``outputs/`` points at the parent
+    session. The virtualenv lives at ``{session_path}/.venv``, never under
+    ``outputs/``.
     """
     webapp_script_write_snippet = (
         # Lazy provisioning: write start-webapp.sh, but don't scaffold
@@ -60,6 +73,49 @@ def build_session_workspace_setup_script(
         build_webapp_script_write_snippet(session_path, nextjs_port)
         if nextjs_port is not None
         else ""
+    )
+    if shared_outputs_path:
+        quoted_shared = shlex.quote(shared_outputs_path.rstrip("/"))
+        outputs_snippet = f"""
+mkdir -p {quoted_shared}
+if [ -e {session_path}/outputs ] && [ ! -L {session_path}/outputs ]; then
+  echo "Refusing to replace a real outputs directory with a shared link"
+  exit 1
+fi
+ln -sfn {quoted_shared} {session_path}/outputs
+"""
+    else:
+        outputs_snippet = f"""
+mkdir -p {session_path}/outputs
+mkdir -p {session_path}/outputs/tmp
+mkdir -p {session_path}/outputs/lanes
+mkdir -p {session_path}/outputs/normalized
+mkdir -p {session_path}/outputs/markdown
+mkdir -p {session_path}/outputs/exceptions
+mkdir -p {session_path}/outputs/extracted
+mkdir -p {session_path}/outputs/mcp
+mkdir -p {session_path}/outputs/commands
+mkdir -p {session_path}/outputs/reconcile
+mkdir -p {session_path}/outputs/plan
+mkdir -p {session_path}/outputs/tools
+if [ ! -s {session_path}/outputs/PLAN.md ]; then
+  printf '%s' {shlex.quote(SEED_PLAN_MD)} > {session_path}/outputs/PLAN.md
+fi
+if [ ! -s {session_path}/outputs/TODO.md ]; then
+  printf '%s' {shlex.quote(SEED_TODO_MD)} > {session_path}/outputs/TODO.md
+fi
+if [ ! -s {session_path}/outputs/MEMORY.md ]; then
+  printf '%s' {shlex.quote(SEED_MEMORY_MD)} > {session_path}/outputs/MEMORY.md
+fi
+"""
+    ripgrep_fallback_snippet = (
+        "if ! command -v rg >/dev/null 2>&1 || ! rg --version >/dev/null 2>&1; then\n"
+        "  mkdir -p /workspace/.venv/bin /home/sandbox/.opencode/bin\n"
+        f"  printf '%s' {shlex.quote(_RG_SHIM_SOURCE.read_text())} > {_RG_SHIM_DEST}\n"
+        f"  chmod 755 {_RG_SHIM_DEST}\n"
+        f"  cp {_RG_SHIM_DEST} /home/sandbox/.opencode/bin/rg\n"
+        "  chmod 755 /home/sandbox/.opencode/bin/rg\n"
+        "fi\n"
     )
 
     return f"""
@@ -75,9 +131,19 @@ set -e
 
 echo "Creating session directory: {session_path}"
 mkdir -p {session_path}
+chmod 755 {session_path}
 touch {session_path}/{SETUP_IN_PROGRESS_MARKER}
-mkdir -p {session_path}/outputs
+{outputs_snippet}
+mkdir -p {session_path}/.venv-lock
+mkdir -p {session_path}/project
 mkdir -p {session_path}/attachments
+if [ ! -x {session_path}/.venv/bin/python ]; then
+  python3 -m venv --system-site-packages {session_path}/.venv
+fi
+printf '%s\\n' 'export PATH="{session_path}/.venv/bin:$PATH"' 'export VIRTUAL_ENV="{session_path}/.venv"' > {session_path}/.session-env
+mkdir -p {session_path}/bin
+ln -sfn {session_path}/.venv/bin/python {session_path}/bin/python
+ln -sfn {session_path}/.venv/bin/pip {session_path}/bin/pip
 
 # DO NOT mkdir /workspace/managed/skills or /workspace/managed/user_library
 # here — the push daemon swaps these paths via os.rename(symlink, mount),
@@ -96,6 +162,8 @@ printf '%s' {shlex.quote(agents_md)} > {session_path}/AGENTS.md
 printf '%s' {shlex.quote(session_opencode_config_json)} > {session_path}/opencode.json
 
 {webapp_script_write_snippet}
+
+{ripgrep_fallback_snippet}
 
 rm -f {session_path}/{SETUP_IN_PROGRESS_MARKER}
 echo "Workspace materialization complete"

@@ -185,7 +185,6 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="craft-documentation"),
         SeededBuiltInProvider(skill_id="tax-compliance"),
         SeededBuiltInProvider(skill_id="tax-policy-trend"),
-        SeededBuiltInProvider(skill_id="long-job-protocol"),
         SeededBuiltInProvider(skill_id="document-ingest"),
         SeededBuiltInProvider(skill_id="biomed-initiation"),
         SeededBuiltInProvider(skill_id="biomed-literature"),

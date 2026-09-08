@@ -6,8 +6,8 @@ description: Orchestrate a full drug-program initiation (立项) report that fan
 # biomed-initiation
 
 Run a multi-source 立项 assessment and write a cited go/no-go memo. This is the
-orchestrator; it fans out to the six biomed sub-skills. Follow `long-job-protocol`;
-parse supplied files with `document-ingest`.
+orchestrator; it fans out to the six biomed sub-skills.
+Parse supplied files with `document-ingest`.
 
 ## Scope
 
@@ -22,8 +22,8 @@ This is R&D decision support, not medical, legal, or regulatory advice.
 
 1. **Plan** — Fix the target product profile (TPP): 靶点, 适应症, modality,
    geography, differentiation hypothesis, and the decision question. Write the
-   outline and the sub-skill assignment to `outputs/plan/PLAN.md`; seed
-   `outputs/plan/TODO.json` with one task per sub-skill.
+   outline and the sub-skill assignment to `outputs/PLAN.md`; seed
+   `outputs/TODO.md` with one task per sub-skill.
    **Done when:** PLAN.md holds the TPP and the six assignments.
 
 2. **Fan out** — Give each sub-skill a closed question list; each writes to its own

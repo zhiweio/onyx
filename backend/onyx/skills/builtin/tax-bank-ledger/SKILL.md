@@ -6,7 +6,7 @@ description: Merge multi-bank statements (多银行流水/对账单) and the ent
 # tax-bank-ledger
 
 Normalize every bank file into one ledger, then reconcile each account with a
-proper 银行余额调节表. Follow `long-job-protocol` and `document-ingest`. Keep the
+proper 银行余额调节表. Use `document-ingest`. Keep the
 original currency and memo. Never infer a missing balance and never net an
 unexplained difference to zero.
 
@@ -29,7 +29,7 @@ parse; do not block the batch.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`:每个 银行/账号, the date range, the
+1. **plan** — Write `outputs/PLAN.md`:每个 银行/账号, the date range, the
    expected columns per bank, and whether a book side exists. Done when every
    account and its source files are listed.
 2. **ingest** — Run `document-ingest` on all statements and the book ledger. Done

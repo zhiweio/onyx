@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { track, AnalyticsEvent } from "@/lib/analytics/utils";
@@ -23,6 +24,7 @@ import {
 import { useBuildStreaming } from "@/app/craft/hooks/useBuildStreaming";
 import { useWakeOnIntent } from "@/app/craft/hooks/useWakeOnIntent";
 import { BuildMessageAttachment } from "@/app/craft/types/streamingTypes";
+import type { StreamItem } from "@/app/craft/types/displayTypes";
 import {
   BuildFile,
   UploadFileStatus,
@@ -37,10 +39,10 @@ import CraftInputBar, {
   CraftInputBarHandle,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
-import LongJobToggle from "@/app/craft/components/LongJobToggle";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import {
   BuildLlmSelection,
+  CRAFT_GATEWAY_PROVIDER,
   hasSupportedCraftProvider,
   resolveSessionLlmSelection,
 } from "@/app/craft/onboarding/constants";
@@ -54,9 +56,16 @@ import CraftJobBanner, {
   useCraftJob,
 } from "@/app/craft/components/CraftJobBanner";
 import {
+  answerCraftQuestionAsk,
+  cancelCraftJob,
   createCraftJob,
   fetchActiveTurn,
+  fetchCraftQuestionAsk,
+  resumeCraftJob,
 } from "@/app/craft/services/apiServices";
+import CraftAskBar, {
+  type AskBarAction,
+} from "@/app/craft/components/CraftAskBar";
 import BuildWelcome from "@/app/craft/components/BuildWelcome";
 import BuildMessageList from "@/app/craft/components/BuildMessageList";
 import LiveApprovalsRegion from "@/app/craft/components/approvals/LiveApprovalsRegion";
@@ -124,7 +133,57 @@ export default function BuildChatPanel({
     session?.origin === "SCHEDULED" ? null : jobSessionId
   );
   const jobInFlight = isCraftJobInFlight(craftJob);
+  const pendingQuestion = useMemo(() => {
+    const fromItems = (items: StreamItem[]) => {
+      for (let index = items.length - 1; index >= 0; index -= 1) {
+        const item = items[index];
+        if (item?.type === "question_ask") {
+          return {
+            requestId: item.requestId,
+            prompt: item.prompt,
+            options: item.options,
+            questions: item.questions,
+          };
+        }
+      }
+      return null;
+    };
+    const live = fromItems(session?.streamItems ?? []);
+    if (live) {
+      return live;
+    }
+    const messages = session?.messages ?? [];
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const saved = messages[index]?.message_metadata?.streamItems;
+      if (!Array.isArray(saved)) {
+        continue;
+      }
+      const found = fromItems(saved as StreamItem[]);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }, [session?.streamItems, session?.messages]);
+  const shouldPollQuestion = Boolean(jobSessionId && jobInFlight);
+  const { data: parkedQuestion } = useSWR(
+    shouldPollQuestion && jobSessionId
+      ? ["craft-question-ask", jobSessionId]
+      : null,
+    ([, id]: [string, string]) => fetchCraftQuestionAsk(id),
+    { refreshInterval: 2000, revalidateOnFocus: false }
+  );
+  const askQuestion = pendingQuestion ?? parkedQuestion ?? null;
   const [longJobEnabled, setLongJobEnabled] = useState(false);
+
+  const jobModelPayload = (model: BuildLlmSelection | null | undefined) =>
+    model
+      ? {
+          provider: CRAFT_GATEWAY_PROVIDER,
+          provider_id: model.providerId,
+          model: model.modelName,
+        }
+      : {};
   const [isCompacting, setIsCompacting] = useState(false);
   const hasSession = useHasSession();
   const isRunning = useIsRunning();
@@ -523,6 +582,7 @@ export default function BuildChatPanel({
               session_id: sessionId,
               prompt: message,
               start: true,
+              ...jobModelPayload(chosen),
             });
             void mutateCraftJob();
             appendMessageToCurrent({
@@ -641,6 +701,7 @@ export default function BuildChatPanel({
               session_id: newSessionId,
               prompt: message,
               start: true,
+              ...jobModelPayload(chosen),
             });
             void mutateCraftJob();
             updateSessionData(newSessionId, {
@@ -714,6 +775,41 @@ export default function BuildChatPanel({
   const handleInterrupt = useCallback(() => {
     if (sessionId) void interruptStreaming(sessionId);
   }, [sessionId, interruptStreaming]);
+
+  const handleJobAsk = useCallback(
+    async (action: AskBarAction) => {
+      if (!craftJob) return;
+      try {
+        if (action === "reject") {
+          await cancelCraftJob(craftJob.id);
+        } else {
+          await resumeCraftJob(craftJob.id, action);
+        }
+        void mutateCraftJob();
+      } catch {
+        void mutateCraftJob();
+      }
+    },
+    [craftJob, mutateCraftJob]
+  );
+
+  const handleQuestionAnswer = useCallback(
+    async (requestId: string, allow: boolean, answers?: string[][]) => {
+      try {
+        await answerCraftQuestionAsk(requestId, allow, answers);
+        if (sessionId) {
+          updateSessionData(sessionId, {
+            streamItems: (session?.streamItems ?? []).filter(
+              (item) => item.type !== "question_ask"
+            ),
+          });
+        }
+      } catch {
+        void mutateCraftJob();
+      }
+    },
+    [mutateCraftJob, session?.streamItems, sessionId, updateSessionData]
+  );
 
   const handleQueueMessage = useCallback(
     (text: string, files: BuildFile[]) => {
@@ -802,11 +898,11 @@ export default function BuildChatPanel({
                   />
                 )}
                 <AgentSwitcher />
+                <CraftJobBanner sessionId={jobSessionId} />
                 <ScheduledRunBanner
                   sessionId={scheduledSessionId}
                   context={scheduledRunContext ?? null}
                 />
-                <CraftJobBanner sessionId={jobSessionId} />
               </div>
               {/* Right cluster: sandbox status sits left of the panel toggle. The
               toggle stays pinned to the right edge, so the status chip's width
@@ -876,17 +972,12 @@ export default function BuildChatPanel({
                       autoScrollEnabled={isAtBottom}
                       scrollContainerRef={scrollContainerRef}
                       trailingAssistantSlot={
-                        <>
-                          {wasInterrupted && !displayIsRunning && (
-                            <div className="flex items-center gap-2 text-sm text-text-03">
-                              <SvgStopCircle className="size-4 shrink-0 stroke-text-03" />
-                              <span>{t("responseStopped.label")}</span>
-                            </div>
-                          )}
-                          <LiveApprovalsRegion
-                            sessionId={sessionId ?? existingSessionId ?? null}
-                          />
-                        </>
+                        wasInterrupted && !displayIsRunning ? (
+                          <div className="flex items-center gap-2 text-sm text-text-03">
+                            <SvgStopCircle className="size-4 shrink-0 stroke-text-03" />
+                            <span>{t("responseStopped.label")}</span>
+                          </div>
+                        ) : null
                       }
                     />
                   )}
@@ -941,16 +1032,20 @@ export default function BuildChatPanel({
                       />
                     </div>
                   )}
+                  <LiveApprovalsRegion
+                    sessionId={sessionId ?? existingSessionId ?? null}
+                  />
+                  <CraftAskBar
+                    job={craftJob}
+                    question={askQuestion}
+                    onJobAction={handleJobAsk}
+                    onQuestionAnswer={handleQuestionAnswer}
+                  />
                   {/* The selected model is sent with each message, so a
                   switch applies from the next turn. Subagent transcripts
                   cannot send, so they get no picker. */}
                   {session?.isLoaded && !isViewingSubagent && (
                     <div className="flex justify-end items-center gap-3 pb-2">
-                      <LongJobToggle
-                        checked={longJobEnabled || jobInFlight}
-                        disabled={jobInFlight}
-                        onChange={setLongJobEnabled}
-                      />
                       <ModelPickerButton
                         selection={selectedModel}
                         onChange={(model) => {
@@ -969,6 +1064,9 @@ export default function BuildChatPanel({
                   <CraftInputBar
                     ref={inputBarRef}
                     onSubmit={handleSubmit}
+                    longJobEnabled={longJobEnabled || jobInFlight}
+                    onLongJobEnabledChange={setLongJobEnabled}
+                    longJobLocked={jobInFlight}
                     isRunning={displayIsRunning}
                     isInterrupting={isInterrupting}
                     onInterrupt={

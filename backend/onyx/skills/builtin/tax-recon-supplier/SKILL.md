@@ -6,7 +6,7 @@ description: Reconcile the 应付账款 ledger against supplier invoices or 供�
 # tax-recon-supplier
 
 Match the payables ledger to what suppliers billed, and make every difference
-explicit. Follow `long-job-protocol` and `document-ingest`. Report unmatched rows
+explicit. Use `document-ingest`. Report unmatched rows
 both ways; never net a ledger row against an unrelated invoice to make the total
 look right.
 
@@ -28,7 +28,7 @@ drop the supplier.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the ledger file, the invoice/statement
+1. **plan** — Write `outputs/PLAN.md`: the ledger file, the invoice/statement
    source, the suppliers and period in scope, and the match keys available (does
    the ledger carry 税号 and 发票号码, or only 名称+金额?). Done when both sides and
    the key hierarchy are named.

@@ -683,7 +683,11 @@ export function useBuildStreaming() {
               // Connect cards are transient interaction prompts, not transcript
               // content — drop them from the persisted message.
               const savedStreamItems = session.streamItems
-                .filter((item) => item.type !== "connect_app_request")
+                .filter(
+                  (item) =>
+                    item.type !== "connect_app_request" &&
+                    item.type !== "question_ask"
+                )
                 .map((item) => ({
                   ...item,
                   ...(item.type === "text" || item.type === "thinking"
@@ -727,6 +731,19 @@ export function useBuildStreaming() {
 
           case "approval_requested": {
             void globalMutate(SWR_KEYS.buildSessionLiveApprovals(sessionId));
+            break;
+          }
+
+          case "question_ask": {
+            if (!parsed.requestId) break;
+            appendStreamItem(sessionId, {
+              type: "question_ask",
+              id: parsed.requestId,
+              requestId: parsed.requestId,
+              prompt: parsed.prompt,
+              options: parsed.options,
+              questions: parsed.questions,
+            });
             break;
           }
 

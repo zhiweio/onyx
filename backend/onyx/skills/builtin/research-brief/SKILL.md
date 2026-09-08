@@ -6,7 +6,7 @@ description: Research a topic across retrievable sources and write a cited brief
 # research-brief
 
 Produce a cited brief from sources you actually retrieved in this session.
-Follow `long-job-protocol`.
+Write intermediate notes to disk when the brief spans more than one turn.
 
 ## Scope
 
@@ -20,7 +20,7 @@ use `biomed-literature`, `biomed-clinical-intel`, `tax-policy-trend`, or
 ## Workflow
 
 1. **Scope** — Write the question, the time window, the geography, and what is
-   explicitly out of scope into `outputs/plan/PLAN.md`. Narrow a broad ask rather
+   explicitly out of scope into `outputs/PLAN.md`. Narrow a broad ask rather
    than answering all of it shallowly; say which narrowing you chose.
    **Done when:** PLAN.md states the question and the exclusions.
 

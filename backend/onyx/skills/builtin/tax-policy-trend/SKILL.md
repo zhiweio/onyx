@@ -6,7 +6,7 @@ description: Research China tax policy trends for a tax type, region, and indust
 # tax-policy-trend
 
 Produce a cited China tax policy trend note from documents you actually
-retrieved. Follow `long-job-protocol`. Save raw MCP bodies under
+retrieved. Save raw MCP bodies under
 `outputs/mcp/<server>/<call>.json`. Quote 文号 and 发文机关 from fetched records
 only. Do not invent a notice, and do not assert a rule's current effective status
 without retrieving it.
@@ -38,7 +38,7 @@ Patsnap-style MCP is configured, query it too.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the tax type, region, industry, window,
+1. **plan** — Write `outputs/PLAN.md`: the tax type, region, industry, window,
    and configured sources. Done when scope and sources are fixed.
 2. **gather** — Search official sources first, then commercial, then news; write
    notes with citations to `outputs/research/<role>/*.md` and raw MCP bodies to

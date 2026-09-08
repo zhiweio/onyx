@@ -12193,15 +12193,52 @@
       }
     },
     "longJob": {
-      "label": "Long job",
-      "toggle": "Run as a long job",
-      "cancel": "Cancel",
+      "label": "Tâche longue",
+      "toggle": "Exécuter comme tâche longue",
+      "cancel": "Annuler",
+      "approve": "Approuver le plan",
+      "expand": "Afficher les details du travail",
+      "collapse": "Masquer les details du travail",
+      "askBar": {
+        "needChoice": "Un choix est requis pour continuer.",
+        "reviewResult": "Examiner le resultat.",
+        "start": "Demarrer",
+        "changeDirection": "Changer de direction",
+        "cancel": "Annuler",
+        "accept": "Accepter",
+        "requestChanges": "Demander des changements",
+        "continue": "Continuer",
+        "reject": "Refuser"
+      },
       "status": {
-        "running": "Phase: {phase}",
-        "waitingSpecialists": "Waiting for specialist sessions",
-        "succeeded": "Finished",
-        "failed": "Failed",
-        "cancelled": "Cancelled"
+        "running": "En cours : {phase}",
+        "waitingSpecialists": "En attente des sessions spécialisées",
+        "waitingLanes": "Voies parallèles en cours",
+        "interrupted": "En attente d'un choix",
+        "succeeded": "Terminé",
+        "failed": "Échec",
+        "cancelled": "Annulé"
+      },
+      "timeline": {
+        "plan": "Plan",
+        "ingest": "Documents",
+        "lanes": "Voies",
+        "reconcile": "Réconciliation",
+        "work": "Travail",
+        "compose": "Rédaction",
+        "review": "Revue",
+        "revise": "Révision"
+      },
+      "goal": "Objectif",
+      "domain": "Domaine",
+      "specialists": "Spécialistes",
+      "error": "Échec",
+      "errorFallback": "Le travail s'est arrêté. Ouvrez le chat pour la dernière étape.",
+      "specialistStatus": {
+        "pending": "En attente",
+        "running": "En cours",
+        "succeeded": "Terminé",
+        "failed": "Échec"
       }
     },
     "setupCard": {

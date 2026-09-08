@@ -17,13 +17,13 @@ import time
 from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import Any, cast
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 import httpx
 
 from onyx.cache.factory import get_cache_backend
-from onyx.server.features.build import connect_app
+from onyx.server.features.build import connect_app, question_ask
 from onyx.server.features.build.configs import (
     OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
     OPENCODE_SERVE_CONNECT_TIMEOUT,
@@ -64,6 +64,7 @@ logger = setup_logger()
 
 # opencode permission category emitted by the no-op ``connect_app`` tool
 _CONNECT_APP_PERMISSION = "connect_app"
+_QUESTION_PERMISSION = "question"
 
 
 # Event union (kept narrow — only the types we actually translate to).
@@ -148,6 +149,7 @@ class _TurnState:
     # decision endpoint answers directly); reject an undecided request for a clean
     # decline. A late reject after the user answered is a harmless no-op.
     pending_connect_app_deadlines: dict[str, float] = field(default_factory=dict)
+    pending_question_deadlines: dict[str, float] = field(default_factory=dict)
     # Set from BOTH message.updated and hydration — text deltas race ahead of message.updated.
     summary_message_ids: set[str] = field(default_factory=set)
 
@@ -1665,6 +1667,9 @@ class OpencodeServeClient:
             self._reject_expired_connect_app_permissions(
                 state, now, directory=directory
             )
+            self._reject_expired_question_permissions(
+                state, now, directory=directory
+            )
 
             inactivity_remaining = timeout - (now - last_activity_at)
             absolute_remaining = (
@@ -1725,8 +1730,11 @@ class OpencodeServeClient:
                     terminated_locally = True
                 yield sandbox_event
 
-            if raw.get("type") == "permission.asked":
+            event_type = raw.get("type")
+            if event_type == "permission.asked":
                 self._handle_permission_ask(raw, state, directory=directory)
+            elif event_type in {"question.asked", "question.v2.asked"}:
+                self._handle_question_asked(raw, state, directory=directory)
 
             if terminated_locally:
                 return
@@ -1804,7 +1812,7 @@ class OpencodeServeClient:
         ``opencode.json`` covers them — an unexpected one is a config gap, so
         WARN + allow).
         """
-        props = evt.get("properties") or {}
+        props = _event_payload(evt)
         perm_id = props.get("id")
         perm_type = props.get("permission")
         patterns = props.get("patterns")
@@ -1818,6 +1826,9 @@ class OpencodeServeClient:
             self._handle_connect_app_permission(
                 evt, state, perm_id, directory=directory
             )
+            return
+        if perm_type == _QUESTION_PERMISSION:
+            self._handle_question_permission(evt, state, perm_id, directory=directory)
             return
 
         logger.warning(
@@ -1866,6 +1877,46 @@ class OpencodeServeClient:
             return False
         return True
 
+    def answer_question(
+        self,
+        session_id: str,
+        request_id: str,
+        *,
+        allow: bool,
+        answers: list[list[str]] | None,
+        directory: str,
+    ) -> bool:
+        """Reply to or reject a pending OpenCode ``que_*`` question."""
+        if allow:
+            path = f"/session/{session_id}/question/{request_id}/reply"
+            body: dict[str, Any] = {"answers": answers or []}
+        else:
+            path = f"/session/{session_id}/question/{request_id}/reject"
+            body = {}
+        try:
+            r = self._http.post(
+                path,
+                params={"directory": directory},
+                json=body,
+            )
+        except httpx.HTTPError as e:
+            logger.warning(
+                "opencode-serve: question %s failed for %s: %s",
+                "reply" if allow else "reject",
+                request_id,
+                e,
+            )
+            return False
+        if not r.is_success:
+            logger.warning(
+                "opencode-serve: question %s for %s -> HTTP %s",
+                "reply" if allow else "reject",
+                request_id,
+                r.status_code,
+            )
+            return False
+        return True
+
     def _handle_connect_app_permission(
         self, evt: dict[str, Any], state: _TurnState, perm_id: str, *, directory: str
     ) -> None:
@@ -1874,7 +1925,7 @@ class OpencodeServeClient:
         Doesn't block; the consume loop's timeout fallback rejects if the user
         never decides. The app ID comes from the tool's ``context.ask`` metadata.
         """
-        props = evt.get("properties") or {}
+        props = _event_payload(evt)
         meta_raw = props.get("metadata")
         meta = meta_raw if isinstance(meta_raw, dict) else {}
         raw_external_app_id = meta.get("external_app_id")
@@ -1957,10 +2008,140 @@ class OpencodeServeClient:
                 state.session_id, perm_id, allow=False, directory=directory
             )
 
+    def _handle_question_asked(
+        self, evt: dict[str, Any], state: _TurnState, *, directory: str
+    ) -> None:
+        props = _event_payload(evt)
+        request_id = props.get("id")
+        if not isinstance(request_id, str) or not request_id.startswith("que"):
+            logger.warning(
+                "opencode-serve: question.asked without que_* id; cannot park"
+            )
+            return
+        self._park_question_ask(
+            props,
+            state,
+            parked_id=request_id,
+            kind="question",
+            directory=directory,
+        )
+
+    def _handle_question_permission(
+        self, evt: dict[str, Any], state: _TurnState, perm_id: str, *, directory: str
+    ) -> None:
+        props = _event_payload(evt)
+        self._park_question_ask(
+            props,
+            state,
+            parked_id=perm_id,
+            kind="permission",
+            directory=directory,
+        )
+
+    def _park_question_ask(
+        self,
+        props: dict[str, Any],
+        state: _TurnState,
+        *,
+        parked_id: str,
+        kind: Literal["question", "permission"],
+        directory: str,
+    ) -> None:
+        items = question_ask.questions_from_props(props)
+        prompt, options = (
+            (items[0].prompt, list(items[0].options))
+            if items
+            else question_ask.prompt_and_options(props)
+        )
+        build_session_id = directory.rstrip("/").rsplit("/", 1)[-1]
+        request_id = str(uuid4())
+        try:
+            cache = get_cache_backend(tenant_id=get_current_tenant_id())
+            question_ask.stash_pending(
+                request_id,
+                question_ask.QuestionAskPending(
+                    build_session_id=build_session_id,
+                    opencode_session_id=state.session_id,
+                    perm_id=parked_id,
+                    directory=directory,
+                    kind=kind,
+                ),
+                cache,
+            )
+            question_ask.announce_request(
+                build_session_id,
+                question_ask.QuestionAskRequest(
+                    request_id=request_id,
+                    prompt=prompt,
+                    options=options,
+                    questions=items,
+                ),
+                cache,
+            )
+        except Exception:
+            logger.exception("question_ask announce failed; denying")
+            if kind == "question":
+                self.answer_question(
+                    state.session_id,
+                    parked_id,
+                    allow=False,
+                    answers=None,
+                    directory=directory,
+                )
+            else:
+                self.answer_permission(
+                    state.session_id, parked_id, allow=False, directory=directory
+                )
+            return
+        state.pending_question_deadlines[parked_id] = (
+            time.monotonic() + SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS
+        )
+
+    def _reject_expired_question_permissions(
+        self, state: _TurnState, now: float, *, directory: str
+    ) -> None:
+        expired = [
+            perm_id
+            for perm_id, deadline in state.pending_question_deadlines.items()
+            if deadline <= now
+        ]
+        for perm_id in expired:
+            del state.pending_question_deadlines[perm_id]
+            try:
+                cache = get_cache_backend(tenant_id=get_current_tenant_id())
+                build_session_id = directory.rstrip("/").rsplit("/", 1)[-1]
+                if not question_ask.was_seen(build_session_id, cache):
+                    question_ask.mark_unseen_timeout(build_session_id, cache)
+            except Exception:
+                logger.exception("question_ask: could not record unseen timeout")
+            if perm_id.startswith("que"):
+                self.answer_question(
+                    state.session_id,
+                    perm_id,
+                    allow=False,
+                    answers=None,
+                    directory=directory,
+                )
+            else:
+                self.answer_permission(
+                    state.session_id, perm_id, allow=False, directory=directory
+                )
+
 
 # ---------------------------------------------------------------------------
 # Module-private helpers.
 # ---------------------------------------------------------------------------
+
+
+def _event_payload(evt: dict[str, Any]) -> dict[str, Any]:
+    """OpenCode SSE uses ``properties``; durable envelopes use ``data``."""
+    props = evt.get("properties")
+    if isinstance(props, dict) and props:
+        return props
+    data = evt.get("data")
+    if isinstance(data, dict):
+        return data
+    return props if isinstance(props, dict) else {}
 
 
 def _short_body(r: httpx.Response) -> str:

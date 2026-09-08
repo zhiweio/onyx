@@ -6,7 +6,7 @@ description: Analyze the 资产负债表, 利润表, and 现金流量表 togethe
 # tax-financial-statement
 
 Read the three statements as one system and report what drives the numbers, not
-just the numbers. Follow `long-job-protocol` for multi-round work. Use `xlsx` to
+just the numbers. Write intermediate extracts to disk for multi-round work. Use `xlsx` to
 read workbook inputs — recalculate first when formulas may be stale, because
 `openpyxl` does not compute formulas. State the basis before any figure.
 
@@ -27,7 +27,7 @@ the gap.
 
 ## Phases
 
-1. **plan** — Write `outputs/plan/PLAN.md`: the statements present, the periods,
+1. **plan** — Write `outputs/PLAN.md`: the statements present, the periods,
    the basis (unit/币种/准则), and the questions to answer. Done when the basis is
    fixed and the comparison periods are named.
 2. **ingest** — Run `document-ingest` / `xlsx` on the statements. Done when every

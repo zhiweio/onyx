@@ -386,6 +386,48 @@ def test_filesystem_list_classifies_symlinks_and_expands_valid_directory(
     assert resp.status_code == 404
 
 
+def test_filesystem_list_follows_shared_session_outputs(
+    configured_sandbox_daemon: tuple[ModuleType, ModuleType, Ed25519PrivateKey, Path],
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, _, priv, _ = configured_sandbox_daemon
+    filesystem_mod = sys.modules["sandbox_daemon.filesystem"]
+    sessions_root = tmp_path / "sessions"
+    sessions_root.mkdir()
+    monkeypatch.setattr(filesystem_mod, "SESSIONS_ROOT", sessions_root)
+
+    parent_id = UUID("00000000-0000-0000-0000-0000000000aa")
+    child_id = UUID("00000000-0000-0000-0000-0000000000bb")
+    parent_outputs = sessions_root / str(parent_id) / "outputs"
+    (parent_outputs / "lanes" / "literature").mkdir(parents=True)
+    (parent_outputs / "lanes" / "literature" / "NOTES.md").write_text("notes\n")
+    child_root = sessions_root / str(child_id)
+    child_root.mkdir(parents=True)
+    (child_root / "outputs").symlink_to(parent_outputs)
+
+    resp = _filesystem_list_request(
+        client,
+        priv=priv,
+        session_id=child_id,
+        path="outputs",
+    )
+    assert resp.status_code == 200, resp.text
+    entries = {entry["name"]: entry for entry in resp.json()["entries"]}
+    assert entries["lanes"]["is_directory"]
+
+    resp = _filesystem_list_request(
+        client,
+        priv=priv,
+        session_id=child_id,
+        path="outputs/lanes/literature",
+    )
+    assert resp.status_code == 200, resp.text
+    entries = {entry["name"]: entry for entry in resp.json()["entries"]}
+    assert entries["NOTES.md"]["path"] == "outputs/lanes/literature/NOTES.md"
+
+
 def test_filesystem_list_keeps_broken_user_library_link_visible(
     configured_sandbox_daemon: tuple[ModuleType, ModuleType, Ed25519PrivateKey, Path],
     client: TestClient,
@@ -1386,6 +1428,33 @@ def test_snapshot_create_rejects_snapshot_root_symlink(
         list(snapshot_mod.iter_snapshot_archive(session_id))
 
 
+def test_snapshot_create_skips_shared_session_outputs(
+    sandbox_daemon_modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, _ = sandbox_daemon_modules
+    snapshot_mod = sys.modules["sandbox_daemon.snapshot"]
+    sessions_root = tmp_path / "sessions"
+    parent_id = UUID("00000000-0000-0000-0000-0000000000aa")
+    child_id = UUID("00000000-0000-0000-0000-0000000000bb")
+    parent_outputs = sessions_root / str(parent_id) / "outputs"
+    parent_outputs.mkdir(parents=True)
+    (parent_outputs / "keep.txt").write_text("parent\n")
+    child_path = sessions_root / str(child_id)
+    child_path.mkdir(parents=True)
+    (child_path / "outputs").symlink_to(parent_outputs)
+    (child_path / "attachments").mkdir()
+    (child_path / "attachments" / "a.txt").write_text("a\n")
+    monkeypatch.setattr(snapshot_mod, "SESSIONS_ROOT", sessions_root)
+
+    dirs = snapshot_mod._snapshot_dirs(child_path)
+    assert "outputs" not in dirs
+    assert "attachments" in dirs
+    chunks = list(snapshot_mod.iter_snapshot_archive(child_id))
+    assert chunks
+
+
 def test_snapshot_create_skips_nested_unsupported_entries(
     sandbox_daemon_modules: tuple[ModuleType, ModuleType],
     tmp_path: Path,
@@ -1459,6 +1528,8 @@ def test_snapshot_create_excludes_generated_dirs_from_size_check_and_archive(
     (session_path / "outputs/apps/admin/node_modules/pkg").mkdir(parents=True)
     (session_path / "outputs/apps/admin/.next/cache").mkdir(parents=True)
     (session_path / "attachments/node_modules/pkg").mkdir(parents=True)
+    (session_path / "project").mkdir(parents=True)
+    (session_path / "project/note.md").write_text("durable\n")
     (session_path / "outputs/apps/admin/app/page.tsx").write_text("ok\n")
     (session_path / "outputs/apps/admin/node_modules/pkg/index.js").write_bytes(
         b"x" * 1024
@@ -1473,10 +1544,9 @@ def test_snapshot_create_excludes_generated_dirs_from_size_check_and_archive(
     with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as tar:
         members = tar.getnames()
     assert "outputs/apps/admin/app/page.tsx" in members
-    assert "attachments/node_modules/pkg/index.js" in members
-    assert not any(
-        member.startswith("outputs/apps/admin/node_modules") for member in members
-    )
+    assert "project/note.md" in members
+    assert "attachments/node_modules/pkg/index.js" not in members
+    assert not any("node_modules" in member for member in members)
     assert not any(member.startswith("outputs/apps/admin/.next") for member in members)
 
 

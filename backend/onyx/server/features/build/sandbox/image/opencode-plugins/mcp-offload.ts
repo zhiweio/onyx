@@ -42,12 +42,53 @@ function safeName(raw: string): string {
   return cleaned || "tool";
 }
 
-function digestText(path: string, body: string, tool: string): string {
+function rewriteSessionDeny(body: string): string | null {
+  if (!/\/workspace\/sessions\//i.test(body)) return null;
+  const denied =
+    /denied|permission|forbidden|blocked|403/i.test(body);
+  if (!denied) return null;
+  return (
+    "Stay in this session. Use relative outputs/. " +
+    "Do not list /workspace/sessions."
+  );
+}
+
+function rewriteWebfetchError(tool: string, body: string): string | null {
+  if (tool !== "webfetch") return null;
+  const blocked =
+    /destination_blocked/i.test(body) ||
+    /StatusCode:\s*non 2xx status code \(403/i.test(body) ||
+    /Unable to fetch/i.test(body);
+  if (!blocked) return null;
+  const urlMatch = body.match(/https?:\/\/[^\s)"']+/);
+  const url = urlMatch?.[0] ?? "";
+  const host = (() => {
+    try {
+      return url ? new URL(url).hostname : "";
+    } catch {
+      return "";
+    }
+  })();
+  return (
+    `Web fetch returned HTTP 403 for ${url || "this URL"}. ` +
+    `The sandbox proxy allows public scientific APIs; a 403 here is from ` +
+    `the origin (bot filter, missing identifying User-Agent, or datacenter ` +
+    `IP), not an internal-network deny.\n` +
+    `Do not retry the same URL with bash. Use another tool this session already has, or webfetch on a fallback:\n` +
+    `- PubMed: https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term=QUERY\n` +
+    `- Europe PMC: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=QUERY&format=json\n` +
+    (host.includes("fda.gov")
+      ? `- openFDA: retry once with a simpler query (no extra quotes), format=text.\n`
+      : "") +
+    `Record the miss in outputs/exceptions and continue from sources you can fetch.`
+  );
+}
+
+function digestText(body: string, tool: string): string {
   const preview = body.slice(0, PREVIEW_CHARS);
   return (
-    `[Onyx MCP offload] ${tool} returned ${body.length} chars. ` +
-    `Full result is on disk at ${path}. Use that file; do not ask for the ` +
-    `full body again.\n\nPreview:\n${preview}`
+    `[Onyx MCP offload] ${tool} returned ${body.length} chars.\n\n` +
+    `Preview:\n${preview}`
   );
 }
 
@@ -62,10 +103,34 @@ export default (async ({ directory }) => {
       if (SKIP_TOOLS.has(tool)) return;
 
       const body = textFromOutput(output);
+      const sessionDeny = rewriteSessionDeny(body);
+      if (sessionDeny) {
+        output.output = sessionDeny;
+        const content = (output as { content?: unknown }).content;
+        if (Array.isArray(content)) {
+          (output as { content: unknown[] }).content = [
+            { type: "text", text: sessionDeny },
+          ];
+        }
+        return;
+      }
+      const webfetchError = rewriteWebfetchError(tool, body);
+      if (webfetchError) {
+        output.output = webfetchError;
+        const content = (output as { content?: unknown }).content;
+        if (Array.isArray(content)) {
+          (output as { content: unknown[] }).content = [
+            { type: "text", text: webfetchError },
+          ];
+        }
+        return;
+      }
       if (body.length < OFFLOAD_THRESHOLD) return;
 
       const stamp = Date.now();
-      const relative = `outputs/mcp/${safeName(tool)}/${stamp}.json`;
+      const extractLike = /extract|xlsx|csv|table|ingest/i.test(tool);
+      const root = extractLike ? "outputs/extracted" : "outputs/mcp";
+      const relative = `${root}/${safeName(tool)}/${stamp}.json`;
       const dest = `${directory}/${relative}`;
       const destFile = Bun.file(dest);
       await Bun.write(
@@ -82,7 +147,7 @@ export default (async ({ directory }) => {
         )
       );
 
-      const digest = digestText(relative, body, tool);
+      const digest = digestText(body, tool);
       output.output = digest;
       const content = (output as { content?: unknown }).content;
       if (Array.isArray(content)) {

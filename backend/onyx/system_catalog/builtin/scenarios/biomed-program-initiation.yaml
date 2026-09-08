@@ -4,6 +4,19 @@ required_inputs:
   - asset
   - indication
   - decision_date
+suggested_lanes:
+  - role: literature
+    skill_id: biomed-literature
+  - role: clinical
+    skill_id: biomed-clinical-intel
+  - role: patent
+    skill_id: biomed-patent-fto
+  - role: cmc
+    skill_id: biomed-cmc-quality
+  - role: regulatory
+    skill_id: biomed-regulatory
+  - role: trial-design
+    skill_id: biomed-trial-design
 phases:
   - id: collect
     done_when: Literature, trials, patents, and CMC sources are listed

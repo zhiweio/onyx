@@ -187,6 +187,7 @@ class SandboxManager(_ServeMixin, ABC):
         connectable_apps_section: str,
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Set up a session workspace within an existing sandbox.
 
@@ -250,6 +251,7 @@ class SandboxManager(_ServeMixin, ABC):
         user_name: str | None = None,
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
+        share_workspace_from: UUID | None = None,
     ) -> None:
         """Rewrite generated session configuration without replacing outputs."""
         ...
@@ -689,6 +691,19 @@ class SandboxManager(_ServeMixin, ABC):
         """Write files atomically to a sandbox. Raise RetriableWriteError for
         transients, FatalWriteError for permanent failures."""
         ...
+
+    def run_workspace_command(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        command: list[str],
+    ) -> int:
+        """Run a command in a session workspace. Raise if unsupported."""
+        raise NotImplementedError
+
+    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:
+        """Raise CPU/memory for a running long job. Default is a no-op."""
+        return None
 
     def push_to_sandbox(
         self,

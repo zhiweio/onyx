@@ -6,7 +6,7 @@ description: Map the drug/biologic regulatory pathway across NMPA, FDA, and EMA 
 # biomed-regulatory
 
 Map the filing sequence per market and the evidence each step requires. Follow
-`long-job-protocol`.
+cited sources only.
 
 ## Scope
 
@@ -24,7 +24,7 @@ not legal or regulatory advice; confirm with regulatory affairs before filing.
 1. **Classify** — Fix modality (small molecule, biologic, cell/gene therapy,
    vaccine), indication, novelty (new chemical/biological entity vs generic /
    biosimilar vs 505(b)(2) reference-reliant), and target markets. Write to
-   `outputs/plan/PLAN.md`.
+   `outputs/PLAN.md`.
    **Done when:** PLAN.md states modality, novelty class, and markets.
 
 2. **Map the route per agency** — For each market in scope, name the route and its

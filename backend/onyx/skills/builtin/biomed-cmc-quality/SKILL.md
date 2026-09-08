@@ -6,7 +6,7 @@ description: Assess CMC and quality risk for a drug substance or product against
 # biomed-cmc-quality
 
 Assess pharmaceutical-quality risk and map each risk to the governing guideline.
-Follow `long-job-protocol`; parse supplied dossiers with `document-ingest`.
+Parse supplied dossiers with `document-ingest`.
 
 ## Scope
 
@@ -22,13 +22,13 @@ label content — retrieve and cite it.
 ## Workflow
 
 1. **Scope** — Fix the modality (small molecule, peptide, biologic, cell/gene),
-   dosage form, route, and manufacturing region. Write to `outputs/plan/PLAN.md`.
-   **Done when:** PLAN.md separates drug-substance from drug-product scope.
+   dosage form, route, and manufacturing region.
+   **Done when:** drug-substance and drug-product scope are separated.
 
 2. **Gather** — Retrieve the governing guidelines, the pharmacopeial monograph, the
-   approved label, and any recall/inspection records (source order below). Ingest
-   supplied dossier files to `outputs/extracted/`; save fetched bodies to
-   `outputs/mcp/<server>/<call>.json`; failures to `outputs/exceptions/cmc.csv`.
+   approved label, and any recall/inspection records (source order below). If the
+   host brief names a search MCP, call that tool first. Ingest supplied dossier
+   files to `outputs/extracted/`; log failures to `outputs/exceptions/cmc.csv`.
    **Done when:** each in-scope attribute has a cited governing document.
 
 3. **Assess by attribute** — Work the checklist below. For each critical quality

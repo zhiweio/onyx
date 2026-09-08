@@ -57,13 +57,25 @@ ARG AGENT_BROWSER_VERSION=0.31.1
 # the python:3.13-slim base.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl \
+    wget \
     git \
     procps \
     unzip \
+    zip \
+    jq \
+    fd-find \
+    tree \
+    sqlite3 \
+    file \
+    pandoc \
+    build-essential \
+    python3-dev \
     iptables \
     gosu \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    ripgrep \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/fdfind /usr/local/bin/fd
 
 COPY --from=node_source /usr/local/bin/node /usr/local/bin/node
 COPY --from=node_source /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -179,9 +191,15 @@ RUN curl -fsSL -o /tmp/opencode-install.sh https://opencode.ai/install && \
     bash /tmp/opencode-install.sh --version "${OPENCODE_VERSION}" --no-modify-path && \
     rm /tmp/opencode-install.sh
 # Pre-warm Bun's tarball cache so per-session installs hit a local store.
-RUN cd /workspace/templates/outputs/web && \
-    bun install --frozen-lockfile && \
-    rm -rf node_modules
+# Pass --build-arg WARM_BUN_CACHE=false when the build network rejects npm TLS.
+ARG WARM_BUN_CACHE=true
+RUN if [ "$WARM_BUN_CACHE" = "true" ]; then \
+      cd /workspace/templates/outputs/web && \
+      bun install --frozen-lockfile && \
+      rm -rf node_modules; \
+    else \
+      echo "Skipping bun template cache warm"; \
+    fi
 USER root
 
 ENV PATH="/home/sandbox/.opencode/bin:${PATH}"

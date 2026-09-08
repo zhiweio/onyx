@@ -58,12 +58,9 @@ def evaluate_phase_gate(
 
 
 def retry_prompt(phase_id: str, missing: list[str]) -> str:
-    listed = ", ".join(missing) if missing else "required artifacts"
-    return (
-        f"Phase `{phase_id}` is not done. Missing: {listed}. "
-        "Write the missing files and "
-        f"`outputs/plan/PHASE_DONE` with the single line `{phase_id}`, then stop."
-    )
+    from onyx.server.features.build.jobs.gates import retry_brief
+
+    return retry_brief(phase_id, missing)
 
 
 def increment_gate_retries(phase: dict[str, Any]) -> int:

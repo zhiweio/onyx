@@ -75,6 +75,30 @@ def resolve_craft_mcp_servers(
     ]
 
 
+def opencode_mcp_tool_id(server_key: str, tool_name: str) -> str:
+    """OpenCode tool id: ``<serverKey>_<toolName>``."""
+    return f"{server_key}_{tool_name}"
+
+
+def craft_mcp_tool_surface(db_session: Session, user: User) -> list[str]:
+    """Server keys plus OpenCode MCP tool ids the model can call."""
+    servers = resolve_craft_mcp_servers(db_session, user)
+    key_by_id = {server.server_id: server.key for server in servers}
+    labels = [server.key for server in servers]
+    disabled = {server.server_id: set(server.disabled_tools) for server in servers}
+    server_ids = [server.server_id for server in servers]
+    for tool in get_mcp_tools_for_servers(server_ids, db_session):
+        if not tool.enabled or not tool.name:
+            continue
+        if tool.mcp_server_id is not None and tool.name in disabled.get(
+            tool.mcp_server_id, set()
+        ):
+            continue
+        key = key_by_id.get(tool.mcp_server_id)
+        labels.append(opencode_mcp_tool_id(key, tool.name) if key else tool.name)
+    return labels
+
+
 def craft_mcp_fingerprint(mcp_servers: Sequence[CraftMCPServerConfig]) -> str:
     """Stable digest of everything about the craft MCP set that a running
     session must be rebuilt to pick up: the server set (id + url) and each
