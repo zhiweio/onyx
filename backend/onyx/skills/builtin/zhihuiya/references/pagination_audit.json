@@ -1,0 +1,9 @@
+{
+  "layers": ["clue", "count", "detail"],
+  "default_limit": 100,
+  "caps": {
+    "patsnap_search": 1000,
+    "patent_landscape": 20000,
+    "patent_monetize": 20000
+  }
+}

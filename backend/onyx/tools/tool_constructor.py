@@ -16,6 +16,7 @@ from onyx.db.enums import MCPServerScope
 from onyx.db.mcp import (
     get_all_mcp_tools_for_server,
     get_mcp_server_by_id,
+    user_can_invoke_mcp_server,
 )
 from onyx.db.models import Persona, User
 from onyx.db.models import Tool as ToolDBModel
@@ -43,6 +44,8 @@ from onyx.tools.tool_implementations.file_reader.file_reader_tool import FileRea
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     ImageGenerationTool,
 )
+from onyx.server.features.mcp.gateway_bind import discover_and_store_bound_tools
+from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.tools.tool_implementations.mcp.mcp_tool import MCPTool
 from onyx.tools.tool_implementations.memory.memory_tool import MemoryTool
 from onyx.tools.tool_implementations.open_url.open_url_tool import OpenURLTool
@@ -152,6 +155,8 @@ def construct_tools(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
+    selected_mcp_server_ids: list[int] | None = None,
+    selected_skill_ids: list[str] | None = None,
 ) -> dict[int, list[Tool]]:
     """Constructs tools based on persona configuration and available APIs.
 
@@ -173,6 +178,8 @@ def construct_tools(
             file_reader_tool_config=file_reader_tool_config,
             allowed_tool_ids=allowed_tool_ids,
             search_usage_forcing_setting=search_usage_forcing_setting,
+            selected_mcp_server_ids=selected_mcp_server_ids,
+            selected_skill_ids=selected_skill_ids,
         )
 
 
@@ -187,8 +194,18 @@ def _construct_tools_impl(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
+    selected_mcp_server_ids: list[int] | None = None,
+    selected_skill_ids: list[str] | None = None,
 ) -> dict[int, list[Tool]]:
     tool_dict: dict[int, list[Tool]] = {}
+    effective_mcp_ids = set(
+        resolve_effective_mcp_server_ids(
+            db_session,
+            user,
+            selected_mcp_server_ids=selected_mcp_server_ids,
+            selected_skill_ids=selected_skill_ids,
+        )
+    )
 
     # Log which tools are attached to the persona for debugging
     persona_tool_names = [t.name for t in persona.tools]
@@ -451,6 +468,8 @@ def _construct_tools_impl(
 
         # Handle MCP tools
         elif db_tool_model.mcp_server_id:
+            if db_tool_model.mcp_server_id not in effective_mcp_ids:
+                continue
             if db_tool_model.mcp_server_id in mcp_tool_cache:
                 tool_dict[db_tool_model.id] = [
                     mcp_tool_cache[db_tool_model.mcp_server_id][db_tool_model.id]
@@ -458,6 +477,8 @@ def _construct_tools_impl(
                 continue
 
             mcp_server = get_mcp_server_by_id(db_tool_model.mcp_server_id, db_session)
+            if not user_can_invoke_mcp_server(user, mcp_server):
+                continue
             if (
                 mcp_server.scope == MCPServerScope.PERSONAL
                 and mcp_server.owner != user.email
@@ -514,6 +535,50 @@ def _construct_tools_impl(
                     expected_tool_name,
                     mcp_server.name,
                 )
+
+    additional_mcp_headers = None
+    if custom_tool_config and custom_tool_config.mcp_headers:
+        additional_mcp_headers = custom_tool_config.mcp_headers
+    for server_id in sorted(effective_mcp_ids - set(mcp_tool_cache)):
+        try:
+            extra_server = get_mcp_server_by_id(server_id, db_session)
+        except ValueError:
+            continue
+        if not user_can_invoke_mcp_server(user, extra_server):
+            continue
+        try:
+            extra_credentials = resolve_mcp_credentials(
+                extra_server, user, db_session
+            )
+        except MCPCredentialsError as error:
+            logger.warning(str(error))
+            continue
+        extra_tools = get_all_mcp_tools_for_server(extra_server.id, db_session)
+        if not extra_tools and extra_server.catalog_entry is not None:
+            discover_and_store_bound_tools(
+                db_session, extra_server.catalog_entry, extra_server.id
+            )
+            extra_tools = get_all_mcp_tools_for_server(extra_server.id, db_session)
+        mcp_tool_cache[extra_server.id] = {}
+        for saved_tool in extra_tools:
+            if not saved_tool.enabled:
+                continue
+            extra_mcp_tool = MCPTool(
+                tool_id=saved_tool.id,
+                emitter=emitter,
+                mcp_server=extra_server,
+                tool_name=saved_tool.name,
+                tool_description=saved_tool.description,
+                tool_definition=saved_tool.mcp_input_schema or {},
+                connection_config=extra_credentials.connection_config,
+                user_email=user.email,
+                user_id=str(user.id),
+                user_oauth_token=extra_credentials.user_oauth_token,
+                additional_headers=additional_mcp_headers,
+                resolved_credentials=extra_credentials,
+            )
+            mcp_tool_cache[extra_server.id][saved_tool.id] = extra_mcp_tool
+            tool_dict[saved_tool.id] = [cast(Tool, extra_mcp_tool)]
 
     if (
         not added_search_tool

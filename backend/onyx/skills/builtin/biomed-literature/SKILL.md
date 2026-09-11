@@ -1,6 +1,9 @@
 ---
 name: biomed-literature
 description: Build a cited target, mechanism, or competitive-landscape brief from the primary literature, synthesized by theme with graded evidence. Use for 靶点, 机制, 文献综述, 文献检索, 竞品分析, target validation, mechanism of action, biomarker, literature landscape, or systematic search.
+optional-mcp:
+  - literature-search
+  - pharma-intelligence
 ---
 
 # biomed-literature

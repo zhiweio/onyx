@@ -143,6 +143,7 @@ from onyx.server.usage_limits import check_llm_cost_limit_for_provider
 from onyx.server.utils import get_json_line
 from onyx.tools.constants import FILE_READER_TOOL_ID, SEARCH_TOOL_ID
 from onyx.tools.models import ChatFile, SearchToolUsage
+from onyx.skills.prompt import build_selected_skill_prompt
 from onyx.tools.tool_constructor import (
     CustomToolConfig,
     FileReaderToolConfig,
@@ -998,11 +999,19 @@ def build_chat_turn(
         tool.in_code_tool_id == FILE_READER_TOOL_ID for tool in persona.tools
     )
 
+    skill_prompt = build_selected_skill_prompt(new_msg_req.selected_skill_ids)
+    merged_additional_context = additional_context or new_msg_req.additional_context
+    if skill_prompt:
+        merged_additional_context = (
+            f"{skill_prompt}\n\n{merged_additional_context}"
+            if merged_additional_context
+            else skill_prompt
+        )
     chat_history_result = convert_chat_history(
         chat_history=chat_history,
         files=files,
         context_image_files=extracted_context_files.image_files,
-        additional_context=additional_context or new_msg_req.additional_context,
+        additional_context=merged_additional_context,
         token_counter=token_counter,
         tool_id_to_name_map=tool_id_to_name_map,
     )
@@ -1375,6 +1384,8 @@ def _run_models(
                 ),
                 allowed_tool_ids=setup.new_msg_req.allowed_tool_ids,
                 search_usage_forcing_setting=setup.search_params.search_usage,
+                selected_mcp_server_ids=setup.new_msg_req.selected_mcp_server_ids,
+                selected_skill_ids=setup.new_msg_req.selected_skill_ids,
             )
             model_tools = [
                 tool for tool_list in thread_tool_dict.values() for tool in tool_list

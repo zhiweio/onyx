@@ -26,9 +26,7 @@ bispecific, ADC/DAC, cell or gene therapy, RNA, and post-approval
 expansion. Typical uses: start a pivotal study, expand a line, assess an
 in-license, or monitor a late-stage competitor.
 
-Does not cover: a preclinical ADC/DAC sequence and payload brief (use
-`biomed-adc-dac-initiation`); a generic early 立项 orchestrator (use
-`biomed-initiation`); trial-by-trial pipeline only (use
+Does not cover: trial-by-trial pipeline only (use
 `biomed-clinical-intel`); claim-level FTO only (use `biomed-patent-fto`).
 
 ## Public retrieval (no vendor lock)

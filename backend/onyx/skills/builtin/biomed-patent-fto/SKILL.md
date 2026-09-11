@@ -1,6 +1,16 @@
 ---
 name: biomed-patent-fto
 description: Build a claim-level freedom-to-operate and patent-landscape brief for a molecule, target, or formulation, mapping families, expiries, exclusivities, and design-arounds. Use for 专利, FTO, 自由实施, 专利布局, 专利到期, freedom to operate, IP landscape, claim mapping, or patent expiry.
+mcp-groups:
+  zhihuiya-patent:
+    - patsnap-search
+    - patent-briefing
+    - patsnap-analytics
+    - patent-landscape
+    - patent-analysis
+    - patent-value
+    - patent-status
+default-mcp-group: zhihuiya-patent
 ---
 
 # biomed-patent-fto

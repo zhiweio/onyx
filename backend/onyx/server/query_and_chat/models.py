@@ -114,6 +114,8 @@ class SendMessageRequest(BaseModel):
 
     allowed_tool_ids: list[int] | None = None
     forced_tool_id: int | None = None
+    selected_skill_ids: list[str] | None = None
+    selected_mcp_server_ids: list[int] | None = None
 
     file_descriptors: list[FileDescriptor] = []
 

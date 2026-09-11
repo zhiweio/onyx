@@ -23,6 +23,10 @@ class SkillMetadata(BaseModel):
     compatibility: str | None = None
     metadata: dict[str, str] | None = None
     allowed_tools: str | None = Field(default=None, alias="allowed-tools")
+    required_mcp: list[str] | None = Field(default=None, alias="required-mcp")
+    optional_mcp: list[str] | None = Field(default=None, alias="optional-mcp")
+    mcp_groups: dict[str, list[str]] | None = Field(default=None, alias="mcp-groups")
+    default_mcp_group: str | None = Field(default=None, alias="default-mcp-group")
 
     @field_validator("name")
     @classmethod
