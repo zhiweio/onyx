@@ -13,7 +13,6 @@ import {
 } from "@opal/layouts";
 import SvgNoResult from "@opal/illustrations/no-result";
 import { SvgFileText, SvgPlus, SvgSimpleLoader, SvgTrash } from "@opal/icons";
-import TextSeparator from "@/refresh-components/TextSeparator";
 import useOnMount from "@/hooks/useOnMount";
 import { useReportTemplates } from "@/lib/report-templates/hooks";
 import {
@@ -23,10 +22,12 @@ import {
 import type { ReportTemplate } from "@/lib/report-templates/types";
 import ReportTemplateCard from "@/sections/cards/ReportTemplateCard";
 import { CRAFT_REPORT_TEMPLATES_PATH } from "@/app/craft/v1/constants";
+import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
 import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
 import { useGalleryReportTemplates } from "@/lib/system-catalog/hooks";
 import { useGalleryTab } from "@/lib/system-catalog/useGalleryTab";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 
 export default function ReportTemplatesPage() {
   const t = useTranslations("craft.reportTemplates");
@@ -34,6 +35,7 @@ export default function ReportTemplatesPage() {
   const router = useRouter();
   const { data: templates, error, isLoading, refresh } = useReportTemplates();
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<CatalogViewMode>("cards");
   const [deleteTarget, setDeleteTarget] = useState<ReportTemplate | null>(null);
   const [deleting, setDeleting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -186,26 +188,22 @@ export default function ReportTemplatesPage() {
                     }
                   />
                 ) : (
-                  <>
-                    <section className="flex flex-col gap-2">
-                      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {visibleTemplates.map((template) => (
-                          <ReportTemplateCard
-                            key={template.id}
-                            template={template}
-                            onClick={openEditor}
-                            onEdit={openEditor}
-                            onDelete={setDeleteTarget}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                    <TextSeparator
-                      text={t("page.count.label", {
-                        count: visibleTemplates.length,
-                      })}
-                    />
-                  </>
+                  <BrowseItemGrid
+                    items={visibleTemplates}
+                    resetKey={`${searchQuery}:${view}`}
+                    view={view}
+                    onViewChange={setView}
+                    getKey={(template) => template.id}
+                    renderItem={(template, itemView) => (
+                      <ReportTemplateCard
+                        template={template}
+                        layout={itemView}
+                        onClick={openEditor}
+                        onEdit={openEditor}
+                        onDelete={setDeleteTarget}
+                      />
+                    )}
+                  />
                 )}
               </>
             )}

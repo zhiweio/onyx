@@ -63,6 +63,11 @@ import {
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
 import { useCraftProjects } from "@/lib/craft-projects/hooks";
 import {
+  deleteCraftProject,
+  updateCraftProject,
+} from "@/lib/craft-projects/api";
+import type { CraftProject } from "@/lib/craft-projects/types";
+import {
   isKnownSessionRole,
   sessionListLabel,
   sidebarListTitle,
@@ -105,6 +110,197 @@ export function CraftSessionDeleteModal({
     >
       {t("deleteModal.body")}
     </ConfirmationModalLayout>
+  );
+}
+
+interface CraftProjectDeleteModalProps {
+  projectTitle: string;
+  isDeleting?: boolean;
+  onClose: () => void;
+  onConfirm: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+export function CraftProjectDeleteModal({
+  projectTitle,
+  isDeleting = false,
+  onClose,
+  onConfirm,
+}: CraftProjectDeleteModalProps) {
+  const t = useTranslations("craft.sideBar");
+  return (
+    <ConfirmationModalLayout
+      title={t("deleteProjectModal.title", { title: projectTitle })}
+      icon={SvgTrash}
+      onClose={isDeleting ? undefined : onClose}
+      submit={
+        <Button
+          disabled={isDeleting}
+          variant="danger"
+          prominence="primary"
+          onClick={onConfirm}
+          icon={isDeleting ? SvgSimpleLoader : undefined}
+        >
+          {isDeleting
+            ? t("deleteProjectModal.deleting")
+            : t("deleteProjectModal.confirm")}
+        </Button>
+      }
+    >
+      {t("deleteProjectModal.body")}
+    </ConfirmationModalLayout>
+  );
+}
+
+interface CraftProjectButtonProps {
+  project: CraftProject;
+  isActive: boolean;
+  onOpen: () => void;
+  onRename: (newName: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+  onDeleteActiveProject?: () => void;
+}
+
+function CraftProjectButton({
+  project,
+  isActive,
+  onOpen,
+  onRename,
+  onDelete,
+  onDeleteActiveProject,
+}: CraftProjectButtonProps) {
+  const t = useTranslations("craft.sideBar");
+  const [renaming, setRenaming] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const listTitle = sidebarListTitle(project.name);
+
+  const closeModal = useCallback(() => {
+    setIsDeleteModalOpen(false);
+    setPopoverOpen(false);
+  }, []);
+
+  const handleConfirmDelete = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      setIsDeleting(true);
+      try {
+        await onDelete();
+        setIsDeleting(false);
+        toast.success(t("toast.deletedProject", { title: project.name }));
+        closeModal();
+        if (isActive && onDeleteActiveProject) {
+          onDeleteActiveProject();
+        }
+      } catch (err) {
+        setIsDeleting(false);
+        toast.error(
+          err instanceof Error ? err.message : t("toast.deleteProjectFailed")
+        );
+      }
+    },
+    [onDelete, project.name, closeModal, isActive, onDeleteActiveProject, t]
+  );
+
+  const handleRename = useCallback(
+    async (newName: string) => {
+      try {
+        await onRename(newName);
+        toast.success(t("toast.renamedProject", { title: newName }));
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : t("toast.renameProjectFailed")
+        );
+        throw err;
+      }
+    },
+    [onRename, t]
+  );
+
+  const rightMenu = (
+    <>
+      <Popover.Trigger asChild onClick={noProp()}>
+        <div>
+          {(!renaming || popoverOpen) && (
+            <Hoverable.Item group="CraftProjectTab">
+              <Button
+                icon={SvgMoreHorizontal}
+                prominence="internal"
+                size="sm"
+                interaction={popoverOpen ? "hover" : "rest"}
+              />
+            </Hoverable.Item>
+          )}
+        </div>
+      </Popover.Trigger>
+      <Popover.Content side="right" align="start">
+        <PopoverMenu>
+          {[
+            <LineItemButton
+              sizePreset="main-ui"
+              rounding={2}
+              key="rename"
+              icon={SvgEdit}
+              onClick={noProp(() => setRenaming(true))}
+              title={t("rename.label")}
+            />,
+            null,
+            <LineItemButton
+              sizePreset="main-ui"
+              rounding={2}
+              key="delete"
+              icon={SvgTrash}
+              onClick={noProp(() => setIsDeleteModalOpen(true))}
+              color="danger"
+              title={t("delete.label")}
+            />,
+          ]}
+        </PopoverMenu>
+      </Popover.Content>
+    </>
+  );
+
+  return (
+    <>
+      <Popover
+        onOpenChange={(state) => {
+          setPopoverOpen(state);
+        }}
+      >
+        <Popover.Anchor>
+          <Hoverable.Root
+            group="CraftProjectTab"
+            interaction={popoverOpen ? "hover" : "rest"}
+          >
+            <SidebarTab
+              onClick={renaming ? undefined : onOpen}
+              selected={isActive}
+              rightChildren={rightMenu}
+              tooltip={listTitle.tooltip || undefined}
+              icon={SvgFolder}
+            >
+              {renaming ? (
+                <ButtonRenaming
+                  initialName={project.name}
+                  onRename={handleRename}
+                  onClose={() => setRenaming(false)}
+                />
+              ) : (
+                listTitle.text
+              )}
+            </SidebarTab>
+          </Hoverable.Root>
+        </Popover.Anchor>
+      </Popover>
+      {isDeleteModalOpen && (
+        <CraftProjectDeleteModal
+          projectTitle={project.name}
+          isDeleting={isDeleting}
+          onClose={closeModal}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+    </>
   );
 }
 
@@ -320,7 +516,7 @@ const MemoizedBuildSidebarInner = memo(() => {
   const returnToMainAgent = useBuildSessionStore(
     (state) => state.returnToMainAgent
   );
-  const { data: projects } = useCraftProjects();
+  const { data: projects, refresh: refreshProjects } = useCraftProjects();
   const projectNameById = useMemo(() => {
     const names = new Map<string, string>();
     for (const project of projects) {
@@ -479,23 +675,29 @@ const MemoizedBuildSidebarInner = memo(() => {
               <>
                 <SidebarLayouts.Section title={t("projectsSection.title")} />
                 {projects.slice(0, 8).map((project) => {
-                  const listTitle = sidebarListTitle(project.name);
+                  const projectPath = `${CRAFT_PROJECTS_PATH}/${project.id}`;
                   return (
-                    <LineItemButton
+                    <CraftProjectButton
                       key={project.id}
-                      sizePreset="main-ui"
-                      rounding={2}
-                      width="full"
-                      icon={SvgFolder}
-                      title={listTitle.text}
-                      titleMaxLines={1}
-                      tooltip={listTitle.tooltip || undefined}
-                      tooltipSide="right"
-                      onClick={() =>
+                      project={project}
+                      isActive={pathname === projectPath}
+                      onOpen={() =>
                         // SAFETY: project.id is a UUID path segment under /craft/v1/projects.
-                        navigate(
-                          `${CRAFT_PROJECTS_PATH}/${project.id}` as Route
-                        )
+                        navigate(projectPath as Route)
+                      }
+                      onRename={async (newName) => {
+                        await updateCraftProject(project.id, { name: newName });
+                        await refreshProjects();
+                      }}
+                      onDelete={async () => {
+                        await deleteCraftProject(project.id);
+                        await refreshProjects();
+                        await refreshSessionHistory();
+                      }}
+                      onDeleteActiveProject={
+                        pathname === projectPath
+                          ? () => navigate(CRAFT_PROJECTS_PATH)
+                          : undefined
                       }
                     />
                   );

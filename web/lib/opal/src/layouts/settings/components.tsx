@@ -63,6 +63,10 @@ export interface SettingsHeaderProps {
   rightChildren?: React.ReactNode;
   backButton?: boolean | (() => void);
   divider?: boolean;
+  /** Click the title (or the edit control) to rename it. */
+  editable?: boolean;
+  /** Called when the user commits a new title. */
+  onTitleChange?: (newTitle: string) => void;
 }
 
 /**
@@ -80,6 +84,8 @@ function SettingsHeader({
   rightChildren,
   backButton,
   divider,
+  editable,
+  onTitleChange,
 }: SettingsHeaderProps) {
   const router = useRouter();
   const [showShadow, setShowShadow] = useState(false);
@@ -136,6 +142,9 @@ function SettingsHeader({
               description={description}
               sizePreset="headline"
               variant="heading"
+              width={editable ? "fit" : "full"}
+              editable={editable}
+              onTitleChange={onTitleChange}
             />
           </div>
           {rightChildren}

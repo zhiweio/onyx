@@ -522,7 +522,10 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   }
 
   const onChat = useCallback(
-    (message: string) => {
+    (
+      message: string,
+      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
+    ) => {
       if (multiModel.isMultiModelActive) {
         foldSidebarForMultiModel();
       }
@@ -536,6 +539,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
         selectedModels: multiModel.isMultiModelActive
           ? multiModel.selectedModels
           : undefined,
+        selectedSkillIds: selection?.skillIds,
+        selectedMcpServerIds: selection?.mcpServerIds,
       });
       if (showOnboarding || !onboardingDismissed) {
         finishOnboarding();
@@ -584,7 +589,10 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   );
 
   const handleAppInputBarSubmit = useCallback(
-    async (message: string) => {
+    async (
+      message: string,
+      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
+    ) => {
       // If we're in an existing chat session, always use chat mode
       // (appMode only applies to new sessions)
       if (currentChatSessionId) {
@@ -598,6 +606,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
           selectedModels: multiModel.isMultiModelActive
             ? multiModel.selectedModels
             : undefined,
+          selectedSkillIds: selection?.skillIds,
+          selectedMcpServerIds: selection?.mcpServerIds,
         });
         if (showOnboarding || !onboardingDismissed) {
           finishOnboarding();
@@ -608,7 +618,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       // Incognito always routes to chat: the search path runs its own
       // persistence and none of the incognito safeguards.
       if (incognitoEnabledRef.current) {
-        onChat(message);
+        onChat(message, selection);
         return;
       }
 
@@ -616,7 +626,9 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       // resetInputBar is called inside onChat for chat-routed queries.
       // For search-routed queries, the input bar is intentionally kept
       // so the user can see and refine their search query.
-      await submitQuery(message, onChat);
+      await submitQuery(message, (routedMessage) =>
+        onChat(routedMessage, selection)
+      );
     },
     [
       currentChatSessionId,

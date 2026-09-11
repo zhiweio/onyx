@@ -24,8 +24,11 @@ export class CraftWelcomePage {
 
   constructor(page: Page) {
     this.page = page;
-    // Fixed title of the Living Map intro tour.
-    this.introHeading = page.getByText("Meet Craft", { exact: true });
+    // Dialog accessible name is "Meet Craft"; body text is longer, so exact
+    // getByText("Meet Craft") misses the tour.
+    this.introHeading = page
+      .getByRole("dialog")
+      .filter({ hasText: "Meet Craft" });
     this.llmSetup = page.locator('[aria-label="craft-llm-setup"]');
     this.llmSetupToggle = this.llmSetup.getByRole("switch");
     this.lockedState = page.locator('[aria-label="craft-llm-locked"]');
@@ -52,11 +55,22 @@ export class CraftWelcomePage {
     });
   }
 
-  /** Dismisses the first-visit intro tour (Escape closes the dialog). */
+  /** Dismisses the first-visit intro tour when it appears. */
   async dismissIntro(): Promise<void> {
-    await expect(this.introHeading).toBeVisible({ timeout: 15000 });
-    await this.page.keyboard.press("Escape");
-    await expect(this.introHeading).not.toBeVisible();
+    const appeared = await this.introHeading
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!appeared) {
+      return;
+    }
+    const close = this.introHeading.getByRole("button", { name: /Close|关闭/ });
+    if (await close.isVisible().catch(() => false)) {
+      await close.click();
+    } else {
+      await this.page.keyboard.press("Escape");
+    }
+    await expect(this.introHeading).toBeHidden();
   }
 
   providerCard(name: string): Locator {
@@ -94,5 +108,20 @@ export class CraftWelcomePage {
     await this.messageInput.click();
     await this.messageInput.pressSequentially(text);
     await this.page.getByRole("button", { name: /Send|发送/ }).click();
+  }
+
+  skillPicker() {
+    return this.page.getByTestId("skill-picker-popover");
+  }
+
+  skillPickerRow(slug: string) {
+    return this.page.getByTestId(`skill-picker-row-${slug}`);
+  }
+
+  async openSlashPicker(query = ""): Promise<void> {
+    await this.expectInputEnabled();
+    await this.messageInput.click();
+    await this.page.keyboard.type(`/${query}`);
+    await expect(this.skillPicker()).toBeVisible();
   }
 }

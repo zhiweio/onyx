@@ -3,6 +3,13 @@ export enum McpCatalogOrigin {
   PUSHED = "PUSHED",
 }
 
+export interface McpPackEndpoint {
+  slug: string;
+  display_name: string;
+  upstream_url: string;
+  description?: string;
+}
+
 export interface McpPack {
   slug: string;
   display_name: string;
@@ -11,6 +18,8 @@ export interface McpPack {
   group?: string;
   transport: string;
   auth_adapter: string;
+  endpoint_count?: number;
+  endpoints?: McpPackEndpoint[];
 }
 
 export interface McpCatalogEntry {

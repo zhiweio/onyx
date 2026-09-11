@@ -75,6 +75,21 @@ import InterruptHint from "@/sections/input/InterruptHint";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
 import { resolveComposerPrimaryAction } from "@/sections/input/composerPrimaryAction";
 import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
+import useSlashPicker from "@/hooks/useSlashPicker";
+import useUserSkills from "@/hooks/useUserSkills";
+import { useCraftMcpServers } from "@/lib/tools/hooks";
+import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
+import { InputChipStrip } from "@/sections/input/InputChipStrip";
+import {
+  pickerEntryConnectionPath,
+  pickerEntryKey,
+  slashSelectionFromEntries,
+  toPickerSections,
+  type PickerEntry,
+  type SlashSelection,
+} from "@/lib/skills/picker";
+import type { BaseInputBarHandle } from "@/sections/input/BaseInputBar";
+import { deleteTokenBeforeCursor, getTextContent } from "@/lib/contentEditable";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -84,7 +99,7 @@ export interface AppInputBarHandle {
 export interface AppInputBarProps {
   initialMessage?: string;
   stopGenerating: () => void;
-  onSubmit: (message: string) => void;
+  onSubmit: (message: string, selection?: SlashSelection) => void;
   llmManager: LlmManager;
   chatState: ChatState;
   currentSessionFileTokenCount: number;
@@ -154,6 +169,7 @@ const AppInputBar = React.memo(
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
     const inputWrapperRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const {
       ref: inputRef,
       message,
@@ -179,6 +195,80 @@ const AppInputBar = React.memo(
       pasteTilesEnabled: user?.preferences?.paste_as_tile ?? false,
     });
 
+    const { data: skillsData } = useUserSkills();
+    const { data: craftMcpData } = useCraftMcpServers();
+    const pickerSections = useMemo(
+      () => toPickerSections(skillsData, undefined, craftMcpData?.mcp_servers),
+      [skillsData, craftMcpData]
+    );
+    const [activeEntries, setActiveEntries] = useState<PickerEntry[]>([]);
+    const slashInputRef = useRef<BaseInputBarHandle | null>(null);
+    slashInputRef.current = {
+      reset: () => {},
+      focus: () => inputRef.current?.focus(),
+      setMessage,
+      pasteText,
+      getTextBeforeCursor: () => {
+        const el = inputRef.current;
+        if (!el) return null;
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return null;
+        const range = sel.getRangeAt(0);
+        if (!el.contains(range.startContainer)) return null;
+        const cloned = range.cloneRange();
+        cloned.selectNodeContents(el);
+        cloned.setEnd(range.startContainer, range.startOffset);
+        const tmp = document.createElement("div");
+        tmp.appendChild(cloned.cloneContents());
+        return getTextContent(tmp);
+      },
+      getCaretRect: () => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return null;
+        const range = sel.getRangeAt(0).cloneRange();
+        range.collapse(true);
+        const rect = range.getBoundingClientRect();
+        if (
+          rect.top === 0 &&
+          rect.left === 0 &&
+          rect.width === 0 &&
+          rect.height === 0
+        ) {
+          return inputRef.current?.getBoundingClientRect() ?? null;
+        }
+        return rect;
+      },
+      getInputRect: () => containerRef.current?.getBoundingClientRect() ?? null,
+      deleteBeforeToken: (token: string) => {
+        const el = inputRef.current;
+        if (!el) return false;
+        return deleteTokenBeforeCursor(el, token);
+      },
+    };
+    const addEntry = useCallback((entry: PickerEntry) => {
+      const connectionPath = pickerEntryConnectionPath(entry);
+      if (connectionPath) {
+        window.location.assign(connectionPath);
+        return;
+      }
+      setActiveEntries((prev) =>
+        prev.some(
+          (candidate) => pickerEntryKey(candidate) === pickerEntryKey(entry)
+        )
+          ? prev
+          : [...prev, entry]
+      );
+    }, []);
+    const removeEntry = useCallback((entryKey: string) => {
+      setActiveEntries((prev) =>
+        prev.filter((entry) => pickerEntryKey(entry) !== entryKey)
+      );
+    }, []);
+    const slashPicker = useSlashPicker({
+      inputRef: slashInputRef,
+      onSelect: addEntry,
+    });
+
     // Keyboard navigation + highlight state for the queued-message bar
     // (shared with the Craft input bar).
     const queueNav = useQueuedMessageNavigation({
@@ -190,7 +280,6 @@ const AppInputBar = React.memo(
 
     const filesWrapperRef = useRef<HTMLDivElement>(null);
     const filesContentRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
     const { state } = useQueryController();
     const isClassifying = state.phase === "classifying";
     const isSearchActive =
@@ -294,9 +383,10 @@ const AppInputBar = React.memo(
     const handleSubmit = useCallback(
       (text: string) => {
         stopTTS();
-        onSubmit(text);
+        onSubmit(text, slashSelectionFromEntries(activeEntries));
+        setActiveEntries([]);
       },
-      [stopTTS, onSubmit]
+      [stopTTS, onSubmit, activeEntries]
     );
     const submitMessage = useCallback(
       (text: string) => {
@@ -315,6 +405,8 @@ const AppInputBar = React.memo(
         if (!isAutoSending.current) {
           clearMessage();
           clearChatDraft();
+          setActiveEntries([]);
+          slashPicker.reset();
         }
       },
       focus: () => {
@@ -491,7 +583,8 @@ const AppInputBar = React.memo(
     }, [chatState, stopGenerating, stopTTS]);
 
     useEscapeInterrupt({
-      enabled: canStopGeneration && !showPrompts && !disabled,
+      enabled:
+        canStopGeneration && !slashPicker.open && !showPrompts && !disabled,
       onInterrupt: handleStopGeneration,
     });
 
@@ -526,7 +619,8 @@ const AppInputBar = React.memo(
     const handleContentEditableInput = useCallback(
       (event: React.SyntheticEvent<HTMLDivElement>) => {
         const text = handleInput(event);
-        if (text.startsWith("/")) {
+        slashPicker.onInput();
+        if (text.startsWith("/") && !slashPicker.open) {
           setShowPrompts(true);
           setPromptFilterQuery(text.slice(1));
         } else {
@@ -534,7 +628,7 @@ const AppInputBar = React.memo(
           setPromptFilterQuery("");
         }
       },
-      [handleInput, hidePrompts, setPromptFilterQuery]
+      [handleInput, hidePrompts, setPromptFilterQuery, slashPicker.onInput]
     );
 
     // Determine if we should hide processing state based on context limits
@@ -898,6 +992,21 @@ const AppInputBar = React.memo(
               </div>
             ) : null}
 
+            <InputChipStrip
+              files={[]}
+              entries={activeEntries}
+              onRemoveFile={() => undefined}
+              onRemoveEntry={removeEntry}
+            />
+            <EntryPickerPopover
+              open={slashPicker.open}
+              anchorRect={slashPicker.anchorRect}
+              query={slashPicker.query}
+              sections={pickerSections}
+              onSelect={slashPicker.onSelect}
+              onClose={slashPicker.onClose}
+            />
+
             {/* Attached Files */}
             <div
               ref={filesWrapperRef}
@@ -925,7 +1034,11 @@ const AppInputBar = React.memo(
 
             <div className="flex flex-row items-center w-full">
               <Popover
-                open={user?.preferences?.shortcut_enabled && showPrompts}
+                open={
+                  user?.preferences?.shortcut_enabled &&
+                  showPrompts &&
+                  !slashPicker.open
+                }
                 onOpenChange={setShowPrompts}
               >
                 <Popover.Anchor asChild>
@@ -980,6 +1093,7 @@ const AppInputBar = React.memo(
                         if (
                           event.key === "Enter" &&
                           !showPrompts &&
+                          !slashPicker.open &&
                           !event.shiftKey &&
                           !(event.nativeEvent as any).isComposing
                         ) {

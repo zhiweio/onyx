@@ -8399,6 +8399,9 @@
         "cancel": {
           "label": "取消"
         },
+        "invalidRules": {
+          "message": "规则必须是 JSON 对象"
+        },
         "fields": {
           "name": {
             "label": "名称"
@@ -8412,6 +8415,17 @@
           "tags": {
             "label": "标签",
             "placeholder": "用逗号分隔标签"
+          },
+          "skillSlugs": {
+            "label": "技能标识",
+            "placeholder": "用逗号分隔技能 ID"
+          },
+          "reportTemplate": {
+            "label": "报告模板",
+            "placeholder": "模板 ID，可留空"
+          },
+          "rules": {
+            "label": "场景规则"
           },
           "body": {
             "label": "模板正文"
@@ -9724,6 +9738,12 @@
         },
         "skillsGroup": {
           "label": "技能"
+        },
+        "tooltip": {
+          "kindApp": "应用",
+          "kindCommand": "命令",
+          "kindMcp": "MCP 服务器",
+          "kindSkill": "技能"
         }
       },
       "inputChip": {
@@ -12419,7 +12439,11 @@
       },
       "toast": {
         "deleteFailed": "删除会话失败",
-        "deleted": "已删除\"{title}\"。"
+        "deleted": "已删除\"{title}\"。",
+        "deleteProjectFailed": "删除项目失败",
+        "deletedProject": "已删除“{title}”。",
+        "renameProjectFailed": "重命名项目失败",
+        "renamedProject": "已重命名为“{title}”。"
       },
       "projects": {
         "label": "项目"
@@ -12438,6 +12462,12 @@
       },
       "mcpActions": {
         "label": "MCP 操作"
+      },
+      "deleteProjectModal": {
+        "body": "这会删除项目文件。对话记录会保留，但对话会离开该项目。",
+        "confirm": "删除",
+        "deleting": "正在删除...",
+        "title": "删除“{title}”？"
       }
     },
     "skillsStale": {
@@ -13730,7 +13760,20 @@
         },
         "uploaded": {
           "message": "文件已添加。"
+        },
+        "renamed": {
+          "message": "项目已重命名。"
+        },
+        "renameFailed": {
+          "message": "无法重命名此项目。"
         }
+      },
+      "rename": {
+        "confirm": {
+          "label": "重命名"
+        },
+        "description": "新名称会出现在侧边栏和此页面上。",
+        "title": "将名称改为“{name}”？"
       }
     },
     "gallery": {
@@ -13779,6 +13822,14 @@
           "word": {
             "label": "Word"
           }
+        }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "卡片"
+        },
+        "list": {
+          "tooltip": "列表"
         }
       },
       "count": {
@@ -13838,14 +13889,6 @@
         },
         "forkFailed": {
           "message": "复制失败"
-        }
-      },
-      "view": {
-        "cards": {
-          "tooltip": "卡片"
-        },
-        "list": {
-          "tooltip": "列表"
         }
       },
       "pagination": {

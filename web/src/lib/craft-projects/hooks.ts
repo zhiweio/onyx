@@ -1,9 +1,23 @@
 "use client";
 
-import useSWR from "swr";
+import { useCallback } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import type { CraftProject, CraftProjectListResponse } from "@/lib/craft-projects/types";
+
+export function useRefreshCraftProjects() {
+  const { mutate } = useSWRConfig();
+  return useCallback(
+    async (projectId?: string) => {
+      await mutate(SWR_KEYS.craftProjects);
+      if (projectId) {
+        await mutate(SWR_KEYS.craftProject(projectId));
+      }
+    },
+    [mutate]
+  );
+}
 
 export function useCraftProjects() {
   const { data, error, isLoading, mutate } = useSWR<CraftProjectListResponse>(

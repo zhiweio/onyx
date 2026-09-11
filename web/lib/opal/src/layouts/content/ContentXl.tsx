@@ -220,6 +220,7 @@ function ContentXl({
             maxLines={titleMaxLines}
             strikethrough={strikethrough}
             title={toPlainString(title)}
+            className={editable ? "cursor-pointer" : undefined}
             onClick={editable ? startEditing : undefined}
           >
             {title}

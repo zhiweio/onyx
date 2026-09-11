@@ -166,6 +166,46 @@ export async function createMCPServerFromPack(data: {
   return await response.json();
 }
 
+export async function createMCPServerFromPackFamily(data: {
+  pack_slug: string;
+  name?: string;
+  slug?: string;
+  description?: string;
+  upstream_url?: string;
+  credentials?: Record<string, string>;
+  is_public?: boolean;
+  groups?: number[];
+  users?: string[];
+}): Promise<MCPServer[]> {
+  const response = await fetch("/api/admin/mcp/servers/from-pack-family", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to install pack family");
+  }
+  return await response.json();
+}
+
+export interface MCPDiscoverEmptyResponse {
+  refreshed: number;
+  failed: number;
+  errors: string[];
+}
+
+export async function discoverEmptyMcpTools(): Promise<MCPDiscoverEmptyResponse> {
+  const response = await fetch("/api/admin/mcp/servers/discover-empty-tools", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to discover tools");
+  }
+  return await response.json();
+}
+
 /**
  * Update an existing MCP server
  */

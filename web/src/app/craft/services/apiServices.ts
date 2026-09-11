@@ -432,7 +432,9 @@ export async function createTurn(
   clientRequestId: string,
   signal?: AbortSignal,
   model?: BuildLlmSelection | null,
-  attachments: BuildMessageAttachment[] = []
+  attachments: BuildMessageAttachment[] = [],
+  selectedSkillIds: string[] = [],
+  selectedMcpServerIds: number[] = []
 ): Promise<ApiInteractiveTurnResponse> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/send-message`,
@@ -447,6 +449,8 @@ export async function createTurn(
           path: attachment.path,
           mime_type: attachment.mimeType,
         })),
+        selected_skill_ids: selectedSkillIds,
+        selected_mcp_server_ids: selectedMcpServerIds,
         ...(model
           ? {
               provider: CRAFT_GATEWAY_PROVIDER,

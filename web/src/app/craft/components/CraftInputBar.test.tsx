@@ -105,17 +105,21 @@ jest.mock("@/hooks/useSlashPicker", () => ({
   }),
 }));
 
-jest.mock("@/lib/skills/picker", () => ({
-  pickerEntryConnectionPath: () => null,
-  pickerEntryKey: () => "",
-  pickerEntryPromptPrefix: () => "",
-  toPickerSections: () => ({
-    commands: [],
-    skills: [],
-    apps: [],
-    mcpServers: [],
-  }),
-}));
+jest.mock("@/lib/skills/picker", () => {
+  const actual = jest.requireActual<typeof import("@/lib/skills/picker")>(
+    "@/lib/skills/picker"
+  );
+  return {
+    ...actual,
+    pickerEntryConnectionPath: () => null,
+    toPickerSections: () => ({
+      commands: [],
+      skills: [],
+      apps: [],
+      mcpServers: [],
+    }),
+  };
+});
 
 jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({
   buildEntryMenuItems: () => [],
@@ -150,7 +154,14 @@ describe("CraftInputBar queued attachments", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Queue message" }));
 
-    expect(onQueueMessage).toHaveBeenCalledWith("queued prompt", attachedFiles);
+    expect(onQueueMessage).toHaveBeenCalledWith(
+      "queued prompt",
+      attachedFiles,
+      {
+        skillIds: [],
+        mcpServerIds: [],
+      }
+    );
     expect(mockClearFiles).toHaveBeenCalledWith({ suppressRefetch: true });
   });
 

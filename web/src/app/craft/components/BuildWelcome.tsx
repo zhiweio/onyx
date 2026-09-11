@@ -16,11 +16,13 @@ import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
 import CraftLlmLockedState from "@/app/craft/onboarding/components/CraftLlmLockedState";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
 import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
+import type { SlashSelection } from "@/lib/skills/picker";
 
 interface BuildWelcomeProps {
   onSubmit: (
     message: string,
     files: BuildFile[],
+    selection: SlashSelection,
     model?: BuildLlmSelection | null
   ) => void;
   isRunning: boolean;
@@ -108,8 +110,8 @@ export default function BuildWelcome({
         <div className="w-full max-w-(--app-page-main-content-width)">
           <CraftInputBar
             ref={inputBarRef}
-            onSubmit={(message, files) =>
-              onSubmit(message, files, selectedModel)
+            onSubmit={(message, files, selection) =>
+              onSubmit(message, files, selection, selectedModel)
             }
             isRunning={isRunning}
             placeholder={t("input.placeholder")}

@@ -13,6 +13,7 @@ import {
   bindMCPServerGateway,
   createMCPServer,
   createMCPServerFromPack,
+  createMCPServerFromPackFamily,
   unbindMCPServerGateway,
   updateMCPServer,
 } from "@/lib/tools/svc";
@@ -225,7 +226,7 @@ export default function AddMCPServerModal({
         toast.success(t("addMcpModal.toasts.serverUpdated"));
         await mutateMcpServers?.();
       } else if (installMode === "pack" && selectedPack) {
-        const createdServer = await createMCPServerFromPack({
+        const packPayload = {
           pack_slug: selectedPack.slug,
           name: values.name,
           slug: gatewaySlug || undefined,
@@ -233,10 +234,21 @@ export default function AddMCPServerModal({
           upstream_url: values.server_url || undefined,
           credentials: packApiKey ? { api_key: packApiKey } : {},
           ...access,
-        });
-        toast.success(t("addMcpModal.toasts.serverCreated"));
-        await mutateMcpServers?.();
-        onServerCreated?.(createdServer);
+        };
+        if ((selectedPack.endpoint_count ?? 1) > 1) {
+          const createdServers =
+            await createMCPServerFromPackFamily(packPayload);
+          toast.success(t("addMcpModal.toasts.serverCreated"));
+          await mutateMcpServers?.();
+          if (createdServers[0]) {
+            onServerCreated?.(createdServers[0]);
+          }
+        } else {
+          const createdServer = await createMCPServerFromPack(packPayload);
+          toast.success(t("addMcpModal.toasts.serverCreated"));
+          await mutateMcpServers?.();
+          onServerCreated?.(createdServer);
+        }
       } else {
         const payload: MCPServerCreateRequest = {
           ...values,

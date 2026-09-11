@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { useTranslations } from "next-intl";
-import { Button, InputTypeIn, MessageCard, Tabs, Text } from "@opal/components";
+import { Button, InputTypeIn, MessageCard, Tabs } from "@opal/components";
 import {
   ConfirmationModalLayout,
   IllustrationContent,
@@ -13,7 +13,7 @@ import {
 } from "@opal/layouts";
 import SvgNoResult from "@opal/illustrations/no-result";
 import { SvgPlus, SvgShare, SvgSimpleLoader, SvgTrash } from "@opal/icons";
-import TextSeparator from "@/refresh-components/TextSeparator";
+import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
 import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
 import { useGalleryScenarios } from "@/lib/system-catalog/hooks";
@@ -31,6 +31,7 @@ import {
   scenarioDomainMessageKey,
   type Scenario,
 } from "@/lib/scenarios/types";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 import ScenarioCard from "@/sections/cards/ScenarioCard";
 import ShareScenarioModal from "@/sections/modals/scenarios/ShareScenarioModal";
 import { CRAFT_PATH, CRAFT_SCENARIOS_PATH } from "@/app/craft/v1/constants";
@@ -47,6 +48,7 @@ export default function ScenariosPage() {
     (state) => state.refreshSessionHistory,
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<CatalogViewMode>("cards");
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [shareTarget, setShareTarget] = useState<Scenario | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
@@ -282,35 +284,28 @@ export default function ScenariosPage() {
                     }
                   />
                 ) : (
-                  <>
-                    <section className="flex flex-col gap-2">
-                      <Text font="secondary-body" color="text-03">
-                        {t("page.browse.title")}
-                      </Text>
-                      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {visibleScenarios.map((scenario) => (
-                          <ScenarioCard
-                            key={scenario.id}
-                            scenario={scenario}
-                            skillNames={skillNamesFor(scenario)}
-                            startPending={startingId === scenario.id}
-                            customizePending={customizingId === scenario.id}
-                            onClick={openEditor}
-                            onEdit={openEditor}
-                            onCustomize={(item) => void handleCustomize(item)}
-                            onShare={setShareTarget}
-                            onDelete={setDeleteTarget}
-                            onStart={(item) => void handleStart(item)}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                    <TextSeparator
-                      text={t("page.count.label", {
-                        count: visibleScenarios.length,
-                      })}
-                    />
-                  </>
+                  <BrowseItemGrid
+                    items={visibleScenarios}
+                    resetKey={`${searchQuery}:${domainFilter}:${view}`}
+                    view={view}
+                    onViewChange={setView}
+                    getKey={(scenario) => scenario.id}
+                    renderItem={(scenario, itemView) => (
+                      <ScenarioCard
+                        scenario={scenario}
+                        layout={itemView}
+                        skillNames={skillNamesFor(scenario)}
+                        startPending={startingId === scenario.id}
+                        customizePending={customizingId === scenario.id}
+                        onClick={openEditor}
+                        onEdit={openEditor}
+                        onCustomize={(item) => void handleCustomize(item)}
+                        onShare={setShareTarget}
+                        onDelete={setDeleteTarget}
+                        onStart={(item) => void handleStart(item)}
+                      />
+                    )}
+                  />
                 )}
               </>
             )}

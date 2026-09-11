@@ -298,4 +298,39 @@ export class InputBar {
   async expectInnerHtmlNotContaining(text: string): Promise<void> {
     await poll(() => this.textbox.innerHTML()).not.toContain(text);
   }
+
+  skillPicker(): Locator {
+    return this.page.getByTestId("skill-picker-popover");
+  }
+
+  skillPickerRow(slug: string): Locator {
+    return this.page.getByTestId(`skill-picker-row-${slug}`);
+  }
+
+  mcpPickerRow(serverId: number): Locator {
+    return this.page.getByTestId(`mcp-picker-row-${serverId}`);
+  }
+
+  inputChip(entryKey: string): Locator {
+    return this.page.getByTestId(`input-chip-${entryKey}`);
+  }
+
+  async openSlashPicker(query = ""): Promise<void> {
+    await this.focus();
+    await this.page.keyboard.type(`/${query}`);
+    await expect(this.skillPicker()).toBeVisible();
+  }
+
+  async pickSkill(slug: string): Promise<void> {
+    await this.skillPickerRow(slug).click();
+    await expect(this.skillPicker()).toBeHidden();
+    await expect(this.inputChip(`skill:${slug}`)).toBeVisible();
+  }
+
+  async pickMcpServer(serverId: number, name: string): Promise<void> {
+    await this.mcpPickerRow(serverId).click();
+    await expect(this.skillPicker()).toBeHidden();
+    await expect(this.inputChip(`mcp:${serverId}`)).toBeVisible();
+    await expect(this.inputChip(`mcp:${serverId}`)).toContainText(name);
+  }
 }

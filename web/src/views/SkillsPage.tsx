@@ -11,7 +11,6 @@ import {
   MessageCard,
   Popover,
   Tabs,
-  Text,
 } from "@opal/components";
 import {
   ConfirmationModalLayout,
@@ -29,7 +28,7 @@ import {
   SvgUploadCloud,
 } from "@opal/icons";
 import { SvgGithub } from "@opal/logos";
-import TextSeparator from "@/refresh-components/TextSeparator";
+import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
 import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
 import { useGallerySkills } from "@/lib/system-catalog/hooks";
@@ -46,6 +45,7 @@ import SkillPreviewModal from "@/sections/modals/SkillPreviewModal";
 import type { BuiltinSkill, CustomSkill } from "@/lib/skills/types";
 import { stageSkillCreationDraft } from "@/lib/skills/creationDraft";
 import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -73,6 +73,7 @@ export default function SkillsPage() {
     isLoading: galleryLoading,
   } = useGallerySkills(gallery.tab === "gallery");
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<CatalogViewMode>("cards");
   const [createOpen, setCreateOpen] = useState(false);
   const [githubImportOpen, setGitHubImportOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
@@ -436,36 +437,28 @@ export default function SkillsPage() {
                     }
                   />
                 ) : (
-                  <>
-                    <section className="flex flex-col gap-2">
-                      <Text font="secondary-body" color="text-03">
-                        {t("page.browse.title")}
-                      </Text>
-                      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {visibleItems.map((item) => (
-                          <SkillCard
-                            key={item.id}
-                            item={item}
-                            hasEnabledNameConflict={
-                              !item.enabled && enabledItemByName.has(item.name)
-                            }
-                            onEdit={handleEdit}
-                            onClick={setPreviewTarget}
-                            onEnabledChange={(skill, enabled) =>
-                              void updateSkillEnabled(skill, enabled)
-                            }
-                            enablementPending={pendingSkillIds.has(item.id)}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                    <TextSeparator
-                      count={visibleItems.length}
-                      text={t("page.countSeparator.label", {
-                        count: visibleItems.length,
-                      })}
-                    />
-                  </>
+                  <BrowseItemGrid
+                    items={visibleItems}
+                    resetKey={`${searchQuery}:${focusedExternalAppId ?? ""}:${view}`}
+                    view={view}
+                    onViewChange={setView}
+                    getKey={(item) => item.id}
+                    renderItem={(item, itemView) => (
+                      <SkillCard
+                        item={item}
+                        layout={itemView}
+                        hasEnabledNameConflict={
+                          !item.enabled && enabledItemByName.has(item.name)
+                        }
+                        onEdit={handleEdit}
+                        onClick={setPreviewTarget}
+                        onEnabledChange={(skill, enabled) =>
+                          void updateSkillEnabled(skill, enabled)
+                        }
+                        enablementPending={pendingSkillIds.has(item.id)}
+                      />
+                    )}
+                  />
                 )}
               </>
             )}

@@ -21,6 +21,7 @@ import AddMCPServerModal from "@/sections/actions/modals/AddMCPServerModal";
 import DisconnectEntityModal from "./modals/DisconnectEntityModal";
 import {
   deleteMCPServer,
+  discoverEmptyMcpTools,
   refreshMCPServerTools,
   updateToolStatus,
   updateMCPServerStatus,
@@ -81,11 +82,46 @@ export default function MCPPageContent({
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<CatalogViewMode>("cards");
   const [page, setPage] = useState(1);
+  const attemptedEmptyDiscoverIds = useRef<Set<number>>(new Set());
+
   const mcpServers = useMemo(
     () => mcpData?.mcp_servers ?? [],
     [mcpData?.mcp_servers]
   );
   const isLoading = isMcpLoading;
+
+  useEffect(() => {
+    if (variant !== "admin" || isLoading) {
+      return;
+    }
+    const pending = mcpServers.filter(
+      (server) =>
+        server.gateway_bound &&
+        server.tool_count === 0 &&
+        !attemptedEmptyDiscoverIds.current.has(server.id)
+    );
+    if (pending.length === 0) {
+      return;
+    }
+    for (const server of pending) {
+      attemptedEmptyDiscoverIds.current.add(server.id);
+    }
+    void discoverEmptyMcpTools()
+      .then(async (result) => {
+        if (result.refreshed > 0) {
+          await mutateMcpServers();
+          toast.success(t("mcpPage.toasts.toolsFetched"));
+        }
+        if (result.failed > 0) {
+          toast.error(
+            result.errors[0] ?? t("mcpPage.toasts.refreshToolsFailed")
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to discover empty MCP tools:", error);
+      });
+  }, [isLoading, mcpServers, mutateMcpServers, t, variant]);
 
   const searchParams = useSearchParams();
   const router = useRouter();

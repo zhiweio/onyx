@@ -10,8 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { Popover, Text } from "@opal/components";
-import LineItem from "@/refresh-components/buttons/LineItem";
+import { Popover, Text, Tooltip } from "@opal/components";
 import {
   filterPickerSections,
   flattenSections,
@@ -21,7 +20,6 @@ import {
 } from "@/lib/skills/picker";
 import { pickerEntryIcon } from "@/lib/skills/pickerIcons";
 import { cn } from "@opal/utils";
-import type { IconFunctionComponent } from "@opal/types";
 
 interface EntryPickerPopoverProps {
   open: boolean;
@@ -115,6 +113,20 @@ function EntryPickerPopover({
   // keep the anchor's coords viewport-relative.
   if (typeof document === "undefined") return null;
 
+  const labels = {
+    commands: t("entryPickerPopover.commandsGroup.label"),
+    skills: t("entryPickerPopover.skillsGroup.label"),
+    apps: t("entryPickerPopover.appsGroup.label"),
+    mcpServers: t("entryPickerPopover.mcpServersGroup.label"),
+    connected: t("entryPickerPopover.connectedRow.description"),
+    connectionRequired: t("entryPickerPopover.connectionRequiredRow.description"),
+    connectAction: t("entryPickerPopover.connectAction.label"),
+    kindSkill: t("entryPickerPopover.tooltip.kindSkill"),
+    kindCommand: t("entryPickerPopover.tooltip.kindCommand"),
+    kindApp: t("entryPickerPopover.tooltip.kindApp"),
+    kindMcp: t("entryPickerPopover.tooltip.kindMcp"),
+  };
+
   return createPortal(
     <Popover
       open={open}
@@ -129,8 +141,8 @@ function EntryPickerPopover({
             position: "fixed",
             left: anchorRect.left,
             top: anchorRect.top,
-            width: 0,
-            height: anchorRect.height || 1,
+            width: anchorRect.width,
+            height: 1,
             pointerEvents: "none",
           }}
         />
@@ -138,31 +150,48 @@ function EntryPickerPopover({
       <Popover.Content
         side="top"
         align="start"
-        width="xl"
+        width="fit"
+        sideOffset={6}
         onOpenAutoFocus={(e) => e.preventDefault()}
         data-testid="skill-picker-popover"
         aria-label={t("entryPickerPopover.content.ariaLabel")}
       >
-        <Popover.Menu scrollContainerRef={scrollContainerRef}>
-          {buildMenuChildren({
-            filtered,
-            flatEntries,
-            selectedIndex,
-            onSelect,
-            onHover: setSelectedIndex,
-            emptyMessage: t("entryPickerPopover.empty.text"),
-            groupLabels: {
-              commands: t("entryPickerPopover.commandsGroup.label"),
-              skills: t("entryPickerPopover.skillsGroup.label"),
-              apps: t("entryPickerPopover.appsGroup.label"),
-              mcpServers: t("entryPickerPopover.mcpServersGroup.label"),
-            },
-          })}
-        </Popover.Menu>
+        {/* Popover chrome is p-1 + 1px border (10px). Size the list to the
+            composer so the panel matches the input card. */}
+        <div
+          style={{ width: Math.max(anchorRect.width - 10, 240) }}
+          className="min-w-0"
+        >
+          <Popover.Menu scrollContainerRef={scrollContainerRef}>
+            {buildMenuChildren({
+              filtered,
+              flatEntries,
+              selectedIndex,
+              onSelect,
+              onHover: setSelectedIndex,
+              emptyMessage: t("entryPickerPopover.empty.text"),
+              labels,
+            })}
+          </Popover.Menu>
+        </div>
       </Popover.Content>
     </Popover>,
     document.body
   );
+}
+
+interface PickerLabels {
+  commands: string;
+  skills: string;
+  apps: string;
+  mcpServers: string;
+  connected: string;
+  connectionRequired: string;
+  connectAction: string;
+  kindSkill: string;
+  kindCommand: string;
+  kindApp: string;
+  kindMcp: string;
 }
 
 interface BuildMenuChildrenArgs {
@@ -171,14 +200,8 @@ interface BuildMenuChildrenArgs {
   selectedIndex: number;
   onSelect: (entry: PickerEntry) => void;
   onHover: (idx: number) => void;
-  /** Translated copy: this helper is not a component, so it cannot call `t`. */
   emptyMessage: string;
-  groupLabels: {
-    commands: string;
-    skills: string;
-    apps: string;
-    mcpServers: string;
-  };
+  labels: PickerLabels;
 }
 
 // `Popover.Menu` renders a literal `null` between children as a divider.
@@ -189,7 +212,7 @@ function buildMenuChildren({
   onSelect,
   onHover,
   emptyMessage,
-  groupLabels,
+  labels,
 }: BuildMenuChildrenArgs): ReactNode[] {
   if (flatEntries.length === 0) {
     return [
@@ -206,14 +229,14 @@ function buildMenuChildren({
   const groups: { key: string; label: string; entries: PickerEntry[] }[] = [
     {
       key: "commands",
-      label: groupLabels.commands,
+      label: labels.commands,
       entries: filtered.commands,
     },
-    { key: "skills", label: groupLabels.skills, entries: filtered.skills },
-    { key: "apps", label: groupLabels.apps, entries: filtered.apps },
+    { key: "skills", label: labels.skills, entries: filtered.skills },
+    { key: "apps", label: labels.apps, entries: filtered.apps },
     {
       key: "mcpServers",
-      label: groupLabels.mcpServers,
+      label: labels.mcpServers,
       entries: filtered.mcpServers,
     },
   ];
@@ -228,40 +251,16 @@ function buildMenuChildren({
       <SectionHeader key={`${group.key}-header`} label={group.label} />
     );
     for (const entry of group.entries) {
-      const rowProps = {
-        key: pickerEntryKey(entry),
-        selected: idx === selectedIndex,
-        onHover: () => onHover(idx),
-        onPick: () => onSelect(entry),
-        rowIndex: idx,
-      };
       children.push(
-        entry.kind === "skill" ? (
-          <SkillRow
-            {...rowProps}
-            slug={entry.slug}
-            description={entry.description}
-          />
-        ) : entry.kind === "command" ? (
-          <CommandRow
-            {...rowProps}
-            name={entry.name}
-            description={entry.description}
-            slug={entry.slug}
-          />
-        ) : (
-          <ConnectableRow
-            {...rowProps}
-            logo={pickerEntryIcon(entry)}
-            name={entry.name}
-            authenticated={entry.authenticated}
-            testId={
-              entry.kind === "app"
-                ? `app-picker-row-${entry.externalAppId}`
-                : `mcp-picker-row-${entry.mcpServerId}`
-            }
-          />
-        )
+        <PickerRow
+          key={pickerEntryKey(entry)}
+          entry={entry}
+          selected={idx === selectedIndex}
+          rowIndex={idx}
+          labels={labels}
+          onHover={() => onHover(idx)}
+          onPick={() => onSelect(entry)}
+        />
       );
       idx += 1;
     }
@@ -280,155 +279,155 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-interface SkillRowProps {
-  slug: string;
-  description: string;
-  selected: boolean;
-  onHover: () => void;
-  onPick: () => void;
-  rowIndex: number;
+function pickerRowTitle(entry: PickerEntry): string {
+  switch (entry.kind) {
+    case "skill":
+    case "command":
+      return `/${entry.slug}`;
+    case "app":
+    case "mcp":
+      return entry.name;
+  }
 }
 
-interface CommandRowProps {
-  name: string;
-  description: string;
-  slug: string;
-  selected: boolean;
-  onHover: () => void;
-  onPick: () => void;
-  rowIndex: number;
+function pickerRowDescription(entry: PickerEntry, labels: PickerLabels): string {
+  switch (entry.kind) {
+    case "skill":
+    case "command":
+      return entry.description;
+    case "mcp":
+      return entry.description?.trim()
+        ? entry.description
+        : entry.authenticated
+          ? labels.connected
+          : labels.connectionRequired;
+    case "app":
+      return entry.authenticated
+        ? labels.connected
+        : labels.connectionRequired;
+  }
 }
 
-function CommandRow({
-  name,
-  description,
-  slug,
+function pickerRowKind(entry: PickerEntry, labels: PickerLabels): string {
+  switch (entry.kind) {
+    case "skill":
+      return labels.kindSkill;
+    case "command":
+      return labels.kindCommand;
+    case "app":
+      return labels.kindApp;
+    case "mcp":
+      return labels.kindMcp;
+  }
+}
+
+function pickerRowTestId(entry: PickerEntry): string {
+  switch (entry.kind) {
+    case "skill":
+      return `skill-picker-row-${entry.slug}`;
+    case "command":
+      return `command-picker-row-${entry.slug}`;
+    case "app":
+      return `app-picker-row-${entry.externalAppId}`;
+    case "mcp":
+      return `mcp-picker-row-${entry.mcpServerId}`;
+  }
+}
+
+interface PickerRowProps {
+  entry: PickerEntry;
+  selected: boolean;
+  rowIndex: number;
+  labels: PickerLabels;
+  onHover: () => void;
+  onPick: () => void;
+}
+
+function PickerRow({
+  entry,
   selected,
+  rowIndex,
+  labels,
   onHover,
   onPick,
-  rowIndex,
-}: CommandRowProps) {
-  const Icon = pickerEntryIcon({
-    kind: "command",
-    slug,
-    name,
-    description,
-  });
-  return (
-    <div className="cursor-pointer">
-      <LineItem
-        interactive={false}
-        selected={selected}
-        emphasized={selected}
-        description={description}
-        onMouseEnter={onHover}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onPick();
-        }}
-        data-row-index={rowIndex}
-        data-testid={`command-picker-row-${slug}`}
-      >
-        <span className="inline-flex items-center gap-2">
-          <Icon className="h-4 w-4 shrink-0" />
-          <span>{name}</span>
-        </span>
-      </LineItem>
+}: PickerRowProps) {
+  const Icon = pickerEntryIcon(entry);
+  const title = pickerRowTitle(entry);
+  const description = pickerRowDescription(entry, labels);
+  const kind = pickerRowKind(entry, labels);
+  const unauth =
+    (entry.kind === "mcp" || entry.kind === "app") && !entry.authenticated;
+
+  const tooltip = (
+    <div className="flex max-w-80 flex-col gap-1">
+      <Text font="secondary-action" color="inherit" as="p">
+        {title}
+      </Text>
+      {(entry.kind === "skill" || entry.kind === "command") &&
+      entry.name !== entry.slug ? (
+        <Text font="secondary-body" color="inherit" as="p">
+          {entry.name}
+        </Text>
+      ) : null}
+      {description ? (
+        <Text font="secondary-body" color="inherit" as="p">
+          {description}
+        </Text>
+      ) : null}
+      <Text font="secondary-body" color="inherit" as="p">
+        {kind}
+      </Text>
+      {entry.kind === "mcp" ? (
+        <Text font="secondary-body" color="inherit" as="p">
+          {entry.serverUrl}
+        </Text>
+      ) : null}
     </div>
   );
-}
 
-function SkillRow({
-  slug,
-  description,
-  selected,
-  onHover,
-  onPick,
-  rowIndex,
-}: SkillRowProps) {
   return (
-    <div className="cursor-pointer">
-      <LineItem
-        interactive={false}
-        selected={selected}
-        emphasized={selected}
-        description={description}
+    <Tooltip tooltip={tooltip} side="right" align="start" delayDuration={300}>
+      <div
+        className="cursor-pointer"
+        aria-label={[title, description, kind].filter(Boolean).join(" ")}
         onMouseEnter={onHover}
         onMouseDown={(e) => {
           e.preventDefault();
           onPick();
         }}
-        data-row-index={rowIndex}
-        data-testid={`skill-picker-row-${slug}`}
       >
-        {`/${slug}`}
-      </LineItem>
-    </div>
-  );
-}
-
-interface ConnectableRowProps {
-  logo: IconFunctionComponent;
-  name: string;
-  authenticated: boolean;
-  testId: string;
-  selected: boolean;
-  onHover: () => void;
-  onPick: () => void;
-  rowIndex: number;
-}
-
-// Shared by external apps and MCP servers: identical affordances, and the
-// section header above already says which kind the row is.
-function ConnectableRow({
-  logo: Logo,
-  name,
-  authenticated,
-  testId,
-  selected,
-  onHover,
-  onPick,
-  rowIndex,
-}: ConnectableRowProps) {
-  const t = useTranslations("chat.input");
-  const unauth = !authenticated;
-  return (
-    <div className="cursor-pointer">
-      <LineItem
-        interactive={false}
-        selected={selected}
-        emphasized={selected}
-        description={
-          authenticated
-            ? t("entryPickerPopover.connectedRow.description")
-            : t("entryPickerPopover.connectionRequiredRow.description")
-        }
-        onMouseEnter={onHover}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onPick();
-        }}
-        rightChildren={
-          unauth ? (
-            <Text font="secondary-action" color="text-03" nowrap>
-              {t("entryPickerPopover.connectAction.label")}
-            </Text>
-          ) : undefined
-        }
-        data-row-index={rowIndex}
-        data-testid={testId}
-      >
-        <span
+        <div
           className={cn(
-            "inline-flex items-center gap-2",
-            unauth && "opacity-50"
+            "flex w-full min-w-0 items-center gap-2 rounded-08 px-2 py-1",
+            selected
+              ? "line-item-row-main-emphasized"
+              : "line-item-row-main"
           )}
+          data-row-index={rowIndex}
+          data-testid={pickerRowTestId(entry)}
+          data-selected={selected}
         >
-          <Logo className="h-4 w-4 shrink-0" />
-          <span>{name}</span>
-        </span>
-      </LineItem>
-    </div>
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-08 bg-background-tint-02">
+            <Icon className="h-3.5 w-3.5 text-text-03" />
+          </span>
+          <span className="flex min-w-0 flex-1 items-baseline gap-2">
+            <span className="max-w-[45%] shrink-0 truncate font-secondary-action text-text-05">
+              {title}
+            </span>
+            {description ? (
+              <span className="min-w-0 flex-1 truncate font-secondary-body text-text-03">
+                {description}
+              </span>
+            ) : null}
+          </span>
+          {unauth ? (
+            <Text font="secondary-action" color="text-03" nowrap>
+              {labels.connectAction}
+            </Text>
+          ) : null}
+        </div>
+      </div>
+    </Tooltip>
   );
 }
 

@@ -37,6 +37,8 @@ import {
   COMPACT_COMMAND_SLUG,
   pickerEntryConnectionPath,
   pickerEntryKey,
+  slashSelectionFromEntries,
+  type SlashSelection,
   pickerEntryPromptPrefix,
   toPickerSections,
   type PickerCommand,
@@ -53,14 +55,22 @@ export interface CraftInputBarHandle {
 }
 
 export interface CraftInputBarProps {
-  onSubmit: (message: string, files: BuildFile[]) => void;
+  onSubmit: (
+    message: string,
+    files: BuildFile[],
+    selection: SlashSelection
+  ) => void;
   isRunning: boolean;
   disabled?: boolean;
   placeholder?: string;
   sandboxInitializing?: boolean;
   noBottomRounding?: boolean;
   queuedMessages?: readonly QueuedMessage[];
-  onQueueMessage?: (text: string, files: BuildFile[]) => void;
+  onQueueMessage?: (
+    text: string,
+    files: BuildFile[],
+    selection: SlashSelection
+  ) => void;
   onRemoveQueuedMessage?: (index: number) => void;
   onInterrupt?: () => void;
   isInterrupting?: boolean;
@@ -247,7 +257,8 @@ const CraftInputBar = memo(
         (message: string) => {
           onSubmit(
             withEntryPrefixes(message, activeEntries),
-            currentMessageFiles
+            currentMessageFiles,
+            slashSelectionFromEntries(activeEntries)
           );
           setActiveEntries([]);
           clearFiles({ suppressRefetch: true });
@@ -260,7 +271,8 @@ const CraftInputBar = memo(
           if (!onQueueMessage) return;
           onQueueMessage(
             withEntryPrefixes(message, activeEntries),
-            currentMessageFiles
+            currentMessageFiles,
+            slashSelectionFromEntries(activeEntries)
           );
           setActiveEntries([]);
           clearFiles({ suppressRefetch: true });

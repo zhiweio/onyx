@@ -32,6 +32,7 @@ import {
 } from "@/app/craft/contexts/UploadFilesContext";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
+import type { SlashSelection } from "@/lib/skills/picker";
 import { isScheduledRunContextInFlight } from "@/app/craft/v1/tasks/utils";
 import { toast } from "@opal/layouts";
 import Dropzone from "react-dropzone";
@@ -558,7 +559,8 @@ export default function BuildChatPanel({
     async (
       message: string,
       attachments: BuildMessageAttachment[],
-      modelOverride?: BuildLlmSelection | null
+      modelOverride?: BuildLlmSelection | null,
+      selection?: SlashSelection
     ) => {
       if (scheduledRunInFlight) {
         toast.error(t("toast.scheduledRunWait"));
@@ -614,7 +616,14 @@ export default function BuildChatPanel({
           attachments,
         });
         // Stream the response
-        await streamMessage(sessionId, message, chosen, attachments);
+        await streamMessage(
+          sessionId,
+          message,
+          chosen,
+          attachments,
+          selection?.skillIds ?? [],
+          selection?.mcpServerIds ?? []
+        );
       } else {
         // New session flow - ALWAYS use pre-provisioned session
         const newSessionId = await consumePreProvisionedSession();
@@ -718,7 +727,14 @@ export default function BuildChatPanel({
         }
 
         // Stream the response (uses session ID directly, not currentSessionId)
-        await streamMessage(newSessionId, message, chosen, attachments);
+        await streamMessage(
+          newSessionId,
+          message,
+          chosen,
+          attachments,
+          selection?.skillIds ?? [],
+          selection?.mcpServerIds ?? []
+        );
       }
     },
     [
@@ -767,8 +783,15 @@ export default function BuildChatPanel({
     (
       message: string,
       files: BuildFile[],
+      selection: SlashSelection,
       modelOverride?: BuildLlmSelection | null
-    ) => sendMessage(message, toMessageAttachments(files), modelOverride),
+    ) =>
+      sendMessage(
+        message,
+        toMessageAttachments(files),
+        modelOverride,
+        selection
+      ),
     [sendMessage]
   );
 

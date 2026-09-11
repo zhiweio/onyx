@@ -57,6 +57,27 @@ describe("Craft LLM selection payloads", () => {
           mime_type: "image/png",
         },
       ],
+      selected_skill_ids: [],
+      selected_mcp_server_ids: [],
+    });
+  });
+
+  it("sends slash-selected skill and MCP ids on the turn", async () => {
+    await createTurn(
+      "session-id",
+      "audit this",
+      "request-id",
+      undefined,
+      selection,
+      [],
+      ["zhihuiya"],
+      [12]
+    );
+
+    const request = jest.mocked(global.fetch).mock.calls[0]![1];
+    expect(JSON.parse(String(request!.body))).toMatchObject({
+      selected_skill_ids: ["zhihuiya"],
+      selected_mcp_server_ids: [12],
     });
   });
 

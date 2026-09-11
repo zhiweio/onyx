@@ -28,6 +28,7 @@ interface InputChipProps {
   colorClassName: string;
   onRemove: () => void;
   onClick?: (chipEl: HTMLElement) => void;
+  testId?: string;
 }
 
 function InputChip({
@@ -36,6 +37,7 @@ function InputChip({
   colorClassName,
   onRemove,
   onClick,
+  testId,
 }: InputChipProps) {
   const t = useTranslations("chat.input");
   const chipRef = useRef<HTMLDivElement>(null);
@@ -70,7 +72,7 @@ function InputChip({
 
   if (!onClick) {
     return (
-      <div ref={chipRef} className={chipClassName}>
+      <div ref={chipRef} className={chipClassName} data-testid={testId}>
         {chipBody}
       </div>
     );
@@ -85,6 +87,7 @@ function InputChip({
       role="button"
       tabIndex={0}
       aria-label={label}
+      data-testid={testId}
       onKeyDown={clickOnKeyDown(() => {
         if (chipRef.current) onClick(chipRef.current);
       })}
@@ -167,6 +170,7 @@ function EntryChip({ entry, onRemove, onClick }: EntryChipProps) {
       colorClassName="bg-theme-blue-01 border-theme-blue-03 text-theme-blue-05"
       onRemove={onRemove}
       onClick={onClick}
+      testId={`input-chip-${pickerEntryKey(entry)}`}
     />
   );
 }

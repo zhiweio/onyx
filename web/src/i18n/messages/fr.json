@@ -8399,6 +8399,9 @@
         "cancel": {
           "label": "Cancel"
         },
+        "invalidRules": {
+          "message": "Rules must be a JSON object"
+        },
         "fields": {
           "name": {
             "label": "Name"
@@ -8412,6 +8415,17 @@
           "tags": {
             "label": "Tags",
             "placeholder": "Comma-separated tags"
+          },
+          "skillSlugs": {
+            "label": "Skill identifiers",
+            "placeholder": "Comma-separated skill IDs"
+          },
+          "reportTemplate": {
+            "label": "Report template",
+            "placeholder": "Template ID, or leave empty"
+          },
+          "rules": {
+            "label": "Playbook rules"
           },
           "body": {
             "label": "Template body"
@@ -9724,6 +9738,12 @@
         },
         "skillsGroup": {
           "label": "Compétences"
+        },
+        "tooltip": {
+          "kindApp": "Application",
+          "kindCommand": "Commande",
+          "kindMcp": "Serveur MCP",
+          "kindSkill": "Compétence"
         }
       },
       "inputChip": {
@@ -12419,7 +12439,11 @@
       },
       "toast": {
         "deleteFailed": "Échec de la suppression de la session",
-        "deleted": "\"{title}\" supprimé."
+        "deleted": "\"{title}\" supprimé.",
+        "deleteProjectFailed": "Échec de la suppression du projet",
+        "deletedProject": "« {title} » a été supprimé.",
+        "renameProjectFailed": "Échec du renommage du projet",
+        "renamedProject": "Renommé en « {title} »."
       },
       "projects": {
         "label": "Projets"
@@ -12438,6 +12462,12 @@
       },
       "mcpActions": {
         "label": "MCP Actions"
+      },
+      "deleteProjectModal": {
+        "body": "Cela supprime les fichiers du projet. L’historique des discussions reste, mais les discussions quittent le projet.",
+        "confirm": "Supprimer",
+        "deleting": "Suppression...",
+        "title": "Supprimer « {title} » ?"
       }
     },
     "skillsStale": {
@@ -13730,7 +13760,20 @@
         },
         "uploaded": {
           "message": "Fichier ajouté."
+        },
+        "renamed": {
+          "message": "Projet renommé."
+        },
+        "renameFailed": {
+          "message": "Impossible de renommer ce projet."
         }
+      },
+      "rename": {
+        "confirm": {
+          "label": "Renommer"
+        },
+        "description": "Le nouveau nom apparaîtra dans la barre latérale et sur cette page.",
+        "title": "Utiliser le nom « {name} » ?"
       }
     },
     "gallery": {
@@ -13779,6 +13822,14 @@
           "word": {
             "label": "Word"
           }
+        }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
         }
       },
       "count": {
@@ -13838,14 +13889,6 @@
         },
         "forkFailed": {
           "message": "Could not copy this item"
-        }
-      },
-      "view": {
-        "cards": {
-          "tooltip": "Cards"
-        },
-        "list": {
-          "tooltip": "List"
         }
       },
       "pagination": {

@@ -107,6 +107,9 @@ function convertMessagesToStreamItems(messages: BuildMessage[]): StreamItem[] {
             id: message.id || genId("thinking"),
             content: packet.text,
             isStreaming: false,
+            ...(packet.durationMs != null
+              ? { durationMs: packet.durationMs }
+              : {}),
           });
         }
         break;

@@ -981,7 +981,9 @@ export function useBuildStreaming() {
       sessionId: string,
       content: string,
       model?: BuildLlmSelection | null,
-      attachments: BuildMessageAttachment[] = []
+      attachments: BuildMessageAttachment[] = [],
+      selectedSkillIds: string[] = [],
+      selectedMcpServerIds: number[] = []
     ): Promise<void> => {
       const currentState = useBuildSessionStore.getState();
       const existingSession = currentState.sessions.get(sessionId);
@@ -1013,7 +1015,9 @@ export function useBuildStreaming() {
           crypto.randomUUID(),
           controller.signal,
           model,
-          attachments
+          attachments,
+          selectedSkillIds,
+          selectedMcpServerIds
         );
         const currentSession = useBuildSessionStore
           .getState()

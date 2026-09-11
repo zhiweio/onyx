@@ -8399,6 +8399,9 @@
         "cancel": {
           "label": "Cancel"
         },
+        "invalidRules": {
+          "message": "Rules must be a JSON object"
+        },
         "fields": {
           "name": {
             "label": "Name"
@@ -8412,6 +8415,17 @@
           "tags": {
             "label": "Tags",
             "placeholder": "Comma-separated tags"
+          },
+          "skillSlugs": {
+            "label": "Skill identifiers",
+            "placeholder": "Comma-separated skill IDs"
+          },
+          "reportTemplate": {
+            "label": "Report template",
+            "placeholder": "Template ID, or leave empty"
+          },
+          "rules": {
+            "label": "Playbook rules"
           },
           "body": {
             "label": "Template body"
@@ -9724,6 +9738,12 @@
         },
         "skillsGroup": {
           "label": "المهارات"
+        },
+        "tooltip": {
+          "kindApp": "تطبيق",
+          "kindCommand": "أمر",
+          "kindMcp": "خادم MCP",
+          "kindSkill": "مهارة"
         }
       },
       "inputChip": {
@@ -12419,7 +12439,11 @@
       },
       "toast": {
         "deleteFailed": "فشل حذف الجلسة",
-        "deleted": "تم حذف \"{title}\"."
+        "deleted": "تم حذف \"{title}\".",
+        "deleteProjectFailed": "تعذر حذف المشروع",
+        "deletedProject": "تم حذف \"{title}\".",
+        "renameProjectFailed": "تعذر إعادة تسمية المشروع",
+        "renamedProject": "تمت إعادة التسمية إلى \"{title}\"."
       },
       "projects": {
         "label": "Projects"
@@ -12438,6 +12462,12 @@
       },
       "mcpActions": {
         "label": "MCP Actions"
+      },
+      "deleteProjectModal": {
+        "body": "سيؤدي هذا إلى حذف ملفات المشروع. يبقى سجل المحادثات، لكن المحادثات تغادر المشروع.",
+        "confirm": "حذف",
+        "deleting": "جارٍ الحذف...",
+        "title": "حذف \"{title}\"؟"
       }
     },
     "skillsStale": {
@@ -13730,7 +13760,20 @@
         },
         "uploaded": {
           "message": "File added."
+        },
+        "renamed": {
+          "message": "تمت إعادة تسمية المشروع."
+        },
+        "renameFailed": {
+          "message": "تعذر إعادة تسمية هذا المشروع."
         }
+      },
+      "rename": {
+        "confirm": {
+          "label": "إعادة تسمية"
+        },
+        "description": "سيظهر الاسم الجديد في الشريط الجانبي وفي هذه الصفحة.",
+        "title": "استخدام الاسم \"{name}\"؟"
       }
     },
     "gallery": {
@@ -13779,6 +13822,14 @@
           "word": {
             "label": "Word"
           }
+        }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
         }
       },
       "count": {
@@ -13838,14 +13889,6 @@
         },
         "forkFailed": {
           "message": "Could not copy this item"
-        }
-      },
-      "view": {
-        "cards": {
-          "tooltip": "Cards"
-        },
-        "list": {
-          "tooltip": "List"
         }
       },
       "pagination": {

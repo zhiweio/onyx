@@ -14,12 +14,14 @@ import {
   isWorkspaceReportTemplate,
   type ReportTemplate,
 } from "@/lib/report-templates/types";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 
 export interface ReportTemplateCardProps {
   template: ReportTemplate;
   onClick?: (template: ReportTemplate) => void;
   onEdit?: (template: ReportTemplate) => void;
   onDelete?: (template: ReportTemplate) => void;
+  layout?: CatalogViewMode;
 }
 
 function stopAndCall(
@@ -36,6 +38,7 @@ export default function ReportTemplateCard({
   onClick,
   onEdit,
   onDelete,
+  layout = "cards",
 }: ReportTemplateCardProps) {
   const t = useTranslations("craft.reportTemplates");
   const canEdit = canEditReportTemplate(template);
@@ -45,6 +48,61 @@ export default function ReportTemplateCard({
   const handleClick = useCallback(() => {
     onClick?.(template);
   }, [onClick, template]);
+
+  if (layout === "list") {
+    return (
+      <Interactive.Simple onClick={handleClick} group="group/ReportTemplateCard">
+        <Card variant="primary" padding={1} gap={0}>
+          <div className="flex w-full flex-row items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <Content
+                icon={SvgFileText}
+                title={template.name}
+                description={template.description || template.slug}
+                sizePreset="main-ui"
+                variant="section"
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {canEdit && (
+                <Button
+                  prominence="tertiary"
+                  size="sm"
+                  icon={SvgEdit}
+                  tooltip={t("card.edit.tooltip")}
+                  aria-label={t("card.edit.tooltip")}
+                  onClick={(event) => stopAndCall(event, onEdit, template)}
+                />
+              )}
+              <Button
+                prominence="tertiary"
+                size="sm"
+                icon={SvgTrash}
+                disabled={!canDelete}
+                tooltip={
+                  canDelete
+                    ? t("card.delete.tooltip")
+                    : t("card.deleteBlocked.tooltip")
+                }
+                aria-label={
+                  canDelete
+                    ? t("card.delete.tooltip")
+                    : t("card.deleteBlocked.tooltip")
+                }
+                onClick={(event) => {
+                  if (!canDelete) {
+                    event.stopPropagation();
+                    return;
+                  }
+                  stopAndCall(event, onDelete, template);
+                }}
+              />
+            </div>
+          </div>
+        </Card>
+      </Interactive.Simple>
+    );
+  }
 
   return (
     <Interactive.Simple onClick={handleClick} group="group/ReportTemplateCard">

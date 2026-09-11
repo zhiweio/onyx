@@ -40,6 +40,8 @@ export interface BaseInputBarHandle {
   pasteText: (text: string) => void;
   getTextBeforeCursor: () => string | null;
   getCaretRect: () => DOMRect | null;
+  /** The composer card, used to size the `/` picker to the input. */
+  getInputRect: () => DOMRect | null;
   /** Delete `token` immediately before the caret (e.g. `"/pptx"`). */
   deleteBeforeToken: (token: string) => boolean;
 }
@@ -107,6 +109,7 @@ const BaseInputBar = memo(
       const resolvedPlaceholder =
         placeholder ?? t("baseInputBar.input.placeholder");
 
+      const composerRef = useRef<HTMLDivElement>(null);
       const inputWrapperRef = useRef<HTMLDivElement>(null);
       const {
         ref: inputRef,
@@ -181,6 +184,8 @@ const BaseInputBar = memo(
           }
           return rect;
         },
+        getInputRect: (): DOMRect | null =>
+          composerRef.current?.getBoundingClientRect() ?? null,
         deleteBeforeToken: (token: string): boolean => {
           const el = inputRef.current;
           if (!el) return false;
@@ -301,6 +306,7 @@ const BaseInputBar = memo(
             />
           )}
           <div
+            ref={composerRef}
             className={cn(
               "w-full flex flex-col shadow-box-01 bg-background-neutral-00",
               noBottomRounding ? "rounded-t-16 rounded-b-none" : "rounded-16"

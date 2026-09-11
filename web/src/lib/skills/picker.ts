@@ -31,6 +31,7 @@ export interface PickerMcpServer {
   name: string;
   serverUrl: string;
   authenticated: boolean;
+  description?: string;
 }
 
 export interface PickerCommand {
@@ -123,6 +124,7 @@ export function toPickerSections(
       mcpServerId: server.id,
       name: server.name,
       serverUrl: server.server_url,
+      description: server.description ?? "",
       // Whether Craft can actually authenticate this user against the server,
       // not whether a credential row exists. See `craft_connected`.
       authenticated: server.craft_connected ?? false,
@@ -171,7 +173,7 @@ function matchesQuery(entry: PickerEntry, query: string): boolean {
       fields = [String(entry.externalAppId), entry.name];
       break;
     case "mcp":
-      fields = [String(entry.mcpServerId), entry.name];
+      fields = [String(entry.mcpServerId), entry.name, entry.description ?? ""];
       break;
     case "command":
       fields = [entry.slug, entry.name, entry.description];
@@ -193,6 +195,26 @@ export function pickerEntryKey(entry: PickerEntry): string {
   }
 }
 
+export interface SlashSelection {
+  skillIds: string[];
+  mcpServerIds: number[];
+}
+
+export function slashSelectionFromEntries(
+  entries: PickerEntry[]
+): SlashSelection {
+  const skillIds: string[] = [];
+  const mcpServerIds: number[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "skill") {
+      skillIds.push(entry.slug);
+    } else if (entry.kind === "mcp") {
+      mcpServerIds.push(entry.mcpServerId);
+    }
+  }
+  return { skillIds, mcpServerIds };
+}
+
 export function pickerEntryPromptPrefix(entry: PickerEntry): string {
   switch (entry.kind) {
     case "skill":
@@ -200,8 +222,6 @@ export function pickerEntryPromptPrefix(entry: PickerEntry): string {
     case "app":
       return `[Use external app ${JSON.stringify(entry.name)} (ID: ${entry.externalAppId})]`;
     case "mcp":
-      // The server's tools are already wired into the session, so this only
-      // points the agent at them.
       return `[Use the MCP server ${JSON.stringify(entry.name)} and its tools]`;
     case "command":
       return `/${entry.slug}`;

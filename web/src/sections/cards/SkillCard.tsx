@@ -13,6 +13,7 @@ import type {
   CustomSkill,
   SkillExternalAppDependency,
 } from "@/lib/skills/types";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 import { cn } from "@opal/utils";
 
 export type SkillCardSource = "builtin" | "custom";
@@ -52,6 +53,7 @@ export interface SkillCardProps {
   onEdit?: (item: CustomSkillCardItem) => void;
   onEnabledChange?: (item: SkillCardItem, enabled: boolean) => void;
   enablementPending?: boolean;
+  layout?: CatalogViewMode;
 }
 
 export default function SkillCard({
@@ -61,6 +63,7 @@ export default function SkillCard({
   onEdit,
   onEnabledChange,
   enablementPending = false,
+  layout = "cards",
 }: SkillCardProps) {
   const t = useTranslations("cards");
   const { appName } = useSettings();
@@ -134,96 +137,117 @@ export default function SkillCard({
       ? t("skill.toggle.disable.ariaLabel", { name: item.name })
       : t("skill.toggle.enable.ariaLabel", { name: item.name });
 
+  const cardVariant =
+    isInvalid ||
+    isBuiltinUnavailable ||
+    (isDependencyUnavailable && !item.enabled)
+      ? "disabled"
+      : isInactive
+        ? "secondary"
+        : "primary";
+  const editButton =
+    item.source === "custom" && canEdit ? (
+      <div className="opacity-0 transition-opacity group-hover/SkillCard:opacity-100 group-focus-within/SkillCard:opacity-100">
+        <Button
+          prominence="secondary"
+          size="sm"
+          icon={SvgEdit}
+          tooltip={t("skill.edit.tooltip")}
+          onClick={handleEditClick}
+        />
+      </div>
+    ) : undefined;
+  const footer = (
+    <div className="p-0.5 pe-1.5 flex items-center gap-1">
+      {item.can_toggle && (
+        <div role="presentation" onClick={(event) => event.stopPropagation()}>
+          <Switch
+            checked={item.enabled}
+            onCheckedChange={handleEnabledChange}
+            disabled={enablementPending || isInvalid}
+            aria-label={toggleAriaLabel}
+          />
+        </div>
+      )}
+      {item.source === "builtin" ? (
+        item.is_available ? (
+          <Tag title={t("skill.tags.builtin.label")} color="blue" />
+        ) : (
+          <Tag title={t("skill.tags.unavailable.label")} color="amber" />
+        )
+      ) : isInvalid ? (
+        <Tag title={t("skill.tags.invalid.label")} color="amber" />
+      ) : dependency ? (
+        <Tag title={t("skill.tags.appSkill.label")} color="blue" />
+      ) : item.is_personal ? (
+        <Tag title={t("skill.tags.personal.label")} color="purple" />
+      ) : (
+        <Tag title={t("skill.tags.custom.label")} color="gray" />
+      )}
+    </div>
+  );
+
   return (
     <Tooltip tooltip={tooltip} side="top">
       <Interactive.Simple onClick={handleClick} group="group/SkillCard">
-        <Card
-          variant={
-            isInvalid ||
-            isBuiltinUnavailable ||
-            (isDependencyUnavailable && !item.enabled)
-              ? "disabled"
-              : isInactive
-                ? "secondary"
-                : "primary"
-          }
-          padding={0}
-          gap={0}
-          height="full"
-        >
-          <div
-            className={cn(
-              "flex self-stretch h-24",
-              isSelectedDependencyUnavailable && "opacity-50"
-            )}
-          >
-            <CardItemLayout
-              icon={SvgBlocks}
-              title={item.name}
-              description={
-                isInvalid ? t("skill.invalid.description") : item.description
-              }
-              rightChildren={
-                item.source === "custom" && canEdit ? (
-                  <div className="opacity-0 transition-opacity group-hover/SkillCard:opacity-100 group-focus-within/SkillCard:opacity-100">
-                    <Button
-                      prominence="secondary"
-                      size="sm"
-                      icon={SvgEdit}
-                      tooltip={t("skill.edit.tooltip")}
-                      onClick={handleEditClick}
-                    />
-                  </div>
-                ) : undefined
-              }
-            />
-          </div>
-
-          <div className="bg-background-tint-01 p-1 flex flex-row items-center justify-between w-full">
-            <div className="py-1 px-2 min-w-0 flex-1">
-              <Content
-                icon={dependency ? SvgPlug : SvgUser}
-                title={dependencyStatus ?? authorTitle}
-                sizePreset="secondary"
-                variant="body"
-                color="muted"
+        {layout === "list" ? (
+          <Card variant={cardVariant} padding={1} gap={0}>
+            <div className="flex w-full flex-row items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <Content
+                  icon={SvgBlocks}
+                  title={item.name}
+                  description={
+                    isInvalid ? t("skill.invalid.description") : item.description
+                  }
+                  sizePreset="main-ui"
+                  variant="section"
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Content
+                  icon={dependency ? SvgPlug : SvgUser}
+                  title={dependencyStatus ?? authorTitle}
+                  sizePreset="secondary"
+                  variant="body"
+                  color="muted"
+                />
+                {editButton}
+                {footer}
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card variant={cardVariant} padding={0} gap={0} height="full">
+            <div
+              className={cn(
+                "flex self-stretch h-24",
+                isSelectedDependencyUnavailable && "opacity-50"
+              )}
+            >
+              <CardItemLayout
+                icon={SvgBlocks}
+                title={item.name}
+                description={
+                  isInvalid ? t("skill.invalid.description") : item.description
+                }
+                rightChildren={editButton}
               />
             </div>
-            <div className="p-0.5 pe-1.5 flex items-center gap-1">
-              {item.can_toggle && (
-                <div
-                  role="presentation"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Switch
-                    checked={item.enabled}
-                    onCheckedChange={handleEnabledChange}
-                    disabled={enablementPending || isInvalid}
-                    aria-label={toggleAriaLabel}
-                  />
-                </div>
-              )}
-              {item.source === "builtin" ? (
-                item.is_available ? (
-                  <Tag title={t("skill.tags.builtin.label")} color="blue" />
-                ) : (
-                  <Tag
-                    title={t("skill.tags.unavailable.label")}
-                    color="amber"
-                  />
-                )
-              ) : isInvalid ? (
-                <Tag title={t("skill.tags.invalid.label")} color="amber" />
-              ) : dependency ? (
-                <Tag title={t("skill.tags.appSkill.label")} color="blue" />
-              ) : item.is_personal ? (
-                <Tag title={t("skill.tags.personal.label")} color="purple" />
-              ) : (
-                <Tag title={t("skill.tags.custom.label")} color="gray" />
-              )}
+            <div className="bg-background-tint-01 p-1 flex flex-row items-center justify-between w-full">
+              <div className="py-1 px-2 min-w-0 flex-1">
+                <Content
+                  icon={dependency ? SvgPlug : SvgUser}
+                  title={dependencyStatus ?? authorTitle}
+                  sizePreset="secondary"
+                  variant="body"
+                  color="muted"
+                />
+              </div>
+              {footer}
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
       </Interactive.Simple>
     </Tooltip>
   );

@@ -106,6 +106,8 @@ export interface OnSubmitProps {
   additionalContext?: string;
   /** When 2+ models, triggers multi-model parallel generation via backend. */
   selectedModels?: SelectedModel[];
+  selectedSkillIds?: string[];
+  selectedMcpServerIds?: number[];
 }
 
 interface RegenerationRequest {
@@ -391,6 +393,8 @@ export default function useChatController({
       regenerationRequest,
       additionalContext,
       selectedModels,
+      selectedSkillIds,
+      selectedMcpServerIds,
     }: OnSubmitProps) => {
       // Read at submit time so no caller can capture a stale value.
       const incognito = incognitoEnabledRef.current ?? false;
@@ -1106,6 +1110,8 @@ export default function useChatController({
           forcedToolId: effectiveForcedToolId,
           origin: messageOrigin,
           additionalContext,
+          selectedSkillIds,
+          selectedMcpServerIds,
           llmOverrides: isMultiModel
             ? selectedModels!.map((m) => ({
                 model_provider: m.name,

@@ -23,6 +23,7 @@ import {
   toast,
 } from "@opal/layouts";
 import {
+  SvgEdit,
   SvgFolder,
   SvgPlayCircle,
   SvgSimpleLoader,
@@ -30,7 +31,10 @@ import {
 } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import CraftProjectFiles from "@/app/craft/components/CraftProjectFiles";
-import { useCraftProject } from "@/lib/craft-projects/hooks";
+import {
+  useCraftProject,
+  useRefreshCraftProjects,
+} from "@/lib/craft-projects/hooks";
 import {
   deleteCraftProject,
   startCraftProjectSession,
@@ -88,51 +92,83 @@ export default function CraftProjectDetailPage({
   const format = useFormatter();
   const router = useRouter();
   const { data, error, isLoading, refresh } = useCraftProject(projectId);
+  const refreshProjects = useRefreshCraftProjects();
   const refreshSessionHistory = useBuildSessionStore(
     (state) => state.refreshSessionHistory
   );
-  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pendingName, setPendingName] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     if (!data) return;
-    setName(data.name);
     setDescription(data.description);
     setInstructions(data.instructions ?? "");
   }, [data]);
 
   const detailsDirty =
-    data !== undefined &&
-    (name.trim() !== data.name || description.trim() !== data.description);
+    data !== undefined && description.trim() !== data.description;
   const instructionsDirty =
     data !== undefined &&
     (instructions.trim() || null) !== (data.instructions ?? null);
 
-  async function handleSave() {
-    if (!data || !name.trim()) return;
+  async function persistProject(patch: {
+    name?: string;
+    description?: string;
+    instructions?: string | null;
+  }): Promise<boolean> {
+    if (!data) return false;
     setSaving(true);
     try {
-      await updateCraftProject(data.id, {
-        name: name.trim(),
-        description: description.trim(),
-        instructions: instructions.trim() || null,
-      });
+      await updateCraftProject(data.id, patch);
       await refresh();
-      toast.success(t("toasts.saved.message"));
+      await refreshProjects(data.id);
+      toast.success(
+        patch.name ? t("toasts.renamed.message") : t("toasts.saved.message")
+      );
+      return true;
     } catch (saveError) {
       console.error(saveError);
       toast.error(
         saveError instanceof Error
           ? saveError.message
-          : t("toasts.saveFailed.message")
+          : patch.name
+            ? t("toasts.renameFailed.message")
+            : t("toasts.saveFailed.message")
       );
+      return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!data) return;
+    await persistProject({
+      description: description.trim(),
+      instructions: instructions.trim() || null,
+    });
+  }
+
+  function handleTitleChange(newTitle: string) {
+    const next = newTitle.trim();
+    if (!data || !next || next === data.name) return;
+    setPendingName(next);
+  }
+
+  async function handleConfirmRename() {
+    if (!pendingName) return;
+    setRenaming(true);
+    try {
+      const saved = await persistProject({ name: pendingName });
+      if (saved) setPendingName(null);
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -159,6 +195,8 @@ export default function CraftProjectDetailPage({
     setDeleting(true);
     try {
       await deleteCraftProject(data.id);
+      await refreshProjects();
+      await refreshSessionHistory();
       toast.success(t("toasts.deleted.message"));
       // SAFETY: CRAFT_PROJECTS_PATH is the static projects list route.
       router.push(CRAFT_PROJECTS_PATH as Route);
@@ -192,10 +230,7 @@ export default function CraftProjectDetailPage({
     ? t("detail.newChat.label")
     : t("detail.startChat.label");
   const headline = projectHeadline(data?.name ?? t("page.title.text"));
-  const headerDescription = (
-    data?.description?.trim() ||
-    (headline.title !== headline.full ? headline.full : "")
-  ).trim();
+  const headerDescription = (data?.description ?? "").trim();
 
   return (
     <SettingsLayouts.Root
@@ -204,8 +239,10 @@ export default function CraftProjectDetailPage({
     >
       <SettingsLayouts.Header
         icon={SvgFolder}
-        title={headline.title}
+        title={data ? headline.full : headline.title}
         description={headerDescription || undefined}
+        editable={Boolean(data)}
+        onTitleChange={handleTitleChange}
         backButton={() => {
           router.push(CRAFT_PROJECTS_PATH as Route);
         }}
@@ -333,7 +370,7 @@ export default function CraftProjectDetailPage({
                 />
                 {instructionsDirty && (
                   <Button
-                    disabled={saving || !name.trim()}
+                    disabled={saving}
                     onClick={() => void handleSave()}
                   >
                     {t("detail.save.label")}
@@ -349,12 +386,6 @@ export default function CraftProjectDetailPage({
                 justifyContent="start"
                 height="auto"
               >
-                <InputVertical title={t("create.name.label")} withLabel>
-                  <InputTypeIn
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </InputVertical>
                 <InputVertical
                   title={t("create.description.label")}
                   withLabel
@@ -367,7 +398,7 @@ export default function CraftProjectDetailPage({
                 </InputVertical>
                 {detailsDirty && (
                   <Button
-                    disabled={saving || !name.trim()}
+                    disabled={saving}
                     onClick={() => void handleSave()}
                   >
                     {t("detail.save.label")}
@@ -378,6 +409,23 @@ export default function CraftProjectDetailPage({
           </Section>
         )}
       </SettingsLayouts.Body>
+
+      {pendingName && data && (
+        <ConfirmationModalLayout
+          icon={SvgEdit}
+          title={t("rename.title", { name: pendingName })}
+          description={t("rename.description")}
+          onClose={renaming ? undefined : () => setPendingName(null)}
+          submit={
+            <Button
+              disabled={renaming}
+              onClick={() => void handleConfirmRename()}
+            >
+              {t("rename.confirm.label")}
+            </Button>
+          }
+        />
+      )}
 
       {deleteOpen && data && (
         <ConfirmationModalLayout

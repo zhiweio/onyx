@@ -26,6 +26,7 @@ import {
   UNCATEGORIZED_SCENARIO_DOMAIN,
   type Scenario,
 } from "@/lib/scenarios/types";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 
 export interface ScenarioCardProps {
   scenario: Scenario;
@@ -38,6 +39,7 @@ export interface ScenarioCardProps {
   onStart?: (scenario: Scenario) => void;
   startPending?: boolean;
   customizePending?: boolean;
+  layout?: CatalogViewMode;
 }
 
 function stopAndCall(
@@ -60,6 +62,7 @@ export default function ScenarioCard({
   onStart,
   startPending = false,
   customizePending = false,
+  layout = "cards",
 }: ScenarioCardProps) {
   const t = useTranslations("craft.scenarios");
   const domain = scenarioDomain(scenario);
@@ -72,6 +75,59 @@ export default function ScenarioCard({
     onClick?.(scenario);
   }, [onClick, scenario]);
 
+  const leadAction = canEdit ? (
+    <Button
+      prominence="secondary"
+      size="sm"
+      icon={SvgEdit}
+      tooltip={t("card.edit.tooltip")}
+      aria-label={t("card.edit.tooltip")}
+      onClick={(event) => stopAndCall(event, onEdit, scenario)}
+    />
+  ) : (
+    <Button
+      prominence="secondary"
+      size="sm"
+      icon={SvgCopy}
+      tooltip={t("card.customize.tooltip")}
+      aria-label={t("card.customize.tooltip")}
+      disabled={customizePending}
+      onClick={(event) => stopAndCall(event, onCustomize, scenario)}
+    />
+  );
+
+  if (layout === "list") {
+    return (
+      <Interactive.Simple onClick={handleClick} group="group/ScenarioCard">
+        <Card variant="primary" padding={1} gap={0}>
+          <div className="flex w-full flex-row items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <Content
+                icon={SvgShare}
+                title={scenario.name}
+                description={scenario.description}
+                sizePreset="main-ui"
+                variant="section"
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {leadAction}
+              <Button
+                prominence="primary"
+                size="sm"
+                icon={SvgPlayCircle}
+                disabled={startPending}
+                onClick={(event) => stopAndCall(event, onStart, scenario)}
+              >
+                {t("card.startRun.label")}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </Interactive.Simple>
+    );
+  }
+
   return (
     <Interactive.Simple onClick={handleClick} group="group/ScenarioCard">
       <Card variant="primary" padding={0} gap={0} height="full">
@@ -80,30 +136,7 @@ export default function ScenarioCard({
             icon={SvgShare}
             title={scenario.name}
             description={scenario.description}
-            rightChildren={
-              canEdit ? (
-                <Button
-                  prominence="secondary"
-                  size="sm"
-                  icon={SvgEdit}
-                  tooltip={t("card.edit.tooltip")}
-                  aria-label={t("card.edit.tooltip")}
-                  onClick={(event) => stopAndCall(event, onEdit, scenario)}
-                />
-              ) : (
-                <Button
-                  prominence="secondary"
-                  size="sm"
-                  icon={SvgCopy}
-                  tooltip={t("card.customize.tooltip")}
-                  aria-label={t("card.customize.tooltip")}
-                  disabled={customizePending}
-                  onClick={(event) =>
-                    stopAndCall(event, onCustomize, scenario)
-                  }
-                />
-              )
-            }
+            rightChildren={leadAction}
           />
         </div>
         <div className="px-2 pb-2 flex flex-wrap gap-1">

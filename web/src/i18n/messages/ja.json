@@ -8399,6 +8399,9 @@
         "cancel": {
           "label": "Cancel"
         },
+        "invalidRules": {
+          "message": "Rules must be a JSON object"
+        },
         "fields": {
           "name": {
             "label": "Name"
@@ -8412,6 +8415,17 @@
           "tags": {
             "label": "Tags",
             "placeholder": "Comma-separated tags"
+          },
+          "skillSlugs": {
+            "label": "Skill identifiers",
+            "placeholder": "Comma-separated skill IDs"
+          },
+          "reportTemplate": {
+            "label": "Report template",
+            "placeholder": "Template ID, or leave empty"
+          },
+          "rules": {
+            "label": "Playbook rules"
           },
           "body": {
             "label": "Template body"
@@ -9724,6 +9738,12 @@
         },
         "skillsGroup": {
           "label": "スキル"
+        },
+        "tooltip": {
+          "kindApp": "アプリ",
+          "kindCommand": "コマンド",
+          "kindMcp": "MCP サーバー",
+          "kindSkill": "スキル"
         }
       },
       "inputChip": {
@@ -12419,7 +12439,11 @@
       },
       "toast": {
         "deleteFailed": "セッションを削除できませんでした",
-        "deleted": "「{title}」を削除しました。"
+        "deleted": "「{title}」を削除しました。",
+        "deleteProjectFailed": "プロジェクトを削除できませんでした",
+        "deletedProject": "「{title}」を削除しました。",
+        "renameProjectFailed": "プロジェクト名を変更できませんでした",
+        "renamedProject": "「{title}」に変更しました。"
       },
       "projects": {
         "label": "プロジェクト"
@@ -12438,6 +12462,12 @@
       },
       "mcpActions": {
         "label": "MCP Actions"
+      },
+      "deleteProjectModal": {
+        "body": "プロジェクトのファイルは削除されます。チャット履歴は残りますが、チャットはこのプロジェクトから外れます。",
+        "confirm": "削除",
+        "deleting": "削除中...",
+        "title": "「{title}」を削除しますか？"
       }
     },
     "skillsStale": {
@@ -13730,7 +13760,20 @@
         },
         "uploaded": {
           "message": "ファイルを追加しました。"
+        },
+        "renamed": {
+          "message": "プロジェクト名を変更しました。"
+        },
+        "renameFailed": {
+          "message": "プロジェクト名を変更できませんでした。"
         }
+      },
+      "rename": {
+        "confirm": {
+          "label": "名前を変更"
+        },
+        "description": "新しい名前はサイドバーとこのページに表示されます。",
+        "title": "名前を「{name}」にしますか？"
       }
     },
     "gallery": {
@@ -13779,6 +13822,14 @@
           "word": {
             "label": "Word"
           }
+        }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
         }
       },
       "count": {
@@ -13838,14 +13889,6 @@
         },
         "forkFailed": {
           "message": "Could not copy this item"
-        }
-      },
-      "view": {
-        "cards": {
-          "tooltip": "Cards"
-        },
-        "list": {
-          "tooltip": "List"
         }
       },
       "pagination": {

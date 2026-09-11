@@ -8399,6 +8399,9 @@
         "cancel": {
           "label": "Cancel"
         },
+        "invalidRules": {
+          "message": "Rules must be a JSON object"
+        },
         "fields": {
           "name": {
             "label": "Name"
@@ -8412,6 +8415,17 @@
           "tags": {
             "label": "Tags",
             "placeholder": "Comma-separated tags"
+          },
+          "skillSlugs": {
+            "label": "Skill identifiers",
+            "placeholder": "Comma-separated skill IDs"
+          },
+          "reportTemplate": {
+            "label": "Report template",
+            "placeholder": "Template ID, or leave empty"
+          },
+          "rules": {
+            "label": "Playbook rules"
           },
           "body": {
             "label": "Template body"
@@ -9724,6 +9738,12 @@
         },
         "skillsGroup": {
           "label": "스킬"
+        },
+        "tooltip": {
+          "kindApp": "앱",
+          "kindCommand": "명령",
+          "kindMcp": "MCP 서버",
+          "kindSkill": "스킬"
         }
       },
       "inputChip": {
@@ -12419,7 +12439,11 @@
       },
       "toast": {
         "deleteFailed": "세션을 삭제하지 못했습니다",
-        "deleted": "\"{title}\"이(가) 삭제되었습니다."
+        "deleted": "\"{title}\"이(가) 삭제되었습니다.",
+        "deleteProjectFailed": "프로젝트를 삭제하지 못했습니다",
+        "deletedProject": "\"{title}\"을(를) 삭제했습니다.",
+        "renameProjectFailed": "프로젝트 이름을 바꾸지 못했습니다",
+        "renamedProject": "\"{title}\"으로 이름을 바꿨습니다."
       },
       "projects": {
         "label": "프로젝트"
@@ -12438,6 +12462,12 @@
       },
       "mcpActions": {
         "label": "MCP Actions"
+      },
+      "deleteProjectModal": {
+        "body": "프로젝트 파일이 삭제됩니다. 채팅 기록은 남지만 채팅은 프로젝트에서 빠집니다.",
+        "confirm": "삭제",
+        "deleting": "삭제 중...",
+        "title": "\"{title}\"을(를) 삭제할까요?"
       }
     },
     "skillsStale": {
@@ -13730,7 +13760,20 @@
         },
         "uploaded": {
           "message": "파일을 추가했습니다."
+        },
+        "renamed": {
+          "message": "프로젝트 이름을 바꿨습니다."
+        },
+        "renameFailed": {
+          "message": "프로젝트 이름을 바꾸지 못했습니다."
         }
+      },
+      "rename": {
+        "confirm": {
+          "label": "이름 변경"
+        },
+        "description": "새 이름은 사이드바와 이 페이지에 표시됩니다.",
+        "title": "이름을 \"{name}\"으로 바꿀까요?"
       }
     },
     "gallery": {
@@ -13779,6 +13822,14 @@
           "word": {
             "label": "Word"
           }
+        }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
         }
       },
       "count": {
@@ -13838,14 +13889,6 @@
         },
         "forkFailed": {
           "message": "Could not copy this item"
-        }
-      },
-      "view": {
-        "cards": {
-          "tooltip": "Cards"
-        },
-        "list": {
-          "tooltip": "List"
         }
       },
       "pagination": {

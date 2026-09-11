@@ -176,6 +176,8 @@ export interface SendMessageParams {
   // Additional context injected into the LLM call but not stored/shown in chat.
   // Used e.g. by Chrome extension "Read this tab" feature.
   additionalContext?: string;
+  selectedSkillIds?: string[];
+  selectedMcpServerIds?: number[];
 }
 
 export async function* sendMessage({
@@ -195,6 +197,8 @@ export async function* sendMessage({
   llmOverrides,
   origin,
   additionalContext,
+  selectedSkillIds,
+  selectedMcpServerIds,
 }: SendMessageParams): AsyncGenerator<PacketType, void, unknown> {
   // Build payload for new send-chat-message API
   const payload = {
@@ -220,6 +224,8 @@ export async function* sendMessage({
     // Default to "unknown" for consistency with backend; callers should set explicitly
     origin: origin ?? "unknown",
     additional_context: additionalContext ?? null,
+    selected_skill_ids: selectedSkillIds ?? null,
+    selected_mcp_server_ids: selectedMcpServerIds ?? null,
   };
 
   const body = JSON.stringify(payload);

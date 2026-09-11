@@ -1,4 +1,4 @@
-import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
+import { render, screen, setupUser, waitFor, within } from "@tests/setup/test-utils";
 import CraftProjectDetailPage from "@/views/CraftProjectDetailPage";
 import type { CraftProject } from "@/lib/craft-projects/types";
 
@@ -7,6 +7,8 @@ const mockUseCraftProject = jest.fn();
 const mockStartSession = jest.fn();
 const mockRefreshHistory = jest.fn();
 const mockRefresh = jest.fn();
+const mockRefreshProjects = jest.fn();
+const mockUpdateProject = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockRouterPush }),
@@ -15,11 +17,12 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/lib/craft-projects/hooks", () => ({
   useCraftProject: () => mockUseCraftProject(),
+  useRefreshCraftProjects: () => mockRefreshProjects,
 }));
 
 jest.mock("@/lib/craft-projects/api", () => ({
   startCraftProjectSession: (...args: unknown[]) => mockStartSession(...args),
-  updateCraftProject: jest.fn(),
+  updateCraftProject: (...args: unknown[]) => mockUpdateProject(...args),
   deleteCraftProject: jest.fn(),
   deleteCraftProjectFile: jest.fn(),
   uploadCraftProjectFile: jest.fn(),
@@ -90,7 +93,12 @@ describe("CraftProjectDetailPage", () => {
     mockStartSession.mockReset();
     mockRefreshHistory.mockReset();
     mockRefresh.mockReset();
+    mockRefreshProjects.mockReset();
+    mockUpdateProject.mockReset();
     mockRefreshHistory.mockResolvedValue(undefined);
+    mockRefreshProjects.mockResolvedValue(undefined);
+    mockRefresh.mockResolvedValue(undefined);
+    mockUpdateProject.mockResolvedValue({ ...project });
   });
 
   it("shows files, chats, and starts a new chat", async () => {
@@ -197,12 +205,57 @@ describe("CraftProjectDetailPage", () => {
 
     const header = screen.getByLabelText("admin-page-title");
     expect(header).toHaveTextContent(
-      "撰写一份 GLP-1 受体激动剂创新药立项深度研究报告"
-    );
-    expect(header).not.toHaveTextContent("blackboard");
-    expect(header).toHaveTextContent(
       "撰写一份 GLP-1 受体激动剂创新药立项深度研究报告，覆盖文献、临床、专利自由实施与 CMC 质量。"
     );
+    expect(header).not.toHaveTextContent("blackboard");
+  });
+
+  it("asks for confirmation before renaming from the title", async () => {
+    const user = setupUser();
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(
+      within(screen.getByLabelText("admin-page-title")).getByText("年报税务复核")
+    );
+    const input = screen.getByDisplayValue("年报税务复核");
+    await user.clear(input);
+    await user.type(input, "税务复核 2026");
+    await user.keyboard("{Enter}");
+
+    expect(
+      screen.getByRole("dialog", {
+        name: /Use the name "税务复核 2026"\?/,
+      })
+    ).toBeInTheDocument();
+    expect(mockUpdateProject).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Rename" }));
+    await waitFor(() =>
+      expect(mockUpdateProject).toHaveBeenCalledWith("proj-tax", {
+        name: "税务复核 2026",
+      })
+    );
+  });
+
+  it("does not rename when the confirmation is cancelled", async () => {
+    const user = setupUser();
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(
+      within(screen.getByLabelText("admin-page-title")).getByText("年报税务复核")
+    );
+    const input = screen.getByDisplayValue("年报税务复核");
+    await user.clear(input);
+    await user.type(input, "税务复核 2026");
+    await user.keyboard("{Enter}");
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(mockUpdateProject).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("dialog", {
+        name: /Use the name "税务复核 2026"\?/,
+      })
+    ).not.toBeInTheDocument();
   });
 
   it("opens a preview for a file and hides type filters", async () => {

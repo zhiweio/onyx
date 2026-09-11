@@ -306,7 +306,10 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
 
   // Handle submit from AppInputBar - routes through query controller for search/chat classification
   const handleChatInputSubmit = useCallback(
-    async (submittedMessage: string) => {
+    async (
+      submittedMessage: string,
+      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
+    ) => {
       if (!submittedMessage.trim()) return;
 
       const additionalContext =
@@ -327,6 +330,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
           deepResearch: deepResearchEnabled && !multiModel.isMultiModelActive,
           additionalContext,
           selectedModels,
+          selectedSkillIds: selection?.skillIds,
+          selectedMcpServerIds: selection?.mcpServerIds,
         });
         return;
       }
@@ -339,6 +344,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
           deepResearch: deepResearchEnabled && !multiModel.isMultiModelActive,
           additionalContext,
           selectedModels,
+          selectedSkillIds: selection?.skillIds,
+          selectedMcpServerIds: selection?.mcpServerIds,
         });
       };
 

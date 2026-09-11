@@ -49,12 +49,20 @@ export default function useSlashPicker({
   const reset = useCallback(() => setSession(INITIAL_PICKER_SESSION), []);
   const onClose = useCallback(() => setSession(reduceOnDismiss), []);
 
+  const measureAnchor = useCallback((): DOMRect | null => {
+    return (
+      inputRef.current?.getInputRect() ??
+      inputRef.current?.getCaretRect() ??
+      null
+    );
+  }, [inputRef]);
+
   const onInput = useCallback(() => {
     const text = inputRef.current?.getTextBeforeCursor() ?? null;
     const next = reduceOnInput(sessionRef.current, text);
-    if (next.open) setAnchorRect(inputRef.current?.getCaretRect() ?? null);
+    if (next.open) setAnchorRect(measureAnchor());
     setSession(next);
-  }, [inputRef]);
+  }, [inputRef, measureAnchor]);
 
   // Re-sync (or close) the picker after the caret moves (arrow keys, click).
   const onSelectionChange = useCallback(() => {
@@ -62,9 +70,9 @@ export default function useSlashPicker({
     if (!current.open) return;
     const text = inputRef.current?.getTextBeforeCursor() ?? null;
     const next = reduceOnSelection(current, text);
-    if (next.open) setAnchorRect(inputRef.current?.getCaretRect() ?? null);
+    if (next.open) setAnchorRect(measureAnchor());
     setSession(next);
-  }, [inputRef]);
+  }, [inputRef, measureAnchor]);
 
   const handleSelect = useCallback(
     (entry: PickerEntry) => {

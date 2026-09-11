@@ -5,6 +5,7 @@ import {
   pickerEntryConnectionPath,
   pickerEntryKey,
   pickerEntryPromptPrefix,
+  slashSelectionFromEntries,
   toPickerSections,
   type PickerSections,
 } from "@/lib/skills/picker";
@@ -179,10 +180,15 @@ describe("toPickerSections", () => {
     ];
     const { mcpServers } = toPickerSections(undefined, undefined, servers);
     expect(
-      mcpServers.map((m) => [m.mcpServerId, m.name, m.authenticated])
+      mcpServers.map((m) => [
+        m.mcpServerId,
+        m.name,
+        m.authenticated,
+        m.description,
+      ])
     ).toEqual([
-      [4, "Asana MCP", false],
-      [9, "Zulip MCP", true],
+      [4, "Asana MCP", false, "An MCP server"],
+      [9, "Zulip MCP", true, "An MCP server"],
     ]);
   });
 
@@ -354,6 +360,27 @@ describe("filterPickerSections", () => {
     expect(filterPickerSections(sections, "asana").apps).toEqual([]);
   });
 
+  it("filters MCP servers by description", () => {
+    const withDescription: PickerSections = {
+      ...sections,
+      mcpServers: [
+        {
+          kind: "mcp",
+          mcpServerId: 2,
+          name: "Vendor",
+          serverUrl: "https://example.com/mcp",
+          authenticated: true,
+          description: "A-share quotes and filings",
+        },
+      ],
+    };
+    expect(
+      filterPickerSections(withDescription, "filings").mcpServers.map(
+        (server) => server.mcpServerId
+      )
+    ).toEqual([2]);
+  });
+
   it("returns empty sections when nothing matches", () => {
     const empty = filterPickerSections(sections, "zzz");
     expect(empty.commands).toEqual([]);
@@ -412,5 +439,27 @@ describe("flattenSections", () => {
       sections.apps[0],
       sections.mcpServers[0],
     ]);
+  });
+});
+
+describe("slashSelectionFromEntries", () => {
+  it("collects skill slugs and MCP server ids", () => {
+    expect(
+      slashSelectionFromEntries([
+        {
+          kind: "skill",
+          slug: "zhihuiya",
+          name: "zhihuiya",
+          description: "route",
+        },
+        {
+          kind: "mcp",
+          mcpServerId: 12,
+          name: "HiThink Meta",
+          serverUrl: "https://example.com",
+          authenticated: true,
+        },
+      ])
+    ).toEqual({ skillIds: ["zhihuiya"], mcpServerIds: [12] });
   });
 });
