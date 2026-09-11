@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "シナリオを作成"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "データを分析してダッシュボードを作成..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "新しいシナリオ",
+          "edit": "シナリオを編集"
+        },
+        "back": {
+          "ariaLabel": "戻る"
+        },
+        "cancel": {
+          "label": "キャンセル"
+        },
+        "share": {
+          "label": "共有"
+        },
+        "startRun": {
+          "label": "実行を開始"
+        },
+        "unpublish": {
+          "label": "公開を解除"
+        },
+        "publish": {
+          "label": "公開"
+        },
+        "saving": {
+          "label": "保存中..."
+        },
+        "save": {
+          "label": "保存"
+        },
+        "customizing": {
+          "label": "コピー中..."
+        },
+        "customize": {
+          "label": "自分のパックとして保存"
+        },
+        "dirty": {
+          "label": "未保存"
+        },
+        "preview": {
+          "label": "プレビュー"
+        }
+      },
+      "error": {
+        "title": "このシナリオを読み込めませんでした",
+        "description": "ページを更新して、もう一度試してください。"
+      },
+      "status": {
+        "viewer": {
+          "title": "閲覧のみ",
+          "description": "このシナリオは表示できますが、編集できません。"
+        },
+        "version": {
+          "label": "バージョン {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "名前",
+          "placeholder": "シナリオ名"
+        },
+        "slug": {
+          "title": "スラッグ",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "説明",
+          "placeholder": "このシナリオが出力すべき内容"
+        },
+        "domain": {
+          "title": "ドメイン",
+          "placeholder": "ドメインを選択または作成",
+          "search": {
+            "placeholder": "ドメインを検索..."
+          },
+          "create": {
+            "label": "「{name}」を作成"
+          },
+          "empty": {
+            "text": "一致するドメインがありません。名前を入力して作成してください。"
+          }
+        },
+        "category": {
+          "title": "カテゴリ"
+        },
+        "tags": {
+          "title": "タグ",
+          "placeholder": "タグを追加",
+          "add": {
+            "label": "タグを追加"
+          },
+          "remove": {
+            "ariaLabel": "{tag} を削除"
+          }
+        }
+      },
+      "template": {
+        "title": "レポートテンプレート",
+        "placeholder": "テンプレートを選択",
+        "search": {
+          "placeholder": "テンプレートを検索..."
+        },
+        "none": {
+          "label": "なし"
+        },
+        "empty": {
+          "text": "一致するテンプレートがありません。"
+        }
+      },
+      "pipeline": {
+        "title": "スキルパイプライン",
+        "count": {
+          "label": "{count, plural, one {# 件のスキル} other {# 件のスキル}}"
+        },
+        "empty": {
+          "text": "スキルを追加してください。順序が実行順になります。"
+        },
+        "drag": {
+          "ariaLabel": "ドラッグして並べ替え"
+        },
+        "remove": {
+          "ariaLabel": "{name} を削除"
+        },
+        "added": {
+          "label": "追加済み"
+        },
+        "add": {
+          "label": "スキルを追加",
+          "search": {
+            "placeholder": "スキルを検索..."
+          },
+          "empty": {
+            "text": "一致するスキルがありません。"
+          }
+        }
+      },
+      "conditional": {
+        "title": "条件付きスキル",
+        "add": {
+          "label": "条件を追加"
+        },
+        "empty": {
+          "text": "追加スキルはありません。条件を追加してバインドしてください。"
+        },
+        "keywords": {
+          "placeholder": "キーワード（カンマ区切り）"
+        },
+        "intent": {
+          "placeholder": "意図"
+        },
+        "skill": {
+          "placeholder": "一致時にスキルを追加"
+        },
+        "remove": {
+          "ariaLabel": "条件を削除"
+        }
+      },
+      "playbook": {
+        "title": "プレイブック",
+        "domain": {
+          "title": "プレイブックのドメイン",
+          "placeholder": "任意のドメインキー"
+        },
+        "objective": {
+          "title": "目的",
+          "placeholder": "成功した実行が出力するもの"
+        },
+        "inputs": {
+          "title": "必須入力",
+          "placeholder": "エージェントが収集する入力",
+          "add": {
+            "label": "入力を追加"
+          }
+        },
+        "phases": {
+          "title": "フェーズ",
+          "id": {
+            "placeholder": "フェーズ ID"
+          },
+          "doneWhen": {
+            "placeholder": "完了条件"
+          },
+          "add": {
+            "label": "フェーズを追加"
+          }
+        },
+        "deliverables": {
+          "title": "成果物",
+          "placeholder": "出力ファイルまたは成果物",
+          "add": {
+            "label": "成果物を追加"
+          }
+        },
+        "gates": {
+          "title": "品質ゲート",
+          "placeholder": "終了前の確認",
+          "add": {
+            "label": "ゲートを追加"
+          }
+        },
+        "refusals": {
+          "title": "拒否ルール",
+          "placeholder": "エージェントが停止すべき場合",
+          "add": {
+            "label": "ルールを追加"
+          }
+        },
+        "remove": {
+          "ariaLabel": "項目を削除"
+        }
+      },
+      "preview": {
+        "title": "SCENARIO.md プレビュー",
+        "empty": {
+          "text": "編集するとプレビューが更新されます。"
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "保存する前に"
+        },
+        "name": "名前を追加してください。",
+        "skills": "スキルを少なくとも 1 つ追加してください。",
+        "slug": "スラッグを追加してください。",
+        "ready": {
+          "name": "名前が設定されています",
+          "skills": "スキルがバインドされています",
+          "slug": "スラッグが設定されています"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "シナリオを作成しました"
+        },
+        "saved": {
+          "message": "シナリオを保存しました"
+        },
+        "saveFailed": {
+          "message": "シナリオを保存できませんでした"
+        },
+        "duplicated": {
+          "message": "編集可能なコピーを保存しました"
+        },
+        "duplicateFailed": {
+          "message": "シナリオをコピーできませんでした"
+        },
+        "openFailed": {
+          "message": "実行を開始できませんでした"
+        },
+        "catalogCreated": {
+          "message": "カタログのシナリオを作成しました"
+        },
+        "catalogSaved": {
+          "message": "カタログのシナリオを保存しました"
+        }
       }
     },
     "scenarios": {

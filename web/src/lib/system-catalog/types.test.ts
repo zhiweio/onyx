@@ -3,6 +3,7 @@ import {
   categoryTagColor,
   collectCatalogCategories,
   filterCatalogItems,
+  groupCatalogItemsByCategory,
   isDocxCatalogTemplate,
   isForkOutdated,
   publishStatusMessageKey,
@@ -108,6 +109,19 @@ describe("collectCatalogCategories", () => {
 
   it("returns nothing for an empty list", () => {
     expect(collectCatalogCategories([])).toEqual([]);
+  });
+});
+
+describe("groupCatalogItemsByCategory", () => {
+  it("keeps display order and drops empty categories", () => {
+    const items = [
+      item({ id: "tax", category: "TAX" }),
+      item({ id: "doc", category: "DOCUMENT" }),
+      item({ id: "bio", category: "BIOMED" }),
+    ];
+    expect(
+      groupCatalogItemsByCategory(items).map((group) => group.category),
+    ).toEqual(["DOCUMENT", "TAX", "BIOMED"]);
   });
 });
 

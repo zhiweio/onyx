@@ -122,6 +122,20 @@ export function adminCatalogListKey(kind: GalleryKind): string {
   return `${ADMIN_URL}/${kind}`;
 }
 
+export function adminCatalogDetailKey(
+  kind: GalleryKind,
+  entryId: string,
+): string {
+  return `${ADMIN_URL}/${kind}/${entryId}`;
+}
+
+export async function getCatalogEntry<T extends CatalogItem>(
+  kind: GalleryKind,
+  entryId: string,
+): Promise<T> {
+  return handle<T>(await fetch(adminCatalogDetailKey(kind, entryId)));
+}
+
 export async function listCatalogEntries<T extends CatalogItem>(
   kind: GalleryKind,
 ): Promise<T[]> {

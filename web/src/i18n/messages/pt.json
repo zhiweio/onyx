@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "Criar cenário"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "Analise meus dados e crie um painel..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "Novo cenário",
+          "edit": "Editar cenário"
+        },
+        "back": {
+          "ariaLabel": "Voltar"
+        },
+        "cancel": {
+          "label": "Cancelar"
+        },
+        "share": {
+          "label": "Partilhar"
+        },
+        "startRun": {
+          "label": "Iniciar execução"
+        },
+        "unpublish": {
+          "label": "Anular publicação"
+        },
+        "publish": {
+          "label": "Publicar"
+        },
+        "saving": {
+          "label": "A guardar..."
+        },
+        "save": {
+          "label": "Guardar"
+        },
+        "customizing": {
+          "label": "A copiar..."
+        },
+        "customize": {
+          "label": "Guardar como o meu pacote"
+        },
+        "dirty": {
+          "label": "Não guardado"
+        },
+        "preview": {
+          "label": "Pré-visualizar"
+        }
+      },
+      "error": {
+        "title": "Não foi possível carregar este cenário",
+        "description": "Atualize a página e tente novamente."
+      },
+      "status": {
+        "viewer": {
+          "title": "Só leitura",
+          "description": "Pode ver este cenário, mas não o pode editar."
+        },
+        "version": {
+          "label": "Versão {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "Nome",
+          "placeholder": "Nome do cenário"
+        },
+        "slug": {
+          "title": "Identificador",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "Descrição",
+          "placeholder": "O que este cenário deve produzir"
+        },
+        "domain": {
+          "title": "Domínio",
+          "placeholder": "Selecione ou crie um domínio",
+          "search": {
+            "placeholder": "Pesquisar domínios..."
+          },
+          "create": {
+            "label": "Criar “{name}”"
+          },
+          "empty": {
+            "text": "Nenhum domínio correspondente. Escreva um nome para criar um."
+          }
+        },
+        "category": {
+          "title": "Categoria"
+        },
+        "tags": {
+          "title": "Etiquetas",
+          "placeholder": "Adicionar uma etiqueta",
+          "add": {
+            "label": "Adicionar etiqueta"
+          },
+          "remove": {
+            "ariaLabel": "Remover {tag}"
+          }
+        }
+      },
+      "template": {
+        "title": "Modelo de relatório",
+        "placeholder": "Selecione um modelo",
+        "search": {
+          "placeholder": "Pesquisar modelos..."
+        },
+        "none": {
+          "label": "Nenhum"
+        },
+        "empty": {
+          "text": "Nenhum modelo correspondente."
+        }
+      },
+      "pipeline": {
+        "title": "Pipeline de competências",
+        "count": {
+          "label": "{count, plural, one {# competência} other {# competências}}"
+        },
+        "empty": {
+          "text": "Adicione competências. A ordem é a ordem de execução."
+        },
+        "drag": {
+          "ariaLabel": "Arraste para reordenar"
+        },
+        "remove": {
+          "ariaLabel": "Remover {name}"
+        },
+        "added": {
+          "label": "Adicionada"
+        },
+        "add": {
+          "label": "Adicionar competência",
+          "search": {
+            "placeholder": "Pesquisar competências..."
+          },
+          "empty": {
+            "text": "Nenhuma competência correspondente."
+          }
+        }
+      },
+      "conditional": {
+        "title": "Competências condicionais",
+        "add": {
+          "label": "Adicionar condição"
+        },
+        "empty": {
+          "text": "Sem competências extra. Adicione uma condição para associar uma."
+        },
+        "keywords": {
+          "placeholder": "Palavras-chave, separadas por vírgulas"
+        },
+        "intent": {
+          "placeholder": "Intenção"
+        },
+        "skill": {
+          "placeholder": "Adicionar competência se corresponder"
+        },
+        "remove": {
+          "ariaLabel": "Remover condição"
+        }
+      },
+      "playbook": {
+        "title": "Guião",
+        "domain": {
+          "title": "Domínio do guião",
+          "placeholder": "Chave de domínio opcional"
+        },
+        "objective": {
+          "title": "Objetivo",
+          "placeholder": "O que uma execução bem-sucedida produz"
+        },
+        "inputs": {
+          "title": "Entradas necessárias",
+          "placeholder": "Entrada que o agente deve recolher",
+          "add": {
+            "label": "Adicionar entrada"
+          }
+        },
+        "phases": {
+          "title": "Fases",
+          "id": {
+            "placeholder": "Id da fase"
+          },
+          "doneWhen": {
+            "placeholder": "Concluído quando"
+          },
+          "add": {
+            "label": "Adicionar fase"
+          }
+        },
+        "deliverables": {
+          "title": "Entregáveis",
+          "placeholder": "Ficheiro ou artefacto de saída",
+          "add": {
+            "label": "Adicionar entregável"
+          }
+        },
+        "gates": {
+          "title": "Controlos de qualidade",
+          "placeholder": "Verificação antes de fechar",
+          "add": {
+            "label": "Adicionar controlo"
+          }
+        },
+        "refusals": {
+          "title": "Regras de recusa",
+          "placeholder": "Quando o agente deve parar",
+          "add": {
+            "label": "Adicionar regra"
+          }
+        },
+        "remove": {
+          "ariaLabel": "Remover item"
+        }
+      },
+      "preview": {
+        "title": "Pré-visualização de SCENARIO.md",
+        "empty": {
+          "text": "A pré-visualização preenche-se à medida que edita."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "Antes de guardar"
+        },
+        "name": "Adicione um nome.",
+        "skills": "Adicione pelo menos uma competência.",
+        "slug": "Adicione um identificador.",
+        "ready": {
+          "name": "O nome está definido",
+          "skills": "As competências estão associadas",
+          "slug": "O identificador está definido"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "Cenário criado"
+        },
+        "saved": {
+          "message": "Cenário guardado"
+        },
+        "saveFailed": {
+          "message": "Não foi possível guardar o cenário"
+        },
+        "duplicated": {
+          "message": "Foi guardada uma cópia que pode editar"
+        },
+        "duplicateFailed": {
+          "message": "Não foi possível copiar o cenário"
+        },
+        "openFailed": {
+          "message": "Não foi possível iniciar a execução"
+        },
+        "catalogCreated": {
+          "message": "Cenário do catálogo criado"
+        },
+        "catalogSaved": {
+          "message": "Cenário do catálogo guardado"
+        }
       }
     },
     "scenarios": {

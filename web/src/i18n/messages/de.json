@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "Szenario erstellen"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "Analysiere meine Daten und erstelle ein Dashboard..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "Neues Szenario",
+          "edit": "Szenario bearbeiten"
+        },
+        "back": {
+          "ariaLabel": "Zurück"
+        },
+        "cancel": {
+          "label": "Abbrechen"
+        },
+        "share": {
+          "label": "Teilen"
+        },
+        "startRun": {
+          "label": "Lauf starten"
+        },
+        "unpublish": {
+          "label": "Veröffentlichung aufheben"
+        },
+        "publish": {
+          "label": "Veröffentlichen"
+        },
+        "saving": {
+          "label": "Wird gespeichert..."
+        },
+        "save": {
+          "label": "Speichern"
+        },
+        "customizing": {
+          "label": "Wird kopiert..."
+        },
+        "customize": {
+          "label": "Als mein Paket speichern"
+        },
+        "dirty": {
+          "label": "Ungespeichert"
+        },
+        "preview": {
+          "label": "Vorschau"
+        }
+      },
+      "error": {
+        "title": "Dieses Szenario konnte nicht geladen werden",
+        "description": "Aktualisieren Sie die Seite und versuchen Sie es erneut."
+      },
+      "status": {
+        "viewer": {
+          "title": "Nur Ansicht",
+          "description": "Sie können dieses Szenario ansehen, aber nicht bearbeiten."
+        },
+        "version": {
+          "label": "Version {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "Name",
+          "placeholder": "Szenarioname"
+        },
+        "slug": {
+          "title": "Slug",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "Beschreibung",
+          "placeholder": "Was dieses Szenario erzeugen soll"
+        },
+        "domain": {
+          "title": "Domäne",
+          "placeholder": "Domäne wählen oder erstellen",
+          "search": {
+            "placeholder": "Domänen suchen..."
+          },
+          "create": {
+            "label": "„{name}“ erstellen"
+          },
+          "empty": {
+            "text": "Keine passenden Domänen. Geben Sie einen Namen ein, um eine zu erstellen."
+          }
+        },
+        "category": {
+          "title": "Kategorie"
+        },
+        "tags": {
+          "title": "Tags",
+          "placeholder": "Tag hinzufügen",
+          "add": {
+            "label": "Tag hinzufügen"
+          },
+          "remove": {
+            "ariaLabel": "{tag} entfernen"
+          }
+        }
+      },
+      "template": {
+        "title": "Berichtsvorlage",
+        "placeholder": "Vorlage wählen",
+        "search": {
+          "placeholder": "Vorlagen suchen..."
+        },
+        "none": {
+          "label": "Keine"
+        },
+        "empty": {
+          "text": "Keine passenden Vorlagen."
+        }
+      },
+      "pipeline": {
+        "title": "Skill-Pipeline",
+        "count": {
+          "label": "{count, plural, one {# Skill} other {# Skills}}"
+        },
+        "empty": {
+          "text": "Skills hinzufügen. Die Reihenfolge ist die Laufreihenfolge."
+        },
+        "drag": {
+          "ariaLabel": "Zum Sortieren ziehen"
+        },
+        "remove": {
+          "ariaLabel": "{name} entfernen"
+        },
+        "added": {
+          "label": "Hinzugefügt"
+        },
+        "add": {
+          "label": "Skill hinzufügen",
+          "search": {
+            "placeholder": "Skills suchen..."
+          },
+          "empty": {
+            "text": "Keine passenden Skills."
+          }
+        }
+      },
+      "conditional": {
+        "title": "Bedingte Skills",
+        "add": {
+          "label": "Bedingung hinzufügen"
+        },
+        "empty": {
+          "text": "Keine Extra-Skills. Fügen Sie eine Bedingung hinzu, um einen zu binden."
+        },
+        "keywords": {
+          "placeholder": "Schlüsselwörter, durch Kommas getrennt"
+        },
+        "intent": {
+          "placeholder": "Absicht"
+        },
+        "skill": {
+          "placeholder": "Skill bei Treffer hinzufügen"
+        },
+        "remove": {
+          "ariaLabel": "Bedingung entfernen"
+        }
+      },
+      "playbook": {
+        "title": "Playbook",
+        "domain": {
+          "title": "Playbook-Domäne",
+          "placeholder": "Optionale Domänenschlüssel"
+        },
+        "objective": {
+          "title": "Ziel",
+          "placeholder": "Was ein erfolgreicher Lauf erzeugt"
+        },
+        "inputs": {
+          "title": "Erforderliche Eingaben",
+          "placeholder": "Eingabe, die der Agent erfassen muss",
+          "add": {
+            "label": "Eingabe hinzufügen"
+          }
+        },
+        "phases": {
+          "title": "Phasen",
+          "id": {
+            "placeholder": "Phasen-ID"
+          },
+          "doneWhen": {
+            "placeholder": "Fertig, wenn"
+          },
+          "add": {
+            "label": "Phase hinzufügen"
+          }
+        },
+        "deliverables": {
+          "title": "Liefergegenstände",
+          "placeholder": "Ausgabedatei oder Artefakt",
+          "add": {
+            "label": "Liefergegenstand hinzufügen"
+          }
+        },
+        "gates": {
+          "title": "Qualitätsprüfungen",
+          "placeholder": "Prüfung vor dem Abschluss",
+          "add": {
+            "label": "Prüfung hinzufügen"
+          }
+        },
+        "refusals": {
+          "title": "Ablehnungsregeln",
+          "placeholder": "Wann der Agent stoppen muss",
+          "add": {
+            "label": "Regel hinzufügen"
+          }
+        },
+        "remove": {
+          "ariaLabel": "Element entfernen"
+        }
+      },
+      "preview": {
+        "title": "SCENARIO.md-Vorschau",
+        "empty": {
+          "text": "Die Vorschau füllt sich während der Bearbeitung."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "Vor dem Speichern"
+        },
+        "name": "Fügen Sie einen Namen hinzu.",
+        "skills": "Fügen Sie mindestens einen Skill hinzu.",
+        "slug": "Fügen Sie einen Slug hinzu.",
+        "ready": {
+          "name": "Name ist gesetzt",
+          "skills": "Skills sind gebunden",
+          "slug": "Slug ist gesetzt"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "Szenario erstellt"
+        },
+        "saved": {
+          "message": "Szenario gespeichert"
+        },
+        "saveFailed": {
+          "message": "Das Szenario konnte nicht gespeichert werden"
+        },
+        "duplicated": {
+          "message": "Eine bearbeitbare Kopie wurde gespeichert"
+        },
+        "duplicateFailed": {
+          "message": "Das Szenario konnte nicht kopiert werden"
+        },
+        "openFailed": {
+          "message": "Der Lauf konnte nicht gestartet werden"
+        },
+        "catalogCreated": {
+          "message": "Katalogszenario erstellt"
+        },
+        "catalogSaved": {
+          "message": "Katalogszenario gespeichert"
+        }
       }
     },
     "scenarios": {

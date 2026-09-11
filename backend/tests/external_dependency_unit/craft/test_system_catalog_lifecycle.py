@@ -383,8 +383,11 @@ def test_scenario_cannot_bind_a_user_private_report_template(
         tags=[],
         rules={},
         skill_slugs=[catalog_skill.slug],
-        report_template_slug=private_slug,
+        report_template_slug=None,
     )
+    # Catalog writes reject unknown catalog slugs. The publish guard still
+    # has to catch a private runtime slug assigned outside that path.
+    entry.report_template_slug = private_slug
     db_session.commit()
     try:
         with pytest.raises(OnyxError) as caught:
@@ -400,6 +403,85 @@ def test_scenario_cannot_bind_a_user_private_report_template(
         db_session.execute(
             delete(ReportTemplate).where(ReportTemplate.slug == private_slug)
         )
+        db_session.commit()
+
+
+def test_scenario_write_rejects_unknown_skill_slug(
+    db_session: Session, unique_slug: str
+) -> None:
+    with pytest.raises(OnyxError) as caught:
+        create_system_scenario(
+            db_session,
+            slug=f"{unique_slug}-pack",
+            name="Broken pack",
+            description="References a skill that is not in the catalog.",
+            category=SystemCatalogCategory.OFFICE,
+            tags=[],
+            rules={},
+            skill_slugs=["no-such-catalog-skill"],
+            report_template_slug=None,
+        )
+    assert caught.value.error_code is OnyxErrorCode.INVALID_INPUT
+    db_session.rollback()
+
+
+def test_scenario_publish_rewrites_conditional_slugs_to_ids(
+    db_session: Session, catalog_skill: SystemSkill, catalog_user: User, unique_slug: str
+) -> None:
+    extra = create_system_skill(
+        db_session,
+        slug=f"{unique_slug}-extra",
+        name=f"{unique_slug}-extra",
+        description="Conditional skill.",
+        category=SystemCatalogCategory.OFFICE,
+        tags=[],
+        built_in_skill_id=BUILT_IN_CONTENT_ID,
+    )
+    db_session.commit()
+    entry = create_system_scenario(
+        db_session,
+        slug=f"{unique_slug}-cond",
+        name="Conditional pack",
+        description="Always one skill, optionally another.",
+        category=SystemCatalogCategory.OFFICE,
+        tags=[],
+        rules={
+            "objective": "Cover both the always-on and the conditional skill.",
+            "conditional": [
+                {
+                    "if": {"intent": "deeper"},
+                    "add_skill_slugs": [extra.slug],
+                }
+            ],
+        },
+        skill_slugs=[catalog_skill.slug],
+        report_template_slug=None,
+    )
+    db_session.commit()
+    try:
+        always = publish_system_skill(
+            db_session, catalog_skill, publisher=catalog_user
+        )
+        optional = publish_system_skill(db_session, extra, publisher=catalog_user)
+        projection = publish_system_scenario(
+            db_session, entry, publisher=catalog_user
+        )
+        db_session.commit()
+        assert projection.rules["always_skill_ids"] == [str(always.id)]
+        assert projection.rules["conditional"] == [
+            {
+                "if": {"intent": "deeper"},
+                "add_skill_ids": [str(optional.id)],
+            }
+        ]
+        assert "add_skill_slugs" not in projection.rules["conditional"][0]
+    finally:
+        db_session.execute(
+            delete(Scenario).where(Scenario.system_scenario_id == entry.id)
+        )
+        db_session.execute(delete(SystemScenario).where(SystemScenario.id == entry.id))
+        db_session.execute(delete(Skill).where(Skill.system_skill_id == extra.id))
+        db_session.execute(delete(SystemSkill).where(SystemSkill.id == extra.id))
         db_session.commit()
 
 

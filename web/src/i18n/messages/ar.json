@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "إنشاء سيناريو"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "حلّل بياناتي وأنشئ لوحة معلومات..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "سيناريو جديد",
+          "edit": "تحرير السيناريو"
+        },
+        "back": {
+          "ariaLabel": "رجوع"
+        },
+        "cancel": {
+          "label": "إلغاء"
+        },
+        "share": {
+          "label": "مشاركة"
+        },
+        "startRun": {
+          "label": "بدء التشغيل"
+        },
+        "unpublish": {
+          "label": "إلغاء النشر"
+        },
+        "publish": {
+          "label": "نشر"
+        },
+        "saving": {
+          "label": "جارٍ الحفظ..."
+        },
+        "save": {
+          "label": "حفظ"
+        },
+        "customizing": {
+          "label": "جارٍ النسخ..."
+        },
+        "customize": {
+          "label": "حفظ كحزمة لي"
+        },
+        "dirty": {
+          "label": "غير محفوظ"
+        },
+        "preview": {
+          "label": "معاينة"
+        }
+      },
+      "error": {
+        "title": "تعذر تحميل هذا السيناريو",
+        "description": "حدّث الصفحة ثم حاول مرة أخرى."
+      },
+      "status": {
+        "viewer": {
+          "title": "عرض فقط",
+          "description": "يمكنك عرض هذا السيناريو لكن لا يمكنك تحريره."
+        },
+        "version": {
+          "label": "الإصدار {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "الاسم",
+          "placeholder": "اسم السيناريو"
+        },
+        "slug": {
+          "title": "المعرّف",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "الوصف",
+          "placeholder": "ما يجب أن ينتجه هذا السيناريو"
+        },
+        "domain": {
+          "title": "المجال",
+          "placeholder": "اختر مجالًا أو أنشئه",
+          "search": {
+            "placeholder": "بحث في المجالات..."
+          },
+          "create": {
+            "label": "إنشاء “{name}”"
+          },
+          "empty": {
+            "text": "لا توجد مجالات مطابقة. اكتب اسمًا لإنشاء واحد."
+          }
+        },
+        "category": {
+          "title": "الفئة"
+        },
+        "tags": {
+          "title": "الوسوم",
+          "placeholder": "إضافة وسم",
+          "add": {
+            "label": "إضافة وسم"
+          },
+          "remove": {
+            "ariaLabel": "إزالة {tag}"
+          }
+        }
+      },
+      "template": {
+        "title": "قالب التقرير",
+        "placeholder": "اختر قالبًا",
+        "search": {
+          "placeholder": "بحث في القوالب..."
+        },
+        "none": {
+          "label": "لا شيء"
+        },
+        "empty": {
+          "text": "لا توجد قوالب مطابقة."
+        }
+      },
+      "pipeline": {
+        "title": "مسار المهارات",
+        "count": {
+          "label": "{count, plural, one {مهارة واحدة} other {# مهارات}}"
+        },
+        "empty": {
+          "text": "أضف مهارات. الترتيب هو ترتيب التشغيل."
+        },
+        "drag": {
+          "ariaLabel": "اسحب لإعادة الترتيب"
+        },
+        "remove": {
+          "ariaLabel": "إزالة {name}"
+        },
+        "added": {
+          "label": "مضافة"
+        },
+        "add": {
+          "label": "إضافة مهارة",
+          "search": {
+            "placeholder": "بحث في المهارات..."
+          },
+          "empty": {
+            "text": "لا توجد مهارات مطابقة."
+          }
+        }
+      },
+      "conditional": {
+        "title": "مهارات مشروطة",
+        "add": {
+          "label": "إضافة شرط"
+        },
+        "empty": {
+          "text": "لا توجد مهارات إضافية. أضف شرطًا لربط واحدة."
+        },
+        "keywords": {
+          "placeholder": "كلمات مفتاحية مفصولة بفواصل"
+        },
+        "intent": {
+          "placeholder": "النية"
+        },
+        "skill": {
+          "placeholder": "أضف مهارة عند التطابق"
+        },
+        "remove": {
+          "ariaLabel": "إزالة الشرط"
+        }
+      },
+      "playbook": {
+        "title": "دليل العمل",
+        "domain": {
+          "title": "مجال دليل العمل",
+          "placeholder": "مفتاح مجال اختياري"
+        },
+        "objective": {
+          "title": "الهدف",
+          "placeholder": "ما ينتجه التشغيل الناجح"
+        },
+        "inputs": {
+          "title": "المدخلات المطلوبة",
+          "placeholder": "مدخل يجب أن يجمعه الوكيل",
+          "add": {
+            "label": "إضافة مدخل"
+          }
+        },
+        "phases": {
+          "title": "المراحل",
+          "id": {
+            "placeholder": "معرّف المرحلة"
+          },
+          "doneWhen": {
+            "placeholder": "يكتمل عندما"
+          },
+          "add": {
+            "label": "إضافة مرحلة"
+          }
+        },
+        "deliverables": {
+          "title": "المخرجات",
+          "placeholder": "ملف إخراج أو ناتج",
+          "add": {
+            "label": "إضافة مخرج"
+          }
+        },
+        "gates": {
+          "title": "بوابات الجودة",
+          "placeholder": "فحص قبل الإغلاق",
+          "add": {
+            "label": "إضافة بوابة"
+          }
+        },
+        "refusals": {
+          "title": "قواعد الرفض",
+          "placeholder": "متى يجب أن يتوقف الوكيل",
+          "add": {
+            "label": "إضافة قاعدة"
+          }
+        },
+        "remove": {
+          "ariaLabel": "إزالة العنصر"
+        }
+      },
+      "preview": {
+        "title": "معاينة SCENARIO.md",
+        "empty": {
+          "text": "تُملأ المعاينة أثناء التحرير."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "قبل الحفظ"
+        },
+        "name": "أضف اسمًا.",
+        "skills": "أضف مهارة واحدة على الأقل.",
+        "slug": "أضف معرّفًا.",
+        "ready": {
+          "name": "تم تعيين الاسم",
+          "skills": "تم ربط المهارات",
+          "slug": "تم تعيين المعرّف"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "تم إنشاء السيناريو"
+        },
+        "saved": {
+          "message": "تم حفظ السيناريو"
+        },
+        "saveFailed": {
+          "message": "تعذر حفظ السيناريو"
+        },
+        "duplicated": {
+          "message": "تم حفظ نسخة يمكنك تحريرها"
+        },
+        "duplicateFailed": {
+          "message": "تعذر نسخ السيناريو"
+        },
+        "openFailed": {
+          "message": "تعذر بدء التشغيل"
+        },
+        "catalogCreated": {
+          "message": "تم إنشاء سيناريو الكتالوج"
+        },
+        "catalogSaved": {
+          "message": "تم حفظ سيناريو الكتالوج"
+        }
       }
     },
     "scenarios": {

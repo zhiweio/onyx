@@ -23,6 +23,7 @@ from onyx.db.models import (
     SystemSkill,
 )
 from onyx.server.features.report_template.models import PlaceholderSpecResponse
+from onyx.server.features.scenario.playbook import ScenarioPlaybook
 from onyx.db.system_catalog.constants import (
     BODY_MAX,
     CHANGELOG_MAX,
@@ -89,19 +90,42 @@ class SystemSkillResponse(CatalogItemSummary):
         )
 
 
+class CatalogBoundSkill(BaseModel):
+    slug: str
+    name: str
+    description: str
+    publish_status: SystemCatalogPublishStatus
+
+
+class CatalogBoundTemplate(BaseModel):
+    slug: str
+    name: str
+
+
 class SystemScenarioResponse(CatalogItemSummary):
     rules: dict[str, Any]
     skill_slugs: list[str]
     report_template_slug: str | None
+    # Detail endpoint only; listing skips the extra skill/template lookups.
+    bound_skills: list[CatalogBoundSkill] | None = None
+    report_template: CatalogBoundTemplate | None = None
 
     @classmethod
-    def from_scenario(cls, entry: SystemScenario) -> "SystemScenarioResponse":
+    def from_scenario(
+        cls,
+        entry: SystemScenario,
+        *,
+        bound_skills: list[CatalogBoundSkill] | None = None,
+        report_template: CatalogBoundTemplate | None = None,
+    ) -> "SystemScenarioResponse":
         base = CatalogItemSummary.from_entry(entry)
         return cls(
             **base.model_dump(),
             rules=dict(entry.rules or {}),
             skill_slugs=list(entry.skill_slugs),
             report_template_slug=entry.report_template_slug,
+            bound_skills=bound_skills,
+            report_template=report_template,
         )
 
 
@@ -185,7 +209,7 @@ class SystemScenarioCreateRequest(BaseModel):
     description: str = Field(min_length=1, max_length=DESCRIPTION_MAX)
     category: SystemCatalogCategory = SystemCatalogCategory.GENERAL
     tags: list[str] = Field(default_factory=list)
-    rules: dict[str, Any] = Field(default_factory=dict)
+    rules: ScenarioPlaybook = Field(default_factory=ScenarioPlaybook)
     skill_slugs: list[str] = Field(default_factory=list)
     report_template_slug: str | None = None
 
@@ -197,7 +221,7 @@ class SystemScenarioPatchRequest(BaseModel):
     )
     category: SystemCatalogCategory | None = None
     tags: list[str] | None = None
-    rules: dict[str, Any] | None = None
+    rules: ScenarioPlaybook | None = None
     skill_slugs: list[str] | None = None
     report_template_slug: str | None = None
     # Explicit, because report_template_slug=None already means "unchanged".

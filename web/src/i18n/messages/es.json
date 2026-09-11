@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "Crear escenario"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "Analiza mis datos y crea un panel..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "Nuevo escenario",
+          "edit": "Editar escenario"
+        },
+        "back": {
+          "ariaLabel": "Volver"
+        },
+        "cancel": {
+          "label": "Cancelar"
+        },
+        "share": {
+          "label": "Compartir"
+        },
+        "startRun": {
+          "label": "Iniciar ejecución"
+        },
+        "unpublish": {
+          "label": "Anular publicación"
+        },
+        "publish": {
+          "label": "Publicar"
+        },
+        "saving": {
+          "label": "Guardando..."
+        },
+        "save": {
+          "label": "Guardar"
+        },
+        "customizing": {
+          "label": "Copiando..."
+        },
+        "customize": {
+          "label": "Guardar como mi paquete"
+        },
+        "dirty": {
+          "label": "Sin guardar"
+        },
+        "preview": {
+          "label": "Vista previa"
+        }
+      },
+      "error": {
+        "title": "No se pudo cargar este escenario",
+        "description": "Actualiza la página e inténtalo de nuevo."
+      },
+      "status": {
+        "viewer": {
+          "title": "Solo lectura",
+          "description": "Puedes ver este escenario, pero no puedes editarlo."
+        },
+        "version": {
+          "label": "Versión {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "Nombre",
+          "placeholder": "Nombre del escenario"
+        },
+        "slug": {
+          "title": "Identificador",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "Descripción",
+          "placeholder": "Qué debe producir este escenario"
+        },
+        "domain": {
+          "title": "Dominio",
+          "placeholder": "Selecciona o crea un dominio",
+          "search": {
+            "placeholder": "Buscar dominios..."
+          },
+          "create": {
+            "label": "Crear “{name}”"
+          },
+          "empty": {
+            "text": "No hay dominios coincidentes. Escribe un nombre para crear uno."
+          }
+        },
+        "category": {
+          "title": "Categoría"
+        },
+        "tags": {
+          "title": "Etiquetas",
+          "placeholder": "Añadir una etiqueta",
+          "add": {
+            "label": "Añadir etiqueta"
+          },
+          "remove": {
+            "ariaLabel": "Quitar {tag}"
+          }
+        }
+      },
+      "template": {
+        "title": "Plantilla de informe",
+        "placeholder": "Selecciona una plantilla",
+        "search": {
+          "placeholder": "Buscar plantillas..."
+        },
+        "none": {
+          "label": "Ninguna"
+        },
+        "empty": {
+          "text": "No hay plantillas coincidentes."
+        }
+      },
+      "pipeline": {
+        "title": "Canal de habilidades",
+        "count": {
+          "label": "{count, plural, one {# habilidad} other {# habilidades}}"
+        },
+        "empty": {
+          "text": "Añade habilidades. El orden es el orden de ejecución."
+        },
+        "drag": {
+          "ariaLabel": "Arrastra para reordenar"
+        },
+        "remove": {
+          "ariaLabel": "Quitar {name}"
+        },
+        "added": {
+          "label": "Añadida"
+        },
+        "add": {
+          "label": "Añadir habilidad",
+          "search": {
+            "placeholder": "Buscar habilidades..."
+          },
+          "empty": {
+            "text": "No hay habilidades coincidentes."
+          }
+        }
+      },
+      "conditional": {
+        "title": "Habilidades condicionales",
+        "add": {
+          "label": "Añadir condición"
+        },
+        "empty": {
+          "text": "No hay habilidades extra. Añade una condición para asociar una."
+        },
+        "keywords": {
+          "placeholder": "Palabras clave, separadas por comas"
+        },
+        "intent": {
+          "placeholder": "Intención"
+        },
+        "skill": {
+          "placeholder": "Añadir habilidad si coincide"
+        },
+        "remove": {
+          "ariaLabel": "Quitar condición"
+        }
+      },
+      "playbook": {
+        "title": "Guía",
+        "domain": {
+          "title": "Dominio de la guía",
+          "placeholder": "Clave de dominio opcional"
+        },
+        "objective": {
+          "title": "Objetivo",
+          "placeholder": "Qué produce una ejecución correcta"
+        },
+        "inputs": {
+          "title": "Entradas necesarias",
+          "placeholder": "Entrada que el agente debe recoger",
+          "add": {
+            "label": "Añadir entrada"
+          }
+        },
+        "phases": {
+          "title": "Fases",
+          "id": {
+            "placeholder": "Id de fase"
+          },
+          "doneWhen": {
+            "placeholder": "Hecho cuando"
+          },
+          "add": {
+            "label": "Añadir fase"
+          }
+        },
+        "deliverables": {
+          "title": "Entregables",
+          "placeholder": "Archivo o artefacto de salida",
+          "add": {
+            "label": "Añadir entregable"
+          }
+        },
+        "gates": {
+          "title": "Controles de calidad",
+          "placeholder": "Comprobación antes de cerrar",
+          "add": {
+            "label": "Añadir control"
+          }
+        },
+        "refusals": {
+          "title": "Reglas de rechazo",
+          "placeholder": "Cuándo debe detenerse el agente",
+          "add": {
+            "label": "Añadir regla"
+          }
+        },
+        "remove": {
+          "ariaLabel": "Quitar elemento"
+        }
+      },
+      "preview": {
+        "title": "Vista previa de SCENARIO.md",
+        "empty": {
+          "text": "La vista previa se completa al editar."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "Antes de guardar"
+        },
+        "name": "Añade un nombre.",
+        "skills": "Añade al menos una habilidad.",
+        "slug": "Añade un identificador.",
+        "ready": {
+          "name": "El nombre está definido",
+          "skills": "Las habilidades están vinculadas",
+          "slug": "El identificador está definido"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "Escenario creado"
+        },
+        "saved": {
+          "message": "Escenario guardado"
+        },
+        "saveFailed": {
+          "message": "No se pudo guardar el escenario"
+        },
+        "duplicated": {
+          "message": "Se guardó una copia que puedes editar"
+        },
+        "duplicateFailed": {
+          "message": "No se pudo copiar el escenario"
+        },
+        "openFailed": {
+          "message": "No se pudo iniciar la ejecución"
+        },
+        "catalogCreated": {
+          "message": "Escenario del catálogo creado"
+        },
+        "catalogSaved": {
+          "message": "Escenario del catálogo guardado"
+        }
       }
     },
     "scenarios": {

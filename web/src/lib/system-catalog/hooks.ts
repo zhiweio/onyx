@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
+  adminCatalogDetailKey,
   adminCatalogListKey,
   galleryDetailKey,
   galleryListKey,
@@ -62,4 +63,15 @@ export function useGalleryItem<T extends AnyCatalogItem>(
 
 export function useCatalogEntries<T extends CatalogItem>(kind: GalleryKind) {
   return useCatalogList<T>(adminCatalogListKey(kind));
+}
+
+export function useCatalogItem<T extends CatalogItem>(
+  kind: GalleryKind,
+  entryId: string | undefined,
+) {
+  const { data, error, isLoading, mutate } = useSWR<T>(
+    entryId ? adminCatalogDetailKey(kind, entryId) : null,
+    errorHandlingFetcher,
+  );
+  return { data, error, isLoading, refresh: mutate };
 }

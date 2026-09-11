@@ -185,6 +185,7 @@ def publish_system_scenario(
     pack would reference skills no user can see.
     """
     bound_skills = _resolve_bound_skills(db_session, entry)
+    extra_conditional = _resolve_conditional_skills(db_session, entry, bound_skills)
     _assert_report_template_binding_is_shared(db_session, entry)
     bound_skills = _ensure_docx_skill_for_word_template(
         db_session, entry, bound_skills
@@ -208,7 +209,7 @@ def publish_system_scenario(
         projection.description = entry.description
         projection.public_permission = ScenarioSharePermission.VIEWER
     projection.report_template = entry.report_template_slug
-    projection.rules = _materialize_rules(entry, bound_skills)
+    projection.rules = _materialize_rules(entry, bound_skills, extra_conditional)
     projection.system_scenario_version = entry.version
 
     projection.skill_links.clear()
@@ -322,8 +323,69 @@ def _assert_report_template_binding_is_shared(
         )
 
 
+def _conditional_slugs_from_rules(rules: dict[str, object] | None) -> list[str]:
+    slugs: list[str] = []
+    if not rules:
+        return slugs
+    raw = rules.get("conditional")
+    if not isinstance(raw, list):
+        return slugs
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        for slug in item.get("add_skill_slugs") or []:
+            text = str(slug).strip()
+            if text:
+                slugs.append(text)
+    return slugs
+
+
+def _resolve_skills_for_slugs(
+    db_session: Session, slugs: list[str]
+) -> dict[str, Skill]:
+    resolved: dict[str, Skill] = {}
+    missing: list[str] = []
+    for slug in slugs:
+        catalog_skill = db_session.scalar(
+            select(SystemSkill).where(SystemSkill.slug == slug)
+        )
+        if (
+            catalog_skill is None
+            or catalog_skill.publish_status is not SystemCatalogPublishStatus.PUBLISHED
+        ):
+            missing.append(slug)
+            continue
+        projection = find_projected_skill(db_session, catalog_skill)
+        if projection is None:
+            missing.append(slug)
+            continue
+        resolved[slug] = projection
+    if missing:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "Publish these skills first: " + ", ".join(sorted(set(missing))),
+        )
+    return resolved
+
+
+def _resolve_conditional_skills(
+    db_session: Session, entry: SystemScenario, bound_skills: list[Skill]
+) -> dict[str, Skill]:
+    bound_slugs = set(entry.skill_slugs)
+    extra = [
+        slug
+        for slug in _conditional_slugs_from_rules(entry.rules)
+        if slug not in bound_slugs
+    ]
+    if not extra:
+        return {}
+    return _resolve_skills_for_slugs(db_session, extra)
+
+
 def _materialize_rules(
-    entry: SystemScenario, bound_skills: list[Skill]
+    entry: SystemScenario,
+    bound_skills: list[Skill],
+    extra_conditional: dict[str, Skill] | None = None,
 ) -> dict[str, object]:
     """Rewrite catalog rules into the runtime shape.
 
@@ -332,6 +394,29 @@ def _materialize_rules(
     """
     rules = dict(entry.rules or {})
     rules["always_skill_ids"] = [str(skill.id) for skill in bound_skills]
+    slug_to_id = {
+        slug: str(skill.id) for slug, skill in zip(entry.skill_slugs, bound_skills)
+    }
+    if extra_conditional:
+        for slug, skill in extra_conditional.items():
+            slug_to_id[slug] = str(skill.id)
+    raw_conditionals = rules.get("conditional")
+    if isinstance(raw_conditionals, list):
+        rewritten: list[dict[str, object]] = []
+        for item in raw_conditionals:
+            if not isinstance(item, dict):
+                continue
+            clone = dict(item)
+            slugs = [str(slug).strip() for slug in (clone.get("add_skill_slugs") or [])]
+            ids = [slug_to_id[slug] for slug in slugs if slug in slug_to_id]
+            if ids:
+                clone["add_skill_ids"] = ids
+            clone.pop("add_skill_slugs", None)
+            rewritten.append(clone)
+        if rewritten:
+            rules["conditional"] = rewritten
+        else:
+            rules.pop("conditional", None)
     return rules
 
 

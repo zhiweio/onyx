@@ -14,7 +14,7 @@ from onyx.db.enums import (
     SystemCatalogOrigin,
     SystemCatalogPublishStatus,
 )
-from onyx.db.models import SystemScenario
+from onyx.db.models import SystemReportTemplate, SystemScenario, SystemSkill
 from onyx.db.system_catalog.constants import (
     DESCRIPTION_MAX,
     NAME_MAX,
@@ -51,6 +51,64 @@ def normalize_skill_slugs(raw: list[str]) -> list[str]:
             f"At most {SKILL_SLUGS_MAX_COUNT} skills can be bound to a scenario",
         )
     return normalized
+
+
+def assert_catalog_skill_slugs_exist(db_session: Session, slugs: list[str]) -> None:
+    """Reject skill slugs that are not catalog rows. Publish still checks status."""
+    if not slugs:
+        return
+    existing = set(
+        db_session.scalars(
+            select(SystemSkill.slug).where(SystemSkill.slug.in_(slugs))
+        ).all()
+    )
+    missing = [slug for slug in slugs if slug not in existing]
+    if missing:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "Unknown skill slugs: " + ", ".join(sorted(set(missing))),
+        )
+
+
+def assert_catalog_report_template_exists(
+    db_session: Session, slug: str | None
+) -> None:
+    if not slug:
+        return
+    found = db_session.scalar(
+        select(SystemReportTemplate.id).where(SystemReportTemplate.slug == slug)
+    )
+    if found is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            f"Unknown report template '{slug}'",
+        )
+
+
+def _conditional_skill_slugs(rules: dict[str, Any] | None) -> list[str]:
+    slugs: list[str] = []
+    if not rules:
+        return slugs
+    raw = rules.get("conditional")
+    if not isinstance(raw, list):
+        return slugs
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        for slug in item.get("add_skill_slugs") or []:
+            text = str(slug).strip()
+            if text:
+                slugs.append(text)
+    return slugs
+
+
+def _referenced_skill_slugs(
+    skill_slugs: list[str], rules: dict[str, Any] | None
+) -> list[str]:
+    combined = list(skill_slugs)
+    for slug in _conditional_skill_slugs(rules):
+        combined.append(normalize_catalog_slug(slug))
+    return combined
 
 
 def list_system_scenarios(
@@ -98,6 +156,16 @@ def create_system_scenario(
     report_template_slug: str | None,
     origin: SystemCatalogOrigin = SystemCatalogOrigin.ADMIN,
 ) -> SystemScenario:
+    normalized_slugs = normalize_skill_slugs(skill_slugs)
+    normalized_template = (
+        normalize_report_template_catalog_slug(report_template_slug)
+        if report_template_slug
+        else None
+    )
+    assert_catalog_skill_slugs_exist(
+        db_session, _referenced_skill_slugs(normalized_slugs, rules)
+    )
+    assert_catalog_report_template_exists(db_session, normalized_template)
     entry = SystemScenario(
         slug=normalize_catalog_slug(slug),
         name=normalize_required_text(name, field="Name", max_length=NAME_MAX),
@@ -111,12 +179,8 @@ def create_system_scenario(
         changelog="",
         origin=origin,
         rules=dict(rules),
-        skill_slugs=normalize_skill_slugs(skill_slugs),
-        report_template_slug=(
-            normalize_report_template_catalog_slug(report_template_slug)
-            if report_template_slug
-            else None
-        ),
+        skill_slugs=normalized_slugs,
+        report_template_slug=normalized_template,
     )
     db_session.add(entry)
     try:
@@ -162,6 +226,17 @@ def update_system_scenario(
         entry.report_template_slug = normalize_report_template_catalog_slug(
             report_template_slug
         )
+    if (
+        rules is not None
+        or skill_slugs is not None
+        or report_template_slug is not None
+        or clear_report_template
+    ):
+        assert_catalog_skill_slugs_exist(
+            db_session,
+            _referenced_skill_slugs(list(entry.skill_slugs), entry.rules),
+        )
+        assert_catalog_report_template_exists(db_session, entry.report_template_slug)
     db_session.flush()
     return entry
 

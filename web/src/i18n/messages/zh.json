@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "搜索目录"
       },
+      "view": {
+        "cards": {
+          "tooltip": "卡片"
+        },
+        "list": {
+          "tooltip": "列表"
+        }
+      },
       "status": {
         "draft": {
           "label": "草稿"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "请先下架再删除"
+        },
+        "edit": {
+          "label": "编辑",
+          "tooltip": "编辑条目"
+        },
+        "createScenario": {
+          "label": "创建场景"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "删除"
         }
       },
+      "edit": {
+        "title": "编辑「{name}」",
+        "description": "先保存元数据。发布更新后，用户广场才会看到这次修改。",
+        "confirm": {
+          "label": "保存"
+        },
+        "cancel": {
+          "label": "取消"
+        },
+        "fields": {
+          "name": {
+            "label": "名称"
+          },
+          "description": {
+            "label": "描述"
+          },
+          "category": {
+            "label": "分类"
+          },
+          "tags": {
+            "label": "标签",
+            "placeholder": "用逗号分隔标签"
+          },
+          "body": {
+            "label": "模板正文"
+          }
+        }
+      },
       "empty": {
         "title": "暂无目录条目",
-        "description": "内置内容会在服务启动后出现在这里。"
+        "description": "内置内容会在服务启动后出现在这里。",
+        "search": {
+          "title": "没有匹配项",
+          "description": "换个关键词或分类试试。"
+        }
       },
       "error": {
         "title": "加载目录失败",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "已删除「{name}」"
+        },
+        "updated": {
+          "message": "已更新「{name}」"
         },
         "actionFailed": {
           "message": "操作失败"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "分析我的数据并创建仪表板..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "新建场景",
+          "edit": "编辑场景"
+        },
+        "back": {
+          "ariaLabel": "返回"
+        },
+        "cancel": {
+          "label": "取消"
+        },
+        "share": {
+          "label": "分享"
+        },
+        "startRun": {
+          "label": "开始运行"
+        },
+        "unpublish": {
+          "label": "下架"
+        },
+        "publish": {
+          "label": "发布"
+        },
+        "saving": {
+          "label": "保存中..."
+        },
+        "save": {
+          "label": "保存"
+        },
+        "customizing": {
+          "label": "复制中..."
+        },
+        "customize": {
+          "label": "保存为我的方案"
+        },
+        "dirty": {
+          "label": "未保存"
+        },
+        "preview": {
+          "label": "预览"
+        }
+      },
+      "error": {
+        "title": "无法加载此场景",
+        "description": "请刷新页面后重试。"
+      },
+      "status": {
+        "viewer": {
+          "title": "仅可查看",
+          "description": "你可以查看此场景，但不能编辑。"
+        },
+        "version": {
+          "label": "版本 {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "名称",
+          "placeholder": "场景名称"
+        },
+        "slug": {
+          "title": "标识",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "描述",
+          "placeholder": "此场景应产出什么"
+        },
+        "domain": {
+          "title": "领域",
+          "placeholder": "选择或创建领域",
+          "search": {
+            "placeholder": "搜索领域..."
+          },
+          "create": {
+            "label": "创建“{name}”"
+          },
+          "empty": {
+            "text": "没有匹配的领域。输入名称即可创建。"
+          }
+        },
+        "category": {
+          "title": "分类"
+        },
+        "tags": {
+          "title": "标签",
+          "placeholder": "添加标签",
+          "add": {
+            "label": "添加标签"
+          },
+          "remove": {
+            "ariaLabel": "移除 {tag}"
+          }
+        }
+      },
+      "template": {
+        "title": "报告模板",
+        "placeholder": "选择模板",
+        "search": {
+          "placeholder": "搜索模板..."
+        },
+        "none": {
+          "label": "无"
+        },
+        "empty": {
+          "text": "没有匹配的模板。"
+        }
+      },
+      "pipeline": {
+        "title": "技能流水线",
+        "count": {
+          "label": "{count, plural, one {# 个技能} other {# 个技能}}"
+        },
+        "empty": {
+          "text": "添加技能。顺序即运行顺序。"
+        },
+        "drag": {
+          "ariaLabel": "拖动以调整顺序"
+        },
+        "remove": {
+          "ariaLabel": "移除 {name}"
+        },
+        "added": {
+          "label": "已添加"
+        },
+        "add": {
+          "label": "添加技能",
+          "search": {
+            "placeholder": "搜索技能..."
+          },
+          "empty": {
+            "text": "没有匹配的技能。"
+          }
+        }
+      },
+      "conditional": {
+        "title": "条件技能",
+        "add": {
+          "label": "添加条件"
+        },
+        "empty": {
+          "text": "暂无额外技能。添加条件可绑定一个。"
+        },
+        "keywords": {
+          "placeholder": "关键词，逗号分隔"
+        },
+        "intent": {
+          "placeholder": "意图"
+        },
+        "skill": {
+          "placeholder": "匹配时添加技能"
+        },
+        "remove": {
+          "ariaLabel": "移除条件"
+        }
+      },
+      "playbook": {
+        "title": "剧本",
+        "domain": {
+          "title": "剧本领域",
+          "placeholder": "可选领域键"
+        },
+        "objective": {
+          "title": "目标",
+          "placeholder": "一次成功运行应产出什么"
+        },
+        "inputs": {
+          "title": "必需输入",
+          "placeholder": "智能体必须收集的输入",
+          "add": {
+            "label": "添加输入"
+          }
+        },
+        "phases": {
+          "title": "阶段",
+          "id": {
+            "placeholder": "阶段标识"
+          },
+          "doneWhen": {
+            "placeholder": "完成条件"
+          },
+          "add": {
+            "label": "添加阶段"
+          }
+        },
+        "deliverables": {
+          "title": "交付物",
+          "placeholder": "输出文件或产物",
+          "add": {
+            "label": "添加交付物"
+          }
+        },
+        "gates": {
+          "title": "质量门禁",
+          "placeholder": "结束前的检查",
+          "add": {
+            "label": "添加门禁"
+          }
+        },
+        "refusals": {
+          "title": "拒绝规则",
+          "placeholder": "智能体必须停止的情况",
+          "add": {
+            "label": "添加规则"
+          }
+        },
+        "remove": {
+          "ariaLabel": "移除项"
+        }
+      },
+      "preview": {
+        "title": "SCENARIO.md 预览",
+        "empty": {
+          "text": "编辑时预览会自动更新。"
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "保存前检查"
+        },
+        "name": "请填写名称。",
+        "skills": "请至少添加一个技能。",
+        "slug": "请填写标识。",
+        "ready": {
+          "name": "已填写名称",
+          "skills": "已绑定技能",
+          "slug": "已填写标识"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "场景已创建"
+        },
+        "saved": {
+          "message": "场景已保存"
+        },
+        "saveFailed": {
+          "message": "无法保存场景"
+        },
+        "duplicated": {
+          "message": "已保存一份可编辑的副本"
+        },
+        "duplicateFailed": {
+          "message": "无法复制场景"
+        },
+        "openFailed": {
+          "message": "无法开始运行"
+        },
+        "catalogCreated": {
+          "message": "目录场景已创建"
+        },
+        "catalogSaved": {
+          "message": "目录场景已保存"
+        }
       }
     },
     "scenarios": {

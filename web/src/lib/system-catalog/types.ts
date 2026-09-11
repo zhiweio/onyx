@@ -55,10 +55,24 @@ export interface SystemSkillItem extends CatalogItem {
   instructions_markdown: string | null;
 }
 
+export interface CatalogBoundSkill {
+  slug: string;
+  name: string;
+  description: string;
+  publish_status: SystemCatalogPublishStatus;
+}
+
+export interface CatalogBoundTemplate {
+  slug: string;
+  name: string;
+}
+
 export interface SystemScenarioItem extends CatalogItem {
   rules: Record<string, unknown>;
   skill_slugs: string[];
   report_template_slug: string | null;
+  bound_skills?: CatalogBoundSkill[] | null;
+  report_template?: CatalogBoundTemplate | null;
 }
 
 export interface SystemReportTemplateItem extends CatalogItem {
@@ -230,4 +244,23 @@ export function collectCatalogCategories(
 ): SystemCatalogCategory[] {
   const present = new Set(items.map((item) => item.category));
   return SYSTEM_CATALOG_CATEGORIES.filter((category) => present.has(category));
+}
+
+/** Group items in the category display order used by the filter bar. */
+export function groupCatalogItemsByCategory<T extends CatalogItem>(
+  items: T[],
+): { category: SystemCatalogCategory; items: T[] }[] {
+  const grouped = new Map<SystemCatalogCategory, T[]>();
+  for (const item of items) {
+    const bucket = grouped.get(item.category);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      grouped.set(item.category, [item]);
+    }
+  }
+  return SYSTEM_CATALOG_CATEGORIES.flatMap((category) => {
+    const bucket = grouped.get(category);
+    return bucket ? [{ category, items: bucket }] : [];
+  });
 }

@@ -4,12 +4,13 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from onyx.db.enums import ScenarioAccessLevel, ScenarioSharePermission
+from onyx.server.features.scenario.playbook import ScenarioPlaybook
 
 
 class ScenarioUpsertRequest(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
-    rules: dict[str, Any] = Field(default_factory=dict)
+    rules: ScenarioPlaybook = Field(default_factory=ScenarioPlaybook)
     skill_ids: list[UUID] = Field(default_factory=list)
     report_template: str | None = None
 
@@ -17,7 +18,7 @@ class ScenarioUpsertRequest(BaseModel):
 class ScenarioPatchRequest(BaseModel):
     name: str | None = Field(default=None, max_length=128)
     description: str | None = None
-    rules: dict[str, Any] | None = None
+    rules: ScenarioPlaybook | None = None
     skill_ids: list[UUID] | None = None
     report_template: str | None = None
 

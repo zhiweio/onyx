@@ -14,6 +14,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
@@ -23,7 +24,7 @@ from onyx.db.enums import (
     SystemCatalogCategory,
     SystemCatalogPublishStatus,
 )
-from onyx.db.models import User
+from onyx.db.models import SystemReportTemplate, SystemScenario, SystemSkill, User
 from onyx.db.system_catalog.publish import (
     publish_system_report_template,
     publish_system_scenario,
@@ -59,7 +60,10 @@ from onyx.db.system_catalog.skill import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
+from onyx.server.features.scenario.playbook import playbook_as_dict
 from onyx.server.features.system_catalog.models import (
+    CatalogBoundSkill,
+    CatalogBoundTemplate,
     PublishRequest,
     SystemReportTemplateCreateRequest,
     SystemReportTemplateListResponse,
@@ -77,6 +81,52 @@ from onyx.server.features.system_catalog.models import (
 from onyx.skills.built_in import BUILT_IN_SKILLS
 from onyx.skills.bundle import read_bundle_file
 from onyx.skills.ingest import ingested_skill_bundle
+
+def _catalog_scenario_response(
+    db_session: Session,
+    entry: SystemScenario,
+    *,
+    include_bindings: bool,
+) -> SystemScenarioResponse:
+    bound_skills: list[CatalogBoundSkill] | None = None
+    report_template: CatalogBoundTemplate | None = None
+    if include_bindings:
+        rows: dict[str, SystemSkill] = {}
+        if entry.skill_slugs:
+            rows = {
+                skill.slug: skill
+                for skill in db_session.scalars(
+                    select(SystemSkill).where(SystemSkill.slug.in_(entry.skill_slugs))
+                ).all()
+            }
+        bound_skills = [
+            CatalogBoundSkill(
+                slug=slug,
+                name=skill.name if skill is not None else slug,
+                description=skill.description if skill is not None else "",
+                publish_status=(
+                    skill.publish_status
+                    if skill is not None
+                    else SystemCatalogPublishStatus.DRAFT
+                ),
+            )
+            for slug in entry.skill_slugs
+            for skill in (rows.get(slug),)
+        ]
+        if entry.report_template_slug:
+            template = db_session.scalar(
+                select(SystemReportTemplate).where(
+                    SystemReportTemplate.slug == entry.report_template_slug
+                )
+            )
+            report_template = CatalogBoundTemplate(
+                slug=entry.report_template_slug,
+                name=template.name if template is not None else entry.report_template_slug,
+            )
+    return SystemScenarioResponse.from_scenario(
+        entry, bound_skills=bound_skills, report_template=report_template
+    )
+
 
 # Deliberately not behind require_onyx_craft_enabled: an admin curating the
 # catalog need not have Craft enabled for their own account, matching the
@@ -280,12 +330,12 @@ def create_catalog_scenario(
         description=request.description,
         category=request.category,
         tags=request.tags,
-        rules=request.rules,
+        rules=playbook_as_dict(request.rules),
         skill_slugs=request.skill_slugs,
         report_template_slug=request.report_template_slug,
     )
     db_session.commit()
-    return SystemScenarioResponse.from_scenario(entry)
+    return _catalog_scenario_response(db_session, entry, include_bindings=True)
 
 
 @admin_router.get("/scenarios/{entry_id}")
@@ -294,8 +344,10 @@ def get_catalog_scenario(
     _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> SystemScenarioResponse:
-    return SystemScenarioResponse.from_scenario(
-        get_system_scenario(db_session, entry_id)
+    return _catalog_scenario_response(
+        db_session,
+        get_system_scenario(db_session, entry_id),
+        include_bindings=True,
     )
 
 
@@ -313,13 +365,13 @@ def patch_catalog_scenario(
         description=request.description,
         category=request.category,
         tags=request.tags,
-        rules=request.rules,
+        rules=playbook_as_dict(request.rules) if request.rules is not None else None,
         skill_slugs=request.skill_slugs,
         report_template_slug=request.report_template_slug,
         clear_report_template=request.clear_report_template,
     )
     db_session.commit()
-    return SystemScenarioResponse.from_scenario(entry)
+    return _catalog_scenario_response(db_session, entry, include_bindings=True)
 
 
 @admin_router.post("/scenarios/{entry_id}/publish")

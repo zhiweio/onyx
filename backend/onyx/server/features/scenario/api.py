@@ -29,6 +29,7 @@ from onyx.server.features.scenario.models import (
     ScenarioSkillRef,
     ScenarioUpsertRequest,
 )
+from onyx.server.features.scenario.playbook import playbook_as_dict
 
 router = APIRouter(prefix="/scenarios")
 
@@ -78,7 +79,7 @@ def create_scenario_endpoint(
         user=user,
         name=request.name,
         description=request.description,
-        rules=request.rules,
+        rules=playbook_as_dict(request.rules),
         skill_ids=request.skill_ids,
         report_template=request.report_template,
     )
@@ -120,7 +121,7 @@ def patch_scenario_endpoint(
         scenario,
         name=request.name,
         description=request.description,
-        rules=request.rules,
+        rules=playbook_as_dict(request.rules) if request.rules is not None else None,
         skill_ids=request.skill_ids,
         report_template=request.report_template,
     )

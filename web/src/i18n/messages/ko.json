@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "시나리오 만들기"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12771,6 +12821,263 @@
     "welcome": {
       "input": {
         "placeholder": "데이터를 분석하고 대시보드를 만들어 주세요..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "새 시나리오",
+          "edit": "시나리오 편집"
+        },
+        "back": {
+          "ariaLabel": "뒤로"
+        },
+        "cancel": {
+          "label": "취소"
+        },
+        "share": {
+          "label": "공유"
+        },
+        "startRun": {
+          "label": "실행 시작"
+        },
+        "unpublish": {
+          "label": "게시 취소"
+        },
+        "publish": {
+          "label": "게시"
+        },
+        "saving": {
+          "label": "저장 중..."
+        },
+        "save": {
+          "label": "저장"
+        },
+        "customizing": {
+          "label": "복사 중..."
+        },
+        "customize": {
+          "label": "내 팩으로 저장"
+        },
+        "dirty": {
+          "label": "저장되지 않음"
+        },
+        "preview": {
+          "label": "미리보기"
+        }
+      },
+      "error": {
+        "title": "이 시나리오를 불러올 수 없습니다",
+        "description": "페이지를 새로 고친 후 다시 시도하세요."
+      },
+      "status": {
+        "viewer": {
+          "title": "보기 전용",
+          "description": "이 시나리오를 볼 수 있지만 편집할 수는 없습니다."
+        },
+        "version": {
+          "label": "버전 {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "이름",
+          "placeholder": "시나리오 이름"
+        },
+        "slug": {
+          "title": "슬러그",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "설명",
+          "placeholder": "이 시나리오가 만들어야 하는 결과"
+        },
+        "domain": {
+          "title": "도메인",
+          "placeholder": "도메인 선택 또는 만들기",
+          "search": {
+            "placeholder": "도메인 검색..."
+          },
+          "create": {
+            "label": "“{name}” 만들기"
+          },
+          "empty": {
+            "text": "일치하는 도메인이 없습니다. 이름을 입력해 만드세요."
+          }
+        },
+        "category": {
+          "title": "카테고리"
+        },
+        "tags": {
+          "title": "태그",
+          "placeholder": "태그 추가",
+          "add": {
+            "label": "태그 추가"
+          },
+          "remove": {
+            "ariaLabel": "{tag} 제거"
+          }
+        }
+      },
+      "template": {
+        "title": "보고서 템플릿",
+        "placeholder": "템플릿 선택",
+        "search": {
+          "placeholder": "템플릿 검색..."
+        },
+        "none": {
+          "label": "없음"
+        },
+        "empty": {
+          "text": "일치하는 템플릿이 없습니다."
+        }
+      },
+      "pipeline": {
+        "title": "스킬 파이프라인",
+        "count": {
+          "label": "{count, plural, one {#개 스킬} other {#개 스킬}}"
+        },
+        "empty": {
+          "text": "스킬을 추가하세요. 순서가 실행 순서입니다."
+        },
+        "drag": {
+          "ariaLabel": "드래그하여 순서 변경"
+        },
+        "remove": {
+          "ariaLabel": "{name} 제거"
+        },
+        "added": {
+          "label": "추가됨"
+        },
+        "add": {
+          "label": "스킬 추가",
+          "search": {
+            "placeholder": "스킬 검색..."
+          },
+          "empty": {
+            "text": "일치하는 스킬이 없습니다."
+          }
+        }
+      },
+      "conditional": {
+        "title": "조건부 스킬",
+        "add": {
+          "label": "조건 추가"
+        },
+        "empty": {
+          "text": "추가 스킬이 없습니다. 조건을 추가해 연결하세요."
+        },
+        "keywords": {
+          "placeholder": "키워드, 쉼표로 구분"
+        },
+        "intent": {
+          "placeholder": "의도"
+        },
+        "skill": {
+          "placeholder": "일치하면 스킬 추가"
+        },
+        "remove": {
+          "ariaLabel": "조건 제거"
+        }
+      },
+      "playbook": {
+        "title": "플레이북",
+        "domain": {
+          "title": "플레이북 도메인",
+          "placeholder": "선택적 도메인 키"
+        },
+        "objective": {
+          "title": "목표",
+          "placeholder": "성공한 실행이 만드는 결과"
+        },
+        "inputs": {
+          "title": "필수 입력",
+          "placeholder": "에이전트가 수집해야 하는 입력",
+          "add": {
+            "label": "입력 추가"
+          }
+        },
+        "phases": {
+          "title": "단계",
+          "id": {
+            "placeholder": "단계 ID"
+          },
+          "doneWhen": {
+            "placeholder": "완료 조건"
+          },
+          "add": {
+            "label": "단계 추가"
+          }
+        },
+        "deliverables": {
+          "title": "산출물",
+          "placeholder": "출력 파일 또는 산출물",
+          "add": {
+            "label": "산출물 추가"
+          }
+        },
+        "gates": {
+          "title": "품질 게이트",
+          "placeholder": "종료 전 확인",
+          "add": {
+            "label": "게이트 추가"
+          }
+        },
+        "refusals": {
+          "title": "거부 규칙",
+          "placeholder": "에이전트가 멈춰야 하는 경우",
+          "add": {
+            "label": "규칙 추가"
+          }
+        },
+        "remove": {
+          "ariaLabel": "항목 제거"
+        }
+      },
+      "preview": {
+        "title": "SCENARIO.md 미리보기",
+        "empty": {
+          "text": "편집하면 미리보기가 채워집니다."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "저장하기 전에"
+        },
+        "name": "이름을 추가하세요.",
+        "skills": "스킬을 하나 이상 추가하세요.",
+        "slug": "슬러그를 추가하세요.",
+        "ready": {
+          "name": "이름이 설정됨",
+          "skills": "스킬이 연결됨",
+          "slug": "슬러그가 설정됨"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "시나리오가 생성되었습니다"
+        },
+        "saved": {
+          "message": "시나리오가 저장되었습니다"
+        },
+        "saveFailed": {
+          "message": "시나리오를 저장할 수 없습니다"
+        },
+        "duplicated": {
+          "message": "편집할 수 있는 복사본을 저장했습니다"
+        },
+        "duplicateFailed": {
+          "message": "시나리오를 복사할 수 없습니다"
+        },
+        "openFailed": {
+          "message": "실행을 시작할 수 없습니다"
+        },
+        "catalogCreated": {
+          "message": "카탈로그 시나리오가 생성되었습니다"
+        },
+        "catalogSaved": {
+          "message": "카탈로그 시나리오가 저장되었습니다"
+        }
       }
     },
     "scenarios": {

@@ -8328,6 +8328,14 @@
       "search": {
         "placeholder": "Search the catalog"
       },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
       "status": {
         "draft": {
           "label": "Draft"
@@ -8354,6 +8362,13 @@
         },
         "deleteBlocked": {
           "tooltip": "Unpublish before deleting"
+        },
+        "edit": {
+          "label": "Edit",
+          "tooltip": "Edit entry"
+        },
+        "createScenario": {
+          "label": "Create scenario"
         }
       },
       "publish": {
@@ -8375,9 +8390,41 @@
           "label": "Delete"
         }
       },
+      "edit": {
+        "title": "Edit \"{name}\"",
+        "description": "Save metadata here. Publish an update to push the change to the user gallery.",
+        "confirm": {
+          "label": "Save"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "fields": {
+          "name": {
+            "label": "Name"
+          },
+          "description": {
+            "label": "Description"
+          },
+          "category": {
+            "label": "Category"
+          },
+          "tags": {
+            "label": "Tags",
+            "placeholder": "Comma-separated tags"
+          },
+          "body": {
+            "label": "Template body"
+          }
+        }
+      },
       "empty": {
         "title": "No catalog entries",
-        "description": "Shipped content appears here after the server starts."
+        "description": "Shipped content appears here after the server starts.",
+        "search": {
+          "title": "No matches",
+          "description": "Try a different search or category."
+        }
       },
       "error": {
         "title": "Could not load the catalog",
@@ -8392,6 +8439,9 @@
         },
         "deleted": {
           "message": "Deleted \"{name}\""
+        },
+        "updated": {
+          "message": "Updated \"{name}\""
         },
         "actionFailed": {
           "message": "The action failed"
@@ -12777,6 +12827,263 @@
     "welcome": {
       "input": {
         "placeholder": "Analyze my data and create a dashboard..."
+      }
+    },
+    "scenarioEditor": {
+      "header": {
+        "title": {
+          "create": "New scenario",
+          "edit": "Edit scenario"
+        },
+        "back": {
+          "ariaLabel": "Back"
+        },
+        "cancel": {
+          "label": "Cancel"
+        },
+        "share": {
+          "label": "Share"
+        },
+        "startRun": {
+          "label": "Start run"
+        },
+        "unpublish": {
+          "label": "Unpublish"
+        },
+        "publish": {
+          "label": "Publish"
+        },
+        "saving": {
+          "label": "Saving..."
+        },
+        "save": {
+          "label": "Save"
+        },
+        "customizing": {
+          "label": "Copying..."
+        },
+        "customize": {
+          "label": "Save as my pack"
+        },
+        "dirty": {
+          "label": "Unsaved"
+        },
+        "preview": {
+          "label": "Preview"
+        }
+      },
+      "error": {
+        "title": "Could not load this scenario",
+        "description": "Refresh the page and try again."
+      },
+      "status": {
+        "viewer": {
+          "title": "View only",
+          "description": "You can view this scenario but you cannot edit it."
+        },
+        "version": {
+          "label": "Version {version}"
+        }
+      },
+      "identity": {
+        "name": {
+          "title": "Name",
+          "placeholder": "Scenario name"
+        },
+        "slug": {
+          "title": "Slug",
+          "placeholder": "unique-slug"
+        },
+        "description": {
+          "title": "Description",
+          "placeholder": "What this scenario should produce"
+        },
+        "domain": {
+          "title": "Domain",
+          "placeholder": "Select or create a domain",
+          "search": {
+            "placeholder": "Search domains..."
+          },
+          "create": {
+            "label": "Create “{name}”"
+          },
+          "empty": {
+            "text": "No matching domains. Type a name to create one."
+          }
+        },
+        "category": {
+          "title": "Category"
+        },
+        "tags": {
+          "title": "Tags",
+          "placeholder": "Add a tag",
+          "add": {
+            "label": "Add tag"
+          },
+          "remove": {
+            "ariaLabel": "Remove {tag}"
+          }
+        }
+      },
+      "template": {
+        "title": "Report template",
+        "placeholder": "Select a template",
+        "search": {
+          "placeholder": "Search templates..."
+        },
+        "none": {
+          "label": "None"
+        },
+        "empty": {
+          "text": "No matching templates."
+        }
+      },
+      "pipeline": {
+        "title": "Skill pipeline",
+        "count": {
+          "label": "{count, plural, one {# skill} other {# skills}}"
+        },
+        "empty": {
+          "text": "Add skills. The order is the run order."
+        },
+        "drag": {
+          "ariaLabel": "Drag to reorder"
+        },
+        "remove": {
+          "ariaLabel": "Remove {name}"
+        },
+        "added": {
+          "label": "Added"
+        },
+        "add": {
+          "label": "Add skill",
+          "search": {
+            "placeholder": "Search skills..."
+          },
+          "empty": {
+            "text": "No matching skills."
+          }
+        }
+      },
+      "conditional": {
+        "title": "Conditional skills",
+        "add": {
+          "label": "Add condition"
+        },
+        "empty": {
+          "text": "No extra skills. Add a condition to attach one."
+        },
+        "keywords": {
+          "placeholder": "Keywords, comma separated"
+        },
+        "intent": {
+          "placeholder": "Intent"
+        },
+        "skill": {
+          "placeholder": "Add skill if matched"
+        },
+        "remove": {
+          "ariaLabel": "Remove condition"
+        }
+      },
+      "playbook": {
+        "title": "Playbook",
+        "domain": {
+          "title": "Playbook domain",
+          "placeholder": "Optional domain key"
+        },
+        "objective": {
+          "title": "Objective",
+          "placeholder": "What a successful run produces"
+        },
+        "inputs": {
+          "title": "Required inputs",
+          "placeholder": "Input the agent must collect",
+          "add": {
+            "label": "Add input"
+          }
+        },
+        "phases": {
+          "title": "Phases",
+          "id": {
+            "placeholder": "Phase id"
+          },
+          "doneWhen": {
+            "placeholder": "Done when"
+          },
+          "add": {
+            "label": "Add phase"
+          }
+        },
+        "deliverables": {
+          "title": "Deliverables",
+          "placeholder": "Output file or artifact",
+          "add": {
+            "label": "Add deliverable"
+          }
+        },
+        "gates": {
+          "title": "Quality gates",
+          "placeholder": "Check before close",
+          "add": {
+            "label": "Add gate"
+          }
+        },
+        "refusals": {
+          "title": "Refusal rules",
+          "placeholder": "When the agent must stop",
+          "add": {
+            "label": "Add rule"
+          }
+        },
+        "remove": {
+          "ariaLabel": "Remove item"
+        }
+      },
+      "preview": {
+        "title": "SCENARIO.md preview",
+        "empty": {
+          "text": "The preview fills as you edit."
+        }
+      },
+      "validation": {
+        "checklist": {
+          "title": "Before you save"
+        },
+        "name": "Add a name.",
+        "skills": "Add at least one skill.",
+        "slug": "Add a slug.",
+        "ready": {
+          "name": "Name is set",
+          "skills": "Skills are bound",
+          "slug": "Slug is set"
+        }
+      },
+      "toasts": {
+        "created": {
+          "message": "Scenario created"
+        },
+        "saved": {
+          "message": "Scenario saved"
+        },
+        "saveFailed": {
+          "message": "Could not save the scenario"
+        },
+        "duplicated": {
+          "message": "Saved a copy you can edit"
+        },
+        "duplicateFailed": {
+          "message": "Could not copy the scenario"
+        },
+        "openFailed": {
+          "message": "Could not start the run"
+        },
+        "catalogCreated": {
+          "message": "Catalog scenario created"
+        },
+        "catalogSaved": {
+          "message": "Catalog scenario saved"
+        }
       }
     },
     "scenarios": {

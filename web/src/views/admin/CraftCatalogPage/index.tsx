@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { useTranslations } from "next-intl";
-import { Button, InputTypeIn, MessageCard, Tabs, Tag } from "@opal/components";
+import { Button, InputTypeIn, MessageCard, Tabs } from "@opal/components";
 import {
   ConfirmationModalLayout,
+  Content,
   IllustrationContent,
   InputVertical,
   SettingsLayouts,
@@ -12,31 +15,37 @@ import {
 } from "@opal/layouts";
 import { InputTextArea } from "@opal/components";
 import SvgNoResult from "@opal/illustrations/no-result";
-import { SvgSimpleLoader, SvgTrash, SvgUploadCloud } from "@opal/icons";
-import { Content } from "@opal/layouts";
-import { Card } from "@/refresh-components/cards";
+import { SvgPlus, SvgSimpleLoader, SvgTrash, SvgUploadCloud } from "@opal/icons";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { useCatalogEntries } from "@/lib/system-catalog/hooks";
 import {
-  catalogReportTemplateDocxUrl,
   deleteCatalogEntry,
   publishCatalogEntry,
   SystemCatalogRequestError,
   unpublishCatalogEntry,
-  uploadCatalogReportTemplateDocx,
+  updateCatalogEntry,
+  type CatalogPatchInput,
 } from "@/lib/system-catalog/api";
 import {
   categoryMessageKey,
-  categoryTagColor,
+  collectCatalogCategories,
   filterCatalogItems,
-  isDocxCatalogTemplate,
+  groupCatalogItemsByCategory,
   publishStatusMessageKey,
-  publishStatusTagColor,
   type CatalogItem,
+  type CatalogViewMode,
   type GalleryKind,
-  type SystemReportTemplateItem,
+  type SystemCatalogCategory,
+  type SystemCatalogPublishStatus,
 } from "@/lib/system-catalog/types";
-import DocxTemplateSection from "@/sections/reportTemplates/DocxTemplateSection";
+import { clampPage, slicePage } from "@/lib/browse/page";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
+import {
+  CatalogCategoryChips,
+  CatalogViewToggle,
+} from "@/sections/gallery/CatalogBrowseControls";
+import CatalogAdminEntry from "@/views/admin/CraftCatalogPage/CatalogAdminEntry";
+import EditCatalogModal from "@/views/admin/CraftCatalogPage/EditCatalogModal";
 
 const KIND_TABS: readonly GalleryKind[] = [
   "skills",
@@ -44,8 +53,13 @@ const KIND_TABS: readonly GalleryKind[] = [
   "report-templates",
 ] as const;
 
-// Literal keys under `admin.craftCatalog`, not copy — the union keeps `t()`
-// statically checked.
+const STATUS_FILTERS: readonly (SystemCatalogPublishStatus | "all")[] = [
+  "all",
+  "PUBLISHED",
+  "DRAFT",
+  "ARCHIVED",
+] as const;
+
 type KindLabelKey =
   | "tabs.skills.label"
   | "tabs.scenarios.label"
@@ -65,19 +79,61 @@ function kindLabelKey(kind: GalleryKind): KindLabelKey {
 export default function CraftCatalogPage() {
   const t = useTranslations("admin.craftCatalog");
   const tGallery = useTranslations("craft.gallery");
+  const router = useRouter();
   const [kind, setKind] = useState<GalleryKind>("skills");
   const [searchQuery, setSearchQuery] = useState("");
+  const [category, setCategory] = useState<SystemCatalogCategory | "all">(
+    "all",
+  );
+  const [status, setStatus] = useState<SystemCatalogPublishStatus | "all">(
+    "all",
+  );
+  const [view, setView] = useState<CatalogViewMode>("cards");
+  const [page, setPage] = useState(1);
   const [publishTarget, setPublishTarget] = useState<CatalogItem | null>(null);
   const [changelog, setChangelog] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
+  const [editTarget, setEditTarget] = useState<CatalogItem | null>(null);
   const [pending, setPending] = useState(false);
 
   const { data: entries, error, isLoading, refresh } = useCatalogEntries(kind);
 
-  const visibleEntries = useMemo(
-    () => filterCatalogItems(entries, { query: searchQuery }),
-    [entries, searchQuery],
+  const categories = useMemo(
+    () => collectCatalogCategories(entries),
+    [entries],
   );
+  const visibleEntries = useMemo(
+    () =>
+      filterCatalogItems(entries, {
+        query: searchQuery,
+        category,
+        statuses:
+          status === "all" ? ["DRAFT", "PUBLISHED"] : [status],
+      }),
+    [entries, searchQuery, category, status],
+  );
+  const orderedEntries = useMemo(() => {
+    if (category !== "all") {
+      return visibleEntries;
+    }
+    return groupCatalogItemsByCategory(visibleEntries).flatMap(
+      (group) => group.items,
+    );
+  }, [category, visibleEntries]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [kind, searchQuery, category, status, view]);
+
+  const safePage = clampPage(page, orderedEntries.length);
+  const pageEntries = slicePage(orderedEntries, safePage);
+  const groups = useMemo(() => {
+    if (category !== "all") {
+      return [{ category, items: pageEntries }];
+    }
+    return groupCatalogItemsByCategory(pageEntries);
+  }, [category, pageEntries]);
+  const showGroupHeaders = category === "all" && groups.length > 1;
 
   const runAction = useCallback(
     async (action: () => Promise<void>, successMessage: string) => {
@@ -135,6 +191,25 @@ export default function CraftCatalogPage() {
     if (ok) setDeleteTarget(null);
   }
 
+  async function handleEditSave(input: CatalogPatchInput) {
+    if (!editTarget) return;
+    const ok = await runAction(
+      async () => {
+        await updateCatalogEntry(kind, editTarget.id, input);
+      },
+      t("toasts.updated.message", { name: input.name ?? editTarget.name }),
+    );
+    if (ok) setEditTarget(null);
+  }
+
+  function handleEdit(entry: CatalogItem) {
+    if (kind === "scenarios") {
+      router.push(`/admin/craft/catalog/scenarios/edit/${entry.id}` as Route);
+      return;
+    }
+    setEditTarget(entry);
+  }
+
   return (
     <SettingsLayouts.Root data-testid="CraftCatalogPage/container">
       <SettingsLayouts.Header
@@ -145,7 +220,11 @@ export default function CraftCatalogPage() {
         <div className="flex flex-col gap-2">
           <Tabs
             value={kind}
-            onValueChange={(value) => setKind(value as GalleryKind)}
+            onValueChange={(value) => {
+              setKind(value as GalleryKind);
+              setCategory("all");
+              setStatus("all");
+            }}
           >
             <Tabs.List>
               {KIND_TABS.map((value) => (
@@ -175,132 +254,135 @@ export default function CraftCatalogPage() {
           />
         )}
 
-        {!isLoading && !error && visibleEntries.length === 0 && (
-          <IllustrationContent
-            illustration={SvgNoResult}
-            title={t("empty.title")}
-            description={t("empty.description")}
-          />
-        )}
+        {!isLoading && !error && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-col gap-2">
+                <CatalogCategoryChips
+                  categories={categories}
+                  category={category}
+                  onCategoryChange={setCategory}
+                  label={(key) => tGallery(key)}
+                />
+                <div
+                  className="flex flex-row flex-wrap gap-1"
+                  data-testid="CraftCatalog/status"
+                >
+                  {STATUS_FILTERS.map((value) => (
+                    <Button
+                      key={value}
+                      prominence={status === value ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => setStatus(value)}
+                    >
+                      {value === "all"
+                        ? tGallery(categoryMessageKey("all"))
+                        : t(publishStatusMessageKey(value))}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {kind === "scenarios" && (
+                  <Button
+                    size="sm"
+                    icon={SvgPlus}
+                    onClick={() =>
+                      router.push(
+                        "/admin/craft/catalog/scenarios/new" as Route
+                      )
+                    }
+                  >
+                    {t("actions.createScenario.label")}
+                  </Button>
+                )}
+                {visibleEntries.length > 0 && (
+                  <CatalogViewToggle
+                    view={view}
+                    onViewChange={setView}
+                    cardsTooltip={t("view.cards.tooltip")}
+                    listTooltip={t("view.list.tooltip")}
+                  />
+                )}
+              </div>
+            </div>
 
-        {!isLoading && !error && visibleEntries.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {visibleEntries.map((entry) => {
-              const published = entry.publish_status === "PUBLISHED";
-              return (
-                <Card key={entry.id} variant="primary">
-                  <div className="flex flex-row items-center justify-between gap-2 w-full">
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <Content
-                        title={entry.name}
-                        sizePreset="main-ui"
-                        variant="body"
+            {visibleEntries.length === 0 ? (
+              <IllustrationContent
+                illustration={SvgNoResult}
+                title={
+                  entries.length === 0
+                    ? t("empty.title")
+                    : t("empty.search.title")
+                }
+                description={
+                  entries.length === 0
+                    ? t("empty.description")
+                    : t("empty.search.description")
+                }
+              />
+            ) : (
+              groups.map((group) => (
+                <section
+                  key={group.category}
+                  className="flex flex-col gap-2"
+                  data-testid={`CraftCatalog/group-${group.category}`}
+                >
+                  {showGroupHeaders && (
+                    <Content
+                      title={tGallery(categoryMessageKey(group.category))}
+                      sizePreset="section"
+                      variant="heading"
+                    />
+                  )}
+                  <div
+                    className={
+                      view === "cards"
+                        ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2"
+                        : "flex flex-col gap-1"
+                    }
+                  >
+                    {group.items.map((entry) => (
+                      <CatalogAdminEntry
+                        key={entry.id}
+                        entry={entry}
+                        view={view}
+                        pending={pending}
+                        showDocx={kind === "report-templates"}
+                        onEdit={handleEdit}
+                        onPublish={setPublishTarget}
+                        onUnpublish={(item) => void handleUnpublish(item)}
+                        onDelete={setDeleteTarget}
+                        onDocxUploaded={() => {
+                          void refresh();
+                        }}
                       />
-                      <Content
-                        title={entry.description || entry.slug}
-                        sizePreset="secondary"
-                        variant="body"
-                        color="muted"
-                      />
-                      <div className="flex flex-row flex-wrap items-center gap-1">
-                        <Tag
-                          size="sm"
-                          color={publishStatusTagColor(entry.publish_status)}
-                          title={t(
-                            publishStatusMessageKey(entry.publish_status),
-                          )}
-                        />
-                        <Tag
-                          size="sm"
-                          color={categoryTagColor(entry.category)}
-                          title={tGallery(categoryMessageKey(entry.category))}
-                        />
-                        <Content
-                          title={tGallery("card.version.label", {
-                            version: entry.version,
-                          })}
-                          sizePreset="secondary"
-                          variant="body"
-                          color="muted"
-                        />
-                        <Content
-                          title={entry.slug}
-                          sizePreset="secondary"
-                          variant="body"
-                          color="muted"
-                        />
-                        {isDocxCatalogTemplate(entry) && (
-                          <span data-testid="CraftCatalog/word">
-                            <Tag
-                              size="sm"
-                              color="green"
-                              title={t("word.badge.label")}
-                            />
-                          </span>
-                        )}
-                      </div>
-                      {kind === "report-templates" && (
-                        <DocxTemplateSection
-                          template={entry as SystemReportTemplateItem}
-                          disabled={pending}
-                          onUploaded={() => {
-                            void refresh();
-                          }}
-                          upload={uploadCatalogReportTemplateDocx}
-                          downloadUrl={catalogReportTemplateDocxUrl}
-                        />
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {published ? (
-                        <>
-                          <Button
-                            prominence="secondary"
-                            size="sm"
-                            disabled={pending}
-                            onClick={() => setPublishTarget(entry)}
-                          >
-                            {t("actions.republish.label")}
-                          </Button>
-                          <Button
-                            prominence="secondary"
-                            size="sm"
-                            disabled={pending}
-                            onClick={() => void handleUnpublish(entry)}
-                          >
-                            {t("actions.unpublish.label")}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => setPublishTarget(entry)}
-                        >
-                          {t("actions.publish.label")}
-                        </Button>
-                      )}
-                      <Button
-                        prominence="tertiary"
-                        size="sm"
-                        icon={SvgTrash}
-                        disabled={pending || published}
-                        tooltip={
-                          published
-                            ? t("actions.deleteBlocked.tooltip")
-                            : t("actions.delete.tooltip")
-                        }
-                        aria-label={t("actions.delete.tooltip")}
-                        onClick={() => setDeleteTarget(entry)}
-                      />
-                    </div>
+                    ))}
                   </div>
-                </Card>
-              );
-            })}
+                </section>
+              ))
+            )}
+            {visibleEntries.length > 0 && (
+              <BrowsePagination
+                page={safePage}
+                totalItems={visibleEntries.length}
+                onPageChange={setPage}
+                units={tGallery("pagination.units")}
+              />
+            )}
           </div>
         )}
       </SettingsLayouts.Body>
+
+      {editTarget && (
+        <EditCatalogModal
+          kind={kind}
+          item={editTarget}
+          pending={pending}
+          onClose={() => setEditTarget(null)}
+          onSave={handleEditSave}
+        />
+      )}
 
       {publishTarget && (
         <ConfirmationModalLayout
