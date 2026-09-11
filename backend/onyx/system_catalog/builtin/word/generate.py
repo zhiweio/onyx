@@ -152,6 +152,7 @@ OFFICIAL_WORD_SPECS: Final[dict[str, OfficialWordSpec]] = {
             ),
         ),
         _spec("initiation_report", "药物立项评估报告"),
+        _spec("listed_company_audit", "上市公司财务审计报告"),
         _spec(
             "supplier_recon",
             "供应商对账报告",

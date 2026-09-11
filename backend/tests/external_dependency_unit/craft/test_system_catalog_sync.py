@@ -11,7 +11,11 @@ import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import SystemCatalogOrigin, SystemCatalogPublishStatus
+from onyx.db.enums import (
+    SystemCatalogCategory,
+    SystemCatalogOrigin,
+    SystemCatalogPublishStatus,
+)
 from onyx.db.models import (
     ReportTemplate,
     Scenario,
@@ -24,7 +28,7 @@ from onyx.db.system_catalog.publish import find_projected_skill
 from onyx.db.system_catalog.report_template import (
     get_system_report_template_by_slug,
 )
-from onyx.db.system_catalog.skill import get_system_skill_by_slug
+from onyx.db.system_catalog.skill import create_system_skill, get_system_skill_by_slug
 from onyx.skills.built_in import BUILT_IN_SKILLS
 from onyx.skills.metadata import parse_skill_document
 from onyx.system_catalog.builtin.manifest import (
@@ -37,7 +41,7 @@ from tests.external_dependency_unit.conftest import create_test_user
 
 # A slug this change introduces, so no prior migration seeded it and a user
 # could plausibly already hold it.
-COLLIDABLE_SLUG = "research_brief"
+COLLIDABLE_SLUG = "initiation_report"
 
 # ── manifest integrity (no database needed) ─────────────────────────────────
 
@@ -290,20 +294,19 @@ def test_sync_attaches_official_word_assets(db_session: Session) -> None:
         placeholder_names,
     )
 
-    entry = get_system_report_template_by_slug(db_session, "monthly_close")
+    entry = get_system_report_template_by_slug(db_session, "initiation_report")
     assert entry is not None
     assert entry.kind is ReportTemplateKind.DOCX
     assert entry.asset_file_id is not None
     names = placeholder_names(normalize_placeholder_schema(entry.placeholders))
     assert "entity_name" in names
-    assert "exceptions.title" in names
 
 
 @pytest.mark.usefixtures("synced")
 def test_sync_does_not_overwrite_an_admin_published_template(
     db_session: Session,
 ) -> None:
-    entry = get_system_report_template_by_slug(db_session, "monthly_close")
+    entry = get_system_report_template_by_slug(db_session, "initiation_report")
     assert entry is not None
     user = create_test_user(db_session, "tpl_editor")
     original_body = entry.body
@@ -322,3 +325,35 @@ def test_sync_does_not_overwrite_an_admin_published_template(
         entry.published_by_user_id = None
         entry.changelog = "Shipped with Onyx."
         db_session.commit()
+
+
+@pytest.mark.usefixtures("synced")
+def test_sync_retires_builtins_removed_from_the_manifest(
+    db_session: Session,
+) -> None:
+    leftover = create_system_skill(
+        db_session,
+        slug="retired-catalog-skill",
+        name="retired-catalog-skill",
+        description="Removed from the manifest.",
+        category=SystemCatalogCategory.OFFICE,
+        tags=[],
+        built_in_skill_id="retired-catalog-skill",
+        origin=SystemCatalogOrigin.BUILTIN,
+    )
+    leftover.publish_status = SystemCatalogPublishStatus.PUBLISHED
+    leftover.changelog = "Shipped with Onyx."
+    db_session.commit()
+
+    try:
+        sync_builtin_system_catalog(db_session)
+
+        retired = get_system_skill_by_slug(db_session, "retired-catalog-skill")
+        assert retired is not None
+        assert retired.publish_status is SystemCatalogPublishStatus.ARCHIVED
+        assert find_projected_skill(db_session, retired) is None
+    finally:
+        leftover = get_system_skill_by_slug(db_session, "retired-catalog-skill")
+        if leftover is not None:
+            db_session.delete(leftover)
+            db_session.commit()

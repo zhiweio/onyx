@@ -38,7 +38,7 @@ from onyx.server.features.system_catalog.models import (
 )
 from tests.external_dependency_unit.conftest import create_test_user
 
-BUILT_IN_CONTENT_ID = "doc-review"
+BUILT_IN_CONTENT_ID = "docx"
 
 
 @pytest.fixture

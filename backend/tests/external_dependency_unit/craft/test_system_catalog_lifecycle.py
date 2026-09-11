@@ -57,7 +57,7 @@ from tests.external_dependency_unit.conftest import create_test_user
 
 # Content that ships on disk, so the projection is bundle-free and the fork
 # path exercises the "package a built-in directory" branch.
-BUILT_IN_CONTENT_ID = "meeting-notes"
+BUILT_IN_CONTENT_ID = "docx"
 
 
 @pytest.fixture

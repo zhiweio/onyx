@@ -42,12 +42,8 @@ def test_list_includes_seeded_templates(admin_user: DATestUser) -> None:
     response.raise_for_status()
     slugs = {row["slug"] for row in response.json()["templates"]}
     assert {
-        "compliance_risk",
-        "policy_trend",
-        "target_landscape",
-        "patent_fto",
-        "clinical_pipeline",
-        "cmc_quality",
+        "initiation_report",
+        "listed_company_audit",
     } <= slugs
 
 
@@ -131,7 +127,7 @@ def test_basic_user_cannot_edit_workspace_template(
     workspace = next(
         row
         for row in listed.json()["templates"]
-        if row["slug"] == "compliance_risk"
+        if row["slug"] == "initiation_report"
     )
     basic = UserManager.create(name=f"report-template-basic-{uuid4().hex[:8]}")
     denied = client.patch(

@@ -14,6 +14,11 @@ Runs at startup and is idempotent. Rules that keep it safe to re-run:
   directly into ``skill`` / ``scenario`` / ``report_template``. The sync links
   those rows to their catalog entry instead of publishing a duplicate beside
   them.
+- **Retire removed builtins.** A shipped slug that left the manifest is
+  unpublished (archived) so it leaves the user gallery. Scenarios go first,
+  then templates, then skills, so skill unpublish is not blocked by a
+  removed pack. If a live projection is still referenced, the catalog row
+  is archived and kept.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from __future__ import annotations
 import datetime
 from collections.abc import Callable
 from functools import partial
+from typing import TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -42,6 +48,9 @@ from onyx.db.system_catalog.publish import (
     publish_system_report_template,
     publish_system_scenario,
     publish_system_skill,
+    unpublish_system_report_template,
+    unpublish_system_scenario,
+    unpublish_system_skill,
 )
 from onyx.db.system_catalog.constants import normalize_tags
 from onyx.db.system_catalog.report_template import (
@@ -59,6 +68,7 @@ from onyx.db.system_catalog.scenario import (
 from onyx.db.system_catalog.skill import (
     create_system_skill,
     get_system_skill_by_slug,
+    update_system_skill,
 )
 from onyx.error_handling.exceptions import OnyxError
 from onyx.report_templates.placeholders import (
@@ -71,6 +81,7 @@ from onyx.system_catalog.builtin.manifest import (
     BUILT_IN_SKILL_ENTRIES,
     BuiltInReportTemplateEntry,
     BuiltInScenarioEntry,
+    BuiltInSkillEntry,
 )
 from onyx.system_catalog.builtin.word.generate import (
     OFFICIAL_WORD_SPECS,
@@ -84,6 +95,9 @@ logger = setup_logger()
 
 SHIPPED_CHANGELOG = "Shipped with Onyx."
 _PATCH_GRACE = datetime.timedelta(seconds=2)
+_CatalogRow = TypeVar(
+    "_CatalogRow", SystemSkill, SystemScenario, SystemReportTemplate
+)
 
 
 def sync_builtin_system_catalog(db_session: Session) -> None:
@@ -98,6 +112,8 @@ def sync_builtin_system_catalog(db_session: Session) -> None:
     _sync_report_templates(db_session)
     db_session.commit()
     _sync_scenarios(db_session)
+    db_session.commit()
+    _retire_removed_builtins(db_session)
     db_session.commit()
 
 
@@ -124,6 +140,80 @@ def _publish_isolated(
             slug,
             exc_info=True,
         )
+
+
+def _retire_removed_builtins(db_session: Session) -> None:
+    """Drop shipped catalog rows whose slugs left the manifest.
+
+    Scenarios first, then templates, then skills. A removed pack must be gone
+    before its skills can unpublish.
+    """
+    _retire_kind(
+        db_session,
+        rows=list(
+            db_session.scalars(
+                select(SystemScenario).where(
+                    SystemScenario.origin == SystemCatalogOrigin.BUILTIN
+                )
+            )
+        ),
+        keep_slugs={entry.slug for entry in BUILT_IN_SCENARIO_ENTRIES},
+        unpublish=unpublish_system_scenario,
+    )
+    _retire_kind(
+        db_session,
+        rows=list(
+            db_session.scalars(
+                select(SystemReportTemplate).where(
+                    SystemReportTemplate.origin == SystemCatalogOrigin.BUILTIN
+                )
+            )
+        ),
+        keep_slugs={entry.slug for entry in BUILT_IN_REPORT_TEMPLATE_ENTRIES},
+        unpublish=unpublish_system_report_template,
+    )
+    _retire_kind(
+        db_session,
+        rows=list(
+            db_session.scalars(
+                select(SystemSkill).where(
+                    SystemSkill.origin == SystemCatalogOrigin.BUILTIN
+                )
+            )
+        ),
+        keep_slugs={entry.slug for entry in BUILT_IN_SKILL_ENTRIES},
+        unpublish=unpublish_system_skill,
+    )
+
+
+def _retire_kind(
+    db_session: Session,
+    *,
+    rows: list[_CatalogRow],
+    keep_slugs: set[str],
+    unpublish: Callable[[Session, _CatalogRow], None],
+) -> None:
+    for entry in rows:
+        if entry.slug in keep_slugs:
+            continue
+        if entry.publish_status is SystemCatalogPublishStatus.ARCHIVED:
+            continue
+        if entry.publish_status is SystemCatalogPublishStatus.PUBLISHED:
+            savepoint = db_session.begin_nested()
+            try:
+                unpublish(db_session, entry)
+                savepoint.commit()
+                continue
+            except OnyxError:
+                savepoint.rollback()
+                logger.warning(
+                    "Archiving built-in catalog entry '%s': it could not be "
+                    "unpublished in this deployment",
+                    entry.slug,
+                    exc_info=True,
+                )
+        entry.publish_status = SystemCatalogPublishStatus.ARCHIVED
+        db_session.flush()
 
 
 def _is_unedited_builtin(
@@ -161,8 +251,23 @@ def _sync_skills(db_session: Session) -> None:
             )
             _adopt_legacy_skill_row(db_session, catalog_entry)
 
-        if catalog_entry.publish_status is not SystemCatalogPublishStatus.DRAFT:
+        if (
+            catalog_entry.publish_status is not SystemCatalogPublishStatus.DRAFT
+            and not _is_unedited_builtin(catalog_entry)
+        ):
             continue
+
+        if not _skill_needs_refresh(catalog_entry, entry):
+            continue
+
+        update_system_skill(
+            db_session,
+            catalog_entry,
+            name=entry.name,
+            description=entry.description,
+            category=entry.category,
+            tags=list(entry.tags),
+        )
         _publish_isolated(
             db_session,
             entry.slug,
@@ -174,6 +279,22 @@ def _sync_skills(db_session: Session) -> None:
                 changelog=SHIPPED_CHANGELOG,
             ),
         )
+
+
+def _skill_needs_refresh(
+    catalog_entry: SystemSkill, entry: BuiltInSkillEntry
+) -> bool:
+    if catalog_entry.publish_status is SystemCatalogPublishStatus.DRAFT:
+        return True
+    if catalog_entry.name != entry.name:
+        return True
+    if catalog_entry.description != entry.description:
+        return True
+    if catalog_entry.category != entry.category:
+        return True
+    if list(catalog_entry.tags) != normalize_tags(list(entry.tags)):
+        return True
+    return False
 
 
 def _adopt_legacy_skill_row(db_session: Session, entry: SystemSkill) -> None:

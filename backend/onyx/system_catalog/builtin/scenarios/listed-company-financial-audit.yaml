@@ -1,0 +1,32 @@
+domain: listed-company
+objective: Produce an evidence-bound listed-company financial audit report
+required_inputs:
+  - entity
+  - period
+  - currency
+phases:
+  - id: resolve
+    done_when: outputs/entity.json names one official entity
+  - id: normalize
+    done_when: Balance sheet, income statement, and cash flow are in outputs/normalized
+  - id: audit
+    done_when: Ties and ratios are written and breaks are in outputs/exceptions
+  - id: context
+    done_when: Industry peers and credit or legal notes exist, or the gap is named
+  - id: review
+    done_when: outputs/review/red.md and outputs/review/blue.md exist
+  - id: report
+    done_when: outputs/report.docx is filled
+deliverables:
+  - outputs/report.docx
+  - outputs/normalized/ratios.csv
+  - outputs/entity.json
+quality_gates:
+  - Every figure names a file path or MCP capture
+  - Broken ties stay in the exception file
+  - Zhihuiya citations go through replay_store, not mcp-offload
+  - No leftover {{placeholders}} in the Word file
+refusal_rules:
+  - Do not invent a ticker, 案号, or patent number
+  - Do not hide a broken tie
+  - Do not enable every Zhihuiya server for one pick
