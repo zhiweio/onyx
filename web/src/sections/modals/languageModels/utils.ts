@@ -195,6 +195,11 @@ export function mergeFetchedModelConfigurations(
       reasoning_effort_max: prior.reasoning_effort_max,
       reasoning_effort_default: prior.reasoning_effort_default,
       temperature_default: prior.temperature_default,
+      max_input_tokens: prior.max_input_tokens,
+      max_output_tokens: prior.max_output_tokens,
+      input_modalities: prior.input_modalities,
+      output_modalities: prior.output_modalities,
+      supports_image_input: prior.supports_image_input,
     });
   });
 }

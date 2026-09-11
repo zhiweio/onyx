@@ -694,6 +694,7 @@ export interface BuildSessionData {
   /** Model this session runs on (from the row); seeds the composer picker. */
   agentProvider: string | null;
   agentModel: string | null;
+  reasoningEffort: string | null;
   opencodeSessionId: string | null;
   skillsStale: boolean;
   /** Incremented only with skillsStale so async refreshes can reject stale responses. */
@@ -947,6 +948,7 @@ const createInitialSessionData = (
   sandbox: null,
   agentProvider: null,
   agentModel: null,
+  reasoningEffort: null,
   opencodeSessionId: null,
   skillsStale: false,
   skillsStaleRevision: 0,
@@ -1636,6 +1638,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         sandbox,
         agentProvider: sessionData.agent_provider,
         agentModel: sessionData.agent_model,
+        reasoningEffort: sessionData.reasoning_effort ?? null,
         opencodeSessionId: sessionData.opencode_session_id ?? null,
         ...(sessionData.skills_stale &&
           canApplySkillsStale() && { skillsStale: true }),

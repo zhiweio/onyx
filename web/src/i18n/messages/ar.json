@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "الحد الأقصى لرموز الإدخال لهذا النموذج.",
+            "placeholder": "استخدم القيمة الافتراضية للمزود",
+            "title": "نافذة السياق"
+          },
+          "dialog": {
+            "title": "تعديل إعدادات النموذج"
+          },
+          "inputTypes": {
+            "description": "أنواع الإدخال التي يقبلها هذا النموذج.",
+            "textLocked": {
+              "tooltip": "إدخال النص مطلوب دائمًا."
+            },
+            "title": "أنواع الإدخال"
+          },
+          "maxOutputTokens": {
+            "description": "الحد الأقصى للرموز التي يمكن للنموذج توليدها.",
+            "placeholder": "استخدم القيمة الافتراضية للمزود",
+            "title": "الحد الأقصى لرموز الإخراج"
+          },
+          "modelId": {
+            "description": "المعرّف الذي يستخدمه هذا المزود للنموذج.",
+            "title": "معرّف النموذج"
+          },
+          "outputTypes": {
+            "description": "أنواع الإخراج التي يمكن لهذا النموذج إنتاجها.",
+            "textLocked": {
+              "tooltip": "إخراج النص مطلوب دائمًا."
+            },
+            "title": "أنواع الإخراج"
+          },
+          "types": {
+            "image": {
+              "label": "صورة"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "نص"
+            },
+            "video": {
+              "label": "فيديو"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "محادثة"
@@ -11550,6 +11595,31 @@
         "empty": "هذه الورقة فارغة.",
         "tooLarge": "هذه الورقة كبيرة جدًا بحيث يتعذر معاينتها. نزّل الملف لعرضها."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "مرتفع"
+        },
+        "low": {
+          "label": "منخفض"
+        },
+        "max": {
+          "label": "أقصى"
+        },
+        "medium": {
+          "label": "متوسط"
+        },
+        "off": {
+          "label": "إيقاف"
+        }
+      },
+      "tooltip": "مستوى التفكير"
     }
   },
   "craft": {

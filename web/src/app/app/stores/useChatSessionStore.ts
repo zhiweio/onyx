@@ -23,6 +23,7 @@ interface ChatSessionData {
   canContinue: boolean;
   submittedMessage: string;
   maxTokens: number;
+  contextTokensUsed: number;
   chatSessionSharedStatus: ChatSessionSharedStatus;
   selectedNodeIdForDocDisplay: number | null; // should be the node ID, not the message ID
   abortController: AbortController;
@@ -188,6 +189,7 @@ const createInitialSessionData = (
   canContinue: false,
   submittedMessage: "",
   maxTokens: 128_000,
+  contextTokensUsed: 0,
   chatSessionSharedStatus: ChatSessionSharedStatus.Private,
   selectedNodeIdForDocDisplay: null,
   abortController: new AbortController(),
@@ -616,6 +618,9 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
       description: backendSession?.description,
       personaId: backendSession?.persona_id,
       incognito: backendSession?.incognito ?? false,
+      ...(backendSession?.context_tokens_used != null
+        ? { contextTokensUsed: backendSession.context_tokens_used }
+        : {}),
     };
 
     const existingSession = get().sessions.get(sessionId);
@@ -768,6 +773,15 @@ export const useCurrentQueuedMessages = () =>
       ? sessions.get(currentSessionId)
       : null;
     return currentSession?.queuedMessages ?? EMPTY_QUEUED_MESSAGES;
+  });
+
+export const useCurrentContextTokensUsed = () =>
+  useChatSessionStore((state) => {
+    const { currentSessionId, sessions } = state;
+    const currentSession = currentSessionId
+      ? sessions.get(currentSessionId)
+      : null;
+    return currentSession?.contextTokensUsed ?? 0;
   });
 
 export const useCurrentLatestMessageRenderComplete = () =>

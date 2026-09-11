@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "Maximale Eingabe-Tokens für dieses Modell.",
+            "placeholder": "Anbieterstandard verwenden",
+            "title": "Kontextfenster"
+          },
+          "dialog": {
+            "title": "Modelleinstellungen bearbeiten"
+          },
+          "inputTypes": {
+            "description": "Modalitäten, die dieses Modell akzeptiert.",
+            "textLocked": {
+              "tooltip": "Texteingabe ist immer erforderlich."
+            },
+            "title": "Eingabetypen"
+          },
+          "maxOutputTokens": {
+            "description": "Maximale Tokens, die das Modell erzeugen kann.",
+            "placeholder": "Anbieterstandard verwenden",
+            "title": "Max. Ausgabe-Tokens"
+          },
+          "modelId": {
+            "description": "Die Kennung, die dieser Anbieter für das Modell verwendet.",
+            "title": "Modell-ID"
+          },
+          "outputTypes": {
+            "description": "Modalitäten, die dieses Modell erzeugen kann.",
+            "textLocked": {
+              "tooltip": "Textausgabe ist immer erforderlich."
+            },
+            "title": "Ausgabetypen"
+          },
+          "types": {
+            "image": {
+              "label": "Bild"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "Text"
+            },
+            "video": {
+              "label": "Video"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "Chat"
@@ -11550,6 +11595,31 @@
         "empty": "Dieses Blatt ist leer.",
         "tooLarge": "Dieses Blatt ist zu groß für die Vorschau. Laden Sie die Datei herunter, um es anzusehen."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "Hoch"
+        },
+        "low": {
+          "label": "Niedrig"
+        },
+        "max": {
+          "label": "Max"
+        },
+        "medium": {
+          "label": "Mittel"
+        },
+        "off": {
+          "label": "Aus"
+        }
+      },
+      "tooltip": "Denkintensität"
     }
   },
   "craft": {

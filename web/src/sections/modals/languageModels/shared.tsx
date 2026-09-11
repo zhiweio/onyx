@@ -647,6 +647,11 @@ function ModelRow({
                     model,
                     t("models.row.visionMarker.title")
                   )}
+                  <ModelSettingsPopover
+                    model={model}
+                    onChange={onSettingsChange}
+                    onOpenChange={setSettingsOpen}
+                  />
                   <Hoverable.Item group="model-row" variant="appear-on-hover">
                     <OpalSection
                       flexDirection="row"
@@ -663,11 +668,6 @@ function ModelRow({
                           e.stopPropagation();
                           editHandle.current?.startEditing();
                         }}
-                      />
-                      <ModelSettingsPopover
-                        model={model}
-                        onChange={onSettingsChange}
-                        onOpenChange={setSettingsOpen}
                       />
                       {!isDefaultModel && onSetDefaultModel && (
                         <Button

@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "Máximo de tokens de entrada para este modelo.",
+            "placeholder": "Usar el valor predeterminado del proveedor",
+            "title": "Ventana de contexto"
+          },
+          "dialog": {
+            "title": "Editar la configuración del modelo"
+          },
+          "inputTypes": {
+            "description": "Modalidades que acepta este modelo.",
+            "textLocked": {
+              "tooltip": "La entrada de texto siempre es obligatoria."
+            },
+            "title": "Tipos de entrada"
+          },
+          "maxOutputTokens": {
+            "description": "Máximo de tokens que el modelo puede generar.",
+            "placeholder": "Usar el valor predeterminado del proveedor",
+            "title": "Tokens de salida máximos"
+          },
+          "modelId": {
+            "description": "El identificador que este proveedor usa para el modelo.",
+            "title": "ID del modelo"
+          },
+          "outputTypes": {
+            "description": "Modalidades que este modelo puede producir.",
+            "textLocked": {
+              "tooltip": "La salida de texto siempre es obligatoria."
+            },
+            "title": "Tipos de salida"
+          },
+          "types": {
+            "image": {
+              "label": "Imagen"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "Texto"
+            },
+            "video": {
+              "label": "Vídeo"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "chat"
@@ -11550,6 +11595,31 @@
         "empty": "Esta hoja está vacía.",
         "tooLarge": "Esta hoja es demasiado grande para la vista previa. Descarga el archivo para verla."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "Alto"
+        },
+        "low": {
+          "label": "Bajo"
+        },
+        "max": {
+          "label": "Máx."
+        },
+        "medium": {
+          "label": "Medio"
+        },
+        "off": {
+          "label": "Desactivado"
+        }
+      },
+      "tooltip": "Nivel de pensamiento"
     }
   },
   "craft": {

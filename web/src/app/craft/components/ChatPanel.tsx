@@ -63,7 +63,9 @@ import {
   fetchActiveTurn,
   fetchCraftQuestionAsk,
   resumeCraftJob,
+  updateSessionReasoning,
 } from "@/app/craft/services/apiServices";
+import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
 import CraftAskBar, {
   type AskBarAction,
 } from "@/app/craft/components/CraftAskBar";
@@ -303,6 +305,47 @@ export default function BuildChatPanel({
   const isPreProvisioning = useIsPreProvisioning();
   const isPreProvisioningFailed = useIsPreProvisioningFailed();
   const preProvisionedSessionId = usePreProvisionedSessionId();
+  const thoughtSessionId = sessionId ?? preProvisionedSessionId;
+  const storedThoughtEffort = useBuildSessionStore((state) => {
+    if (!thoughtSessionId) return null;
+    return state.sessions.get(thoughtSessionId)?.reasoningEffort ?? null;
+  });
+
+  const selectedModelConfig = useMemo(() => {
+    if (!selectedModel || !llmProviders) return null;
+    const provider = llmProviders.find(
+      (candidate) => candidate.id === selectedModel.providerId
+    );
+    return (
+      provider?.model_configurations.find(
+        (model) => model.name === selectedModel.modelName
+      ) ?? null
+    );
+  }, [selectedModel, llmProviders]);
+
+  const handleThoughtChange = useCallback(
+    async (effort: ReasoningEffortOverride) => {
+      if (!thoughtSessionId) return;
+      updateSessionData(thoughtSessionId, { reasoningEffort: effort });
+      try {
+        await updateSessionReasoning(thoughtSessionId, effort);
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
+    },
+    [thoughtSessionId, updateSessionData]
+  );
+
+  const thoughtLevel = selectedModelConfig
+    ? {
+        value: (storedThoughtEffort as ReasoningEffortOverride | null) ?? null,
+        onChange: handleThoughtChange,
+        supportsReasoning: selectedModelConfig.supports_reasoning,
+        supportedEfforts: selectedModelConfig.supported_reasoning_efforts,
+        effortMax: selectedModelConfig.reasoning_effort_max,
+        fallback: selectedModelConfig.reasoning_effort_default,
+      }
+    : null;
 
   // Disable input when pre-provisioning is in progress or failed (waiting for retry)
   const sandboxNotReady = isPreProvisioning || isPreProvisioningFailed;
@@ -984,6 +1027,7 @@ export default function BuildChatPanel({
                       sandboxInitializing={sandboxNotReady}
                       longJobEnabled={longJobEnabled}
                       onLongJobEnabledChange={setLongJobEnabled}
+                      thoughtLevel={thoughtLevel}
                     />
                   ) : (
                     <BuildMessageList
@@ -1115,6 +1159,7 @@ export default function BuildChatPanel({
                     onQueueMessage={handleQueueMessage}
                     onRemoveQueuedMessage={handleRemoveQueuedMessage}
                     contextUsage={contextUsage}
+                    thoughtLevel={thoughtLevel}
                   />
                 </div>
               </div>

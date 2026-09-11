@@ -15,6 +15,7 @@ def _model(
         is_visible=visible,
         supports_image_input=supports_image_input,
         supports_reasoning=supports_reasoning,
+        input_modalities=["text", "image"] if supports_image_input else ["text"],
     )
 
 
@@ -114,3 +115,32 @@ def test_catalog_uses_admin_configured_max_input_tokens() -> None:
     )
     limited_catalog = build_gateway_model_catalog([limited])
     assert limited_catalog[0].max_input_tokens == 131_072
+
+
+def test_catalog_uses_admin_modalities_and_output_tokens() -> None:
+    catalog = build_gateway_model_catalog(
+        [
+            _provider(
+                1,
+                "openai",
+                "OpenAI",
+                [
+                    ModelConfigurationView(
+                        name="gpt-4o",
+                        display_name="GPT-4o",
+                        is_visible=True,
+                        supports_image_input=True,
+                        max_input_tokens=8000,
+                        configured_max_input_tokens=8000,
+                        max_output_tokens=2048,
+                        input_modalities=["text", "pdf"],
+                        output_modalities=["text"],
+                    )
+                ],
+            )
+        ]
+    )
+    assert catalog[0].max_input_tokens == 8000
+    assert catalog[0].max_output_tokens == 2048
+    assert catalog[0].capabilities.input_modalities == ("text", "pdf")
+    assert catalog[0].capabilities.output_modalities == ("text",)

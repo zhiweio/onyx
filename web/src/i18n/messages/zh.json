@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "此模型的最大输入 token 数。",
+            "placeholder": "使用提供商默认值",
+            "title": "上下文窗口"
+          },
+          "dialog": {
+            "title": "编辑模型设置"
+          },
+          "inputTypes": {
+            "description": "此模型接受的输入类型。",
+            "textLocked": {
+              "tooltip": "始终需要文本输入。"
+            },
+            "title": "输入类型"
+          },
+          "maxOutputTokens": {
+            "description": "此模型可生成的最大 token 数。",
+            "placeholder": "使用提供商默认值",
+            "title": "最大输出 token"
+          },
+          "modelId": {
+            "description": "此提供商用于该模型的标识符。",
+            "title": "模型 ID"
+          },
+          "outputTypes": {
+            "description": "此模型可生成的输出类型。",
+            "textLocked": {
+              "tooltip": "始终需要文本输出。"
+            },
+            "title": "输出类型"
+          },
+          "types": {
+            "image": {
+              "label": "图片"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "文本"
+            },
+            "video": {
+              "label": "视频"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "对话"
@@ -11550,6 +11595,31 @@
         "empty": "此工作表为空。",
         "tooLarge": "此工作表过大，无法预览。请下载文件查看。"
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "高"
+        },
+        "low": {
+          "label": "低"
+        },
+        "max": {
+          "label": "最高"
+        },
+        "medium": {
+          "label": "中"
+        },
+        "off": {
+          "label": "关闭"
+        }
+      },
+      "tooltip": "思考强度"
     }
   },
   "craft": {

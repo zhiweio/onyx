@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "Máximo de tokens de entrada para este modelo.",
+            "placeholder": "Usar o padrão do provedor",
+            "title": "Janela de contexto"
+          },
+          "dialog": {
+            "title": "Editar configurações do modelo"
+          },
+          "inputTypes": {
+            "description": "Modalidades que este modelo aceita.",
+            "textLocked": {
+              "tooltip": "A entrada de texto é sempre obrigatória."
+            },
+            "title": "Tipos de entrada"
+          },
+          "maxOutputTokens": {
+            "description": "Máximo de tokens que o modelo pode gerar.",
+            "placeholder": "Usar o padrão do provedor",
+            "title": "Tokens máximos de saída"
+          },
+          "modelId": {
+            "description": "O identificador que este provedor usa para o modelo.",
+            "title": "ID do modelo"
+          },
+          "outputTypes": {
+            "description": "Modalidades que este modelo pode produzir.",
+            "textLocked": {
+              "tooltip": "A saída de texto é sempre obrigatória."
+            },
+            "title": "Tipos de saída"
+          },
+          "types": {
+            "image": {
+              "label": "Imagem"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "Texto"
+            },
+            "video": {
+              "label": "Vídeo"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "chat"
@@ -11550,6 +11595,31 @@
         "empty": "Esta folha está vazia.",
         "tooLarge": "Esta folha é grande demais para a pré-visualização. Baixe o arquivo para visualizá-la."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "Alto"
+        },
+        "low": {
+          "label": "Baixo"
+        },
+        "max": {
+          "label": "Máx."
+        },
+        "medium": {
+          "label": "Médio"
+        },
+        "off": {
+          "label": "Desligado"
+        }
+      },
+      "tooltip": "Nível de pensamento"
     }
   },
   "craft": {

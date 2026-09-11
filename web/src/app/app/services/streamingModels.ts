@@ -63,6 +63,8 @@ export enum PacketType {
   INTERMEDIATE_REPORT_DELTA = "intermediate_report_delta",
   INTERMEDIATE_REPORT_CITED_DOCS = "intermediate_report_cited_docs",
 
+  CONTEXT_USAGE = "context_usage",
+
   // Coding Agent packets
   CODING_AGENT_START = "coding_agent_start",
   CODING_AGENT_THINKING_DELTA = "coding_agent_thinking_delta",
@@ -364,6 +366,11 @@ export interface ChatHeartbeat extends BaseObj {
   type: "chat_heartbeat";
 }
 
+export interface ContextUsage extends BaseObj {
+  type: "context_usage";
+  used_tokens: number;
+}
+
 export type ChatHeartbeatObj = ChatHeartbeat;
 
 export type SectionEndObj = SectionEnd;
@@ -471,7 +478,8 @@ export type ObjTypes =
   | ResearchAgentObj
   | CodingAgentObj
   | PacketErrorObj
-  | CitationObj;
+  | CitationObj
+  | ContextUsage;
 
 // Placement interface for packet positioning
 export interface Placement {

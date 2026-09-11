@@ -452,6 +452,7 @@ def get_chat_session(
         shared_status=chat_session.shared_status,
         current_temperature_override=chat_session.temperature_override,
         current_reasoning_effort_override=chat_session.reasoning_effort_override,
+        context_tokens_used=chat_session.context_tokens_used,
         deleted=chat_session.deleted,
         owner_name=chat_session.user.personal_name if chat_session.user else None,
         # Packets are now directly serialized as Packet Pydantic models

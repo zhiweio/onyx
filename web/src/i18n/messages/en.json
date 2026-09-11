@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "Maximum input tokens for this model.",
+            "placeholder": "Use provider default",
+            "title": "Context window"
+          },
+          "dialog": {
+            "title": "Edit model settings"
+          },
+          "inputTypes": {
+            "description": "Modalities this model accepts.",
+            "textLocked": {
+              "tooltip": "Text input is always required."
+            },
+            "title": "Input types"
+          },
+          "maxOutputTokens": {
+            "description": "Maximum tokens the model can generate.",
+            "placeholder": "Use provider default",
+            "title": "Max output tokens"
+          },
+          "modelId": {
+            "description": "The identifier this provider uses for the model.",
+            "title": "Model ID"
+          },
+          "outputTypes": {
+            "description": "Modalities this model can produce.",
+            "textLocked": {
+              "tooltip": "Text output is always required."
+            },
+            "title": "Output types"
+          },
+          "types": {
+            "image": {
+              "label": "Image"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "Text"
+            },
+            "video": {
+              "label": "Video"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "chat"
@@ -11550,6 +11595,31 @@
         "empty": "This sheet is empty.",
         "tooLarge": "This sheet is too large to preview — download the file to view it."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "High"
+        },
+        "low": {
+          "label": "Low"
+        },
+        "max": {
+          "label": "Max"
+        },
+        "medium": {
+          "label": "Medium"
+        },
+        "off": {
+          "label": "Off"
+        }
+      },
+      "tooltip": "Thought level"
     }
   },
   "craft": {

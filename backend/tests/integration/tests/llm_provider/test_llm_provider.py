@@ -13,6 +13,7 @@ from onyx.llm.model_capabilities import (
     model_is_reasoning_model,
     supported_reasoning_efforts,
 )
+from onyx.llm.modalities import infer_input_modalities, infer_output_modalities
 from onyx.llm.model_name_parser import parse_litellm_model_name
 from onyx.llm.well_known_providers.llm_provider_options import (
     fetch_default_model_for_provider,
@@ -66,17 +67,26 @@ def assert_response_is_equivalent(
             else parsed.display_name
         )
 
+        supports_image = litellm_thinks_model_supports_image_input(
+            req.name, provider_name
+        )
+        input_modalities = req.input_modalities or infer_input_modalities(
+            supports_image=supports_image
+        )
+        if req.input_modalities is not None:
+            supports_image = "image" in req.input_modalities
         filled_with_max_input_tokens = ModelConfigurationUpsertRequest(
             name=req.name,
             is_visible=req.is_visible,
             max_input_tokens=req.max_input_tokens
             or get_max_input_tokens(model_name=req.name, model_provider=provider_name),
+            max_output_tokens=req.max_output_tokens,
+            input_modalities=input_modalities,
+            output_modalities=req.output_modalities or infer_output_modalities(),
         )
         return {
             **filled_with_max_input_tokens.model_dump(),
-            "supports_image_input": litellm_thinks_model_supports_image_input(
-                req.name, provider_name
-            ),
+            "supports_image_input": supports_image,
             "supports_reasoning": model_is_reasoning_model(req.name, provider_name),
             "supported_reasoning_efforts": [
                 effort.value
@@ -2416,3 +2426,60 @@ def test_keep_existing_models_preserves_unsent_models(
     assert _update(keep=True) == ["gpt-4", "gpt-4o"]
     # The default is still a full replace.
     assert _update(keep=False) == ["gpt-4"]
+
+
+def test_model_modalities_and_output_tokens_round_trip(reset: None) -> None:  # noqa: ARG001
+    admin_user = UserManager.create(name="admin_user")
+    created = client.put(
+        f"{API_SERVER_URL}/admin/llm/provider?is_creation=true",
+        headers=admin_user.headers,
+        json={
+            "name": str(uuid.uuid4()),
+            "provider": LlmProviderNames.OPENAI,
+            "api_key": "sk-000000000000000000000000000000000000000000000000",
+            "model_configurations": [
+                {
+                    "name": "gpt-4o",
+                    "is_visible": True,
+                    "max_input_tokens": 8000,
+                    "max_output_tokens": 2048,
+                    "input_modalities": ["text", "pdf"],
+                    "output_modalities": ["text"],
+                }
+            ],
+            "is_public": True,
+            "groups": [],
+        },
+    )
+    assert created.status_code == 200
+    provider_id = created.json()["id"]
+    model = created.json()["model_configurations"][0]
+    assert model["max_input_tokens"] == 8000
+    assert model["max_output_tokens"] == 2048
+    assert model["input_modalities"] == ["text", "pdf"]
+    assert model["output_modalities"] == ["text"]
+    assert model["supports_image_input"] is False
+
+    omitted = client.put(
+        f"{API_SERVER_URL}/admin/llm/provider",
+        headers=admin_user.headers,
+        json={
+            "id": provider_id,
+            "name": created.json()["name"],
+            "provider": LlmProviderNames.OPENAI,
+            "model_configurations": [
+                {
+                    "name": "gpt-4o",
+                    "is_visible": True,
+                    "max_input_tokens": 8000,
+                }
+            ],
+            "is_public": True,
+            "groups": [],
+        },
+    )
+    assert omitted.status_code == 200
+    kept = omitted.json()["model_configurations"][0]
+    assert kept["max_output_tokens"] == 2048
+    assert kept["input_modalities"] == ["text", "pdf"]
+    assert kept["supports_image_input"] is False

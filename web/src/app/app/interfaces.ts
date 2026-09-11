@@ -200,6 +200,7 @@ export interface BackendChatSession {
   shared_status: ChatSessionSharedStatus;
   current_temperature_override: number | null;
   current_reasoning_effort_override: ReasoningEffortOverride | null;
+  context_tokens_used?: number | null;
   current_alternate_model?: string;
 
   owner_name: string | null;

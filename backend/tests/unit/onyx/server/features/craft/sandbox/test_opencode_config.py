@@ -6,10 +6,12 @@ from typing import Any
 import pytest
 
 from onyx.server.features.build.configs import MCP_SESSION_TAG_HEADER
+from onyx.llm.models import ReasoningEffort
 from onyx.server.features.build.sandbox.models import (
     CraftLLMProviderConfig,
     CraftMCPServerConfig,
 )
+from onyx.server.gateway.configs import REASONING_EFFORT_HEADER
 from onyx.server.features.build.sandbox.util.mcp_config import (
     craft_mcp_fingerprint,
     opencode_mcp_tool_id,
@@ -60,6 +62,15 @@ def _mcp(
     return CraftMCPServerConfig(
         key=key, url=url, disabled_tools=disabled_tools, server_id=1
     )
+
+
+def test_reasoning_effort_sets_gateway_header() -> None:
+    config = build_provider_opencode_config(
+        _gateway().model_copy(update={"reasoning_effort": ReasoningEffort.HIGH})
+    )
+    assert config["provider"]["onyx"]["options"]["headers"] == {
+        REASONING_EFFORT_HEADER: ReasoningEffort.HIGH.value
+    }
 
 
 def test_gateway_is_the_only_enabled_provider() -> None:

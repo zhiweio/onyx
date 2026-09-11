@@ -77,7 +77,12 @@ import {
   useCurrentChatState,
   useCurrentMessageHistory,
 } from "@/app/app/stores/useChatSessionStore";
-import { Packet, MessageStart } from "@/app/app/services/streamingModels";
+import {
+  ContextUsage,
+  MessageStart,
+  Packet,
+  PacketType,
+} from "@/app/app/services/streamingModels";
 import { SelectedModel } from "@/sections/model-selector/MultiModelSelector";
 import type { ToolConfigurationHandle } from "@/lib/tools/hooks";
 import { ProjectFile, useProjectsContext } from "@/lib/projects/providers";
@@ -1304,6 +1309,17 @@ export default function useChatController({
             } else if (Object.hasOwn(packet, "obj")) {
               const typedPacket = packet as Packet;
               const packetObj = typedPacket.obj;
+
+              if (packetObj.type === PacketType.CONTEXT_USAGE) {
+                const usedTokens = (packetObj as ContextUsage).used_tokens;
+                if (typeof usedTokens === "number") {
+                  useChatSessionStore.getState().updateSessionData(
+                    frozenSessionId,
+                    { contextTokensUsed: usedTokens }
+                  );
+                }
+                continue;
+              }
 
               if (isMultiModel) {
                 // Multi-model: route packet by placement.model_index.

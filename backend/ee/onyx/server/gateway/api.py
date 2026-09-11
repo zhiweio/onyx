@@ -41,6 +41,7 @@ from onyx.db.models import User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.llm.factory import llm_from_provider
+from onyx.server.gateway.configs import REASONING_EFFORT_HEADER
 from onyx.llm.interfaces import LLM
 from onyx.llm.model_response import ChatCompletionMessageToolCall
 from onyx.llm.models import (
@@ -364,6 +365,7 @@ def handle_chat_completion(
     provider: LLMProviderView,
     model_config: ModelConfigurationView,
     flow: LLMFlow,
+    default_reasoning_effort: str | None = None,
 ) -> StreamingResponse | ChatCompletionResponse:
     llm = llm_from_provider(
         model_name=model_config.name,
@@ -373,7 +375,9 @@ def handle_chat_completion(
     messages = _prepare_messages(llm, request.messages)
     tool_choice = _parse_tool_choice(request.tool_choice)
     _require_named_tool(tool_choice, request.tools)
-    reasoning_effort = _parse_reasoning_effort(request.reasoning_effort)
+    reasoning_effort = _parse_reasoning_effort(
+        request.reasoning_effort or default_reasoning_effort
+    )
     max_tokens = request.max_completion_tokens or request.max_tokens
 
     if request.stream:
@@ -1417,6 +1421,7 @@ def gateway_chat_completions(
         provider=provider,
         model_config=model_config,
         flow=flow,
+        default_reasoning_effort=http_request.headers.get(REASONING_EFFORT_HEADER),
     )
     if isinstance(result, StreamingResponse):
         return result

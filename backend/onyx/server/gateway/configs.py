@@ -3,6 +3,7 @@ import os
 from onyx.server.settings.models import Tier
 
 GATEWAY_PATH_PREFIX = "/gateway"
+REASONING_EFFORT_HEADER = "X-Onyx-Reasoning-Effort"
 LLM_GATEWAY_MIN_TIER = Tier.BUSINESS
 
 # Kill switch, default ON: set to "false" to send Anthropic-backed providers

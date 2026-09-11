@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from onyx.db.enums import SandboxStatus
+from onyx.llm.models import ReasoningEffort
 from onyx.server.gateway.models import GatewayModelDescriptor
 
 FileSet: TypeAlias = dict[str, bytes]
@@ -29,6 +30,7 @@ class CraftLLMProviderConfig(BaseModel):
     api_base: str | None
     display_name: str | None = None
     models: list[GatewayModelDescriptor] | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
 
 class CraftMCPServerConfig(BaseModel):

@@ -136,6 +136,8 @@ def send_message(
         elif request.provider and request.model:
             session.agent_provider = request.provider
             session.agent_model = request.model
+        if request.reasoning_effort is not None:
+            session.reasoning_effort = request.reasoning_effort
         message_metadata: dict[str, Any] = {
             "type": "user_message",
             "content": {"type": "text", "text": request.content},

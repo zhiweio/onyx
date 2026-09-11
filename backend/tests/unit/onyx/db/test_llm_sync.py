@@ -9,11 +9,16 @@ from onyx.db.llm import sync_model_configurations
 from onyx.server.manage.llm.models import SyncModelEntry
 
 
-def _make_existing_model(name: str, flow_types: list[LLMModelFlowType]) -> MagicMock:
+def _make_existing_model(
+    name: str,
+    flow_types: list[LLMModelFlowType],
+    input_modalities: list[str] | None = None,
+) -> MagicMock:
     model = MagicMock()
     model.id = 42
     model.name = name
     model.llm_model_flow_types = flow_types
+    model.input_modalities = input_modalities
     return model
 
 
@@ -263,6 +268,41 @@ class TestSyncModelConfigurations:
                     name="gemini",
                     display_name="Gemini",
                     supports_image_input=False,
+                ),
+            ]
+
+            result = sync_model_configurations(
+                db_session=mock_session,
+                provider_id=1,
+                models=models,
+            )
+
+            assert result == 0
+            mock_session.execute.assert_not_called()
+            mock_session.commit.assert_not_called()
+
+    def test_does_not_restore_vision_after_admin_image_off(self) -> None:
+        """Stored input_modalities are the admin image-off setting."""
+        mock_existing_model = _make_existing_model(
+            "gemini",
+            [LLMModelFlowType.CHAT],
+            input_modalities=["text"],
+        )
+
+        mock_provider = MagicMock()
+        mock_provider.id = 1
+        mock_provider.model_configurations = [mock_existing_model]
+
+        mock_session = MagicMock()
+
+        with patch(
+            "onyx.db.llm.fetch_existing_llm_provider_by_id", return_value=mock_provider
+        ):
+            models = [
+                SyncModelEntry(
+                    name="gemini",
+                    display_name="Gemini",
+                    supports_image_input=True,
                 ),
             ]
 

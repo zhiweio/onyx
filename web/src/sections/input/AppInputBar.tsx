@@ -68,8 +68,12 @@ import { useVoiceStatus } from "@/hooks/useVoiceStatus";
 import {
   useCurrentQueuedMessages,
   useCurrentLatestMessageRenderComplete,
+  useCurrentContextTokensUsed,
   useChatSessionStore,
 } from "@/app/app/stores/useChatSessionStore";
+import { findModelConfiguration } from "@/lib/languageModels/utils";
+import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
+import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
 import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
 import InterruptHint from "@/sections/input/InterruptHint";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
@@ -562,6 +566,28 @@ const AppInputBar = React.memo(
     // Bottom controls are hidden until all data is loaded
     const controlsLoading =
       sourcesLoading || !activeAgent || llmManager.isLoadingProviders;
+    const currentModel = useMemo(() => {
+      const providers = llmManager.llmProviders ?? [];
+      const { modelConfigurationId, modelName, name } = llmManager.currentLlm;
+      if (modelConfigurationId != null) {
+        for (const provider of providers) {
+          const model = provider.model_configurations.find(
+            (candidate) => candidate.id === modelConfigurationId
+          );
+          if (model) return model;
+        }
+      }
+      return (
+        findModelConfiguration(providers, modelName, name) ??
+        findModelConfiguration(providers, modelName)
+      );
+    }, [
+      llmManager.llmProviders,
+      llmManager.currentLlm.modelConfigurationId,
+      llmManager.currentLlm.modelName,
+      llmManager.currentLlm.name,
+    ]);
+    const contextTokensUsed = useCurrentContextTokensUsed();
     const [showPrompts, setShowPrompts] = useState(false);
 
     const hasComposerText = message.trim().length > 0;
@@ -857,6 +883,19 @@ const AppInputBar = React.memo(
 
         {/* Bottom right controls */}
         <div className="flex flex-row items-center gap-1">
+          <ContextUsageMeter
+            usedTokens={contextTokensUsed}
+            contextLimit={currentModel?.max_input_tokens ?? null}
+          />
+          <ThoughtLevelSelect
+            value={llmManager.reasoningEffort}
+            onChange={(effort) => llmManager.updateReasoningEffort(effort)}
+            supportsReasoning={currentModel?.supports_reasoning ?? false}
+            supportedEfforts={currentModel?.supported_reasoning_efforts}
+            effortMax={currentModel?.reasoning_effort_max}
+            fallback={currentModel?.reasoning_effort_default}
+            disabled={disabled}
+          />
           {showMicButton &&
             (sttEnabled ? (
               <MicrophoneButton

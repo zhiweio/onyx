@@ -135,6 +135,7 @@ from onyx.server.query_and_chat.streaming_models import (
     AgentResponseStart,
     CitationInfo,
     OverallStop,
+    ContextUsage,
     Packet,
     heartbeat_packet,
 )
@@ -1066,6 +1067,15 @@ def build_chat_turn(
             message_type=MessageType.ASSISTANT,
         )
         simple_chat_history.insert(0, summary_simple)
+
+    used_tokens = reserved_token_count + sum(
+        message.token_count or 0 for message in simple_chat_history
+    )
+    chat_session.context_tokens_used = used_tokens
+    yield Packet(
+        placement=Placement(turn_index=0),
+        obj=ContextUsage(used_tokens=used_tokens),
+    )
 
     # ── Stop signal and processing status ────────────────────────────────────
     cache = get_cache_backend()

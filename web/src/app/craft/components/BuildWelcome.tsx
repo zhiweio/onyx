@@ -8,6 +8,7 @@ import Text from "@/refresh-components/texts/Text";
 import { Logo } from "@/lib/app/components";
 import CraftInputBar, {
   CraftInputBarHandle,
+  type CraftInputBarProps,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import SuggestedPrompts from "@/app/craft/components/SuggestedPrompts";
@@ -30,6 +31,7 @@ interface BuildWelcomeProps {
   sandboxInitializing?: boolean;
   longJobEnabled: boolean;
   onLongJobEnabledChange: (enabled: boolean) => void;
+  thoughtLevel?: CraftInputBarProps["thoughtLevel"];
 }
 
 /**
@@ -43,6 +45,7 @@ export default function BuildWelcome({
   sandboxInitializing = false,
   longJobEnabled,
   onLongJobEnabledChange,
+  thoughtLevel,
 }: BuildWelcomeProps) {
   const t = useTranslations("craft.welcome");
   const inputBarRef = useRef<CraftInputBarHandle>(null);
@@ -119,6 +122,7 @@ export default function BuildWelcome({
             disabled={!hasAnyProvider}
             longJobEnabled={longJobEnabled}
             onLongJobEnabledChange={onLongJobEnabledChange}
+            thoughtLevel={thoughtLevel}
           />
         </div>
       </div>

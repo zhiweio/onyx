@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "このモデルの最大入力トークン数。",
+            "placeholder": "プロバイダーのデフォルトを使用",
+            "title": "コンテキストウィンドウ"
+          },
+          "dialog": {
+            "title": "モデル設定を編集"
+          },
+          "inputTypes": {
+            "description": "このモデルが受け付けるモダリティ。",
+            "textLocked": {
+              "tooltip": "テキスト入力は常に必要です。"
+            },
+            "title": "入力タイプ"
+          },
+          "maxOutputTokens": {
+            "description": "このモデルが生成できる最大トークン数。",
+            "placeholder": "プロバイダーのデフォルトを使用",
+            "title": "最大出力トークン"
+          },
+          "modelId": {
+            "description": "このプロバイダーがモデルに使う識別子。",
+            "title": "モデル ID"
+          },
+          "outputTypes": {
+            "description": "このモデルが生成できるモダリティ。",
+            "textLocked": {
+              "tooltip": "テキスト出力は常に必要です。"
+            },
+            "title": "出力タイプ"
+          },
+          "types": {
+            "image": {
+              "label": "画像"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "テキスト"
+            },
+            "video": {
+              "label": "動画"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "チャット"
@@ -11550,6 +11595,31 @@
         "empty": "このシートは空です。",
         "tooLarge": "このシートは大きすぎてプレビューできません。ファイルをダウンロードして表示してください。"
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "高"
+        },
+        "low": {
+          "label": "低"
+        },
+        "max": {
+          "label": "最大"
+        },
+        "medium": {
+          "label": "中"
+        },
+        "off": {
+          "label": "オフ"
+        }
+      },
+      "tooltip": "思考レベル"
     }
   },
   "craft": {

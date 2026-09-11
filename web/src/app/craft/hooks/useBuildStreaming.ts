@@ -1017,7 +1017,8 @@ export function useBuildStreaming() {
           model,
           attachments,
           selectedSkillIds,
-          selectedMcpServerIds
+          selectedMcpServerIds,
+          existingSession?.reasoningEffort ?? null
         );
         const currentSession = useBuildSessionStore
           .getState()

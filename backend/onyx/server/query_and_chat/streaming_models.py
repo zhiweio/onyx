@@ -61,6 +61,8 @@ class StreamingType(Enum):
     BASH_TOOL_START = "bash_tool_start"
     BASH_TOOL_DELTA = "bash_tool_delta"
 
+    CONTEXT_USAGE = "context_usage"
+
 
 class BaseObj(BaseModel):
     type: str = ""
@@ -427,6 +429,11 @@ class BashToolDelta(BaseObj):
     timed_out: bool = False
 
 
+class ContextUsage(BaseObj):
+    type: Literal["context_usage"] = StreamingType.CONTEXT_USAGE.value
+    used_tokens: int
+
+
 ################################################
 # Packet Object
 ################################################
@@ -484,6 +491,7 @@ PacketObj = Union[
     # Bash Tool Packets
     BashToolStart,
     BashToolDelta,
+    ContextUsage,
 ]
 
 

@@ -149,6 +149,7 @@ export interface ApiSessionResponse {
   origin: SessionOrigin;
   agent_provider: string | null;
   agent_model: string | null;
+  reasoning_effort?: string | null;
   opencode_session_id?: string | null;
   skills_stale: boolean;
   scenario_id?: string | null;

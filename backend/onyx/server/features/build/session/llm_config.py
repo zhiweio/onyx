@@ -167,4 +167,5 @@ def build_onyx_gateway_config(
         api_base=api_base,
         display_name="Onyx",
         models=models,
+        reasoning_effort=None,
     )

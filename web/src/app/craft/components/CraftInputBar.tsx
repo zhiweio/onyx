@@ -17,7 +17,9 @@ import BaseInputBar, {
 } from "@/sections/input/BaseInputBar";
 import EntryInfoPopover from "@/sections/input/EntryInfoPopover";
 import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
-import ContextRing from "@/app/craft/components/ContextRing";
+import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
+import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
+import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
 import { SelectButton } from "@opal/components";
@@ -78,6 +80,14 @@ export interface CraftInputBarProps {
     usedTokens: number;
     contextLimit: number | null;
   } | null;
+  thoughtLevel?: {
+    value: ReasoningEffortOverride | null;
+    onChange: (effort: ReasoningEffortOverride) => void;
+    supportsReasoning: boolean;
+    supportedEfforts?: ReasoningEffortOverride[];
+    effortMax?: ReasoningEffortOverride | null;
+    fallback?: ReasoningEffortOverride | null;
+  } | null;
   /** Seed the active entry chips. For stories/tests; production callers leave unset. */
   initialEntries?: PickerEntry[];
   compactAvailable?: boolean;
@@ -108,6 +118,7 @@ const CraftInputBar = memo(
         onInterrupt,
         isInterrupting = false,
         contextUsage,
+        thoughtLevel,
         initialEntries,
         compactAvailable = false,
         onCompact,
@@ -338,12 +349,28 @@ const CraftInputBar = memo(
         </>
       );
 
-      const bottomRightSlot = contextUsage ? (
-        <ContextRing
-          usedTokens={contextUsage.usedTokens}
-          contextLimit={contextUsage.contextLimit}
-        />
-      ) : undefined;
+      const bottomRightSlot =
+        contextUsage || thoughtLevel ? (
+          <>
+            {contextUsage && (
+              <ContextUsageMeter
+                usedTokens={contextUsage.usedTokens}
+                contextLimit={contextUsage.contextLimit}
+              />
+            )}
+            {thoughtLevel && (
+              <ThoughtLevelSelect
+                value={thoughtLevel.value}
+                onChange={thoughtLevel.onChange}
+                supportsReasoning={thoughtLevel.supportsReasoning}
+                supportedEfforts={thoughtLevel.supportedEfforts}
+                effortMax={thoughtLevel.effortMax}
+                fallback={thoughtLevel.fallback}
+                disabled={disabled}
+              />
+            )}
+          </>
+        ) : undefined;
 
       return (
         <>

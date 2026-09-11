@@ -17,6 +17,7 @@ from onyx.server.features.build.sandbox.models import (
     CraftLLMProviderConfig,
     CraftMCPServerConfig,
 )
+from onyx.server.gateway.configs import REASONING_EFFORT_HEADER
 
 # The gateway is an OpenAI-compatible endpoint, wired via opencode's
 # openai-compatible SDK package.
@@ -205,6 +206,10 @@ def _build_provider_block(
         options["apiKey"] = llm_provider_config.api_key
     if llm_provider_config.api_base:
         options["baseURL"] = llm_provider_config.api_base
+    if llm_provider_config.reasoning_effort is not None:
+        options["headers"] = {
+            REASONING_EFFORT_HEADER: llm_provider_config.reasoning_effort.value
+        }
     block: dict[str, Any] = {"npm": _OPENAI_COMPATIBLE_NPM, "options": options}
     if llm_provider_config.display_name:
         block["name"] = llm_provider_config.display_name

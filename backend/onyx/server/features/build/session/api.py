@@ -57,6 +57,7 @@ from onyx.server.features.build.session.models import (
     SessionCreateRequest,
     SessionListResponse,
     SessionNameGenerateResponse,
+    SessionReasoningRequest,
     SessionResponse,
     SessionSkillsStateResponse,
     SessionUpdateRequest,
@@ -325,6 +326,23 @@ def update_session_name(
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Get the user's sandbox to include in response
+    sandbox = get_sandbox_by_user_id(db_session, user.id)
+    return SessionResponse.from_model(session, sandbox)
+
+
+@router.put("/{session_id}/reasoning")
+def update_session_reasoning(
+    session_id: UUID,
+    request: SessionReasoningRequest,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> SessionResponse:
+    session_manager = SessionManager(db_session)
+    session = session_manager.update_session_reasoning(
+        session_id, user, request.reasoning_effort
+    )
+    if session is None:
+        raise OnyxError(OnyxErrorCode.SESSION_NOT_FOUND, "Session not found")
     sandbox = get_sandbox_by_user_id(db_session, user.id)
     return SessionResponse.from_model(session, sandbox)
 

@@ -5421,6 +5421,51 @@
           }
         },
         "modelSettings": {
+          "contextWindow": {
+            "description": "이 모델의 최대 입력 토큰 수입니다.",
+            "placeholder": "제공자 기본값 사용",
+            "title": "컨텍스트 창"
+          },
+          "dialog": {
+            "title": "모델 설정 편집"
+          },
+          "inputTypes": {
+            "description": "이 모델이 받는 입력 유형입니다.",
+            "textLocked": {
+              "tooltip": "텍스트 입력은 항상 필요합니다."
+            },
+            "title": "입력 유형"
+          },
+          "maxOutputTokens": {
+            "description": "이 모델이 생성할 수 있는 최대 토큰 수입니다.",
+            "placeholder": "제공자 기본값 사용",
+            "title": "최대 출력 토큰"
+          },
+          "modelId": {
+            "description": "이 제공자가 모델에 사용하는 식별자입니다.",
+            "title": "모델 ID"
+          },
+          "outputTypes": {
+            "description": "이 모델이 만들 수 있는 출력 유형입니다.",
+            "textLocked": {
+              "tooltip": "텍스트 출력은 항상 필요합니다."
+            },
+            "title": "출력 유형"
+          },
+          "types": {
+            "image": {
+              "label": "이미지"
+            },
+            "pdf": {
+              "label": "PDF"
+            },
+            "text": {
+              "label": "텍스트"
+            },
+            "video": {
+              "label": "동영상"
+            }
+          },
           "capabilities": {
             "chat": {
               "label": "채팅"
@@ -11550,6 +11595,31 @@
         "empty": "이 시트는 비어 있습니다.",
         "tooLarge": "이 시트는 너무 커서 미리 볼 수 없습니다. 파일을 다운로드하여 확인하세요."
       }
+    }
+  },
+  "composer": {
+    "contextUsage": {
+      "tooltip": "{used} / {limit} · {pct}%"
+    },
+    "thoughtLevel": {
+      "levels": {
+        "high": {
+          "label": "높음"
+        },
+        "low": {
+          "label": "낮음"
+        },
+        "max": {
+          "label": "최대"
+        },
+        "medium": {
+          "label": "보통"
+        },
+        "off": {
+          "label": "끔"
+        }
+      },
+      "tooltip": "사고 수준"
     }
   },
   "craft": {

@@ -12,11 +12,16 @@ export type ReasoningEffortOverride =
   | "high"
   | "xhigh";
 
+export type LLMModality = "text" | "image" | "video" | "pdf";
+
 export interface ModelConfiguration {
   id?: number;
   name: string;
   is_visible: boolean;
   max_input_tokens: number | null;
+  max_output_tokens?: number | null;
+  input_modalities?: LLMModality[];
+  output_modalities?: LLMModality[];
   supports_image_input: boolean;
   supports_reasoning: boolean;
   /**

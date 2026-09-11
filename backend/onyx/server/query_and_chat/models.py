@@ -209,6 +209,7 @@ class ChatSessionDetails(BaseModel):
     current_alternate_model: str | None = None
     current_temperature_override: float | None = None
     current_reasoning_effort_override: str | None = None
+    context_tokens_used: int | None = None
 
     @classmethod
     def from_model(cls, model: ChatSession) -> "ChatSessionDetails":
@@ -222,6 +223,7 @@ class ChatSessionDetails(BaseModel):
             current_alternate_model=model.current_alternate_model,
             current_temperature_override=model.temperature_override,
             current_reasoning_effort_override=model.reasoning_effort_override,
+            context_tokens_used=model.context_tokens_used,
         )
 
 
@@ -286,6 +288,7 @@ class ChatSessionDetailResponse(BaseModel):
     current_alternate_model: str | None
     current_temperature_override: float | None
     current_reasoning_effort_override: str | None
+    context_tokens_used: int | None = None
     deleted: bool = False
     owner_name: str | None = None
     packets: list[list[Packet]]

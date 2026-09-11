@@ -42,6 +42,7 @@ from onyx.db.models import BuildMessage, BuildSession, Sandbox, User
 from onyx.db.users import fetch_user_by_id
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.llm.models import ReasoningEffort
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.configs import (
     MAX_TOTAL_UPLOAD_SIZE_BYTES,
@@ -307,7 +308,10 @@ class SessionManager:
         its persisted provider/model selection (falling back to the gateway
         default when the selection is unset or no longer accessible)."""
         selection = parse_agent_selection(session.agent_provider, session.agent_model)
-        return self.build_llm_configs(user, selection)
+        config = self.build_llm_configs(user, selection)
+        if session.reasoning_effort is None:
+            return config
+        return config.model_copy(update={"reasoning_effort": session.reasoning_effort})
 
     def reconcile_session_llm_config(
         self,
@@ -993,6 +997,24 @@ class SessionManager:
             # Auto-generate name from first user message using LLM
             session.name = generate_session_name(self._db_session, session_id)
 
+        update_session_activity(session_id, self._db_session)
+        self._db_session.commit()
+        self._db_session.refresh(session)
+        return session
+
+    def update_session_reasoning(
+        self,
+        session_id: UUID,
+        user: User,
+        reasoning_effort: ReasoningEffort | None,
+    ) -> BuildSession | None:
+        session = get_build_session(session_id, user.id, self._db_session)
+        if session is None:
+            return None
+        session.reasoning_effort = reasoning_effort
+        sandbox = get_sandbox_by_user_id(self._db_session, user.id)
+        if sandbox is not None:
+            self.reconcile_session_llm_config(sandbox, session, user)
         update_session_activity(session_id, self._db_session)
         self._db_session.commit()
         self._db_session.refresh(session)

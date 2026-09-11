@@ -224,6 +224,21 @@ export async function generateSessionName(sessionId: string): Promise<string> {
   return data.name;
 }
 
+export async function updateSessionReasoning(
+  sessionId: string,
+  reasoningEffort: string | null
+): Promise<void> {
+  const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/reasoning`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reasoning_effort: reasoningEffort }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to update thought level: ${res.status}`);
+  }
+}
+
 export async function updateSessionName(
   sessionId: string,
   name: string | null
@@ -434,7 +449,8 @@ export async function createTurn(
   model?: BuildLlmSelection | null,
   attachments: BuildMessageAttachment[] = [],
   selectedSkillIds: string[] = [],
-  selectedMcpServerIds: number[] = []
+  selectedMcpServerIds: number[] = [],
+  reasoningEffort?: string | null
 ): Promise<ApiInteractiveTurnResponse> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/send-message`,
@@ -458,6 +474,7 @@ export async function createTurn(
               model: model.modelName,
             }
           : {}),
+        ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       }),
       signal,
     }

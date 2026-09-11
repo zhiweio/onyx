@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from onyx.configs.constants import MessageType
+from onyx.llm.models import ReasoningEffort
 from onyx.db.enums import (
     ArtifactType,
     BuildSessionStatus,
@@ -43,6 +44,10 @@ class SessionUpdateRequest(BaseModel):
     """
 
     name: str | None = None
+
+
+class SessionReasoningRequest(BaseModel):
+    reasoning_effort: ReasoningEffort | None = None
 
 
 class SessionNameGenerateResponse(BaseModel):
@@ -121,6 +126,7 @@ class SessionResponse(BaseModel):
     origin: SessionOrigin
     agent_provider: str | None
     agent_model: str | None
+    reasoning_effort: ReasoningEffort | None = None
     opencode_session_id: str | None = None
     skills_stale: bool
     scenario_id: str | None = None
@@ -151,6 +157,7 @@ class SessionResponse(BaseModel):
             origin=session.origin,
             agent_provider=session.agent_provider,
             agent_model=session.agent_model,
+            reasoning_effort=session.reasoning_effort,
             opencode_session_id=session.opencode_session_id,
             skills_stale=session_runtime_stale(session, sandbox),
             scenario_id=str(session.scenario_id) if session.scenario_id else None,
@@ -240,6 +247,7 @@ class MessageRequest(BaseModel):
     provider: str | None = None
     provider_id: int | None = None
     model: str | None = None
+    reasoning_effort: ReasoningEffort | None = None
     selected_skill_ids: list[str] = Field(default_factory=list)
     selected_mcp_server_ids: list[int] = Field(default_factory=list)
 

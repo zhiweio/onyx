@@ -32,7 +32,6 @@ import KeyValueInput, {
 } from "@/refresh-components/inputs/InputKeyValue";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import { InputTypeIn } from "@opal/components";
-import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
 import { Button, Card, EmptyMessageCard } from "@opal/components";
 import { SvgMinusCircle, SvgPlusCircle } from "@opal/icons";
@@ -49,13 +48,15 @@ import { Section } from "@/layouts/general-layouts";
 
 // ─── Model Configuration List ─────────────────────────────────────────────────
 
-const MODEL_GRID_COLS =
-  "grid-cols-[2fr_2fr_minmax(10rem,1fr)_1fr_2.25rem_2.25rem]";
+const MODEL_GRID_COLS = "grid-cols-[2fr_2fr_2.25rem_2.25rem]";
 
 type CustomModelConfiguration = Pick<
   ModelConfiguration,
   | "name"
   | "max_input_tokens"
+  | "max_output_tokens"
+  | "input_modalities"
+  | "output_modalities"
   | "supports_image_input"
   | "supports_reasoning"
   | "supported_reasoning_efforts"
@@ -92,39 +93,10 @@ function ModelConfigurationItem({
         value={model.display_name}
         onChange={(e) => onChange({ ...model, display_name: e.target.value })}
       />
-      <InputSelect
-        value={model.supports_image_input ? "text-image" : "text-only"}
-        onValueChange={(value) =>
-          onChange({ ...model, supports_image_input: value === "text-image" })
-        }
-      >
-        <InputSelect.Trigger
-          placeholder={t("custom.modelRow.inputTypePlaceholder")}
-        />
-        <InputSelect.Content>
-          <InputSelect.Item value="text-only">
-            {t("custom.modelRow.textOnly.label")}
-          </InputSelect.Item>
-          <InputSelect.Item value="text-image">
-            {t("custom.modelRow.textImage.label")}
-          </InputSelect.Item>
-        </InputSelect.Content>
-      </InputSelect>
-      <InputTypeIn
-        placeholder={t("custom.modelRow.maxTokensPlaceholder")}
-        value={model.max_input_tokens?.toString() ?? ""}
-        onChange={(e) =>
-          onChange({
-            ...model,
-            max_input_tokens:
-              e.target.value === "" ? null : Number(e.target.value),
-          })
-        }
-        type="number"
-      />
       <ModelSettingsPopover
         model={model}
         onChange={(patch) => onChange({ ...model, ...patch })}
+        canEditModelId
       />
       <Button
         disabled={!canRemove}
@@ -163,6 +135,9 @@ function ModelConfigurationList() {
         name: "",
         display_name: "",
         max_input_tokens: null,
+        max_output_tokens: null,
+        input_modalities: ["text"],
+        output_modalities: ["text"],
         supports_image_input: false,
         supports_reasoning: false,
       },
@@ -177,8 +152,6 @@ function ModelConfigurationList() {
             <Text mainUiAction>{t("custom.modelTable.name.header")}</Text>
           </div>
           <Text mainUiAction>{t("custom.modelTable.displayName.header")}</Text>
-          <Text mainUiAction>{t("custom.modelTable.inputType.header")}</Text>
-          <Text mainUiAction>{t("custom.modelTable.maxTokens.header")}</Text>
           <div aria-hidden />
           <div aria-hidden />
 
@@ -300,6 +273,9 @@ export default function CustomModal({
         display_name: mc.display_name ?? "",
         is_visible: mc.is_visible,
         max_input_tokens: mc.max_input_tokens ?? null,
+        max_output_tokens: mc.max_output_tokens ?? null,
+        input_modalities: mc.input_modalities,
+        output_modalities: mc.output_modalities,
         supports_image_input: mc.supports_image_input,
         supports_reasoning: mc.supports_reasoning,
         supported_reasoning_efforts: mc.supported_reasoning_efforts,
@@ -314,6 +290,9 @@ export default function CustomModal({
         display_name: "",
         is_visible: true,
         max_input_tokens: null,
+        max_output_tokens: null,
+        input_modalities: ["text"],
+        output_modalities: ["text"],
         supports_image_input: false,
         supports_reasoning: false,
         supported_reasoning_efforts: undefined,
@@ -373,6 +352,9 @@ export default function CustomModal({
             display_name: mc.display_name || undefined,
             is_visible: true,
             max_input_tokens: mc.max_input_tokens ?? null,
+            max_output_tokens: mc.max_output_tokens ?? null,
+            input_modalities: mc.input_modalities,
+            output_modalities: mc.output_modalities,
             supports_image_input: mc.supports_image_input,
             supports_reasoning: mc.supports_reasoning,
             supported_reasoning_efforts: mc.supported_reasoning_efforts,
