@@ -3326,6 +3326,8 @@ class ChatSession(Base):
         ),
         nullable=True,
     )
+    # Last prompt fill for the composer usage meter. Null until a turn runs.
+    context_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     prompt_override: Mapped[PromptOverride | None] = mapped_column(
         PydanticType(PromptOverride), nullable=True
@@ -3830,6 +3832,16 @@ class ModelConfiguration(Base):
     # - The end-user configures models through a "Well Known LLM Provider".
     # - The end-user is configuring a model and chooses not to set a max-input-tokens limit.
     max_input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Admin override for max output tokens. Null means infer from LiteLLM.
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Admin override for input/output types. Null means infer (text, plus image
+    # when the VISION flow or LiteLLM reports vision).
+    input_modalities: Mapped[list[str] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
+    output_modalities: Mapped[list[str] | None] = mapped_column(
+        postgresql.JSONB(), nullable=True
+    )
 
     # Deprecated: use LLMModelFlow with VISION flow type instead
     supports_image_input: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -7393,6 +7405,14 @@ class BuildSession(Base):
     opencode_session_id: Mapped[str | None] = mapped_column(String, nullable=True)
     agent_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     agent_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    reasoning_effort: Mapped[ReasoningEffort | None] = mapped_column(
+        Enum(
+            ReasoningEffort,
+            native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=True,
+    )
     skills_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mcp_config_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     scenario_id: Mapped[UUID | None] = mapped_column(
@@ -7424,11 +7444,19 @@ class BuildSession(Base):
     snapshots: Mapped[list["Snapshot"]] = relationship(
         "Snapshot", back_populates="session", cascade="all, delete-orphan"
     )
+    # ON DELETE CASCADE is on the FK. Without passive_deletes, SQLAlchemy
+    # NULLs session_id first and the NOT NULL constraint blocks delete.
     craft_jobs: Mapped[list["CraftJob"]] = relationship(
-        "CraftJob", back_populates="session"
+        "CraftJob",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     craft_job_specialists: Mapped[list["CraftJobSpecialist"]] = relationship(
-        "CraftJobSpecialist", back_populates="session"
+        "CraftJobSpecialist",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     __table_args__ = (

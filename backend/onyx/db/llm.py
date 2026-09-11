@@ -392,6 +392,13 @@ def upsert_llm_provider(
             (LLMModelFlowType.VISION, mc_request.supports_image_input),
             (LLMModelFlowType.REASONING, mc_request.supports_reasoning),
         ):
+            if (
+                capability_flow == LLMModelFlowType.VISION
+                and mc_request.input_modalities_provided
+            ):
+                if "image" in (mc_request.input_modalities or []):
+                    merged.add(capability_flow)
+                continue
             keeps = sent if sent is not None else capability_flow in stored_flows
             if keeps:
                 merged.add(capability_flow)
@@ -483,6 +490,21 @@ def upsert_llm_provider(
                 if model_config.temperature_default_provided
                 else existing.temperature_default
             )
+            merged_max_output = (
+                model_config.max_output_tokens
+                if model_config.max_output_tokens_provided
+                else existing.max_output_tokens
+            )
+            merged_input_modalities = (
+                model_config.input_modalities
+                if model_config.input_modalities_provided
+                else existing.input_modalities
+            )
+            merged_output_modalities = (
+                model_config.output_modalities
+                if model_config.output_modalities_provided
+                else existing.output_modalities
+            )
             ensure_default_within_max(merged_reasoning_default, merged_reasoning_max)
             update_model_configuration__no_commit(
                 db_session=db_session,
@@ -495,6 +517,9 @@ def upsert_llm_provider(
                 reasoning_effort_max=merged_reasoning_max,
                 reasoning_effort_default=merged_reasoning_default,
                 temperature_default=merged_temperature,
+                max_output_tokens=merged_max_output,
+                input_modalities=merged_input_modalities,
+                output_modalities=merged_output_modalities,
             )
         else:
             insert_new_model_configuration__no_commit(
@@ -509,6 +534,9 @@ def upsert_llm_provider(
                 reasoning_effort_max=model_config.reasoning_effort_max,
                 reasoning_effort_default=model_config.reasoning_effort_default,
                 temperature_default=model_config.temperature_default,
+                max_output_tokens=model_config.max_output_tokens,
+                input_modalities=model_config.input_modalities,
+                output_modalities=model_config.output_modalities,
             )
 
     # Make sure the relationship table stays up to date
@@ -545,8 +573,8 @@ def sync_model_configurations(
 
     Inserts NEW models and, for existing ones, adds any newly-reported capability
     flag (VISION/REASONING). Flags are only added, never removed; is_visible and
-    max_input_tokens are preserved. Caveat: an admin-removed flow is re-added on
-    the next sync (ENG-4233).
+    max_input_tokens are preserved. If the admin stored input_modalities, VISION
+    is not re-added so an image-off setting survives the next sync.
 
     Args:
         db_session: Database session
@@ -587,10 +615,14 @@ def sync_model_configurations(
             continue
 
         # Existing model: add newly-reported capability flags (additive only).
-        # TODO(ENG-4233): durable admin flow removals; avoid per-model lazy-load.
+        # An admin-owned input_modalities list is the durable image-off setting.
         existing_flows = set(existing.llm_model_flow_types)
         missing_flows: list[LLMModelFlowType] = []
-        if model.supports_image_input and LLMModelFlowType.VISION not in existing_flows:
+        if (
+            model.supports_image_input
+            and LLMModelFlowType.VISION not in existing_flows
+            and existing.input_modalities is None
+        ):
             missing_flows.append(LLMModelFlowType.VISION)
         if (
             model.supports_reasoning
@@ -1455,7 +1487,15 @@ def insert_new_model_configuration__no_commit(
     reasoning_effort_max: ReasoningEffort | None = None,
     reasoning_effort_default: ReasoningEffort | None = None,
     temperature_default: float | None = None,
+    max_output_tokens: int | None = None,
+    input_modalities: list[str] | None = None,
+    output_modalities: list[str] | None = None,
 ) -> int | None:
+    supports_image = (
+        "image" in input_modalities
+        if input_modalities is not None
+        else LLMModelFlowType.VISION in supported_flows
+    )
     result = db_session.execute(
         insert(ModelConfiguration)
         .values(
@@ -1463,9 +1503,12 @@ def insert_new_model_configuration__no_commit(
             name=model_name,
             is_visible=is_visible,
             max_input_tokens=max_input_tokens,
+            max_output_tokens=max_output_tokens,
+            input_modalities=input_modalities,
+            output_modalities=output_modalities,
             display_name=display_name,
             custom_display_name=custom_display_name,
-            supports_image_input=LLMModelFlowType.VISION in supported_flows,
+            supports_image_input=supports_image,
             reasoning_effort_max=reasoning_effort_max,
             reasoning_effort_default=reasoning_effort_default,
             temperature_default=temperature_default,
@@ -1500,15 +1543,26 @@ def update_model_configuration__no_commit(
     reasoning_effort_max: ReasoningEffort | None = None,
     reasoning_effort_default: ReasoningEffort | None = None,
     temperature_default: float | None = None,
+    max_output_tokens: int | None = None,
+    input_modalities: list[str] | None = None,
+    output_modalities: list[str] | None = None,
 ) -> None:
+    supports_image = (
+        "image" in input_modalities
+        if input_modalities is not None
+        else LLMModelFlowType.VISION in supported_flows
+    )
     result = db_session.execute(
         update(ModelConfiguration)
         .values(
             is_visible=is_visible,
             max_input_tokens=max_input_tokens,
+            max_output_tokens=max_output_tokens,
+            input_modalities=input_modalities,
+            output_modalities=output_modalities,
             display_name=display_name,
             custom_display_name=custom_display_name,
-            supports_image_input=LLMModelFlowType.VISION in supported_flows,
+            supports_image_input=supports_image,
             reasoning_effort_max=reasoning_effort_max,
             reasoning_effort_default=reasoning_effort_default,
             temperature_default=temperature_default,

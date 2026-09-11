@@ -62,6 +62,39 @@ def _capability_model_name(
     return model.name
 
 
+_GATEWAY_INPUT_MODALITIES: frozenset[str] = frozenset(
+    {"text", "image", "video", "pdf"}
+)
+_GATEWAY_OUTPUT_MODALITIES: frozenset[str] = frozenset({"text"})
+
+
+def _as_gateway_modalities(
+    values: list[str],
+    allowed: frozenset[str],
+) -> tuple[GatewayModality, ...]:
+    return tuple(value for value in values if value in allowed)  # type: ignore[misc]
+
+
+def _gateway_input_modalities(
+    model: ModelConfigurationView,
+) -> tuple[GatewayModality, ...]:
+    modalities = _as_gateway_modalities(
+        model.input_modalities, _GATEWAY_INPUT_MODALITIES
+    )
+    if modalities:
+        return modalities
+    return ("text", "image") if model.supports_image_input else ("text",)
+
+
+def _gateway_output_modalities(
+    model: ModelConfigurationView,
+) -> tuple[GatewayModality, ...]:
+    modalities = _as_gateway_modalities(
+        model.output_modalities, _GATEWAY_OUTPUT_MODALITIES
+    )
+    return modalities or ("text",)
+
+
 def _gateway_token_limits(
     model_map: dict[str, Any],
     provider: LLMProviderView,
@@ -70,19 +103,19 @@ def _gateway_token_limits(
     capability_model_name = _capability_model_name(model_map, provider, model)
     known = find_model_obj(model_map, provider.provider, capability_model_name) is not None
     max_input_tokens = model.configured_max_input_tokens
-    if max_input_tokens is None:
-        if not known:
-            return None, None
+    if max_input_tokens is None and known:
         max_input_tokens = llm_max_input_tokens(
             model_map=model_map,
             model_name=capability_model_name,
             model_provider=provider.provider,
         )
-    max_output_tokens = get_llm_max_output_tokens(
-        model_map=model_map,
-        model_name=capability_model_name,
-        model_provider=provider.provider,
-    )
+    max_output_tokens = model.max_output_tokens
+    if max_output_tokens is None and known:
+        max_output_tokens = get_llm_max_output_tokens(
+            model_map=model_map,
+            model_name=capability_model_name,
+            model_provider=provider.provider,
+        )
     return max_input_tokens, max_output_tokens
 
 
@@ -112,9 +145,8 @@ def build_gateway_model_catalog(
         if display_name_counts[display_name] > 1:
             display_name = f"{display_name} ({gateway_provider_label(provider)})"
 
-        input_modalities: tuple[GatewayModality, ...] = (
-            ("text", "image") if model.supports_image_input else ("text",)
-        )
+        input_modalities = _gateway_input_modalities(model)
+        output_modalities = _gateway_output_modalities(model)
         max_input_tokens, max_output_tokens = _gateway_token_limits(
             model_map, provider, model
         )
@@ -125,6 +157,7 @@ def build_gateway_model_catalog(
                 provider=provider.provider,
                 capabilities=GatewayModelCapabilities(
                     input_modalities=input_modalities,
+                    output_modalities=output_modalities,
                     supports_reasoning=model.supports_reasoning,
                 ),
                 max_input_tokens=max_input_tokens,

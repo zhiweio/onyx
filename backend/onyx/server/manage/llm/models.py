@@ -20,6 +20,13 @@ from onyx.llm.model_capabilities import (
 from onyx.llm.model_capabilities import (
     model_identity_names as resolve_model_identity_names,
 )
+from onyx.llm.modalities import (
+    INPUT_MODALITIES,
+    OUTPUT_MODALITIES,
+    infer_input_modalities,
+    infer_output_modalities,
+    normalize_modalities,
+)
 from onyx.llm.models import (
     ReasoningEffort,
     parse_user_selectable_reasoning_effort,
@@ -237,6 +244,9 @@ class ModelConfigurationUpsertRequest(BaseModel):
     name: str
     is_visible: bool
     max_input_tokens: int | None = None
+    max_output_tokens: int | None = None
+    input_modalities: list[str] | None = None
+    output_modalities: list[str] | None = None
     supports_image_input: bool | None = None
     supports_reasoning: bool | None = None
     display_name: str | None = None  # For dynamic providers, from source API
@@ -268,6 +278,30 @@ class ModelConfigurationUpsertRequest(BaseModel):
             )
         return value
 
+    @field_validator("max_input_tokens", "max_output_tokens")
+    @classmethod
+    def _validate_token_limit(cls, value: int | None) -> int | None:
+        if value is not None and value <= 0:
+            raise OnyxError(
+                OnyxErrorCode.BAD_REQUEST,
+                "token limits must be greater than 0",
+            )
+        return value
+
+    @field_validator("input_modalities")
+    @classmethod
+    def _validate_input_modalities(cls, value: list[str] | None) -> list[str] | None:
+        return normalize_modalities(
+            value, allowed=INPUT_MODALITIES, field_name="input_modalities"
+        )
+
+    @field_validator("output_modalities")
+    @classmethod
+    def _validate_output_modalities(cls, value: list[str] | None) -> list[str] | None:
+        return normalize_modalities(
+            value, allowed=OUTPUT_MODALITIES, field_name="output_modalities"
+        )
+
     @model_validator(mode="after")
     def _validate_default_within_max(self) -> "ModelConfigurationUpsertRequest":
         ensure_default_within_max(
@@ -289,6 +323,18 @@ class ModelConfigurationUpsertRequest(BaseModel):
     def temperature_default_provided(self) -> bool:
         return "temperature_default" in self.model_fields_set
 
+    @property
+    def max_output_tokens_provided(self) -> bool:
+        return "max_output_tokens" in self.model_fields_set
+
+    @property
+    def input_modalities_provided(self) -> bool:
+        return "input_modalities" in self.model_fields_set
+
+    @property
+    def output_modalities_provided(self) -> bool:
+        return "output_modalities" in self.model_fields_set
+
     @classmethod
     def from_model(
         cls, model_configuration_model: "ModelConfigurationModel"
@@ -297,6 +343,9 @@ class ModelConfigurationUpsertRequest(BaseModel):
             name=model_configuration_model.name,
             is_visible=model_configuration_model.is_visible,
             max_input_tokens=model_configuration_model.max_input_tokens,
+            max_output_tokens=model_configuration_model.max_output_tokens,
+            input_modalities=model_configuration_model.input_modalities,
+            output_modalities=model_configuration_model.output_modalities,
             supports_image_input=model_configuration_model.supports_image_input,
             supports_reasoning=(
                 LLMModelFlowType.REASONING
@@ -310,6 +359,26 @@ class ModelConfigurationUpsertRequest(BaseModel):
         )
 
 
+def _resolved_modalities(
+    model_configuration_model: "ModelConfigurationModel",
+    *,
+    inferred_image: bool,
+) -> tuple[list[str], list[str], bool]:
+    """Stored admin lists win. Otherwise infer text, plus image when detected."""
+    stored_input = model_configuration_model.input_modalities
+    stored_output = model_configuration_model.output_modalities
+    if stored_input is not None:
+        input_modalities = list(stored_input)
+        supports_image = "image" in input_modalities
+    else:
+        input_modalities = infer_input_modalities(supports_image=inferred_image)
+        supports_image = inferred_image
+    output_modalities = (
+        list(stored_output) if stored_output is not None else infer_output_modalities()
+    )
+    return input_modalities, output_modalities, supports_image
+
+
 class ModelConfigurationView(BaseModel):
     id: int | None = None
     name: str
@@ -319,6 +388,9 @@ class ModelConfigurationView(BaseModel):
     # enrichment. Internal consumers use this to distinguish an intentional
     # limit from a fallback inferred from the display model name.
     configured_max_input_tokens: int | None = Field(default=None, exclude=True)
+    max_output_tokens: int | None = None
+    input_modalities: list[str] = Field(default_factory=lambda: ["text"])
+    output_modalities: list[str] = Field(default_factory=lambda: ["text"])
     supports_image_input: bool
     supports_reasoning: bool = False
     # Effort levels this model tells apart, ascending. Read alongside
@@ -368,6 +440,17 @@ class ModelConfigurationView(BaseModel):
             vendor = extract_vendor_from_model_name(
                 model_configuration_model.name, provider_name
             )
+            # Dynamic/custom-config providers under-report vision; fall back
+            # to the LiteLLM cost map when no VISION flow is stored.
+            inferred_image = LLMModelFlowType.VISION in (
+                model_configuration_model.llm_model_flow_types
+            ) or any(
+                litellm_thinks_model_supports_image_input(name, provider_name)
+                for name in model_identity_names
+            )
+            input_modalities, output_modalities, supports_image = _resolved_modalities(
+                model_configuration_model, inferred_image=inferred_image
+            )
 
             return cls(
                 id=model_configuration_model.id,
@@ -375,16 +458,10 @@ class ModelConfigurationView(BaseModel):
                 is_visible=model_configuration_model.is_visible,
                 max_input_tokens=model_configuration_model.max_input_tokens,
                 configured_max_input_tokens=model_configuration_model.max_input_tokens,
-                # Dynamic/custom-config providers under-report vision; fall back
-                # to the LiteLLM cost map when no VISION flow is stored.
-                supports_image_input=(
-                    LLMModelFlowType.VISION
-                    in model_configuration_model.llm_model_flow_types
-                    or any(
-                        litellm_thinks_model_supports_image_input(name, provider_name)
-                        for name in model_identity_names
-                    )
-                ),
+                max_output_tokens=model_configuration_model.max_output_tokens,
+                input_modalities=input_modalities,
+                output_modalities=output_modalities,
+                supports_image_input=supports_image,
                 # Prefer the stored flow, then the Claude version parse, then
                 # the LiteLLM cost map, then a name/display-name substring
                 # heuristic. Mirrors multi_llm.py's is_reasoning.
@@ -435,6 +512,16 @@ class ModelConfigurationView(BaseModel):
             else parsed.display_name
         )
 
+        inferred_image = LLMModelFlowType.VISION in (
+            model_configuration_model.llm_model_flow_types
+        ) or any(
+            litellm_thinks_model_supports_image_input(name, provider_name)
+            for name in model_identity_names
+        )
+        input_modalities, output_modalities, supports_image = _resolved_modalities(
+            model_configuration_model, inferred_image=inferred_image
+        )
+
         return cls(
             id=model_configuration_model.id,
             name=model_configuration_model.name,
@@ -447,15 +534,10 @@ class ModelConfigurationView(BaseModel):
                 )
             ),
             configured_max_input_tokens=model_configuration_model.max_input_tokens,
-            supports_image_input=(
-                True
-                if LLMModelFlowType.VISION
-                in model_configuration_model.llm_model_flow_types
-                else any(
-                    litellm_thinks_model_supports_image_input(name, provider_name)
-                    for name in model_identity_names
-                )
-            ),
+            max_output_tokens=model_configuration_model.max_output_tokens,
+            input_modalities=input_modalities,
+            output_modalities=output_modalities,
+            supports_image_input=supports_image,
             # Prefer the stored flow, then the Claude version parse, then
             # LiteLLM-based detection for legacy rows saved before the flow
             # existed. Mirrors multi_llm.py's is_reasoning.
