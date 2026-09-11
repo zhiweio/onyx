@@ -43,6 +43,8 @@ from uuid import UUID
 
 from onyx.configs.constants import MessageType, NotificationType
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
+from onyx.db.models import Sandbox
+from onyx.db.users import fetch_user_by_id
 from onyx.db.enums import ScheduledTaskErrorClass, ScheduledTaskRunStatus, SessionOrigin
 from onyx.db.notification import create_notification
 from onyx.db.scheduled_task import get_run, mark_run_status
@@ -217,6 +219,7 @@ def run_scheduled_task_logic(
         task_user_id = task.user_id
         task_name = task.name
         task_prompt = task.prompt
+        task_mcp_server_ids = list(task.pre_approved_mcp_server_ids or [])
 
         # ensure_sandbox_running handles every state we care about:
         # creates a sandbox if none exists, waits out any concurrent
@@ -284,6 +287,7 @@ def run_scheduled_task_logic(
             task_prompt=task_prompt,
             sandbox_id=sandbox_id,
             budget_seconds=budget_seconds,
+            allowed_mcp_server_ids=task_mcp_server_ids,
         )
     except Exception:
         # Catch-all: anything that escapes the inner drive (e.g. session
@@ -324,6 +328,7 @@ def _drive_agent(
     task_prompt: str,
     sandbox_id: UUID,
     budget_seconds: int,
+    allowed_mcp_server_ids: list[int] | None = None,
 ) -> bool:
     """Drive the agent for a single scheduled run.
 
@@ -418,6 +423,20 @@ def _drive_agent(
             db_session.commit()
             return False
         try:
+            scheduled_user = fetch_user_by_id(db_session, task_user_id)
+            scheduled_session = session_manager.get_session(session_id, task_user_id)
+            scheduled_sandbox = db_session.get(Sandbox, sandbox_id)
+            if (
+                scheduled_user is not None
+                and scheduled_session is not None
+                and scheduled_sandbox is not None
+            ):
+                session_manager.reconcile_session_llm_config(
+                    scheduled_sandbox,
+                    scheduled_session,
+                    scheduled_user,
+                    allowed_server_ids=allowed_mcp_server_ids,
+                )
             session_manager.stamp_turn_deadline(
                 sandbox_id,
                 session_id,

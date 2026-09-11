@@ -240,6 +240,8 @@ class MessageRequest(BaseModel):
     provider: str | None = None
     provider_id: int | None = None
     model: str | None = None
+    selected_skill_ids: list[str] = Field(default_factory=list)
+    selected_mcp_server_ids: list[int] = Field(default_factory=list)
 
 
 class SubagentMessageRequest(BaseModel):

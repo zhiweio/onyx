@@ -145,6 +145,9 @@ class _TurnState:
     # terminator (fired from session.idle/status) consumes it — message.updated
     # itself is per-step and can't terminate the turn.
     last_finish: str | None = None
+    # First reasoning token of the current burst (epoch ms). Reset when the
+    # burst ends so the next thought starts a new clock.
+    thought_started_at_ms: int | None = None
     # connect_app permission id → monotonic deadline. Timeout fallback only (the
     # decision endpoint answers directly); reject an undecided request for a clean
     # decline. A late reject after the user answered is a harmless no-op.
@@ -152,6 +155,17 @@ class _TurnState:
     pending_question_deadlines: dict[str, float] = field(default_factory=dict)
     # Set from BOTH message.updated and hydration — text deltas race ahead of message.updated.
     summary_message_ids: set[str] = field(default_factory=set)
+
+
+def _stamp_thought_start(state: _TurnState, event: AgentThoughtChunk) -> None:
+    """Record the burst start on the first reasoning token and copy it to _meta."""
+    if state.thought_started_at_ms is None:
+        state.thought_started_at_ms = int(time.time() * 1000)
+    _merge_field_meta(event, {"thought_started_at_ms": state.thought_started_at_ms})
+
+
+def _clear_thought_clock(state: _TurnState) -> None:
+    state.thought_started_at_ms = None
 
 
 # ---------------------------------------------------------------------------
@@ -414,13 +428,16 @@ def _emit_text_delta(
         # double-emit. partID is unique across types, so they share
         # ``state.local_text`` without collision.
         state.local_text[part_id] = state.local_text.get(part_id, "") + delta
-        yield AgentThoughtChunk.model_validate(
+        thought = AgentThoughtChunk.model_validate(
             {
                 "sessionUpdate": "agent_thought_chunk",
                 "content": {"type": "text", "text": delta},
             }
         )
+        _stamp_thought_start(state, thought)
+        yield thought
     elif part_type == "text":
+        _clear_thought_clock(state)
         state.local_text[part_id] = state.local_text.get(part_id, "") + delta
         yield AgentMessageChunk.model_validate(
             {
@@ -814,12 +831,17 @@ def _reconcile_part_text(
         tail = expected[len(local) :]
         state.local_text[part_id] = expected
         if tail:
-            yield emit_class.model_validate(
+            event = emit_class.model_validate(
                 {
                     "sessionUpdate": session_update,
                     "content": {"type": "text", "text": tail},
                 }
             )
+            if emit_class is AgentThoughtChunk:
+                _stamp_thought_start(state, event)
+            else:
+                _clear_thought_clock(state)
+            yield event
     elif len(expected) < len(local):
         # Server-side rewind — shouldn't happen. Log and trust the longer
         # local accumulator (we've already streamed it).
@@ -849,6 +871,7 @@ def _emit_tool_events(
 ) -> Iterable[SandboxEvent]:
     """Emit ToolCallStart (first sighting) and/or ToolCallProgress for a
     tool part update."""
+    _clear_thought_clock(state)
     call_id = part.get("callID")
     tool = part.get("tool") or ""
     if not isinstance(call_id, str) or not isinstance(tool, str):

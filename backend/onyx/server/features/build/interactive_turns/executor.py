@@ -31,6 +31,7 @@ from onyx.server.features.build.interactive_turns.state import (
     claim_turn_for_runner,
     finish_turn,
     get_active_turn,
+    get_turn,
     touch_turn,
 )
 from onyx.server.features.build.sandbox.event_schema import (
@@ -47,6 +48,7 @@ from onyx.server.features.build.session.interrupt_signal import (
 )
 from onyx.server.features.build.session.locks import session_creation_lock
 from onyx.server.features.build.session.manager import SessionManager
+from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.server.features.build.session.sandbox_lifecycle import (
     HEALTH_PROBE_TIMEOUT_SECONDS,
 )
@@ -372,7 +374,18 @@ def _drive_interactive_turn(
             user = fetch_user_by_id(db_session, user_id)
             if session is None or user is None:
                 raise RuntimeError("Craft session owner or session no longer exists")
-            session_manager.reconcile_session_llm_config(sandbox, session, user)
+            turn_state = get_turn(cache, turn_id)
+            allowed_mcp_ids = None
+            if turn_state is not None:
+                allowed_mcp_ids = resolve_effective_mcp_server_ids(
+                    db_session,
+                    user,
+                    selected_mcp_server_ids=turn_state.selected_mcp_server_ids,
+                    selected_skill_ids=turn_state.selected_skill_ids,
+                )
+            session_manager.reconcile_session_llm_config(
+                sandbox, session, user, allowed_server_ids=allowed_mcp_ids
+            )
             db_session.commit()
 
             # Only while holding the slot — a racing loser must not overwrite

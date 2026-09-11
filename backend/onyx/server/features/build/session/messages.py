@@ -185,6 +185,8 @@ def send_message(
             prompt=request.content,
             turn_index=turn_index,
             attachments=prompt_attachments,
+            selected_skill_ids=request.selected_skill_ids,
+            selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
 
         try:

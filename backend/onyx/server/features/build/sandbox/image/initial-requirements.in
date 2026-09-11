@@ -1,4 +1,5 @@
 beautifulsoup4
+duckdb
 cryptography
 defusedxml
 fastapi

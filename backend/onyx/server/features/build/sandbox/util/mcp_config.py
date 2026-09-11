@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -33,9 +33,15 @@ def _server_key(server: MCPServer) -> str:
 
 
 def resolve_craft_mcp_servers(
-    db_session: Session, user: User
+    db_session: Session,
+    user: User,
+    allowed_server_ids: Collection[int] | None = None,
 ) -> list[CraftMCPServerConfig]:
     """Craft-enabled MCP servers ``user`` may use, as opencode config input.
+
+    ``allowed_server_ids`` is the turn allowlist. An empty collection injects
+    no servers. ``None`` keeps every eligible server (admin restamp and
+    tests). The picker still lists every craft-enabled authenticated server.
 
     Filtered by access and by resolvable credentials — injection blocks an
     unauthenticated server's tool discovery, so emitting it only buys a
@@ -44,7 +50,12 @@ def resolve_craft_mcp_servers(
     Query count is flat in the number of servers: this runs per user in the
     admin restamp fan-out (``refresh_mcp_config_hashes_for_users``), which for a
     public server covers every user with a running sandbox."""
+    if allowed_server_ids is not None and not allowed_server_ids:
+        return []
     accessible = get_craft_enabled_mcp_servers(db_session, user)
+    if allowed_server_ids is not None:
+        allowed = set(allowed_server_ids)
+        accessible = [server for server in accessible if server.id in allowed]
     user_configs = get_user_connection_configs(
         [s.id for s in accessible], user.email, db_session
     )

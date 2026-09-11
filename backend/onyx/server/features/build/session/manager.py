@@ -12,7 +12,7 @@ import mimetypes
 import threading
 import uuid
 import zipfile
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Collection, Generator
 from contextlib import AbstractContextManager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
@@ -314,9 +314,12 @@ class SessionManager:
         sandbox: Sandbox,
         session: BuildSession,
         user: User,
+        allowed_server_ids: Collection[int] | None = (),
     ) -> None:
         llm_config = self.session_llm_config(session, user)
-        mcp_servers = resolve_craft_mcp_servers(self._db_session, user)
+        mcp_servers = resolve_craft_mcp_servers(
+            self._db_session, user, allowed_server_ids=allowed_server_ids
+        )
         share_workspace_from = _share_workspace_from_session(
             self._db_session, session.id
         )

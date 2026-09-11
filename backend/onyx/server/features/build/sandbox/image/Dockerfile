@@ -169,8 +169,11 @@ ENV PYTHONPATH="/workspace"
 # smoke test fails the build if the native binary didn't resolve for the
 # target arch, and verifies one known SVG exists from each icon package.
 RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
-    npm install -g pptxgenjs@4.0.1 lucide-static@1.24.0 @tabler/icons@3.44.0 sharp@0.35.3 && \
+    npm install -g pptxgenjs@4.0.1 lucide-static@1.24.0 @tabler/icons@3.44.0 sharp@0.35.3 \
+      @hithink-tech/hithink-finance-cli qcc-agent-cli && \
     NODE_PATH=/usr/local/lib/node_modules node -e "require('pptxgenjs'); require('sharp'); const fs = require('fs'); fs.accessSync('/usr/local/lib/node_modules/lucide-static/icons/circle-check.svg'); fs.accessSync('/usr/local/lib/node_modules/@tabler/icons/icons/outline/shield-check.svg')" && \
+    hithink-finance version --format json && \
+    qcc --help >/dev/null && \
     npm cache clean --force && \
     rm -rf /root/.npm; \
     fi

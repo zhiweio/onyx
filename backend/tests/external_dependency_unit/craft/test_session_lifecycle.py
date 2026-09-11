@@ -18,14 +18,26 @@ from fastapi_users.password import PasswordHelper
 from sqlalchemy.orm import Query, Session
 
 from onyx.configs.constants import FileOrigin, MessageType
+from onyx.db.craft_job import add_specialist, create_craft_job
 from onyx.db.enums import (
     AccountType,
     ArtifactType,
     BuildSessionStatus,
+    CraftJobSpecialistStatus,
+    CraftJobStatus,
     SandboxStatus,
     SessionOrigin,
 )
-from onyx.db.models import Artifact, BuildMessage, BuildSession, Sandbox, Snapshot, User
+from onyx.db.models import (
+    Artifact,
+    BuildMessage,
+    BuildSession,
+    CraftJob,
+    CraftJobSpecialist,
+    Sandbox,
+    Snapshot,
+    User,
+)
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
@@ -511,6 +523,176 @@ class TestDeleteSessionCascade:
         assert (
             db_session.query(Artifact).filter(Artifact.id == artifact_id).one_or_none()
             is None
+        )
+
+    def test_delete_session_cascades_craft_job_and_specialist(
+        self,
+        db_session: Session,
+        test_user: User,
+        sandbox: Callable[..., Sandbox],
+        session_manager_with_stub: SessionManager,
+        stub_sandbox_manager: StubSandboxManager,
+    ) -> None:
+        sandbox(user=test_user, status=SandboxStatus.RUNNING)
+        parent = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="job-parent",
+            status=BuildSessionStatus.ACTIVE,
+        )
+        specialist_session = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="job-specialist",
+            status=BuildSessionStatus.IDLE,
+            origin=SessionOrigin.JOB,
+        )
+        db_session.add_all([parent, specialist_session])
+        db_session.flush()
+        job = create_craft_job(
+            db_session,
+            user_id=test_user.id,
+            session_id=parent.id,
+            name="finished-job",
+            domain="general",
+            total_budget_seconds=60,
+            phase_budget_seconds=30,
+            phases=[{"id": "plan", "name": "Plan"}],
+        )
+        job.status = CraftJobStatus.SUCCEEDED
+        specialist = add_specialist(
+            db_session,
+            job=job,
+            session_id=specialist_session.id,
+            role="general",
+            prompt="research",
+        )
+        specialist.status = CraftJobSpecialistStatus.SUCCEEDED
+        db_session.commit()
+        parent_id = parent.id
+        job_id = job.id
+        specialist_id = specialist.id
+        specialist_session_id = specialist_session.id
+
+        stub_sandbox_manager.cleanup_session_workspace_silent = True
+
+        deleted = session_manager_with_stub.delete_session(
+            session_id=parent_id, user_id=test_user.id
+        )
+        db_session.commit()
+
+        assert deleted is True
+        assert (
+            db_session.query(BuildSession)
+            .filter(BuildSession.id == parent_id)
+            .one_or_none()
+            is None
+        )
+        assert (
+            db_session.query(CraftJob).filter(CraftJob.id == job_id).one_or_none()
+            is None
+        )
+        assert (
+            db_session.query(CraftJobSpecialist)
+            .filter(CraftJobSpecialist.id == specialist_id)
+            .one_or_none()
+            is None
+        )
+        assert (
+            db_session.query(BuildSession)
+            .filter(BuildSession.id == specialist_session_id)
+            .one_or_none()
+            is not None
+        )
+
+        deleted_specialist_session = session_manager_with_stub.delete_session(
+            session_id=specialist_session_id, user_id=test_user.id
+        )
+        db_session.commit()
+        assert deleted_specialist_session is True
+        assert (
+            db_session.query(BuildSession)
+            .filter(BuildSession.id == specialist_session_id)
+            .one_or_none()
+            is None
+        )
+
+    def test_delete_specialist_session_while_job_row_exists(
+        self,
+        db_session: Session,
+        test_user: User,
+        sandbox: Callable[..., Sandbox],
+        session_manager_with_stub: SessionManager,
+        stub_sandbox_manager: StubSandboxManager,
+    ) -> None:
+        sandbox(user=test_user, status=SandboxStatus.SLEEPING)
+        parent = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="job-parent-kept",
+            status=BuildSessionStatus.ACTIVE,
+        )
+        specialist_session = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="job-specialist-deleted",
+            status=BuildSessionStatus.IDLE,
+            origin=SessionOrigin.JOB,
+        )
+        db_session.add_all([parent, specialist_session])
+        db_session.flush()
+        job = create_craft_job(
+            db_session,
+            user_id=test_user.id,
+            session_id=parent.id,
+            name="live-job",
+            domain="general",
+            total_budget_seconds=60,
+            phase_budget_seconds=30,
+            phases=[{"id": "plan", "name": "Plan"}],
+        )
+        specialist = add_specialist(
+            db_session,
+            job=job,
+            session_id=specialist_session.id,
+            role="general",
+            prompt="research",
+        )
+        db_session.commit()
+        parent_id = parent.id
+        job_id = job.id
+        specialist_id = specialist.id
+        specialist_session_id = specialist_session.id
+
+        stub_sandbox_manager.cleanup_session_workspace_silent = True
+
+        deleted = session_manager_with_stub.delete_session(
+            session_id=specialist_session_id, user_id=test_user.id
+        )
+        db_session.commit()
+
+        assert deleted is True
+        assert (
+            db_session.query(BuildSession)
+            .filter(BuildSession.id == specialist_session_id)
+            .one_or_none()
+            is None
+        )
+        assert (
+            db_session.query(CraftJobSpecialist)
+            .filter(CraftJobSpecialist.id == specialist_id)
+            .one_or_none()
+            is None
+        )
+        assert (
+            db_session.query(BuildSession)
+            .filter(BuildSession.id == parent_id)
+            .one_or_none()
+            is not None
+        )
+        assert (
+            db_session.query(CraftJob).filter(CraftJob.id == job_id).one_or_none()
+            is not None
         )
 
 
