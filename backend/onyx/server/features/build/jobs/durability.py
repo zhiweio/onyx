@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Any
 from uuid import UUID
 
@@ -47,6 +48,41 @@ SEED_MEMORY_MD = (
     "and user corrections.\n"
     "Do not paste tool output, MCP bodies, or chat transcripts.\n"
 )
+_CONTROL_BASENAMES = frozenset(
+    {
+        "PLAN.md",
+        "TODO.md",
+        "MEMORY.md",
+        "DONE.json",
+        "PLAN.json",
+    }
+)
+_HEADING_ONLY_BASENAMES = frozenset({"PLAN.md", "TODO.md", "MEMORY.md"})
+_SEED_BODIES = frozenset(
+    {
+        SEED_PLAN_MD.strip(),
+        SEED_TODO_MD.strip(),
+        SEED_MEMORY_MD.strip(),
+    }
+)
+
+
+def is_durability_control_path(path: str) -> bool:
+    """Host working files. They are not project deliverables."""
+    return PurePosixPath((path or "").replace("\\", "/")).name in _CONTROL_BASENAMES
+
+
+def is_substantial_durability_text(text: str, path: str = "") -> bool:
+    """False for empty files, seed templates, and a heading-only plan/todo/memory."""
+    stripped = (text or "").strip()
+    if not stripped or stripped in _SEED_BODIES:
+        return False
+    name = PurePosixPath((path or "").replace("\\", "/")).name
+    if name in _HEADING_ONLY_BASENAMES or not path:
+        lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+        if len(lines) == 1 and lines[0].startswith("#"):
+            return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -56,7 +92,9 @@ class DurabilitySnapshot:
 
     def format_for_brief(self) -> list[str]:
         present = [
-            path for path in DURABILITY_FILES if self.files.get(path, "").strip()
+            path
+            for path in DURABILITY_FILES
+            if is_substantial_durability_text(self.files.get(path, ""), path)
         ]
         if not present:
             return []

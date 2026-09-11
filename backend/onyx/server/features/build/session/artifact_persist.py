@@ -18,7 +18,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from onyx.configs.constants import FileOrigin
-from onyx.db.craft_project import upsert_project_file
+from onyx.db.craft_project import retract_session_working_files, upsert_project_file
 from onyx.db.enums import ArtifactType, CraftProjectFileSource
 from onyx.db.models import Artifact, BuildSession
 from onyx.file_store.file_store import get_default_file_store
@@ -30,11 +30,16 @@ from onyx.server.features.build.configs import (
 from onyx.server.features.build.db.artifact import (
     clear_pending_hydrate_for_session,
     get_session_artifacts,
+    mark_artifact_deleted,
     set_artifact_archive_file_id,
     set_artifact_pending_hydrate,
     upsert_artifact,
 )
 from onyx.server.features.build.db.build_session import get_build_session
+from onyx.server.features.build.jobs.durability import (
+    is_durability_control_path,
+    is_substantial_durability_text,
+)
 from onyx.server.features.build.sandbox.base import SandboxManager
 from onyx.server.features.build.sandbox.models import FileSet, FilesystemEntry
 from onyx.utils.logger import setup_logger
@@ -128,6 +133,8 @@ def should_auto_promote_output(catalog_path: str) -> bool:
     if catalog_path.startswith(ATTACHMENTS_PREFIX):
         return False
     if catalog_path.startswith(PROJECT_PREFIX):
+        return False
+    if is_durability_control_path(catalog_path):
         return False
     if should_skip_output_path(catalog_path):
         return False
@@ -565,6 +572,21 @@ def _archive_one(
     size_bytes: int | None,
     turn_index: int | None,
 ) -> Artifact | None:
+    if is_durability_control_path(catalog_path):
+        try:
+            preview = sandbox_manager.read_file(
+                sandbox_id=sandbox_id, session_id=session_id, path=workspace_path
+            )
+        except Exception:
+            return None
+        text = (
+            preview.decode("utf-8", errors="replace")
+            if isinstance(preview, (bytes, bytearray))
+            else ""
+        )
+        if not is_substantial_durability_text(text, catalog_path):
+            mark_artifact_deleted(db_session, session_id=session_id, path=catalog_path)
+            return None
     artifact = upsert_artifact(
         db_session,
         session_id=session_id,
@@ -629,6 +651,7 @@ def _promote_outputs_to_project(
     project_id = session.project_id
     if project_id is None:
         return
+    retract_session_working_files(db_session, project_id)
     for artifact in artifacts:
         if artifact.deleted or not artifact.archive_file_id:
             continue

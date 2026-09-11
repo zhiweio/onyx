@@ -42,6 +42,10 @@ const HIDDEN_WORKSPACE_NAMES = new Set([
   ".gitignore",
   "nextjs.log",
   "nextjs.pid",
+  "PLAN.md",
+  "TODO.md",
+  "MEMORY.md",
+  "DONE.json",
 ]);
 
 function visibleWorkspaceEntries(

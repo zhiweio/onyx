@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from onyx.server.features.build.jobs.durability import (
+    is_durability_control_path,
+    is_substantial_durability_text,
+)
 from onyx.server.features.build.jobs.graph import GraphNode, is_lane_kind
 from onyx.server.features.build.jobs.phase_gate import (
     DEFAULT_PHASE_RETRY_LIMIT,
@@ -397,6 +401,10 @@ def _parse_review(raw: bytes) -> dict[str, Any]:
 
 
 def _nonempty_path(sandbox_id: UUID, session_id: UUID, path: str) -> bool:
+    if is_durability_control_path(path):
+        return is_substantial_durability_text(
+            _read_full_text(sandbox_id, session_id, path), path
+        )
     text = _read_text(sandbox_id, session_id, path)
     if text:
         return True

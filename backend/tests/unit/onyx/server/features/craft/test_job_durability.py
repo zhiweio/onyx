@@ -7,8 +7,12 @@ from uuid import uuid4
 from onyx.server.features.build.jobs.assembler import assemble_brief
 from onyx.server.features.build.jobs.channels import ArtifactRecord, empty_state
 from onyx.server.features.build.jobs.durability import (
+    SEED_MEMORY_MD,
     SEED_PLAN_MD,
+    SEED_TODO_MD,
     DurabilitySnapshot,
+    is_durability_control_path,
+    is_substantial_durability_text,
     load_durability_snapshot,
 )
 from onyx.server.features.build.jobs.gates import retry_brief
@@ -88,6 +92,27 @@ def test_empty_snapshot_omits_missing_files() -> None:
     assert SEED_PLAN_MD.startswith("# Plan")
 
 
+def test_seed_templates_are_not_substantial() -> None:
+    assert is_durability_control_path("outputs/PLAN.md") is True
+    assert is_durability_control_path("markdown/report.md") is False
+    assert is_substantial_durability_text(SEED_PLAN_MD, "outputs/PLAN.md") is False
+    assert is_substantial_durability_text(SEED_TODO_MD, "outputs/TODO.md") is False
+    assert is_substantial_durability_text(SEED_MEMORY_MD, "outputs/MEMORY.md") is False
+    assert is_substantial_durability_text("# Plan\n", "outputs/PLAN.md") is False
+    assert (
+        is_substantial_durability_text("# Plan\n\nWrite the memo\n", "outputs/PLAN.md")
+        is True
+    )
+    seed_snapshot = DurabilitySnapshot(
+        files={
+            "outputs/PLAN.md": SEED_PLAN_MD,
+            "outputs/TODO.md": SEED_TODO_MD,
+            "outputs/MEMORY.md": SEED_MEMORY_MD,
+        }
+    )
+    assert seed_snapshot.format_for_brief() == []
+
+
 def test_assemble_brief_names_parallel_search_tool() -> None:
     node = compile_graph().get("plan")
     assert node is not None
@@ -162,3 +187,35 @@ def test_retry_brief_search_reason_leads_with_search() -> None:
 def test_retry_brief_missing_files_keeps_write_action() -> None:
     text = retry_brief("plan", ["outputs/PLAN.json"])
     assert "Write only the missing artifacts" in text
+
+
+def test_plan_gate_rejects_seed_markdown(monkeypatch) -> None:
+    import json
+
+    from onyx.server.features.build.jobs.gates import evaluate_contract_gate
+
+    files = {
+        "outputs/plan/PLAN.json": json.dumps({"goal": "Write the memo"}).encode(),
+        "outputs/PLAN.md": SEED_PLAN_MD.encode(),
+        "outputs/TODO.md": SEED_TODO_MD.encode(),
+    }
+    manager = _FakeManager(files)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        lambda: manager,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+        lambda: manager,
+    )
+    node = compile_graph().get("plan")
+    assert node is not None
+    gate = evaluate_contract_gate(
+        sandbox_id=uuid4(),
+        session_id=uuid4(),
+        node=node,
+        deadline_exceeded=False,
+    )
+    assert gate.passed is False
+    assert any(path.endswith("PLAN.md") for path in gate.missing_paths())
+    assert any(path.endswith("TODO.md") for path in gate.missing_paths())

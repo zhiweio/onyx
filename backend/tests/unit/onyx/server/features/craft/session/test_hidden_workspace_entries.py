@@ -16,3 +16,9 @@ def test_dev_server_runtime_files_are_hidden(name: str) -> None:
 def test_regular_files_are_visible(name: str) -> None:
     entry = FilesystemEntry(name=name, path=name, is_directory=False)
     assert _is_hidden_workspace_entry(entry) is False
+
+
+@pytest.mark.parametrize("name", ["PLAN.md", "TODO.md", "MEMORY.md", "DONE.json"])
+def test_working_control_files_are_hidden(name: str) -> None:
+    entry = FilesystemEntry(name=name, path=f"outputs/{name}", is_directory=False)
+    assert _is_hidden_workspace_entry(entry) is True

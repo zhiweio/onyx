@@ -103,6 +103,8 @@ Create paths as you write (`outputs/markdown/…`, `outputs/research/…`,
 1. Understand the user request. Do the research or build work first.
 2. Produce the deliverable. Ground facts in sources.
 3. Do not start planning files unless the host brief asks for a long job.
+   If you write PLAN.md, TODO.md, or MEMORY.md, write this job's real
+   plan, not a heading.
 
 Each turn has a budget. `[Onyx turn budget]` notices on tool results are
 authoritative. Converge: stop opening work and finish from what you have.

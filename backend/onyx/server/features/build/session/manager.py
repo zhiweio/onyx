@@ -178,6 +178,10 @@ HIDDEN_PATTERNS = {
     ".gitignore",
     "nextjs.log",
     "nextjs.pid",
+    "PLAN.md",
+    "TODO.md",
+    "MEMORY.md",
+    "DONE.json",
 }
 
 _WEBAPP_DIRECTORY = str(Path(WEBAPP_PACKAGE_JSON_PATH).parent)

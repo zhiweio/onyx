@@ -16,13 +16,19 @@ from onyx.db.craft_project import (
     require_project_for_user,
     require_project_write_for_user,
     store_uploaded_project_file,
+    upsert_project_file,
 )
-from onyx.db.enums import SandboxStatus
+from onyx.db.enums import CraftProjectFileSource, SandboxStatus
 from onyx.db.models import BuildSession, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.db.artifact import get_artifact_by_path
+from onyx.server.features.build.jobs.durability import (
+    SEED_MEMORY_MD,
+    SEED_PLAN_MD,
+    SEED_TODO_MD,
+)
 from onyx.server.features.build.sandbox.image.sandbox_daemon.contract import (
     OutputsManifestEntry,
     OutputsManifestResponse,
@@ -298,6 +304,65 @@ def test_research_tree_stays_session_private_until_promoted(
     assert pushed is not None
     assert "research/a.md" in pushed["files"]
     assert "markdown/brief.md" in pushed["files"]
+
+
+def test_seed_plan_files_are_not_promoted_or_cataloged(
+    db_session: Session,
+    tenant_context: None,  # noqa: ARG001
+    test_user: User,
+    build_session_with_user: Callable[..., BuildSession],
+    initialize_file_store: None,  # noqa: ARG001
+) -> None:
+    project = create_project(db_session, user=test_user, name="HMPL stub")
+    upsert_project_file(
+        db_session,
+        project_id=project.id,
+        path="PLAN.md",
+        file_id="stale-plan",
+        mime_type="text/markdown",
+        size_bytes=7,
+        content_hash="abc",
+        source=CraftProjectFileSource.SESSION_OUTPUT,
+    )
+    db_session.commit()
+
+    session = build_session_with_user()
+    session.project_id = project.id
+    db_session.commit()
+
+    stub = WorkspaceStub(
+        {
+            "outputs/PLAN.md": SEED_PLAN_MD.encode(),
+            "outputs/TODO.md": SEED_TODO_MD.encode(),
+            "outputs/MEMORY.md": SEED_MEMORY_MD.encode(),
+            "outputs/markdown/report.md": b"# report\n",
+        }
+    )
+    persist_session_workspace_files(
+        db_session,
+        stub,
+        sandbox_id=uuid4(),
+        session_id=session.id,
+        user_id=test_user.id,
+        turn_index=1,
+    )
+
+    paths = {row.path for row in list_project_files(db_session, project.id)}
+    assert "/markdown/report.md" in paths
+    assert "/PLAN.md" not in paths
+    assert "/TODO.md" not in paths
+    assert "/MEMORY.md" not in paths
+
+    for catalog_path in ("PLAN.md", "TODO.md", "MEMORY.md"):
+        artifact = get_artifact_by_path(
+            db_session, session_id=session.id, path=catalog_path
+        )
+        assert artifact is None or artifact.deleted is True
+    report = get_artifact_by_path(
+        db_session, session_id=session.id, path="markdown/report.md"
+    )
+    assert report is not None
+    assert report.deleted is False
 
 
 def test_unchanged_hash_skips_filestore_write(

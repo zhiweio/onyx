@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from onyx.server.features.build.jobs.durability import (
+    is_durability_control_path,
+    is_substantial_durability_text,
+)
 from onyx.server.features.build.jobs.plan import default_done_when
 from onyx.server.features.build.jobs.protocol import PHASE_DONE_PATH
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
@@ -98,9 +102,25 @@ def _missing_paths(
     for path in done_when:
         if path == PHASE_DONE_PATH:
             continue
+        if is_durability_control_path(path):
+            if not is_substantial_durability_text(
+                _read_file_text(sandbox_id, session_id, path), path
+            ):
+                missing.append(path)
+            continue
         if not _path_exists(sandbox_id, session_id, path):
             missing.append(path)
     return missing
+
+
+def _read_file_text(sandbox_id: UUID, session_id: UUID, path: str) -> str:
+    try:
+        raw = get_sandbox_manager().read_file(sandbox_id, session_id, path)
+    except Exception:
+        return ""
+    if not isinstance(raw, (bytes, bytearray)):
+        return ""
+    return raw.decode("utf-8", errors="replace")
 
 
 def _read_text(sandbox_id: UUID, session_id: UUID, path: str) -> str | None:

@@ -33,6 +33,15 @@ from onyx.server.features.build.configs import (
 
 _PATH_SEGMENT = re.compile(r"[^A-Za-z0-9._\- ]+")
 CRAFT_PROJECT_STORE_PREFIX = "craft/projects"
+_SESSION_WORKING_FILE_NAMES = frozenset(
+    {
+        "PLAN.md",
+        "TODO.md",
+        "MEMORY.md",
+        "DONE.json",
+        "PLAN.json",
+    }
+)
 
 
 def project_file_limit(db_session: Session, project_id: UUID) -> int:
@@ -224,6 +233,30 @@ def delete_project(db_session: Session, project: CraftProject) -> None:
     db_session.commit()
 
 
+def _is_auto_promoted_working_file(row: CraftProjectFile) -> bool:
+    if row.source != CraftProjectFileSource.SESSION_OUTPUT:
+        return False
+    return row.path.rsplit("/", 1)[-1] in _SESSION_WORKING_FILE_NAMES
+
+
+def retract_session_working_files(db_session: Session, project_id: UUID) -> None:
+    """Soft-delete host working files that a session auto-promoted."""
+    rows = db_session.scalars(
+        select(CraftProjectFile).where(
+            CraftProjectFile.project_id == project_id,
+            CraftProjectFile.deleted.is_(False),
+            CraftProjectFile.source == CraftProjectFileSource.SESSION_OUTPUT,
+        )
+    )
+    changed = False
+    for row in rows:
+        if row.path.rsplit("/", 1)[-1] in _SESSION_WORKING_FILE_NAMES:
+            row.deleted = True
+            changed = True
+    if changed:
+        db_session.flush()
+
+
 def list_project_files(
     db_session: Session,
     project_id: UUID,
@@ -233,7 +266,10 @@ def list_project_files(
     query = select(CraftProjectFile).where(CraftProjectFile.project_id == project_id)
     if not include_deleted:
         query = query.where(CraftProjectFile.deleted.is_(False))
-    return list(db_session.scalars(query.order_by(CraftProjectFile.path)))
+    rows = list(db_session.scalars(query.order_by(CraftProjectFile.path)))
+    if include_deleted:
+        return rows
+    return [row for row in rows if not _is_auto_promoted_working_file(row)]
 
 
 def get_project_file(
