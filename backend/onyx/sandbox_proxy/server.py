@@ -31,6 +31,7 @@ from onyx.sandbox_proxy.request_evaluator import (
 from onyx.sandbox_proxy.resolvers.external_app import ExternalAppResolver
 from onyx.sandbox_proxy.resolvers.mcp_server import MCPServerResolver
 from onyx.sandbox_proxy.resolvers.onyx_pat import OnyxPatResolver
+from onyx.sandbox_proxy.resolvers.vendor_cli import BuiltinVendorCliResolver
 from onyx.server.features.build.configs import (
     SANDBOX_NAMESPACE,
     SANDBOX_PROXY_HEALTHZ_PORT,
@@ -173,6 +174,7 @@ def build_resolvers() -> list[CredentialResolver]:
         OnyxPatResolver(),
         MCPServerResolver(),
         ExternalAppResolver(),
+        BuiltinVendorCliResolver(),
     ]
 
 

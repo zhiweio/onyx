@@ -72,6 +72,7 @@ from onyx.server.settings.store import (
     settings_write_lock,
     store_settings,
 )
+from onyx.mcp_gateway.bootstrap import bootstrap_builtin_mcp_families
 from onyx.system_catalog.builtin.sync import sync_builtin_system_catalog
 from onyx.utils.gpu_utils import gpu_status_request
 from onyx.utils.logger import setup_logger
@@ -281,6 +282,7 @@ def setup_postgres(db_session: Session) -> None:
     # Idempotent: inserts shipped gallery content that is not present yet and
     # never overwrites an admin's edits.
     sync_builtin_system_catalog(db_session)
+    bootstrap_builtin_mcp_families(db_session)
 
     if GEN_AI_API_KEY and fetch_default_llm_model(db_session) is None:
         # Only for dev flows

@@ -450,6 +450,17 @@ class MCPFromPackRequest(BaseModel):
     is_public: bool = True
     groups: list[int] = Field(default_factory=list)
     users: list[UUID] = Field(default_factory=list)
+    # Family installs skip discovery by default so the admin request does not
+    # wait on every remote. The first Chat or Craft turn that selects a
+    # server discovers its tools.
+    discover_tools: bool = False
+
+
+class MCPPackEndpointSummary(BaseModel):
+    slug: str
+    display_name: str
+    upstream_url: str
+    description: str = ""
 
 
 class MCPPackSummary(BaseModel):
@@ -460,6 +471,8 @@ class MCPPackSummary(BaseModel):
     group: str
     transport: MCPTransport
     auth_adapter: str
+    endpoint_count: int = 1
+    endpoints: list[MCPPackEndpointSummary] = Field(default_factory=list)
 
 
 class MCPToolUpdateRequest(BaseModel):
@@ -811,6 +824,12 @@ class MCPServer(BaseModel):
 class MCPServersResponse(BaseModel):
     assistant_id: str | None = None
     mcp_servers: List[MCPServer]
+
+
+class MCPDiscoverEmptyResponse(BaseModel):
+    refreshed: int = 0
+    failed: int = 0
+    errors: list[str] = Field(default_factory=list)
 
 
 class MCPServerCreateResponse(BaseModel):

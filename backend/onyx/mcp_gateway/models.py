@@ -88,12 +88,25 @@ def policy_from_mapping(
 
 
 @dataclass(frozen=True)
+class PackEndpoint:
+    """One upstream URL inside a multi-server provider family."""
+
+    slug: str
+    display_name: str
+    upstream_url: str
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class ProviderPack:
     """Defaults for one upstream MCP product.
 
     A pack is data, not behavior: it seeds sensible cache policies so an admin
     installing a known provider does not start from nothing. Every field can be
     overridden per catalog entry, and `generic_http` covers anything unknown.
+
+    Families (HiThink, Qichacha, Zhihuiya) list every HTTP endpoint in
+    ``endpoints``. A pack with no endpoints still uses ``default_upstream_url``.
     """
 
     slug: str
@@ -104,6 +117,8 @@ class ProviderPack:
     group: str = "generic"
     transport: MCPTransport = MCPTransport.STREAMABLE_HTTP
     auth_adapter: MCPGatewayAuthAdapter = MCPGatewayAuthAdapter.BEARER
+    # HEADER_MAP only: header the admin API key is copied into.
+    auth_header_name: str | None = None
     default_policy: CachePolicySpec = field(default_factory=CachePolicySpec)
     tool_policies: tuple[CachePolicySpec, ...] = ()
     # Providers that tunnel every call through one entry tool, e.g.
@@ -111,6 +126,21 @@ class ProviderPack:
     # cache key names the real tool.
     nested_entry_tools: tuple[str, ...] = ()
     batch_entry_tools: tuple[str, ...] = ()
+    endpoints: tuple[PackEndpoint, ...] = ()
+
+    def resolved_endpoints(self) -> tuple[PackEndpoint, ...]:
+        if self.endpoints:
+            return self.endpoints
+        if self.default_upstream_url:
+            return (
+                PackEndpoint(
+                    slug=self.slug,
+                    display_name=self.display_name,
+                    upstream_url=self.default_upstream_url,
+                    description=self.description,
+                ),
+            )
+        return ()
 
 
 @dataclass

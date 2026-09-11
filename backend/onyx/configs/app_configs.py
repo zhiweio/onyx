@@ -1949,6 +1949,18 @@ MCP_GATEWAY_CALL_LOG_RETENTION_DAYS = int(
 )
 PERSONAL_MCP_MAX_SERVERS = int(os.environ.get("PERSONAL_MCP_MAX_SERVERS") or 20)
 
+# Built-in commercial MCP families. Empty means skip env bootstrap for that family.
+HITHINK_FINANCE_API_KEY = os.environ.get("HITHINK_FINANCE_API_KEY", "")
+ZHIHUIYA_MCP_API_KEY = os.environ.get("ZHIHUIYA_MCP_API_KEY") or os.environ.get(
+    "PATSNAP_MCP_API_KEY", ""
+)
+_QCC_AGENT_API_KEY_RAW = os.environ.get("QCC_AGENT_API_KEY", "")
+QCC_AGENT_API_KEY = (
+    _QCC_AGENT_API_KEY_RAW[7:].strip()
+    if _QCC_AGENT_API_KEY_RAW.lower().startswith("bearer ")
+    else _QCC_AGENT_API_KEY_RAW.strip()
+)
+
 #####
 # MCP result storage — how the gateway caches tool responses
 #####

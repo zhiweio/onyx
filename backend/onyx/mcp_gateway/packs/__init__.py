@@ -10,11 +10,14 @@ from onyx.mcp_gateway.packs import (
     context7,
     deepwiki,
     generic,
+    hithink_finance,
     microsoft_learn,
     parallel_search,
     patsnap,
+    qichacha,
     qixinbao,
     tianyancha,
+    zhihuiya,
 )
 
 BUILTIN_PACKS: tuple[ProviderPack, ...] = (
@@ -25,6 +28,9 @@ BUILTIN_PACKS: tuple[ProviderPack, ...] = (
     tianyancha.PACK,
     qixinbao.PACK,
     patsnap.PACK,
+    hithink_finance.PACK,
+    qichacha.PACK,
+    zhihuiya.PACK,
     generic.PACK,
 )
 

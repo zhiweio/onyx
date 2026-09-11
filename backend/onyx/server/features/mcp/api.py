@@ -98,6 +98,7 @@ from onyx.server.features.mcp.credentials import (
 from onyx.server.features.mcp.gateway_bind import (
     bind_org_server_to_gateway,
     create_org_server_from_pack,
+    create_org_servers_from_pack_family,
     discover_and_store_bound_tools,
     rediscover_direct_tools,
     unbind_org_server_from_gateway,
@@ -111,8 +112,10 @@ from onyx.server.features.mcp.models import (
     MCPGatewayBindingRequest,
     MCPOAuthCallbackResponse,
     MCPOAuthKeys,
+    MCPPackEndpointSummary,
     MCPPackSummary,
     MCPServer,
+    MCPDiscoverEmptyResponse,
     MCPServerCreateResponse,
     MCPServerSimpleCreateRequest,
     MCPServerSimpleUpdateRequest,
@@ -1298,8 +1301,9 @@ def _db_mcp_server_to_api_mcp_server(
                 required_fields=stored_template.required_fields,
             )
 
-    # Calculate tool count from the relationship
-    tool_count = len(db_server.current_actions) if db_server.current_actions else 0
+    tool_count = len(
+        get_tools_by_mcp_server_id(db_server.id, db, order_by_id=False)
+    )
 
     return MCPServer(
         id=db_server.id,
@@ -1396,7 +1400,6 @@ def get_mcp_servers_for_user(
     return MCPServersResponse(mcp_servers=mcp_servers)
 
 
-
 @router.get("/servers/gallery")
 def get_gallery_mcp_servers_for_user(
     db: Session = Depends(get_session),
@@ -1460,6 +1463,24 @@ class ToolSnapshotSource(str, Enum):
     MCP = "mcp"
 
 
+def _refresh_stored_mcp_tools(
+    mcp_server: DbMCPServer,
+    db: Session,
+    user: User,
+    *,
+    is_admin: bool,
+) -> None:
+    """Store the live tool list. Gateway packs read the upstream, not the public URL."""
+    if mcp_server.catalog_entry is not None:
+        error = discover_and_store_bound_tools(
+            db, mcp_server.catalog_entry, mcp_server.id
+        )
+        if error:
+            raise HTTPException(status_code=502, detail=error)
+        return
+    _list_mcp_tools_by_id(mcp_server.id, db, is_admin, user)
+
+
 @admin_router.get("/server/{server_id}/tools/snapshots")
 def get_mcp_server_tools_snapshots(
     server_id: int,
@@ -1488,8 +1509,7 @@ def get_mcp_server_tools_snapshots(
     if source == ToolSnapshotSource.MCP:
         _ensure_mcp_server_owner_or_admin(mcp_server, user)
         try:
-            # Discover tools from MCP server and sync to DB
-            _list_mcp_tools_by_id(server_id, db, True, user)
+            _refresh_stored_mcp_tools(mcp_server, db, user, is_admin=True)
 
             # Successfully discovered tools, update status to CONNECTED
             update_mcp_server__no_commit(
@@ -1525,7 +1545,6 @@ def get_mcp_server_tools_snapshots(
         )
         for tool in mcp_tools
     ]
-
 
 
 @router.get("/server/{server_id}/tools/snapshots")
@@ -2469,6 +2488,16 @@ def list_org_mcp_packs(
             group=pack.group,
             transport=pack.transport,
             auth_adapter=pack.auth_adapter.value,
+            endpoint_count=len(pack.resolved_endpoints()) or 1,
+            endpoints=[
+                MCPPackEndpointSummary(
+                    slug=endpoint.slug,
+                    display_name=endpoint.display_name,
+                    upstream_url=endpoint.upstream_url,
+                    description=endpoint.description,
+                )
+                for endpoint in pack.resolved_endpoints()
+            ],
         )
         for pack in list_packs()
     ]
@@ -2496,6 +2525,71 @@ def create_org_mcp_from_pack(
             can_manage=can_manage_mcp_server(user, server),
         ),
         discovery_error=error,
+    )
+
+
+@admin_router.post("/servers/from-pack-family")
+def create_org_mcp_from_pack_family(
+    request: MCPFromPackRequest,
+    db_session: Session = Depends(get_session),
+    user: User = Depends(
+        require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
+    ),
+) -> list[MCPServer]:
+    created = create_org_servers_from_pack_family(
+        db_session,
+        user,
+        request,
+        apply_access=_apply_mcp_server_access,
+        discover_tools=request.discover_tools,
+    )
+    return [
+        _db_mcp_server_to_api_mcp_server(
+            server,
+            db_session,
+            request_user=user,
+            permissions=mcp_server_permissions(
+                can_manage=can_manage_mcp_server(user, server),
+            ),
+            discovery_error=error,
+        )
+        for server, _entry, error in created
+    ]
+
+
+@admin_router.post("/servers/discover-empty-tools")
+def discover_empty_org_mcp_tools(
+    db_session: Session = Depends(get_session),
+    user: User = Depends(
+        require_permission(Permission.MANAGE_ACTIONS, allow_scope=True)
+    ),
+) -> MCPDiscoverEmptyResponse:
+    """Fill tool lists for gateway servers that were installed without discovery."""
+    refreshed = 0
+    errors: list[str] = []
+    for server in get_org_mcp_servers(db_session):
+        if server.catalog_entry is None:
+            continue
+        if get_tools_by_mcp_server_id(server.id, db_session):
+            continue
+        try:
+            _refresh_stored_mcp_tools(server, db_session, user, is_admin=True)
+        except HTTPException as error:
+            detail = error.detail
+            message = detail if isinstance(detail, str) else str(detail)
+            errors.append(f"{server.name}: {message}")
+            continue
+        except Exception as error:
+            logger.warning(
+                "Could not discover tools for MCP '%s': %s", server.name, error
+            )
+            errors.append(f"{server.name}: {error}")
+            continue
+        refreshed += 1
+    return MCPDiscoverEmptyResponse(
+        refreshed=refreshed,
+        failed=len(errors),
+        errors=errors,
     )
 
 

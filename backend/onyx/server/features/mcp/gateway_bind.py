@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.configs.app_configs import MCP_GATEWAY_PUBLIC_URL
@@ -35,8 +36,10 @@ from onyx.db.models import MCPCatalogEntry, MCPServer, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.mcp_gateway.auth_adapters import entry_credentials
+from onyx.mcp_gateway.models import PackEndpoint, ProviderPack
+from onyx.mcp_gateway.pack_credentials import normalize_pack_credentials
 from onyx.mcp_gateway.protocol import invalidate_tools_cache
-from onyx.mcp_gateway.registry import get_pack
+from onyx.mcp_gateway.registry import GENERIC_HTTP_SLUG, get_pack
 from onyx.mcp_gateway.service import is_gateway_enabled
 from onyx.mcp_gateway.upstream import UpstreamTarget
 from onyx.server.features.mcp.client import discover_mcp_tools
@@ -65,11 +68,30 @@ def require_gateway_enabled() -> None:
         )
 
 
+def apply_pack_upstream_url(entry: MCPCatalogEntry) -> bool:
+    """Copy the current pack URL onto a family catalog row when it drifted."""
+    pack = get_pack(entry.pack_slug)
+    if pack.slug == GENERIC_HTTP_SLUG or pack.slug != entry.pack_slug:
+        return False
+    for endpoint in pack.resolved_endpoints():
+        if endpoint.slug != entry.slug:
+            continue
+        if entry.upstream_url == endpoint.upstream_url:
+            return False
+        entry.upstream_url = endpoint.upstream_url
+        return True
+    return False
+
+
 def discover_and_store_bound_tools(
     db_session: Session, entry: MCPCatalogEntry, mcp_server_id: int
 ) -> str | None:
     """Discover tools on the upstream. Keep the binding if discovery fails."""
     from onyx.server.features.mcp.api import sync_mcp_server_tools
+
+    if apply_pack_upstream_url(entry):
+        db_session.flush()
+        invalidate_tools_cache(get_current_tenant_id(), entry.slug)
 
     target = UpstreamTarget.from_entry(entry)
     try:
@@ -83,6 +105,9 @@ def discover_and_store_bound_tools(
             "Could not discover tools for gateway MCP '%s': %s", entry.slug, error
         )
         return str(error)
+
+    if not discovered:
+        return f"Upstream listed no tools for '{entry.slug}'"
 
     sync_mcp_server_tools(mcp_server_id, discovered, db_session)
     entry.tools_list_refreshed_at = datetime.now(timezone.utc)
@@ -396,6 +421,7 @@ def create_org_server_from_pack(
             OnyxErrorCode.INVALID_INPUT,
             "This pack has no default URL. Set upstream_url.",
         )
+    credentials = normalize_pack_credentials(pack, request.credentials)
 
     entry = create_catalog_entry__no_commit(
         db_session,
@@ -405,7 +431,7 @@ def create_org_server_from_pack(
         upstream_url=upstream_url,
         transport=pack.transport,
         auth_adapter=pack.auth_adapter,
-        credentials=request.credentials,
+        credentials=credentials,
         pack_slug=pack.slug,
         policy_overrides=request.policy_overrides,
         enabled=True,
@@ -423,6 +449,7 @@ def create_org_server_from_pack(
         is_public=request.is_public,
         scope=MCPServerScope.USER,
         catalog_entry_id=entry.id,
+        available_in_craft=True,
     )
     server.status = MCPServerStatus.CONNECTED
     apply_access(
@@ -438,3 +465,160 @@ def create_org_server_from_pack(
     invalidate_tools_cache(get_current_tenant_id(), entry.slug)
     error = discover_and_store_bound_tools(db_session, entry, server.id)
     return server, entry, error
+
+
+def _server_for_catalog_entry(
+    db_session: Session, entry: MCPCatalogEntry
+) -> MCPServer | None:
+    return db_session.scalar(
+        select(MCPServer).where(MCPServer.catalog_entry_id == entry.id)
+    )
+
+
+def _upsert_endpoint_server(
+    db_session: Session,
+    user: User,
+    pack: ProviderPack,
+    endpoint: PackEndpoint,
+    request: MCPFromPackRequest,
+    apply_access: Any,
+    credentials: dict[str, Any],
+    *,
+    discover_tools: bool,
+) -> tuple[MCPServer, MCPCatalogEntry, str | None]:
+    existing = get_catalog_entry_by_slug(db_session, endpoint.slug)
+    if existing is not None:
+        update_catalog_entry__no_commit(
+            db_session,
+            existing,
+            display_name=endpoint.display_name,
+            description=endpoint.description or pack.description or None,
+            upstream_url=endpoint.upstream_url,
+            auth_adapter=pack.auth_adapter,
+            credentials=credentials or None,
+            pack_slug=pack.slug,
+            enabled=True,
+            is_public=request.is_public,
+        )
+        server = _server_for_catalog_entry(db_session, existing)
+        if server is None:
+            server = create_mcp_server__no_commit(
+                owner_email=user.email,
+                name=endpoint.display_name,
+                description=endpoint.description or pack.description,
+                server_url=gateway_url_for_slug(existing.slug),
+                auth_type=MCPAuthenticationType.API_TOKEN,
+                transport=existing.transport or MCPTransport.STREAMABLE_HTTP,
+                auth_performer=MCPAuthenticationPerformer.ADMIN,
+                db_session=db_session,
+                is_public=request.is_public,
+                scope=MCPServerScope.USER,
+                catalog_entry_id=existing.id,
+                available_in_craft=True,
+            )
+            apply_access(
+                mcp_server=server,
+                acting_user=user,
+                is_public=request.is_public,
+                user_ids=request.users,
+                group_ids=request.groups,
+                is_new=True,
+                db_session=db_session,
+            )
+        else:
+            server.available_in_craft = True
+            server.name = endpoint.display_name
+            server.description = endpoint.description or pack.description
+            server.server_url = gateway_url_for_slug(existing.slug)
+        server.status = MCPServerStatus.CONNECTED
+        db_session.flush()
+        invalidate_tools_cache(get_current_tenant_id(), existing.slug)
+        error = (
+            discover_and_store_bound_tools(db_session, existing, server.id)
+            if discover_tools
+            else None
+        )
+        return server, existing, error
+
+    entry = create_catalog_entry__no_commit(
+        db_session,
+        slug=endpoint.slug,
+        display_name=endpoint.display_name,
+        description=endpoint.description or pack.description or None,
+        upstream_url=endpoint.upstream_url,
+        transport=pack.transport,
+        auth_adapter=pack.auth_adapter,
+        credentials=credentials,
+        pack_slug=pack.slug,
+        policy_overrides=request.policy_overrides,
+        enabled=True,
+        is_public=request.is_public,
+    )
+    server = create_mcp_server__no_commit(
+        owner_email=user.email,
+        name=endpoint.display_name,
+        description=endpoint.description or pack.description,
+        server_url=gateway_url_for_slug(entry.slug),
+        auth_type=MCPAuthenticationType.API_TOKEN,
+        transport=entry.transport or MCPTransport.STREAMABLE_HTTP,
+        auth_performer=MCPAuthenticationPerformer.ADMIN,
+        db_session=db_session,
+        is_public=request.is_public,
+        scope=MCPServerScope.USER,
+        catalog_entry_id=entry.id,
+        available_in_craft=True,
+    )
+    server.status = MCPServerStatus.CONNECTED
+    apply_access(
+        mcp_server=server,
+        acting_user=user,
+        is_public=request.is_public,
+        user_ids=request.users,
+        group_ids=request.groups,
+        is_new=True,
+        db_session=db_session,
+    )
+    db_session.flush()
+    invalidate_tools_cache(get_current_tenant_id(), entry.slug)
+    error = (
+        discover_and_store_bound_tools(db_session, entry, server.id)
+        if discover_tools
+        else None
+    )
+    return server, entry, error
+
+
+def create_org_servers_from_pack_family(
+    db_session: Session,
+    user: User,
+    request: MCPFromPackRequest,
+    apply_access: Any,
+    *,
+    discover_tools: bool = True,
+) -> list[tuple[MCPServer, MCPCatalogEntry, str | None]]:
+    """Install every endpoint in a pack family. Idempotent on catalog slug."""
+    require_gateway_enabled()
+    pack = get_pack(request.pack_slug)
+    endpoints = pack.resolved_endpoints()
+    if not endpoints:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "This pack has no default URL. Set upstream_url.",
+        )
+    credentials = normalize_pack_credentials(pack, request.credentials)
+    created: list[tuple[MCPServer, MCPCatalogEntry, str | None]] = []
+    for endpoint in endpoints:
+        created.append(
+            _upsert_endpoint_server(
+                db_session,
+                user,
+                pack,
+                endpoint,
+                request,
+                apply_access,
+                credentials,
+                discover_tools=discover_tools,
+            )
+        )
+    db_session.commit()
+    return created

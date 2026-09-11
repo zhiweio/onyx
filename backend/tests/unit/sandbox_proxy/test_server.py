@@ -32,3 +32,13 @@ def test_mitm_options_keep_default_trust_store_without_custom_ca(
 
     assert options.ssl_verify_upstream_trusted_ca is None
     assert options.ssl_insecure is False
+
+
+def test_build_resolvers_includes_vendor_cli() -> None:
+    names = [type(resolver).__name__ for resolver in server.build_resolvers()]
+    assert names == [
+        "OnyxPatResolver",
+        "MCPServerResolver",
+        "ExternalAppResolver",
+        "BuiltinVendorCliResolver",
+    ]
