@@ -71,7 +71,10 @@ import {
   useChatSessionStore,
 } from "@/app/app/stores/useChatSessionStore";
 import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
+import InterruptHint from "@/sections/input/InterruptHint";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
+import { resolveComposerPrimaryAction } from "@/sections/input/composerPrimaryAction";
+import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -469,6 +472,29 @@ const AppInputBar = React.memo(
       sourcesLoading || !activeAgent || llmManager.isLoadingProviders;
     const [showPrompts, setShowPrompts] = useState(false);
 
+    const hasComposerText = message.trim().length > 0;
+    const isGenerating = chatState !== "input";
+    const canStopGeneration = isGenerating || isVoicePlaybackControllable;
+    const primaryAction = resolveComposerPrimaryAction({
+      isRunning: canStopGeneration,
+      hasText: hasComposerText,
+      canQueue: queuedMessages.length < MAX_QUEUED_MESSAGES,
+      isBusy: isClassifying,
+      canStop: canStopGeneration,
+    });
+
+    const handleStopGeneration = useCallback(() => {
+      stopTTS({ manual: true });
+      if (chatState !== "input") {
+        stopGenerating();
+      }
+    }, [chatState, stopGenerating, stopTTS]);
+
+    useEscapeInterrupt({
+      enabled: canStopGeneration && !showPrompts && !disabled,
+      onInterrupt: handleStopGeneration,
+    });
+
     const [tabbingIconIndex, setTabbingIconIndex] = useState(0);
 
     const hidePrompts = useCallback(() => {
@@ -732,6 +758,7 @@ const AppInputBar = React.memo(
               );
             })()}
           </div>
+          {canStopGeneration && <InterruptHint interrupting={false} />}
         </div>
 
         {/* Bottom right controls */}
@@ -768,44 +795,49 @@ const AppInputBar = React.memo(
 
           <Button
             disabled={
-              (chatState === "input" &&
-                !isVoicePlaybackControllable &&
-                !message) ||
+              primaryAction === "busy" ||
               hasUploadingFiles ||
               hasIndexingFiles ||
-              isClassifying
+              (primaryAction === "send" && (!hasComposerText || isGenerating))
             }
             tooltip={
               hasUploadingFiles || hasIndexingFiles
                 ? t("appInputBar.sendButton.processingFilesTooltip")
-                : undefined
+                : primaryAction === "stop"
+                  ? t("baseInputBar.stopButton.tooltip")
+                  : primaryAction === "queue"
+                    ? t("baseInputBar.sendButton.queueLabel")
+                    : t("baseInputBar.sendButton.sendLabel")
             }
             id="onyx-chat-input-send-button"
             icon={
-              isClassifying
+              primaryAction === "busy"
                 ? SvgSimpleLoader
-                : chatState !== "input" && message.trim()
-                  ? SvgArrowUp
-                  : chatState === "streaming" || isVoicePlaybackControllable
-                    ? SvgStop
-                    : SvgArrowUp
+                : primaryAction === "stop"
+                  ? SvgStop
+                  : SvgArrowUp
+            }
+            aria-label={
+              primaryAction === "stop"
+                ? t("baseInputBar.stopButton.ariaLabel")
+                : primaryAction === "queue"
+                  ? t("baseInputBar.sendButton.queueLabel")
+                  : t("baseInputBar.sendButton.sendLabel")
             }
             onClick={() => {
-              const canSubmitNormally = chatState === "input";
-              if (!canSubmitNormally && message.trim()) {
-                if (queuedMessages.length < MAX_QUEUED_MESSAGES) {
-                  enqueueCurrentMessage(message.trim());
-                  clearMessage();
-                  // Drop the draft now; a reload could outrace the debounced
-                  // empty-save.
-                  clearChatDraft();
-                }
-              } else if (chatState == "streaming") {
-                stopTTS({ manual: true });
-                stopGenerating();
-              } else if (isVoicePlaybackControllable) {
-                stopTTS({ manual: true });
-              } else if (message) {
+              if (primaryAction === "queue") {
+                enqueueCurrentMessage(message.trim());
+                clearMessage();
+                // Drop the draft now; a reload could outrace the debounced
+                // empty-save.
+                clearChatDraft();
+                return;
+              }
+              if (primaryAction === "stop") {
+                handleStopGeneration();
+                return;
+              }
+              if (primaryAction === "send" && hasComposerText) {
                 submitMessage(message);
               }
             }}

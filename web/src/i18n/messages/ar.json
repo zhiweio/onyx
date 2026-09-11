@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "جارٍ الإيقاف…"
+        },
+        "toInterrupt": {
+          "label": "للمقاطعة"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "إرفاق ملفات"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "إضافة ملفات أو مهارات"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "جارٍ الإيقاف…"
-      },
-      "toInterrupt": {
-        "label": "للمقاطعة"
       }
     },
     "intro": {

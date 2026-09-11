@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "Arrêt en cours…"
+        },
+        "toInterrupt": {
+          "label": "pour interrompre"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "Joindre des fichiers"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "Ajouter des fichiers ou des compétences"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "Arrêt en cours…"
-      },
-      "toInterrupt": {
-        "label": "pour interrompre"
       }
     },
     "intro": {

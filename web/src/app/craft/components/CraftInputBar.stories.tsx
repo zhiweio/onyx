@@ -113,7 +113,7 @@ type Story = StoryObj<typeof CraftInputBar>;
 /** Idle input: + button replaces old paperclip; typing /skill opens the picker. */
 export const Default: Story = {};
 
-/** While a response streams: Stop button appears, InterruptHint shows. */
+/** While a response streams: the send control becomes Stop; Esc still interrupts. */
 export const Running: Story = {
   args: {
     isRunning: true,
@@ -124,7 +124,7 @@ export const Running: Story = {
   },
 };
 
-/** Interrupt requested: Stop spinner, send disabled. */
+/** Interrupt requested: the single control shows a spinner. */
 export const Interrupting: Story = {
   args: {
     isRunning: true,

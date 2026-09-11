@@ -18,13 +18,14 @@ import PasteTilePopover from "@/sections/input/PasteTilePopover";
 import { cn } from "@opal/utils";
 import { firstStrongTextDir } from "@/lib/rehypeDirection";
 import { Disabled } from "@opal/core";
-import IconButton from "@/refresh-components/buttons/IconButton";
 import { Button, Text } from "@opal/components";
 import { SvgArrowUp, SvgLoader, SvgStop } from "@opal/icons";
 import Keycap from "@/refresh-components/Keycap";
 import { useContentEditable } from "@/hooks/useContentEditable";
 import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
+import InterruptHint from "@/sections/input/InterruptHint";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
+import { resolveComposerPrimaryAction } from "@/sections/input/composerPrimaryAction";
 import { useQueuedMessageNavigation } from "@/hooks/useQueuedMessageNavigation";
 import {
   EMPTY_QUEUED_MESSAGES,
@@ -260,18 +261,34 @@ const BaseInputBar = memo(
         onSelectionChange?.();
       }, [onSelectionChange]);
 
-      const canSubmit =
-        message.trim().length > 0 &&
-        !disabled &&
-        !submitBlocked &&
-        !sandboxInitializing &&
-        !isInterrupting &&
-        (!isRunning || (queueEnabled && queue.length < MAX_QUEUED_MESSAGES));
-
+      const hasText = message.trim().length > 0;
+      const canQueue = queueEnabled && queue.length < MAX_QUEUED_MESSAGES;
       const interruptible = !!onInterrupt && isRunning;
+      const primaryAction = resolveComposerPrimaryAction({
+        isRunning,
+        hasText,
+        canQueue,
+        isBusy: sandboxInitializing || isInterrupting,
+        canStop: interruptible,
+      });
+      const actionDisabled =
+        disabled ||
+        submitBlocked ||
+        primaryAction === "busy" ||
+        (primaryAction === "send" && (!hasText || isRunning)) ||
+        (primaryAction === "queue" && (!hasText || !canQueue));
+
       const handleInterrupt = useCallback(() => {
         if (interruptible && !isInterrupting) onInterrupt?.();
       }, [interruptible, isInterrupting, onInterrupt]);
+
+      const handlePrimaryAction = useCallback(() => {
+        if (primaryAction === "stop") {
+          handleInterrupt();
+          return;
+        }
+        handleSubmit();
+      }, [primaryAction, handleInterrupt, handleSubmit]);
 
       return (
         <Disabled disabled={disabled}>
@@ -341,6 +358,9 @@ const BaseInputBar = memo(
             <div className="flex justify-between items-center w-full p-1 min-h-[40px]">
               <div className="flex flex-row items-center gap-2">
                 {bottomLeftSlot}
+                {interruptible && (
+                  <InterruptHint interrupting={isInterrupting} />
+                )}
                 {pasteExpandHintVisible ? (
                   <div className="flex items-center gap-1 select-none">
                     <Text font="secondary-body" color="text-02">
@@ -362,50 +382,37 @@ const BaseInputBar = memo(
               </div>
               <div className="flex flex-row items-center gap-1">
                 {bottomRightSlot}
-                <div
-                  className={cn(
-                    "overflow-hidden transition-[width,opacity] duration-150 ease-out motion-reduce:transition-none",
-                    interruptible
-                      ? "w-9 opacity-100"
-                      : "w-0 opacity-0 pointer-events-none"
-                  )}
-                >
-                  <IconButton
-                    main
-                    tertiary
-                    icon={isInterrupting ? SvgLoader : SvgStop}
-                    iconClassName={isInterrupting ? "animate-spin" : undefined}
-                    className="border-[1.5px] border-border-02"
-                    disabled={!interruptible || isInterrupting}
-                    onClick={handleInterrupt}
-                    tooltip={t("baseInputBar.stopButton.tooltip")}
-                    aria-label={t("baseInputBar.stopButton.ariaLabel")}
-                  />
-                </div>
                 <Button
+                  data-testid="composer-primary-action"
                   icon={
-                    sandboxInitializing
+                    primaryAction === "busy"
                       ? ({ className, style }) => (
                           <SvgLoader
                             className={cn(className, "animate-spin")}
                             style={style}
                           />
                         )
-                      : SvgArrowUp
+                      : primaryAction === "stop"
+                        ? SvgStop
+                        : SvgArrowUp
                   }
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
+                  onClick={handlePrimaryAction}
+                  disabled={actionDisabled}
                   tooltip={
                     sandboxInitializing
                       ? t("baseInputBar.sendButton.initializingTooltip")
-                      : isRunning
-                        ? t("baseInputBar.sendButton.queueLabel")
-                        : t("baseInputBar.sendButton.sendLabel")
+                      : primaryAction === "stop"
+                        ? t("baseInputBar.stopButton.tooltip")
+                        : primaryAction === "queue"
+                          ? t("baseInputBar.sendButton.queueLabel")
+                          : t("baseInputBar.sendButton.sendLabel")
                   }
                   aria-label={
-                    isRunning
-                      ? t("baseInputBar.sendButton.queueLabel")
-                      : t("baseInputBar.sendButton.sendLabel")
+                    primaryAction === "stop"
+                      ? t("baseInputBar.stopButton.ariaLabel")
+                      : primaryAction === "queue"
+                        ? t("baseInputBar.sendButton.queueLabel")
+                        : t("baseInputBar.sendButton.sendLabel")
                   }
                 />
               </div>

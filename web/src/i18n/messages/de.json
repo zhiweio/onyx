@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "Wird gestoppt…"
+        },
+        "toInterrupt": {
+          "label": "zum Unterbrechen"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "Dateien anhängen"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "Dateien oder Skills hinzufügen"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "Wird gestoppt…"
-      },
-      "toInterrupt": {
-        "label": "zum Unterbrechen"
       }
     },
     "intro": {

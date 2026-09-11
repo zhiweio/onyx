@@ -82,7 +82,6 @@ jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({
 
 jest.mock("@/sections/input/EntryInfoPopover", () => () => null);
 jest.mock("@/sections/input/EntryPickerPopover", () => () => null);
-jest.mock("@/app/craft/components/InterruptHint", () => () => null);
 jest.mock("@/app/craft/components/ContextRing", () => () => null);
 jest.mock("@/sections/input/InputChipStrip", () => ({
   InputChipStrip: () => null,

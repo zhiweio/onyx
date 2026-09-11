@@ -17,7 +17,6 @@ import BaseInputBar, {
 } from "@/sections/input/BaseInputBar";
 import EntryInfoPopover from "@/sections/input/EntryInfoPopover";
 import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
-import InterruptHint from "@/app/craft/components/InterruptHint";
 import ContextRing from "@/app/craft/components/ContextRing";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
@@ -324,7 +323,6 @@ const CraftInputBar = memo(
               </SelectButton>
             </span>
           )}
-          {interruptible && <InterruptHint interrupting={isInterrupting} />}
         </>
       );
 

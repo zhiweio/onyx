@@ -54,6 +54,7 @@ export const Running: Story = {
   args: {
     isRunning: true,
     onInterrupt: () => console.log("interrupt"),
+    onQueueMessage: (text: string) => console.log("queue", text),
   },
 };
 

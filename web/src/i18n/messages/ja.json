@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "停止しています…"
+        },
+        "toInterrupt": {
+          "label": "で中断"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "ファイルを添付"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "ファイルやスキルを追加"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "停止しています…"
-      },
-      "toInterrupt": {
-        "label": "で中断"
       }
     },
     "intro": {

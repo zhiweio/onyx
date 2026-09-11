@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import InterruptHint from "@/app/craft/components/InterruptHint";
+import InterruptHint from "@/sections/input/InterruptHint";
 
 const meta: Meta<typeof InterruptHint> = {
-  title: "Apps/Craft/Input Bar/Interrupt Hint",
+  title: "Apps/Input Bar/Interrupt Hint",
   component: InterruptHint,
   tags: ["autodocs"],
   args: {

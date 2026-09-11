@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "正在停止…"
+        },
+        "toInterrupt": {
+          "label": "以中断"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "附加文件"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "添加文件或技能"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "正在停止…"
-      },
-      "toInterrupt": {
-        "label": "以中断"
       }
     },
     "intro": {

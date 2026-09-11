@@ -12,7 +12,7 @@ interface InterruptHintProps {
  * requested it becomes `Stopping…`.
  */
 export default function InterruptHint({ interrupting }: InterruptHintProps) {
-  const t = useTranslations("craft.interruptHint");
+  const t = useTranslations("chat.input.interruptHint");
   if (interrupting) {
     return (
       <Text font="secondary-body" color="text-02">

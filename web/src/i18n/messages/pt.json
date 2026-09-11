@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "Parando…"
+        },
+        "toInterrupt": {
+          "label": "para interromper"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "Anexar arquivos"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "Adicionar arquivos ou habilidades"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "Parando…"
-      },
-      "toInterrupt": {
-        "label": "para interromper"
       }
     },
     "intro": {

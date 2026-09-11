@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "중지 중…"
+        },
+        "toInterrupt": {
+          "label": "키로 중단"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "파일 첨부"
@@ -12013,14 +12021,6 @@
       },
       "plusMenu": {
         "tooltip": "파일 또는 스킬 추가"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "중지 중…"
-      },
-      "toInterrupt": {
-        "label": "키로 중단"
       }
     },
     "intro": {

@@ -9571,6 +9571,14 @@
       }
     },
     "input": {
+      "interruptHint": {
+        "stopping": {
+          "label": "Stopping…"
+        },
+        "toInterrupt": {
+          "label": "to interrupt"
+        }
+      },
       "appInputBar": {
         "attachFilesButton": {
           "tooltip": "Attach Files"
@@ -12019,14 +12027,6 @@
       },
       "plusMenu": {
         "tooltip": "Add files or skills"
-      }
-    },
-    "interruptHint": {
-      "stopping": {
-        "label": "Stopping…"
-      },
-      "toInterrupt": {
-        "label": "to interrupt"
       }
     },
     "intro": {
