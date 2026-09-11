@@ -503,7 +503,8 @@
         "label": "إضافة خادم MCP"
       },
       "empty": {
-        "description": "اربط خادم MCP لإضافة إجراءات مخصصة."
+        "description": "اربط خادم MCP لإضافة إجراءات مخصصة.",
+        "gallery": "لا تتوفر لك خوادم MCP خاصة بالمؤسسة."
       },
       "errors": {
         "unknown": "خطأ غير معروف"
@@ -13531,12 +13532,23 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
+      "pagination": {
+        "units": "عناصر"
       }
     },
     "mcpActions": {
       "header": {
         "title": "MCP Actions",
-        "description": "Add MCP servers that only you can use in Chat and Craft."
+        "description": "أضف خوادم MCP شخصية، أو تصفح خوادم المؤسسة المتاحة لك."
       }
     }
   },

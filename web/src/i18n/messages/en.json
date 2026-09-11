@@ -507,7 +507,8 @@
         "label": "Add MCP Server"
       },
       "empty": {
-        "description": "Connect MCP server to add custom actions."
+        "description": "Connect MCP server to add custom actions.",
+        "gallery": "No organization MCP servers are available to you."
       },
       "errors": {
         "unknown": "Unknown error"
@@ -11570,7 +11571,7 @@
     "mcpActions": {
       "header": {
         "title": "MCP Actions",
-        "description": "Add MCP servers that only you can use in Chat and Craft."
+        "description": "Add personal MCP servers, or browse organization servers you can use."
       }
     },
     "apps": {
@@ -13537,6 +13538,17 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
+      "pagination": {
+        "units": "items"
       }
     }
   },

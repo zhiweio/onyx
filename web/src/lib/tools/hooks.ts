@@ -93,6 +93,28 @@ export function usePersonalMcpServers() {
 }
 
 /**
+ * Organization MCP servers this user can use. Personal servers stay on Mine.
+ */
+export function useGalleryMcpServers() {
+  const {
+    data: mcpData,
+    error,
+    isLoading,
+    mutate: mutateMcpServers,
+  } = useSWR<MCPServersResponse>(
+    SWR_KEYS.mcpServersGallery,
+    errorHandlingFetcher
+  );
+
+  return {
+    mcpData: mcpData ?? null,
+    isLoading,
+    error,
+    mutateMcpServers,
+  };
+}
+
+/**
  * The MCP servers relevant to one agent: those the user can reach, plus any
  * already attached to the agent that they cannot. `can_attach` distinguishes
  * them, so the editor can show an attached server without offering it as a

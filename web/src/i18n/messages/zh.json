@@ -503,7 +503,8 @@
         "label": "添加 MCP 服务器"
       },
       "empty": {
-        "description": "连接 MCP 服务器以添加自定义操作。"
+        "description": "连接 MCP 服务器以添加自定义操作。",
+        "gallery": "没有可供你使用的组织 MCP 服务器。"
       },
       "errors": {
         "unknown": "未知错误"
@@ -13531,12 +13532,23 @@
         "forkFailed": {
           "message": "复制失败"
         }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "卡片"
+        },
+        "list": {
+          "tooltip": "列表"
+        }
+      },
+      "pagination": {
+        "units": "项"
       }
     },
     "mcpActions": {
       "header": {
         "title": "MCP 操作",
-        "description": "添加仅供你在对话和 Craft 中使用的 MCP 服务器。"
+        "description": "添加仅供你使用的 MCP 服务器，或浏览你可用的组织 MCP。"
       }
     }
   },

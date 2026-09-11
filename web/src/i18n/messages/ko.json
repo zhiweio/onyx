@@ -503,7 +503,8 @@
         "label": "MCP 서버 추가"
       },
       "empty": {
-        "description": "MCP 서버를 연결하여 사용자 지정 액션을 추가하세요."
+        "description": "MCP 서버를 연결하여 사용자 지정 액션을 추가하세요.",
+        "gallery": "사용할 수 있는 조직 MCP 서버가 없습니다."
       },
       "errors": {
         "unknown": "알 수 없는 오류"
@@ -13531,12 +13532,23 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
+      "pagination": {
+        "units": "개"
       }
     },
     "mcpActions": {
       "header": {
         "title": "MCP Actions",
-        "description": "Add MCP servers that only you can use in Chat and Craft."
+        "description": "개인 MCP 서버를 추가하거나, 사용할 수 있는 조직 MCP를 살펴보세요."
       }
     }
   },

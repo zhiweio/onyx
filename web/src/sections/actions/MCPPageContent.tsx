@@ -27,10 +27,18 @@ import {
   updateMCPServer,
   updateToolsStatus,
 } from "@/lib/tools/svc";
+import { clampPage, slicePage } from "@/lib/browse/page";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
+import { CatalogViewToggle } from "@/sections/gallery/CatalogBrowseControls";
+import type { CatalogViewMode } from "@/lib/system-catalog/types";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { useAdminMcpServers, usePersonalMcpServers } from "@/lib/tools/hooks";
+import {
+  useAdminMcpServers,
+  useGalleryMcpServers,
+  usePersonalMcpServers,
+} from "@/lib/tools/hooks";
 
 export default function MCPPageContent({
   variant = "admin",
@@ -38,16 +46,24 @@ export default function MCPPageContent({
   variant?: McpSurface;
 }) {
   const t = useTranslations("actions");
+  const tGallery = useTranslations("craft.gallery");
   const listPath = mcpActionsPath(variant);
 
   // Data fetching
   const adminListing = useAdminMcpServers();
   const personalListing = usePersonalMcpServers();
+  const galleryListing = useGalleryMcpServers();
   const {
     mcpData,
     isLoading: isMcpLoading,
     mutateMcpServers,
-  } = variant === "personal" ? personalListing : adminListing;
+  } =
+    variant === "personal"
+      ? personalListing
+      : variant === "gallery"
+        ? galleryListing
+        : adminListing;
+  const readOnly = variant === "gallery";
 
   // Modal management
   const authModal = useCreateModal();
@@ -63,7 +79,8 @@ export default function MCPPageContent({
     number[]
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [view, setView] = useState<CatalogViewMode>("cards");
+  const [page, setPage] = useState(1);
   const mcpServers = useMemo(
     () => mcpData?.mcp_servers ?? [],
     [mcpData?.mcp_servers]
@@ -84,6 +101,7 @@ export default function MCPPageContent({
 
     // Only process if we have a server_id and trigger_fetch flag
     if (
+      !readOnly &&
       serverId &&
       triggerFetch === "true" &&
       handledTriggerFetchServerIdRef.current !== parseInt(serverId) &&
@@ -136,6 +154,7 @@ export default function MCPPageContent({
     mutateMcpServers,
     setServerToExpand,
     t,
+    readOnly,
   ]);
 
   // Track fetching tools server IDs
@@ -533,6 +552,13 @@ export default function MCPPageContent({
     );
   }, [mcpServers, searchQuery]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, view]);
+
+  const safePage = clampPage(page, filteredServers.length);
+  const pageServers = slicePage(filteredServers, safePage);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Shared overlay that persists across modal transitions */}
@@ -549,90 +575,139 @@ export default function MCPPageContent({
           hasItems={isLoading || mcpServers.length > 0}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
-          onAction={handleAddServer}
-          actionLabel={t("mcpPage.addButton.label")}
-          emptyStateText={t("mcpPage.empty.description")}
+          onAction={readOnly ? undefined : handleAddServer}
+          actionLabel={readOnly ? undefined : t("mcpPage.addButton.label")}
+          emptyStateText={
+            readOnly
+              ? t("mcpPage.empty.gallery")
+              : t("mcpPage.empty.description")
+          }
         />
+        {!isLoading && filteredServers.length > 0 && (
+          <div className="flex justify-end pt-2">
+            <CatalogViewToggle
+              view={view}
+              onViewChange={setView}
+              cardsTooltip={tGallery("view.cards.tooltip")}
+              listTooltip={tGallery("view.list.tooltip")}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="flex flex-col gap-4 w-full pb-4">
+        <div className="flex flex-col gap-2 w-full pb-4">
           {isLoading ? (
             <>
               <ActionCardSkeleton />
               <ActionCardSkeleton />
             </>
           ) : (
-            filteredServers.map((server) => {
-              const status = getActionStatusForServer(server);
+            <div
+              className={
+                view === "cards"
+                  ? "grid grid-cols-1 md:grid-cols-2 gap-2"
+                  : "flex flex-col gap-1"
+              }
+            >
+              {pageServers.map((server) => {
+                const status = getActionStatusForServer(server);
 
-              return (
-                <MCPActionCard
-                  key={server.id}
-                  surface={variant}
-                  serverId={server.id}
-                  server={server}
-                  title={server.name}
-                  description={server.description || server.server_url}
-                  logo={getActionIcon(server.server_url, server.name)}
-                  status={status}
-                  toolCount={server.tool_count}
-                  initialExpanded={server.id === serverToExpand}
-                  onDisconnect={() => handleDisconnect(server.id)}
-                  onManage={() => handleManage(server.id)}
-                  onEdit={() => handleEdit(server.id)}
-                  onDelete={() => handleDelete(server.id)}
-                  onAuthenticate={() => handleAuthenticate(server.id)}
-                  onReconnect={() => handleReconnect(server.id)}
-                  onRename={handleRenameServer}
-                  onToolToggle={handleToolToggle}
-                  onRefreshTools={handleRefreshTools}
-                  onUpdateToolsStatus={handleUpdateToolsStatus}
-                />
-              );
-            })
+                return (
+                  <MCPActionCard
+                    key={server.id}
+                    surface={variant}
+                    layout={view}
+                    serverId={server.id}
+                    server={server}
+                    title={server.name}
+                    description={server.description || server.server_url}
+                    logo={getActionIcon(server.server_url, server.name)}
+                    status={status}
+                    toolCount={server.tool_count}
+                    initialExpanded={server.id === serverToExpand}
+                    onDisconnect={
+                      readOnly ? undefined : () => handleDisconnect(server.id)
+                    }
+                    onManage={
+                      readOnly ? undefined : () => handleManage(server.id)
+                    }
+                    onEdit={readOnly ? undefined : () => handleEdit(server.id)}
+                    onDelete={
+                      readOnly ? undefined : () => handleDelete(server.id)
+                    }
+                    onAuthenticate={
+                      readOnly
+                        ? undefined
+                        : () => handleAuthenticate(server.id)
+                    }
+                    onReconnect={
+                      readOnly ? undefined : () => handleReconnect(server.id)
+                    }
+                    onRename={readOnly ? undefined : handleRenameServer}
+                    onToolToggle={readOnly ? undefined : handleToolToggle}
+                    onRefreshTools={readOnly ? undefined : handleRefreshTools}
+                    onUpdateToolsStatus={
+                      readOnly ? undefined : handleUpdateToolsStatus
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+          {!isLoading && (
+            <BrowsePagination
+              page={safePage}
+              totalItems={filteredServers.length}
+              onPageChange={setPage}
+              units={tGallery("pagination.units")}
+            />
           )}
         </div>
       </div>
 
-      <authModal.Provider>
-        <MCPAuthenticationModal
-          mcpServer={activeServer}
-          surface={variant}
-          skipOverlay
-          onTriggerFetchTools={triggerFetchToolsInPlace}
-          mutateMcpServers={mutateMcpServers}
-        />
-      </authModal.Provider>
+      {!readOnly && (
+        <>
+          <authModal.Provider>
+            <MCPAuthenticationModal
+              mcpServer={activeServer}
+              surface={variant === "personal" ? "personal" : "admin"}
+              skipOverlay
+              onTriggerFetchTools={triggerFetchToolsInPlace}
+              mutateMcpServers={mutateMcpServers}
+            />
+          </authModal.Provider>
 
-      <manageServerModal.Provider>
-        <AddMCPServerModal
-          skipOverlay
-          surface={variant}
-          activeServer={activeServer}
-          setActiveServer={setActiveServer}
-          disconnectModal={disconnectModal}
-          manageServerModal={manageServerModal}
-          onServerCreated={onServerCreated}
-          handleAuthenticate={handleAuthenticate}
-          mutateMcpServers={async () => {
-            await mutateMcpServers();
-          }}
-        />
-      </manageServerModal.Provider>
+          <manageServerModal.Provider>
+            <AddMCPServerModal
+              skipOverlay
+              surface={variant === "personal" ? "personal" : "admin"}
+              activeServer={activeServer}
+              setActiveServer={setActiveServer}
+              disconnectModal={disconnectModal}
+              manageServerModal={manageServerModal}
+              onServerCreated={onServerCreated}
+              handleAuthenticate={handleAuthenticate}
+              mutateMcpServers={async () => {
+                await mutateMcpServers();
+              }}
+            />
+          </manageServerModal.Provider>
 
-      <DisconnectEntityModal
-        isOpen={disconnectModal.isOpen}
-        onClose={() => {
-          disconnectModal.toggle(false);
-          setActiveServer(null);
-        }}
-        name={activeServer?.name ?? null}
-        onConfirmDisconnect={handleConfirmDisconnect}
-        onConfirmDisconnectAndDelete={handleConfirmDisconnectAndDelete}
-        isDisconnecting={isDisconnecting}
-        skipOverlay
-      />
+          <DisconnectEntityModal
+            isOpen={disconnectModal.isOpen}
+            onClose={() => {
+              disconnectModal.toggle(false);
+              setActiveServer(null);
+            }}
+            name={activeServer?.name ?? null}
+            onConfirmDisconnect={handleConfirmDisconnect}
+            onConfirmDisconnectAndDelete={handleConfirmDisconnectAndDelete}
+            isDisconnecting={isDisconnecting}
+            skipOverlay
+          />
+        </>
+      )}
     </div>
   );
 }

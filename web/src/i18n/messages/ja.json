@@ -503,7 +503,8 @@
         "label": "MCP サーバーを追加"
       },
       "empty": {
-        "description": "MCP サーバーに接続して、カスタムアクションを追加します。"
+        "description": "MCP サーバーに接続して、カスタムアクションを追加します。",
+        "gallery": "利用できる組織の MCP サーバーはありません。"
       },
       "errors": {
         "unknown": "不明なエラー"
@@ -13531,12 +13532,23 @@
         "forkFailed": {
           "message": "Could not copy this item"
         }
+      },
+      "view": {
+        "cards": {
+          "tooltip": "Cards"
+        },
+        "list": {
+          "tooltip": "List"
+        }
+      },
+      "pagination": {
+        "units": "件"
       }
     },
     "mcpActions": {
       "header": {
         "title": "MCP Actions",
-        "description": "Add MCP servers that only you can use in Chat and Craft."
+        "description": "個人用 MCP サーバーを追加するか、利用できる組織の MCP を閲覧します。"
       }
     }
   },

@@ -88,7 +88,8 @@ export interface MCPActionCardProps {
 
   // Optional styling
   className?: string;
-  surface?: "admin" | "personal";
+  surface?: "admin" | "personal" | "gallery";
+  layout?: "cards" | "list";
 }
 
 // Main Component
@@ -113,6 +114,7 @@ export default function MCPActionCard({
   onUpdateToolsStatus,
   className,
   surface = "admin",
+  layout = "cards",
 }: MCPActionCardProps) {
   const t = useTranslations("actions");
   const tGateway = useTranslations("admin.mcpActions");
@@ -163,10 +165,11 @@ export default function MCPActionCard({
   const [isToolsRefreshing, setIsToolsRefreshing] = useState(false);
   const deleteModal = useCreateModal();
 
-  const canEdit = can(server, "edit");
-  const canDelete = can(server, "delete");
-  const canAuthenticate = can(server, "authenticate");
-  const canManageStatus = can(server, "manage_status");
+  const readOnly = surface === "gallery";
+  const canEdit = !readOnly && can(server, "edit");
+  const canDelete = !readOnly && can(server, "delete");
+  const canAuthenticate = !readOnly && can(server, "authenticate");
+  const canManageStatus = !readOnly && can(server, "manage_status");
 
   // Update expanded state when initialExpanded changes
   const hasInitializedExpansion = useRef(false);
@@ -373,7 +376,7 @@ export default function MCPActionCard({
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         onFold={handleFold}
-        className={className}
+        className={cn(className, layout === "list" && "w-full")}
         ariaLabel={t("mcpCard.card.ariaLabel", { title: cardTitle })}
       >
         <ToolsList
@@ -387,6 +390,7 @@ export default function MCPActionCard({
           onUpdateToolsStatus={
             // Bulk toggles all tools; the status route 403s the whole batch unless every
             // tool is manageable, so only offer it when the user can toggle each one.
+            !readOnly &&
             !gatewayUnavailable &&
             tools.length > 0 &&
             tools.every((tool) => can(tool, "toggle"))
@@ -410,7 +414,7 @@ export default function MCPActionCard({
               icon={tool.icon}
               isAvailable={tool.isAvailable}
               isEnabled={tool.isEnabled}
-              canToggle={can(tool, "toggle") && !gatewayUnavailable}
+              canToggle={!readOnly && can(tool, "toggle") && !gatewayUnavailable}
               onToggle={(enabled) =>
                 onToolToggle?.(serverId, tool.id, enabled, mutate)
               }

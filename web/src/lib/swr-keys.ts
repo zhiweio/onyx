@@ -145,6 +145,7 @@ export const SWR_KEYS = {
   personalMcpServerToolSnapshots: (serverId: number) =>
     `/api/mcp/personal/server/${serverId}/tools/snapshots?source=db`,
   mcpServers: "/api/mcp/servers",
+  mcpServersGallery: "/api/mcp/servers/gallery",
   mcpServersCraft: "/api/mcp/servers/craft",
   agentMcpServers: (agentId: number) => `/api/mcp/servers/persona/${agentId}`,
 

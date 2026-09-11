@@ -22,6 +22,8 @@ export type SystemCatalogOrigin = "BUILTIN" | "ADMIN";
 
 export type GalleryKind = "skills" | "scenarios" | "report-templates";
 
+export type CatalogViewMode = "cards" | "list";
+
 export const SYSTEM_CATALOG_CATEGORIES: readonly SystemCatalogCategory[] = [
   "DOCUMENT",
   "OFFICE",

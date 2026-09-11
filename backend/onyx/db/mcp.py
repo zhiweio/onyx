@@ -241,6 +241,19 @@ def get_mcp_servers_accessible_to_user(
     return list(db_session.scalars(stmt).all())
 
 
+def get_org_mcp_servers_accessible_to_user(
+    user: User, db_session: Session, include_system: bool | None = None
+) -> list[MCPServer]:
+    """Organization MCP servers this user may use. Personal servers stay off this list."""
+    return [
+        server
+        for server in get_mcp_servers_accessible_to_user(
+            user, db_session, include_system=include_system
+        )
+        if server.scope != MCPServerScope.PERSONAL
+    ]
+
+
 def user_can_invoke_mcp_server(user: User, server: MCPServer) -> bool:
     """Runtime gate: a personal server is only callable by its owner."""
     if server.scope == MCPServerScope.PERSONAL:

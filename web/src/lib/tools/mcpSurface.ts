@@ -1,9 +1,19 @@
-export type McpSurface = "admin" | "personal";
+export type McpSurface = "admin" | "personal" | "gallery";
 
 export function mcpApiRoot(surface: McpSurface): string {
-  return surface === "personal" ? "/api/mcp/personal" : "/api/admin/mcp";
+  if (surface === "personal") {
+    return "/api/mcp/personal";
+  }
+  if (surface === "gallery") {
+    return "/api/mcp";
+  }
+  return "/api/admin/mcp";
 }
 
 export function mcpActionsPath(surface: McpSurface): string {
-  return surface === "personal" ? "/craft/v1/mcp-actions" : "/admin/mcp-actions";
+  return surface === "admin" ? "/admin/mcp-actions" : "/craft/v1/mcp-actions";
+}
+
+export function isGalleryMcpSurface(surface: McpSurface): boolean {
+  return surface === "gallery";
 }

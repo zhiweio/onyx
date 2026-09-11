@@ -70,13 +70,15 @@ interface UseServerToolsReturn {
 export default function useServerTools(
   server: MCPServer,
   isExpanded: boolean,
-  surface: "admin" | "personal" = "admin"
+  surface: "admin" | "personal" | "gallery" = "admin"
 ): UseServerToolsReturn {
   const shouldFetch = isExpanded;
   const snapshotsKey =
     surface === "personal"
       ? `/api/mcp/personal/server/${server.id}/tools/snapshots?source=db`
-      : `/api/admin/mcp/server/${server.id}/tools/snapshots?source=db`;
+      : surface === "gallery"
+        ? `/api/mcp/server/${server.id}/tools/snapshots`
+        : `/api/admin/mcp/server/${server.id}/tools/snapshots?source=db`;
 
   const {
     data: toolsData,

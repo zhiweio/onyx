@@ -32,6 +32,16 @@ jest.mock("@/lib/tools/hooks", () => ({
     isLoading: false,
     mutateMcpServers: mockMutateMcpServers,
   }),
+  usePersonalMcpServers: () => ({
+    mcpData: { mcp_servers: [] },
+    isLoading: false,
+    mutateMcpServers: mockMutateMcpServers,
+  }),
+  useGalleryMcpServers: () => ({
+    mcpData: { mcp_servers: [] },
+    isLoading: false,
+    mutateMcpServers: mockMutateMcpServers,
+  }),
 }));
 
 jest.mock("@/lib/tools/svc", () => ({
@@ -40,6 +50,8 @@ jest.mock("@/lib/tools/svc", () => ({
     mockUpdateMCPServerStatus(...args),
   refreshMCPServerTools: (...args: unknown[]) =>
     mockRefreshMCPServerTools(...args),
+  discoverEmptyMcpTools: () =>
+    Promise.resolve({ refreshed: 0, failed: 0, errors: [] }),
 }));
 
 jest.mock("@opal/layouts", () => ({
@@ -75,6 +87,15 @@ beforeEach(() => {
   mockMutateMcpServers.mockResolvedValue(undefined);
 });
 
+test("gallery listing does not start a trigger_fetch tool refresh", async () => {
+  render(<MCPPageContent variant="gallery" />);
+
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(mockUpdateMCPServerStatus).not.toHaveBeenCalled();
+  expect(mockRefreshMCPServerTools).not.toHaveBeenCalled();
+});
+
 test("trigger_fetch query param fetches tools exactly once", async () => {
   render(<MCPPageContent />);
 
@@ -85,10 +106,11 @@ test("trigger_fetch query param fetches tools exactly once", async () => {
   expect(mockUpdateMCPServerStatus).toHaveBeenCalledTimes(1);
   expect(mockUpdateMCPServerStatus).toHaveBeenCalledWith(
     7,
-    MCPServerStatus.FETCHING_TOOLS
+    MCPServerStatus.FETCHING_TOOLS,
+    "admin"
   );
   expect(mockRefreshMCPServerTools).toHaveBeenCalledTimes(1);
-  expect(mockRefreshMCPServerTools).toHaveBeenCalledWith(7);
+  expect(mockRefreshMCPServerTools).toHaveBeenCalledWith(7, "admin");
   expect(mockToastSuccess).toHaveBeenCalledTimes(1);
   expect(mockToastError).not.toHaveBeenCalled();
   expect(mockRouterReplace).toHaveBeenCalledTimes(1);

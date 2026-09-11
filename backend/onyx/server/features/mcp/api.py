@@ -55,6 +55,7 @@ from onyx.db.mcp import (
     get_craft_enabled_mcp_servers,
     get_mcp_server_by_id,
     get_mcp_servers_accessible_to_user,
+    get_org_mcp_servers_accessible_to_user,
     get_mcp_servers_for_persona,
     get_org_mcp_servers,
     get_user_connection_config,
@@ -1395,6 +1396,21 @@ def get_mcp_servers_for_user(
     return MCPServersResponse(mcp_servers=mcp_servers)
 
 
+
+@router.get("/servers/gallery")
+def get_gallery_mcp_servers_for_user(
+    db: Session = Depends(get_session),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+) -> MCPServersResponse:
+    """Organization MCP servers this user can use. Personal servers stay on Mine."""
+    db_mcp_servers = get_org_mcp_servers_accessible_to_user(user, db)
+    mcp_servers = [
+        _db_mcp_server_to_api_mcp_server(db_server, db, request_user=user)
+        for db_server in db_mcp_servers
+    ]
+    return MCPServersResponse(mcp_servers=mcp_servers)
+
+
 @router.get("/servers/craft", response_model=MCPServersResponse)
 def get_craft_mcp_servers_for_user(
     db: Session = Depends(get_session),
@@ -1506,6 +1522,33 @@ def get_mcp_server_tools_snapshots(
         ToolSnapshot.from_model(
             tool,
             permissions=tool_permissions(can_manage=can_manage_tool(user, tool)),
+        )
+        for tool in mcp_tools
+    ]
+
+
+
+@router.get("/server/{server_id}/tools/snapshots")
+def user_mcp_server_tools_snapshots(
+    server_id: int,
+    db: Session = Depends(get_session),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+) -> list[ToolSnapshot]:
+    """Read stored tools for an organization MCP the user can access."""
+    try:
+        get_mcp_server_by_id(server_id, db)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+    if not user_can_access_mcp_server(user, server_id, db):
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+            "You can only view MCP servers available to you.",
+        )
+    mcp_tools = get_tools_by_mcp_server_id(server_id, db, order_by_id=True)
+    return [
+        ToolSnapshot.from_model(
+            tool,
+            permissions=tool_permissions(can_manage=False),
         )
         for tool in mcp_tools
     ]
