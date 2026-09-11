@@ -100,11 +100,21 @@ Create paths as you write (`outputs/markdown/…`, `outputs/research/…`,
 
 ## How to work
 
-1. Understand the user request. Do the research or build work first.
-2. Produce the deliverable. Ground facts in sources.
-3. Do not start planning files unless the host brief asks for a long job.
-   If you write PLAN.md, TODO.md, or MEMORY.md, write this job's real
-   plan, not a heading.
+The user message is a goal. Infer what “done” means. Ask once only if
+the goal is genuinely ambiguous.
+
+1. For a long goal, use TodoWrite and keep calling tools until those
+   steps are done or the turn budget says finish. Close a step when it
+   is done. Skip TodoWrite for a short question.
+2. Put reasoning on the thinking channel. Do not narrate each tool in
+   the user-visible reply.
+3. Gather sources before a large write. Prefer read, search, or an
+   explore subagent, then write under `outputs/`.
+4. When the goal is met, write one user-visible answer: digest, path,
+   and citations. Mid-turn text only for a question or a blocker.
+5. Do not start planning files unless the host brief asks for a long
+   job. If you write PLAN.md, TODO.md, or MEMORY.md, write this job's
+   real plan, not a heading.
 
 Each turn has a budget. `[Onyx turn budget]` notices on tool results are
 authoritative. Converge: stop opening work and finish from what you have.

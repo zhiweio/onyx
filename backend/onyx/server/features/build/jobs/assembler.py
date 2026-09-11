@@ -26,6 +26,14 @@ _VISIBLE_POLICY = (
     "Do not name PLAN.md, TODO.md, MEMORY.md, PLAN.json, DONE.json, "
     "gates, or ask_delivery."
 )
+_WORKER_CONTRACT = (
+    "This node's user text is a goal. Infer what done means. "
+    "For long work, use TodoWrite and keep calling tools until the steps "
+    "are done or the host budget says finish. "
+    "Put reasoning on the thinking channel. "
+    "Do not narrate each tool in the user-visible reply. "
+    "When the node is done, write one digest with paths and citations."
+)
 _STAY_IN_SESSION = (
     "Working directory is this session root. Use relative outputs/. "
     "Create a directory only when you write a file into it. "
@@ -89,6 +97,7 @@ def assemble_brief(
     lines.append("")
     lines.append("Constraints:")
     lines.append("The host owns the loop. Do not start the next node.")
+    lines.append(_WORKER_CONTRACT)
     lines.append(_VISIBLE_POLICY)
     lines.append(_STAY_IN_SESSION)
     lines.append(_PROJECT_HINT)

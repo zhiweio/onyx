@@ -124,6 +124,7 @@ class BuildStreamingState:
         # Track what type of chunk we were last receiving
         self._last_chunk_type: str | None = None
         self._last_chunk_routing_meta: dict[str, Any] | None = None
+        self._thought_started_monotonic: float | None = None
 
     def add_message_chunk(
         self, text: str, routing_meta: dict[str, Any] | None = None
@@ -137,6 +138,8 @@ class BuildStreamingState:
         self, text: str, routing_meta: dict[str, Any] | None = None
     ) -> None:
         """Accumulate thought text."""
+        if not self.thought_chunks:
+            self._thought_started_monotonic = time.monotonic()
         self.thought_chunks.append(text)
         self._last_chunk_type = "thought"
         self._last_chunk_routing_meta = dict(routing_meta) if routing_meta else None
@@ -187,10 +190,16 @@ class BuildStreamingState:
             "content": {"type": "text", "text": full_text},
             "sessionUpdate": "agent_thought",
         }
+        if self._thought_started_monotonic is not None:
+            elapsed_ms = int(
+                (time.monotonic() - self._thought_started_monotonic) * 1000
+            )
+            result["duration_ms"] = max(elapsed_ms, 0)
         chunk_routing_meta = routing_meta or self._last_chunk_routing_meta
         if chunk_routing_meta:
             result["_meta"] = dict(chunk_routing_meta)
         self.thought_chunks.clear()
+        self._thought_started_monotonic = None
         return result
 
     def should_finalize_chunks(

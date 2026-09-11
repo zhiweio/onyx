@@ -45,6 +45,7 @@ export function parsePacket(raw: unknown): ParsedPacket {
         type: "thinking_chunk",
         text: extractText(p.content),
         ...extractRoutingMeta(p),
+        ...extractThoughtTiming(p),
       };
 
     case "tool_call_start":
@@ -151,6 +152,27 @@ function extractRoutingMeta(p: Record<string, unknown>): {
   return {
     sessionId: (meta.sessionId as string | undefined) ?? null,
     parentSessionId: (meta.parentSessionId as string | undefined) ?? null,
+  };
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function extractThoughtTiming(p: Record<string, unknown>): {
+  durationMs?: number;
+  thoughtStartedAtMs?: number;
+} {
+  const meta = (p._meta as Record<string, unknown> | undefined) ?? {};
+  const durationMs = asFiniteNumber(
+    p.duration_ms ?? p.durationMs ?? meta.duration_ms ?? meta.durationMs
+  );
+  const thoughtStartedAtMs = asFiniteNumber(
+    meta.thought_started_at_ms ?? meta.thoughtStartedAtMs
+  );
+  return {
+    ...(durationMs != null ? { durationMs } : {}),
+    ...(thoughtStartedAtMs != null ? { thoughtStartedAtMs } : {}),
   };
 }
 

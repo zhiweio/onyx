@@ -148,6 +148,8 @@ class TestBuildStreamingState:
         assert packet is not None
         assert packet["type"] == "agent_thought"
         assert packet["content"]["text"] == "Thinking about the problem..."
+        assert isinstance(packet["duration_ms"], int)
+        assert packet["duration_ms"] >= 0
         assert state.thought_chunks == []
 
     def test_type_change_finalizes_previous_type(self) -> None:

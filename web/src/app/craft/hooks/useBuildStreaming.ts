@@ -309,9 +309,15 @@ export function useBuildStreaming() {
               .getState()
               .updateStreamItem(sessionId, lastItem.id, { isStreaming: false });
           } else if (lastItem.type === "thinking" && lastItem.isStreaming) {
-            useBuildSessionStore
-              .getState()
-              .updateStreamItem(sessionId, lastItem.id, { isStreaming: false });
+            const durationMs =
+              lastItem.durationMs ??
+              (lastItem.startedAtMs != null
+                ? Date.now() - lastItem.startedAtMs
+                : undefined);
+            useBuildSessionStore.getState().updateStreamItem(sessionId, lastItem.id, {
+              isStreaming: false,
+              ...(durationMs != null ? { durationMs } : {}),
+            } as Partial<StreamItem>);
           }
         }
       };
@@ -436,6 +442,10 @@ export function useBuildStreaming() {
                 id: genId("thinking"),
                 content: parsed.text,
                 isStreaming: true,
+                startedAtMs: parsed.thoughtStartedAtMs ?? Date.now(),
+                ...(parsed.durationMs != null
+                  ? { durationMs: parsed.durationMs }
+                  : {}),
               };
               appendStreamItem(sessionId, item);
               lastItemType = "thinking";

@@ -119,20 +119,28 @@ describe("BuildMessageList thinking visibility", () => {
   it("shows restored thought packets as collapsed thinking rows", () => {
     renderList({ messages: [savedAssistantMessage] });
 
-    fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
-
-    expect(screen.getByText("Thinking")).toBeInTheDocument();
+    const thought = screen.getByRole("button", { name: /Thought/ });
+    expect(thought).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
+
+    fireEvent.click(thought);
+
+    expect(thought).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Thought")).toBeInTheDocument();
+    expect(screen.getAllByText("Checking the app structure.").length).toBeGreaterThan(
+      1
+    );
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
 
   it("does not open restored thought packets by default", () => {
     renderList({ messages: [savedAssistantMessage] });
 
-    expect(screen.getByText("Thinking")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Checking the app structure.")
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
 
@@ -155,10 +163,11 @@ describe("BuildMessageList thinking visibility", () => {
       ],
     });
 
-    expect(screen.getByText("Thinking")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Checking the app structure.")
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
 
@@ -175,14 +184,16 @@ describe("BuildMessageList thinking visibility", () => {
       ],
     });
 
-    expect(screen.getByText("Thinking...")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Checking the app structure.")
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
-
+    const thinking = screen.getByRole("button", { name: /Thinking/ });
+    expect(thinking).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
+
+    fireEvent.click(thinking);
+
+    expect(thinking).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByText("Checking the app structure.").length).toBeGreaterThan(
+      1
+    );
   });
 
   it("shows stream error packets inline", () => {

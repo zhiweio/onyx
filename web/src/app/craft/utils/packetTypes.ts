@@ -99,6 +99,8 @@ export interface ParsedThinkingChunk {
   sessionId: string | null;
   /** Non-null only for subagent child events — the parent opencode session. */
   parentSessionId: string | null;
+  durationMs?: number;
+  thoughtStartedAtMs?: number;
 }
 
 export interface ParsedToolCallStart {

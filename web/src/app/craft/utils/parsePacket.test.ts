@@ -20,12 +20,14 @@ describe("parsePacket", () => {
       parsePacket({
         type: "agent_thought",
         content: { type: "text", text: "Inspecting saved context." },
+        duration_ms: 4200,
       })
     ).toEqual({
       type: "thinking_chunk",
       text: "Inspecting saved context.",
       sessionId: null,
       parentSessionId: null,
+      durationMs: 4200,
     });
   });
 

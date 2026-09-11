@@ -95,7 +95,16 @@ export interface ToolCallState {
  */
 export type StreamItem =
   | { type: "text"; id: string; content: string; isStreaming: boolean }
-  | { type: "thinking"; id: string; content: string; isStreaming: boolean }
+  | {
+      type: "thinking";
+      id: string;
+      content: string;
+      isStreaming: boolean;
+      /** Wall time of the first token in this burst (live only). */
+      startedAtMs?: number;
+      /** Settled burst length from the harness, when known. */
+      durationMs?: number;
+    }
   | { type: "tool_call"; id: string; toolCall: ToolCallState }
   | { type: "todo_list"; id: string; todoList: TodoListState }
   | {
