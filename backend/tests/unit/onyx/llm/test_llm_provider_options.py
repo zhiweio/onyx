@@ -28,7 +28,9 @@ from onyx.llm.well_known_providers.llm_provider_options import (
     get_moonshot_model_names,
     get_zai_model_names,
     is_obsolete_model,
+    is_well_known_provider_model,
     model_configurations_for_provider,
+    visible_models_for_provider,
 )
 from onyx.llm.well_known_providers.models import SimpleKnownModel
 
@@ -274,6 +276,34 @@ def test_get_deepseek_model_names_strips_prefix(
     assert litellm_thinks_model_supports_image_input(
         "deepseek-flash", LlmProviderNames.DEEPSEEK
     )
+
+
+def test_visible_models_for_provider_adds_official_deepseek_flash() -> None:
+    recommendations = LLMRecommendations(
+        version="stale",
+        updated_at=datetime.now(timezone.utc),
+        providers={
+            "deepseek": LLMProviderRecommendation(
+                default_model=SimpleKnownModel(name="deepseek-v4-pro"),
+                additional_visible_models=[
+                    SimpleKnownModel(
+                        name="deepseek-v4-pro", display_name="DeepSeek V4 Pro"
+                    ),
+                    SimpleKnownModel(
+                        name="deepseek-v4-flash", display_name="DeepSeek V4 Flash"
+                    ),
+                ],
+            )
+        },
+    )
+
+    visible = visible_models_for_provider("deepseek", recommendations)
+    names = [model.name for model in visible]
+    assert "deepseek-v4-pro" in names
+    assert "deepseek-flash" in names
+    assert "deepseek-v4-flash" not in names
+    assert is_well_known_provider_model("deepseek", "deepseek-flash")
+    assert not is_well_known_provider_model("deepseek", "deepseek-chat")
 
 
 def test_get_zai_model_names_strips_prefix(monkeypatch: pytest.MonkeyPatch) -> None:

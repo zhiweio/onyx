@@ -1175,6 +1175,9 @@ def update_default_craft_provider(
 ) -> None:
     # CRAFT is a pointer flow, not a capability: nothing populates it during
     # provider upsert, so the row has to be created before it can be defaulted.
+    _ensure_model_configuration_for_default(
+        db_session, provider_id, model_name, LLMModelFlowType.CRAFT
+    )
     model_config = db_session.scalar(
         select(ModelConfiguration).where(
             ModelConfiguration.llm_provider_id == provider_id,
@@ -1310,8 +1313,12 @@ def sync_auto_mode_models(
 
     # Build the list of all visible models from the config
     # All models in the config are visible (default + additional_visible_models)
-    recommended_visible_models = llm_recommendations.get_visible_models(
-        provider.provider
+    from onyx.llm.well_known_providers.llm_provider_options import (
+        visible_models_for_provider,
+    )
+
+    recommended_visible_models = visible_models_for_provider(
+        provider.provider, llm_recommendations
     )
     recommended_visible_model_names = [
         model.name for model in recommended_visible_models
@@ -1345,11 +1352,14 @@ def sync_auto_mode_models(
                 changes += 1
         else:
             # Add new model - all models from GitHub config are visible
+            supported_flows = [LLMModelFlowType.CHAT]
+            if model_supports_image_input(model_config.name, provider.provider):
+                supported_flows.append(LLMModelFlowType.VISION)
             insert_new_model_configuration__no_commit(
                 db_session=db_session,
                 llm_provider_id=provider.id,
                 model_name=model_config.name,
-                supported_flows=[LLMModelFlowType.CHAT],
+                supported_flows=supported_flows,
                 is_visible=True,
                 max_input_tokens=None,
                 display_name=model_config.display_name,
@@ -1616,12 +1626,69 @@ def update_model_configuration__no_commit(
     db_session.flush()
 
 
+def _ensure_model_configuration_for_default(
+    db_session: Session,
+    provider_id: int,
+    model: str,
+    flow_type: LLMModelFlowType,
+) -> None:
+    """Create a well-known model row when the catalog moved but the provider did not."""
+    existing = db_session.scalar(
+        select(ModelConfiguration).where(
+            ModelConfiguration.llm_provider_id == provider_id,
+            ModelConfiguration.name == model,
+        )
+    )
+    if existing:
+        create_new_flow_mapping__no_commit(
+            db_session=db_session,
+            model_configuration_id=existing.id,
+            flow_type=flow_type,
+        )
+        db_session.flush()
+        return
+
+    provider = db_session.scalar(
+        select(LLMProviderModel).where(LLMProviderModel.id == provider_id)
+    )
+    if provider is None:
+        return
+
+    from onyx.llm.well_known_providers.llm_provider_options import (
+        display_name_for_well_known_model,
+        is_well_known_provider_model,
+    )
+
+    if not is_well_known_provider_model(provider.provider, model):
+        return
+
+    supported_flows = [LLMModelFlowType.CHAT]
+    if model_supports_image_input(model, provider.provider, provider.deployment_name):
+        supported_flows.append(LLMModelFlowType.VISION)
+    if flow_type not in supported_flows:
+        supported_flows.append(flow_type)
+
+    insert_new_model_configuration__no_commit(
+        db_session=db_session,
+        llm_provider_id=provider_id,
+        model_name=model,
+        supported_flows=supported_flows,
+        is_visible=True,
+        max_input_tokens=None,
+        display_name=display_name_for_well_known_model(provider.provider, model),
+    )
+    db_session.flush()
+
+
 def _update_default_model__no_commit(
     db_session: Session,
     provider_id: int,
     model: str,
     flow_type: LLMModelFlowType,
 ) -> None:
+    _ensure_model_configuration_for_default(
+        db_session, provider_id, model, flow_type
+    )
     result = db_session.execute(
         select(ModelConfiguration, LLMModelFlow)
         .join(

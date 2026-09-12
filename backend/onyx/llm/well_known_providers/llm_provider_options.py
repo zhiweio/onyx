@@ -363,22 +363,53 @@ def get_vertexai_model_names() -> list[str]:
     )
 
 
+def visible_models_for_provider(
+    provider_name: str, llm_recommendations: LLMRecommendations
+) -> list[SimpleKnownModel]:
+    """Recommended visible models, plus current official DeepSeek API IDs."""
+    recommended_visible_models = llm_recommendations.get_visible_models(provider_name)
+    if provider_name != DEEPSEEK_PROVIDER_NAME:
+        return recommended_visible_models
+
+    recommended_visible_models = [
+        model
+        for model in recommended_visible_models
+        if not is_obsolete_model(model.name, LlmProviderNames.DEEPSEEK)
+    ]
+    visible_names = {model.name for model in recommended_visible_models}
+    recommended_visible_models.extend(
+        model
+        for model in _OFFICIAL_DEEPSEEK_VISIBLE_MODELS
+        if model.name not in visible_names
+    )
+    return recommended_visible_models
+
+
+def is_well_known_provider_model(provider_name: str, model_name: str) -> bool:
+    """True if this model belongs on a well-known provider row."""
+    if model_name in fetch_models_for_provider(provider_name):
+        return True
+    return any(
+        model.name == model_name
+        for model in visible_models_for_provider(provider_name, get_recommendations())
+    )
+
+
+def display_name_for_well_known_model(
+    provider_name: str, model_name: str
+) -> str | None:
+    for model in visible_models_for_provider(provider_name, get_recommendations()):
+        if model.name == model_name:
+            return model.display_name
+    return None
+
+
 def model_configurations_for_provider(
     provider_name: str, llm_recommendations: LLMRecommendations
 ) -> list[ModelConfigurationView]:
-    recommended_visible_models = llm_recommendations.get_visible_models(provider_name)
-    if provider_name == DEEPSEEK_PROVIDER_NAME:
-        recommended_visible_models = [
-            model
-            for model in recommended_visible_models
-            if not is_obsolete_model(model.name, LlmProviderNames.DEEPSEEK)
-        ]
-        visible_names = {model.name for model in recommended_visible_models}
-        recommended_visible_models.extend(
-            model
-            for model in _OFFICIAL_DEEPSEEK_VISIBLE_MODELS
-            if model.name not in visible_names
-        )
+    recommended_visible_models = visible_models_for_provider(
+        provider_name, llm_recommendations
+    )
     recommended_visible_models_names = [m.name for m in recommended_visible_models]
     display_name_by_name = {
         m.name: m.display_name for m in recommended_visible_models if m.display_name
