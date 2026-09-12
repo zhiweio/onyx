@@ -115,4 +115,91 @@ describe("MCPLineItem", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onAuthenticate).not.toHaveBeenCalled();
   });
+
+  it("toggles the server without selecting it", async () => {
+    const user = setupUser();
+    const onAuthenticate = jest.fn();
+    const onSelect = jest.fn();
+    const onToggleEnabled = jest.fn();
+
+    render(
+      <MCPLineItem
+        server={oauthServer}
+        isActive={false}
+        onSelect={onSelect}
+        onAuthenticate={onAuthenticate}
+        tools={[tool]}
+        enabledTools={[]}
+        isAuthenticated
+        isLoading={false}
+        onToggleEnabled={onToggleEnabled}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Enable" }));
+
+    expect(onToggleEnabled).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("authenticates when an unauthenticated switch is turned on", async () => {
+    const user = setupUser();
+    const onAuthenticate = jest.fn();
+    const onSelect = jest.fn();
+    const onToggleEnabled = jest.fn();
+
+    render(
+      <MCPLineItem
+        server={oauthServer}
+        isActive={false}
+        onSelect={onSelect}
+        onAuthenticate={onAuthenticate}
+        tools={[tool]}
+        enabledTools={[]}
+        isAuthenticated={false}
+        isLoading={false}
+        control="switch"
+        onToggleEnabled={onToggleEnabled}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("switch", { name: `Toggle ${oauthServer.name}` })
+    );
+
+    expect(onAuthenticate).toHaveBeenCalledTimes(1);
+    expect(onToggleEnabled).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("toggles a switch without selecting the server", async () => {
+    const user = setupUser();
+    const onAuthenticate = jest.fn();
+    const onSelect = jest.fn();
+    const onToggleEnabled = jest.fn();
+
+    render(
+      <MCPLineItem
+        server={oauthServer}
+        isActive={false}
+        onSelect={onSelect}
+        onAuthenticate={onAuthenticate}
+        tools={[tool]}
+        enabledTools={[tool]}
+        isAuthenticated
+        isLoading={false}
+        control="switch"
+        onToggleEnabled={onToggleEnabled}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("switch", { name: `Toggle ${oauthServer.name}` })
+    );
+
+    expect(onToggleEnabled).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onAuthenticate).not.toHaveBeenCalled();
+  });
 });

@@ -104,11 +104,19 @@ export class ToolsPopover {
 
   /**
    * The primary view's own search box. Every secondary view replaces it with
-   * one of its own ("Search Filters", "Search <server> tools"), so its
-   * presence is what says the popover is showing the action list.
+   * one of its own ("Search MCPs", "Search Filters", "Search <server> tools"),
+   * so its presence is what says the popover is showing the action list.
    */
   private get actionSearch(): Locator {
-    return this.popover.getByPlaceholder("Search actions...");
+    return this.popover.getByPlaceholder(/Search (tools|actions)/i);
+  }
+
+  private get mcpSearch(): Locator {
+    return this.popover.getByPlaceholder(/Search MCPs/i);
+  }
+
+  private get mcpRow(): Locator {
+    return this.row(/^MCP$/);
   }
 
   private get backButton(): Locator {
@@ -123,17 +131,31 @@ export class ToolsPopover {
     await this.ensurePrimaryView();
   }
 
-  /** If drilled into a server's tool list, step back out to the server list. */
+  /** If drilled into MCP or a server's tool list, step back to the action list. */
   private async ensurePrimaryView(): Promise<void> {
     if (!(await this.popover.isVisible().catch(() => false))) {
       return;
     }
-    if ((await this.actionSearch.count()) > 0) {
-      return;
-    }
-    if ((await this.backButton.count()) > 0) {
+    for (let step = 0; step < 3; step++) {
+      if ((await this.actionSearch.count()) > 0) {
+        return;
+      }
+      if ((await this.backButton.count()) === 0) {
+        return;
+      }
       await this.backButton.click().catch(() => {});
     }
+  }
+
+  /** Open the popover and drill into the MCP server list. */
+  async openMcpList(): Promise<void> {
+    await this.open();
+    if (await this.mcpSearch.isVisible().catch(() => false)) {
+      return;
+    }
+    await expect(this.mcpRow).toBeVisible();
+    await this.mcpRow.click();
+    await expect(this.mcpSearch).toBeVisible();
   }
 
   async close(): Promise<void> {
@@ -168,7 +190,7 @@ export class ToolsPopover {
   }
 
   async expectServerVisible(serverName: string): Promise<void> {
-    await this.open();
+    await this.openMcpList();
     await expect(this.serverRow(serverName)).toBeVisible();
   }
 
@@ -181,7 +203,7 @@ export class ToolsPopover {
     options?: { agentId?: number }
   ): Promise<void> {
     for (let attempt = 0; attempt < 2; attempt++) {
-      await this.open();
+      await this.openMcpList();
       if (
         await this.serverRow(serverName)
           .isVisible()
@@ -205,7 +227,7 @@ export class ToolsPopover {
    * server it opens the credentials modal.
    */
   async clickServer(serverName: string): Promise<void> {
-    await this.open();
+    await this.openMcpList();
     const row = this.serverRow(serverName);
     await expect(row).toBeVisible();
     await row.click({ force: true });
@@ -213,7 +235,7 @@ export class ToolsPopover {
 
   /** Drill into a server to reveal its individual tools. */
   async openServer(serverName: string): Promise<void> {
-    await this.open();
+    await this.openMcpList();
     // The popover fetches its server list when it opens, so the row can mount a
     // beat after the popover is visible and a plain click can land before the
     // row is interactive. Retry a force-click until the tool-list view actually
@@ -350,7 +372,7 @@ export class ToolsPopover {
     serverName: string,
     urlChangeWaitMs = 5000
   ): Promise<"navigated" | "drilled"> {
-    await this.open();
+    await this.openMcpList();
     const row = this.serverRow(serverName);
     await expect(row).toBeVisible();
 

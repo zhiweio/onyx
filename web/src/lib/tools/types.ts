@@ -250,7 +250,8 @@ export interface OAuthTokenStatus {
 /** Which drill-down the actions popover is showing, if any. */
 export type SecondaryViewState =
   | { type: "sources" }
-  | { type: "mcp"; serverId: number };
+  | { type: "mcpList" }
+  | { type: "mcp"; serverId: number; from?: "mcpList" };
 
 /**
  * What a chat has been told to do about one tool.

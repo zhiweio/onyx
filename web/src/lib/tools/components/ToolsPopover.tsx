@@ -10,9 +10,14 @@ import {
   Popover,
   PopoverMenu,
 } from "@opal/components";
-import { SvgActions, SvgKey, SvgSliders, SvgSimpleLoader } from "@opal/icons";
+import {
+  SvgChevronRight,
+  SvgKey,
+  SvgMcp,
+  SvgSliders,
+  SvgSimpleLoader,
+} from "@opal/icons";
 
-import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { MinimalAgent } from "@/lib/agents/types";
 import MCPApiKeyModal from "@/components/chat/MCPApiKeyModal";
 import useCCPairs from "@/hooks/useCCPairs";
@@ -20,13 +25,16 @@ import { useLLMProviders } from "@/lib/languageModels/hooks";
 import { hasPermission } from "@/lib/permissions";
 import { useProjectsContext } from "@/lib/projects/providers";
 import { useSettings } from "@/lib/settings/hooks";
-import { FILE_READER_TOOL_ID, SEARCH_TOOL_ID } from "@/lib/tools/constants";
+import { SEARCH_TOOL_ID } from "@/lib/tools/constants";
+import { shouldShowBuiltInToolInChatMenu } from "@/lib/tools/chatToolVisibility";
 import {
+  useAvailableTools,
   useBuiltInToolNames,
   type ToolConfigurationHandle,
 } from "@/lib/tools/hooks";
 import { ToolsPopoverProvider } from "@/lib/tools/providers";
-import MCPLineItem, { MCPServer } from "@/lib/tools/components/MCPLineItem";
+import ManageConnectionsView from "@/lib/tools/components/ManageConnectionsView";
+import { MCPServer } from "@/lib/tools/components/MCPLineItem";
 import SourcesView from "@/lib/tools/components/SourcesView";
 import SwitchList, { SwitchListItem } from "@/lib/tools/components/SwitchList";
 import ToolLineItem from "@/lib/tools/components/ToolLineItem";
@@ -110,9 +118,17 @@ export default function ToolsPopover({
   const { vectorDbEnabled } = useSettings();
   const { ccPairs } = useCCPairs(vectorDbEnabled);
   const { currentProjectId, allCurrentProjectFiles } = useProjectsContext();
+  const { tools: availableTools, isLoading: isAvailableToolsLoading } =
+    useAvailableTools();
 
-  // Check if there are any connectors available
   const hasNoConnectors = ccPairs.length === 0;
+  const canManageActions = hasPermission(
+    permissions,
+    Permission.MANAGE_ACTIONS
+  );
+  const availableToolIds = isAvailableToolsLoading
+    ? null
+    : new Set(availableTools.map((tool) => tool.id));
 
   const close = useCallback(() => setOpen(false), []);
   const openSources = useCallback(
@@ -120,49 +136,15 @@ export default function ToolsPopover({
     []
   );
 
-  // Filter out MCP tools from the main list (they have mcp_server_id)
-  // Also filter out internal search tool for basic users when there are no connectors
-  // Also filter out tools that are not chat-selectable (e.g., OpenURL)
-  const displayTools = agent.tools.filter((tool) => {
-    // Filter out MCP tools
-    if (tool.mcp_server_id) return false;
-
-    // Filter out tools that are not chat-selectable (visibility set by backend)
-    if (!tool.chat_selectable) return false;
-
-    // Always hide File Reader from the actions popover
-    if (tool.in_code_tool_id === FILE_READER_TOOL_ID) return false;
-
-    // Special handling for Project Search
-    // Ensure Project Search is hidden if no files exist
-    if (tool.in_code_tool_id === SEARCH_TOOL_ID && !!currentProjectId) {
-      if (!allCurrentProjectFiles || allCurrentProjectFiles.length === 0) {
-        return false;
-      }
-      // If files exist, show it (even if backend thinks it's strictly unavailable due to no connectors)
-      return true;
-    }
-
-    // Advertise to admin/curator users that they can connect an internal search tool
-    // even if it's not available or has no connectors
-    if (
-      tool.in_code_tool_id === SEARCH_TOOL_ID &&
-      hasPermission(permissions, Permission.MANAGE_CONNECTORS)
-    ) {
-      return true;
-    }
-
-    // Filter out internal search tool for users without connector management when there are no connectors
-    if (
-      tool.in_code_tool_id === SEARCH_TOOL_ID &&
-      hasNoConnectors &&
-      !hasPermission(permissions, Permission.MANAGE_CONNECTORS)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
+  const displayTools = agent.tools.filter((tool) =>
+    shouldShowBuiltInToolInChatMenu({
+      tool,
+      availableToolIds,
+      currentProjectId,
+      hasProjectFiles: (allCurrentProjectFiles?.length ?? 0) > 0,
+      hasNoConnectors,
+    })
+  );
 
   // Fetch MCP servers for the agent on mount
   useEffect(() => {
@@ -329,12 +311,16 @@ export default function ToolsPopover({
     );
   });
 
-  // Filter MCP servers based on search term
-  const filteredMCPServers = mcpServers.filter((server) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return server.name.toLowerCase().includes(searchLower);
-  });
+  const mcpLabel = t("toolsPopover.mcp.label");
+  const searchLower = searchTerm.toLowerCase();
+  const mcpRowMatchesSearch =
+    !searchTerm ||
+    mcpLabel.toLowerCase().includes(searchLower) ||
+    mcpServers.some((server) =>
+      server.name.toLowerCase().includes(searchLower)
+    );
+  const showMcpRow =
+    (mcpServers.length > 0 || canManageActions) && mcpRowMatchesSearch;
 
   const selectedMcpServerId =
     secondaryView?.type === "mcp" ? secondaryView.serverId : null;
@@ -375,14 +361,34 @@ export default function ToolsPopover({
   // One call per tool rather than a second setter taking many. React batches
   // them, and each sees what the one before it left, so the rules hold across
   // the run instead of the last write landing on a stale map.
-  const setSelectedServerToolsDisabled = (disabled: boolean) => {
-    if (!selectedMcpServer) return;
-    for (const tool of selectedMcpTools) {
+  const setServerToolsDisabled = (serverId: number, disabled: boolean) => {
+    for (const tool of agent.tools) {
+      if (tool.mcp_server_id !== serverId) continue;
       toolConfiguration.setToolState(tool.id, () =>
         disabled ? "disabled" : null
       );
     }
   };
+
+  const setSelectedServerToolsDisabled = (disabled: boolean) => {
+    if (!selectedMcpServer) return;
+    setServerToolsDisabled(selectedMcpServer.id, disabled);
+  };
+
+  const toolsByServer = new Map(
+    mcpServers.map((server) => [
+      server.id,
+      agent.tools.filter((tool) => tool.mcp_server_id === server.id),
+    ])
+  );
+  const enabledToolsByServer = new Map(
+    [...toolsByServer.entries()].map(([serverId, serverTools]) => [
+      serverId,
+      serverTools.filter(
+        (tool) => !toolConfiguration.disabledToolIds.includes(tool.id)
+      ),
+    ])
+  );
 
   const handleFooterReauthClick = () => {
     if (selectedMcpServer) {
@@ -422,61 +428,49 @@ export default function ToolsPopover({
           variant="internal"
         />,
 
-        // Actions
         ...filteredTools.map((tool) => (
           <ToolLineItem key={tool.id} tool={tool} />
         )),
 
-        // MCP Servers
-        ...filteredMCPServers.map((server) => {
-          const serverData = mcpServerData[server.id] || {
-            isAuthenticated: !!server.user_can_authenticate,
-            isLoading: false,
-          };
-
-          // Tools for this server come from assistant.tools
-          const serverTools = agent.tools.filter(
-            (t) => t.mcp_server_id === Number(server.id)
-          );
-          const enabledTools = serverTools.filter(
-            (t) => !toolConfiguration.disabledToolIds.includes(t.id)
-          );
-
-          return (
-            <MCPLineItem
-              key={server.id}
-              server={server}
-              isActive={selectedMcpServerId === server.id}
-              tools={serverTools}
-              enabledTools={enabledTools}
-              isAuthenticated={serverData.isAuthenticated}
-              isLoading={serverData.isLoading}
-              onSelect={() =>
-                setSecondaryView({
-                  type: "mcp",
-                  serverId: server.id,
-                })
-              }
-              onAuthenticate={() => handleServerAuthentication(server)}
-            />
-          );
-        }),
-
-        null,
-
-        hasPermission(permissions, Permission.MANAGE_ACTIONS) && (
+        showMcpRow ? (
           <LineItemButton
-            key="more-actions"
-            href={ADMIN_ROUTES.MCP_ACTIONS.path}
-            icon={SvgActions}
-            title={t("toolsPopover.moreActions.label")}
+            key="mcp"
+            onClick={() => setSecondaryView({ type: "mcpList" })}
+            icon={SvgMcp}
+            title={mcpLabel}
             sizePreset="main-ui"
             variant="section"
             rounding={2}
+            rightChildren={
+              <span
+                aria-hidden="true"
+                className="pointer-events-none flex size-6 shrink-0 items-center justify-center"
+              >
+                <SvgChevronRight className="size-4 stroke-text-03" />
+              </span>
+            }
           />
+        ) : (
+          false
         ),
       ]}
     </PopoverMenu>
+  );
+
+  const manageView = (
+    <ManageConnectionsView
+      canManage={canManageActions}
+      enabledToolsByServer={enabledToolsByServer}
+      mcpServerData={mcpServerData}
+      onAuthenticate={handleServerAuthentication}
+      onBack={() => setSecondaryView(null)}
+      onSelectServer={(serverId) =>
+        setSecondaryView({ type: "mcp", serverId, from: "mcpList" })
+      }
+      onToggleServer={setServerToolsDisabled}
+      servers={mcpServers}
+      toolsByServer={toolsByServer}
+    />
   );
 
   const mcpView = (
@@ -491,13 +485,24 @@ export default function ToolsPopover({
       onEnableAll={() => setSelectedServerToolsDisabled(false)}
       disableAllLabel={t("toolsPopover.disableAllTools.label")}
       enableAllLabel={t("toolsPopover.enableAllTools.label")}
-      onBack={() => setSecondaryView(null)}
+      onBack={() =>
+        setSecondaryView(
+          secondaryView?.type === "mcp" && secondaryView.from === "mcpList"
+            ? { type: "mcpList" }
+            : null
+        )
+      }
       footer={mcpFooter}
     />
   );
 
-  // If no tools or MCP servers are available, don't render the component
-  if (displayTools.length === 0 && mcpServers.length === 0) return null;
+  if (
+    displayTools.length === 0 &&
+    mcpServers.length === 0 &&
+    !canManageActions
+  ) {
+    return null;
+  }
 
   return (
     <ToolsPopoverProvider
@@ -523,6 +528,8 @@ export default function ToolsPopover({
             {secondaryView ? (
               secondaryView.type === "mcp" ? (
                 mcpView
+              ) : secondaryView.type === "mcpList" ? (
+                manageView
               ) : (
                 <SourcesView onBack={() => setSecondaryView(null)} />
               )
