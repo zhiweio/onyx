@@ -15,7 +15,7 @@ export default function ScenarioEditorPage({
   const editor = useUserScenarioEditor(scenarioId);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="h-full min-w-0 w-full">
       <ScenarioComposer
         mode={editor.mode}
         isCreating={editor.isCreating}

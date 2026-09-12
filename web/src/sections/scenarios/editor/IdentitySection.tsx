@@ -167,8 +167,8 @@ export default function IdentitySection({
 
       {mode === "user" ? (
         <InputVertical title={t("identity.domain.title")}>
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="flex w-full flex-col gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
               {BUILTIN_SCENARIO_DOMAINS.map((item) => (
                 <SelectCard
                   key={item}

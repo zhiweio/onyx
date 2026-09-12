@@ -24,16 +24,18 @@ export default function StringListEditor({
     <div className="flex flex-col gap-2">
       {values.map((value, index) => (
         <div key={`${index}-${placeholder}`} className="flex items-center gap-2">
-          <InputTypeIn
-            value={value}
-            placeholder={placeholder}
-            variant={disabled ? "disabled" : "primary"}
-            onChange={(event) => {
-              const next = [...values];
-              next[index] = event.target.value;
-              onChange(next);
-            }}
-          />
+          <div className="min-w-0 flex-1">
+            <InputTypeIn
+              value={value}
+              placeholder={placeholder}
+              variant={disabled ? "disabled" : "primary"}
+              onChange={(event) => {
+                const next = [...values];
+                next[index] = event.target.value;
+                onChange(next);
+              }}
+            />
+          </div>
           <Button
             size="sm"
             prominence="tertiary"

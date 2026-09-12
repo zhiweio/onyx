@@ -186,12 +186,11 @@ export default function ScenarioComposer({
 
   return (
     <div className="h-full w-full" data-testid="ScenarioComposer/container">
-      <SettingsLayouts.Root width="lg">
+      <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={SvgBlocks}
           title={headerTitle}
           description={recipeSummary}
-          backButton={onCancel}
           divider
           rightChildren={
             <div className="flex flex-wrap items-center justify-end gap-2">

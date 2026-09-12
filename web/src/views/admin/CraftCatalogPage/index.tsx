@@ -338,7 +338,7 @@ export default function CraftCatalogPage() {
                   <div
                     className={
                       view === "cards"
-                        ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2"
+                        ? "w-full grid grid-cols-1 md:grid-cols-2 gap-2"
                         : "flex flex-col gap-1"
                     }
                   >

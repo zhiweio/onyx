@@ -56,7 +56,7 @@ export default function OutputSection({
       title={t("sections.output.title")}
       description={t("sections.output.description")}
     >
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
         <SelectCard
           state={reportTemplate ? "empty" : "selected"}
           padding={2}
