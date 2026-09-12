@@ -12,6 +12,7 @@ const mockBuildMessageList = jest.fn(
     isStreaming?: boolean;
   }) => <div data-testid="build-message-list" />
 );
+const mockUseLaneTranscript = jest.fn();
 
 jest.mock("@/app/craft/components/BuildMessageList", () => ({
   __esModule: true,
@@ -22,9 +23,14 @@ jest.mock("@/app/craft/components/BuildMessageList", () => ({
   }) => mockBuildMessageList(props),
 }));
 
+jest.mock("@/app/craft/hooks/useLaneTranscript", () => ({
+  useLaneTranscript: (args: unknown) => mockUseLaneTranscript(args),
+}));
+
 describe("SubagentView", () => {
   beforeEach(() => {
     mockBuildMessageList.mockClear();
+    mockUseLaneTranscript.mockClear();
     useBuildSessionStore.setState({
       currentSessionId: null,
       sessions: new Map(),
@@ -80,6 +86,15 @@ describe("SubagentView", () => {
       }),
     ]);
     expect(props.isStreaming).toBe(true);
+    expect(mockUseLaneTranscript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        open: true,
+        parentSessionId: sessionId,
+        childSessionId: subagentSessionId,
+        parentToolCallId: "task-call",
+        running: true,
+      })
+    );
   });
 
   it("renders the final completion response instead of stale streamed text", () => {

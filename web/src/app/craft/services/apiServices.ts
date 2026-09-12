@@ -942,6 +942,7 @@ export interface CraftJobSpecialistResponse {
   status: string;
   error_detail?: string | null;
   node_id?: string | null;
+  last_activity?: string | null;
 }
 
 export interface CraftJobTimelineItem {

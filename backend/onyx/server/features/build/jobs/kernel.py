@@ -12,6 +12,7 @@ from onyx.db.craft_job import (
     add_specialist,
     advance_job_phase,
     count_open_specialists,
+    job_is_terminal,
     mark_job_finished,
     mark_job_running,
     mark_job_waiting_lanes,
@@ -154,6 +155,8 @@ def after_worker_turn(
     deadline_exceeded: bool,
 ) -> None:
     """Run one superstep after an OpenCode turn on the parent session."""
+    if job_is_terminal(job):
+        return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
         return
@@ -288,6 +291,8 @@ def after_lane_turn(
     specialist_ok: bool,
     node_id: str | None,
 ) -> None:
+    if job_is_terminal(job):
+        return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
         return
@@ -392,6 +397,10 @@ def after_lane_turn(
         notes_path = ""
         if node is not None and node.required_paths:
             notes_path = node.required_paths[0]
+        specialist_row = next(
+            (row for row in job.specialists if row.node_id == node_id),
+            None,
+        )
         _emit_lane_task_card(
             db_session,
             session_id=job.session_id,
@@ -399,6 +408,15 @@ def after_lane_turn(
             name=node.name if node is not None else node_id,
             status="completed" if specialist_ok else "failed",
             notes_path=notes_path,
+            specialist_session_id=(
+                specialist_row.session_id if specialist_row is not None else None
+            ),
+            role=(
+                specialist_row.role
+                if specialist_row is not None
+                else (node.role if node is not None else None)
+            ),
+            job_id=job.id,
         )
         if specialist_ok:
             state = apply_writes(
@@ -956,6 +974,9 @@ def _spawn_lanes(
             name=node.name,
             status="in_progress",
             notes_path=node.required_paths[0] if node.required_paths else "",
+            specialist_session_id=build_session.id,
+            role=node.role,
+            job_id=job.id,
         )
         enqueue_job_phase_turn(
             db_session,
@@ -998,6 +1019,10 @@ def _apply_review_revise(
     return state
 
 
+def _is_review_self_owner(owner: GraphNode, review_node: GraphNode) -> bool:
+    return owner.id == review_node.id or owner.kind == "review"
+
+
 def maybe_revise_after_review(
     db_session: Session,
     *,
@@ -1009,19 +1034,23 @@ def maybe_revise_after_review(
 ) -> bool:
     if node.kind != "review" or gate.passed:
         return False
-    revised = _apply_review_revise(db_session, job=job, state=state, gate=gate)
-    if revised is None:
-        return False
     owner_id = gate.missing[0].owner_node if gate.missing else ""
-    graph = load_graph(job, revised)
+    graph = load_graph(job, state)
     owner = graph.get(owner_id) if owner_id else None
+    # Review may reopen compose/derive/evidence. Re-enqueueing the reviewer
+    # itself bypasses node_attempts and loops forever.
+    if owner is not None and _is_review_self_owner(owner, node):
+        return False
     if owner is None:
-        for node_id in reversed(revised.completed_nodes):
+        for node_id in reversed(state.completed_nodes):
             candidate = graph.get(node_id)
-            if candidate is not None and candidate.kind != "review":
+            if candidate is not None and not _is_review_self_owner(candidate, node):
                 owner = candidate
                 break
-    if owner is None:
+    if owner is None or _is_review_self_owner(owner, node):
+        return False
+    revised = _apply_review_revise(db_session, job=job, state=state, gate=gate)
+    if revised is None:
         return False
     _enqueue_node(
         db_session,
@@ -1180,42 +1209,27 @@ def _emit_lane_task_card(
     name: str,
     status: str,
     notes_path: str,
+    specialist_session_id: UUID | None = None,
+    role: str | None = None,
+    job_id: UUID | None = None,
 ) -> None:
-    from onyx.configs.constants import MessageType
-    from onyx.server.features.build.db.build_session import (
-        count_user_messages,
-        create_message,
-    )
+    from onyx.server.features.build.db.build_session import upsert_lane_task_message
+    from onyx.server.features.build.jobs.lane_task import lane_task_card_metadata
 
-    description = name
-    if notes_path:
-        description = f"{name} — {notes_path}"
     try:
-        turn_index = count_user_messages(session_id, db_session)
-        create_message(
-            session_id=session_id,
-            message_type=MessageType.ASSISTANT,
-            turn_index=turn_index,
-            message_metadata={
-                "type": "assistant_message",
-                "streamItems": [
-                    {
-                        "type": "tool_call",
-                        "id": f"lane-task-{node_id}-{status}",
-                        "toolCall": {
-                            "id": f"lane-task-{node_id}-{status}",
-                            "kind": "task",
-                            "toolName": "task",
-                            "title": name,
-                            "description": description,
-                            "command": "",
-                            "status": status,
-                            "rawOutput": notes_path,
-                        },
-                    }
-                ],
-            },
-            db_session=db_session,
+        upsert_lane_task_message(
+            session_id,
+            node_id,
+            lane_task_card_metadata(
+                node_id=node_id,
+                name=name,
+                status=status,
+                notes_path=notes_path,
+                specialist_session_id=specialist_session_id,
+                role=role,
+                job_id=job_id,
+            ),
+            db_session,
         )
     except Exception:
         logger.exception("Could not persist lane task card for %s", node_id)

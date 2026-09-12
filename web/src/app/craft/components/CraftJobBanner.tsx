@@ -5,11 +5,7 @@ import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { Button, Popover, Tag, Text } from "@opal/components";
 import { Content, ContentAction } from "@opal/layouts";
-import {
-  SvgAlertTriangle,
-  SvgChevronDown,
-  SvgHourglass,
-} from "@opal/icons";
+import { SvgAlertTriangle, SvgChevronDown, SvgHourglass } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -37,8 +33,19 @@ const IN_FLIGHT = new Set([
   "interrupted",
 ]);
 
+function hasOpenSpecialists(job: CraftJobResponse): boolean {
+  return job.specialists.some(
+    (specialist) =>
+      specialist.status === "pending" || specialist.status === "running"
+  );
+}
+
 export function isCraftJobInFlight(job?: CraftJobResponse | null): boolean {
-  return !!job && IN_FLIGHT.has(job.status);
+  if (!job) return false;
+  if (IN_FLIGHT.has(job.status)) return true;
+  // A prior cancel can leave specialist lanes running. Keep the stop
+  // control until those sessions are interrupted.
+  return job.status === "cancelled" && hasOpenSpecialists(job);
 }
 
 export function useCraftJob(sessionId: string | null) {
@@ -76,7 +83,10 @@ function statusLabel(
   currentLabel: string,
   t: ReturnType<typeof useTranslations>
 ): string {
-  if (data.status === "waiting_specialists" || data.status === "waiting_lanes") {
+  if (
+    data.status === "waiting_specialists" ||
+    data.status === "waiting_lanes"
+  ) {
     return t("status.waitingLanes");
   }
   if (data.status === "interrupted") return t("status.interrupted");
@@ -156,7 +166,11 @@ export function CraftJobBannerView({
                 {currentText}
               </Text>
             ) : null}
-            <Tag title={label} color={jobStatusTagColor(data.status)} size="sm" />
+            <Tag
+              title={label}
+              color={jobStatusTagColor(data.status)}
+              size="sm"
+            />
             <SvgChevronDown className="h-4 w-4 shrink-0 stroke-text-03" />
           </button>
         </Popover.Trigger>
@@ -210,8 +224,7 @@ export function CraftJobBannerView({
                     variant="section"
                     title={specialistLabel(specialist, roleT)}
                     description={
-                      compactJobError(specialist.error_detail, 160) ||
-                      undefined
+                      compactJobError(specialist.error_detail, 160) || undefined
                     }
                     rightChildren={
                       <Tag
@@ -272,7 +285,5 @@ export default function CraftJobBanner({
     }
   };
 
-  return (
-    <CraftJobBannerView data={data} onCancel={() => void onCancel()} />
-  );
+  return <CraftJobBannerView data={data} onCancel={() => void onCancel()} />;
 }

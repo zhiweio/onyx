@@ -20,6 +20,12 @@ OPEN_JOB_STATUSES = (
     CraftJobStatus.INTERRUPTED,
 )
 
+TERMINAL_JOB_STATUSES = (
+    CraftJobStatus.SUCCEEDED,
+    CraftJobStatus.FAILED,
+    CraftJobStatus.CANCELLED,
+)
+
 
 def get_craft_job(db_session: Session, job_id: UUID) -> CraftJob | None:
     return db_session.scalar(
@@ -154,6 +160,25 @@ def mark_job_running(job: CraftJob) -> None:
 
 def mark_job_waiting_specialists(job: CraftJob) -> None:
     job.status = CraftJobStatus.WAITING_SPECIALISTS
+
+
+def job_is_terminal(job: CraftJob) -> bool:
+    return job.status in TERMINAL_JOB_STATUSES
+
+
+def mark_job_cancelled(job: CraftJob) -> None:
+    """Finish the job and stop every open specialist lane."""
+    mark_job_finished(job, status=CraftJobStatus.CANCELLED)
+    for specialist in job.specialists:
+        if specialist.status in (
+            CraftJobSpecialistStatus.PENDING,
+            CraftJobSpecialistStatus.RUNNING,
+        ):
+            mark_specialist_finished(
+                specialist,
+                status=CraftJobSpecialistStatus.FAILED,
+                error_detail="Cancelled",
+            )
 
 
 def mark_job_finished(

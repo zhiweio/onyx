@@ -154,6 +154,194 @@ def test_review_gap_reopens_owner(monkeypatch) -> None:
     assert next_state.last_node == "compose"
 
 
+def test_review_self_owner_does_not_reenqueue_qa(monkeypatch) -> None:
+    from onyx.server.features.build.jobs.phase_gate import DEFAULT_PHASE_RETRY_LIMIT
+    from onyx.server.features.build.jobs.plan import parse_plan
+
+    plan = parse_plan(
+        {
+            "goal": "x",
+            "phases": [
+                {"id": "plan", "kind": "plan"},
+                {"id": "compose", "kind": "compose"},
+                {"id": "qa", "kind": "review"},
+            ],
+        }
+    )
+    graph = compile_graph("", plan)
+    job = _job()
+    state = load_state(job)
+    state.completed_nodes = ["plan", "compose"]
+    state.last_node = "qa"
+    state.cursor = ["qa"]
+    state.graph = graph.to_snapshot()
+    persist_state(job, state)
+    qa = graph.get("qa")
+    assert qa is not None
+    enqueued: list[str] = []
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation._enqueue_or_remember",
+        lambda *_a, **kwargs: enqueued.append(str(kwargs["phase"]["id"])) or uuid4(),
+    )
+    db = _db()
+    gate = ContractGateResult(
+        passed=False,
+        missing=[
+            GateMissing(
+                path="outputs/review/REVIEW.json",
+                reason="REVIEW.json needs passed",
+                owner_node="qa",
+            )
+        ],
+    )
+    revised = maybe_revise_after_review(
+        db,
+        job=job,
+        user_id=uuid4(),
+        state=state,
+        node=qa,
+        gate=gate,
+    )
+    assert revised is False
+    next_state = load_state(job)
+    assert "compose" in next_state.completed_nodes
+    assert enqueued == []
+
+    empty = _FakeManager({})
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=empty: _fake)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel.stop_gate",
+        lambda **_k: gate,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel.scan_artifacts",
+        lambda **_k: {},
+    )
+    user_id = uuid4()
+    sandbox_id = uuid4()
+    for _ in range(DEFAULT_PHASE_RETRY_LIMIT + 2):
+        if job.status != CraftJobStatus.RUNNING:
+            break
+        after_worker_turn(
+            db,
+            job=job,
+            user_id=user_id,
+            sandbox_id=sandbox_id,
+            session_id=job.session_id,
+            deadline_exceeded=False,
+        )
+    assert job.status == CraftJobStatus.FAILED
+    assert enqueued.count("qa") < DEFAULT_PHASE_RETRY_LIMIT + 2
+
+
+def test_mark_job_cancelled_stops_open_specialists() -> None:
+    from onyx.db.craft_job import mark_job_cancelled
+
+    running = SimpleNamespace(
+        status=CraftJobSpecialistStatus.RUNNING,
+        error_detail=None,
+        finished_at=None,
+        output_artifact_ids=None,
+    )
+    succeeded = SimpleNamespace(
+        status=CraftJobSpecialistStatus.SUCCEEDED,
+        error_detail=None,
+        finished_at="done",
+        output_artifact_ids=None,
+    )
+    pending = SimpleNamespace(
+        status=CraftJobSpecialistStatus.PENDING,
+        error_detail=None,
+        finished_at=None,
+        output_artifact_ids=None,
+    )
+    job = _job("biomed")
+    job.status = CraftJobStatus.WAITING_LANES
+    job.specialists = [running, succeeded, pending]
+    mark_job_cancelled(job)
+    assert job.status == CraftJobStatus.CANCELLED
+    assert running.status == CraftJobSpecialistStatus.FAILED
+    assert running.error_detail == "Cancelled"
+    assert succeeded.status == CraftJobSpecialistStatus.SUCCEEDED
+    assert pending.status == CraftJobSpecialistStatus.FAILED
+    assert pending.error_detail == "Cancelled"
+
+
+def test_mark_job_cancelled_stops_leftover_lanes_after_prior_cancel() -> None:
+    from onyx.db.craft_job import mark_job_cancelled
+
+    leftover = SimpleNamespace(
+        status=CraftJobSpecialistStatus.RUNNING,
+        error_detail=None,
+        finished_at=None,
+        output_artifact_ids=None,
+    )
+    job = _job("biomed")
+    job.status = CraftJobStatus.CANCELLED
+    job.specialists = [leftover]
+    mark_job_cancelled(job)
+    assert job.status == CraftJobStatus.CANCELLED
+    assert leftover.status == CraftJobSpecialistStatus.FAILED
+    assert leftover.error_detail == "Cancelled"
+
+
+def test_cancelled_job_does_not_resume_after_lane_turn() -> None:
+    job = _job("biomed")
+    job.status = CraftJobStatus.CANCELLED
+    job.specialists = [
+        SimpleNamespace(
+            status=CraftJobSpecialistStatus.SUCCEEDED,
+            node_id="lane:literature",
+            session_id=uuid4(),
+            role="literature",
+        ),
+        SimpleNamespace(
+            status=CraftJobSpecialistStatus.FAILED,
+            node_id="lane:clinical",
+            session_id=uuid4(),
+            role="clinical",
+        ),
+    ]
+    after_lane_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        specialist_ok=False,
+        node_id="lane:clinical",
+    )
+    assert job.status == CraftJobStatus.CANCELLED
+
+
+def test_cancelled_job_does_not_advance_after_worker_turn(monkeypatch) -> None:
+    job = _job()
+    job.status = CraftJobStatus.CANCELLED
+    called = {"scan": 0}
+
+    def _scan(**_kwargs):
+        called["scan"] += 1
+        return {}
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel.scan_artifacts", _scan
+    )
+    after_worker_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        sandbox_id=uuid4(),
+        session_id=job.session_id,
+        deadline_exceeded=False,
+    )
+    assert job.status == CraftJobStatus.CANCELLED
+    assert called["scan"] == 0
+
+
 def test_lane_join_waits_until_all_terminal() -> None:
     job = _job("biomed")
     job.status = CraftJobStatus.WAITING_LANES
@@ -161,10 +349,14 @@ def test_lane_join_waits_until_all_terminal() -> None:
         SimpleNamespace(
             status=CraftJobSpecialistStatus.SUCCEEDED,
             node_id="lane:literature",
+            session_id=uuid4(),
+            role="literature",
         ),
         SimpleNamespace(
             status=CraftJobSpecialistStatus.RUNNING,
             node_id="lane:clinical",
+            session_id=uuid4(),
+            role="clinical",
         ),
     ]
     db = _db()
@@ -443,6 +635,97 @@ def test_continue_persists_empty_visible_text(monkeypatch) -> None:
     assert metadata["craft_job_continue"] is False
 
 
+def test_lane_turn_completes_despite_parent_host_files(monkeypatch) -> None:
+    from onyx.server.features.build.jobs.channels import ArtifactRecord
+    from onyx.server.features.build.jobs.plan import parse_plan
+
+    notes = "outputs/normalized/epi-patient-pool.md"
+    plan = parse_plan(
+        {
+            "goal": "Clinical initiation",
+            "lanes": [
+                {
+                    "id": "researcher",
+                    "role": "researcher",
+                    "done_when": [notes],
+                },
+                {
+                    "id": "researcher-2",
+                    "role": "researcher",
+                    "done_when": ["outputs/normalized/pipeline.csv"],
+                },
+            ],
+        }
+    )
+    graph = compile_graph("biomed", plan)
+    job = _job("biomed")
+    job.status = CraftJobStatus.WAITING_LANES
+    state = load_state(job)
+    state.graph = graph.to_snapshot()
+    persist_state(job, state)
+    researcher = SimpleNamespace(
+        status=CraftJobSpecialistStatus.SUCCEEDED,
+        node_id="lane:researcher",
+        session_id=uuid4(),
+        role="researcher",
+        output_artifact_ids=[],
+        finished_at=None,
+    )
+    other = SimpleNamespace(
+        status=CraftJobSpecialistStatus.RUNNING,
+        node_id="lane:researcher-2",
+        session_id=uuid4(),
+        role="researcher",
+        output_artifact_ids=[],
+        finished_at=None,
+    )
+    job.specialists = [researcher, other]
+    files = {
+        notes: b"China NHL 80829/year. https://example.com [1]\n",
+        "outputs/DONE.json": b'{"done": true}\n',
+        "outputs/markdown/epi-patient-pool.md": b"# copy\n",
+    }
+    manager = _FakeManager(files)
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=manager: _fake)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel._sandbox_id_for_session",
+        lambda *_a, **_k: uuid4(),
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel.scan_artifacts",
+        lambda **_k: {
+            notes: ArtifactRecord(
+                path=notes,
+                producer_node="lane:researcher",
+                nonempty=True,
+                summary="notes",
+            )
+        },
+    )
+    enqueued: list[str] = []
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.enqueue_job_phase_turn",
+        lambda *_a, **kwargs: enqueued.append(str(kwargs.get("prompt") or "")),
+    )
+    after_lane_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        specialist_ok=True,
+        node_id="lane:researcher",
+    )
+    assert enqueued == []
+    assert researcher.status == CraftJobSpecialistStatus.SUCCEEDED
+    assert "lane:researcher" in load_state(job).completed_nodes
+    assert job.status == CraftJobStatus.WAITING_LANES
+
+
 def test_lane_sets_output_artifact_ids_on_shared_outputs(monkeypatch) -> None:
     from onyx.server.features.build.jobs.channels import ArtifactRecord
     from onyx.server.features.build.jobs.plan import parse_plan
@@ -466,6 +749,7 @@ def test_lane_sets_output_artifact_ids_on_shared_outputs(monkeypatch) -> None:
         status=CraftJobSpecialistStatus.SUCCEEDED,
         node_id="lane:literature",
         session_id=uuid4(),
+        role="literature",
         output_artifact_ids=[],
         finished_at=None,
     )
@@ -473,6 +757,7 @@ def test_lane_sets_output_artifact_ids_on_shared_outputs(monkeypatch) -> None:
         status=CraftJobSpecialistStatus.RUNNING,
         node_id="lane:clinical",
         session_id=uuid4(),
+        role="clinical",
         output_artifact_ids=[],
         finished_at=None,
     )
@@ -538,6 +823,7 @@ def test_lane_search_gate_keeps_interrupt_on_job_state(monkeypatch) -> None:
         status=CraftJobSpecialistStatus.SUCCEEDED,
         node_id="lane:biomed-literature",
         session_id=uuid4(),
+        role="literature",
         output_artifact_ids=[],
         finished_at=None,
     )
@@ -606,6 +892,7 @@ def test_reap_inactive_lanes_finishes_stale_specialist(monkeypatch) -> None:
         status=CraftJobSpecialistStatus.RUNNING,
         node_id="lane:literature",
         session_id=uuid4(),
+        role="literature",
         created_at=datetime.now(timezone.utc) - timedelta(seconds=120),
         finished_at=None,
         output_artifact_ids=[],

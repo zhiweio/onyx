@@ -241,7 +241,16 @@ function phaseLabel({
     return tools.length > 1 ? t("ranN", { count: tools.length }) : t("ran");
   }
   if (phase === "task") {
-    return live ? t("task") : t("taskDone");
+    if (live) return t("task");
+    if (
+      tools.length > 0 &&
+      tools.every(
+        (tool) => tool.status === "cancelled" || tool.status === "failed"
+      )
+    ) {
+      return t("taskCancelled");
+    }
+    return t("taskDone");
   }
   return live ? t("running") : t("ran");
 }

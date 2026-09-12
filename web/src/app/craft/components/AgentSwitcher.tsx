@@ -17,6 +17,7 @@ import {
   useCurrentSessionTitle,
   useBuildSessionStore,
 } from "@/app/craft/hooks/useBuildSessionStore";
+import { subagentSwitcherLabel } from "@/app/craft/utils/laneTask";
 import type { SubagentState } from "@/app/craft/types/displayTypes";
 
 /** Live-status glyph shown on the right of a menu row. */
@@ -88,9 +89,11 @@ export default function AgentSwitcher() {
   // is being viewed, otherwise the session title (the main agent).
   const triggerLabel =
     isViewingSubagent && viewedSubagent
-      ? viewedSubagent.name ||
-        viewedSubagent.subagentType ||
-        t("subagentFallback.label")
+      ? subagentSwitcherLabel(
+          viewedSubagent.name,
+          viewedSubagent.subagentType,
+          viewedSubagent.lastActivity
+        ) || t("subagentFallback.label")
       : titleLabel;
 
   // Nothing to show (untitled session, not viewing a subagent) — render nothing.
@@ -133,28 +136,51 @@ export default function AgentSwitcher() {
       <Popover.Content side="bottom" align="start">
         <PopoverMenu>
           {[
-            <LineItemButton
+            // Pointer down selects before the popover unmounts and drops the click.
+            <div
               key="main"
-              sizePreset="main-ui"
-              variant="section"
-              icon={SvgSparkle}
-              state={!isViewingSubagent ? "selected" : "empty"}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                selectMainAgent();
+              }}
               onClick={selectMainAgent}
-              title={titleLabel ?? t("mainAgent.label")}
-            />,
-            ...sorted.map((s) => (
+            >
               <LineItemButton
-                key={s.sessionId}
                 sizePreset="main-ui"
                 variant="section"
-                icon={SvgCpu}
-                state={
-                  s.sessionId === viewedSubagentSessionId ? "selected" : "empty"
-                }
-                onClick={() => selectSubagent(s.sessionId)}
-                rightChildren={<SubagentStatus subagent={s} />}
-                title={s.name || s.subagentType || t("subagentFallback.label")}
+                icon={SvgSparkle}
+                state={!isViewingSubagent ? "selected" : "empty"}
+                title={titleLabel ?? t("mainAgent.label")}
               />
+            </div>,
+            ...sorted.map((s) => (
+              <div
+                key={s.sessionId}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  selectSubagent(s.sessionId);
+                }}
+                onClick={() => selectSubagent(s.sessionId)}
+              >
+                <LineItemButton
+                  sizePreset="main-ui"
+                  variant="section"
+                  icon={SvgCpu}
+                  state={
+                    s.sessionId === viewedSubagentSessionId
+                      ? "selected"
+                      : "empty"
+                  }
+                  rightChildren={<SubagentStatus subagent={s} />}
+                  title={
+                    subagentSwitcherLabel(
+                      s.name,
+                      s.subagentType,
+                      s.lastActivity
+                    ) || t("subagentFallback.label")
+                  }
+                />
+              </div>
             )),
           ]}
         </PopoverMenu>

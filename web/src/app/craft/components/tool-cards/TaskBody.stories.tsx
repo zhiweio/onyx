@@ -92,3 +92,38 @@ export const PromptOnly: Story = {
     }),
   },
 };
+
+export const RunningExploreLinked: Story = {
+  args: {
+    toolCall: task({
+      description: "Map tool-cards prop shapes",
+      status: "in_progress",
+      subagentType: "explore",
+      subagentSessionId: "child-explore",
+    }),
+  },
+};
+
+export const RunningGeneralLinked: Story = {
+  args: {
+    toolCall: task({
+      description: "Draft the API surface",
+      status: "in_progress",
+      subagentType: "general",
+      subagentSessionId: "child-general",
+    }),
+  },
+};
+
+export const RunningLiteratureLane: Story = {
+  args: {
+    toolCall: task({
+      id: "lane-task-lane:literature",
+      title: "Literature",
+      description: "Literature — outputs/normalized/patents.csv",
+      status: "in_progress",
+      subagentType: "literature",
+      subagentSessionId: "4d0a580e-7ab3-4106-a846-9d4148e6230c",
+    }),
+  },
+};

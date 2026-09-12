@@ -2,6 +2,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import object_session
 
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus
 from onyx.db.models import CraftJob, CraftJobSpecialist
@@ -36,9 +37,14 @@ class CraftJobSpecialistResponse(BaseModel):
     status: CraftJobSpecialistStatus
     error_detail: str | None = None
     node_id: str | None = None
+    last_activity: str | None = None
 
     @classmethod
-    def from_model(cls, row: CraftJobSpecialist) -> "CraftJobSpecialistResponse":
+    def from_model(
+        cls,
+        row: CraftJobSpecialist,
+        last_activity: str | None = None,
+    ) -> "CraftJobSpecialistResponse":
         return cls(
             id=row.id,
             session_id=row.session_id,
@@ -46,6 +52,7 @@ class CraftJobSpecialistResponse(BaseModel):
             status=row.status,
             error_detail=row.error_detail,
             node_id=row.node_id,
+            last_activity=last_activity,
         )
 
 
@@ -207,7 +214,29 @@ def _specialist_responses(job: CraftJob) -> list[CraftJobSpecialistResponse]:
         rows = job.specialists
     except AttributeError:
         return []
-    return [CraftJobSpecialistResponse.from_model(row) for row in rows]
+    activities: dict[UUID, str] = {}
+    db = object_session(job)
+    if db is not None and rows:
+        from onyx.server.features.build.db.build_session import (
+            latest_assistant_metadata_for_sessions,
+        )
+        from onyx.server.features.build.jobs.lane_task import (
+            activity_label_from_metadata,
+        )
+
+        raw = latest_assistant_metadata_for_sessions(
+            db, [row.session_id for row in rows]
+        )
+        for session_id, metadata in raw.items():
+            label = activity_label_from_metadata(metadata)
+            if label:
+                activities[session_id] = label
+    return [
+        CraftJobSpecialistResponse.from_model(
+            row, last_activity=activities.get(row.session_id)
+        )
+        for row in rows
+    ]
 
 
 def _journal_node_status(events: list[CraftJobEventResponse]) -> dict[str, str]:

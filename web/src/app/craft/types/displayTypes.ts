@@ -77,6 +77,10 @@ export interface ToolCallState {
   rawOutput: string; // Full output for expanded view
   /** For task tool calls: the subagent type (e.g., "explore", "plan") */
   subagentType?: string;
+  /** Child session for a task row: OpenCode id or a job specialist BuildSession. */
+  subagentSessionId?: string;
+  /** Craft job that owns this lane-task card. Isolates a new run from older rows. */
+  jobId?: string;
   /** For task tool calls: the subagent's final output once completed */
   taskOutput?: string;
   /** For skill-namespaced tool calls: the skill name (sans namespace prefix) */
@@ -200,6 +204,8 @@ export interface SubagentState {
   /** Display name for the subagent. */
   name: string;
   status: SubagentStatus;
+  /** Latest one-line activity, used when the transcript is not loaded yet. */
+  lastActivity?: string | null;
   /** Ordered conversation turns. The initial dispatch is `turns[0]`. */
   turns: SubagentTurn[];
   startedAt: number;

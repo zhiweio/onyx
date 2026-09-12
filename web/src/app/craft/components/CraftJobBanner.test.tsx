@@ -63,6 +63,23 @@ function failedJob(): CraftJobResponse {
   };
 }
 
+function waitingLanesJob(): CraftJobResponse {
+  return {
+    ...failedJob(),
+    status: "waiting_lanes",
+    error_detail: null,
+    specialists: [
+      {
+        id: "lit",
+        session_id: "s-lit",
+        role: "literature",
+        status: "running",
+        error_detail: null,
+      },
+    ],
+  };
+}
+
 function interruptedJob(): CraftJobResponse {
   return {
     ...failedJob(),
@@ -76,9 +93,7 @@ function interruptedJob(): CraftJobResponse {
 describe("CraftJobBannerView", () => {
   it("keeps a failed job collapsed until the chip is opened", async () => {
     const user = setupUser();
-    render(
-      <CraftJobBannerView data={failedJob()} onCancel={jest.fn()} />
-    );
+    render(<CraftJobBannerView data={failedJob()} onCancel={jest.fn()} />);
 
     expect(screen.getByTestId("craft-job-banner")).toBeInTheDocument();
     expect(screen.getByText("Long job")).toBeInTheDocument();
@@ -102,11 +117,29 @@ describe("CraftJobBannerView", () => {
     expect(screen.queryByText("# PLAN")).not.toBeInTheDocument();
   });
 
+  it("keeps Cancel when the job is cancelled but lanes are still running", () => {
+    render(
+      <CraftJobBannerView
+        data={{ ...waitingLanesJob(), status: "cancelled" }}
+        onCancel={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId("craft-job-cancel")).toBeInTheDocument();
+  });
+
+  it("shows Cancel while specialist lanes are running", () => {
+    render(
+      <CraftJobBannerView data={waitingLanesJob()} onCancel={jest.fn()} />
+    );
+
+    expect(screen.getByTestId("craft-job-cancel")).toBeInTheDocument();
+    expect(screen.getByText("Parallel lanes running")).toBeInTheDocument();
+  });
+
   it("keeps the banner as progress only while interrupted", async () => {
     const user = setupUser();
-    render(
-      <CraftJobBannerView data={interruptedJob()} onCancel={jest.fn()} />
-    );
+    render(<CraftJobBannerView data={interruptedJob()} onCancel={jest.fn()} />);
 
     expect(screen.queryByTestId("craft-job-approve")).not.toBeInTheDocument();
     expect(screen.getByTestId("craft-job-cancel")).toBeInTheDocument();

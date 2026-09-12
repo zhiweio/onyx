@@ -26,10 +26,6 @@ from onyx.server.features.build.jobs.plan import (
 )
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 
-_LANE_OUT_OF_BOUNDS = (
-    DONE_JSON_PATH,
-    "outputs/markdown/",
-)
 _NAMED_SEARCH_HINTS = (
     "parallel search",
     "parallel-search",
@@ -232,37 +228,11 @@ def _gate_lane(
                     owner_node=node.id,
                 )
             )
-    for path in _LANE_OUT_OF_BOUNDS:
-        if path in node.required_paths:
-            continue
-        if path.endswith("/"):
-            if _directory_has_files(sandbox_id, session_id, path):
-                missing.append(
-                    GateMissing(
-                        path=path,
-                        reason="lane wrote outside its directory",
-                        owner_node=node.id,
-                    )
-                )
-        elif _nonempty_path(sandbox_id, session_id, path):
-            missing.append(
-                GateMissing(
-                    path=path,
-                    reason="lane wrote outside its directory",
-                    owner_node=node.id,
-                )
-            )
+    # Lanes share the parent outputs/ tree. Host files such as DONE.json and
+    # outputs/markdown/ are compose/review artifacts, not this lane's contract.
     if missing:
         return ContractGateResult(passed=False, missing=missing)
     return ContractGateResult(passed=True)
-
-
-def _directory_has_files(sandbox_id: UUID, session_id: UUID, path: str) -> bool:
-    try:
-        entries = get_sandbox_manager().list_directory(sandbox_id, session_id, path)
-    except Exception:
-        return False
-    return bool(entries)
 
 
 def _gate_work(

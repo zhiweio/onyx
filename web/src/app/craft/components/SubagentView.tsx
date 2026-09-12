@@ -3,7 +3,11 @@
 import { useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Text } from "@opal/components";
-import { useSubagent } from "@/app/craft/hooks/useBuildSessionStore";
+import {
+  useSubagent,
+  useBuildSessionStore,
+} from "@/app/craft/hooks/useBuildSessionStore";
+import { useLaneTranscript } from "@/app/craft/hooks/useLaneTranscript";
 import BuildMessageList from "@/app/craft/components/BuildMessageList";
 import type { BuildMessage } from "@/app/craft/types/streamingTypes";
 import type {
@@ -25,7 +29,16 @@ interface SubagentViewProps {
  */
 export default function SubagentView({ subagentSessionId }: SubagentViewProps) {
   const t = useTranslations("craft.subagentView");
+  const parentSessionId = useBuildSessionStore((s) => s.currentSessionId);
   const subagent = useSubagent(subagentSessionId);
+  // Header switcher never expands TaskBody, so this view loads the child itself.
+  useLaneTranscript({
+    open: true,
+    parentSessionId,
+    childSessionId: subagentSessionId,
+    parentToolCallId: subagent?.parentToolCallId ?? "",
+    running: subagent?.status === "running",
+  });
   // Static transcript (autoScroll off) — ref only satisfies the prop contract.
   const scrollRef = useRef<HTMLDivElement | null>(null);
 

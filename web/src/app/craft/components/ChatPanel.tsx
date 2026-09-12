@@ -57,6 +57,8 @@ import CraftJobBanner, {
   isCraftJobInFlight,
   useCraftJob,
 } from "@/app/craft/components/CraftJobBanner";
+import { craftComposerStopKind } from "@/app/craft/utils/jobInterrupt";
+import { settleTranscriptForJobStatus } from "@/app/craft/utils/laneTask";
 import {
   answerCraftQuestionAsk,
   cancelCraftJob,
@@ -139,6 +141,15 @@ export default function BuildChatPanel({
   const { data: craftJob, mutate: mutateCraftJob } = useCraftJob(
     session?.origin === "SCHEDULED" ? null : jobSessionId
   );
+  const displayTranscript = useMemo(
+    () =>
+      settleTranscriptForJobStatus(
+        session?.messages ?? [],
+        session?.streamItems ?? [],
+        craftJob?.status
+      ),
+    [session?.messages, session?.streamItems, craftJob?.status]
+  );
   const jobInFlight = isCraftJobInFlight(craftJob);
   const pendingQuestion = useMemo(() => {
     const fromItems = (items: StreamItem[]) => {
@@ -195,7 +206,6 @@ export default function BuildChatPanel({
   const hasSession = useHasSession();
   const isRunning = useIsRunning();
   const displayIsRunning = isRunning || scheduledRunInFlight;
-  const hasInterruptibleTurn = session?.status === "running";
   const wasInterrupted = useWasInterrupted();
   const { setLeftSidebarFolded, leftSidebarFolded, videoBackgroundEnabled } =
     useBuildContext();
@@ -269,6 +279,9 @@ export default function BuildChatPanel({
 
   const updateSessionData = useBuildSessionStore(
     (state) => state.updateSessionData
+  );
+  const syncJobSpecialists = useBuildSessionStore(
+    (state) => state.syncJobSpecialists
   );
 
   // Access actions directly like chat does - these don't cause re-renders
@@ -604,6 +617,18 @@ export default function BuildChatPanel({
     setShowScrollButton(false);
   }, [sessionId]);
 
+  useEffect(() => {
+    if (!sessionId || !session?.isLoaded || !craftJob) {
+      return;
+    }
+    syncJobSpecialists(
+      sessionId,
+      craftJob.specialists,
+      craftJob.status,
+      craftJob.id
+    );
+  }, [sessionId, session?.isLoaded, craftJob, syncJobSpecialists]);
+
   const sendMessage = useCallback(
     async (
       message: string,
@@ -809,11 +834,11 @@ export default function BuildChatPanel({
 
   const compactAvailable = Boolean(
     sessionId &&
-      session?.opencodeSessionId &&
-      !isRunning &&
-      !scheduledRunInFlight &&
-      !isViewingSubagent &&
-      (selectedModel || session.agentModel)
+    session?.opencodeSessionId &&
+    !isRunning &&
+    !scheduledRunInFlight &&
+    !isViewingSubagent &&
+    (selectedModel || session.agentModel)
   );
 
   const handleCompact = useCallback(async () => {
@@ -844,9 +869,36 @@ export default function BuildChatPanel({
     [sendMessage]
   );
 
+  const composerStopKind = craftComposerStopKind({
+    jobInFlight,
+    scheduledRunInFlight,
+    sessionStatus: session?.status,
+  });
+
   const handleInterrupt = useCallback(() => {
+    if (composerStopKind === "cancel-job" && craftJob) {
+      void (async () => {
+        try {
+          await cancelCraftJob(craftJob.id);
+        } catch {
+          // Refresh so the banner matches the server even if cancel failed.
+        }
+        void mutateCraftJob();
+        if (sessionId && session?.status === "running") {
+          void interruptStreaming(sessionId);
+        }
+      })();
+      return;
+    }
     if (sessionId) void interruptStreaming(sessionId);
-  }, [sessionId, interruptStreaming]);
+  }, [
+    composerStopKind,
+    craftJob,
+    interruptStreaming,
+    mutateCraftJob,
+    session?.status,
+    sessionId,
+  ]);
 
   const handleJobAsk = useCallback(
     async (action: AskBarAction) => {
@@ -1046,8 +1098,8 @@ export default function BuildChatPanel({
                     <BuildMessageList
                       sessionId={sessionId ?? existingSessionId ?? null}
                       attachmentRefreshKey={session?.webappNeedsRefresh}
-                      messages={session?.messages ?? []}
-                      streamItems={session?.streamItems ?? []}
+                      messages={displayTranscript.messages}
+                      streamItems={displayTranscript.streamItems}
                       isStreaming={displayIsRunning}
                       autoScrollEnabled={isAtBottom}
                       scrollContainerRef={scrollContainerRef}
@@ -1147,12 +1199,10 @@ export default function BuildChatPanel({
                     longJobEnabled={longJobEnabled || jobInFlight}
                     onLongJobEnabledChange={setLongJobEnabled}
                     longJobLocked={jobInFlight}
-                    isRunning={displayIsRunning}
+                    isRunning={displayIsRunning || jobInFlight}
                     isInterrupting={isInterrupting}
                     onInterrupt={
-                      hasInterruptibleTurn && !scheduledRunInFlight
-                        ? handleInterrupt
-                        : undefined
+                      composerStopKind !== null ? handleInterrupt : undefined
                     }
                     compactAvailable={compactAvailable}
                     onCompact={handleCompact}

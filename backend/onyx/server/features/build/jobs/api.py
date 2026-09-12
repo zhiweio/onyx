@@ -10,12 +10,21 @@ from onyx.db.craft_job import (
     get_craft_job_for_user,
     get_latest_job_for_session,
     get_open_job_for_session,
+    mark_job_cancelled,
     mark_job_finished,
     mark_job_running,
 )
 from onyx.db.craft_project import require_project_for_user
+from onyx.server.features.build.db.build_session import (
+    settle_open_lane_task_cards,
+)
 from onyx.db.engine.sql_engine import get_session
-from onyx.db.enums import CraftJobStatus, Permission, SandboxStatus
+from onyx.db.enums import (
+    CraftJobSpecialistStatus,
+    CraftJobStatus,
+    Permission,
+    SandboxStatus,
+)
 from onyx.db.models import User
 from onyx.db.scenario import get_scenario_for_user
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -283,18 +292,33 @@ def cancel_job(
     job = get_craft_job_for_user(db_session, job_id, user.id)
     if job is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
-    if job.status in {
-        CraftJobStatus.SUCCEEDED,
-        CraftJobStatus.FAILED,
-        CraftJobStatus.CANCELLED,
-    }:
+    if job.status in {CraftJobStatus.SUCCEEDED, CraftJobStatus.FAILED}:
         return CraftJobResponse.from_model(job)
-    mark_job_finished(job, status=CraftJobStatus.CANCELLED)
+    specialist_session_ids = [
+        row.session_id
+        for row in job.specialists
+        if row.status
+        in (
+            CraftJobSpecialistStatus.PENDING,
+            CraftJobSpecialistStatus.RUNNING,
+        )
+    ]
+    # A prior cancel can leave lanes running. Always stop leftover specialists.
+    if job.status != CraftJobStatus.CANCELLED or specialist_session_ids:
+        mark_job_cancelled(job)
+    settle_open_lane_task_cards(
+        job.session_id,
+        [row.node_id for row in job.specialists if row.node_id],
+        "cancelled",
+        db_session,
+    )
     db_session.commit()
-    try:
-        SessionManager(db_session).interrupt_message(job.session_id, user.id)
-    except Exception:
-        pass
+    session_manager = SessionManager(db_session)
+    for session_id in (job.session_id, *specialist_session_ids):
+        try:
+            session_manager.interrupt_message(session_id, user.id)
+        except Exception:
+            pass
     return CraftJobResponse.from_model(job)
 
 

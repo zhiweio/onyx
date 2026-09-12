@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import column, desc, exists, select, update, values
+from sqlalchemy import column, desc, exists, or_, select, update, values
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,12 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.configs import (
     SANDBOX_NEXTJS_PORT_END,
     SANDBOX_NEXTJS_PORT_START,
+)
+from onyx.server.features.build.jobs.lane_task import (
+    LANE_TASK_NODE_KEY,
+    lane_task_lookup_ids,
+    lane_task_upsert_action,
+    patch_open_lane_task_status,
 )
 from onyx.utils.logger import setup_logger
 from onyx.utils.postgres_sanitization import sanitize_json_like
@@ -377,6 +383,114 @@ def count_user_messages(session_id: UUID, db_session: Session) -> int:
         )
         .count()
     )
+
+
+def _lane_task_id_match(node_id: str) -> list[Any]:
+    id_match = [
+        BuildMessage.message_metadata.contains({LANE_TASK_NODE_KEY: node_id})
+    ]
+    for tool_id in lane_task_lookup_ids(node_id):
+        id_match.append(
+            BuildMessage.message_metadata.contains(
+                {"streamItems": [{"id": tool_id}]}
+            )
+        )
+    return id_match
+
+
+def find_lane_task_messages(
+    session_id: UUID, node_id: str, db_session: Session
+) -> list[BuildMessage]:
+    return list(
+        db_session.scalars(
+            select(BuildMessage)
+            .where(
+                BuildMessage.session_id == session_id,
+                or_(*_lane_task_id_match(node_id)),
+            )
+            .order_by(BuildMessage.created_at.desc())
+        ).all()
+    )
+
+
+def find_lane_task_message(
+    session_id: UUID, node_id: str, db_session: Session
+) -> BuildMessage | None:
+    rows = find_lane_task_messages(session_id, node_id, db_session)
+    return rows[0] if rows else None
+
+
+def settle_open_lane_task_cards(
+    session_id: UUID,
+    node_ids: list[str],
+    status: str,
+    db_session: Session,
+) -> None:
+    """Mark open parent lane-task cards terminal after the job is cancelled."""
+    for node_id in node_ids:
+        if not node_id:
+            continue
+        for existing in find_lane_task_messages(session_id, node_id, db_session):
+            metadata = existing.message_metadata
+            if not isinstance(metadata, dict):
+                continue
+            patched = patch_open_lane_task_status(metadata, status)
+            if patched is metadata:
+                continue
+            update_message(existing.id, patched, db_session)
+
+
+def upsert_lane_task_message(
+    session_id: UUID,
+    node_id: str,
+    message_metadata: dict[str, Any],
+    db_session: Session,
+) -> BuildMessage:
+    existing = find_lane_task_message(session_id, node_id, db_session)
+    existing_metadata = (
+        existing.message_metadata
+        if existing is not None and isinstance(existing.message_metadata, dict)
+        else None
+    )
+    action = lane_task_upsert_action(existing_metadata, message_metadata)
+    if existing is not None and action == "update":
+        updated = update_message(existing.id, message_metadata, db_session)
+        return updated or existing
+    if existing is not None and action == "settle_then_create":
+        metadata = existing.message_metadata
+        if isinstance(metadata, dict):
+            patched = patch_open_lane_task_status(metadata, "cancelled")
+            if patched is not metadata:
+                update_message(existing.id, patched, db_session)
+    turn_index = count_user_messages(session_id, db_session)
+    return create_message(
+        session_id=session_id,
+        message_type=MessageType.ASSISTANT,
+        turn_index=turn_index,
+        message_metadata=message_metadata,
+        db_session=db_session,
+    )
+
+
+def latest_assistant_metadata_for_sessions(
+    db_session: Session, session_ids: list[UUID]
+) -> dict[UUID, dict[str, Any]]:
+    if not session_ids:
+        return {}
+    rows = db_session.execute(
+        select(BuildMessage.session_id, BuildMessage.message_metadata)
+        .where(
+            BuildMessage.session_id.in_(session_ids),
+            BuildMessage.type == MessageType.ASSISTANT,
+        )
+        .distinct(BuildMessage.session_id)
+        .order_by(BuildMessage.session_id, BuildMessage.created_at.desc())
+    ).all()
+    result: dict[UUID, dict[str, Any]] = {}
+    for session_id, metadata in rows:
+        if isinstance(metadata, dict):
+            result[session_id] = metadata
+    return result
 
 
 def update_message(

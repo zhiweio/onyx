@@ -11,6 +11,7 @@ from onyx.configs.constants import MessageType
 from onyx.db.craft_job import (
     get_open_job_for_session,
     get_specialist_for_session,
+    job_is_terminal,
     job_total_budget_exhausted,
     mark_job_finished,
     mark_specialist_finished,
@@ -238,7 +239,7 @@ def _finish_specialist_turn(
     db_session.commit()
 
     job = specialist.job
-    if job is None:
+    if job is None or job_is_terminal(job):
         return
     if job_total_budget_exhausted(job):
         mark_job_finished(

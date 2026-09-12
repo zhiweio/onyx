@@ -41,6 +41,7 @@ import {
   fetchMessages,
   fetchActiveTurn,
   fetchArtifacts,
+  type CraftJobSpecialistResponse,
   fetchWebappInfo,
   restoreSession,
 } from "@/app/craft/services/apiServices";
@@ -53,6 +54,22 @@ import {
   subagentNameFromTask,
   cleanTaskOutput,
 } from "@/app/craft/utils/subagentRouting";
+import {
+  activityFromStreamItems,
+  activityFromToolCall,
+  specialistUiStatus,
+} from "@/app/craft/utils/subagentActivity";
+import {
+  isGenericRoleLabel,
+  jobStatusIsLive,
+  laneTaskCardLabel,
+  laneTaskToolId,
+  lastUserMessageIndex,
+  makeLaneTaskStreamItem,
+  patchLaneTaskToolCalls,
+  pinForeignLaneTaskCards,
+  settleOpenLaneTaskCards,
+} from "@/app/craft/utils/laneTask";
 
 /**
  * Convert loaded messages (with message_metadata) to StreamItem[] format.
@@ -166,6 +183,7 @@ function convertMessagesToStreamItems(messages: BuildMessage[]): StreamItem[] {
               status: packet.status,
               rawOutput: packet.rawOutput,
               subagentType: packet.subagentType ?? undefined,
+              subagentSessionId: packet.subagentSessionId ?? undefined,
               skillName: packet.skillName ?? undefined,
               taskOutput: packet.taskOutput ?? undefined,
               isNewFile: packet.isNewFile,
@@ -253,6 +271,22 @@ function isPlaceholderSubagentLabel(value: string): boolean {
   return value.trim() === "Spawning subagent";
 }
 
+function laneTaskLabelFromSession(
+  streamItems: StreamItem[],
+  messages: BuildMessage[],
+  parentToolCallId: string
+): string {
+  const live = laneTaskCardLabel(streamItems, parentToolCallId);
+  if (live) return live;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const items = messages[index]?.message_metadata?.streamItems;
+    if (!Array.isArray(items)) continue;
+    const label = laneTaskCardLabel(items as StreamItem[], parentToolCallId);
+    if (label) return label;
+  }
+  return "";
+}
+
 function settleStreamItems(items: StreamItem[]): StreamItem[] {
   return items.map((item) =>
     item.type === "text" || item.type === "thinking"
@@ -331,6 +365,33 @@ function replaceOrAppendSettledTextItem(
   );
 }
 
+function mergeSubagentMaps(
+  rebuilt: Map<string, SubagentState>,
+  existing: Map<string, SubagentState>
+): Map<string, SubagentState> {
+  const merged = new Map(rebuilt);
+  for (const [id, prior] of existing) {
+    const next = merged.get(id);
+    if (!next) {
+      merged.set(id, prior);
+      continue;
+    }
+    const nextItems =
+      next.turns[next.turns.length - 1]?.streamItems.length ?? 0;
+    const priorItems =
+      prior.turns[prior.turns.length - 1]?.streamItems.length ?? 0;
+    merged.set(id, {
+      ...next,
+      parentToolCallId: next.parentToolCallId || prior.parentToolCallId,
+      subagentType: next.subagentType ?? prior.subagentType,
+      name: next.name || prior.name,
+      lastActivity: next.lastActivity || prior.lastActivity,
+      turns: priorItems > nextItems ? prior.turns : next.turns,
+    });
+  }
+  return merged;
+}
+
 function buildSubagentsFromMessages(
   messages: BuildMessage[]
 ): Map<string, SubagentState> {
@@ -377,6 +438,36 @@ function buildSubagentsFromMessages(
     if (message.type === "user") continue;
     const metadata = message.message_metadata;
     if (!metadata || typeof metadata !== "object") continue;
+
+    const savedItems = (metadata as { streamItems?: StreamItem[] }).streamItems;
+    if (Array.isArray(savedItems)) {
+      for (const item of savedItems) {
+        if (item.type !== "tool_call" || item.toolCall.kind !== "task") {
+          continue;
+        }
+        const childId = item.toolCall.subagentSessionId;
+        if (!childId) continue;
+        const sa = ensure(childId);
+        const status: SubagentStatus =
+          item.toolCall.status === "completed"
+            ? "done"
+            : item.toolCall.status === "failed" ||
+                item.toolCall.status === "cancelled"
+              ? "failed"
+              : "running";
+        subagents.set(childId, {
+          ...sa,
+          parentToolCallId: sa.parentToolCallId || item.toolCall.id,
+          subagentType: sa.subagentType ?? item.toolCall.subagentType ?? null,
+          name:
+            sa.name ||
+            item.toolCall.title ||
+            item.toolCall.description ||
+            sa.name,
+          status,
+        });
+      }
+    }
 
     const packet = parsePacket(metadata);
 
@@ -922,6 +1013,19 @@ interface BuildSessionStore {
     sessionId: string,
     subagentSessionId: string,
     text: string
+  ) => void;
+  /** Seed every job lane into the parent session's subagent map. */
+  syncJobSpecialists: (
+    sessionId: string,
+    specialists: CraftJobSpecialistResponse[],
+    jobStatus?: string,
+    jobId?: string
+  ) => void;
+  /** Replace a job-lane transcript from that specialist session's messages. */
+  hydrateSubagentFromMessages: (
+    sessionId: string,
+    subagentSessionId: string,
+    messages: BuildMessage[]
   ) => void;
 
   // Tab Navigation History Actions
@@ -1627,7 +1731,10 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       // carry the per-packet _meta needed for classification. Preserve the
       // live map if actively streaming.
       const subagents = useDbMessages
-        ? buildSubagentsFromMessages(messages)
+        ? mergeSubagentMaps(
+            buildSubagentsFromMessages(messages),
+            currentSession!.subagents
+          )
         : currentSession!.subagents;
       const sandbox =
         needsRestore && sessionData.sandbox
@@ -1644,8 +1751,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         sandbox,
         agentProvider: sessionData.agent_provider,
         agentModel: sessionData.agent_model,
-        reasoningEffort:
-          sessionData.reasoning_effort ?? DEFAULT_THOUGHT_LEVEL,
+        reasoningEffort: sessionData.reasoning_effort ?? DEFAULT_THOUGHT_LEVEL,
         opencodeSessionId: sessionData.opencode_session_id ?? null,
         ...(sessionData.skills_stale &&
           canApplySkillsStale() && { skillsStale: true }),
@@ -2328,11 +2434,24 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     set((state) => {
       const session = state.sessions.get(sessionId);
       if (!session) return state;
-      // Guard against viewing a subagent that doesn't exist in this session.
-      if (!session.subagents.has(subagentSessionId)) return state;
+
+      const subagents = new Map(session.subagents);
+      if (!subagents.has(subagentSessionId)) {
+        subagents.set(subagentSessionId, {
+          sessionId: subagentSessionId,
+          parentToolCallId: "",
+          subagentType: null,
+          name: "",
+          status: "running",
+          turns: [emptyTurn()],
+          startedAt: Date.now(),
+          completedAt: null,
+        });
+      }
 
       const updatedSession: BuildSessionData = {
         ...session,
+        subagents,
         viewedSubagentSessionId: subagentSessionId,
         lastAccessed: new Date(),
       };
@@ -2406,6 +2525,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         parentToolCallId: base.parentToolCallId || parentToolCallId,
         subagentType: base.subagentType ?? subagentType,
         name: base.name || name,
+        lastActivity: activityFromToolCall(toolCall) || base.lastActivity,
         turns,
       };
 
@@ -2466,7 +2586,9 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         parentToolCallId: base.parentToolCallId || parentToolCallId,
         subagentType: base.subagentType ?? subagentType,
         name:
-          !base.name || isPlaceholderSubagentLabel(base.name)
+          !base.name ||
+          isPlaceholderSubagentLabel(base.name) ||
+          isGenericRoleLabel(base.name, base.subagentType ?? subagentType)
             ? name
             : base.name,
         turns,
@@ -2628,6 +2750,234 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       };
       const newSessions = new Map(state.sessions);
       newSessions.set(sessionId, updatedSession);
+      return { sessions: newSessions };
+    });
+  },
+
+  syncJobSpecialists: (sessionId, specialists, jobStatus, jobId) => {
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      if (!session) return state;
+
+      const subagents = new Map(session.subagents);
+      let streamItems = session.streamItems;
+      let messages = session.messages;
+      const jobCancelled = jobStatus === "cancelled";
+      const lastUserIdx = lastUserMessageIndex(messages);
+      const liveSessionIds = new Set(specialists.map((row) => row.session_id));
+      const pinHistory = jobStatusIsLive(jobStatus) || liveSessionIds.size > 0;
+
+      for (const specialist of specialists) {
+        const nodeId = specialist.node_id ?? "";
+        const parentToolCallId = nodeId ? laneTaskToolId(nodeId) : "";
+        const mapped = specialistUiStatus(specialist.status);
+        const toolStatus =
+          jobCancelled && mapped.tool !== "completed"
+            ? "cancelled"
+            : mapped.tool;
+        const existing = subagents.get(specialist.session_id);
+        const cardLabel = parentToolCallId
+          ? laneTaskLabelFromSession(streamItems, messages, parentToolCallId)
+          : "";
+        const name =
+          existing?.name && !isGenericRoleLabel(existing.name, specialist.role)
+            ? existing.name
+            : cardLabel || existing?.name || specialist.role;
+        subagents.set(specialist.session_id, {
+          sessionId: specialist.session_id,
+          parentToolCallId: existing?.parentToolCallId || parentToolCallId,
+          subagentType: existing?.subagentType ?? specialist.role,
+          name,
+          status: mapped.subagent,
+          lastActivity: specialist.last_activity || existing?.lastActivity,
+          turns: existing?.turns ?? [emptyTurn()],
+          startedAt: existing?.startedAt ?? Date.now(),
+          completedAt:
+            mapped.subagent === "running"
+              ? (existing?.completedAt ?? null)
+              : (existing?.completedAt ?? Date.now()),
+        });
+        if (!parentToolCallId) continue;
+        const toolUpdates: Partial<ToolCallState> = {
+          status: toolStatus,
+          subagentSessionId: specialist.session_id,
+          subagentType: specialist.role,
+          jobId,
+        };
+        streamItems = patchLaneTaskToolCalls(
+          streamItems,
+          parentToolCallId,
+          toolUpdates,
+          true
+        );
+        messages = messages.map((message, messageIndex) => {
+          const items = message.message_metadata?.streamItems;
+          if (!Array.isArray(items)) return message;
+          if (pinHistory && messageIndex < lastUserIdx) return message;
+          return {
+            ...message,
+            message_metadata: {
+              ...message.message_metadata,
+              streamItems: patchLaneTaskToolCalls(
+                items as StreamItem[],
+                parentToolCallId,
+                toolUpdates,
+                true
+              ),
+            },
+          };
+        });
+        const cardHasSession = (items: StreamItem[]) =>
+          items.some(
+            (item) =>
+              item.type === "tool_call" &&
+              item.toolCall.subagentSessionId === specialist.session_id
+          );
+        const hasCard =
+          cardHasSession(streamItems) ||
+          messages.some((message, messageIndex) => {
+            if (pinHistory && messageIndex < lastUserIdx) return false;
+            const items = message.message_metadata?.streamItems;
+            return (
+              Array.isArray(items) && cardHasSession(items as StreamItem[])
+            );
+          });
+        if (!hasCard) {
+          streamItems = [
+            ...streamItems,
+            makeLaneTaskStreamItem({
+              nodeId,
+              role: specialist.role,
+              name,
+              status: toolStatus,
+              sessionId: specialist.session_id,
+              jobId,
+            }),
+          ];
+        }
+      }
+
+      if (pinHistory) {
+        streamItems = pinForeignLaneTaskCards(streamItems, liveSessionIds);
+        messages = messages.map((message, messageIndex) => {
+          const items = message.message_metadata?.streamItems;
+          if (!Array.isArray(items)) return message;
+          let nextItems = items as StreamItem[];
+          if (messageIndex < lastUserIdx) {
+            nextItems = settleOpenLaneTaskCards(nextItems, "cancelled");
+          }
+          nextItems = pinForeignLaneTaskCards(nextItems, liveSessionIds);
+          return {
+            ...message,
+            message_metadata: {
+              ...message.message_metadata,
+              streamItems: nextItems,
+            },
+          };
+        });
+        if (liveSessionIds.size > 0) {
+          for (const [id, entry] of subagents) {
+            if (entry.status !== "running" || liveSessionIds.has(id)) continue;
+            subagents.set(id, {
+              ...entry,
+              status: "failed",
+              completedAt: entry.completedAt ?? Date.now(),
+            });
+          }
+        }
+      }
+
+      if (jobCancelled || jobStatus === "failed") {
+        const settleStatus = jobCancelled ? "cancelled" : "failed";
+        streamItems = settleOpenLaneTaskCards(streamItems, settleStatus);
+        messages = messages.map((message) => {
+          const items = message.message_metadata?.streamItems;
+          if (!Array.isArray(items)) return message;
+          return {
+            ...message,
+            message_metadata: {
+              ...message.message_metadata,
+              streamItems: settleOpenLaneTaskCards(
+                items as StreamItem[],
+                settleStatus
+              ),
+            },
+          };
+        });
+        for (const [id, entry] of subagents) {
+          if (entry.status !== "running") continue;
+          subagents.set(id, {
+            ...entry,
+            status: "failed",
+            completedAt: entry.completedAt ?? Date.now(),
+          });
+        }
+      }
+
+      const newSessions = new Map(state.sessions);
+      newSessions.set(sessionId, {
+        ...session,
+        subagents,
+        streamItems,
+        messages,
+        lastAccessed: new Date(),
+      });
+      return { sessions: newSessions };
+    });
+  },
+
+  hydrateSubagentFromMessages: (sessionId, subagentSessionId, messages) => {
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      if (!session) return state;
+
+      const consolidated = consolidateMessagesIntoTurns(messages);
+      const streamItems: StreamItem[] = [];
+      for (const message of consolidated) {
+        if (message.type !== "assistant") continue;
+        const items = message.message_metadata?.streamItems;
+        if (Array.isArray(items)) {
+          streamItems.push(...(items as StreamItem[]));
+        }
+      }
+
+      const existing = session.subagents.get(subagentSessionId);
+      const base: SubagentState = existing ?? {
+        sessionId: subagentSessionId,
+        parentToolCallId: "",
+        subagentType: null,
+        name: "",
+        status: "running",
+        turns: [emptyTurn()],
+        startedAt: Date.now(),
+        completedAt: null,
+      };
+      const turns = base.turns.length > 0 ? [...base.turns] : [emptyTurn()];
+      const last = turns[turns.length - 1] ?? emptyTurn();
+      turns[turns.length - 1] = {
+        ...last,
+        streamItems,
+        toolCalls: streamItems
+          .filter(
+            (item): item is Extract<StreamItem, { type: "tool_call" }> =>
+              item.type === "tool_call"
+          )
+          .map((item) => item.toolCall),
+      };
+
+      const subagents = new Map(session.subagents);
+      subagents.set(subagentSessionId, {
+        ...base,
+        lastActivity: activityFromStreamItems(streamItems) || base.lastActivity,
+        turns,
+      });
+
+      const newSessions = new Map(state.sessions);
+      newSessions.set(sessionId, {
+        ...session,
+        subagents,
+        lastAccessed: new Date(),
+      });
       return { sessions: newSessions };
     });
   },
@@ -2920,9 +3270,7 @@ export const useViewedSubagentSessionId = (): string | null =>
     if (!currentSessionId) return null;
     const session = sessions.get(currentSessionId);
     if (!session) return null;
-    const id = session.viewedSubagentSessionId;
-    if (id === null || !session.subagents.has(id)) return null;
-    return id;
+    return session.viewedSubagentSessionId;
   });
 
 /** Title of the current session, derived from `sessionHistory`. */

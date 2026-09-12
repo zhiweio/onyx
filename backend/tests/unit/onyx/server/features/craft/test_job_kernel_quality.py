@@ -99,12 +99,13 @@ def test_empty_lane_required_paths_fail_gate() -> None:
     assert any(item.reason == "missing or empty" for item in gate.missing)
 
 
-def test_lane_out_of_bounds_write_fails_gate(monkeypatch) -> None:
+def test_lane_gate_ignores_parent_host_files(monkeypatch) -> None:
     from onyx.server.features.build.jobs.gates import evaluate_contract_gate
 
     files = {
         "outputs/lanes/literature/NOTES.md": b"See https://example.com [1]\n",
         "outputs/DONE.json": b'{"done": true}\n',
+        "outputs/markdown/report.md": b"# Host report\n",
     }
 
     class _FakeManager:
@@ -146,8 +147,8 @@ def test_lane_out_of_bounds_write_fails_gate(monkeypatch) -> None:
         node=node,
         deadline_exceeded=False,
     )
-    assert gate.passed is False
-    assert any("outside" in item.reason for item in gate.missing)
+    assert gate.passed is True
+    assert gate.missing == []
 
 
 def test_assemble_brief_names_lane_skill() -> None:

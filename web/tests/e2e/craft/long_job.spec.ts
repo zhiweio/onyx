@@ -524,6 +524,216 @@ test("continue transcript hides host brief and shows ask reject", async ({
   }
 });
 
+test("cancel settles leftover researcher rows", async ({ page }) => {
+  const sessionId = "00000000-0000-0000-0000-00000000ca01";
+  const jobId = "00000000-0000-0000-0000-00000000ca02";
+  const childId = "4d0a580e-7ab3-4106-a846-9d4148e6230c";
+  const now = new Date().toISOString();
+  let cancelled = false;
+
+  const jobBody = () => ({
+    id: jobId,
+    session_id: sessionId,
+    project_id: null,
+    scenario_id: null,
+    name: "HMPL-760",
+    domain: "biomed",
+    status: cancelled ? "cancelled" : "waiting_lanes",
+    current_phase_index: 1,
+    phases: [
+      { id: "plan", name: "Plan", kind: "plan", status: "succeeded" },
+      {
+        id: "lane:researcher",
+        name: "Researcher",
+        kind: "lane",
+        status: cancelled ? "failed" : "running",
+      },
+    ],
+    timeline: [
+      { id: "plan", kind: "plan", status: "succeeded", label: "Plan" },
+      { id: "lanes", kind: "lane", status: "running", label: "Lanes" },
+    ],
+    artifacts: [],
+    events: [],
+    interrupt: null,
+    total_budget_seconds: 7200,
+    phase_budget_seconds: 1500,
+    error_detail: null,
+    specialists: [
+      {
+        id: "00000000-0000-0000-0000-00000000ca03",
+        session_id: childId,
+        role: "researcher",
+        status: cancelled ? "failed" : "running",
+        node_id: "lane:researcher",
+        last_activity: "Writing epi.md",
+      },
+    ],
+  });
+
+  const sessionBody = {
+    id: sessionId,
+    user_id: "user-1",
+    name: "HMPL-760",
+    status: "active",
+    created_at: now,
+    last_activity_at: now,
+    nextjs_port: null,
+    sandbox: {
+      id: "sbx-1",
+      status: "running",
+      container_id: "ctr-1",
+      created_at: now,
+      last_heartbeat: now,
+    },
+    artifacts: [],
+    sharing_scope: "private",
+    origin: "INTERACTIVE",
+    agent_provider: null,
+    agent_model: null,
+    skills_stale: false,
+    session_loaded_in_sandbox: true,
+  };
+
+  await page.route("**/api/build/sessions/**", async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+    if (url.includes("/messages") && method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          messages: url.includes(childId)
+            ? []
+            : [
+                {
+                  id: "m-user",
+                  session_id: sessionId,
+                  turn_index: 0,
+                  type: "user",
+                  content: "Assess HMPL-760",
+                  message_metadata: {
+                    type: "user_message",
+                    content: { type: "text", text: "Assess HMPL-760" },
+                  },
+                  created_at: now,
+                },
+                {
+                  id: "m-lane",
+                  session_id: sessionId,
+                  turn_index: 0,
+                  type: "assistant",
+                  content: "",
+                  message_metadata: {
+                    type: "assistant_message",
+                    streamItems: [
+                      {
+                        type: "tool_call",
+                        id: "lane-task-lane:researcher",
+                        toolCall: {
+                          id: "lane-task-lane:researcher",
+                          kind: "task",
+                          toolName: "task",
+                          title: "Researcher",
+                          description:
+                            "Researcher — outputs/normalized/epi.md",
+                          command: "",
+                          status: "in_progress",
+                          rawOutput: "outputs/normalized/epi.md",
+                          subagentType: "researcher",
+                          subagentSessionId: childId,
+                        },
+                      },
+                    ],
+                  },
+                  created_at: now,
+                },
+              ],
+        }),
+      });
+      return;
+    }
+    if (url.includes("/files") && method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ path: "outputs", entries: [] }),
+      });
+      return;
+    }
+    if (
+      (url.includes("/artifacts") ||
+        url.includes("/turns/active") ||
+        url.includes("/webapp-info") ||
+        url.includes("/sandbox-status")) &&
+      method === "GET"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: url.includes("/turns/active")
+          ? "null"
+          : url.includes("/sandbox-status")
+            ? JSON.stringify({
+                status: "running",
+                session_loaded_in_sandbox: true,
+              })
+            : "[]",
+      });
+      return;
+    }
+    const sessionRoot = url.match(/\/sessions\/[0-9a-f-]+(?:\?|$)/i);
+    if (method === "GET" && sessionRoot) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          url.includes(childId) ? { ...sessionBody, id: childId } : sessionBody
+        ),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.route("**/api/build/jobs**", async (route) => {
+    const request = route.request();
+    const url = request.url();
+    if (url.includes("/asks/current")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "null",
+      });
+      return;
+    }
+    if (url.includes("/cancel") && request.method() === "POST") {
+      cancelled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(jobBody()),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobBody()),
+    });
+  });
+
+  await page.goto(`/craft/v1?sessionId=${sessionId}`);
+  await expect(
+    page.getByText(/Running task|正在运行任务/)
+  ).toBeVisible({ timeout: 15000 });
+  await page.getByTestId("craft-job-cancel").click();
+  await expect(page.getByText(/Cancelled task|已取消任务/)).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.getByText(/Running task|正在运行任务/)).toHaveCount(0);
+});
+
 test("skill catalog does not list long-job-protocol", async ({ page }) => {
   const response = await page.request.get("/api/skills");
   if (!response.ok()) {
