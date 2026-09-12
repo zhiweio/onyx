@@ -48,7 +48,7 @@ import { Section } from "@/layouts/general-layouts";
 
 // ─── Model Configuration List ─────────────────────────────────────────────────
 
-const MODEL_GRID_COLS = "grid-cols-[2fr_2fr_2.25rem_2.25rem]";
+const MODEL_GRID_COLS = "grid-cols-[2fr_2fr_auto_auto]";
 
 type CustomModelConfiguration = Pick<
   ModelConfiguration,
@@ -93,17 +93,21 @@ function ModelConfigurationItem({
         value={model.display_name}
         onChange={(e) => onChange({ ...model, display_name: e.target.value })}
       />
-      <ModelSettingsPopover
-        model={model}
-        onChange={(patch) => onChange({ ...model, ...patch })}
-        canEditModelId
-      />
-      <Button
-        disabled={!canRemove}
-        prominence="tertiary"
-        icon={SvgMinusCircle}
-        onClick={onRemove}
-      />
+      <div className="flex items-center justify-center">
+        <ModelSettingsPopover
+          model={model}
+          onChange={(patch) => onChange({ ...model, ...patch })}
+          canEditModelId
+        />
+      </div>
+      <div className="flex items-center justify-center">
+        <Button
+          disabled={!canRemove}
+          prominence="tertiary"
+          icon={SvgMinusCircle}
+          onClick={onRemove}
+        />
+      </div>
     </>
   );
 }

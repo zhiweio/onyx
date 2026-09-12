@@ -641,22 +641,28 @@ function ModelRow({
                   flexDirection="row"
                   width="fit"
                   height="auto"
+                  alignItems="center"
                   gap={1}
                 >
                   {modelRightChildren(
                     model,
                     t("models.row.visionMarker.title")
                   )}
-                  <ModelSettingsPopover
-                    model={model}
-                    onChange={onSettingsChange}
-                    onOpenChange={setSettingsOpen}
-                  />
+                  {isDefaultModel && (
+                    <Text
+                      secondaryAction
+                      nowrap
+                      className="px-1.5 py-1 text-action-selection-05"
+                    >
+                      {t("models.row.defaultLabel")}
+                    </Text>
+                  )}
                   <Hoverable.Item group="model-row" variant="appear-on-hover">
                     <OpalSection
                       flexDirection="row"
                       width="fit"
                       height="auto"
+                      alignItems="center"
                       gap={1}
                     >
                       <Button
@@ -683,15 +689,13 @@ function ModelRow({
                       )}
                     </OpalSection>
                   </Hoverable.Item>
-                  {isDefaultModel && (
-                    <Text
-                      secondaryAction
-                      nowrap
-                      className="px-1.5 py-1 text-action-selection-05"
-                    >
-                      {t("models.row.defaultLabel")}
-                    </Text>
-                  )}
+                  <div className="shrink-0">
+                    <ModelSettingsPopover
+                      model={model}
+                      onChange={onSettingsChange}
+                      onOpenChange={setSettingsOpen}
+                    />
+                  </div>
                 </OpalSection>
               }
               editable
