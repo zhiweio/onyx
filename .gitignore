@@ -61,6 +61,12 @@ node_modules
 # plans (include symlinked plans dir too)
 plans
 
+# Local SearXNG deployment
+/searxng
+
+# Local Firecrawl deployment
+/firecrawl
+
 # Added context for LLMs
 .claude/CLAUDE.md
 .claude/settings.local.json
