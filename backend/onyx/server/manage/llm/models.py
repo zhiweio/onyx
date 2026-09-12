@@ -108,9 +108,9 @@ class LLMProviderDescriptor(BaseModel):
     def from_model(
         cls,
         llm_provider_model: "LLMProviderModel",
+        workspace_default: DefaultModel | None = None,
     ) -> "LLMProviderDescriptor":
         from onyx.llm.well_known_providers.llm_provider_options import (
-            fetch_default_model_for_provider,
             get_provider_display_name,
         )
 
@@ -123,10 +123,17 @@ class LLMProviderDescriptor(BaseModel):
             custom_config=llm_provider_model.custom_config,
             deployment_name=llm_provider_model.deployment_name,
         )
-        default_model = fetch_default_model_for_provider(provider)
+        # User-facing pickers badge the admin workspace default (Language
+        # Models page), not the vendor catalog in recommended-models.json.
+        default_model_name = (
+            workspace_default.model_name
+            if workspace_default is not None
+            and workspace_default.provider_id == llm_provider_model.id
+            else None
+        )
         for model_configuration in model_configurations:
             model_configuration.is_recommended_default = (
-                model_configuration.name == default_model
+                model_configuration.name == default_model_name
             )
 
         return cls(
@@ -402,7 +409,8 @@ class ModelConfigurationView(BaseModel):
     reasoning_effort_max: ReasoningEffort | None = None
     reasoning_effort_default: ReasoningEffort | None = None
     temperature_default: float | None = None
-    # True when this is the provider's recommended default model.
+    # True when this is the workspace-configured default (admin Language
+    # Models page). User-facing Chat and Craft pickers badge that model.
     is_recommended_default: bool = False
     display_name: str | None = None
     custom_display_name: str | None = None

@@ -7,6 +7,7 @@ import {
   hasSupportedCraftProvider,
   isCraftRecommendedModel,
   isSupportedProviderType,
+  resolveCraftWorkspaceDefault,
   resolveSessionLlmSelection,
   setCraftOnboardingSeen,
 } from "@/app/craft/onboarding/constants";
@@ -205,6 +206,24 @@ describe("getDefaultLlmSelection", () => {
   });
 });
 
+describe("resolveCraftWorkspaceDefault", () => {
+  it("prefers the Craft override, then the shared chat default", () => {
+    expect(
+      resolveCraftWorkspaceDefault(
+        { provider_id: 2, model_name: "deepseek-flash" },
+        { provider_id: 1, model_name: "deepseek-v4-pro" }
+      )
+    ).toEqual({ provider_id: 2, model_name: "deepseek-flash" });
+    expect(
+      resolveCraftWorkspaceDefault(null, {
+        provider_id: 1,
+        model_name: "deepseek-v4-pro",
+      })
+    ).toEqual({ provider_id: 1, model_name: "deepseek-v4-pro" });
+    expect(resolveCraftWorkspaceDefault(null, null)).toBeNull();
+  });
+});
+
 describe("isCraftRecommendedModel", () => {
   it("flags the provider's recommended-default model", () => {
     expect(
@@ -218,6 +237,30 @@ describe("isCraftRecommendedModel", () => {
       isCraftRecommendedModel(
         model("claude-opus-5", { craft: true, visible: false })
       )
+    ).toBe(false);
+  });
+
+  it("uses the workspace default when provided", () => {
+    const workspaceDefault = {
+      provider_id: 65,
+      model_name: "deepseek-flash",
+    };
+    expect(
+      isCraftRecommendedModel(
+        model("deepseek-flash"),
+        65,
+        workspaceDefault
+      )
+    ).toBe(true);
+    expect(
+      isCraftRecommendedModel(
+        model("deepseek-v4-pro", { craft: true }),
+        65,
+        workspaceDefault
+      )
+    ).toBe(false);
+    expect(
+      isCraftRecommendedModel(model("deepseek-flash"), 1, workspaceDefault)
     ).toBe(false);
   });
 });

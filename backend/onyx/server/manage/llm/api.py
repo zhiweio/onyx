@@ -934,6 +934,10 @@ def list_llm_provider_basics(
 
     all_providers = fetch_existing_llm_providers(db_session, [])
 
+    workspace_default = DefaultModel.from_model_config(
+        fetch_default_llm_model(db_session)
+    )
+
     # Use centralized access control logic with persona=None since we're
     # listing providers without a specific persona context. This correctly:
     # - Includes public providers WITHOUT persona restrictions
@@ -941,7 +945,9 @@ def list_llm_provider_basics(
     # - Excludes providers with persona restrictions (requires specific persona)
     # - Excludes non-public providers with no restrictions (admin-only)
     accessible_providers = [
-        LLMProviderDescriptor.from_model(provider)
+        LLMProviderDescriptor.from_model(
+            provider, workspace_default=workspace_default
+        )
         for provider in all_providers
         if can_user_access_llm_provider(
             provider, user_group_ids, persona=None, can_manage_llms=can_manage_llms
@@ -958,9 +964,7 @@ def list_llm_provider_basics(
 
     response = LLMProviderResponse[LLMProviderDescriptor].from_models(
         providers=accessible_providers,
-        default_text=DefaultModel.from_model_config(
-            fetch_default_llm_model(db_session)
-        ),
+        default_text=workspace_default,
         default_vision=DefaultModel.from_model_config(
             fetch_default_vision_model(db_session)
         ),
@@ -1093,24 +1097,6 @@ def list_llm_providers_for_persona(
         db_session, [LLMModelFlowType.CHAT, LLMModelFlowType.VISION]
     )
 
-    # Check access with persona context — respects persona restrictions
-    llm_provider_list: list[LLMProviderDescriptor] = [
-        LLMProviderDescriptor.from_model(llm_provider_model)
-        for llm_provider_model in all_providers
-        if can_user_access_llm_provider(
-            llm_provider_model, user_group_ids, persona, can_manage_llms=can_manage_llms
-        )
-    ]
-
-    end_time = datetime.now(timezone.utc)
-    duration = (end_time - start_time).total_seconds()
-    logger.debug(
-        "Completed fetching %s LLM providers for persona %s in %s seconds",
-        len(llm_provider_list),
-        persona_id,
-        format(duration, ".2f"),
-    )
-
     default_text_model = fetch_default_llm_model(db_session)
     default_vision_model = fetch_default_vision_model(db_session)
 
@@ -1133,6 +1119,26 @@ def list_llm_providers_for_persona(
                 provider_id=model_config.llm_provider_id,
                 model_name=model_config.name,
             )
+
+    # Check access with persona context — respects persona restrictions
+    llm_provider_list: list[LLMProviderDescriptor] = [
+        LLMProviderDescriptor.from_model(
+            llm_provider_model, workspace_default=default_text
+        )
+        for llm_provider_model in all_providers
+        if can_user_access_llm_provider(
+            llm_provider_model, user_group_ids, persona, can_manage_llms=can_manage_llms
+        )
+    ]
+
+    end_time = datetime.now(timezone.utc)
+    duration = (end_time - start_time).total_seconds()
+    logger.debug(
+        "Completed fetching %s LLM providers for persona %s in %s seconds",
+        len(llm_provider_list),
+        persona_id,
+        format(duration, ".2f"),
+    )
 
     response = LLMProviderResponse[LLMProviderDescriptor].from_models(
         providers=llm_provider_list,

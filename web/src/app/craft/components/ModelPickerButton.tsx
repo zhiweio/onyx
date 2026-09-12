@@ -6,7 +6,10 @@ import { cn } from "@opal/utils";
 import { BuildLLMPopover } from "@/app/craft/components/BuildLLMPopover";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import { getModelIcon } from "@/lib/languageModels";
-import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
+import {
+  BuildLlmSelection,
+  resolveCraftWorkspaceDefault,
+} from "@/app/craft/onboarding/constants";
 import { getPreferredLlmSelection } from "@/app/craft/utils/llmPreferences";
 import { useUser } from "@/providers/UserProvider";
 
@@ -96,6 +99,7 @@ export default function ModelPickerButton({
       llmProviders={llmProviders}
       disabled={disabled}
       persistSelection={persistSelection}
+      workspaceDefault={resolveCraftWorkspaceDefault(defaultCraft, defaultText)}
     >
       <div
         className={cn(

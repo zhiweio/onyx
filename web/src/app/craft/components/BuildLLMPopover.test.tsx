@@ -103,6 +103,25 @@ describe("BuildLLMPopover recommended models", () => {
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("GPT-5.6 Sol")).toBeInTheDocument();
   });
+
+  it("badges the workspace default instead of the catalog recommended model", () => {
+    render(
+      <BuildLLMPopover
+        currentSelection={null}
+        onSelectionChange={jest.fn()}
+        llmProviders={providers}
+        workspaceDefault={{ provider_id: 13, model_name: "gpt-5-mini" }}
+      >
+        <button>Choose model</button>
+      </BuildLLMPopover>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose model" }));
+    fireEvent.click(screen.getByRole("button", { name: /OpenAI Team/ }));
+
+    expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
+    expect(screen.queryByText("GPT-5.6 Sol")).not.toBeInTheDocument();
+  });
 });
 
 describe("BuildLLMPopover aggregator vendors", () => {

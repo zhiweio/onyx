@@ -6,6 +6,7 @@ import { SvgCheck, SvgChevronDown, SvgChevronRight } from "@opal/icons";
 import { Text, Popover, PopoverMenu, LineItemButton } from "@opal/components";
 import { Switch } from "@opal/components";
 import {
+  DefaultModel,
   LLMProviderDescriptor,
   ModelConfiguration,
 } from "@/lib/languageModels/types";
@@ -39,6 +40,8 @@ interface BuildLLMPopoverProps {
   // Admin surfaces that edit a workspace-wide setting pass `false` so the
   // admin's own remembered pick isn't overwritten by that edit.
   persistSelection?: boolean;
+  // Admin Language Models default, or a Craft override when one is set.
+  workspaceDefault?: DefaultModel | null;
 }
 
 interface ModelOption {
@@ -75,6 +78,7 @@ export function BuildLLMPopover({
   children,
   disabled = false,
   persistSelection = true,
+  workspaceDefault = null,
 }: BuildLLMPopoverProps) {
   const t = useTranslations("craft.llmPopover");
   const { user } = useUser();
@@ -105,7 +109,12 @@ export function BuildLLMPopover({
         ? provider.model_configurations.filter(
             (model) =>
               model.is_visible &&
-              (isCraftRecommendedModel(model) || isCurrent(model))
+              (isCraftRecommendedModel(
+                model,
+                provider.id,
+                workspaceDefault
+              ) ||
+                isCurrent(model))
           )
         : provider.model_configurations.filter((model) => model.is_visible);
       const providerDisplayName = craftProviderDisplayName(provider);
@@ -123,13 +132,22 @@ export function BuildLLMPopover({
               : `${providerDisplayName}/${vendor}`,
           modelName: model.name,
           displayName: modelDisplayName(model),
-          isRecommended: isCraftRecommendedModel(model),
+          isRecommended: isCraftRecommendedModel(
+            model,
+            provider.id,
+            workspaceDefault
+          ),
         });
       });
     });
 
     return options;
-  }, [showRecommendedOnly, llmProviders, currentSelection]);
+  }, [
+    showRecommendedOnly,
+    llmProviders,
+    currentSelection,
+    workspaceDefault,
+  ]);
 
   // Group options by provider
   const groupedOptions = useMemo(() => {

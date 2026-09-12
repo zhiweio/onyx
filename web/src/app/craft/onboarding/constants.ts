@@ -19,10 +19,42 @@ export type ProviderKey = "anthropic" | "openai" | "openrouter";
 
 export const CRAFT_GATEWAY_PROVIDER = "onyx";
 
-// The recommended model is each provider's `is_recommended_default`, sourced
-// server-side from recommended-models.json — never a hardcoded list here.
-export function isCraftRecommendedModel(model: ModelConfiguration): boolean {
-  return model.is_visible && (model.is_recommended_default ?? false);
+// Workspace default for Craft: the admin Craft override, else the shared
+// Language Models default. Both come from /llm/provider — not the vendor
+// catalog in recommended-models.json.
+export function resolveCraftWorkspaceDefault(
+  defaultCraft?: DefaultModel | null,
+  defaultText?: DefaultModel | null
+): DefaultModel | null {
+  return defaultCraft ?? defaultText ?? null;
+}
+
+// Badge + recommended-only filter. Prefer the workspace default when the
+// caller has it; otherwise use the server-flagged `is_recommended_default`.
+function isDefaultModel(value: unknown): value is DefaultModel {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "provider_id" in value &&
+    "model_name" in value
+  );
+}
+
+export function isCraftRecommendedModel(
+  model: ModelConfiguration,
+  providerId?: number,
+  workspaceDefault?: DefaultModel | null
+): boolean {
+  if (!model.is_visible) return false;
+  // Guard: Array.find passes (model, index, array). An array is truthy and
+  // must not be treated as a workspace default.
+  if (isDefaultModel(workspaceDefault)) {
+    return (
+      providerId === workspaceDefault.provider_id &&
+      model.name === workspaceDefault.model_name
+    );
+  }
+  return model.is_recommended_default ?? false;
 }
 
 // Common providers sorted first in the onboarding catalog. Craft routes every
@@ -126,8 +158,8 @@ export function getDefaultLlmSelection(
   });
 
   for (const provider of candidates) {
-    const modelName = provider.model_configurations.find(
-      isCraftRecommendedModel
+    const modelName = provider.model_configurations.find((model) =>
+      isCraftRecommendedModel(model)
     )?.name;
     if (!modelName) continue;
     return toLlmSelection(provider, modelName);

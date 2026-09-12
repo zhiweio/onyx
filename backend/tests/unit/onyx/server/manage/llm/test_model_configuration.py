@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 from onyx.db.enums import LLMModelFlowType
 from onyx.llm.models import ReasoningEffort
 from onyx.server.manage.llm.models import (
+    DefaultModel,
     LLMProviderDescriptor,
     ModelConfigurationUpsertRequest,
     ModelConfigurationView,
@@ -540,9 +541,9 @@ class TestModelConfigurationUpsertRequestFromModel:
 
 # LLMProviderDescriptor.from_model — is_recommended_default marking
 #
-# This flag is the only signal the (non-admin) Craft model picker uses to badge
-# and default-select the provider's recommended model on /llm/provider, so it
-# must be set on exactly the recommended-default model.
+# This flag is the only signal the (non-admin) Chat and Craft pickers use to
+# badge the workspace default on /llm/provider, so it must follow the admin
+# Language Models default — not recommended-models.json.
 
 
 class TestLLMProviderDescriptorRecommendedDefault:
@@ -565,22 +566,22 @@ class TestLLMProviderDescriptorRecommendedDefault:
         self,
         provider_model: MagicMock,
         views: list[ModelConfigurationView],
-        default: str,
+        default: str | None,
     ) -> LLMProviderDescriptor:
-        with (
-            patch(
-                "onyx.server.manage.llm.models.filter_model_configurations",
-                return_value=views,
-            ),
-            patch(
-                "onyx.llm.well_known_providers.llm_provider_options."
-                "fetch_default_model_for_provider",
-                return_value=default,
-            ),
+        workspace_default = (
+            DefaultModel(provider_id=provider_model.id, model_name=default)
+            if default is not None
+            else None
+        )
+        with patch(
+            "onyx.server.manage.llm.models.filter_model_configurations",
+            return_value=views,
         ):
-            return LLMProviderDescriptor.from_model(provider_model)
+            return LLMProviderDescriptor.from_model(
+                provider_model, workspace_default=workspace_default
+            )
 
-    def test_marks_only_the_recommended_default_model(self) -> None:
+    def test_marks_only_the_workspace_default_model(self) -> None:
         descriptor = self._from_model(
             self._provider_model(),
             [self._view("claude-opus-4-8"), self._view("claude-sonnet-4-6")],
@@ -592,12 +593,39 @@ class TestLLMProviderDescriptorRecommendedDefault:
         assert flags == {"claude-opus-4-8": True, "claude-sonnet-4-6": False}
 
     def test_nothing_flagged_when_default_not_among_configured_models(self) -> None:
-        # The recommended default isn't configured → no model flagged (the picker
+        # The workspace default isn't configured → no model flagged (the picker
         # falls back to the first visible model).
         descriptor = self._from_model(
             self._provider_model(),
             [self._view("claude-sonnet-4-6")],
             default="claude-opus-4-8",
+        )
+        assert all(
+            not m.is_recommended_default for m in descriptor.model_configurations
+        )
+
+    def test_nothing_flagged_when_workspace_default_is_another_provider(self) -> None:
+        provider_model = self._provider_model()
+        views = [self._view("claude-opus-4-8"), self._view("claude-sonnet-4-6")]
+        with patch(
+            "onyx.server.manage.llm.models.filter_model_configurations",
+            return_value=views,
+        ):
+            descriptor = LLMProviderDescriptor.from_model(
+                provider_model,
+                workspace_default=DefaultModel(
+                    provider_id=provider_model.id + 1, model_name="claude-opus-4-8"
+                ),
+            )
+        assert all(
+            not m.is_recommended_default for m in descriptor.model_configurations
+        )
+
+    def test_nothing_flagged_when_workspace_default_is_unset(self) -> None:
+        descriptor = self._from_model(
+            self._provider_model(),
+            [self._view("deepseek-v4-pro"), self._view("deepseek-flash")],
+            default=None,
         )
         assert all(
             not m.is_recommended_default for m in descriptor.model_configurations
@@ -611,17 +639,10 @@ class TestLLMProviderDescriptorRecommendedDefault:
         provider_model.deployment_name = "gpt-5.1"
         provider_model.model_configurations = []
 
-        with (
-            patch(
-                "onyx.server.manage.llm.models.filter_model_configurations",
-                return_value=[],
-            ) as mock_filter,
-            patch(
-                "onyx.llm.well_known_providers.llm_provider_options."
-                "fetch_default_model_for_provider",
-                return_value=None,
-            ),
-        ):
+        with patch(
+            "onyx.server.manage.llm.models.filter_model_configurations",
+            return_value=[],
+        ) as mock_filter:
             LLMProviderDescriptor.from_model(provider_model)
 
         assert mock_filter.call_args.kwargs["deployment_name"] == "gpt-5.1"
