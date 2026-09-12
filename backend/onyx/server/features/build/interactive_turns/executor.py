@@ -48,7 +48,6 @@ from onyx.server.features.build.session.interrupt_signal import (
 )
 from onyx.server.features.build.session.locks import session_creation_lock
 from onyx.server.features.build.session.manager import SessionManager
-from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.server.features.build.session.sandbox_lifecycle import (
     HEALTH_PROBE_TIMEOUT_SECONDS,
 )
@@ -63,6 +62,7 @@ from onyx.server.features.build.timeouts import (
     PROMPT_SLOT_FAST_FAIL_ACQUIRE_SECONDS,
     PROMPT_SLOT_WAIT_OUT_ORPHAN_SECONDS,
 )
+from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import (
     CURRENT_TENANT_ID_CONTEXTVAR,
@@ -262,379 +262,324 @@ def _drive_interactive_turn(
     skip_job_continue = kind == "compact"
     ownership_lost_for_continue = False
     try:
-      with get_session_with_current_tenant() as db_session:
-        session_manager = SessionManager(db_session)
-        sandbox = _ready_session_runtime(db_session, session_id, user_id)
-        sandbox_id = sandbox.id
-        db_session.commit()
-        from onyx.db.craft_job import (
-            get_open_job_for_session,
-            get_specialist_for_session,
-        )
-        from onyx.server.features.build.jobs.continuation import job_turn_budgets
-
-        job = get_open_job_for_session(db_session, session_id)
-        if job is None:
-            specialist = get_specialist_for_session(db_session, session_id)
-            job = specialist.job if specialist is not None else None
-        budgets = job_turn_budgets(job)
-        if budgets is not None:
-            _soft_budget_seconds, budget_seconds = budgets
-        if job is not None:
-            from onyx.server.features.build.jobs.kernel import renew_lease
-
-            renew_lease(job, owner=str(turn_id), seconds=budget_seconds)
+        with get_session_with_current_tenant() as db_session:
+            session_manager = SessionManager(db_session)
+            sandbox = _ready_session_runtime(db_session, session_id, user_id)
+            sandbox_id = sandbox.id
             db_session.commit()
+            from onyx.db.craft_job import (
+                get_open_job_for_session,
+                get_specialist_for_session,
+            )
+            from onyx.server.features.build.jobs.continuation import job_turn_budgets
 
-        if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
-            logger.info("Interactive turn %s runner ownership lost", turn_id)
-            skip_job_continue = True
-            return
+            job = get_open_job_for_session(db_session, session_id)
+            if job is None:
+                specialist = get_specialist_for_session(db_session, session_id)
+                job = specialist.job if specialist is not None else None
+            budgets = job_turn_budgets(job)
+            if budgets is not None:
+                _soft_budget_seconds, budget_seconds = budgets
+            if job is not None:
+                from onyx.server.features.build.jobs.kernel import renew_lease
 
-        state = BuildStreamingState(turn_index=turn_index)
-        deadline = time.monotonic() + budget_seconds
-
-        def interrupt_requested() -> bool:
-            nonlocal deadline_exceeded
-            if time.monotonic() > deadline:
-                deadline_exceeded = True
-                return True
-            try:
-                return is_interrupt_requested(session_id, cache)
-            except CACHE_TRANSIENT_ERRORS:
-                logger.warning(
-                    "[SANDBOX-SERVE] interrupt fence check failed for session %s",
-                    session_id,
-                    exc_info=True,
-                )
-                return False
-
-        def persist_turn_error(message: str) -> None:
-            """Best-effort user-visible failure row; never blocks finish_turn."""
-            try:
-                db_session.rollback()
-                session_manager.persist_turn_error(
-                    session_id, turn_index, f"{message} {_TURN_ERROR_SUFFIX}"
-                )
+                renew_lease(job, owner=str(turn_id), seconds=budget_seconds)
                 db_session.commit()
-            except Exception:
-                logger.exception(
-                    "Failed to persist turn error message for turn %s", turn_id
-                )
 
-        prompt_slot_cm = session_manager.prompt_slot(
-            sandbox.id,
-            session_id,
-            acquire_timeout=(
-                PROMPT_SLOT_WAIT_OUT_ORPHAN_SECONDS
-                if reclaimed
-                else PROMPT_SLOT_FAST_FAIL_ACQUIRE_SECONDS
-            ),
-        )
-        slot = prompt_slot_cm.__enter__()
-        if not slot.acquired:
-            # Ownership check first: a stalled runner whose turn was reclaimed
-            # also lands here, and the successor IS processing the message —
-            # it must not leave a false "wasn't processed" row.
-            if touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
+            if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
+                logger.info("Interactive turn %s runner ownership lost", turn_id)
+                skip_job_continue = True
+                return
+
+            state = BuildStreamingState(turn_index=turn_index)
+            deadline = time.monotonic() + budget_seconds
+
+            def interrupt_requested() -> bool:
+                nonlocal deadline_exceeded
+                if time.monotonic() > deadline:
+                    deadline_exceeded = True
+                    return True
                 try:
-                    session_manager.persist_turn_error(
+                    return is_interrupt_requested(session_id, cache)
+                except CACHE_TRANSIENT_ERRORS:
+                    logger.warning(
+                        "[SANDBOX-SERVE] interrupt fence check failed for session %s",
                         session_id,
-                        turn_index,
-                        "Another turn was still running for this session, so "
-                        "this message wasn't processed. Wait for it to finish, "
-                        "then send your message again.",
+                        exc_info=True,
+                    )
+                    return False
+
+            def persist_turn_error(message: str) -> None:
+                """Best-effort user-visible failure row; never blocks finish_turn."""
+                try:
+                    db_session.rollback()
+                    session_manager.persist_turn_error(
+                        session_id, turn_index, f"{message} {_TURN_ERROR_SUFFIX}"
                     )
                     db_session.commit()
                 except Exception:
                     logger.exception(
                         "Failed to persist turn error message for turn %s", turn_id
                     )
-            finish_turn(
-                cache=cache,
-                turn_id=turn_id,
-                status=TURN_STATUS_FAILED,
-                error_detail="Concurrent turn in flight for build session.",
-                runner_id=runner_id,
-            )
-            prompt_slot_cm.__exit__(None, None, None)
-            skip_job_continue = True
-            return
 
-        try:
-            # Re-check ownership after the (possibly long) slot wait: a reclaim acquire
-            # can block past RUNNER_STALE_AFTER_SECONDS, letting another
-            # runner steal the turn — it must not reach the prompt POST.
-            if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
-                logger.info("Interactive turn %s runner ownership lost", turn_id)
+            prompt_slot_cm = session_manager.prompt_slot(
+                sandbox.id,
+                session_id,
+                acquire_timeout=(
+                    PROMPT_SLOT_WAIT_OUT_ORPHAN_SECONDS
+                    if reclaimed
+                    else PROMPT_SLOT_FAST_FAIL_ACQUIRE_SECONDS
+                ),
+            )
+            slot = prompt_slot_cm.__enter__()
+            if not slot.acquired:
+                # Ownership check first: a stalled runner whose turn was reclaimed
+                # also lands here, and the successor IS processing the message —
+                # it must not leave a false "wasn't processed" row.
+                if touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
+                    try:
+                        session_manager.persist_turn_error(
+                            session_id,
+                            turn_index,
+                            "Another turn was still running for this session, so "
+                            "this message wasn't processed. Wait for it to finish, "
+                            "then send your message again.",
+                        )
+                        db_session.commit()
+                    except Exception:
+                        logger.exception(
+                            "Failed to persist turn error message for turn %s", turn_id
+                        )
+                finish_turn(
+                    cache=cache,
+                    turn_id=turn_id,
+                    status=TURN_STATUS_FAILED,
+                    error_detail="Concurrent turn in flight for build session.",
+                    runner_id=runner_id,
+                )
+                prompt_slot_cm.__exit__(None, None, None)
                 skip_job_continue = True
                 return
 
-            session = session_manager.get_session(session_id, user_id)
-            user = fetch_user_by_id(db_session, user_id)
-            if session is None or user is None:
-                raise RuntimeError("Craft session owner or session no longer exists")
-            turn_state = get_turn(cache, turn_id)
-            allowed_mcp_ids = None
-            if turn_state is not None:
-                allowed_mcp_ids = resolve_effective_mcp_server_ids(
-                    db_session,
-                    user,
-                    selected_mcp_server_ids=turn_state.selected_mcp_server_ids,
-                    selected_skill_ids=turn_state.selected_skill_ids,
-                )
-            session_manager.reconcile_session_llm_config(
-                sandbox, session, user, allowed_server_ids=allowed_mcp_ids
-            )
-            db_session.commit()
+            try:
+                # Re-check ownership after the (possibly long) slot wait: a reclaim acquire
+                # can block past RUNNER_STALE_AFTER_SECONDS, letting another
+                # runner steal the turn — it must not reach the prompt POST.
+                if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
+                    logger.info("Interactive turn %s runner ownership lost", turn_id)
+                    skip_job_continue = True
+                    return
 
-            # Only while holding the slot — a racing loser must not overwrite
-            # the live turn's stamp. Continuations don't restamp.
-            session_manager.stamp_turn_deadline(
-                sandbox.id,
-                session_id,
-                soft_budget_seconds=min(
-                    (
-                        budgets[0]
-                        if budgets is not None
-                        else INTERACTIVE_TURN_SOFT_BUDGET_SECONDS
-                    ),
-                    budget_seconds,
-                ),
-                hard_cap_seconds=budget_seconds,
-            )
-
-            if interrupt_requested():
-                cancelled = not deadline_exceeded
-                session_manager.finalize_persist(session_id, state)
-                db_session.commit()
-                finish_turn(
-                    cache=cache,
-                    turn_id=turn_id,
-                    status=TURN_STATUS_CANCELLED,
-                    runner_id=runner_id,
-                )
-                return
-
-            def drive_one_prompt(
-                current_prompt: str,
-                prompt_attachments: list[PromptAttachment],
-                *,
-                can_continue: bool,
-                compact: bool = False,
-            ) -> _PromptResult:
-                """Stream one opencode prompt to completion, timeout, or a
-                turn-ending failure. On the recoverable inactivity timeout it
-                returns TIMED_OUT (only while ``can_continue``); failures finish
-                the turn here and return TERMINATED so the caller just returns."""
-                nonlocal deadline_exceeded, ownership_lost_for_continue
-                ownership_lost = False
-                final_event_seen = False
-                cancelled_event_seen = False
-                timed_out = False
-
-                if compact:
-                    event_stream = session_manager.yield_sandbox_compact_events(
-                        sandbox.id,
-                        session_id,
-                        should_interrupt=interrupt_requested,
-                        should_abort_on_teardown=lambda: not ownership_lost,
+                session = session_manager.get_session(session_id, user_id)
+                user = fetch_user_by_id(db_session, user_id)
+                if session is None or user is None:
+                    raise RuntimeError(
+                        "Craft session owner or session no longer exists"
                     )
+                turn_state = get_turn(cache, turn_id)
+                if job is not None:
+                    from onyx.server.features.build.jobs.mcp import (
+                        resolve_job_mcp_server_ids,
+                    )
+
+                    allowed_mcp_ids = resolve_job_mcp_server_ids(db_session, user, job)
+                elif turn_state is not None:
+                    skill_ids = turn_state.selected_skill_ids or []
+                    mcp_ids = turn_state.selected_mcp_server_ids or []
+                    if skill_ids or mcp_ids:
+                        allowed_mcp_ids = resolve_effective_mcp_server_ids(
+                            db_session,
+                            user,
+                            selected_mcp_server_ids=mcp_ids,
+                            selected_skill_ids=skill_ids,
+                        )
+                    else:
+                        # Workspace setup injects every eligible server. An empty
+                        # picker used to write [] and wipe that set.
+                        allowed_mcp_ids = None
                 else:
-                    event_stream = session_manager.yield_sandbox_events(
-                        sandbox.id,
-                        session_id,
-                        current_prompt,
-                        attachments=prompt_attachments,
-                        should_interrupt=interrupt_requested,
-                        should_abort_on_teardown=lambda: not ownership_lost,
-                    )
+                    allowed_mcp_ids = None
+                session_manager.reconcile_session_llm_config(
+                    sandbox, session, user, allowed_server_ids=allowed_mcp_ids
+                )
+                db_session.commit()
 
-                for sandbox_event in event_stream:
-                    if time.monotonic() > deadline:
-                        deadline_exceeded = True
-                    if deadline_exceeded:
-                        continue
-
-                    if not touch_turn(
-                        cache=cache, turn_id=turn_id, runner_id=runner_id
-                    ):
-                        logger.info(
-                            "Interactive turn %s runner ownership lost", turn_id
-                        )
-                        ownership_lost = True
-                        ownership_lost_for_continue = True
-                        return _PromptResult(_PromptOutcome.TERMINATED)
-                    slot.extend()
-                    if slot.lost:
-                        ownership_lost = True
-                        session_manager.finalize_persist(session_id, state)
-                        db_session.commit()
-                        persist_turn_error(
-                            "This turn was interrupted and could not finish."
-                        )
-                        finish_turn(
-                            cache=cache,
-                            turn_id=turn_id,
-                            status=TURN_STATUS_FAILED,
-                            error_detail="Prompt slot lease lost mid-turn.",
-                            runner_id=runner_id,
-                        )
-                        return _PromptResult(_PromptOutcome.TERMINATED)
-                    if isinstance(sandbox_event, SSEKeepalive):
-                        continue
-
-                    # The transport already aborted the timed-out step and ends the
-                    # stream after this event; drain it (don't return early, which
-                    # would GeneratorExit and re-abort) and let the caller re-prompt.
-                    if isinstance(sandbox_event, ActivityTimeoutError) and can_continue:
-                        timed_out = True
-                        continue
-
-                    session_manager.persist_sandbox_event(
-                        session_id, state, sandbox_event
-                    )
-                    db_session.commit()
-
-                    if isinstance(sandbox_event, SandboxError):
-                        session_manager.finalize_persist(session_id, state)
-                        db_session.commit()
-                        persist_turn_error(sandbox_event.message)
-                        finish_turn(
-                            cache=cache,
-                            turn_id=turn_id,
-                            status=TURN_STATUS_FAILED,
-                            error_detail=sandbox_event.message,
-                            runner_id=runner_id,
-                        )
-                        return _PromptResult(_PromptOutcome.TERMINATED)
-
-                    if isinstance(sandbox_event, PromptResponse):
-                        final_event_seen = True
-                        cancelled_event_seen = (
-                            getattr(  # ods: ignore[getattr]
-                                sandbox_event, "stop_reason", None
-                            )
-                            == "cancelled"
-                        )
-
-                if timed_out:
-                    return _PromptResult(_PromptOutcome.TIMED_OUT)
-                return _PromptResult(
-                    _PromptOutcome.COMPLETED,
-                    final_event_seen=final_event_seen,
-                    cancelled=cancelled_event_seen,
+                # Only while holding the slot — a racing loser must not overwrite
+                # the live turn's stamp. Continuations don't restamp.
+                session_manager.stamp_turn_deadline(
+                    sandbox.id,
+                    session_id,
+                    soft_budget_seconds=min(
+                        (
+                            budgets[0]
+                            if budgets is not None
+                            else INTERACTIVE_TURN_SOFT_BUDGET_SECONDS
+                        ),
+                        budget_seconds,
+                    ),
+                    hard_cap_seconds=budget_seconds,
                 )
 
-            result = _PromptResult(_PromptOutcome.COMPLETED)
-            if kind == "compact":
-                result = drive_one_prompt(
-                    "",
-                    [],
-                    can_continue=False,
-                    compact=True,
-                )
-            else:
-                current_prompt = prompt
-                for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
-                    result = drive_one_prompt(
-                        current_prompt,
-                        attachments if attempt == 0 else [],
-                        can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
-                    )
-                    if result.outcome is not _PromptOutcome.TIMED_OUT:
-                        break
-                    # Flush the aborted step's partial output as its own message so it
-                    # can't merge with the continuation, then steer the agent.
+                if interrupt_requested():
+                    cancelled = not deadline_exceeded
                     session_manager.finalize_persist(session_id, state)
                     db_session.commit()
-                    logger.info(
-                        "Interactive turn %s step timed out; re-prompting (%s/%s)",
-                        turn_id,
-                        attempt + 1,
-                        MAX_TIMEOUT_CONTINUATIONS,
+                    finish_turn(
+                        cache=cache,
+                        turn_id=turn_id,
+                        status=TURN_STATUS_CANCELLED,
+                        runner_id=runner_id,
                     )
-                    current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+                    return
 
-            if result.outcome is _PromptOutcome.TERMINATED:
-                if ownership_lost_for_continue:
-                    skip_job_continue = True
-                return
+                def drive_one_prompt(
+                    current_prompt: str,
+                    prompt_attachments: list[PromptAttachment],
+                    *,
+                    can_continue: bool,
+                    compact: bool = False,
+                ) -> _PromptResult:
+                    """Stream one opencode prompt to completion, timeout, or a
+                    turn-ending failure. On the recoverable inactivity timeout it
+                    returns TIMED_OUT (only while ``can_continue``); failures finish
+                    the turn here and return TERMINATED so the caller just returns."""
+                    nonlocal deadline_exceeded, ownership_lost_for_continue
+                    ownership_lost = False
+                    final_event_seen = False
+                    cancelled_event_seen = False
+                    timed_out = False
 
-            session_manager.finalize_persist(session_id, state)
-            db_session.commit()
-            from onyx.server.features.build.session.artifact_persist import (
-                persist_session_workspace_files,
-            )
+                    if compact:
+                        event_stream = session_manager.yield_sandbox_compact_events(
+                            sandbox.id,
+                            session_id,
+                            should_interrupt=interrupt_requested,
+                            should_abort_on_teardown=lambda: not ownership_lost,
+                        )
+                    else:
+                        event_stream = session_manager.yield_sandbox_events(
+                            sandbox.id,
+                            session_id,
+                            current_prompt,
+                            attachments=prompt_attachments,
+                            should_interrupt=interrupt_requested,
+                            should_abort_on_teardown=lambda: not ownership_lost,
+                        )
 
-            persist_session_workspace_files(
-                db_session,
-                get_sandbox_manager(),
-                sandbox_id=sandbox.id,
-                session_id=session_id,
-                user_id=user_id,
-                turn_index=turn_index,
-            )
+                    for sandbox_event in event_stream:
+                        if time.monotonic() > deadline:
+                            deadline_exceeded = True
+                        if deadline_exceeded:
+                            continue
 
-            if deadline_exceeded:
-                persist_turn_error(
-                    "This turn was stopped after reaching its "
-                    f"{max(1, round(budget_seconds / 60))}-minute time limit."
-                )
-                finish_turn(
-                    cache=cache,
-                    turn_id=turn_id,
-                    status=TURN_STATUS_FAILED,
-                    error_detail=f"hard time cap exceeded ({budget_seconds}s)",
-                    runner_id=runner_id,
-                )
-                return
+                        if not touch_turn(
+                            cache=cache, turn_id=turn_id, runner_id=runner_id
+                        ):
+                            logger.info(
+                                "Interactive turn %s runner ownership lost", turn_id
+                            )
+                            ownership_lost = True
+                            ownership_lost_for_continue = True
+                            return _PromptResult(_PromptOutcome.TERMINATED)
+                        slot.extend()
+                        if slot.lost:
+                            ownership_lost = True
+                            session_manager.finalize_persist(session_id, state)
+                            db_session.commit()
+                            persist_turn_error(
+                                "This turn was interrupted and could not finish."
+                            )
+                            finish_turn(
+                                cache=cache,
+                                turn_id=turn_id,
+                                status=TURN_STATUS_FAILED,
+                                error_detail="Prompt slot lease lost mid-turn.",
+                                runner_id=runner_id,
+                            )
+                            return _PromptResult(_PromptOutcome.TERMINATED)
+                        if isinstance(sandbox_event, SSEKeepalive):
+                            continue
 
-            if not result.final_event_seen:
-                persist_turn_error(
-                    "This turn ended before the agent returned a final response."
-                )
-                finish_turn(
-                    cache=cache,
-                    turn_id=turn_id,
-                    status=TURN_STATUS_FAILED,
-                    error_detail="Turn ended before opencode returned a final response.",
-                    runner_id=runner_id,
-                )
-                return
+                        # The transport already aborted the timed-out step and ends the
+                        # stream after this event; drain it (don't return early, which
+                        # would GeneratorExit and re-abort) and let the caller re-prompt.
+                        if (
+                            isinstance(sandbox_event, ActivityTimeoutError)
+                            and can_continue
+                        ):
+                            timed_out = True
+                            continue
 
-            if result.cancelled:
-                cancelled = True
-                finish_turn(
-                    cache=cache,
-                    turn_id=turn_id,
-                    status=TURN_STATUS_CANCELLED,
-                    runner_id=runner_id,
-                )
-                return
+                        session_manager.persist_sandbox_event(
+                            session_id, state, sandbox_event
+                        )
+                        db_session.commit()
 
-            turn_succeeded = True
-            finish_turn(
-                cache=cache,
-                turn_id=turn_id,
-                status=TURN_STATUS_SUCCEEDED,
-                runner_id=runner_id,
-            )
-            if kind != "compact":
-                from onyx.memory.long_term import maybe_retain_after_craft_turn
+                        if isinstance(sandbox_event, SandboxError):
+                            session_manager.finalize_persist(session_id, state)
+                            db_session.commit()
+                            persist_turn_error(sandbox_event.message)
+                            finish_turn(
+                                cache=cache,
+                                turn_id=turn_id,
+                                status=TURN_STATUS_FAILED,
+                                error_detail=sandbox_event.message,
+                                runner_id=runner_id,
+                            )
+                            return _PromptResult(_PromptOutcome.TERMINATED)
 
-                maybe_retain_after_craft_turn(
-                    db_session,
-                    user_id,
-                    session_id,
-                    prompt,
-                    turn_index,
-                )
-                db_session.commit()
-        except Exception as exc:
-            db_session.rollback()
-            logger.exception("Interactive turn %s failed", turn_id)
-            try:
+                        if isinstance(sandbox_event, PromptResponse):
+                            final_event_seen = True
+                            cancelled_event_seen = (
+                                getattr(  # ods: ignore[getattr]
+                                    sandbox_event, "stop_reason", None
+                                )
+                                == "cancelled"
+                            )
+
+                    if timed_out:
+                        return _PromptResult(_PromptOutcome.TIMED_OUT)
+                    return _PromptResult(
+                        _PromptOutcome.COMPLETED,
+                        final_event_seen=final_event_seen,
+                        cancelled=cancelled_event_seen,
+                    )
+
+                result = _PromptResult(_PromptOutcome.COMPLETED)
+                if kind == "compact":
+                    result = drive_one_prompt(
+                        "",
+                        [],
+                        can_continue=False,
+                        compact=True,
+                    )
+                else:
+                    current_prompt = prompt
+                    for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
+                        result = drive_one_prompt(
+                            current_prompt,
+                            attachments if attempt == 0 else [],
+                            can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
+                        )
+                        if result.outcome is not _PromptOutcome.TIMED_OUT:
+                            break
+                        # Flush the aborted step's partial output as its own message so it
+                        # can't merge with the continuation, then steer the agent.
+                        session_manager.finalize_persist(session_id, state)
+                        db_session.commit()
+                        logger.info(
+                            "Interactive turn %s step timed out; re-prompting (%s/%s)",
+                            turn_id,
+                            attempt + 1,
+                            MAX_TIMEOUT_CONTINUATIONS,
+                        )
+                        current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+
+                if result.outcome is _PromptOutcome.TERMINATED:
+                    if ownership_lost_for_continue:
+                        skip_job_continue = True
+                    return
+
                 session_manager.finalize_persist(session_id, state)
                 db_session.commit()
                 from onyx.server.features.build.session.artifact_persist import (
@@ -649,49 +594,125 @@ def _drive_interactive_turn(
                     user_id=user_id,
                     turn_index=turn_index,
                 )
-            except Exception:
-                logger.exception("Failed to finalize persistence for turn %s", turn_id)
-            persist_turn_error("This turn failed unexpectedly.")
-            finish_turn(
-                cache=cache,
-                turn_id=turn_id,
-                status=TURN_STATUS_FAILED,
-                error_detail=f"{type(exc).__name__}: {str(exc)[:950]}",
-                runner_id=runner_id,
-            )
-        finally:
-            # True on every exit where this runner still owns the turn (normal
-            # end, owned failure, cancel, exception); False once a successor
-            # owns it (reclaim / slot-lost with a new turn). A successor sets
-            # the active-turn pointer at creation, before it ever stamps, so
-            # this guard clears our deadline exactly when no other turn's stamp
-            # can be clobbered.
-            try:
-                still_owns_turn = _can_clear_interrupt_fence(
+
+                if deadline_exceeded:
+                    persist_turn_error(
+                        "This turn was stopped after reaching its "
+                        f"{max(1, round(budget_seconds / 60))}-minute time limit."
+                    )
+                    finish_turn(
+                        cache=cache,
+                        turn_id=turn_id,
+                        status=TURN_STATUS_FAILED,
+                        error_detail=f"hard time cap exceeded ({budget_seconds}s)",
+                        runner_id=runner_id,
+                    )
+                    return
+
+                if not result.final_event_seen:
+                    persist_turn_error(
+                        "This turn ended before the agent returned a final response."
+                    )
+                    finish_turn(
+                        cache=cache,
+                        turn_id=turn_id,
+                        status=TURN_STATUS_FAILED,
+                        error_detail="Turn ended before opencode returned a final response.",
+                        runner_id=runner_id,
+                    )
+                    return
+
+                if result.cancelled:
+                    cancelled = True
+                    finish_turn(
+                        cache=cache,
+                        turn_id=turn_id,
+                        status=TURN_STATUS_CANCELLED,
+                        runner_id=runner_id,
+                    )
+                    return
+
+                turn_succeeded = True
+                finish_turn(
                     cache=cache,
                     turn_id=turn_id,
-                    session_id=session_id,
-                    user_id=user_id,
+                    status=TURN_STATUS_SUCCEEDED,
                     runner_id=runner_id,
                 )
-            except CACHE_TRANSIENT_ERRORS:
-                logger.warning(
-                    "[SANDBOX-SERVE] interrupt-fence ownership check failed for session %s",
-                    session_id,
-                    exc_info=True,
-                )
-                still_owns_turn = False
-            if still_owns_turn:
+                if kind != "compact":
+                    from onyx.memory.long_term import maybe_retain_after_craft_turn
+
+                    maybe_retain_after_craft_turn(
+                        db_session,
+                        user_id,
+                        session_id,
+                        prompt,
+                        turn_index,
+                    )
+                    db_session.commit()
+            except Exception as exc:
+                db_session.rollback()
+                logger.exception("Interactive turn %s failed", turn_id)
                 try:
-                    clear_interrupt(session_id, cache)
+                    session_manager.finalize_persist(session_id, state)
+                    db_session.commit()
+                    from onyx.server.features.build.session.artifact_persist import (
+                        persist_session_workspace_files,
+                    )
+
+                    persist_session_workspace_files(
+                        db_session,
+                        get_sandbox_manager(),
+                        sandbox_id=sandbox.id,
+                        session_id=session_id,
+                        user_id=user_id,
+                        turn_index=turn_index,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to finalize persistence for turn %s", turn_id
+                    )
+                persist_turn_error("This turn failed unexpectedly.")
+                finish_turn(
+                    cache=cache,
+                    turn_id=turn_id,
+                    status=TURN_STATUS_FAILED,
+                    error_detail=f"{type(exc).__name__}: {str(exc)[:950]}",
+                    runner_id=runner_id,
+                )
+            finally:
+                # True on every exit where this runner still owns the turn (normal
+                # end, owned failure, cancel, exception); False once a successor
+                # owns it (reclaim / slot-lost with a new turn). A successor sets
+                # the active-turn pointer at creation, before it ever stamps, so
+                # this guard clears our deadline exactly when no other turn's stamp
+                # can be clobbered.
+                try:
+                    still_owns_turn = _can_clear_interrupt_fence(
+                        cache=cache,
+                        turn_id=turn_id,
+                        session_id=session_id,
+                        user_id=user_id,
+                        runner_id=runner_id,
+                    )
                 except CACHE_TRANSIENT_ERRORS:
                     logger.warning(
-                        "[SANDBOX-SERVE] failed to clear interrupt fence for session %s",
+                        "[SANDBOX-SERVE] interrupt-fence ownership check failed for session %s",
                         session_id,
                         exc_info=True,
                     )
-                session_manager.clear_turn_deadline(sandbox.id, session_id)
-            prompt_slot_cm.__exit__(None, None, None)
+                    still_owns_turn = False
+                if still_owns_turn:
+                    try:
+                        clear_interrupt(session_id, cache)
+                    except CACHE_TRANSIENT_ERRORS:
+                        logger.warning(
+                            "[SANDBOX-SERVE] failed to clear interrupt fence for session %s",
+                            session_id,
+                            exc_info=True,
+                        )
+                    session_manager.clear_turn_deadline(sandbox.id, session_id)
+                prompt_slot_cm.__exit__(None, None, None)
     finally:
         if sandbox_id is not None and not skip_job_continue:
             try:
@@ -710,6 +731,4 @@ def _drive_interactive_turn(
                         cancelled=cancelled,
                     )
             except Exception:
-                logger.exception(
-                    "Failed to continue Craft job after turn %s", turn_id
-                )
+                logger.exception("Failed to continue Craft job after turn %s", turn_id)

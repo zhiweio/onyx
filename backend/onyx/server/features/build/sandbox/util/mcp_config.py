@@ -91,9 +91,15 @@ def opencode_mcp_tool_id(server_key: str, tool_name: str) -> str:
     return f"{server_key}_{tool_name}"
 
 
-def craft_mcp_tool_surface(db_session: Session, user: User) -> list[str]:
+def craft_mcp_tool_surface(
+    db_session: Session,
+    user: User,
+    allowed_server_ids: Collection[int] | None = None,
+) -> list[str]:
     """Server keys plus OpenCode MCP tool ids the model can call."""
-    servers = resolve_craft_mcp_servers(db_session, user)
+    servers = resolve_craft_mcp_servers(
+        db_session, user, allowed_server_ids=allowed_server_ids
+    )
     key_by_id = {server.server_id: server.key for server in servers}
     labels = [server.key for server in servers]
     disabled = {server.server_id: set(server.disabled_tools) for server in servers}

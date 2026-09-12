@@ -33,7 +33,10 @@ import {
 } from "@/app/craft/contexts/UploadFilesContext";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
-import type { SlashSelection } from "@/lib/skills/picker";
+import {
+  EMPTY_SLASH_SELECTION,
+  type SlashSelection,
+} from "@/lib/skills/picker";
 import { isScheduledRunContextInFlight } from "@/app/craft/v1/tasks/utils";
 import { toast } from "@opal/layouts";
 import Dropzone from "react-dropzone";
@@ -644,6 +647,12 @@ export default function BuildChatPanel({
       track(AnalyticsEvent.SENT_CRAFT_MESSAGE);
 
       const chosen = modelOverride ?? selectedModel;
+      const incoming = selection ?? EMPTY_SLASH_SELECTION;
+      const stored = session?.slashSelection ?? EMPTY_SLASH_SELECTION;
+      const slash =
+        incoming.skillIds.length > 0 || incoming.mcpServerIds.length > 0
+          ? incoming
+          : stored;
 
       if (hasSession && sessionId) {
         // Existing session flow
@@ -659,7 +668,10 @@ export default function BuildChatPanel({
               prompt: message,
               start: true,
               ...jobModelPayload(chosen),
+              selected_skill_ids: slash.skillIds,
+              selected_mcp_server_ids: slash.mcpServerIds,
             });
+            updateSessionData(sessionId, { slashSelection: slash });
             void mutateCraftJob();
             appendMessageToCurrent({
               id: `msg-${Date.now()}`,
@@ -690,13 +702,14 @@ export default function BuildChatPanel({
           attachments,
         });
         // Stream the response
+        updateSessionData(sessionId, { slashSelection: slash });
         await streamMessage(
           sessionId,
           message,
           chosen,
           attachments,
-          selection?.skillIds ?? [],
-          selection?.mcpServerIds ?? []
+          slash.skillIds,
+          slash.mcpServerIds
         );
       } else {
         // New session flow - ALWAYS use pre-provisioned session
@@ -757,6 +770,7 @@ export default function BuildChatPanel({
         createSession(newSessionId, {
           messages: [userMessage],
           status: "running",
+          slashSelection: slash,
         });
 
         // Navigate to URL - session controller will set currentSessionId
@@ -785,6 +799,8 @@ export default function BuildChatPanel({
               prompt: message,
               start: true,
               ...jobModelPayload(chosen),
+              selected_skill_ids: slash.skillIds,
+              selected_mcp_server_ids: slash.mcpServerIds,
             });
             void mutateCraftJob();
             updateSessionData(newSessionId, {
@@ -806,8 +822,8 @@ export default function BuildChatPanel({
           message,
           chosen,
           attachments,
-          selection?.skillIds ?? [],
-          selection?.mcpServerIds ?? []
+          slash.skillIds,
+          slash.mcpServerIds
         );
       }
     },
@@ -829,6 +845,7 @@ export default function BuildChatPanel({
       jobInFlight,
       mutateCraftJob,
       updateSessionData,
+      session?.slashSelection,
     ]
   );
 
@@ -936,12 +953,26 @@ export default function BuildChatPanel({
   );
 
   const handleQueueMessage = useCallback(
-    (text: string, files: BuildFile[]) => {
-      if (sessionId) {
-        enqueueMessage(sessionId, text, toMessageAttachments(files));
+    (text: string, files: BuildFile[], selection: SlashSelection) => {
+      if (!sessionId) {
+        return;
+      }
+      const hasIncoming =
+        selection.skillIds.length > 0 || selection.mcpServerIds.length > 0;
+      const slash = hasIncoming
+        ? selection
+        : (session?.slashSelection ?? EMPTY_SLASH_SELECTION);
+      enqueueMessage(sessionId, text, toMessageAttachments(files), slash);
+      if (hasIncoming) {
+        updateSessionData(sessionId, { slashSelection: selection });
       }
     },
-    [sessionId, enqueueMessage]
+    [
+      sessionId,
+      session?.slashSelection,
+      enqueueMessage,
+      updateSessionData,
+    ]
   );
 
   const handleRemoveQueuedMessage = useCallback(
@@ -976,7 +1007,12 @@ export default function BuildChatPanel({
       const next = queuedMessages[0];
       if (next) {
         removeQueuedMessage(sessionId, 0);
-        void sendMessage(next.text, next.attachments);
+        void sendMessage(
+          next.text,
+          next.attachments,
+          undefined,
+          next.selection
+        );
       }
     }
   }, [
@@ -1194,7 +1230,9 @@ export default function BuildChatPanel({
                   {/* The composer stays in view for subagents (layout consistency)
                   but is disabled — replying to subagents is not supported. */}
                   <CraftInputBar
+                    key={sessionId ?? existingSessionId ?? "session"}
                     ref={inputBarRef}
+                    persistedSelection={session?.slashSelection}
                     onSubmit={handleSubmit}
                     longJobEnabled={longJobEnabled || jobInFlight}
                     onLongJobEnabledChange={setLongJobEnabled}

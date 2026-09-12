@@ -40,6 +40,10 @@ def _stub_workspace_persist(monkeypatch: pytest.MonkeyPatch) -> None:
         "onyx.server.features.build.session.artifact_persist.persist_session_workspace_files",
         lambda *_args, **_kwargs: None,
     )
+    monkeypatch.setattr(
+        "onyx.memory.long_term.maybe_retain_after_craft_turn",
+        lambda *_args, **_kwargs: None,
+    )
 
 
 class _FakeDbSession:
@@ -103,6 +107,8 @@ def _run_turn_with_events(
     prompt_slot: "_FakePromptSlot | None" = None,
     session_missing: bool = False,
     kind: str = "prompt",
+    selected_skill_ids: list[str] | None = None,
+    selected_mcp_server_ids: list[int] | None = None,
 ) -> SimpleNamespace:
     cache = FakeCache()
     db_session = _FakeDbSession()
@@ -117,6 +123,7 @@ def _run_turn_with_events(
     cleared: list[bool] = []
     captured_should_abort_on_teardown: list[Callable[[], bool]] = []
     driven: list[str] = []
+    reconcile_calls: list[tuple[object, ...]] = []
 
     turn = create_interactive_turn(
         cache=cache,
@@ -126,6 +133,8 @@ def _run_turn_with_events(
         prompt="hello",
         turn_index=0,
         kind=kind,  # type: ignore[arg-type]
+        selected_skill_ids=selected_skill_ids,
+        selected_mcp_server_ids=selected_mcp_server_ids,
     )
 
     class FakeSessionManager:
@@ -145,8 +154,8 @@ def _run_turn_with_events(
                 return None
             return SimpleNamespace(id=session_id)
 
-        def reconcile_session_llm_config(self, *args: object) -> None:
-            del args
+        def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
+            reconcile_calls.append(args + tuple(kwargs.values()))
 
         def prompt_slot(
             self,
@@ -282,6 +291,7 @@ def _run_turn_with_events(
         cleared=cleared,
         user_id=user_id,
         driven=driven,
+        reconcile_calls=reconcile_calls,
     )
 
 
@@ -313,6 +323,109 @@ def test_runner_succeeds_on_prompt_response(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.driven == ["prompt"]
 
 
+def test_job_owned_turn_keeps_all_mcp_when_picker_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = SimpleNamespace(
+        state={},
+        phase_budget_seconds=1500,
+        lease_owner=None,
+        lease_expires_at=None,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_open_job_for_session",
+        lambda *_a, **_k: job,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.maybe_continue_craft_job",
+        lambda *_a, **_k: None,
+    )
+    prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
+    result = _run_turn_with_events(monkeypatch, [prompt_response])
+    assert result.reconcile_calls
+    assert result.reconcile_calls[0][-1] is None
+
+
+def test_job_owned_turn_uses_stored_mcp_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = SimpleNamespace(
+        state={
+            "selected_skill_ids": ["hithink-finance"],
+            "selected_mcp_server_ids": [12],
+        },
+        phase_budget_seconds=1500,
+        lease_owner=None,
+        lease_expires_at=None,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_open_job_for_session",
+        lambda *_a, **_k: job,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.mcp.resolve_job_mcp_server_ids",
+        lambda *_a, **_k: [12, 13],
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.maybe_continue_craft_job",
+        lambda *_a, **_k: None,
+    )
+    prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
+    result = _run_turn_with_events(monkeypatch, [prompt_response])
+    assert result.reconcile_calls
+    assert result.reconcile_calls[0][-1] == [12, 13]
+
+
+def test_chat_turn_empty_picker_keeps_session_mcp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_open_job_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+    prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
+    result = _run_turn_with_events(monkeypatch, [prompt_response])
+    assert result.reconcile_calls
+    assert result.reconcile_calls[0][-1] is None
+
+
+def test_chat_turn_uses_slash_picker_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_open_job_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.interactive_turns.executor.resolve_effective_mcp_server_ids",
+        lambda *_a, **_k: [12],
+    )
+    prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
+    result = _run_turn_with_events(
+        monkeypatch,
+        [prompt_response],
+        selected_mcp_server_ids=[12],
+    )
+    assert result.reconcile_calls
+    assert result.reconcile_calls[0][-1] == [12]
+
+
 def test_compact_turn_skips_prompt_and_job_continue(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -325,6 +438,14 @@ def test_compact_turn_skips_prompt_and_job_continue(
         "onyx.server.features.build.jobs.continuation.maybe_continue_craft_job",
         fake_continue,
     )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_open_job_for_session",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.db.craft_job.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
     prompt_response = PromptResponse.model_validate({"stopReason": "end_turn"})
     result = _run_turn_with_events(monkeypatch, [prompt_response], kind="compact")
 
@@ -333,6 +454,8 @@ def test_compact_turn_skips_prompt_and_job_continue(
     assert finished.status == TURN_STATUS_SUCCEEDED
     assert result.driven == ["compact"]
     assert continue_calls == []
+    assert result.reconcile_calls
+    assert result.reconcile_calls[0][-1] is None
 
 
 def test_runner_fails_turn_when_session_deleted_mid_turn(
@@ -546,8 +669,8 @@ def test_ownership_recheck_after_slot_acquire(
             assert user_id_arg == user_id
             return SimpleNamespace(id=session_id)
 
-        def reconcile_session_llm_config(self, *args: object) -> None:
-            del args
+        def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
@@ -706,8 +829,8 @@ def test_prompt_slot_busy_does_not_finish_reclaimed_turn(
             assert user_id_arg == user_id
             return SimpleNamespace(id=session_id)
 
-        def reconcile_session_llm_config(self, *args: object) -> None:
-            del args
+        def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
@@ -807,8 +930,8 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
             assert user_id_arg == user_id
             return SimpleNamespace(id=session_id)
 
-        def reconcile_session_llm_config(self, *args: object) -> None:
-            del args
+        def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
@@ -1004,8 +1127,8 @@ def _run_turn_with_batches(
             assert user_id_arg == user_id
             return SimpleNamespace(id=session_id)
 
-        def reconcile_session_llm_config(self, *args: object) -> None:
-            del args
+        def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
 
         def prompt_slot(
             self,

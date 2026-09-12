@@ -5,6 +5,7 @@ import {
   pickerEntryConnectionPath,
   pickerEntryKey,
   pickerEntryPromptPrefix,
+  pickerEntriesFromSelection,
   slashSelectionFromEntries,
   toPickerSections,
   type PickerSections,
@@ -461,5 +462,37 @@ describe("slashSelectionFromEntries", () => {
         },
       ])
     ).toEqual({ skillIds: ["zhihuiya"], mcpServerIds: [12] });
+  });
+});
+
+describe("pickerEntriesFromSelection", () => {
+  it("restores skill and MCP chips from stored ids", () => {
+    const sections: PickerSections = {
+      commands: [],
+      skills: [
+        {
+          kind: "skill",
+          slug: "zhihuiya",
+          name: "zhihuiya",
+          description: "route",
+        },
+      ],
+      apps: [],
+      mcpServers: [
+        {
+          kind: "mcp",
+          mcpServerId: 12,
+          name: "HiThink Meta",
+          serverUrl: "https://example.com",
+          authenticated: true,
+        },
+      ],
+    };
+    expect(
+      pickerEntriesFromSelection(sections, {
+        skillIds: ["zhihuiya"],
+        mcpServerIds: [12],
+      })
+    ).toEqual([sections.skills[0], sections.mcpServers[0]]);
   });
 });

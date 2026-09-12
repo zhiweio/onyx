@@ -32,13 +32,13 @@ from onyx.server.features.build.interactive_turns.state import (
     create_interactive_turn,
     get_active_turn,
 )
+from onyx.server.features.build.jobs.gates import retry_brief, retry_limit_error_detail
 from onyx.server.features.build.jobs.phase_gate import (
     DEFAULT_PHASE_RETRY_LIMIT,
     increment_gate_retries,
     pop_pending_enqueue_prompt,
     set_pending_enqueue_prompt,
 )
-from onyx.server.features.build.jobs.gates import retry_brief, retry_limit_error_detail
 from onyx.server.features.build.jobs.plan import (
     PLAN_JSON_PATH,
     apply_plan_to_job_phases,
@@ -256,7 +256,9 @@ def _finish_specialist_turn(
         db_session,
         job=job,
         user_id=user_id,
-        specialist_ok=turn_succeeded and not cancelled and not specialists_any_failed(job),
+        specialist_ok=turn_succeeded
+        and not cancelled
+        and not specialists_any_failed(job),
         node_id=specialist.node_id,
     )
 
@@ -268,6 +270,8 @@ def enqueue_job_phase_turn(
     user_id: UUID,
     prompt: str,
     visible_user_text: str | None = None,
+    selected_skill_ids: list[str] | None = None,
+    selected_mcp_server_ids: list[int] | None = None,
 ) -> UUID | None:
     return _enqueue_phase_turn(
         db_session,
@@ -275,7 +279,20 @@ def enqueue_job_phase_turn(
         user_id=user_id,
         prompt=prompt,
         visible_user_text=visible_user_text,
+        selected_skill_ids=selected_skill_ids,
+        selected_mcp_server_ids=selected_mcp_server_ids,
     )
+
+
+def _job_for_turn_session(db_session: Session, session_id: UUID) -> CraftJob | None:
+    try:
+        job = get_open_job_for_session(db_session, session_id)
+        if job is not None:
+            return job
+        specialist = get_specialist_for_session(db_session, session_id)
+        return specialist.job if specialist is not None else None
+    except Exception:
+        return None
 
 
 def _enqueue_phase_turn(
@@ -285,6 +302,8 @@ def _enqueue_phase_turn(
     user_id: UUID,
     prompt: str,
     visible_user_text: str | None = None,
+    selected_skill_ids: list[str] | None = None,
+    selected_mcp_server_ids: list[int] | None = None,
 ) -> UUID | None:
     cache = get_cache_backend()
     try:
@@ -298,6 +317,16 @@ def _enqueue_phase_turn(
                 "Session %s already has a turn; skip job continuation", session_id
             )
             return None
+        if selected_skill_ids is None or selected_mcp_server_ids is None:
+            from onyx.server.features.build.jobs.mcp import job_picker_selection
+
+            job = _job_for_turn_session(db_session, session_id)
+            if job is not None:
+                stored_skills, stored_mcp = job_picker_selection(job)
+                if selected_skill_ids is None:
+                    selected_skill_ids = stored_skills
+                if selected_mcp_server_ids is None:
+                    selected_mcp_server_ids = stored_mcp
         turn_index = count_user_messages(session_id, db_session)
         visible = visible_user_text.strip() if visible_user_text else ""
         create_message(
@@ -321,6 +350,8 @@ def _enqueue_phase_turn(
             client_request_id=str(uuid4()),
             prompt=prompt,
             turn_index=turn_index,
+            selected_skill_ids=selected_skill_ids or [],
+            selected_mcp_server_ids=selected_mcp_server_ids or [],
         )
         db_session.commit()
     except Exception:

@@ -4,6 +4,7 @@ import {
   forwardRef,
   memo,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -37,12 +38,13 @@ import useUserExternalApps from "@/hooks/useUserExternalApps";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import {
   COMPACT_COMMAND_SLUG,
+  pickerEntriesFromSelection,
   pickerEntryConnectionPath,
   pickerEntryKey,
-  slashSelectionFromEntries,
-  type SlashSelection,
   pickerEntryPromptPrefix,
+  slashSelectionFromEntries,
   toPickerSections,
+  type SlashSelection,
   type PickerCommand,
   type PickerEntry,
 } from "@/lib/skills/picker";
@@ -90,6 +92,8 @@ export interface CraftInputBarProps {
   } | null;
   /** Seed the active entry chips. For stories/tests; production callers leave unset. */
   initialEntries?: PickerEntry[];
+  /** Last slash pick for this session — restores chips after remount. */
+  persistedSelection?: SlashSelection;
   compactAvailable?: boolean;
   onCompact?: () => void;
   longJobEnabled?: boolean;
@@ -120,6 +124,7 @@ const CraftInputBar = memo(
         contextUsage,
         thoughtLevel,
         initialEntries,
+        persistedSelection,
         compactAvailable = false,
         onCompact,
         longJobEnabled = false,
@@ -179,6 +184,20 @@ const CraftInputBar = memo(
       const [activeEntries, setActiveEntries] = useState<PickerEntry[]>(
         initialEntries ?? []
       );
+
+      useEffect(() => {
+        if (initialEntries?.length || !persistedSelection) {
+          return;
+        }
+        const restored = pickerEntriesFromSelection(
+          pickerSections,
+          persistedSelection
+        );
+        if (restored.length === 0) {
+          return;
+        }
+        setActiveEntries((prev) => (prev.length > 0 ? prev : restored));
+      }, [initialEntries, persistedSelection, pickerSections]);
       const [entryInfo, setEntryInfo] = useState<{
         entry: PickerEntry;
         chipEl: HTMLElement;

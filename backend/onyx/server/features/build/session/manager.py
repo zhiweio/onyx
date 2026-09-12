@@ -1012,7 +1012,9 @@ class SessionManager:
         session.reasoning_effort = reasoning_effort
         sandbox = get_sandbox_by_user_id(self._db_session, user.id)
         if sandbox is not None:
-            self.reconcile_session_llm_config(sandbox, session, user)
+            self.reconcile_session_llm_config(
+                sandbox, session, user, allowed_server_ids=None
+            )
         update_session_activity(session_id, self._db_session)
         self._db_session.commit()
         self._db_session.refresh(session)

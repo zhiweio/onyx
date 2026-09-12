@@ -117,6 +117,8 @@ class JobState(BaseModel):
     step: int = 0
     paused_seconds: float = 0
     pause_started_at: str | None = None
+    selected_skill_ids: list[str] = Field(default_factory=list)
+    selected_mcp_server_ids: list[int] = Field(default_factory=list)
 
 
 def empty_state() -> JobState:

@@ -16,6 +16,10 @@ import {
 } from "@/app/craft/types/streamingTypes";
 
 import {
+  EMPTY_SLASH_SELECTION,
+  type SlashSelection,
+} from "@/lib/skills/picker";
+import {
   StreamItem,
   ToolCallState,
   TodoListState,
@@ -708,6 +712,7 @@ interface CraftQueuedMessage {
   id: number;
   text: string;
   attachments: BuildMessageAttachment[];
+  selection?: SlashSelection;
 }
 
 const EMPTY_CRAFT_QUEUED_MESSAGES: readonly CraftQueuedMessage[] = [];
@@ -764,6 +769,8 @@ export interface BuildSessionData {
    * current run finishes (see the auto-send effect in BuildChatPanel).
    */
   queuedMessages: CraftQueuedMessage[];
+  /** Last slash pick on this session; restores chips after remount. */
+  slashSelection: SlashSelection;
   /**
    * True between an interrupt request and the turn actually terminating. Drives
    * the "stopping…" affordance; cleared by each terminal stream handler (and on
@@ -895,7 +902,8 @@ interface BuildSessionStore {
   enqueueMessage: (
     sessionId: string,
     text: string,
-    attachments: BuildMessageAttachment[]
+    attachments: BuildMessageAttachment[],
+    selection?: SlashSelection
   ) => void;
   removeQueuedMessage: (sessionId: string, index: number) => void;
 
@@ -1050,6 +1058,7 @@ const createInitialSessionData = (
   activeTurnLocalOwner: false,
   streamItems: [],
   queuedMessages: [],
+  slashSelection: EMPTY_SLASH_SELECTION,
   isInterrupting: false,
   wasInterrupted: false,
   turnGeneration: 0,
@@ -1558,7 +1567,8 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   enqueueMessage: (
     sessionId: string,
     text: string,
-    attachments: BuildMessageAttachment[]
+    attachments: BuildMessageAttachment[],
+    selection?: SlashSelection
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -1569,7 +1579,12 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         ...session,
         queuedMessages: [
           ...session.queuedMessages,
-          { id: nextQueuedMessageId++, text, attachments },
+          {
+            id: nextQueuedMessageId++,
+            text,
+            attachments,
+            ...(selection ? { selection } : {}),
+          },
         ],
         lastAccessed: new Date(),
       };

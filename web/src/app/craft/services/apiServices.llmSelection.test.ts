@@ -1,4 +1,4 @@
-import { createTurn, fetchMessages } from "./apiServices";
+import { createCraftJob, createTurn, fetchMessages } from "./apiServices";
 
 const selection = {
   providerId: 13,
@@ -117,5 +117,23 @@ describe("Craft LLM selection payloads", () => {
         mimeType: "image/png",
       },
     ]);
+  });
+
+  it("sends slash-selected skill and MCP ids when starting a long job", async () => {
+    await createCraftJob({
+      session_id: "session-id",
+      prompt: "analyze 603617",
+      start: true,
+      selected_skill_ids: ["hithink-finance"],
+      selected_mcp_server_ids: [12, 13],
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const request = jest.mocked(global.fetch).mock.calls[0]![1];
+    expect(JSON.parse(String(request!.body))).toMatchObject({
+      session_id: "session-id",
+      selected_skill_ids: ["hithink-finance"],
+      selected_mcp_server_ids: [12, 13],
+    });
   });
 });

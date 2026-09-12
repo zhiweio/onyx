@@ -327,9 +327,7 @@ def test_cancelled_job_does_not_advance_after_worker_turn(monkeypatch) -> None:
         called["scan"] += 1
         return {}
 
-    monkeypatch.setattr(
-        "onyx.server.features.build.jobs.kernel.scan_artifacts", _scan
-    )
+    monkeypatch.setattr("onyx.server.features.build.jobs.kernel.scan_artifacts", _scan)
     after_worker_turn(
         _db(),
         job=job,
@@ -633,6 +631,67 @@ def test_continue_persists_empty_visible_text(monkeypatch) -> None:
     assert isinstance(metadata, dict)
     assert metadata["content"]["text"] == "Write the GLP-1 report"
     assert metadata["craft_job_continue"] is False
+
+
+def test_enqueue_stamps_job_picker_selection(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    job = _job()
+    state = load_state(job)
+    state.selected_skill_ids = ["hithink-finance"]
+    state.selected_mcp_server_ids = [7, 9]
+    persist_state(job, state)
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.create_message",
+        lambda **_k: SimpleNamespace(id=uuid4()),
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_cache_backend",
+        lambda: object(),
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.acquire_active_turn_lock",
+        lambda *_a, **_k: SimpleNamespace(release=lambda: None),
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_active_turn",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.count_user_messages",
+        lambda *_a, **_k: 1,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_open_job_for_session",
+        lambda *_a, **_k: job,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+
+    def fake_create_turn(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(turn_id=uuid4())
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.create_interactive_turn",
+        fake_create_turn,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.start_interactive_turn_runner",
+        lambda *_a, **_k: None,
+    )
+    from onyx.server.features.build.jobs.continuation import _enqueue_phase_turn
+
+    _enqueue_phase_turn(
+        _db(),
+        session_id=job.session_id,
+        user_id=uuid4(),
+        prompt="HOST BRIEF",
+    )
+    assert captured["selected_skill_ids"] == ["hithink-finance"]
+    assert captured["selected_mcp_server_ids"] == [7, 9]
 
 
 def test_lane_turn_completes_despite_parent_host_files(monkeypatch) -> None:

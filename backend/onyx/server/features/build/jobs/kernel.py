@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -134,13 +135,23 @@ def load_graph(job: CraftJob, state: JobState) -> JobGraph:
     return compile_graph(str(job.domain))
 
 
-def initialize_job_state(job: CraftJob, *, goal: str) -> JobState:
+def initialize_job_state(
+    job: CraftJob,
+    *,
+    goal: str,
+    selected_skill_ids: Sequence[str] | None = None,
+    selected_mcp_server_ids: Sequence[int] | None = None,
+) -> JobState:
     graph = compile_graph(str(job.domain))
     state = empty_state()
     state.goal = goal
     state.cursor = ["plan"]
     state.last_node = "plan"
     state.graph = graph.to_snapshot()
+    state.selected_skill_ids = [str(item) for item in selected_skill_ids or []]
+    state.selected_mcp_server_ids = [
+        int(item) for item in selected_mcp_server_ids or []
+    ]
     persist_state(job, state)
     return state
 
@@ -841,7 +852,7 @@ def _enqueue_node(
         user_prompt=state.goal,
         missing=missing,
         snapshot=_job_snapshot(db_session, job, user_id),
-        visible_tools=_visible_tools(db_session, user_id),
+        visible_tools=_visible_tools(db_session, user_id, job),
         recalled_memories=recall_texts_for_craft_job(
             db_session,
             user_id,
@@ -944,7 +955,7 @@ def _spawn_lanes(
             domain=job.domain,
             user_prompt=state.goal,
             snapshot=_job_snapshot(db_session, job, user_id),
-            visible_tools=_visible_tools(db_session, user_id),
+            visible_tools=_visible_tools(db_session, user_id, job),
             recalled_memories=recall_texts_for_craft_job(
                 db_session,
                 user_id,
@@ -1340,11 +1351,21 @@ def _interrupt_if_named_mcp_unavailable(
 
         user = fetch_user_by_id(db_session, user_id)
 
-        surface = (
-            [item.lower() for item in craft_mcp_tool_surface(db_session, user)]
-            if user is not None
-            else []
-        )
+        if user is None:
+            surface = []
+        else:
+            from onyx.server.features.build.jobs.mcp import resolve_job_mcp_server_ids
+
+            surface = [
+                item.lower()
+                for item in craft_mcp_tool_surface(
+                    db_session,
+                    user,
+                    allowed_server_ids=resolve_job_mcp_server_ids(
+                        db_session, user, job
+                    ),
+                )
+            ]
     except Exception:
         surface = []
     goal = state.goal.lower()
@@ -1372,9 +1393,12 @@ def _interrupt_if_named_mcp_unavailable(
     return True
 
 
-def _visible_tools(db_session: Session, user_id: UUID) -> list[str]:
+def _visible_tools(
+    db_session: Session, user_id: UUID, job: CraftJob | None = None
+) -> list[str]:
     try:
         from onyx.db.users import fetch_user_by_id
+        from onyx.server.features.build.jobs.mcp import resolve_job_mcp_server_ids
         from onyx.server.features.build.sandbox.util.mcp_config import (
             craft_mcp_tool_surface,
         )
@@ -1382,7 +1406,12 @@ def _visible_tools(db_session: Session, user_id: UUID) -> list[str]:
         user = fetch_user_by_id(db_session, user_id)
         if user is None:
             return []
-        return craft_mcp_tool_surface(db_session, user)
+        allowed = (
+            resolve_job_mcp_server_ids(db_session, user, job)
+            if job is not None
+            else None
+        )
+        return craft_mcp_tool_surface(db_session, user, allowed_server_ids=allowed)
     except Exception:
         return []
 

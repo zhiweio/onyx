@@ -15,9 +15,6 @@ from onyx.db.craft_job import (
     mark_job_running,
 )
 from onyx.db.craft_project import require_project_for_user
-from onyx.server.features.build.db.build_session import (
-    settle_open_lane_task_cards,
-)
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import (
     CraftJobSpecialistStatus,
@@ -25,18 +22,20 @@ from onyx.db.enums import (
     Permission,
     SandboxStatus,
 )
-from onyx.db.models import User
+from onyx.db.models import CraftJob, User
 from onyx.db.scenario import get_scenario_for_user
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.server.features.build import question_ask
 from onyx.server.features.build.configs import (
     CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS,
     CRAFT_DEEP_JOB_TOTAL_BUDGET_SECONDS,
 )
-from onyx.server.features.build import question_ask
-from onyx.server.features.build.db.build_session import get_build_session
+from onyx.server.features.build.db.build_session import (
+    get_build_session,
+    settle_open_lane_task_cards,
+)
 from onyx.server.features.build.db.sandbox import get_sandbox_by_user_id
-from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.jobs.continuation import (
     enqueue_job_phase_turn,
     flush_pending_job_enqueue,
@@ -51,10 +50,11 @@ from onyx.server.features.build.jobs.models import (
     CraftJobCreateRequest,
     CraftJobResponse,
     CraftJobResumeRequest,
-    QuestionAskDecisionRequest,
     CraftJobStartResponse,
+    QuestionAskDecisionRequest,
 )
 from onyx.server.features.build.jobs.protocol import default_phases_for_domain
+from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.query_and_chat.token_limit import check_token_rate_limits
 from shared_configs.contextvars import get_current_tenant_id
@@ -123,7 +123,12 @@ def create_job(
         session.agent_model = request.model
 
     goal = (request.prompt or name).strip()
-    initialize_job_state(job, goal=goal)
+    initialize_job_state(
+        job,
+        goal=goal,
+        selected_skill_ids=request.selected_skill_ids,
+        selected_mcp_server_ids=request.selected_mcp_server_ids,
+    )
     mark_job_running(job)
     start_run_journal(db_session, job)
     apply_deep_job_sandbox_resources(db_session, user_id=user.id)
@@ -154,7 +159,7 @@ def create_job(
                     sandbox_id=sandbox.id if sandbox is not None else None,
                     session_id=session.id,
                 ),
-                visible_tools=_start_visible_tools(db_session, user),
+                visible_tools=_start_visible_tools(db_session, user, job),
                 recalled_memories=recall_texts_for_craft_job(
                     db_session,
                     user.id,
@@ -171,6 +176,8 @@ def create_job(
             user_id=user.id,
             prompt=prompt,
             visible_user_text=goal,
+            selected_skill_ids=request.selected_skill_ids,
+            selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
     return CraftJobStartResponse(
         job=CraftJobResponse.from_model(job),
@@ -373,12 +380,20 @@ def spawn_specialists(
     )
 
 
-def _start_visible_tools(db_session: Session, user: User) -> list[str]:
+def _start_visible_tools(
+    db_session: Session, user: User, job: CraftJob | None = None
+) -> list[str]:
     try:
+        from onyx.server.features.build.jobs.mcp import resolve_job_mcp_server_ids
         from onyx.server.features.build.sandbox.util.mcp_config import (
             craft_mcp_tool_surface,
         )
 
-        return craft_mcp_tool_surface(db_session, user)
+        allowed = (
+            resolve_job_mcp_server_ids(db_session, user, job)
+            if job is not None
+            else None
+        )
+        return craft_mcp_tool_surface(db_session, user, allowed_server_ids=allowed)
     except Exception:
         return []

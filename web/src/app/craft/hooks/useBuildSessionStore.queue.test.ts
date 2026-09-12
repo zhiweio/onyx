@@ -33,7 +33,10 @@ describe("Craft queued messages", () => {
       .enqueueMessage(sessionId, "Inspect this image", imageAttachments);
     useBuildSessionStore
       .getState()
-      .enqueueMessage(sessionId, "Summarize this brief", documentAttachments);
+      .enqueueMessage(sessionId, "Summarize this brief", documentAttachments, {
+        skillIds: ["hithink-finance"],
+        mcpServerIds: [12],
+      });
     useBuildSessionStore.getState().removeQueuedMessage(sessionId, 0);
 
     expect(
@@ -43,6 +46,10 @@ describe("Craft queued messages", () => {
         id: expect.any(Number),
         text: "Summarize this brief",
         attachments: documentAttachments,
+        selection: {
+          skillIds: ["hithink-finance"],
+          mcpServerIds: [12],
+        },
       },
     ]);
   });

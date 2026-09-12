@@ -200,6 +200,11 @@ export interface SlashSelection {
   mcpServerIds: number[];
 }
 
+export const EMPTY_SLASH_SELECTION: SlashSelection = {
+  skillIds: [],
+  mcpServerIds: [],
+};
+
 export function slashSelectionFromEntries(
   entries: PickerEntry[]
 ): SlashSelection {
@@ -213,6 +218,18 @@ export function slashSelectionFromEntries(
     }
   }
   return { skillIds, mcpServerIds };
+}
+
+export function pickerEntriesFromSelection(
+  sections: PickerSections,
+  selection: SlashSelection
+): PickerEntry[] {
+  const skillIds = new Set(selection.skillIds);
+  const mcpIds = new Set(selection.mcpServerIds);
+  return [
+    ...sections.skills.filter((entry) => skillIds.has(entry.slug)),
+    ...sections.mcpServers.filter((entry) => mcpIds.has(entry.mcpServerId)),
+  ];
 }
 
 export function pickerEntryPromptPrefix(entry: PickerEntry): string {
