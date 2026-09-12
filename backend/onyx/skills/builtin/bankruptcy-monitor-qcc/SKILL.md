@@ -1,14 +1,46 @@
 ---
 name: bankruptcy-monitor-qcc
-description: Monitor bankruptcy and reorganization signals on Qichacha. Use for 破产, 重整.
+description: Watch bankruptcy and wind-down signals from Qichacha MCP. Use for 破产 or 重整.
 required-mcp:
   - qcc-risk
-  - qcc-legal-case
+optional-mcp:
+  - qcc-history
+  - qcc-company
 ---
 
 # bankruptcy-monitor-qcc
 
-Cite the case or announcement. Do not infer bankruptcy from rumor.
+## Access
 
-Official guide: https://agent.qcc.com/skill/v1/bankruptcy-monitor-qcc/SKILL.md
-Save raw MCP bodies under `outputs/mcp/qichacha/`. Never invent a 案号 or 统一社会信用代码.
+Call official Qichacha MCP tools through the Onyx gateway. Official MCP
+already dehydrates long lists. The gateway caches the full body. See
+https://agent.qcc.com/guide.
+
+Do not run `qcc`, `qcc-agent-cli`, `npx qcc-document-mcp`, or any other
+Qichacha CLI. Do not ask the user for an API key.
+
+If the name is not a full 登记名 or 18-digit 统一社会信用代码, call
+`get_company_by_query` on `qcc-company` and stop when the match is
+ambiguous. Lock the credit code before any risk tool.
+
+For two or more risk dimensions, call `get_company_risk_scan` on
+`qcc-risk` first. Drill only dimensions with count > 0. Leave `year`
+empty for a full set.
+
+Cite only values the tool returned. Never invent a 案号 or 统一社会信用代码.
+Save raw bodies under `outputs/mcp/qichacha/`.
+
+Official skill: https://agent.qcc.com/skill/v1/banking/bankruptcy-monitor-qcc/SKILL.md
+
+## Task
+
+Flag bankruptcy, liquidation, and related execution stress.
+
+## Phases
+
+1. **anchor** — Lock the entity when `qcc-company` is up.
+2. **scan** — `get_company_risk_scan`.
+3. **drill** — `get_bankruptcy_reorganization`, `get_liquidation_info`,
+   `get_terminated_cases`, `get_simple_cancellation_info`.
+4. **history** — If `qcc-history` is up, `get_historical_bankruptcy`.
+5. **write** — Bankruptcy watch memo.

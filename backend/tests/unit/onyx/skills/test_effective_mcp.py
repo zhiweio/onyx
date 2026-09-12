@@ -46,3 +46,35 @@ def test_hithink_skill_requires_all_six() -> None:
         "hithink-futures",
         "hithink-options",
     }
+
+
+def test_qichacha_router_exposes_ten_official_servers() -> None:
+    spec = load_skill_mcp_spec("qichacha")
+    assert spec is not None
+    assert spec.required == ()
+    assert slugs_for_skill_spec(spec) == {
+        "qcc-company",
+        "qcc-risk",
+        "qcc-ipr",
+        "qcc-operation",
+        "qcc-history",
+        "qcc-executive",
+        "qcc-legal-regulation",
+        "qcc-legal-case",
+        "qcc-tender",
+        "qcc-document",
+    }
+
+
+def test_kyb_skill_requires_company_and_risk() -> None:
+    spec = load_skill_mcp_spec("kyb-verification-qcc")
+    assert spec is not None
+    assert spec.required == ("qcc-company", "qcc-risk")
+    assert "qcc-history" in spec.optional
+    assert "qcc-executive" in spec.optional
+
+
+def test_contract_review_uses_official_company_and_risk() -> None:
+    spec = load_skill_mcp_spec("contract-review")
+    assert spec is not None
+    assert spec.required == ("qcc-company", "qcc-risk")
