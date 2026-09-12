@@ -7,7 +7,7 @@ and handles connection initialization, session management, and protocol communic
 
 from collections.abc import Callable, Coroutine
 from enum import Enum
-from typing import Any, Dict, TypeVar
+from typing import Any, Dict, NoReturn, TypeVar
 
 from mcp import ClientSession
 from mcp.client.auth import OAuthClientProvider
@@ -169,9 +169,44 @@ def _create_mcp_client_function_runner(
                 write,
                 read_timeout_seconds=timedelta(seconds=MCP_TOOL_CALL_TIMEOUT_SECONDS),
             ) as session:
+                _install_soft_tool_validation(session)
                 return await function(session, **kwargs)
 
     return run_client_function
+
+
+def unwrap_exception_group(error: Exception) -> Exception:
+    """Return the last concrete exception inside a nested ExceptionGroup."""
+    if not isinstance(error, BaseExceptionGroup):
+        return error
+    inner: Exception | None = None
+    for item in error.exceptions:
+        if isinstance(item, Exception):
+            candidate = unwrap_exception_group(item)
+            if not isinstance(candidate, BaseExceptionGroup):
+                inner = candidate
+    return inner or error
+
+
+async def _soft_validate_tool_result(
+    session: ClientSession, name: str, result: CallToolResult
+) -> None:
+    """Keep the payload when an upstream schema rejects a null or extra field."""
+    try:
+        await ClientSession._validate_tool_result(session, name, result)
+    except RuntimeError as error:
+        logger.warning(
+            "Ignoring invalid structured content from tool %s: %s",
+            name,
+            error,
+        )
+
+
+def _install_soft_tool_validation(session: ClientSession) -> None:
+    async def _soft_validate(name: str, result: CallToolResult) -> None:
+        await _soft_validate_tool_result(session, name, result)
+
+    session._validate_tool_result = _soft_validate
 
 
 def log_exception_group(e: ExceptionGroup) -> Exception | None:
@@ -185,6 +220,14 @@ def log_exception_group(e: ExceptionGroup) -> Exception | None:
             saved_e = err
 
     return saved_e
+
+
+def _reraise_mcp_client_error(error: Exception) -> NoReturn:
+    logger.error("Failed to call MCP client function: %s", error)
+    inner = unwrap_exception_group(error)
+    if inner is not error:
+        raise inner from error
+    raise error
 
 
 def _call_mcp_client_function_sync(
@@ -201,14 +244,7 @@ def _call_mcp_client_function_sync(
     try:
         return run_async_sync_no_cancel(run_client_function())
     except Exception as e:
-        logger.error("Failed to call MCP client function: %s", e)
-        if isinstance(e, ExceptionGroup):
-            original_exception = e
-            saved_e = log_exception_group(e)
-            if saved_e:
-                raise saved_e
-            raise original_exception
-        raise e
+        _reraise_mcp_client_error(e)
 
 
 async def _call_mcp_client_function_async(
@@ -222,7 +258,10 @@ async def _call_mcp_client_function_async(
     run_client_function = _create_mcp_client_function_runner(
         function, server_url, connection_headers, transport, auth, **kwargs
     )
-    return await run_client_function()
+    try:
+        return await run_client_function()
+    except Exception as e:
+        _reraise_mcp_client_error(e)
 
 
 def process_mcp_result(call_tool_result: CallToolResult) -> str:

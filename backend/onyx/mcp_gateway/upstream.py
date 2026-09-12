@@ -1,6 +1,6 @@
 from typing import Any
 
-from mcp.types import CallToolResult
+from mcp.types import CallToolResult, TextContent
 from mcp.types import Tool as MCPLibTool
 
 from onyx.db.models import MCPCatalogEntry
@@ -8,7 +8,11 @@ from onyx.mcp_gateway.auth_adapters import apply_auth
 from onyx.server.features.mcp.client import (
     call_mcp_tool_raw_async,
     discover_mcp_tools_async,
+    unwrap_exception_group,
 )
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
 
 
 def serialize_call_result(result: CallToolResult) -> dict[str, Any]:
@@ -54,18 +58,32 @@ class UpstreamTarget:
         return cls(url=url, headers=headers, transport=entry.transport)
 
 
+def _error_payload(message: str) -> dict[str, Any]:
+    return serialize_call_result(
+        CallToolResult(
+            content=[TextContent(type="text", text=message)],
+            isError=True,
+        )
+    )
+
+
 async def call_upstream(
     target: UpstreamTarget,
     tool_name: str,
     arguments: dict[str, Any],
 ) -> dict[str, Any]:
-    result = await call_mcp_tool_raw_async(
-        target.url,
-        tool_name,
-        arguments,
-        connection_headers=target.headers,
-        transport=target.transport,
-    )
+    try:
+        result = await call_mcp_tool_raw_async(
+            target.url,
+            tool_name,
+            arguments,
+            connection_headers=target.headers,
+            transport=target.transport,
+        )
+    except Exception as error:
+        inner = unwrap_exception_group(error)
+        logger.exception("Upstream MCP call failed for %s", tool_name)
+        return _error_payload(str(inner))
     return serialize_call_result(result)
 
 
