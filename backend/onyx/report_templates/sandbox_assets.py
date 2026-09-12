@@ -1,8 +1,9 @@
 """Push Word report template assets into a sandbox.
 
-A markdown template needs nothing at runtime — its outline is inlined into
-SCENARIO.md. A Word template is a binary the agent has to open, so the asset is
-pushed to a managed mount and SCENARIO.md points at that path.
+    A markdown template needs nothing at runtime — its outline is inlined into
+    SCENARIO.md. A Word file is a binary the agent has to open as a layout
+    reference, so the asset is pushed to a managed mount and SCENARIO.md
+    points at that path.
 
 The mount mirrors ``user_library``: a sandbox-root directory that every session
 can read.

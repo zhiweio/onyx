@@ -131,15 +131,6 @@ describe("isDocxCatalogTemplate", () => {
       ...item(),
       body: "# Guide",
       kind: "DOCX",
-      placeholders: [
-        {
-          name: "entity_name",
-          kind: "text",
-          required: true,
-          description: "",
-          example: "",
-        },
-      ],
       asset_filename: "close.docx",
     };
     expect(isDocxCatalogTemplate(word)).toBe(true);

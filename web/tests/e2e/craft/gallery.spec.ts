@@ -138,7 +138,7 @@ test("forking a report template creates an editable copy", async ({ page }) => {
   }
 });
 
-test("uploading a Word template extracts placeholders and serves the file", async ({
+test("uploading a Word template attaches the file for the agent", async ({
   page,
 }) => {
   const created = await page.request.post("/api/report-templates", {
@@ -161,9 +161,19 @@ test("uploading a Word template extracts placeholders and serves the file", asyn
     await dismissAnyModal(page);
 
     await page.getByTestId("DocxTemplateSection/input").setInputFiles(fixture);
-    await expect(page.getByText("{{entity_name}}")).toBeVisible({
-      timeout: 20000,
-    });
+    // Poll the API so the assertion does not depend on the UI locale.
+    await expect
+      .poll(
+        async () => {
+          const after = await page.request.get(
+            `/api/report-templates/${template.id}`,
+          );
+          const body = (await after.json()) as { kind?: string };
+          return body.kind;
+        },
+        { timeout: 20000 },
+      )
+      .toBe("DOCX");
 
     const download = await page.request.get(
       `/api/report-templates/${template.id}/docx`,

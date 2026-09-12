@@ -13,7 +13,6 @@ import { SvgBlocks, SvgDownload, SvgSimpleLoader } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import { useGalleryItem } from "@/lib/system-catalog/hooks";
 import { galleryReportTemplateDocxUrl } from "@/lib/system-catalog/api";
-import { placeholderToken } from "@/lib/report-templates/types";
 import {
   categoryMessageKey,
   categoryTagColor,
@@ -60,7 +59,7 @@ export default function GalleryPreviewModal({
   const t = useTranslations("craft.gallery");
   const { data, error, isLoading } = useGalleryItem<AnyCatalogItem>(
     kind,
-    entryId,
+    entryId
   );
 
   const body = data ? previewBody(kind, data) : null;
@@ -162,26 +161,8 @@ export default function GalleryPreviewModal({
               {wordTemplate && (
                 <Section gap={1} alignItems="stretch">
                   <Text font="main-ui-action" color="text-05">
-                    {t("preview.placeholders.label")}
-                  </Text>
-                  <Text font="main-ui-body" color="text-04">
                     {t("preview.wordRequired.description")}
                   </Text>
-                  {wordTemplate.placeholders.length > 0 && (
-                    <div
-                      className="flex flex-row flex-wrap gap-1"
-                      data-testid="GalleryPreview/placeholders"
-                    >
-                      {wordTemplate.placeholders.map((placeholder) => (
-                        <Tag
-                          key={placeholder.name}
-                          size="sm"
-                          color="blue"
-                          title={placeholderToken(placeholder)}
-                        />
-                      ))}
-                    </div>
-                  )}
                   <Button
                     prominence="secondary"
                     icon={SvgDownload}

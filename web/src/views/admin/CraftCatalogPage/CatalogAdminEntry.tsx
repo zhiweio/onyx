@@ -13,11 +13,11 @@ import {
   categoryMessageKey,
   categoryTagColor,
   isDocxCatalogTemplate,
+  isReportTemplateItem,
   publishStatusMessageKey,
   publishStatusTagColor,
   type CatalogItem,
   type CatalogViewMode,
-  type SystemReportTemplateItem,
 } from "@/lib/system-catalog/types";
 import DocxTemplateSection from "@/sections/reportTemplates/DocxTemplateSection";
 
@@ -112,11 +112,7 @@ export default function CatalogAdminEntry({
           </Button>
         </>
       ) : (
-        <Button
-          size="sm"
-          disabled={pending}
-          onClick={() => onPublish(entry)}
-        >
+        <Button size="sm" disabled={pending} onClick={() => onPublish(entry)}>
           {t("actions.publish.label")}
         </Button>
       )}
@@ -137,32 +133,35 @@ export default function CatalogAdminEntry({
   );
 
   const docx =
-    showDocx && isDocxCatalogTemplate(entry) ? (
-      <DocxTemplateSection
-        template={entry as SystemReportTemplateItem}
-        disabled={pending}
-        onUploaded={onDocxUploaded}
-        upload={uploadCatalogReportTemplateDocx}
-        downloadUrl={catalogReportTemplateDocxUrl}
-      />
+    showDocx && isReportTemplateItem(entry) ? (
+      <div className="border-t border-border-01 pt-3">
+        <DocxTemplateSection
+          template={entry}
+          disabled={pending}
+          compact
+          onUploaded={onDocxUploaded}
+          upload={uploadCatalogReportTemplateDocx}
+          downloadUrl={catalogReportTemplateDocxUrl}
+        />
+      </div>
     ) : null;
 
   if (view === "list") {
     return (
       <Card variant="primary">
-        <div className="flex w-full flex-col gap-2">
-          <div className="flex flex-row items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
+        <div className="flex w-full flex-col gap-3">
+          <div className="flex flex-row items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <Content
                 title={entry.name}
                 description={entry.description || entry.slug}
                 sizePreset="main-ui"
                 variant="section"
               />
+              {meta}
             </div>
             {actions}
           </div>
-          {meta}
           {docx}
         </div>
       </Card>
@@ -171,8 +170,8 @@ export default function CatalogAdminEntry({
 
   return (
     <Card variant="primary" height="full">
-      <div className="flex h-full w-full flex-col justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex h-full w-full flex-col justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <Content title={entry.name} sizePreset="main-ui" variant="body" />
           <Content
             title={entry.description || entry.slug}

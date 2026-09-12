@@ -1,13 +1,17 @@
-"""Report template HTTP API: CRUD and referenced delete block."""
+"""Report template HTTP API: CRUD, Word upload, and referenced delete block."""
 
 from __future__ import annotations
 
+import io
 from uuid import uuid4
+
+from docx import Document
 
 from tests.integration.common_utils.constants import API_SERVER_URL
 from tests.integration.common_utils.http_client import client
 from tests.integration.common_utils.managers.user import UserManager
 from tests.integration.common_utils.test_models import DATestUser
+from tests.integration.tests.craft.user_library_http import multipart_headers
 
 
 def _url(*parts: str) -> str:
@@ -52,6 +56,9 @@ def test_create_get_patch_and_delete_unused(admin_user: DATestUser) -> None:
     assert created["can_edit"] is True
     assert created["can_delete"] is True
     assert created["referenced_count"] == 0
+    assert "placeholders" not in created
+    assert created["kind"] == "MARKDOWN"
+    assert created["asset_filename"] is None
 
     detail = client.get(
         _url(created["id"]),
@@ -137,3 +144,46 @@ def test_basic_user_cannot_edit_workspace_template(
         cookies=basic.cookies,
     )
     assert denied.status_code == 403
+
+
+def test_upload_docx_stores_the_file_without_a_placeholder_schema(
+    admin_user: DATestUser,
+) -> None:
+    created = _create_template(admin_user, name="Word outline")
+    document = Document()
+    document.add_paragraph("Layout reference for the agent.")
+    buffer = io.BytesIO()
+    document.save(buffer)
+    payload = buffer.getvalue()
+
+    uploaded = client.post(
+        _url(created["id"], "docx"),
+        files={
+            "asset": (
+                "layout.docx",
+                io.BytesIO(payload),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+            headers=multipart_headers(admin_user),
+            cookies=admin_user.cookies,
+        )
+    uploaded.raise_for_status()
+    body = uploaded.json()
+    assert "placeholders" not in body
+    assert body["kind"] == "DOCX"
+    assert body["asset_filename"] == "layout.docx"
+
+    download = client.get(
+        _url(created["id"], "docx"),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    download.raise_for_status()
+    assert download.content == payload
+
+    client.delete(
+        _url(created["id"]),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )

@@ -22,7 +22,6 @@ from onyx.db.models import (
     SystemScenario,
     SystemSkill,
 )
-from onyx.server.features.report_template.models import PlaceholderSpecResponse
 from onyx.server.features.scenario.playbook import ScenarioPlaybook
 from onyx.db.system_catalog.constants import (
     BODY_MAX,
@@ -132,7 +131,6 @@ class SystemScenarioResponse(CatalogItemSummary):
 class SystemReportTemplateResponse(CatalogItemSummary):
     body: str
     kind: ReportTemplateKind
-    placeholders: list[PlaceholderSpecResponse]
     asset_filename: str | None
 
     @classmethod
@@ -144,10 +142,6 @@ class SystemReportTemplateResponse(CatalogItemSummary):
             **base.model_dump(),
             body=entry.body,
             kind=entry.kind,
-            placeholders=[
-                PlaceholderSpecResponse.from_stored(item)
-                for item in entry.placeholders
-            ],
             asset_filename=entry.asset_filename,
         )
 

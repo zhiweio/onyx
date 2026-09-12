@@ -24,6 +24,7 @@ Runs at startup and is idempotent. Rules that keep it safe to re-run:
 from __future__ import annotations
 
 import datetime
+import hashlib
 from collections.abc import Callable
 from functools import partial
 from typing import TypeVar
@@ -71,10 +72,6 @@ from onyx.db.system_catalog.skill import (
     update_system_skill,
 )
 from onyx.error_handling.exceptions import OnyxError
-from onyx.report_templates.placeholders import (
-    normalize_placeholder_schema,
-    placeholder_names,
-)
 from onyx.system_catalog.builtin.manifest import (
     BUILT_IN_REPORT_TEMPLATE_ENTRIES,
     BUILT_IN_SCENARIO_ENTRIES,
@@ -84,10 +81,8 @@ from onyx.system_catalog.builtin.manifest import (
     BuiltInSkillEntry,
 )
 from onyx.system_catalog.builtin.word.generate import (
-    OFFICIAL_WORD_SPECS,
     generate_official_docx,
     official_builder_slugs,
-    overlay_for_spec,
 )
 from onyx.utils.logger import setup_logger
 
@@ -375,13 +370,10 @@ def _report_template_needs_refresh(
             return True
         if catalog_entry.asset_file_id is None:
             return True
-        spec = OFFICIAL_WORD_SPECS.get(entry.builder_slug())
-        if spec is not None:
-            expected = sorted(placeholder_names(overlay_for_spec(spec)))
-            stored = placeholder_names(
-                normalize_placeholder_schema(catalog_entry.placeholders)
-            )
-            if stored != expected:
+        builder = entry.builder_slug()
+        if builder in official_builder_slugs():
+            expected = hashlib.sha256(generate_official_docx(builder)).hexdigest()
+            if catalog_entry.asset_sha256 != expected:
                 return True
     return False
 
@@ -404,13 +396,11 @@ def _apply_report_template_manifest(
         return
     if entry.builder_slug() not in official_builder_slugs():
         return
-    asset_bytes, schema = generate_official_docx(entry.builder_slug())
     attach_catalog_docx_asset(
         db_session,
         catalog_entry,
-        asset_bytes=asset_bytes,
+        asset_bytes=generate_official_docx(entry.builder_slug()),
         filename=f"{entry.slug}.docx",
-        overlay=schema,
     )
 
 

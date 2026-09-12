@@ -233,7 +233,6 @@ def fork_system_report_template_for_user(
         description=entry.description,
         body=entry.body,
         kind=entry.kind,
-        placeholders=list(entry.placeholders),
         asset_filename=entry.asset_filename,
         author_user_id=user.id,
         is_builtin=False,

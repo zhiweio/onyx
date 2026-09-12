@@ -166,7 +166,6 @@ def publish_system_report_template(
     projection.asset_file_id = entry.asset_file_id
     projection.asset_sha256 = entry.asset_sha256
     projection.asset_filename = entry.asset_filename
-    projection.placeholders = list(entry.placeholders)
     projection.system_report_template_version = entry.version
     db_session.flush()
     return projection

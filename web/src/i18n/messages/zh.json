@@ -13683,7 +13683,7 @@
         },
         "docx": {
           "title": "Word 模板（可选）",
-          "hint": "上传 .docx，让智能体按你的排版填写，而不是输出 markdown 报告。占位符会从文件中自动识别。",
+          "hint": "上传 .docx。智能体将此文件作为报告排版参照。",
           "uploadButton": {
             "label": "上传 .docx"
           },
@@ -13693,15 +13693,8 @@
           "downloadButton": {
             "label": "下载"
           },
-          "sandboxPath": {
-            "description": "智能体从 {path} 读取该文件"
-          },
-          "placeholders": {
-            "title": "{count, plural, other {# 个占位符}}",
-            "none": "该文档没有占位符，属于固定内容。"
-          },
           "uploaded": {
-            "message": "已保存 Word 模板，识别到 {count, plural, other {# 个占位符}}"
+            "message": "Word 模板已保存。"
           },
           "uploadFailed": {
             "message": "保存 Word 模板失败"

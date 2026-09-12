@@ -33,9 +33,8 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.report_templates.docx_template import (
     DOCX_CONTENT_TYPE,
-    extract_docx_placeholder_schema,
+    validate_docx_asset,
 )
-from onyx.report_templates.placeholders import PlaceholderSpec
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -149,13 +148,12 @@ def attach_catalog_docx_asset(
     *,
     asset_bytes: bytes,
     filename: str | None,
-    overlay: list[PlaceholderSpec] | None = None,
 ) -> SystemReportTemplate:
     """Attach or replace the Word asset on a catalog template.
 
-    Names come from the uploaded document. Overlay only supplies metadata.
+    The file is stored as-is. The agent uses it as a layout reference.
     """
-    placeholders = extract_docx_placeholder_schema(asset_bytes, overlay)
+    validate_docx_asset(asset_bytes)
     file_store = get_default_file_store()
     previous_file_id = entry.asset_file_id
     asset_file_id = file_store.save_file(
@@ -169,7 +167,6 @@ def attach_catalog_docx_asset(
         entry.asset_file_id = asset_file_id
         entry.asset_sha256 = hashlib.sha256(asset_bytes).hexdigest()
         entry.asset_filename = (filename or f"{entry.slug}.docx")[:255]
-        entry.placeholders = placeholders
         db_session.flush()
     except Exception:
         file_store.delete_file(asset_file_id, error_on_missing=False)

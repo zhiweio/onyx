@@ -1,34 +1,10 @@
 from datetime import datetime
-from typing import Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from onyx.db.enums import ReportTemplateKind
 from onyx.db.models import ReportTemplate
-from onyx.report_templates.placeholders import (
-    PlaceholderKind,
-    normalize_placeholder_schema,
-)
-
-
-class PlaceholderSpecResponse(BaseModel):
-    name: str
-    kind: PlaceholderKind
-    required: bool = True
-    description: str = ""
-    example: str = ""
-
-    @classmethod
-    def from_stored(cls, raw: object) -> Self:
-        spec = normalize_placeholder_schema([raw])[0]
-        return cls(
-            name=spec["name"],
-            kind=spec["kind"],
-            required=spec["required"],
-            description=spec["description"],
-            example=spec["example"],
-        )
 
 
 class ReportTemplateCreateRequest(BaseModel):
@@ -51,7 +27,6 @@ class ReportTemplateResponse(BaseModel):
     description: str
     body: str
     kind: ReportTemplateKind
-    placeholders: list[PlaceholderSpecResponse]
     asset_filename: str | None
     author_user_id: UUID | None
     is_builtin: bool
@@ -76,10 +51,6 @@ class ReportTemplateResponse(BaseModel):
             description=template.description,
             body=template.body,
             kind=template.kind,
-            placeholders=[
-                PlaceholderSpecResponse.from_stored(item)
-                for item in template.placeholders
-            ],
             asset_filename=template.asset_filename,
             author_user_id=template.author_user_id,
             is_builtin=template.is_builtin,

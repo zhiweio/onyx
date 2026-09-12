@@ -290,17 +290,12 @@ def test_sync_preserves_admin_edits_to_shipped_content(
 @pytest.mark.usefixtures("synced")
 def test_sync_attaches_official_word_assets(db_session: Session) -> None:
     from onyx.db.enums import ReportTemplateKind
-    from onyx.report_templates.placeholders import (
-        normalize_placeholder_schema,
-        placeholder_names,
-    )
 
     entry = get_system_report_template_by_slug(db_session, "initiation_report")
     assert entry is not None
     assert entry.kind is ReportTemplateKind.DOCX
     assert entry.asset_file_id is not None
-    names = placeholder_names(normalize_placeholder_schema(entry.placeholders))
-    assert "entity_name" in names
+    assert entry.asset_filename == "initiation_report.docx"
 
 
 @pytest.mark.usefixtures("synced")

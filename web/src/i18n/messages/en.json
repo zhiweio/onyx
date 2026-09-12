@@ -13689,7 +13689,7 @@
         },
         "docx": {
           "title": "Word template (optional)",
-          "hint": "Attach a .docx so the agent fills your formatting instead of writing a markdown report. Placeholders are read from the file.",
+          "hint": "Upload a .docx. The agent uses this file as the report layout.",
           "uploadButton": {
             "label": "Upload .docx"
           },
@@ -13699,15 +13699,8 @@
           "downloadButton": {
             "label": "Download"
           },
-          "sandboxPath": {
-            "description": "The agent reads this file at {path}"
-          },
-          "placeholders": {
-            "title": "{count, plural, =0 {No placeholders} one {# placeholder} other {# placeholders}}",
-            "none": "This document has no placeholder tokens, so it is fixed content."
-          },
           "uploaded": {
-            "message": "Word template saved with {count, plural, =0 {no placeholders} one {# placeholder} other {# placeholders}}"
+            "message": "Word template saved."
           },
           "uploadFailed": {
             "message": "Could not save the Word template"

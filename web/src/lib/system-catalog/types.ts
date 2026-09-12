@@ -1,13 +1,6 @@
-import type {
-  PlaceholderSpec,
-  ReportTemplateKind,
-} from "@/lib/report-templates/types";
+import type { ReportTemplateKind } from "@/lib/report-templates/types";
 
-export type {
-  PlaceholderKind,
-  PlaceholderSpec,
-  ReportTemplateKind,
-} from "@/lib/report-templates/types";
+export type { ReportTemplateKind } from "@/lib/report-templates/types";
 
 export type SystemCatalogCategory =
   | "TAX"
@@ -78,17 +71,19 @@ export interface SystemScenarioItem extends CatalogItem {
 export interface SystemReportTemplateItem extends CatalogItem {
   body: string;
   kind: ReportTemplateKind;
-  placeholders: PlaceholderSpec[];
   asset_filename: string | null;
+}
+
+export function isReportTemplateItem(
+  item: CatalogItem,
+): item is SystemReportTemplateItem {
+  return "kind" in item && "body" in item;
 }
 
 export function isDocxCatalogTemplate(
   item: CatalogItem,
 ): item is SystemReportTemplateItem {
-  return (
-    "kind" in item &&
-    (item as SystemReportTemplateItem).kind === "DOCX"
-  );
+  return isReportTemplateItem(item) && item.kind === "DOCX";
 }
 
 export type AnyCatalogItem =

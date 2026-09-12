@@ -1,7 +1,4 @@
-import {
-  placeholderToken,
-  suggestReportTemplateSlug,
-} from "@/lib/report-templates/types";
+import { suggestReportTemplateSlug } from "@/lib/report-templates/types";
 
 describe("suggestReportTemplateSlug", () => {
   it("turns a display name into a slug", () => {
@@ -13,19 +10,5 @@ describe("suggestReportTemplateSlug", () => {
 
   it("returns empty when the name has no latin letters", () => {
     expect(suggestReportTemplateSlug("合规风险")).toBe("");
-  });
-});
-
-describe("placeholderToken", () => {
-  it("wraps the name in braces", () => {
-    expect(
-      placeholderToken({
-        name: "entity_name",
-        kind: "text",
-        required: true,
-        description: "",
-        example: "",
-      }),
-    ).toBe("{{entity_name}}");
   });
 });

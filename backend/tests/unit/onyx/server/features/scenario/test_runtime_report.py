@@ -21,12 +21,36 @@ class _FakeSession:
         return self.template
 
 
+def test_render_docx_template_as_reference(monkeypatch) -> None:
+    template = SimpleNamespace(
+        description="Layout for a close pack.",
+        body="# 月度关账",
+        kind=ReportTemplateKind.DOCX,
+        slug="monthly_close",
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.scenario.runtime.get_report_template_by_slug",
+        lambda _db, slug: template if slug == "monthly_close" else None,
+    )
+    scenario = SimpleNamespace(
+        name="月度关账",
+        description="",
+        rules={},
+        skill_links=[],
+        report_template="monthly_close",
+    )
+    text = render_scenario_markdown_named(_FakeSession(template), scenario)
+    assert "layout and style reference" in text
+    assert "/workspace/managed/report_templates/monthly_close.docx" in text
+    assert "fill_template.py" not in text
+    assert "# 月度关账" in text
+
+
 def test_render_includes_template_body(monkeypatch) -> None:
     template = SimpleNamespace(
         description="Tax compliance risk brief for an entity.",
         body="# 合规风险预警报告\n\n1. **对象**",
         kind=ReportTemplateKind.MARKDOWN,
-        placeholders=[],
     )
     monkeypatch.setattr(
         "onyx.server.features.scenario.runtime.get_report_template_by_slug",

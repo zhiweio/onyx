@@ -1,8 +1,7 @@
-"""Word report templates: extraction, storage, projection, fork, and rendering.
+"""Word report templates: validation, storage, projection, fork, and rendering.
 
-The contract that matters is the placeholder set: it is derived from the
-uploaded document rather than declared, so it cannot drift from the file the
-agent is told to fill.
+The uploaded file is the layout reference. Tokens inside the document are
+not extracted or stored.
 """
 
 from __future__ import annotations
@@ -39,55 +38,18 @@ from onyx.db.system_catalog.report_template import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
-from onyx.report_templates.docx_template import extract_docx_placeholders
-from onyx.report_templates.placeholders import (
-    normalize_placeholder_schema,
-    placeholder_names,
-)
+from onyx.report_templates.docx_template import validate_docx_asset
 from onyx.server.features.scenario.runtime import render_report_template_section
 from tests.external_dependency_unit.conftest import create_test_user
 
 
-def build_docx(*, split_token: bool = True) -> bytes:
-    """A template exercising the ways Word really fragments placeholders."""
+def build_docx() -> bytes:
     document = Document()
     document.add_heading("月度关账报告", 0)
-    paragraph = document.add_paragraph()
-    if split_token:
-        # Word splits a token across runs whenever formatting state changes.
-        paragraph.add_run("主体：{{ent")
-        paragraph.add_run("ity_name}}")
-    else:
-        paragraph.add_run("主体：{{entity_name}}")
-    paragraph.add_run("  期间：{{period}}")
-
-    table = document.add_table(rows=1, cols=2)
-    table.cell(0, 0).text = "{{account_1}}"
-    table.cell(0, 1).text = "{{amount_1}}"
-
-    section = document.sections[0]
-    section.header.paragraphs[0].text = "{{company_header}}"
-    section.footer.paragraphs[0].text = "第 {{page_no}} 页"
-    document.add_paragraph("结论：{{ conclusion }}")
-
+    document.add_paragraph("主体：某某股份有限公司  期间：2026年8月")
     buffer = io.BytesIO()
     document.save(buffer)
     return buffer.getvalue()
-
-
-EXPECTED_PLACEHOLDERS = [
-    "account_1",
-    "amount_1",
-    "company_header",
-    "conclusion",
-    "entity_name",
-    "page_no",
-    "period",
-]
-
-
-def stored_names(placeholders: object) -> list[str]:
-    return placeholder_names(normalize_placeholder_schema(placeholders))  # type: ignore[arg-type]
 
 
 @pytest.fixture
@@ -100,37 +62,29 @@ def unique_slug(request: pytest.FixtureRequest) -> str:
     return f"docx_{abs(hash(request.node.name)) % 10**8}"
 
 
-# ── extraction ──────────────────────────────────────────────────────────────
+# ── validation ──────────────────────────────────────────────────────────────
 
 
-def test_extraction_finds_tokens_in_body_table_header_and_footer() -> None:
-    assert extract_docx_placeholders(build_docx()) == EXPECTED_PLACEHOLDERS
+def test_validation_accepts_a_readable_docx() -> None:
+    validate_docx_asset(build_docx())
 
 
-def test_extraction_finds_a_token_split_across_runs() -> None:
-    """The whole reason extraction joins at paragraph level."""
-    split = extract_docx_placeholders(build_docx(split_token=True))
-    whole = extract_docx_placeholders(build_docx(split_token=False))
-    assert split == whole
-    assert "entity_name" in split
-
-
-def test_extraction_rejects_a_file_that_is_not_a_docx() -> None:
+def test_validation_rejects_a_file_that_is_not_a_docx() -> None:
     with pytest.raises(OnyxError) as caught:
-        extract_docx_placeholders(b"definitely not a zip")
+        validate_docx_asset(b"definitely not a zip")
     assert caught.value.error_code is OnyxErrorCode.INVALID_INPUT
 
 
-def test_extraction_rejects_a_zip_without_a_word_document() -> None:
+def test_validation_rejects_a_zip_without_a_word_document() -> None:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("notes.txt", "hello")
     with pytest.raises(OnyxError) as caught:
-        extract_docx_placeholders(buffer.getvalue())
+        validate_docx_asset(buffer.getvalue())
     assert caught.value.error_code is OnyxErrorCode.INVALID_INPUT
 
 
-def test_extraction_refuses_declared_xml_entities() -> None:
+def test_validation_refuses_declared_xml_entities() -> None:
     """An uploaded document is untrusted input."""
     bomb = (
         b'<?xml version="1.0"?><!DOCTYPE d [<!ENTITY a "boom">]>'
@@ -142,16 +96,8 @@ def test_extraction_refuses_declared_xml_entities() -> None:
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("word/document.xml", bomb)
     with pytest.raises(OnyxError) as caught:
-        extract_docx_placeholders(buffer.getvalue())
+        validate_docx_asset(buffer.getvalue())
     assert caught.value.error_code is OnyxErrorCode.INVALID_INPUT
-
-
-def test_extraction_accepts_a_document_with_no_placeholders() -> None:
-    document = Document()
-    document.add_paragraph("Fixed content, nothing to fill.")
-    buffer = io.BytesIO()
-    document.save(buffer)
-    assert extract_docx_placeholders(buffer.getvalue()) == []
 
 
 # ── user templates ──────────────────────────────────────────────────────────
@@ -184,27 +130,25 @@ def _purge_template(db_session: Session, slug: str) -> None:
         get_default_file_store().delete_file(row, error_on_missing=False)
 
 
-def test_attaching_a_docx_switches_kind_and_records_placeholders(
+def test_attaching_a_docx_switches_kind_and_stores_the_file(
     db_session: Session, template_user: User, user_template: ReportTemplate
 ) -> None:
     assert user_template.kind is ReportTemplateKind.MARKDOWN
+    asset_bytes = build_docx()
 
     updated = attach_docx_asset(
         db_session,
         user_template,
         template_user,
-        asset_bytes=build_docx(),
+        asset_bytes=asset_bytes,
         filename="close.docx",
     )
 
     assert updated.kind is ReportTemplateKind.DOCX
-    assert stored_names(updated.placeholders) == EXPECTED_PLACEHOLDERS
-    assert updated.placeholders[0]["kind"] in {"text", "table"}
     assert updated.asset_filename == "close.docx"
     assert updated.asset_file_id is not None
     assert updated.asset_sha256 is not None
-    # The stored bytes must be exactly what was uploaded.
-    assert read_docx_asset(updated) == build_docx()
+    assert read_docx_asset(updated) == asset_bytes
 
 
 def test_replacing_the_asset_drops_the_previous_blob(
@@ -221,7 +165,7 @@ def test_replacing_the_asset_drops_the_previous_blob(
     assert first_file_id is not None
 
     document = Document()
-    document.add_paragraph("{{only_one}}")
+    document.add_paragraph("Replacement layout.")
     buffer = io.BytesIO()
     document.save(buffer)
     second = attach_docx_asset(
@@ -232,8 +176,8 @@ def test_replacing_the_asset_drops_the_previous_blob(
         filename="v2.docx",
     )
 
-    assert stored_names(second.placeholders) == ["only_one"]
     assert second.asset_file_id != first_file_id
+    assert second.asset_filename == "v2.docx"
 
 
 def test_reading_the_asset_of_a_markdown_template_is_not_found(
@@ -287,7 +231,7 @@ def test_publish_projects_the_word_asset(
     db_session.commit()
 
     assert projection.kind is ReportTemplateKind.DOCX
-    assert stored_names(projection.placeholders) == EXPECTED_PLACEHOLDERS
+    assert projection.asset_filename == "cat.docx"
     # The projection borrows the catalog's blob rather than duplicating it.
     assert projection.asset_file_id == catalog_entry.asset_file_id
 
@@ -296,8 +240,9 @@ def test_unpublish_keeps_the_catalog_asset_readable(
     db_session: Session, template_user: User, catalog_entry: SystemReportTemplate
 ) -> None:
     """The projection only borrows the blob, so dropping it must not delete it."""
+    asset_bytes = build_docx()
     attach_catalog_docx_asset(
-        db_session, catalog_entry, asset_bytes=build_docx(), filename="cat.docx"
+        db_session, catalog_entry, asset_bytes=asset_bytes, filename="cat.docx"
     )
     db_session.commit()
     publish_system_report_template(db_session, catalog_entry, publisher=template_user)
@@ -308,14 +253,15 @@ def test_unpublish_keeps_the_catalog_asset_readable(
 
     assert catalog_entry.asset_file_id is not None
     payload = get_default_file_store().read_file(catalog_entry.asset_file_id).read()
-    assert payload == build_docx()
+    assert payload == asset_bytes
 
 
 def test_fork_copies_the_asset_so_the_user_owns_it(
     db_session: Session, template_user: User, catalog_entry: SystemReportTemplate
 ) -> None:
+    asset_bytes = build_docx()
     attach_catalog_docx_asset(
-        db_session, catalog_entry, asset_bytes=build_docx(), filename="cat.docx"
+        db_session, catalog_entry, asset_bytes=asset_bytes, filename="cat.docx"
     )
     db_session.commit()
     publish_system_report_template(db_session, catalog_entry, publisher=template_user)
@@ -327,17 +273,16 @@ def test_fork_copies_the_asset_so_the_user_owns_it(
     db_session.commit()
 
     assert fork.kind is ReportTemplateKind.DOCX
-    assert stored_names(fork.placeholders) == EXPECTED_PLACEHOLDERS
     # A fork owns its bytes: deleting it must not disturb the catalog entry.
     assert fork.asset_file_id != catalog_entry.asset_file_id
-    assert read_docx_asset(fork) == build_docx()
+    assert read_docx_asset(fork) == asset_bytes
 
     delete_report_template(db_session, fork, template_user)
 
     assert catalog_entry.asset_file_id is not None
     assert (
         get_default_file_store().read_file(catalog_entry.asset_file_id).read()
-        == build_docx()
+        == asset_bytes
     )
 
 
@@ -352,7 +297,7 @@ def test_markdown_template_renders_its_outline(
     assert "fill_template.py" not in rendered
 
 
-def test_docx_template_renders_the_fill_instructions(
+def test_docx_template_renders_the_file_as_a_reference(
     db_session: Session, template_user: User, user_template: ReportTemplate
 ) -> None:
     template = attach_docx_asset(
@@ -365,23 +310,17 @@ def test_docx_template_renders_the_fill_instructions(
 
     rendered = "\n".join(render_report_template_section(template))
 
-    # The agent needs the path, the tool, and the full placeholder contract.
     assert f"/workspace/managed/report_templates/{template.slug}.docx" in rendered
-    assert ".opencode/skills/docx/scripts/fill_template.py" in rendered
-    for placeholder in EXPECTED_PLACEHOLDERS:
-        assert f"{{{{{placeholder}}}}}" in rendered
-        assert "(text, required)" in rendered or "(table, required)" in rendered
-    # And must be told not to silently fall back to markdown.
-    assert "do not substitute a markdown report" in rendered
-    assert "The Word file is required" in rendered
+    assert "layout and style reference" in rendered
+    assert "fill_template.py" not in rendered
+    assert "report-data.json" not in rendered
+    assert "Placeholders to fill" not in rendered
+    assert "# Outline" in rendered
 
 
-def test_official_builder_schema_matches_the_generated_file() -> None:
+def test_official_builder_returns_a_readable_docx() -> None:
     from onyx.system_catalog.builtin.word.generate import generate_official_docx
 
-    asset_bytes, schema = generate_official_docx("monthly_close")
-    extracted = extract_docx_placeholders(asset_bytes)
-    assert extracted == placeholder_names(schema)
-    assert "exceptions.title" in extracted
-    assert "entity_name" in extracted
-    assert any(item["kind"] == "table" for item in schema)
+    asset_bytes = generate_official_docx("monthly_close")
+    validate_docx_asset(asset_bytes)
+    assert asset_bytes.startswith(b"PK")

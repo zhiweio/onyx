@@ -5163,14 +5163,11 @@ class ReportTemplate(Base):
         default=ReportTemplateKind.MARKDOWN,
         server_default=ReportTemplateKind.MARKDOWN.value,
     )
-    # Set only for DOCX templates: the Word asset in the file store, plus the
-    # placeholder contract extracted from it at upload.
+    # Set only for DOCX templates: the Word asset in the file store. The agent
+    # uses that file as a layout reference; tokens are not stored separately.
     asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
     asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
-        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
-    )
     author_user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("user.id", ondelete="SET NULL"),
@@ -5476,9 +5473,6 @@ class SystemReportTemplate(Base):
     asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
     asset_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     asset_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    placeholders: Mapped[list[dict[str, Any]]] = mapped_column(
-        postgresql.JSONB(), nullable=False, default=list, server_default=text("'[]'")
-    )
 
     published_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

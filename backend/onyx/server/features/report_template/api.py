@@ -113,8 +113,7 @@ def upload_report_template_docx(
 ) -> ReportTemplateResponse:
     """Attach or replace the Word document behind a template.
 
-    Placeholders are read from the uploaded file, so the contract shown to the
-    user and handed to the agent always matches the actual document.
+    The file is stored as-is. The agent uses it as a layout reference.
     """
     template = get_report_template(db_session, template_id)
     template = attach_docx_asset(

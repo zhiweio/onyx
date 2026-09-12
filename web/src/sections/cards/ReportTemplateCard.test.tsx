@@ -10,7 +10,6 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     description: "Tax compliance risk brief for an entity.",
     body: "# 合规风险预警报告",
     kind: "MARKDOWN",
-    placeholders: [],
     asset_filename: null,
     author_user_id: null,
     is_builtin: true,
@@ -38,15 +37,6 @@ describe("ReportTemplateCard", () => {
       <ReportTemplateCard
         template={template({
           kind: "DOCX",
-          placeholders: [
-            {
-              name: "entity_name",
-              kind: "text",
-              required: true,
-              description: "",
-              example: "",
-            },
-          ],
           asset_filename: "close.docx",
         })}
       />,

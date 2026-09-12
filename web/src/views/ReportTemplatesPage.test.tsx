@@ -34,7 +34,6 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     description: "Tax compliance",
     body: "# Body",
     kind: "MARKDOWN",
-    placeholders: [],
     asset_filename: null,
     author_user_id: null,
     is_builtin: true,

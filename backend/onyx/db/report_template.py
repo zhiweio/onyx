@@ -20,9 +20,8 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.report_templates.docx_template import (
     DOCX_CONTENT_TYPE,
-    extract_docx_placeholder_schema,
+    validate_docx_asset,
 )
-from onyx.report_templates.placeholders import PlaceholderSpec
 
 SLUG_MAX = 64
 NAME_MAX = 128
@@ -128,18 +127,15 @@ def attach_docx_asset(
     *,
     asset_bytes: bytes,
     filename: str | None,
-    overlay: list[PlaceholderSpec] | None = None,
 ) -> ReportTemplate:
     """Turn a template into a Word template, or replace its asset.
 
-    Names come from the uploaded document. Overlay only supplies metadata
-    (kind, description, example), so the contract cannot drift from the file
-    the agent will fill.
+    The file is stored as-is. The agent uses it as a layout reference.
     """
     if not can_edit_report_template(template, user):
         raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS)
 
-    placeholders = extract_docx_placeholder_schema(asset_bytes, overlay)
+    validate_docx_asset(asset_bytes)
     file_store = get_default_file_store()
     previous_file_id = template.asset_file_id
     asset_file_id = file_store.save_file(
@@ -153,7 +149,6 @@ def attach_docx_asset(
         template.asset_file_id = asset_file_id
         template.asset_sha256 = hashlib.sha256(asset_bytes).hexdigest()
         template.asset_filename = (filename or f"{template.slug}.docx")[:255]
-        template.placeholders = placeholders
         db_session.commit()
     except Exception:
         db_session.rollback()

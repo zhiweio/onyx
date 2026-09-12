@@ -2,20 +2,15 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button, MessageCard } from "@opal/components";
-import { FileUpload } from "@/sections/extend/file-upload";
-import { SchemaBuilderPanel } from "@/sections/extend/schema-builder";
-import { placeholdersToSchema } from "@/sections/reportTemplates/placeholdersToSchema";
-import { Content, InputVertical, toast } from "@opal/layouts";
-import { SvgDownload, SvgUploadCloud } from "@opal/icons";
+import { Button, Text } from "@opal/components";
+import { Content, toast } from "@opal/layouts";
+import { SvgDownload, SvgFileText, SvgUploadCloud } from "@opal/icons";
 import {
   reportTemplateDocxUrl,
   uploadReportTemplateDocx,
 } from "@/lib/report-templates/api";
 import {
   isDocxReportTemplate,
-  sandboxTemplatePath,
-  type PlaceholderSpec,
   type ReportTemplateKind,
 } from "@/lib/report-templates/types";
 
@@ -23,7 +18,6 @@ export interface DocxTemplateFields {
   id: string;
   slug: string;
   kind: ReportTemplateKind;
-  placeholders: PlaceholderSpec[];
   asset_filename: string | null;
 }
 
@@ -36,13 +30,12 @@ interface DocxTemplateSectionProps {
   onUploaded: (template: DocxTemplateFields) => void;
   upload?: (id: string, file: File) => Promise<DocxTemplateFields>;
   downloadUrl?: (id: string) => string;
+  compact?: boolean;
 }
 
 /**
- * Attach a Word document to a report template.
- *
- * Placeholders are read from the uploaded file by the server, so this shows
- * what the agent will actually be asked to fill rather than a hand-kept list.
+ * Attach an optional Word layout. The agent uses this file as the report
+ * reference. Placeholders are not edited in the UI.
  */
 export default function DocxTemplateSection({
   template,
@@ -50,11 +43,13 @@ export default function DocxTemplateSection({
   onUploaded,
   upload = uploadReportTemplateDocx,
   downloadUrl = reportTemplateDocxUrl,
+  compact = false,
 }: DocxTemplateSectionProps) {
   const t = useTranslations("craft.reportTemplates");
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const isDocx = isDocxReportTemplate(template);
+  const filename = template.asset_filename ?? `${template.slug}.docx`;
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -62,11 +57,7 @@ export default function DocxTemplateSection({
     try {
       const updated = await upload(template.id, file);
       onUploaded(updated);
-      toast.success(
-        t("editor.docx.uploaded.message", {
-          count: updated.placeholders.length,
-        })
-      );
+      toast.success(t("editor.docx.uploaded.message"));
     } catch (uploadError) {
       console.error(uploadError);
       toast.error(
@@ -80,95 +71,69 @@ export default function DocxTemplateSection({
     }
   }
 
+  const fileActions = (
+    <div className="flex shrink-0 flex-row flex-wrap items-center gap-1">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={DOCX_ACCEPT}
+        className="hidden"
+        data-testid="DocxTemplateSection/input"
+        onChange={(event) => void handleFile(event.target.files?.[0])}
+      />
+      <Button
+        prominence={isDocx ? "tertiary" : "secondary"}
+        size="sm"
+        icon={SvgUploadCloud}
+        disabled={disabled || uploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {isDocx
+          ? t("editor.docx.replaceButton.label")
+          : t("editor.docx.uploadButton.label")}
+      </Button>
+      {isDocx && (
+        <Button
+          prominence="tertiary"
+          size="sm"
+          icon={SvgDownload}
+          href={downloadUrl(template.id)}
+        >
+          {t("editor.docx.downloadButton.label")}
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <InputVertical withLabel title={t("editor.docx.title")}>
+    <div className="flex flex-col gap-2">
       <Content
-        title={t("editor.docx.hint")}
+        title={t("editor.docx.title")}
+        description={compact ? undefined : t("editor.docx.hint")}
         sizePreset="secondary"
-        variant="body"
-        color="muted"
+        variant="section"
       />
 
-      {isDocx && (
-        <MessageCard
-          variant="info"
-          title={template.asset_filename ?? `${template.slug}.docx`}
-          description={t("editor.docx.sandboxPath.description", {
-            path: sandboxTemplatePath(template),
-          })}
-        />
-      )}
-
-      <div className="flex flex-col gap-3">
-        {!disabled && (
-          <FileUpload
-            accept={DOCX_ACCEPT}
-            multiple={false}
-            showBorderBeam={false}
-            showFileList={false}
-            title={
-              isDocx
-                ? t("editor.docx.replaceButton.label")
-                : t("editor.docx.uploadButton.label")
-            }
-            description={t("editor.docx.hint")}
-            onFilesAccepted={(files) => void handleFile(files[0])}
-          />
-        )}
-        <div className="flex flex-row flex-wrap items-center gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept={DOCX_ACCEPT}
-            className="hidden"
-            data-testid="DocxTemplateSection/input"
-            onChange={(event) => void handleFile(event.target.files?.[0])}
-          />
-          <Button
-            prominence="secondary"
-            icon={SvgUploadCloud}
-            disabled={disabled || uploading}
-            onClick={() => inputRef.current?.click()}
-          >
-            {isDocx
-              ? t("editor.docx.replaceButton.label")
-              : t("editor.docx.uploadButton.label")}
-          </Button>
-          {isDocx && (
-            <Button
-              prominence="tertiary"
-              icon={SvgDownload}
-              href={downloadUrl(template.id)}
-            >
-              {t("editor.docx.downloadButton.label")}
-            </Button>
-          )}
+      {isDocx ? (
+        <div className="flex flex-row flex-wrap items-center justify-between gap-3 rounded-12 border border-border-01 bg-background-neutral-01 px-3 py-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-08 bg-background-neutral-02 text-text-03">
+              <SvgFileText className="size-4" />
+            </div>
+            <Text font="main-ui-action" color="text-04">
+              {filename}
+            </Text>
+          </div>
+          {fileActions}
         </div>
-      </div>
-
-      {isDocx && (
-        <div className="flex flex-col gap-2">
-          <Content
-            title={t("editor.docx.placeholders.title", {
-              count: template.placeholders.length,
-            })}
-            sizePreset="secondary"
-            variant="body"
-          />
-          {template.placeholders.length > 0 ? (
-            <SchemaBuilderPanel
-              schema={placeholdersToSchema(template.placeholders)}
-            />
-          ) : (
-            <Content
-              title={t("editor.docx.placeholders.none")}
-              sizePreset="secondary"
-              variant="body"
-              color="muted"
-            />
-          )}
+      ) : (
+        <div className="flex flex-row flex-wrap items-center justify-between gap-3 rounded-12 border border-dashed border-border-02 bg-background-neutral-01 px-3 py-2.5">
+          <Text font="secondary-body" color="text-03">
+            {t("editor.docx.hint")}
+          </Text>
+          {fileActions}
         </div>
       )}
-    </InputVertical>
+    </div>
   );
 }

@@ -1,15 +1,5 @@
 export type ReportTemplateKind = "MARKDOWN" | "DOCX";
 
-export type PlaceholderKind = "text" | "multiline" | "date" | "number" | "table";
-
-export interface PlaceholderSpec {
-  name: string;
-  kind: PlaceholderKind;
-  required: boolean;
-  description: string;
-  example: string;
-}
-
 export interface ReportTemplate {
   id: string;
   slug: string;
@@ -17,8 +7,6 @@ export interface ReportTemplate {
   description: string;
   body: string;
   kind: ReportTemplateKind;
-  /** Extracted from the uploaded .docx, so it always matches the real file. */
-  placeholders: PlaceholderSpec[];
   asset_filename: string | null;
   author_user_id: string | null;
   is_builtin: boolean;
@@ -65,10 +53,6 @@ export function isDocxReportTemplate(template: {
   kind: ReportTemplateKind;
 }): boolean {
   return template.kind === "DOCX";
-}
-
-export function placeholderToken(spec: PlaceholderSpec): string {
-  return `{{${spec.name}}}`;
 }
 
 /** Path the agent reads the pushed template from inside the sandbox. */
