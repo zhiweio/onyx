@@ -24,7 +24,11 @@ from onyx.configs.model_configs import (
     GEN_AI_NUM_RESERVED_OUTPUT_TOKENS,
 )
 from onyx.llm.api_surfaces import OPENAI_COMPATIBLE_SURFACES, LlmApiSurface
-from onyx.llm.constants import BEDROCK_MODEL_TOKEN_LIMITS, LlmProviderNames
+from onyx.llm.constants import (
+    BEDROCK_MODEL_TOKEN_LIMITS,
+    LlmProviderNames,
+    litellm_provider_name,
+)
 from onyx.llm.models import ReasoningEffort
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import get_current_tenant_id
@@ -48,6 +52,22 @@ CUSTOM_LITELLM_MODEL_OVERRIDES: dict[str, dict[str, Any]] = {
     }
     for model_name in _TWELVE_LABS_PEGASUS_MODEL_NAMES
 }
+# LiteLLM still lists retired deepseek-v4-flash IDs. Official Flash is now
+# deepseek-flash (DeepSeek-V4.1-Flash): 1M context, native vision.
+_DEEPSEEK_FLASH_LITELLM_METADATA: dict[str, Any] = {
+    "max_input_tokens": 1_000_000,
+    "max_output_tokens": 393_216,
+    "max_tokens": 393_216,
+    "supports_vision": True,
+    "supports_reasoning": True,
+    "litellm_provider": "deepseek",
+}
+CUSTOM_LITELLM_MODEL_OVERRIDES.update(
+    {
+        "deepseek-flash": copy.deepcopy(_DEEPSEEK_FLASH_LITELLM_METADATA),
+        "deepseek/deepseek-flash": copy.deepcopy(_DEEPSEEK_FLASH_LITELLM_METADATA),
+    }
+)
 
 
 @lru_cache(maxsize=1)  # the copy.deepcopy is expensive, so we cache the result
@@ -111,6 +131,7 @@ def _strip_colon_from_model_name(model_name: str) -> str:
 
 
 def find_model_obj(model_map: dict, provider: str, model_name: str) -> dict | None:
+    provider = litellm_provider_name(provider)
     stripped_model_name = _strip_extra_provider_from_model_name(model_name)
 
     model_names = [

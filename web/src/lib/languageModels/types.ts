@@ -61,6 +61,11 @@ export interface ModelConfiguration {
 export enum LLMProviderName {
   OPENAI = "openai",
   ANTHROPIC = "anthropic",
+  DEEPSEEK = "deepseek",
+  ZAI = "zai",
+  BIGMODEL = "bigmodel",
+  MOONSHOT = "moonshot",
+  MINIMAX = "minimax",
   OLLAMA_CHAT = "ollama_chat",
   LM_STUDIO = "lm_studio",
   AZURE = "azure",

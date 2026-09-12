@@ -18,6 +18,8 @@ import {
   SvgGoogle,
   SvgNebius,
   SvgPortkey,
+  SvgKimi,
+  SvgMinimax,
 } from "@opal/logos";
 import { ZAIIcon } from "@/components/icons/icons";
 import {
@@ -27,6 +29,11 @@ import {
 import type { LLMProviderView } from "@/lib/languageModels/types";
 import OpenAIModal from "@/sections/modals/languageModels/OpenAIModal";
 import AnthropicModal from "@/sections/modals/languageModels/AnthropicModal";
+import DeepSeekModal from "@/sections/modals/languageModels/DeepSeekModal";
+import GlmModal from "@/sections/modals/languageModels/GlmModal";
+import BigModelModal from "@/sections/modals/languageModels/BigModelModal";
+import KimiModal from "@/sections/modals/languageModels/KimiModal";
+import MiniMaxModal from "@/sections/modals/languageModels/MiniMaxModal";
 import OllamaModal from "@/sections/modals/languageModels/OllamaModal";
 import AzureModal from "@/sections/modals/languageModels/AzureModal";
 import BedrockModal from "@/sections/modals/languageModels/BedrockModal";
@@ -61,6 +68,36 @@ const PROVIDERS: Record<string, ProviderEntry> = {
     productName: "Claude",
     companyName: "Anthropic",
     Modal: AnthropicModal,
+  },
+  [LLMProviderName.DEEPSEEK]: {
+    icon: SvgDeepseek,
+    productName: "DeepSeek",
+    companyName: "DeepSeek",
+    Modal: DeepSeekModal,
+  },
+  [LLMProviderName.ZAI]: {
+    icon: ZAIIcon,
+    productName: "GLM",
+    companyName: "Z.AI",
+    Modal: GlmModal,
+  },
+  [LLMProviderName.BIGMODEL]: {
+    icon: ZAIIcon,
+    productName: "GLM",
+    companyName: "BigModel",
+    Modal: BigModelModal,
+  },
+  [LLMProviderName.MOONSHOT]: {
+    icon: SvgKimi,
+    productName: "Kimi",
+    companyName: "Moonshot",
+    Modal: KimiModal,
+  },
+  [LLMProviderName.MINIMAX]: {
+    icon: SvgMinimax,
+    productName: "MiniMax",
+    companyName: "MiniMax",
+    Modal: MiniMaxModal,
   },
   [LLMProviderName.VERTEX_AI]: {
     icon: SvgGemini,
@@ -154,6 +191,11 @@ const DEFAULT_ENTRY: ProviderEntry = {
 const CUSTOM_CONFIG_OVERRIDES = new Set<string>([
   LLMProviderName.OPENAI,
   LLMProviderName.ANTHROPIC,
+  LLMProviderName.DEEPSEEK,
+  LLMProviderName.ZAI,
+  LLMProviderName.BIGMODEL,
+  LLMProviderName.MOONSHOT,
+  LLMProviderName.MINIMAX,
   LLMProviderName.AZURE,
   LLMProviderName.OPENROUTER,
 ]);
@@ -205,6 +247,11 @@ export const AGGREGATOR_PROVIDERS = new Set([
 const MODEL_ICON_MAP: Record<string, IconFunctionComponent> = {
   [LLMProviderName.OPENAI]: SvgOpenai,
   [LLMProviderName.ANTHROPIC]: SvgClaude,
+  [LLMProviderName.DEEPSEEK]: SvgDeepseek,
+  [LLMProviderName.ZAI]: ZAIIcon,
+  [LLMProviderName.BIGMODEL]: ZAIIcon,
+  [LLMProviderName.MOONSHOT]: SvgKimi,
+  [LLMProviderName.MINIMAX]: SvgMinimax,
   [LLMProviderName.OLLAMA_CHAT]: SvgOllama,
   [LLMProviderName.LM_STUDIO]: SvgLmStudio,
   [LLMProviderName.OPENROUTER]: SvgOpenrouter,
@@ -233,6 +280,11 @@ const MODEL_ICON_MAP: Record<string, IconFunctionComponent> = {
   qwen: SvgQwen,
   qwq: SvgQwen,
   zai: ZAIIcon,
+  glm: ZAIIcon,
+  bigmodel: ZAIIcon,
+  kimi: SvgKimi,
+  moonshot: SvgKimi,
+  minimax: SvgMinimax,
   bedrock_converse: SvgAws,
 };
 

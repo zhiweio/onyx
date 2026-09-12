@@ -23,7 +23,12 @@ from onyx.llm.api_surfaces import (
     LlmApiSurface,
     resolve_api_surface,
 )
-from onyx.llm.constants import MODEL_PREFIX_TO_VENDOR, LlmProviderNames
+from onyx.llm.constants import (
+    MODEL_PREFIX_TO_VENDOR,
+    LlmProviderNames,
+    litellm_provider_name,
+)
+from onyx.llm.well_known_providers.constants import DEFAULT_API_BASE_FOR_PROVIDER
 from onyx.llm.cost import compute_cost_cents
 from onyx.llm.custom_config_mapping import (
     UI_ONLY_CONFIG_KEYS,
@@ -443,7 +448,7 @@ class LitellmLLM(LLM):
         self._model_version = model_name
         self._api_key = api_key
         self._deployment_name = deployment_name
-        self._api_base = api_base
+        self._api_base = api_base or DEFAULT_API_BASE_FOR_PROVIDER.get(model_provider)
         self._api_version = api_version
         self._custom_llm_provider = custom_llm_provider
         self._max_input_tokens = max_input_tokens
@@ -657,7 +662,7 @@ class LitellmLLM(LLM):
         model_provider = (
             f"{self.config.model_provider}/responses"
             if is_openai_model  # Uses litellm's completions -> responses bridge
-            else self.config.model_provider
+            else litellm_provider_name(self.config.model_provider)
         )
 
         # Azure responses-bridge calls must target the v1 responses surface:

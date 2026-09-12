@@ -21,6 +21,8 @@ from onyx.llm.well_known_providers.auto_update_service import (
 from onyx.llm.well_known_providers.constants import (
     ANTHROPIC_PROVIDER_NAME,
     AZURE_PROVIDER_NAME,
+    BIGMODEL_PROVIDER_NAME,
+    DEEPSEEK_PROVIDER_NAME,
     BEDROCK_PROVIDER_NAME,
     BIFROST_PROVIDER_NAME,
     LITELLM_PROXY_PROVIDER_NAME,
@@ -32,12 +34,31 @@ from onyx.llm.well_known_providers.constants import (
     OPENROUTER_PROVIDER_NAME,
     PORTKEY_PROVIDER_NAME,
     VERTEXAI_PROVIDER_NAME,
+    MINIMAX_PROVIDER_NAME,
+    MOONSHOT_PROVIDER_NAME,
+    ZAI_PROVIDER_NAME,
 )
-from onyx.llm.well_known_providers.models import WellKnownLLMProviderDescriptor
+from onyx.llm.well_known_providers.models import (
+    SimpleKnownModel,
+    WellKnownLLMProviderDescriptor,
+)
 from onyx.server.manage.llm.models import ModelConfigurationView
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
+
+# Official DeepSeek API IDs from https://api-docs.deepseek.com/quick_start/models
+_OFFICIAL_DEEPSEEK_API_MODELS = frozenset({"deepseek-flash", "deepseek-v4-pro"})
+_RETIRED_DEEPSEEK_API_ALIASES = frozenset(
+    {
+        "deepseek-v4-flash",
+        "deepseek-v4-flash-vision-exp",
+    }
+)
+_OFFICIAL_DEEPSEEK_VISIBLE_MODELS = (
+    SimpleKnownModel(name="deepseek-v4-pro", display_name="DeepSeek V4 Pro"),
+    SimpleKnownModel(name="deepseek-flash", display_name="DeepSeek V4.1 Flash"),
+)
 
 _RECOMMENDATIONS_CACHE_TTL_SECONDS = 300
 _recommendations_cache_lock = threading.Lock()
@@ -56,6 +77,11 @@ def _get_provider_to_models_map() -> dict[str, list[str]]:
         OPENAI_PROVIDER_NAME: get_openai_model_names(),
         BEDROCK_PROVIDER_NAME: [],  # Dynamic - fetched from AWS API
         ANTHROPIC_PROVIDER_NAME: get_anthropic_model_names(),
+        DEEPSEEK_PROVIDER_NAME: get_deepseek_model_names(),
+        ZAI_PROVIDER_NAME: get_zai_model_names(),
+        BIGMODEL_PROVIDER_NAME: get_zai_model_names(),
+        MOONSHOT_PROVIDER_NAME: get_moonshot_model_names(),
+        MINIMAX_PROVIDER_NAME: get_minimax_model_names(),
         VERTEXAI_PROVIDER_NAME: get_vertexai_model_names(),
         OLLAMA_PROVIDER_NAME: [],  # Dynamic - fetched from Ollama API
         LM_STUDIO_PROVIDER_NAME: [],  # Dynamic - fetched from LM Studio API
@@ -97,11 +123,28 @@ def get_recommendations() -> LLMRecommendations:
             return _cached_recommendations
 
         recommendations_from_github = fetch_llm_recommendations_from_github()
-        result = recommendations_from_github or _load_bundled_recommendations()
+        bundled = _load_bundled_recommendations()
+        result = _merge_missing_provider_recommendations(
+            recommendations_from_github, bundled
+        )
 
         _cached_recommendations = result
         _cached_recommendations_time = time.monotonic()
         return result
+
+
+def _merge_missing_provider_recommendations(
+    remote: LLMRecommendations | None, bundled: LLMRecommendations
+) -> LLMRecommendations:
+    """Keep GitHub as the source of truth, but fill in providers it does not list."""
+    if remote is None:
+        return bundled
+
+    merged_providers = dict(remote.providers)
+    for name, recommendation in bundled.providers.items():
+        if name not in merged_providers:
+            merged_providers[name] = recommendation
+    return remote.model_copy(update={"providers": merged_providers})
 
 
 def is_obsolete_model(model_name: str, provider: str) -> bool:
@@ -144,7 +187,23 @@ def is_obsolete_model(model_name: str, provider: str) -> bool:
         if "palm" in model_lower or "bison" in model_lower:
             return True
 
+    # DeepSeek official API IDs: deepseek-flash (V4.1) and deepseek-v4-pro.
+    if provider == LlmProviderNames.DEEPSEEK:
+        return not _is_current_deepseek_api_model(model_lower)
+
     return False
+
+
+def _is_current_deepseek_api_model(model_name: str) -> bool:
+    name = model_name.removeprefix("deepseek/")
+    if name in _OFFICIAL_DEEPSEEK_API_MODELS:
+        return True
+    if name in _RETIRED_DEEPSEEK_API_ALIASES:
+        return False
+    if not name.startswith("deepseek-v"):
+        return False
+    version = name.removeprefix("deepseek-v")
+    return bool(version) and version[0].isdigit() and int(version[0]) >= 4
 
 
 def get_openai_model_names() -> list[str]:
@@ -213,6 +272,51 @@ def get_anthropic_model_names() -> list[str]:
     )
 
 
+def _unprefixed_litellm_models(models: list[str], prefix: str) -> list[str]:
+    names = {model.removeprefix(f"{prefix}/") for model in models}
+    return sorted(names, reverse=True)
+
+
+def get_deepseek_model_names() -> list[str]:
+    """Get current DeepSeek API model names from LiteLLM, without the prefix."""
+    import litellm
+
+    names = {
+        name
+        for name in _unprefixed_litellm_models(
+            list(litellm.deepseek_models), "deepseek"
+        )
+        if not is_obsolete_model(name, LlmProviderNames.DEEPSEEK)
+    }
+    names.update(_OFFICIAL_DEEPSEEK_API_MODELS)
+    return sorted(names, reverse=True)
+
+
+def get_zai_model_names() -> list[str]:
+    """Get GLM model names from LiteLLM's Z.AI provider, without the provider prefix."""
+    import litellm
+
+    return _unprefixed_litellm_models(list(litellm.zai_models), "zai")
+
+
+def get_moonshot_model_names() -> list[str]:
+    """Get Kimi model names from LiteLLM's Moonshot provider, without the prefix."""
+    import litellm
+
+    return _unprefixed_litellm_models(list(litellm.moonshot_models), "moonshot")
+
+
+def get_minimax_model_names() -> list[str]:
+    """Get MiniMax chat model names from LiteLLM, without speech models."""
+    import litellm
+
+    return [
+        name
+        for name in _unprefixed_litellm_models(list(litellm.minimax_models), "minimax")
+        if "speech" not in name.lower()
+    ]
+
+
 def get_vertexai_model_names() -> list[str]:
     """Get Vertex AI model names dynamically from litellm model_cost."""
     import litellm
@@ -263,6 +367,18 @@ def model_configurations_for_provider(
     provider_name: str, llm_recommendations: LLMRecommendations
 ) -> list[ModelConfigurationView]:
     recommended_visible_models = llm_recommendations.get_visible_models(provider_name)
+    if provider_name == DEEPSEEK_PROVIDER_NAME:
+        recommended_visible_models = [
+            model
+            for model in recommended_visible_models
+            if not is_obsolete_model(model.name, LlmProviderNames.DEEPSEEK)
+        ]
+        visible_names = {model.name for model in recommended_visible_models}
+        recommended_visible_models.extend(
+            model
+            for model in _OFFICIAL_DEEPSEEK_VISIBLE_MODELS
+            if model.name not in visible_names
+        )
     recommended_visible_models_names = [m.name for m in recommended_visible_models]
     display_name_by_name = {
         m.name: m.display_name for m in recommended_visible_models if m.display_name
@@ -359,6 +475,11 @@ def get_provider_display_name(provider_name: str) -> str:
         OLLAMA_PROVIDER_NAME: "Ollama",
         LM_STUDIO_PROVIDER_NAME: "LM Studio",
         ANTHROPIC_PROVIDER_NAME: "Claude (Anthropic)",
+        DEEPSEEK_PROVIDER_NAME: "DeepSeek",
+        ZAI_PROVIDER_NAME: "GLM (Z.AI)",
+        BIGMODEL_PROVIDER_NAME: "GLM (BigModel)",
+        MOONSHOT_PROVIDER_NAME: "Kimi",
+        MINIMAX_PROVIDER_NAME: "MiniMax",
         AZURE_PROVIDER_NAME: "Azure OpenAI",
         BEDROCK_PROVIDER_NAME: "Amazon Bedrock",
         VERTEXAI_PROVIDER_NAME: "Google Vertex AI",

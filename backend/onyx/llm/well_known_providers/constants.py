@@ -43,6 +43,22 @@ OPENROUTER_PROVIDER_NAME = "openrouter"
 
 ANTHROPIC_PROVIDER_NAME = "anthropic"
 
+DEEPSEEK_PROVIDER_NAME = "deepseek"
+
+ZAI_PROVIDER_NAME = "zai"
+
+# China GLM (open.bigmodel.cn). LiteLLM has no bigmodel slug; calls use zai + this base.
+BIGMODEL_PROVIDER_NAME = "bigmodel"
+BIGMODEL_API_BASE = "https://open.bigmodel.cn/api/paas/v4"
+
+MOONSHOT_PROVIDER_NAME = "moonshot"
+
+MINIMAX_PROVIDER_NAME = "minimax"
+
+DEFAULT_API_BASE_FOR_PROVIDER: dict[str, str] = {
+    BIGMODEL_PROVIDER_NAME: BIGMODEL_API_BASE,
+}
+
 AZURE_PROVIDER_NAME = "azure"
 
 

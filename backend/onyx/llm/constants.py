@@ -15,6 +15,11 @@ class LlmProviderNames(str, Enum):
 
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    DEEPSEEK = "deepseek"
+    ZAI = "zai"
+    BIGMODEL = "bigmodel"
+    MOONSHOT = "moonshot"
+    MINIMAX = "minimax"
     GOOGLE = "google"
     BEDROCK = "bedrock"
     BEDROCK_CONVERSE = "bedrock_converse"
@@ -41,6 +46,11 @@ class LlmProviderNames(str, Enum):
 WELL_KNOWN_PROVIDER_NAMES = [
     LlmProviderNames.OPENAI,
     LlmProviderNames.ANTHROPIC,
+    LlmProviderNames.DEEPSEEK,
+    LlmProviderNames.ZAI,
+    LlmProviderNames.BIGMODEL,
+    LlmProviderNames.MOONSHOT,
+    LlmProviderNames.MINIMAX,
     LlmProviderNames.VERTEX_AI,
     LlmProviderNames.BEDROCK,
     LlmProviderNames.OPENROUTER,
@@ -55,10 +65,26 @@ WELL_KNOWN_PROVIDER_NAMES = [
 ]
 
 
+# LiteLLM slug when it differs from the stored Onyx provider name.
+# BigModel is Zhipu's China GLM API; LiteLLM only ships a `zai` integration.
+LITELLM_PROVIDER_ALIASES: dict[str, str] = {
+    LlmProviderNames.BIGMODEL: LlmProviderNames.ZAI,
+}
+
+
+def litellm_provider_name(provider: str) -> str:
+    return LITELLM_PROVIDER_ALIASES.get(provider, provider)
+
+
 # Proper capitalization for known providers and vendors
 PROVIDER_DISPLAY_NAMES: dict[str, str] = {
     LlmProviderNames.OPENAI: "OpenAI",
     LlmProviderNames.ANTHROPIC: "Anthropic",
+    LlmProviderNames.DEEPSEEK: "DeepSeek",
+    LlmProviderNames.ZAI: "GLM",
+    LlmProviderNames.BIGMODEL: "GLM",
+    LlmProviderNames.MOONSHOT: "Kimi",
+    LlmProviderNames.MINIMAX: "MiniMax",
     LlmProviderNames.GOOGLE: "Google",
     LlmProviderNames.BEDROCK: "Bedrock",
     LlmProviderNames.BEDROCK_CONVERSE: "Bedrock",
@@ -116,7 +142,6 @@ PROVIDER_DISPLAY_NAMES: dict[str, str] = {
     "lambda_ai": "Lambda AI",
     "llamagate": "LlamaGate",
     "meta_llama": "Meta Llama",
-    "minimax": "MiniMax",
     "nlp_cloud": "NLP Cloud",
     "nvidia_nim": "NVIDIA NIM",
     "oci": "OCI",
@@ -130,7 +155,9 @@ PROVIDER_DISPLAY_NAMES: dict[str, str] = {
     "volcengine": "Volcengine",
     "wandb": "W&B",
     "watsonx": "IBM watsonx",
-    "zai": "ZAI",
+    "zai": "GLM",
+    "bigmodel": "GLM",
+    "moonshot": "Kimi",
 }
 
 # Map vendors to their brand names (used for provider_display_name generation)
@@ -143,6 +170,12 @@ VENDOR_BRAND_NAMES: dict[str, str] = {
     "mistral": "Mistral",
     "cohere": "Command",
     "deepseek": "DeepSeek",
+    "zai": "GLM",
+    "glm": "GLM",
+    "bigmodel": "GLM",
+    "moonshot": "Kimi",
+    "kimi": "Kimi",
+    "minimax": "MiniMax",
     "xai": "Grok",
     "perplexity": "Sonar",
     "ai21": "Jamba",
@@ -340,6 +373,9 @@ MODEL_PREFIX_TO_VENDOR: dict[str, str] = {
     "jamba": "ai21",
     # DeepSeek
     "deepseek": "deepseek",
+    "glm": "zai",
+    "kimi": "moonshot",
+    "minimax": "minimax",
     # Alibaba/Qwen
     "qwen": "alibaba",
     "qwq": "alibaba",

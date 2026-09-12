@@ -6,11 +6,28 @@ from onyx.llm.well_known_providers.auto_update_models import (
     LLMProviderRecommendation,
     LLMRecommendations,
 )
+from onyx.llm.constants import (
+    LlmProviderNames,
+    WELL_KNOWN_PROVIDER_NAMES,
+    litellm_provider_name,
+)
 from onyx.llm.well_known_providers.constants import (
+    BIGMODEL_API_BASE,
+    DEFAULT_API_BASE_FOR_PROVIDER,
     OPENAI_PROVIDER_NAME,
     VERTEXAI_PROVIDER_NAME,
 )
+from onyx.llm.model_capabilities import (
+    get_max_input_tokens,
+    litellm_thinks_model_supports_image_input,
+)
 from onyx.llm.well_known_providers.llm_provider_options import (
+    _merge_missing_provider_recommendations,
+    get_deepseek_model_names,
+    get_minimax_model_names,
+    get_moonshot_model_names,
+    get_zai_model_names,
+    is_obsolete_model,
     model_configurations_for_provider,
 )
 from onyx.llm.well_known_providers.models import SimpleKnownModel
@@ -182,3 +199,118 @@ def test_model_configurations_non_vertex_preserve_provider_order(
         "model-a",
         "model-c",
     ]
+
+
+def test_merge_fills_providers_missing_from_github() -> None:
+    remote = LLMRecommendations(
+        version="remote",
+        updated_at=datetime.now(timezone.utc),
+        providers={
+            "openai": LLMProviderRecommendation(
+                default_model=SimpleKnownModel(name="gpt-5.6-sol"),
+            )
+        },
+    )
+    bundled = LLMRecommendations(
+        version="bundled",
+        updated_at=datetime.now(timezone.utc),
+        providers={
+            "openai": LLMProviderRecommendation(
+                default_model=SimpleKnownModel(name="should-not-win"),
+            ),
+            "deepseek": LLMProviderRecommendation(
+                default_model=SimpleKnownModel(name="deepseek-v4-pro"),
+            ),
+        },
+    )
+
+    merged = _merge_missing_provider_recommendations(remote, bundled)
+
+    assert merged.get_default_model("openai") is not None
+    assert merged.get_default_model("openai").name == "gpt-5.6-sol"
+    assert merged.get_default_model("deepseek") is not None
+    assert merged.get_default_model("deepseek").name == "deepseek-v4-pro"
+    assert _merge_missing_provider_recommendations(None, bundled) is bundled
+
+
+def test_deepseek_and_zai_are_well_known() -> None:
+    assert LlmProviderNames.DEEPSEEK in WELL_KNOWN_PROVIDER_NAMES
+    assert LlmProviderNames.ZAI in WELL_KNOWN_PROVIDER_NAMES
+    assert LlmProviderNames.BIGMODEL in WELL_KNOWN_PROVIDER_NAMES
+    assert LlmProviderNames.MOONSHOT in WELL_KNOWN_PROVIDER_NAMES
+    assert LlmProviderNames.MINIMAX in WELL_KNOWN_PROVIDER_NAMES
+    assert litellm_provider_name(LlmProviderNames.BIGMODEL) == LlmProviderNames.ZAI
+    assert DEFAULT_API_BASE_FOR_PROVIDER[LlmProviderNames.BIGMODEL] == BIGMODEL_API_BASE
+
+
+def test_get_deepseek_model_names_strips_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "deepseek_models",
+        [
+            "deepseek-chat",
+            "deepseek/deepseek-v4-pro",
+            "deepseek/deepseek-chat",
+            "deepseek/deepseek-v4-flash",
+            "deepseek-reasoner",
+            "deepseek/deepseek-v4-flash-vision-exp",
+        ],
+    )
+
+    assert get_deepseek_model_names() == [
+        "deepseek-v4-pro",
+        "deepseek-flash",
+    ]
+    assert not is_obsolete_model("deepseek-flash", LlmProviderNames.DEEPSEEK)
+    assert is_obsolete_model("deepseek-v4-flash", LlmProviderNames.DEEPSEEK)
+    assert is_obsolete_model(
+        "deepseek-v4-flash-vision-exp", LlmProviderNames.DEEPSEEK
+    )
+    assert get_max_input_tokens("deepseek-flash", LlmProviderNames.DEEPSEEK) > 900_000
+    assert litellm_thinks_model_supports_image_input(
+        "deepseek-flash", LlmProviderNames.DEEPSEEK
+    )
+
+
+def test_get_zai_model_names_strips_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "zai_models",
+        ["zai/glm-4.7", "glm-4.6", "zai/glm-4.6"],
+    )
+
+    assert get_zai_model_names() == ["glm-4.7", "glm-4.6"]
+
+
+def test_get_moonshot_model_names_strips_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "moonshot_models",
+        ["kimi-k3", "moonshot/kimi-k2.6", "moonshot/kimi-k3"],
+    )
+
+    assert get_moonshot_model_names() == ["kimi-k3", "kimi-k2.6"]
+
+
+def test_get_minimax_model_names_drops_speech(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "minimax_models",
+        ["minimax/MiniMax-M2.5", "MiniMax-M3", "minimax/speech-2.6-hd"],
+    )
+
+    assert get_minimax_model_names() == ["MiniMax-M3", "MiniMax-M2.5"]

@@ -371,6 +371,11 @@ export default function LanguageModelsPage() {
         providerNames: [
           LLMProviderName.OPENAI,
           LLMProviderName.ANTHROPIC,
+          LLMProviderName.DEEPSEEK,
+          LLMProviderName.ZAI,
+          LLMProviderName.BIGMODEL,
+          LLMProviderName.MOONSHOT,
+          LLMProviderName.MINIMAX,
           LLMProviderName.VERTEX_AI,
           LLMProviderName.BEDROCK,
           LLMProviderName.AZURE,
