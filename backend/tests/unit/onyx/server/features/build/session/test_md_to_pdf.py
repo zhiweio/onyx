@@ -1,5 +1,15 @@
+from io import BytesIO
+
+from PIL import Image as PILImage
+
 from onyx.server.features.build.session.md_document import markdown_to_html
 from onyx.server.features.build.session.md_to_pdf import markdown_to_pdf_bytes
+
+
+def _tiny_png() -> bytes:
+    buffer = BytesIO()
+    PILImage.new("RGB", (64, 48), (20, 80, 160)).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def test_markdown_to_pdf_bytes_writes_pdf_header() -> None:
@@ -37,6 +47,20 @@ def test_markdown_to_pdf_escapes_angle_brackets() -> None:
     pdf = markdown_to_pdf_bytes("A < B and C > D\n")
     assert pdf.startswith(b"%PDF")
     assert len(pdf) > 100
+
+
+def test_markdown_to_pdf_embeds_local_image() -> None:
+    png = _tiny_png()
+    with_image = markdown_to_pdf_bytes(
+        "![timeline](figures/competitor_timeline.png)\n",
+        image_loader=lambda _src: png,
+    )
+    without_image = markdown_to_pdf_bytes(
+        "![timeline](figures/competitor_timeline.png)\n"
+    )
+    assert with_image.startswith(b"%PDF")
+    assert b"/Image" in with_image
+    assert len(with_image) > len(without_image)
 
 
 def test_markdown_to_html_includes_cjk_and_table() -> None:

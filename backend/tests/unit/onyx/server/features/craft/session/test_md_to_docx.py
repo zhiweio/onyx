@@ -10,8 +10,15 @@ from docx.document import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.table import _Cell
+from PIL import Image as PILImage
 
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
+
+
+def _tiny_png() -> bytes:
+    buffer = BytesIO()
+    PILImage.new("RGB", (64, 48), (20, 80, 160)).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def _render(md_text: str) -> DocxDocument:
@@ -214,6 +221,23 @@ def test_standalone_image_becomes_image_caption() -> None:
     # Alt text is shown (not embedded), with no "[image: ...]" wrapper.
     assert captions == ["Asimov portrait"]
     assert "[image" not in doc.paragraphs[0].text
+
+
+def test_local_image_is_embedded_when_loader_returns_bytes() -> None:
+    png = _tiny_png()
+    data = markdown_to_docx_bytes(
+        "![timeline](figures/competitor_timeline.png)\n",
+        image_loader=lambda src: png if src.endswith(".png") else None,
+    )
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        media = [name for name in archive.namelist() if name.startswith("word/media/")]
+        assert media
+        assert archive.read(media[0]).startswith(b"\x89PNG")
+    doc = Document(BytesIO(data))
+    captions = [
+        p.text for p in doc.paragraphs if p.style and p.style.name == "Image Caption"
+    ]
+    assert captions == ["timeline"]
 
 
 def test_fenced_code_block_is_monospace() -> None:

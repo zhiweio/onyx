@@ -8,7 +8,8 @@ Supported constructs (covering what the LLM-generated documents emit):
 headings, bold/italic/strikethrough/inline-code, bulleted/numbered/nested
 lists (with loose-list continuation paragraphs and preserved ordered-list
 start values), blockquotes, fenced code blocks, GFM tables, hyperlinks
-(carrying inherited inline formatting), images (rendered as alt text), inline
+(carrying inherited inline formatting), images (embedded when an
+``image_loader`` supplies bytes; otherwise alt text), inline
 ``<br>`` line breaks, HTML entities, and horizontal rules. Other raw HTML is
 dropped rather than shown as literal markup.
 """
@@ -37,6 +38,12 @@ from lxml import etree
 from onyx.server.features.build.session.md_document import (
     Node,
     parse_markdown,
+)
+from onyx.server.features.build.session.md_images import (
+    ImageLoader,
+    attach_image_bytes,
+    fit_image_display_size,
+    image_bytes,
 )
 
 _MONOSPACE_FONT = "Courier New"
@@ -116,9 +123,14 @@ class _Fmt:
     code: bool = False
 
 
-def markdown_to_docx_bytes(md_text: str) -> bytes:
+def markdown_to_docx_bytes(
+    md_text: str,
+    *,
+    image_loader: ImageLoader | None = None,
+) -> bytes:
     """Render Markdown text to the bytes of a .docx file."""
     nodes = parse_markdown(md_text)
+    attach_image_bytes(nodes, image_loader)
 
     document = Document()
     _apply_pandoc_styles(document)
@@ -463,8 +475,7 @@ def _render_blocks(
         if node_type in ("paragraph", "block_text"):
             children = node.get("children", [])
             if _is_image_only(children):
-                # An image renders as a caption; pandoc follows it with Body Text.
-                _render_image_caption(document, children)
+                _render_standalone_image(document, children)
                 first_para_pending = False
             else:
                 style = _STYLE_FIRST_PARAGRAPH if first_para_pending else _STYLE_BODY
@@ -529,16 +540,43 @@ def _is_image_only(children: list[Node]) -> bool:
     return len(meaningful) == 1 and meaningful[0].get("type") == "image"
 
 
-def _render_image_caption(document: DocxDocument, children: list[Node]) -> None:
-    """Render a standalone image as its alt text in the Image Caption style.
-
-    Remote images are not fetched/embedded (pandoc does not either); the alt
-    text is what reads in the document.
-    """
+def _render_standalone_image(document: DocxDocument, children: list[Node]) -> None:
+    """Embed a standalone figure when bytes are present; else keep the caption."""
     image = next(child for child in children if child.get("type") == "image")
     alt = _collect_text(image.get("children", []))
+    if image_bytes(image) is not None:
+        paragraph = _add_styled_paragraph(document, _STYLE_BODY)
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if _embed_picture(paragraph, image):
+            if alt:
+                _render_image_caption_text(document, alt)
+            return
+        _set_paragraph_style(paragraph, _STYLE_IMAGE_CAPTION)
+        paragraph.add_run(alt or "image")
+        return
+    _render_image_caption_text(document, alt or "image")
+
+
+def _render_image_caption_text(document: DocxDocument, alt: str) -> None:
     paragraph = _add_styled_paragraph(document, _STYLE_IMAGE_CAPTION)
-    paragraph.add_run(alt or "image")
+    paragraph.add_run(alt)
+
+
+def _embed_picture(paragraph: Paragraph, node: Node) -> bool:
+    data = image_bytes(node)
+    if data is None:
+        return False
+    size = fit_image_display_size(data)
+    if size is None:
+        return False
+    width_in, height_in = size
+    try:
+        paragraph.add_run().add_picture(
+            BytesIO(data), width=Inches(width_in), height=Inches(height_in)
+        )
+    except Exception:
+        return False
+    return True
 
 
 def _render_list(
@@ -853,8 +891,9 @@ def _add_runs(
         elif node_type == "link":
             _add_hyperlink(paragraph, node, fmt, footnotes)
         elif node_type == "image":
-            alt = _collect_text(node.get("children", []))
-            _styled_run(paragraph, f"[image: {alt}]" if alt else "[image]", fmt)
+            if not _embed_picture(paragraph, node):
+                alt = _collect_text(node.get("children", []))
+                _styled_run(paragraph, f"[image: {alt}]" if alt else "[image]", fmt)
         elif node_type == "footnote_ref":
             if footnotes is not None:
                 footnotes.add_reference(

@@ -315,6 +315,7 @@ function FetchedFilePreview({
         filePath={filePath}
         mimeType={mimeType}
         isImage={isImage}
+        sessionId={sessionId}
       />
     );
   }

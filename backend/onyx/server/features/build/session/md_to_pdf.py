@@ -17,6 +17,9 @@ from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import (
+    Image as RLImage,
+)
+from reportlab.platypus import (
     ListFlowable,
     ListItem,
     Paragraph,
@@ -28,6 +31,12 @@ from reportlab.platypus import (
 )
 
 from onyx.server.features.build.session.md_document import Node, parse_markdown
+from onyx.server.features.build.session.md_images import (
+    ImageLoader,
+    attach_image_bytes,
+    fit_image_display_size,
+    image_bytes,
+)
 
 _HEADING_COLOR = HexColor("#0F4761")
 _CODE_BG = HexColor("#F4F4F4")
@@ -82,14 +91,12 @@ def _inline_html(
             parts.append(f"<font face='{_CODE_FONT}' size='9'>{raw}</font>")
         elif kind == "link":
             href = escape(str(child.get("attrs", {}).get("url") or ""), quote=True)
-            label = (
-                _inline_html(child.get("children"), notes, footnote_defs) or href
-            )
+            label = _inline_html(child.get("children"), notes, footnote_defs) or href
             parts.append(f'<link href="{href}" color="#4F81BD">{label}</link>')
         elif kind == "image":
-            alt = (
-                _inline_html(child.get("children"), notes, footnote_defs) or "image"
-            )
+            if image_bytes(child) is not None:
+                continue
+            alt = _inline_html(child.get("children"), notes, footnote_defs) or "image"
             parts.append(f"<i>{alt}</i>")
         elif kind in ("linebreak", "softbreak"):
             parts.append("<br/>")
@@ -130,9 +137,14 @@ def _footnote_defs(nodes: list[Node]) -> dict[int, list[Node]]:
     return defs
 
 
-def markdown_to_pdf_bytes(md_text: str) -> bytes:
+def markdown_to_pdf_bytes(
+    md_text: str,
+    *,
+    image_loader: ImageLoader | None = None,
+) -> bytes:
     cjk_font = _ensure_cjk_font()
     nodes = parse_markdown(md_text)
+    attach_image_bytes(nodes, image_loader)
     notes: list[str] = []
     footnote_defs = _footnote_defs(nodes)
     styles = _pdf_styles(cjk_font)
@@ -142,9 +154,7 @@ def markdown_to_pdf_bytes(md_text: str) -> bytes:
         story.append(Spacer(1, 12))
         story.append(Paragraph("Notes", styles["h2"]))
         for index, html in enumerate(notes, start=1):
-            story.append(
-                Paragraph(f"<super>{index}</super> {html}", styles["body"])
-            )
+            story.append(Paragraph(f"<super>{index}</super> {html}", styles["body"]))
     if not story:
         story.append(Paragraph(" ", styles["body"]))
 
@@ -262,16 +272,13 @@ def _add_blocks(
                 )
             )
         elif kind in ("paragraph", "block_text"):
-            if _is_image_only(node.get("children") or []):
-                alt = _collect_text(node.get("children")) or "image"
-                story.append(Paragraph(escape(alt), styles["caption"]))
-            else:
-                story.append(
-                    Paragraph(
-                        _inline_html(node.get("children"), notes, footnote_defs),
-                        styles["body"],
-                    )
-                )
+            _add_paragraph_flowables(
+                story,
+                node.get("children") or [],
+                styles,
+                notes,
+                footnote_defs,
+            )
         elif kind == "block_code":
             story.append(Preformatted(str(node.get("raw") or ""), styles["code"]))
         elif kind == "block_quote":
@@ -295,9 +302,7 @@ def _add_blocks(
         elif kind == "thematic_break":
             story.append(Spacer(1, 10))
         elif kind == "list":
-            story.append(
-                _list_flowable(node, styles, notes, footnote_defs, list_level)
-            )
+            story.append(_list_flowable(node, styles, notes, footnote_defs, list_level))
         elif kind == "table":
             table = _table_flowable(node, styles, notes, footnote_defs)
             if table is not None:
@@ -309,12 +314,87 @@ def _add_blocks(
                 _add_blocks(story, children, styles, notes, footnote_defs, list_level)
 
 
+def _add_paragraph_flowables(
+    story: list[Any],
+    children: list[Node],
+    styles: dict[str, ParagraphStyle],
+    notes: list[str],
+    footnote_defs: dict[int, list[Node]],
+) -> None:
+    if _is_image_only(children):
+        image = next(child for child in children if child.get("type") == "image")
+        flowable = _image_flowable(image)
+        if flowable is not None:
+            story.append(flowable)
+            alt = _collect_text(image.get("children"))
+            if alt:
+                story.append(Paragraph(escape(alt), styles["caption"]))
+            return
+        story.append(
+            Paragraph(escape(_collect_text(children) or "image"), styles["caption"])
+        )
+        return
+
+    if any(image_bytes(child) is not None for child in children):
+        buffer: list[Node] = []
+
+        def flush_text() -> None:
+            if not buffer:
+                return
+            html = _inline_html(buffer, notes, footnote_defs)
+            if html.strip():
+                story.append(Paragraph(html, styles["body"]))
+            buffer.clear()
+
+        for child in children:
+            if image_bytes(child) is not None:
+                flush_text()
+                flowable = _image_flowable(child)
+                if flowable is not None:
+                    story.append(flowable)
+                else:
+                    buffer.append(child)
+            else:
+                buffer.append(child)
+        flush_text()
+        return
+
+    story.append(
+        Paragraph(
+            _inline_html(children, notes, footnote_defs),
+            styles["body"],
+        )
+    )
+
+
+def _image_flowable(node: Node) -> RLImage | None:
+    data = image_bytes(node)
+    if data is None:
+        return None
+    size = fit_image_display_size(data)
+    if size is None:
+        return None
+    width_in, height_in = size
+    try:
+        image = RLImage(
+            BytesIO(data),
+            width=width_in * inch,
+            height=height_in * inch,
+        )
+    except Exception:
+        return None
+    image.hAlign = "CENTER"
+    return image
+
+
 def _is_image_only(children: list[Node]) -> bool:
     meaningful = [
         child
         for child in children
         if child.get("type") not in ("softbreak", "linebreak")
-        and not (child.get("type") == "text" and not str(child.get("raw") or "").strip())
+        and not (
+            child.get("type") == "text" and not str(child.get("raw") or "").strip()
+        )
     ]
     return len(meaningful) == 1 and meaningful[0].get("type") == "image"
 
@@ -345,9 +425,7 @@ def _list_flowable(
                 )
             elif child_type == "list":
                 flowables.append(
-                    _list_flowable(
-                        child, styles, notes, footnote_defs, list_level + 1
-                    )
+                    _list_flowable(child, styles, notes, footnote_defs, list_level + 1)
                 )
             else:
                 nested: list[Any] = []
@@ -394,9 +472,7 @@ def _table_flowable(
                 rows.append(
                     [
                         Paragraph(
-                            _inline_html(
-                                cell.get("children"), notes, footnote_defs
-                            ),
+                            _inline_html(cell.get("children"), notes, footnote_defs),
                             styles["cell"],
                         )
                         for cell in row.get("children") or []

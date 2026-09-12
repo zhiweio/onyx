@@ -99,6 +99,11 @@ from onyx.server.features.build.session.llm_config import (
     build_onyx_gateway_config,
     parse_agent_selection,
 )
+from onyx.server.features.build.session.md_images import (
+    ImageLoader,
+    is_embeddable_image_bytes,
+    resolve_local_markdown_image_path,
+)
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
 from onyx.server.features.build.session.md_to_pdf import markdown_to_pdf_bytes
 from onyx.server.features.build.session.naming import generate_session_name
@@ -123,6 +128,7 @@ from shared_configs.contextvars import get_current_tenant_id
 logger = setup_logger()
 
 _DISPOSE_PENDING_TTL_SECONDS = 24 * 3600
+_MAX_EXPORT_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 def _dispose_pending_key(session_id: UUID) -> str:
@@ -1770,8 +1776,10 @@ class SessionManager:
             raise ValueError("Only markdown (.md) files can be exported as DOCX")
 
         md_text = content_bytes.decode("utf-8")
-
-        docx_bytes = markdown_to_docx_bytes(md_text)
+        docx_bytes = markdown_to_docx_bytes(
+            md_text,
+            image_loader=self._markdown_image_loader(session_id, user_id, path),
+        )
 
         docx_filename = filename.rsplit(".", 1)[0] + ".docx"
         return (docx_bytes, docx_filename)
@@ -1793,9 +1801,43 @@ class SessionManager:
             raise ValueError("Only markdown (.md) files can be exported as PDF")
 
         md_text = content_bytes.decode("utf-8")
-        pdf_bytes = markdown_to_pdf_bytes(md_text)
+        pdf_bytes = markdown_to_pdf_bytes(
+            md_text,
+            image_loader=self._markdown_image_loader(session_id, user_id, path),
+        )
         pdf_filename = filename.rsplit(".", 1)[0] + ".pdf"
         return (pdf_bytes, pdf_filename)
+
+    def _markdown_image_loader(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        markdown_path: str,
+    ) -> ImageLoader:
+        """Load sandbox files referenced by Markdown image URLs."""
+        cache: dict[str, bytes | None] = {}
+
+        def load(src: str) -> bytes | None:
+            resolved = resolve_local_markdown_image_path(src, markdown_path)
+            if resolved is None or resolved == markdown_path:
+                return None
+            if resolved in cache:
+                return cache[resolved]
+            content: bytes | None = None
+            try:
+                result = self.download_artifact(session_id, user_id, resolved)
+            except ValueError:
+                result = None
+            if result is not None:
+                file_bytes, _mime_type, _name = result
+                if len(
+                    file_bytes
+                ) <= _MAX_EXPORT_IMAGE_BYTES and is_embeddable_image_bytes(file_bytes):
+                    content = file_bytes
+            cache[resolved] = content
+            return content
+
+        return load
 
     def get_pptx_preview(
         self,

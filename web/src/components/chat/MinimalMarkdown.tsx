@@ -30,6 +30,8 @@ interface MinimalMarkdownProps {
   components?: MinimalMarkdownComponentOverrides;
   /** Skip rehype-highlight while content is mid-stream. Flip false on completion. */
   streaming?: boolean;
+  /** Override URL sanitization for links and images. Defaults to transformLinkUri. */
+  urlTransform?: (url: string) => string | null;
 }
 
 export default function MinimalMarkdown({
@@ -38,6 +40,7 @@ export default function MinimalMarkdown({
   showHeader = true,
   components,
   streaming = false,
+  urlTransform,
 }: MinimalMarkdownProps) {
   const highlightLanguages = useHighlightLanguages(!streaming);
   const rehypePlugins = useMemo<PluggableList>(
@@ -96,7 +99,7 @@ export default function MinimalMarkdown({
           remarkGfm,
           [remarkMath, { singleDollarTextMath: false }],
         ]}
-        urlTransform={transformLinkUri}
+        urlTransform={urlTransform ?? transformLinkUri}
       >
         {content}
       </ReactMarkdown>
