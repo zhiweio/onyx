@@ -8,17 +8,6 @@ required_inputs:
   - line_of_therapy
   - decision_question
   - decision_date
-suggested_lanes:
-  - role: literature
-    skill_id: biomed-literature
-  - role: clinical
-    skill_id: biomed-clinical-intel
-  - role: patent
-    skill_id: biomed-patent-fto
-  - role: regulatory
-    skill_id: biomed-regulatory
-  - role: clinical-initiation
-    skill_id: biomed-clinical-initiation
 phases:
   - id: collect
     done_when: Public papers, trials, approvals, patents, and epidemiology records are listed with identifiers

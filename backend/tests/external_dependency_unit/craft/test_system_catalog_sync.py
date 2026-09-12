@@ -87,6 +87,7 @@ def test_every_manifest_scenario_playbook_exists() -> None:
         rules = entry.read_rules()
         assert rules.get("objective")
         assert rules.get("phases")
+        assert "suggested_lanes" not in rules
 
 
 def test_every_official_template_has_a_word_builder() -> None:

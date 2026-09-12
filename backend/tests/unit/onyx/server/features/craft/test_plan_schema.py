@@ -179,24 +179,6 @@ def test_compile_graph_tax_lanes() -> None:
     assert graph.get("lane:xlsx_parser").skill_id == "tax-recon-supplier"
 
 
-def test_suggested_lanes_are_hints_only() -> None:
-    from onyx.server.features.build.jobs.graph import compile_graph
-    from onyx.server.features.build.jobs.protocol import suggested_lanes_from_rules
-
-    hints = suggested_lanes_from_rules(
-        {
-            "suggested_lanes": [
-                {"role": "literature", "skill_id": "biomed-literature"},
-                {"role": "clinical"},
-            ]
-        }
-    )
-    assert [item["role"] for item in hints] == ["literature", "clinical"]
-    kinds = [node.kind for node in compile_graph("biomed").nodes]
-    assert "lane" not in kinds
-    assert "research_lane" not in kinds
-
-
 def test_compile_graph_adds_ingest_when_plan_has_inputs() -> None:
     from onyx.server.features.build.jobs.graph import compile_graph
 

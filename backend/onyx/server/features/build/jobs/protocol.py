@@ -24,28 +24,6 @@ def infer_job_domain(_prompt: str, explicit: str | None = None) -> str:
     return "general"
 
 
-def suggested_lanes_from_rules(rules: dict[str, Any] | None) -> list[dict[str, str]]:
-    """Read optional playbook hints. The host does not compile these as nodes."""
-    if not rules:
-        return []
-    raw = rules.get("suggested_lanes")
-    if not isinstance(raw, list):
-        return []
-    lanes: list[dict[str, str]] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        role = str(item.get("role") or "").strip()
-        if not role:
-            continue
-        entry: dict[str, str] = {"role": role}
-        skill_id = str(item.get("skill_id") or "").strip()
-        if skill_id:
-            entry["skill_id"] = skill_id
-        lanes.append(entry)
-    return lanes
-
-
 def default_phases_for_domain(domain: str) -> list[dict[str, Any]]:
     from onyx.server.features.build.jobs.graph import compile_graph
 

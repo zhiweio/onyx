@@ -3,8 +3,7 @@
 Stored as JSONB on both ``scenario.rules`` and ``system_scenario.rules``.
 Craft writes these keys into ``SCENARIO.md`` and resolves extra skills from
 ``conditional`` when a user prompt is present.
-Unknown keys (for example ``suggested_lanes`` in shipped YAML) are kept so a
-round-trip does not drop builtin content.
+Unknown keys are kept so a round-trip does not drop unexpected content.
 """
 
 from __future__ import annotations

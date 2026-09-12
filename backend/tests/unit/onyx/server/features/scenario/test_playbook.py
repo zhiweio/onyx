@@ -11,7 +11,7 @@ def test_playbook_keeps_unknown_keys_and_drops_empty_lists() -> None:
             "domain": "biomed",
             "objective": "Reach a cited decision",
             "required_inputs": [],
-            "suggested_lanes": [{"role": "literature", "skill_id": "biomed-literature"}],
+            "custom_hint": "keep-me",
             "phases": [{"id": "collect", "done_when": ["outputs/a", "outputs/b"]}],
         }
     )
@@ -21,9 +21,7 @@ def test_playbook_keeps_unknown_keys_and_drops_empty_lists() -> None:
     assert dumped["phases"] == [
         {"id": "collect", "done_when": "outputs/a; outputs/b"}
     ]
-    assert dumped["suggested_lanes"] == [
-        {"role": "literature", "skill_id": "biomed-literature"}
-    ]
+    assert dumped["custom_hint"] == "keep-me"
     assert "required_inputs" not in dumped
 
 
