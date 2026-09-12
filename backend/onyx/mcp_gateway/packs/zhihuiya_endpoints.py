@@ -11,11 +11,6 @@ from onyx.mcp_gateway.models import PackEndpoint
 ZHIHUIYA_CONNECT = "https://connect.zhihuiya.com"
 
 
-def _mcp(slug: str) -> str:
-    """Last-resort slug path. Prefer ``_hex`` — marketplace IDs are hex."""
-    return f"{ZHIHUIYA_CONNECT}/mcp/{slug}"
-
-
 def _hex(hex_id: str, *, logic: bool = False) -> str:
     suffix = "logic-mcp" if logic else "mcp"
     return f"{ZHIHUIYA_CONNECT}/{hex_id}/{suffix}"
@@ -64,7 +59,7 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="sar-extraction",
         display_name="SAR Extraction",
-        upstream_url=_mcp("sar-extraction"),
+        upstream_url=_hex("c8ffec", logic=True),
         description="Structure-activity relationship extraction.",
     ),
     PackEndpoint(
@@ -112,7 +107,7 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="patent-dispute",
         display_name="Patent Dispute",
-        upstream_url=_mcp("patent-dispute"),
+        upstream_url=_hex("4f9217"),
         description="Patent litigation and disputes.",
     ),
     PackEndpoint(
@@ -124,7 +119,7 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="patent-fto",
         display_name="Patent FTO",
-        upstream_url=_mcp("patent-fto"),
+        upstream_url=_hex("e5851d"),
         description="Freedom-to-operate analysis.",
     ),
     PackEndpoint(
@@ -166,7 +161,7 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="patsnap-analytics",
         display_name="Patsnap Analytics",
-        upstream_url=_mcp("patsnap-analytics"),
+        upstream_url=_hex("2ff4d4", logic=True),
         description="Analytics aggregations.",
     ),
     PackEndpoint(
@@ -178,7 +173,7 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="novelty-search-lite",
         display_name="Novelty Search Lite",
-        upstream_url=_mcp("novelty-search-lite"),
+        upstream_url=_hex("299425"),
         description="Lite novelty search.",
     ),
     PackEndpoint(
@@ -190,55 +185,55 @@ ZHIHUIYA_ENDPOINTS: tuple[PackEndpoint, ...] = (
     PackEndpoint(
         slug="design-fto-search-mcp",
         display_name="Design FTO Search",
-        upstream_url=_mcp("design-fto-search-mcp"),
+        upstream_url=_hex("937ec6"),
         description="Design-patent FTO. Quota-gated.",
     ),
     PackEndpoint(
         slug="company-credit",
         display_name="Company Credit",
-        upstream_url=_mcp("company-credit"),
+        upstream_url=_hex("ed1a0d"),
         description="Company credit and diligence starter.",
     ),
     PackEndpoint(
         slug="company-profile",
         display_name="Company Profile",
-        upstream_url=_mcp("company-profile"),
+        upstream_url=_hex("e7d2b1"),
         description="Company profile.",
     ),
     PackEndpoint(
         slug="company-risk",
         display_name="Company Risk",
-        upstream_url=_mcp("company-risk"),
+        upstream_url=_hex("624fc7"),
         description="Company risk signals.",
     ),
     PackEndpoint(
         slug="company-tags",
         display_name="Company Tags",
-        upstream_url=_mcp("company-tags"),
+        upstream_url=_hex("3cfbf5"),
         description="Company technology tags.",
     ),
     PackEndpoint(
         slug="global-tech-eval",
         display_name="Global Tech Eval",
-        upstream_url=_mcp("global-tech-eval"),
+        upstream_url=_hex("ac58e5"),
         description="Global technology evaluation.",
     ),
     PackEndpoint(
         slug="tech-diligence",
         display_name="Tech Diligence",
-        upstream_url=_mcp("tech-diligence"),
+        upstream_url=_hex("3faf81"),
         description="Technology due diligence.",
     ),
     PackEndpoint(
         slug="tech-collab",
         display_name="Tech Collab",
-        upstream_url=_mcp("tech-collab"),
+        upstream_url=_hex("81cc1c"),
         description="Collaboration and partner search.",
     ),
     PackEndpoint(
         slug="patent-risk",
         display_name="Patent Risk",
-        upstream_url=_mcp("patent-risk"),
+        upstream_url=_hex("a8a128"),
         description="Patent risk scoring.",
     ),
 )

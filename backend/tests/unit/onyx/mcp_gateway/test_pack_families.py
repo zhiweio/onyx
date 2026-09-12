@@ -7,6 +7,7 @@ from onyx.mcp_gateway.packs.hithink_finance import HITHINK_ENDPOINT_SLUGS, PACK 
 from onyx.mcp_gateway.packs.qichacha import QCC_ENDPOINT_SLUGS, PACK as QICHACHA
 from onyx.mcp_gateway.packs.zhihuiya import PACK as ZHIHUIYA
 from onyx.mcp_gateway.packs.zhihuiya_endpoints import (
+    ZHIHUIYA_CONNECT,
     ZHIHUIYA_ENDPOINT_SLUGS,
     ZHIHUIYA_EXCLUDED_SLUGS,
     ZHIHUIYA_STARTER,
@@ -58,7 +59,14 @@ def test_zhihuiya_known_endpoints_use_hex_paths() -> None:
     )
     assert by_slug["patsnap-search"] == "https://connect.zhihuiya.com/33072f/mcp"
     assert by_slug["patent-status"] == "https://connect.zhihuiya.com/30096b/mcp"
+    assert by_slug["company-credit"] == "https://connect.zhihuiya.com/ed1a0d/mcp"
+    assert by_slug["novelty-search-lite"] == "https://connect.zhihuiya.com/299425/mcp"
+    assert by_slug["sar-extraction"] == "https://connect.zhihuiya.com/c8ffec/logic-mcp"
     assert "/mcp/pharma-intelligence" not in by_slug["pharma-intelligence"]
+    assert all(
+        not endpoint.upstream_url.startswith(f"{ZHIHUIYA_CONNECT}/mcp/")
+        for endpoint in ZHIHUIYA.endpoints
+    )
 
 
 def test_patsnap_pack_uses_zhihuiya_core_url() -> None:
