@@ -75,6 +75,7 @@ export { default as SvgOpenrouter } from "@opal/logos/openrouter";
 export { default as SvgOracle } from "@opal/logos/oracle";
 export { default as SvgOutline } from "@opal/logos/outline";
 export { default as SvgOutlook } from "@opal/logos/outlook";
+export { default as SvgParallel } from "@opal/logos/parallel";
 export { default as SvgPerplexity } from "@opal/logos/perplexity";
 export { default as SvgPortkey } from "@opal/logos/portkey";
 export { default as SvgProductboard } from "@opal/logos/productboard";

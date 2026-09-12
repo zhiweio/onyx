@@ -3,6 +3,7 @@ import {
   SvgExa,
   SvgFirecrawl,
   SvgGoogle,
+  SvgParallel,
   SvgSearxng,
   SvgSerper,
   SvgTavily,
@@ -68,6 +69,13 @@ export const SEARCH_PROVIDER_DETAILS: Record<
     apiKeyUrl: "https://app.tavily.com/home",
     logo: SvgTavily,
   },
+  parallel: {
+    label: "Parallel",
+    subtitle: "Parallel AI",
+    helper: "Connect to Parallel Search to set up web search.",
+    logo: SvgParallel,
+    apiKeyUrl: "https://platform.parallel.ai",
+  },
 };
 
 export const SEARCH_PROVIDER_ORDER = Object.keys(
@@ -123,6 +131,10 @@ const SEARCH_PROVIDER_CAPABILITIES: Record<
     storedConfigAliases: { searxng_base_url: ["searxng_base_url"] },
   },
   tavily: {
+    requiresApiKey: true,
+    requiredConfigKeys: [],
+  },
+  parallel: {
     requiresApiKey: true,
     requiredConfigKeys: [],
   },

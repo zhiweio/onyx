@@ -1555,12 +1555,18 @@ export class OnyxApiClient {
    * Create and activate a web search provider for testing.
    * Uses env-backed keys when available and falls back to a placeholder key.
    *
-   * @param providerType - Type of provider: "exa", "brave", "serper", "google_pse", "searxng"
+   * @param providerType - Type of provider: "exa", "brave", "serper", "google_pse", "searxng", "parallel"
    * @param name - Optional name for the provider (defaults to "Test Provider")
    * @returns The created provider ID
    */
   async createWebSearchProvider(
-    providerType: "exa" | "brave" | "serper" | "google_pse" | "searxng" = "exa",
+    providerType:
+      | "exa"
+      | "brave"
+      | "serper"
+      | "google_pse"
+      | "searxng"
+      | "parallel" = "exa",
     name: string = "Test Provider"
   ): Promise<number> {
     const config: Record<string, string> = {};

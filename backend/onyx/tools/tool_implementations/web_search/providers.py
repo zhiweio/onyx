@@ -17,6 +17,9 @@ from onyx.tools.tool_implementations.web_search.clients.exa_client import ExaCli
 from onyx.tools.tool_implementations.web_search.clients.google_pse_client import (
     GooglePSEClient,
 )
+from onyx.tools.tool_implementations.web_search.clients.parallel_client import (
+    ParallelClient,
+)
 from onyx.tools.tool_implementations.web_search.clients.searxng_client import (
     SearXNGClient,
 )
@@ -117,6 +120,8 @@ def build_search_provider_from_config(
             topic=config.get("topic"),
             country=config.get("country"),
         )
+    if provider_type == WebSearchProviderType.PARALLEL:
+        return ParallelClient(api_key=api_key, num_results=num_results)
     if provider_type == WebSearchProviderType.GOOGLE_PSE:
         search_engine_id = (
             config.get("search_engine_id")

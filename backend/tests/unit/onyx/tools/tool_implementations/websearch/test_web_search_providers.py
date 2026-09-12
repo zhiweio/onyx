@@ -1,6 +1,9 @@
 import pytest
 
 from onyx.tools.tool_implementations.web_search.clients.brave_client import BraveClient
+from onyx.tools.tool_implementations.web_search.clients.parallel_client import (
+    ParallelClient,
+)
 from onyx.tools.tool_implementations.web_search.providers import (
     build_search_provider_from_config,
     provider_requires_api_key,
@@ -14,6 +17,7 @@ def test_provider_requires_api_key() -> None:
     assert provider_requires_api_key(WebSearchProviderType.BRAVE) is True
     assert provider_requires_api_key(WebSearchProviderType.SERPER) is True
     assert provider_requires_api_key(WebSearchProviderType.GOOGLE_PSE) is True
+    assert provider_requires_api_key(WebSearchProviderType.PARALLEL) is True
     assert provider_requires_api_key(WebSearchProviderType.SEARXNG) is False
 
 
@@ -106,6 +110,25 @@ def test_build_google_pse_provider_requires_api_key() -> None:
             api_key=None,
             config={"search_engine_id": "test-cx"},
         )
+
+
+def test_build_parallel_provider_requires_api_key() -> None:
+    """Test that Parallel provider requires an API key."""
+    with pytest.raises(ValueError, match="API key is required"):
+        build_search_provider_from_config(
+            provider_type=WebSearchProviderType.PARALLEL,
+            api_key=None,
+            config={},
+        )
+
+
+def test_build_parallel_provider() -> None:
+    provider = build_search_provider_from_config(
+        provider_type=WebSearchProviderType.PARALLEL,
+        api_key="test-api-key",
+        config={},
+    )
+    assert isinstance(provider, ParallelClient)
 
 
 def test_build_google_pse_provider_requires_search_engine_id() -> None:
