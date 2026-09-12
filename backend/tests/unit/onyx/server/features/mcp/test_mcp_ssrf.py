@@ -6,11 +6,13 @@ httpx transport validates every hop, and the store-time error message steers
 operators to the right remedy."""
 
 import asyncio
+import socket
 
 import httpx
 import pytest
 
 from onyx.auth import oauth_token_manager
+from onyx.configs.app_configs import _csv_hosts
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.mcp import api
@@ -51,6 +53,13 @@ def _set_level(monkeypatch: pytest.MonkeyPatch, level: SSRFProtectionLevel) -> N
     settings = _settings_with(level)
     monkeypatch.setattr(mcp_ssrf, "get_security_settings", lambda: settings)
     monkeypatch.setattr(oauth_token_manager, "get_security_settings", lambda: settings)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_gateway_host_lists(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Do not inherit deploy-time TRUSTED_HOSTS (localhost / 127.0.0.1)."""
+    monkeypatch.setattr("onyx.configs.app_configs.MCP_GATEWAY_TRUSTED_HOSTS", set())
+    monkeypatch.setattr("onyx.configs.app_configs.MCP_GATEWAY_BLOCKED_HOSTS", set())
 
 
 @pytest.fixture(autouse=True)
@@ -121,6 +130,63 @@ def test_allow_private_network_still_blocks_metadata_and_named_hosts(
     _set_level(monkeypatch, SSRFProtectionLevel.ALLOW_PRIVATE_NETWORK)
     with pytest.raises(SSRFException):
         mcp_ssrf.validate_mcp_outbound_url(url)
+
+
+def test_validate_allows_clash_fake_ip_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Public MCP hosts that resolve through Clash fake-ip must not need a
+    per-vendor TRUSTED_HOSTS entry."""
+
+    def _fake_ip(*_args: object, **_kwargs: object) -> list[object]:
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.41.7", 443))]
+
+    monkeypatch.setattr("onyx.utils.url.socket.getaddrinfo", _fake_ip)
+    url = "https://connect.zhihuiya.com/1458a4/mcp"
+    assert mcp_ssrf.validate_mcp_outbound_url(url) == url
+
+
+def test_blocked_hosts_deny_public_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.MCP_GATEWAY_BLOCKED_HOSTS",
+        {"blocked.example.com"},
+    )
+    with pytest.raises(SSRFException):
+        mcp_ssrf.validate_mcp_outbound_url("https://blocked.example.com/mcp")
+
+
+def test_blocked_hosts_override_trusted_infra(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.MCP_GATEWAY_TRUSTED_HOSTS",
+        {"blocked.example.com"},
+    )
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.MCP_GATEWAY_BLOCKED_HOSTS",
+        {"blocked.example.com"},
+    )
+    with pytest.raises(SSRFException):
+        mcp_ssrf.validate_mcp_outbound_url("https://blocked.example.com/mcp")
+
+
+def test_trusted_infra_host_skips_private_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.MCP_GATEWAY_TRUSTED_HOSTS",
+        {"mcp_gateway"},
+    )
+    url = "http://mcp_gateway:8091/sse"
+    assert mcp_ssrf.validate_mcp_outbound_url(url) == url
+
+
+def test_csv_hosts_trims_and_drops_empty() -> None:
+    assert _csv_hosts(" mcp_gateway, ,localhost ") == {"mcp_gateway", "localhost"}
+    assert _csv_hosts("") == set()
+    assert _csv_hosts("   ") == set()
 
 
 def test_factory_uses_guard_transport() -> None:

@@ -11,7 +11,7 @@ import httpx
 
 from onyx.server.security.models import outbound_ssrf_params
 from onyx.server.security.store import get_security_settings
-from onyx.utils.url import validate_outbound_http_url
+from onyx.utils.url import SSRFException, validate_outbound_http_url
 
 # Mirror the MCP SDK defaults (see mcp.shared._httpx_utils.create_mcp_http_client).
 _MCP_DEFAULT_TIMEOUT = 30.0
@@ -27,9 +27,15 @@ def validate_mcp_outbound_url(url: str, *, resolve_dns: bool = True) -> str:
     guard re-validates with DNS on every fetch."""
     from urllib.parse import urlparse
 
-    from onyx.configs.app_configs import MCP_GATEWAY_TRUSTED_HOSTS
+    from onyx.configs.app_configs import (
+        MCP_GATEWAY_BLOCKED_HOSTS,
+        MCP_GATEWAY_TRUSTED_HOSTS,
+    )
 
     host = (urlparse(url).hostname or "").lower()
+    if host in {item.lower() for item in MCP_GATEWAY_BLOCKED_HOSTS}:
+        raise SSRFException(f"Access to hostname '{host}' is not allowed.")
+    # Infra allow for the local gateway process only — not vendor MCP hosts.
     if host in {item.lower() for item in MCP_GATEWAY_TRUSTED_HOSTS}:
         return url
     params = outbound_ssrf_params(get_security_settings().ssrf_protection_level)

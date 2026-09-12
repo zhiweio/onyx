@@ -11,6 +11,10 @@ from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
+# Clash / Surge / sing-box fake-ip (RFC 2544). Host DNS returns these for
+# public names; they are not a real internal network.
+_FAKE_IP_NETWORKS = (ipaddress.ip_network("198.18.0.0/15"),)
+
 # Hostnames that should always be blocked
 BLOCKED_HOSTNAMES = {
     # Localhost variations
@@ -44,16 +48,23 @@ def _is_ip_private_or_reserved(ip_str: str) -> bool:
     - Reserved addresses
     - Multicast addresses
     - Unspecified addresses (0.0.0.0, ::)
+
+    RFC 2544 fake-ip (198.18.0.0/15) is not treated as internal. Clash and
+    similar proxies return those addresses for public hostnames.
     """
     try:
         ip = ipaddress.ip_address(ip_str)
-        # is_global returns True only for globally routable unicast addresses
-        # This excludes private, loopback, link-local, reserved, and unspecified
-        # We also need to explicitly check multicast as it's not covered by is_global
-        return not ip.is_global or ip.is_multicast
     except ValueError:
         # If we can't parse the IP, consider it unsafe
         return True
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if any(ip in network for network in _FAKE_IP_NETWORKS):
+        return False
+    # is_global returns True only for globally routable unicast addresses
+    # This excludes private, loopback, link-local, reserved, and unspecified
+    # We also need to explicitly check multicast as it's not covered by is_global
+    return not ip.is_global or ip.is_multicast
 
 
 def _is_targeted_blocked_ip(

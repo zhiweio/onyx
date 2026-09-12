@@ -1,4 +1,3 @@
-import ipaddress
 import random
 import socket
 import time
@@ -43,6 +42,7 @@ from onyx.utils.playwright_fetch import (
     start_playwright,
 )
 from onyx.utils.sitemap import list_pages_for_site
+from onyx.utils.url import _is_ip_private_or_reserved
 from onyx.utils.web_content import extract_pdf_text, is_pdf_resource
 from shared_configs.configs import MULTI_TENANT
 
@@ -155,7 +155,8 @@ def protected_url_check(url: str) -> None:
     - DNS mapping changes over time so we don't want to cache the results
     - Fetching this is assumed to be relatively fast compared to other bottlenecks like reading
       the page or embedding the contents
-    - To be extra safe, all IPs associated with the URL must be global
+    - Deny internal/reserved addresses. Do not require a per-host allowlist.
+      Clash fake-ip (198.18.0.0/15) is not treated as internal.
     - This is to prevent misuse and not explicit attacks
     """
     # The web connector is only guarded at the most restrictive SSRF level; at
@@ -179,7 +180,7 @@ def protected_url_check(url: str) -> None:
 
     for address in info:
         ip = address[4][0]
-        if not ipaddress.ip_address(ip).is_global:
+        if _is_ip_private_or_reserved(str(ip)):
             raise ValueError(
                 f"Non-global IP address detected: {ip}, skipping page {url}. "
                 f"The Web Connector is not allowed to read loopback, link-local, or private ranges"

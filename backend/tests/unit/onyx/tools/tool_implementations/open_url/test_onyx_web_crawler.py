@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 import time
 from collections.abc import Callable
 from unittest.mock import MagicMock, patch
@@ -413,3 +414,32 @@ def test_should_validate_ssrf_override_pins(monkeypatch: pytest.MonkeyPatch) -> 
     crawler = OnyxWebCrawler(validate_ssrf=False)
     _pin_level(monkeypatch, SSRFProtectionLevel.VALIDATE_ALL)
     assert crawler._should_validate_ssrf() is False
+
+
+def test_crawler_fetches_when_dns_is_clash_fake_ip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The crawler must fetch a public page that Clash maps to fake-ip. It
+    must not treat that address as internal."""
+    html = b"<html><head><title>News</title></head><body>ok</body></html>"
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.is_redirect = False
+    mock_response.headers = {"Content-Type": "text/html"}
+    mock_response.content = html
+    mock_response.apparent_encoding = "utf-8"
+    mock_response.encoding = "utf-8"
+
+    def _fake_ip(*_args: object, **_kwargs: object) -> list[object]:
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.41.7", 443))]
+
+    monkeypatch.setattr("onyx.utils.url.socket.getaddrinfo", _fake_ip)
+    with patch("onyx.utils.url.requests.Session") as mock_session_cls:
+        session = mock_session_cls.return_value.__enter__.return_value
+        session.get.return_value = mock_response
+        result = OnyxWebCrawler()._fetch_url("https://news.example.com/article")
+
+    assert result.scrape_successful is True
+    assert "ok" in result.full_content
+    session.get.assert_called_once()
+    assert "198.18.41.7" in session.get.call_args[0][0]

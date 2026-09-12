@@ -73,6 +73,18 @@ class TestIsIpPrivateOrReserved:
         assert _is_ip_private_or_reserved("104.16.0.1") is False  # Cloudflare
         assert _is_ip_private_or_reserved("142.250.80.46") is False  # Google
 
+    def test_clash_fake_ip_is_not_internal(self) -> None:
+        """RFC 2544 fake-ip is not a real internal network."""
+        assert _is_ip_private_or_reserved("198.18.41.7") is False
+        assert _is_ip_private_or_reserved("198.19.255.255") is False
+        assert _is_ip_private_or_reserved("::ffff:198.18.1.33") is False
+
+    def test_other_reserved_ranges_stay_internal(self) -> None:
+        """The fake-ip exemption must not open other reserved ranges."""
+        assert _is_ip_private_or_reserved("192.0.2.1") is True  # TEST-NET-1
+        assert _is_ip_private_or_reserved("100.64.1.1") is True  # CGNAT
+        assert _is_ip_private_or_reserved("198.17.255.255") is False
+
     def test_invalid_ip(self) -> None:
         """Test that invalid IPs are treated as potentially unsafe."""
         assert _is_ip_private_or_reserved("not-an-ip") is True
@@ -254,6 +266,24 @@ class TestSsrfSafeGet:
                 # Verify Host header is set
                 assert call_args[1]["headers"]["Host"] == "example.com"
                 assert response == mock_response
+
+    def test_fetches_hostname_that_resolves_to_clash_fake_ip(self) -> None:
+        """Crawler / open_url fetch path: Clash fake-ip is pin-able, not blocked."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_redirect = False
+
+        with patch("onyx.utils.url.socket.getaddrinfo") as mock_getaddrinfo:
+            mock_getaddrinfo.return_value = [(2, 1, 6, "", ("198.18.41.7", 80))]
+
+            with patch("onyx.utils.url.requests.get") as mock_get:
+                mock_get.return_value = mock_response
+                response = ssrf_safe_get("http://news.example.com/article")
+
+        mock_get.assert_called_once()
+        assert "198.18.41.7" in mock_get.call_args[0][0]
+        assert mock_get.call_args[1]["headers"]["Host"] == "news.example.com"
+        assert response == mock_response
 
     def test_https_request_pins_validated_ip_with_sni_hostname(self) -> None:
         """HTTPS requests go to the validated IP (rebinding defense) while the
@@ -437,6 +467,22 @@ class TestValidateOutboundHttpUrl:
     def test_rejects_private_ip_by_default(self) -> None:
         with pytest.raises(SSRFException, match="internal/private IP"):
             validate_outbound_http_url("http://10.0.0.1:8000")
+
+    def test_allows_clash_fake_ip_literal(self) -> None:
+        assert (
+            validate_outbound_http_url("https://198.18.41.7/mcp")
+            == "https://198.18.41.7/mcp"
+        )
+
+    def test_allows_hostname_that_resolves_to_clash_fake_ip(self) -> None:
+        with patch("onyx.utils.url.socket.getaddrinfo") as mock_getaddrinfo:
+            mock_getaddrinfo.return_value = [
+                (2, 1, 6, "", ("198.18.41.7", 443)),
+            ]
+            assert (
+                validate_outbound_http_url("https://connect.zhihuiya.com/mcp")
+                == "https://connect.zhihuiya.com/mcp"
+            )
 
     def test_allows_rfc1918_ip_when_explicitly_enabled(self) -> None:
         validated_url = validate_outbound_http_url(

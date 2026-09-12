@@ -99,7 +99,7 @@ services:
       - MCP_GATEWAY_ENABLED=${MCP_GATEWAY_ENABLED:-true}
       - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
       - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
-      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-}
     # PRODUCTION: Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
     # volumes:
     #   - ./bundle.pem:/app/bundle.pem:ro
@@ -182,7 +182,7 @@ services:
       - MCP_GATEWAY_ENABLED=${MCP_GATEWAY_ENABLED:-true}
       - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
       - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
-      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-}
     # PRODUCTION: Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
     # volumes:
     #   - ./bundle.pem:/app/bundle.pem:ro
@@ -316,7 +316,7 @@ services:
       - MCP_GATEWAY_PORT=${MCP_GATEWAY_PORT:-8091}
       - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
       - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
-      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-mcp_gateway,localhost,127.0.0.1}
+      - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:

@@ -7,8 +7,9 @@ Targets use literal IPs so socket.getaddrinfo resolves locally (hermetic).
 
 from __future__ import annotations
 
+import socket
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,6 +20,7 @@ from onyx.connectors.web.connector import (
     WebConnector,
     check_internet_connection,
     extract_urls_from_sitemap,
+    protected_url_check,
 )
 from onyx.server.security.models import SSRFProtectionLevel
 
@@ -82,3 +84,31 @@ def test_sitemap_connector_construction_blocks_internal() -> None:
                 web_connector_type=WEB_CONNECTOR_VALID_SETTINGS.SITEMAP.value,
             )
         mock_get.assert_not_called()
+
+
+def test_protected_url_check_allows_clash_fake_ip() -> None:
+    """Public crawl targets that resolve through Clash fake-ip must not need a
+    per-host allowlist."""
+
+    def _fake_ip(*_args: object, **_kwargs: object) -> list[object]:
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.41.7", 0))]
+
+    with patch.object(web_connector.socket, "getaddrinfo", side_effect=_fake_ip):
+        protected_url_check("https://example.com/docs")
+
+
+def test_check_internet_connection_allows_clash_fake_ip_before_fetch() -> None:
+    def _fake_ip(*_args: object, **_kwargs: object) -> list[object]:
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.41.7", 0))]
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+
+    with (
+        patch.object(web_connector.socket, "getaddrinfo", side_effect=_fake_ip),
+        patch.object(web_connector.requests, "Session", return_value=mock_session),
+    ):
+        check_internet_connection("https://example.com/docs")
+    mock_session.get.assert_called_once()

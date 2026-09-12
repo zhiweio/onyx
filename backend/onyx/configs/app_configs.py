@@ -1927,13 +1927,18 @@ MCP_GATEWAY_PUBLIC_URL = os.environ.get(
     "MCP_GATEWAY_PUBLIC_URL", "http://mcp_gateway:8091"
 ).rstrip("/")
 MCP_GATEWAY_INTERNAL_TOKEN = os.environ.get("MCP_GATEWAY_INTERNAL_TOKEN", "")
-MCP_GATEWAY_TRUSTED_HOSTS = {
-    item.strip()
-    for item in os.environ.get(
-        "MCP_GATEWAY_TRUSTED_HOSTS", "mcp_gateway,localhost,127.0.0.1"
-    ).split(",")
-    if item.strip()
-}
+
+
+def _csv_hosts(raw: str) -> set[str]:
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+# Extra hostnames MCP outbound must never reach. Public vendor MCPs do not
+# belong here. Clash fake-ip (198.18.0.0/15) is not treated as internal.
+MCP_GATEWAY_BLOCKED_HOSTS = _csv_hosts(os.environ.get("MCP_GATEWAY_BLOCKED_HOSTS", ""))
+# Optional extra infra hosts that may reach a private address. The gateway
+# host from MCP_GATEWAY_PUBLIC_URL is always included. Do not add vendors.
+MCP_GATEWAY_TRUSTED_HOSTS = _csv_hosts(os.environ.get("MCP_GATEWAY_TRUSTED_HOSTS", ""))
 _gateway_public_host = urllib.parse.urlparse(MCP_GATEWAY_PUBLIC_URL).hostname
 if _gateway_public_host:
     MCP_GATEWAY_TRUSTED_HOSTS.add(_gateway_public_host)
