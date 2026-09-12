@@ -18,6 +18,7 @@ import type {
   McpGatewayCallItem,
 } from "@/lib/mcp-catalog/types";
 import type { DateRange } from "@/refresh-components/DateRangePicker";
+import { isoWindowForInclusiveDateRange } from "./dateWindow";
 import { errorMessage, formatBytes, PAGE_SIZE } from "./format";
 import { useDebouncedValue } from "./useDebouncedValue";
 
@@ -81,8 +82,12 @@ export default function GatewayCallsTable({
   const format = useFormatter();
   const [searchInput, setSearchInput] = useState("");
   const searchTerm = useDebouncedValue(searchInput);
-  const fromIso = dateRange?.from.toISOString();
-  const toIso = dateRange?.to.toISOString();
+  const isoWindow =
+    dateRange?.from && dateRange.to
+      ? isoWindowForInclusiveDateRange(dateRange)
+      : undefined;
+  const fromIso = isoWindow?.from;
+  const toIso = isoWindow?.to;
   const filterKey = `${fromIso}\0${toIso}\0${catalogSlug}\0${tool}\0${searchTerm}`;
   const [filterSnapshot, setFilterSnapshot] = useState(filterKey);
   const [pageIndex, setPageIndex] = useState(0);

@@ -31,6 +31,7 @@ import GatewayFilters from "./GatewayFilters";
 import GatewayOverview from "./GatewayOverview";
 import GatewayCacheTable from "./GatewayCacheTable";
 import GatewayCallsTable from "./GatewayCallsTable";
+import { isoWindowForInclusiveDateRange } from "./dateWindow";
 import { errorMessage } from "./format";
 import { useDebouncedValue } from "./useDebouncedValue";
 
@@ -94,9 +95,10 @@ export default function McpGatewayPage() {
 
   useEffect(() => {
     if (!dateRange?.from || !dateRange.to) return;
+    const { from, to } = isoWindowForInclusiveDateRange(dateRange);
     void getMcpGatewayStats({
-      from: dateRange.from.toISOString(),
-      to: dateRange.to.toISOString(),
+      from,
+      to,
       catalog_slug: selectedSlug || undefined,
     })
       .then(setStats)

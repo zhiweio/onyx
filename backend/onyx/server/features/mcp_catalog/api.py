@@ -7,7 +7,7 @@ Catalog install and user routers in this module are leftover and not mounted.
 Organization MCP is created from `/admin/mcp`.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -391,6 +391,25 @@ def list_entry_policies(
 # ---------------------------------------------------------------------------
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _exclusive_utc_end(value: datetime) -> datetime:
+    """Treat a picker end-of-day as exclusive next UTC midnight.
+
+    Iceberg filters with ``created_at < to``. A local end-of-day sent as ISO
+    can fall mid-UTC-day (15:59:59Z in UTC+8) and drop later calls.
+    """
+    utc = _as_utc(value)
+    midnight = datetime(utc.year, utc.month, utc.day, tzinfo=timezone.utc)
+    if utc == midnight:
+        return utc
+    return midnight + timedelta(days=1)
+
+
 def _parse_window(
     from_time: datetime | None, to_time: datetime | None
 ) -> tuple[datetime, datetime]:
@@ -399,9 +418,11 @@ def _parse_window(
             OnyxErrorCode.INVALID_INPUT,
             "from and to are required.",
         )
-    if to_time <= from_time:
+    start = _as_utc(from_time)
+    end = _exclusive_utc_end(to_time)
+    if end <= start:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "to must be after from.")
-    return from_time, to_time
+    return start, end
 
 
 def _cache_cursor(item: MCPGatewayCacheEntry) -> str:

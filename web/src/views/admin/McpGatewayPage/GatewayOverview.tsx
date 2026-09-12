@@ -14,6 +14,7 @@ import AreaChart from "@/refresh-components/AreaChart";
 import BarChart from "@/refresh-components/BarChart";
 import { formatCalendarDay } from "@/lib/dateUtils";
 import type { DateRange } from "@/refresh-components/DateRangePicker";
+import { isoWindowForInclusiveDateRange } from "./dateWindow";
 import { formatBytes, formatPercent } from "./format";
 
 const SERIES_COLORS = [
@@ -99,8 +100,12 @@ export default function GatewayOverview({
 }: GatewayOverviewProps) {
   const t = useTranslations("admin.mcpGateway");
   const charts = useTranslations("admin.mcpGateway.charts");
-  const fromIso = dateRange?.from?.toISOString();
-  const toIso = dateRange?.to?.toISOString();
+  const isoWindow =
+    dateRange?.from && dateRange.to
+      ? isoWindowForInclusiveDateRange(dateRange)
+      : undefined;
+  const fromIso = isoWindow?.from;
+  const toIso = isoWindow?.to;
   const { data: series } = useSWR<McpGatewayStatsSeries>(
     fromIso && toIso
       ? ["mcp-gateway-series", fromIso, toIso, catalogSlug]
