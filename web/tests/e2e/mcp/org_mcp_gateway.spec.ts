@@ -77,7 +77,7 @@ test.describe("Organization MCP and Gateway", () => {
       pack_slug: "generic_http",
       name: packServerName,
       slug: packSlug,
-      upstream_url: "http://127.0.0.1:9/mcp",
+      upstream_url: "http://example.com/mcp",
       credentials: { api_key: "e2e-unused" },
       is_public: true,
     });
@@ -102,6 +102,9 @@ test.describe("Organization MCP and Gateway", () => {
     await gateway.expectLoaded();
     await gateway.expectDateRangeVisible();
     await gateway.selectSevenDayWindow();
+    await gateway.openTab("overview");
+    await gateway.expectOverview();
+    await gateway.expectConfirmOnClear();
     await gateway.expectConfirmOnToggle();
 
     await gateway.openTab("cache");
@@ -119,7 +122,7 @@ test.describe("Organization MCP and Gateway", () => {
     const serverName = `PW Bind ${Date.now()}`;
     bindServerId = await client.createMcpServer(
       serverName,
-      "http://127.0.0.1:9/mcp"
+      "http://example.com/mcp"
     );
 
     const adminMcp = new AdminMcpServersPage(page);
@@ -144,7 +147,7 @@ test.describe("Organization MCP and Gateway", () => {
       pack_slug: "generic_http",
       name: `PW API Pack ${Date.now()}`,
       slug,
-      upstream_url: "http://127.0.0.1:9/mcp",
+      upstream_url: "http://example.com/mcp",
       credentials: { api_key: "e2e-unused" },
       is_public: true,
     });

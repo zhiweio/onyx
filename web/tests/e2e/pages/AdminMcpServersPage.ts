@@ -285,6 +285,16 @@ export class AdminMcpServersPage {
     });
   }
 
+  async searchServers(term: string): Promise<void> {
+    const search = this.page
+      .locator("div.flex-row")
+      .filter({ has: this.addServerButton })
+      .getByPlaceholder(/Search/i);
+    await expect(search).toBeVisible();
+    await search.fill(term);
+    await expect(search).toHaveValue(term);
+  }
+
   async expandServerCard(serverName: string): Promise<void> {
     const card = this.serverCard(serverName);
     await expect(card).toBeVisible();
@@ -391,12 +401,14 @@ export class AdminMcpServersPage {
   }
 
   async expectGatewayBadge(serverName: string): Promise<void> {
+    await this.searchServers(serverName);
     await expect(
       this.page.getByText(`${serverName} · Gateway`, { exact: false }).first()
     ).toBeVisible();
   }
 
   async expectDirectBadge(serverName: string): Promise<void> {
+    await this.searchServers(serverName);
     await expect(
       this.page.getByText(`${serverName} · Direct`, { exact: false }).first()
     ).toBeVisible();
@@ -410,6 +422,7 @@ export class AdminMcpServersPage {
   }
 
   async openManageModal(serverName: string): Promise<void> {
+    await this.searchServers(serverName);
     const card = this.serverCard(serverName);
     await expect(card).toBeVisible();
     await card.scrollIntoViewIfNeeded();

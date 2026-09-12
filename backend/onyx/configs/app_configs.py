@@ -1975,9 +1975,23 @@ QCC_AGENT_API_KEY = (
 #####
 # MCP result storage — how the gateway caches tool responses
 #####
-# At or below this size a result is stored inline in Postgres. Above it the
-# body goes to the file store. The caller always receives the full cached
-# payload; conversation history may later cut the text to fit the window.
+# Iceberg lake for gateway facts (calls, results) and SCD2 dims.
+# Warehouse is file:// for tests or s3:// for MinIO / S3. Catalog metadata
+# lives in the dedicated Postgres schema `iceberg`, not a tenant schema.
+_DEFAULT_ICEBERG_WAREHOUSE = os.environ.get("MCP_ICEBERG_WAREHOUSE") or (
+    f"s3://{os.environ.get('S3_FILE_STORE_BUCKET_NAME') or 'onyx-file-store-bucket'}"
+    "/onyx-mcp-iceberg"
+    if os.environ.get("S3_ENDPOINT_URL") or os.environ.get("S3_AWS_ACCESS_KEY_ID")
+    else "file:///tmp/onyx-mcp-iceberg"
+)
+MCP_ICEBERG_WAREHOUSE = _DEFAULT_ICEBERG_WAREHOUSE
+MCP_ICEBERG_NAMESPACE = os.environ.get("MCP_ICEBERG_NAMESPACE") or "mcp"
+MCP_ICEBERG_CATALOG_URI = os.environ.get("MCP_ICEBERG_CATALOG_URI") or ""
+MCP_ICEBERG_CATALOG_SCHEMA = os.environ.get("MCP_ICEBERG_CATALOG_SCHEMA") or "iceberg"
+MCP_ICEBERG_SCHEMA_VERSION = int(os.environ.get("MCP_ICEBERG_SCHEMA_VERSION") or 1)
+
+# At or below this size a result used to be stored inline in Postgres. The
+# body now always lives in Iceberg; this value is kept for pack policy fields.
 MCP_RESULT_INLINE_THRESHOLD_BYTES = int(
     os.environ.get("MCP_RESULT_INLINE_THRESHOLD_BYTES") or 32_768
 )

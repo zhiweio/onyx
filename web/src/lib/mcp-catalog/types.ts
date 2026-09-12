@@ -144,7 +144,7 @@ export interface McpGatewayCacheList {
 }
 
 export interface McpGatewayCallItem {
-  id: number;
+  id: string;
   created_at: string;
   catalog_slug: string;
   tool_name: string;
@@ -168,6 +168,21 @@ export interface McpGatewayCallList {
 
 export interface McpGatewayCallDetail extends McpGatewayCallItem {
   arguments: Record<string, unknown>;
+  payload?: Record<string, unknown> | null;
+  request_id?: string | null;
+  parent_call_id?: string | null;
+  pack_slug?: string | null;
+  refresh_mode?: string | null;
+  result_blob_id?: string | null;
+}
+
+export interface McpGatewayStatsSeries {
+  calls_by_outcome: Array<Record<string, string | number>>;
+  latency: Array<Record<string, string | number>>;
+  billed_vs_saved: Array<Record<string, string | number>>;
+  bytes_by_server: Array<Record<string, string | number>>;
+  top_servers: { slug: string; count: number }[];
+  top_tools: { tool: string; count: number }[];
 }
 
 /** One system MCP server as the current user sees it in their settings. */

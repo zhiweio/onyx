@@ -4,6 +4,7 @@ import type {
   McpGatewayCallDetail,
   McpGatewayCallList,
   McpGatewayStats,
+  McpGatewayStatsSeries,
   McpPack,
 } from "@/lib/mcp-catalog/types";
 
@@ -120,8 +121,42 @@ export async function listMcpGatewayCalls(params: {
   );
 }
 
+export async function getMcpGatewayStatsSeries(params: {
+  from: string;
+  to: string;
+  catalog_slug?: string;
+}): Promise<McpGatewayStatsSeries> {
+  return readJson<McpGatewayStatsSeries>(
+    await fetch(
+      `${OPS_BASE}/stats/series${queryString({
+        from: params.from,
+        to: params.to,
+        catalog_slug: params.catalog_slug,
+      })}`
+    ),
+    "Could not load gateway series"
+  );
+}
+
+export async function clearMcpGatewayHistory(input?: {
+  cache?: boolean;
+  calls?: boolean;
+}): Promise<Record<string, number>> {
+  return readJson<Record<string, number>>(
+    await fetch(`${OPS_BASE}/history/clear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cache: input?.cache ?? true,
+        calls: input?.calls ?? true,
+      }),
+    }),
+    "Could not clear gateway history"
+  );
+}
+
 export async function getMcpGatewayCall(
-  callId: number
+  callId: string
 ): Promise<McpGatewayCallDetail> {
   return readJson<McpGatewayCallDetail>(
     await fetch(`${OPS_BASE}/calls/${callId}`),

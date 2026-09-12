@@ -8283,6 +8283,17 @@
         "detailTitle": "호출 세부정보",
         "billedYes": "예",
         "billedNo": "아니요",
+        "requestId": "요청 ID",
+        "missing": "—",
+        "parentCallId": "상위 호출",
+        "cacheKey": "캐시 키",
+        "userEmail": "사용자",
+        "sessionId": "세션",
+        "packSlug": "팩",
+        "refreshMode": "새로고침 모드",
+        "resultBlobId": "결과 블롭",
+        "arguments": "인수",
+        "payload": "페이로드",
         "outcomes": {
           "hit": "적중",
           "miss": "미스",
@@ -8320,6 +8331,34 @@
         "results": "결과 수",
         "stored": "저장됨",
         "transferred": "전송됨"
+      },
+      "history": {
+        "clear": "기록 지우기",
+        "clearTitle": "호출 기록을 지울까요?",
+        "cleared": "호출 기록을 지웠습니다",
+        "clearAction": "지우기",
+        "clearBody": "저장된 게이트웨이 호출 로그를 삭제합니다. 캐시는 유지됩니다."
+      },
+      "charts": {
+        "callsByOutcome": "결과별 호출",
+        "latency": "지연 시간",
+        "billedVsSaved": "과금과 절감",
+        "topServers": "상위 서버",
+        "topTools": "상위 도구",
+        "bytesByServer": "서버별 바이트",
+        "series": {
+          "hit": "히트",
+          "miss": "미스",
+          "swr": "만료 재사용",
+          "bypass": "우회",
+          "error": "오류",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "과금",
+          "saved": "절감",
+          "count": "횟수",
+          "bytes": "바이트"
+        }
       }
     },
     "mcpCatalog": {

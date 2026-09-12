@@ -305,6 +305,18 @@ def bind_org_server_to_gateway(
     _mark_server_bound(server, entry)
     db_session.flush()
     invalidate_tools_cache(get_current_tenant_id(), entry.slug)
+    try:
+        from onyx.db.mcp_iceberg import snapshot_catalog
+
+        snapshot_catalog(
+            catalog_slug=entry.slug,
+            pack_slug=entry.pack_slug,
+            display_name=entry.display_name,
+            upstream_url=entry.upstream_url,
+            enabled=entry.enabled,
+        )
+    except Exception:
+        pass
     return entry
 
 

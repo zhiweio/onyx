@@ -380,6 +380,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
         max_overflow=POSTGRES_API_SERVER_POOL_OVERFLOW,
     )
     SqlEngine.get_engine()
+    try:
+        from onyx.db.mcp_iceberg import ensure_mcp_iceberg_tables
+
+        ensure_mcp_iceberg_tables()
+    except Exception:
+        logger.exception("Could not initialize MCP Iceberg tables")
 
     SqlEngine.init_readonly_engine(
         pool_size=POSTGRES_API_SERVER_READ_ONLY_POOL_SIZE,

@@ -8,7 +8,7 @@ Organization MCP is created from `/admin/mcp`.
 """
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -48,20 +48,22 @@ from onyx.db.mcp_catalog import (
 )
 from onyx.db.mcp_gateway import (
     blob_storage_summary,
-    call_stats_windowed,
+    clear_gateway_history,
     count_cache_entries,
-    count_call_logs,
     delete_cache_entries,
-    get_call_log,
     list_cache_entries,
-    list_call_logs,
-    top_call_slugs,
-    top_call_tools,
+)
+from onyx.db.mcp_iceberg import (
+    clear_tenant_lake,
+    get_call,
+    get_result,
+    lake_series,
+    lake_stats,
+    list_calls,
 )
 from onyx.db.models import (
     MCPCatalogEntry,
     MCPGatewayCacheEntry,
-    MCPGatewayCallLog,
     User,
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -83,12 +85,14 @@ from onyx.server.features.mcp_catalog.models import (
     CatalogEntryCreateRequest,
     CatalogEntryResponse,
     CatalogEntryUpdateRequest,
+    HistoryClearRequest,
     InvalidateRequest,
     PackSummary,
     PolicyResponse,
     RefreshRequest,
     SetEnablementRequest,
     StatsResponse,
+    StatsSeriesResponse,
     SystemMCPServerResponse,
 )
 from onyx.utils.logger import setup_logger
@@ -386,6 +390,7 @@ def list_entry_policies(
 # Admin: gateway operations
 # ---------------------------------------------------------------------------
 
+
 def _parse_window(
     from_time: datetime | None, to_time: datetime | None
 ) -> tuple[datetime, datetime]:
@@ -410,26 +415,26 @@ def _parse_cache_cursor(cursor: str | None) -> tuple[datetime | None, int | None
     return datetime.fromisoformat(stamp), int(raw_id)
 
 
-def _call_cursor(item: MCPGatewayCallLog) -> str:
+def _call_cursor(item: CallLogListItem) -> str:
     return f"{item.created_at.isoformat()}|{item.id}"
 
 
-def _parse_call_cursor(cursor: str | None) -> tuple[datetime | None, int | None]:
+def _parse_call_cursor(cursor: str | None) -> tuple[datetime | None, str | None]:
     if not cursor:
         return None, None
     stamp, raw_id = cursor.rsplit("|", 1)
-    return datetime.fromisoformat(stamp), int(raw_id)
+    return datetime.fromisoformat(stamp), raw_id
 
 
-def _call_item(row: MCPGatewayCallLog) -> CallLogListItem:
+def _call_item(row: Any) -> CallLogListItem:
     preview = row.arguments_digest or ""
     return CallLogListItem(
-        id=row.id,
+        id=row.call_id,
         created_at=row.created_at,
         catalog_slug=row.catalog_slug,
         tool_name=row.tool_name,
         effective_tool_name=row.effective_tool_name,
-        outcome=row.outcome.value,
+        outcome=row.outcome,
         upstream_billed=row.upstream_billed,
         latency_ms=row.latency_ms,
         response_bytes=row.response_bytes,
@@ -547,43 +552,27 @@ def list_gateway_calls(
     q: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    cursor: str | None = None,
-    db_session: Session = Depends(get_session),
+    cursor: str | None = None,  # noqa: ARG001 — Iceberg pages by offset
     _: User = Depends(_MANAGE),
 ) -> CallLogListResponse:
     start, end = _parse_window(from_time, to_time)
-    created_at, cursor_id = _parse_call_cursor(cursor)
-    items = list_call_logs(
-        db_session,
+    rows, total = list_calls(
         from_time=start,
         to_time=end,
         catalog_slug=catalog_slug,
         tool_name=tool,
-        outcome=outcome,
+        outcome=outcome.value if outcome else None,
         user_email=user_email,
         session_id=session,
         cache_key=cache_key,
         q=q,
         limit=min(limit, 100),
         offset=offset,
-        cursor_created_at=created_at,
-        cursor_id=cursor_id,
     )
-    total = count_call_logs(
-        db_session,
-        from_time=start,
-        to_time=end,
-        catalog_slug=catalog_slug,
-        tool_name=tool,
-        outcome=outcome,
-        user_email=user_email,
-        session_id=session,
-        cache_key=cache_key,
-        q=q,
-    )
+    items = [_call_item(row) for row in rows]
     next_cursor = _call_cursor(items[-1]) if len(items) >= min(limit, 100) else None
     return CallLogListResponse(
-        items=[_call_item(row) for row in items],
+        items=items,
         next_cursor=next_cursor,
         total=total,
     )
@@ -591,17 +580,26 @@ def list_gateway_calls(
 
 @ops_router.get("/calls/{call_id}")
 def get_gateway_call(
-    call_id: int,
-    db_session: Session = Depends(get_session),
+    call_id: str,
     _: User = Depends(_MANAGE),
 ) -> CallLogDetailResponse:
-    row = get_call_log(db_session, call_id)
+    row = get_call(call_id)
     if row is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Call log row not found")
     item = _call_item(row)
+    payload = None
+    if row.result_blob_id:
+        loaded = get_result(row.result_blob_id, catalog_slug=row.catalog_slug)
+        payload = loaded.payload if loaded else None
     return CallLogDetailResponse(
         **item.model_dump(),
         arguments=row.arguments or {},
+        payload=payload,
+        request_id=row.request_id,
+        parent_call_id=row.parent_call_id,
+        pack_slug=row.pack_slug,
+        refresh_mode=row.refresh_mode,
+        result_blob_id=row.result_blob_id,
     )
 
 
@@ -614,9 +612,7 @@ def gateway_stats(
     _: User = Depends(_MANAGE),
 ) -> StatsResponse:
     start, end = _parse_window(from_time, to_time)
-    calls = call_stats_windowed(
-        db_session, from_time=start, to_time=end, catalog_slug=catalog_slug
-    )
+    calls = lake_stats(from_time=start, to_time=end, catalog_slug=catalog_slug)
     blobs = blob_storage_summary(db_session)
     return StatsResponse(
         **calls,
@@ -628,20 +624,43 @@ def gateway_stats(
             if MCP_GATEWAY_CALL_LOG_RETENTION_DAYS > 0
             else None
         ),
-        top_servers=[
-            {"slug": slug, "count": count}
-            for slug, count in top_call_slugs(db_session, from_time=start, to_time=end)
-        ],
-        top_tools=[
-            {"tool": name, "count": count}
-            for name, count in top_call_tools(
-                db_session,
-                from_time=start,
-                to_time=end,
-                catalog_slug=catalog_slug,
-            )
-        ],
     )
+
+
+@ops_router.get("/stats/series")
+def gateway_stats_series(
+    from_time: Annotated[datetime | None, Query(alias="from")] = None,
+    to_time: Annotated[datetime | None, Query(alias="to")] = None,
+    catalog_slug: str | None = None,
+    _: User = Depends(_MANAGE),
+) -> StatsSeriesResponse:
+    start, end = _parse_window(from_time, to_time)
+    series = lake_series(from_time=start, to_time=end, catalog_slug=catalog_slug)
+    kpis = lake_stats(from_time=start, to_time=end, catalog_slug=catalog_slug)
+    return StatsSeriesResponse(
+        **series,
+        top_servers=kpis["top_servers"],
+        top_tools=kpis["top_tools"],
+    )
+
+
+@ops_router.post("/history/clear")
+def clear_gateway_ops_history(
+    request: HistoryClearRequest,
+    db_session: Session = Depends(get_session),
+    _: User = Depends(_MANAGE),
+) -> dict[str, int]:
+    _require_module_enabled()
+    doomed: list[str] = []
+    if request.cache:
+        doomed = [
+            entry.cache_key for entry in list_cache_entries(db_session, limit=100_000)
+        ]
+    counts = clear_gateway_history(db_session, cache=request.cache, calls=request.calls)
+    if doomed:
+        invalidate_cache_keys(get_current_tenant_id(), doomed)
+    clear_tenant_lake(cache=request.cache, calls=request.calls)
+    return counts
 
 
 # ---------------------------------------------------------------------------

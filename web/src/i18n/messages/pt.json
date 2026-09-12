@@ -8283,6 +8283,17 @@
         "detailTitle": "Detalhes da chamada",
         "billedYes": "Sim",
         "billedNo": "Não",
+        "requestId": "ID da solicitação",
+        "missing": "—",
+        "parentCallId": "Chamada pai",
+        "cacheKey": "Chave de cache",
+        "userEmail": "Usuário",
+        "sessionId": "Sessão",
+        "packSlug": "Pacote",
+        "refreshMode": "Modo de atualização",
+        "resultBlobId": "Blob do resultado",
+        "arguments": "Argumentos",
+        "payload": "Carga",
         "outcomes": {
           "hit": "Acerto",
           "miss": "Falha",
@@ -8320,6 +8331,34 @@
         "results": "Resultados",
         "stored": "Armazenado",
         "transferred": "Transferido"
+      },
+      "history": {
+        "clear": "Limpar histórico",
+        "clearTitle": "Limpar o histórico de chamadas?",
+        "cleared": "Histórico de chamadas limpo",
+        "clearAction": "Limpar",
+        "clearBody": "Isso remove os registros de chamadas do gateway. As entradas de cache permanecem."
+      },
+      "charts": {
+        "callsByOutcome": "Chamadas por resultado",
+        "latency": "Latência",
+        "billedVsSaved": "Faturado vs economizado",
+        "topServers": "Principais servidores",
+        "topTools": "Principais ferramentas",
+        "bytesByServer": "Bytes por servidor",
+        "series": {
+          "hit": "Acerto",
+          "miss": "Falha",
+          "swr": "Reutilização expirada",
+          "bypass": "Desvio",
+          "error": "Erro",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "Faturado",
+          "saved": "Economizado",
+          "count": "Contagem",
+          "bytes": "Bytes"
+        }
       }
     },
     "mcpCatalog": {

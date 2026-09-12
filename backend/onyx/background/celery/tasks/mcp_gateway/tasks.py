@@ -16,9 +16,8 @@ from onyx.db.mcp_gateway import (
     delete_blobs,
     list_entries_for_scheduled_refresh,
     list_expired_blobs,
-    prune_call_logs,
-    upsert_daily_call_stats,
 )
+from onyx.db.mcp_iceberg import delete_results, expire_calls_before, lake_rollup_day
 from onyx.mcp_gateway.engine import refresh_entry
 from onyx.mcp_gateway.policy import effective_policies
 from onyx.mcp_gateway.service import is_gateway_enabled
@@ -126,12 +125,14 @@ def cleanup_mcp_result_blobs(*, tenant_id: str) -> None:  # noqa: ARG001
             for blob in expired
         ]
 
+    blob_ids = [blob_id for blob_id, _ in targets]
+    delete_results(blob_ids)
     for _blob_id, file_id in targets:
         if file_id:
             delete_object(file_id)
 
     with get_session_with_current_tenant() as db_session:
-        deleted = delete_blobs(db_session, [blob_id for blob_id, _ in targets])
+        deleted = delete_blobs(db_session, blob_ids)
 
     logger.info("Deleted %s expired MCP result blobs", deleted)
 
@@ -144,8 +145,7 @@ def cleanup_mcp_result_blobs(*, tenant_id: str) -> None:  # noqa: ARG001
 )
 def rollup_mcp_gateway_call_stats(*, tenant_id: str) -> None:  # noqa: ARG001
     yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
-    with get_session_with_current_tenant() as db_session:
-        written = upsert_daily_call_stats(db_session, day=yesterday)
+    written = lake_rollup_day(yesterday)
     logger.info("Rolled up MCP gateway call stats for %s (%s rows)", yesterday, written)
 
 
@@ -162,6 +162,7 @@ def prune_mcp_gateway_call_logs(*, tenant_id: str) -> None:  # noqa: ARG001
     cutoff = datetime.now(timezone.utc) - timedelta(
         days=MCP_GATEWAY_CALL_LOG_RETENTION_DAYS
     )
-    with get_session_with_current_tenant() as db_session:
-        deleted = prune_call_logs(db_session, older_than=cutoff)
-    logger.info("Pruned %s MCP gateway call log rows older than %s", deleted, cutoff)
+    deleted = expire_calls_before(cutoff)
+    logger.info(
+        "Expired %s MCP gateway Iceberg call rows older than %s", deleted, cutoff
+    )

@@ -16,6 +16,7 @@ Two invariants shape the code:
 
 import asyncio
 import json
+import uuid
 from time import perf_counter
 from typing import Any
 
@@ -26,10 +27,10 @@ from onyx.db.enums import MCPGatewayCallOutcome, MCPGatewayRefreshMode
 from onyx.db.mcp_catalog import get_catalog_entry_by_slug
 from onyx.db.mcp_gateway import (
     get_cache_entry,
-    insert_call_log__no_commit,
     mark_cache_entry_hit__no_commit,
     upsert_cache_entry__no_commit,
 )
+from onyx.db.mcp_iceberg import append_cache_event, append_call, blob_prefix_for
 from onyx.mcp_gateway.keys import (
     batch_items,
     build_cache_key,
@@ -254,6 +255,7 @@ def _persist(
             blob_id=stored.blob_id,
             is_empty=empty,
             last_refresh_status="ok",
+            blob_prefix=blob_prefix_for(stored.blob_id),
         )
         db_session.commit()
 
@@ -278,9 +280,13 @@ async def invoke_tool(
     arguments: dict[str, Any],
     user_email: str | None = None,
     session_id: str | None = None,
+    request_id: str | None = None,
+    parent_call_id: str | None = None,
+    user_id: str | None = None,
 ) -> ResolvedCall:
     started = perf_counter()
     tenant_id = get_current_tenant_id()
+    request_id = request_id or str(uuid.uuid4())
 
     with get_session_with_current_tenant() as db_session:
         entry = get_catalog_entry_by_slug(db_session, catalog_slug)
@@ -293,14 +299,18 @@ async def invoke_tool(
             arguments=arguments,
         )
         is_batch = tool_name in pack.batch_entry_tools
+        pack_slug = entry.pack_slug
 
     if is_batch:
         return await _invoke_batch(
             catalog_slug=catalog_slug,
+            pack_slug=pack_slug,
             tool_name=tool_name,
             arguments=arguments,
             user_email=user_email,
             session_id=session_id,
+            request_id=request_id,
+            user_id=user_id,
         )
 
     _effective, key_args = expand_nested_tool(tool_name, arguments, pack)
@@ -322,6 +332,7 @@ async def invoke_tool(
         return _logged(
             tenant_id=tenant_id,
             catalog_slug=catalog_slug,
+            pack_slug=pack_slug,
             tool_name=tool_name,
             effective_tool_name=effective,
             arguments=arguments,
@@ -333,6 +344,9 @@ async def invoke_tool(
             upstream_billed=True,
             user_email=user_email,
             session_id=session_id,
+            request_id=request_id,
+            parent_call_id=parent_call_id,
+            user_id=user_id,
             started=started,
         )
 
@@ -343,6 +357,7 @@ async def invoke_tool(
         return _logged(
             tenant_id=tenant_id,
             catalog_slug=catalog_slug,
+            pack_slug=pack_slug,
             tool_name=tool_name,
             effective_tool_name=effective,
             arguments=arguments,
@@ -354,6 +369,9 @@ async def invoke_tool(
             upstream_billed=False,
             user_email=user_email,
             session_id=session_id,
+            request_id=request_id,
+            parent_call_id=parent_call_id,
+            user_id=user_id,
             started=started,
         )
 
@@ -369,6 +387,7 @@ async def invoke_tool(
     return _logged(
         tenant_id=tenant_id,
         catalog_slug=catalog_slug,
+        pack_slug=pack_slug,
         tool_name=tool_name,
         effective_tool_name=effective,
         arguments=arguments,
@@ -380,6 +399,9 @@ async def invoke_tool(
         upstream_billed=True,
         user_email=user_email,
         session_id=session_id,
+        request_id=request_id,
+        parent_call_id=parent_call_id,
+        user_id=user_id,
         started=started,
     )
 
@@ -458,10 +480,13 @@ async def refresh_entry(tenant_id: str, cache_key: str) -> None:
 async def _invoke_batch(
     *,
     catalog_slug: str,
+    pack_slug: str,
     tool_name: str,
     arguments: dict[str, Any],
     user_email: str | None,
     session_id: str | None,
+    request_id: str,
+    user_id: str | None,
 ) -> ResolvedCall:
     """Split a batch entry tool into per-item calls so each item caches alone.
 
@@ -470,6 +495,7 @@ async def _invoke_batch(
     """
     started = perf_counter()
     tenant_id = get_current_tenant_id()
+    parent_call_id = str(uuid.uuid4())
 
     assembled: list[dict[str, Any]] = []
     billed = False
@@ -485,6 +511,9 @@ async def _invoke_batch(
             arguments={"name": inner_name, "arguments": inner_args},
             user_email=user_email,
             session_id=session_id,
+            request_id=request_id,
+            parent_call_id=parent_call_id,
+            user_id=user_id,
         )
         assembled.append(resolved.result)
         billed = billed or resolved.upstream_billed
@@ -497,6 +526,7 @@ async def _invoke_batch(
     return _logged(
         tenant_id=tenant_id,
         catalog_slug=catalog_slug,
+        pack_slug=pack_slug,
         tool_name=tool_name,
         effective_tool_name=tool_name,
         arguments=arguments,
@@ -508,14 +538,26 @@ async def _invoke_batch(
         upstream_billed=billed,
         user_email=user_email,
         session_id=session_id,
+        request_id=request_id,
+        parent_call_id=parent_call_id,
+        user_id=user_id,
         started=started,
+        call_id=parent_call_id,
     )
+
+
+def _arguments_digest(arguments: dict[str, Any], *, limit: int = 120) -> str:
+    text = str(arguments)
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
 
 
 def _logged(
     *,
-    tenant_id: str,  # noqa: ARG001 — kept for call-site symmetry with cache ops
+    tenant_id: str,
     catalog_slug: str,
+    pack_slug: str,
     tool_name: str,
     effective_tool_name: str,
     arguments: dict[str, Any],
@@ -527,31 +569,57 @@ def _logged(
     upstream_billed: bool,
     user_email: str | None,
     session_id: str | None,
+    request_id: str,
+    parent_call_id: str | None,
+    user_id: str | None,
     started: float,
     error_message: str | None = None,
+    call_id: str | None = None,
 ) -> ResolvedCall:
     latency_ms = int((perf_counter() - started) * 1000)
+    call_id = call_id or str(uuid.uuid4())
     try:
-        with get_session_with_current_tenant() as db_session:
-            insert_call_log__no_commit(
-                db_session,
-                catalog_slug=catalog_slug,
-                tool_name=tool_name,
-                effective_tool_name=effective_tool_name,
+        append_call(
+            call_id=call_id,
+            request_id=request_id,
+            catalog_slug=catalog_slug,
+            pack_slug=pack_slug,
+            tool_name=tool_name,
+            effective_tool_name=effective_tool_name,
+            cache_key=cache_key,
+            outcome=outcome.value,
+            upstream_billed=upstream_billed,
+            latency_ms=latency_ms,
+            response_bytes=stored.size_bytes if stored else 0,
+            arguments=arguments,
+            arguments_digest=_arguments_digest(arguments),
+            refresh_mode=policy.refresh_mode.value,
+            ttl_seconds=policy.ttl_seconds,
+            parent_call_id=parent_call_id,
+            result_blob_id=stored.blob_id if stored else None,
+            is_error=is_error_result(result) or bool(error_message),
+            error_class=type(error_message).__name__ if error_message else None,
+            error_message=error_message,
+            user_id=user_id,
+            user_email=user_email,
+            session_id=session_id,
+            tenant_id=tenant_id,
+        )
+        if outcome in (
+            MCPGatewayCallOutcome.HIT,
+            MCPGatewayCallOutcome.SWR,
+            MCPGatewayCallOutcome.MISS,
+        ):
+            append_cache_event(
                 cache_key=cache_key,
-                outcome=outcome,
-                upstream_billed=upstream_billed,
-                latency_ms=latency_ms,
-                response_bytes=stored.size_bytes if stored else 0,
-                user_email=user_email,
-                session_id=session_id,
-                arguments=arguments,
-                result_blob_id=stored.blob_id if stored else None,
-                error_message=error_message,
+                action=outcome.value,
+                catalog_slug=catalog_slug,
+                blob_id=stored.blob_id if stored else None,
+                call_id=call_id,
+                tenant_id=tenant_id,
             )
-            db_session.commit()
     except Exception:
-        logger.exception("Failed to write MCP gateway call log")
+        logger.exception("Failed to write MCP gateway call to Iceberg")
 
     return ResolvedCall(
         tool_name=tool_name,

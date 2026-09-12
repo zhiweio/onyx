@@ -8283,6 +8283,17 @@
         "detailTitle": "تفاصيل الاستدعاء",
         "billedYes": "نعم",
         "billedNo": "لا",
+        "requestId": "معرّف الطلب",
+        "missing": "—",
+        "parentCallId": "الاستدعاء الأب",
+        "cacheKey": "مفتاح التخزين",
+        "userEmail": "المستخدم",
+        "sessionId": "الجلسة",
+        "packSlug": "الحزمة",
+        "refreshMode": "وضع التحديث",
+        "resultBlobId": "كائن النتيجة",
+        "arguments": "المعاملات",
+        "payload": "الحمولة",
         "outcomes": {
           "hit": "إصابة",
           "miss": "تفويت",
@@ -8320,6 +8331,34 @@
         "results": "النتائج",
         "stored": "مخزّن",
         "transferred": "منقول"
+      },
+      "history": {
+        "clear": "مسح السجل",
+        "clearTitle": "مسح سجل الاستدعاءات؟",
+        "cleared": "تم مسح سجل الاستدعاءات",
+        "clearAction": "مسح",
+        "clearBody": "سيؤدي هذا إلى حذف سجلات استدعاء البوابة المخزّنة. تبقى إدخالات التخزين المؤقت."
+      },
+      "charts": {
+        "callsByOutcome": "الاستدعاءات حسب النتيجة",
+        "latency": "زمن الاستجابة",
+        "billedVsSaved": "المفوتر مقابل الموفر",
+        "topServers": "أهم الخوادم",
+        "topTools": "أهم الأدوات",
+        "bytesByServer": "البايتات حسب الخادم",
+        "series": {
+          "hit": "نجاح",
+          "miss": "فقدان",
+          "swr": "إعادة استخدام منتهية",
+          "bypass": "تجاوز",
+          "error": "خطأ",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "مفوتر",
+          "saved": "موفّر",
+          "count": "العدد",
+          "bytes": "بايت"
+        }
       }
     },
     "mcpCatalog": {

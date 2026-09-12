@@ -3,7 +3,6 @@ from collections.abc import Generator
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import (
@@ -17,7 +16,8 @@ from onyx.db.mcp_catalog import (
     get_catalog_entry_by_slug,
 )
 from onyx.db.mcp_gateway import delete_cache_entries
-from onyx.db.models import MCPCatalogEntry, MCPGatewayCallLog
+from onyx.db.mcp_iceberg import delete_catalog_calls
+from onyx.db.models import MCPCatalogEntry
 from onyx.mcp_gateway.engine import invoke_tool
 
 
@@ -59,10 +59,8 @@ def catalog_entry(
         yield entry
     finally:
         delete_cache_entries(db_session, catalog_slug=slug)
-        db_session.execute(
-            delete(MCPGatewayCallLog).where(MCPGatewayCallLog.catalog_slug == slug)
-        )
         db_session.commit()
+        delete_catalog_calls(slug)
         fresh = get_catalog_entry_by_slug(db_session, slug)
         if fresh is not None:
             delete_catalog_entry(db_session, fresh)

@@ -8283,6 +8283,17 @@
         "detailTitle": "Call details",
         "billedYes": "Yes",
         "billedNo": "No",
+        "requestId": "Request ID",
+        "missing": "—",
+        "parentCallId": "Parent call",
+        "cacheKey": "Cache key",
+        "userEmail": "User",
+        "sessionId": "Session",
+        "packSlug": "Pack",
+        "refreshMode": "Refresh mode",
+        "resultBlobId": "Result blob",
+        "arguments": "Arguments",
+        "payload": "Payload",
         "outcomes": {
           "hit": "Hit",
           "miss": "Miss",
@@ -8320,6 +8331,34 @@
         "results": "Results",
         "stored": "Stored",
         "transferred": "Transferred"
+      },
+      "history": {
+        "clear": "Clear history",
+        "clearTitle": "Clear call history?",
+        "cleared": "Call history cleared",
+        "clearAction": "Clear",
+        "clearBody": "This removes stored gateway call logs. Cache entries stay."
+      },
+      "charts": {
+        "callsByOutcome": "Calls by outcome",
+        "latency": "Latency",
+        "billedVsSaved": "Billed vs saved",
+        "topServers": "Top servers",
+        "topTools": "Top tools",
+        "bytesByServer": "Bytes by server",
+        "series": {
+          "hit": "Hit",
+          "miss": "Miss",
+          "swr": "Stale-while-revalidate",
+          "bypass": "Bypass",
+          "error": "Error",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "Billed",
+          "saved": "Saved",
+          "count": "Count",
+          "bytes": "Bytes"
+        }
       }
     },
     "mcpCatalog": {

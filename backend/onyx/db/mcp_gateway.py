@@ -157,6 +157,8 @@ def upsert_cache_entry__no_commit(
     blob_id: str,
     is_empty: bool,
     last_refresh_status: str,
+    result_created_at: datetime.datetime | None = None,
+    blob_prefix: str | None = None,
 ) -> MCPGatewayCacheEntry:
     now = datetime.datetime.now(timezone.utc)
     existing = get_cache_entry(db_session, cache_key)
@@ -174,6 +176,8 @@ def upsert_cache_entry__no_commit(
             last_accessed_at=now,
             hit_count=0,
             last_refresh_status=last_refresh_status,
+            result_created_at=result_created_at or now,
+            blob_prefix=blob_prefix or blob_id[:2],
         )
         db_session.add(existing)
     else:
@@ -184,6 +188,10 @@ def upsert_cache_entry__no_commit(
         existing.last_refresh_status = last_refresh_status
         existing.arguments = arguments
         existing.effective_tool_name = effective_tool_name
+        if result_created_at is not None:
+            existing.result_created_at = result_created_at
+        if blob_prefix is not None:
+            existing.blob_prefix = blob_prefix
     db_session.flush()
     return existing
 
@@ -731,3 +739,31 @@ def prune_call_logs(
     )
     db_session.commit()
     return result.rowcount or 0  # ty: ignore[unresolved-attribute]
+
+
+def clear_gateway_history(
+    db_session: Session,
+    *,
+    cache: bool = True,
+    calls: bool = True,
+) -> dict[str, int]:
+    """Wipe current-state cache/pointers and leftover Postgres logs."""
+    deleted_cache = 0
+    deleted_logs = 0
+    deleted_stats = 0
+    deleted_blobs = 0
+    if cache:
+        deleted_cache = db_session.execute(delete(MCPGatewayCacheEntry)).rowcount or 0
+        deleted_blobs = db_session.execute(delete(MCPResultBlob)).rowcount or 0
+    if calls:
+        deleted_logs = db_session.execute(delete(MCPGatewayCallLog)).rowcount or 0
+        deleted_stats = (
+            db_session.execute(delete(MCPGatewayCallStatsDaily)).rowcount or 0
+        )
+    db_session.commit()
+    return {
+        "cache_entries": int(deleted_cache),
+        "call_logs": int(deleted_logs),
+        "stats_rows": int(deleted_stats),
+        "result_pointers": int(deleted_blobs),
+    }

@@ -79,16 +79,19 @@ export default function GatewayCacheTable({
         header: t("cache.tool"),
         weight: 20,
         enableSorting: false,
+        cell: (value) => value || "—",
       }),
       tc.column("catalog_slug", {
         header: t("cache.server"),
         weight: 16,
         enableSorting: false,
+        cell: (value) => value || "—",
       }),
       tc.column("hit_count", {
         header: t("cache.hits"),
         weight: 8,
         enableSorting: false,
+        cell: (value) => String(value ?? 0),
       }),
       tc.column("size_bytes", {
         header: t("cache.size"),

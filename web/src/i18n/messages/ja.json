@@ -8283,6 +8283,17 @@
         "detailTitle": "呼び出しの詳細",
         "billedYes": "はい",
         "billedNo": "いいえ",
+        "requestId": "リクエスト ID",
+        "missing": "—",
+        "parentCallId": "親呼び出し",
+        "cacheKey": "キャッシュキー",
+        "userEmail": "ユーザー",
+        "sessionId": "セッション",
+        "packSlug": "パック",
+        "refreshMode": "更新モード",
+        "resultBlobId": "結果ブロブ",
+        "arguments": "引数",
+        "payload": "ペイロード",
         "outcomes": {
           "hit": "ヒット",
           "miss": "ミス",
@@ -8320,6 +8331,34 @@
         "results": "結果数",
         "stored": "保存済み",
         "transferred": "転送済み"
+      },
+      "history": {
+        "clear": "履歴を消去",
+        "clearTitle": "呼び出し履歴を消去しますか？",
+        "cleared": "呼び出し履歴を消去しました",
+        "clearAction": "消去",
+        "clearBody": "保存されたゲートウェイの呼び出しログを削除します。キャッシュは残ります。"
+      },
+      "charts": {
+        "callsByOutcome": "結果別の呼び出し",
+        "latency": "レイテンシ",
+        "billedVsSaved": "課金と節約",
+        "topServers": "上位サーバー",
+        "topTools": "上位ツール",
+        "bytesByServer": "サーバー別バイト数",
+        "series": {
+          "hit": "ヒット",
+          "miss": "ミス",
+          "swr": "期限切れ再利用",
+          "bypass": "バイパス",
+          "error": "エラー",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "課金",
+          "saved": "節約",
+          "count": "回数",
+          "bytes": "バイト"
+        }
       }
     },
     "mcpCatalog": {

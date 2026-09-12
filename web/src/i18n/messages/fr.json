@@ -8283,6 +8283,17 @@
         "detailTitle": "Détails de l’appel",
         "billedYes": "Oui",
         "billedNo": "Non",
+        "requestId": "ID de requête",
+        "missing": "—",
+        "parentCallId": "Appel parent",
+        "cacheKey": "Clé de cache",
+        "userEmail": "Utilisateur",
+        "sessionId": "Session",
+        "packSlug": "Pack",
+        "refreshMode": "Mode de rafraîchissement",
+        "resultBlobId": "Blob de résultat",
+        "arguments": "Arguments",
+        "payload": "Charge utile",
         "outcomes": {
           "hit": "Succès",
           "miss": "Échec",
@@ -8320,6 +8331,34 @@
         "results": "Résultats",
         "stored": "Stocké",
         "transferred": "Transféré"
+      },
+      "history": {
+        "clear": "Effacer l’historique",
+        "clearTitle": "Effacer l’historique des appels ?",
+        "cleared": "Historique des appels effacé",
+        "clearAction": "Effacer",
+        "clearBody": "Cela supprime les journaux d’appels de la passerelle. Les entrées de cache restent."
+      },
+      "charts": {
+        "callsByOutcome": "Appels par résultat",
+        "latency": "Latence",
+        "billedVsSaved": "Facturé vs économisé",
+        "topServers": "Serveurs principaux",
+        "topTools": "Outils principaux",
+        "bytesByServer": "Octets par serveur",
+        "series": {
+          "hit": "Succès",
+          "miss": "Échec",
+          "swr": "Réutilisation périmée",
+          "bypass": "Contournement",
+          "error": "Erreur",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "Facturé",
+          "saved": "Économisé",
+          "count": "Nombre",
+          "bytes": "Octets"
+        }
       }
     },
     "mcpCatalog": {

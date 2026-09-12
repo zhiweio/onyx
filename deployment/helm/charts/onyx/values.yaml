@@ -1618,6 +1618,13 @@ configMap:
   # MinIO/S3 Configuration override
   S3_ENDPOINT_URL: ""  # only used if minio is not enabled
   S3_FILE_STORE_BUCKET_NAME: ""
+  # MCP Gateway Iceberg lake. Empty warehouse uses s3://<bucket>/onyx-mcp-iceberg
+  # when S3 is set, otherwise file:///tmp/onyx-mcp-iceberg.
+  MCP_ICEBERG_WAREHOUSE: ""
+  MCP_ICEBERG_NAMESPACE: ""
+  MCP_ICEBERG_CATALOG_URI: ""
+  MCP_ICEBERG_CATALOG_SCHEMA: ""
+  MCP_ICEBERG_SCHEMA_VERSION: ""
   # Azure Blob Storage file store (set FILE_STORE_BACKEND: "azure" and
   # minio.enabled: false). Auth priority: AZURE_STORAGE_CONNECTION_STRING,
   # then AZURE_STORAGE_ACCOUNT_KEY, then DefaultAzureCredential (AKS Workload

@@ -98,6 +98,62 @@ def test_cache_accepts_offset_and_search(admin_user: DATestUser) -> None:
     assert len(paged_body["items"]) <= 20
 
 
+def test_stats_series_require_a_time_window(admin_user: DATestUser) -> None:
+    missing = client.get(
+        f"{OPS}/stats/series", headers=admin_user.headers, cookies=admin_user.cookies
+    )
+    assert missing.status_code == 400
+
+    now = datetime.now(timezone.utc)
+    windowed = client.get(
+        f"{OPS}/stats/series",
+        params={
+            "from": (now - timedelta(hours=24)).isoformat(),
+            "to": now.isoformat(),
+        },
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    windowed.raise_for_status()
+    body = windowed.json()
+    assert "calls_by_outcome" in body
+    assert "latency" in body
+    assert "top_servers" in body
+
+
+def test_history_clear_returns_counts(admin_user: DATestUser) -> None:
+    client.patch(
+        f"{API_SERVER_URL}/admin/settings",
+        json={"mcp_gateway_enabled": True},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    ).raise_for_status()
+    cleared = client.post(
+        f"{OPS}/history/clear",
+        json={"cache": True, "calls": True},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    cleared.raise_for_status()
+    body = cleared.json()
+    assert "cache_entries" in body
+    assert "result_pointers" in body
+
+    now = datetime.now(timezone.utc)
+    calls = client.get(
+        f"{OPS}/calls",
+        params={
+            "from": (now - timedelta(hours=24)).isoformat(),
+            "to": now.isoformat(),
+        },
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    calls.raise_for_status()
+    assert calls.json()["total"] == 0
+    assert calls.json()["items"] == []
+
+
 def test_stats_require_a_time_window(admin_user: DATestUser) -> None:
     missing = client.get(
         f"{OPS}/stats", headers=admin_user.headers, cookies=admin_user.cookies

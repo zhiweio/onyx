@@ -1,0 +1,46 @@
+"""Iceberg lake for MCP gateway facts and dimensions."""
+
+from onyx.mcp_gateway.lake.catalog import ensure_mcp_iceberg_tables, reset_lake_for_tests
+from onyx.mcp_gateway.lake.io import (
+    CallRecord,
+    CacheEventRecord,
+    ResultRecord,
+    SeriesPoint,
+    append_cache_event,
+    append_call,
+    append_result,
+    clear_tenant_lake,
+    delete_catalog_calls,
+    delete_results,
+    expire_calls_before,
+    get_result,
+    list_calls,
+    result_exists,
+    snapshot_catalog,
+    snapshot_tool,
+    stats_windowed,
+    stats_series,
+)
+
+__all__ = [
+    "CallRecord",
+    "CacheEventRecord",
+    "ResultRecord",
+    "SeriesPoint",
+    "append_cache_event",
+    "append_call",
+    "append_result",
+    "clear_tenant_lake",
+    "delete_catalog_calls",
+    "delete_results",
+    "ensure_mcp_iceberg_tables",
+    "expire_calls_before",
+    "get_result",
+    "list_calls",
+    "reset_lake_for_tests",
+    "result_exists",
+    "snapshot_catalog",
+    "snapshot_tool",
+    "stats_series",
+    "stats_windowed",
+]

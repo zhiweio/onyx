@@ -9,6 +9,7 @@ import {
   createTableColumns,
 } from "@opal/components";
 import { IllustrationContent, toast } from "@opal/layouts";
+import Text from "@/refresh-components/texts/Text";
 import SvgNoResult from "@opal/illustrations/no-result";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { getMcpGatewayCall, listMcpGatewayCalls } from "@/lib/mcp-catalog/api";
@@ -48,6 +49,27 @@ function outcomeLabel(
     default:
       return outcome;
   }
+}
+
+function DetailField({
+  label,
+  value,
+  empty,
+}: {
+  label: string;
+  value: string | null | undefined;
+  empty: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Text as="p" secondaryBody text03>
+        {label}
+      </Text>
+      <Text as="p" mainUiMono>
+        {value || empty}
+      </Text>
+    </div>
+  );
 }
 
 export default function GatewayCallsTable({
@@ -120,11 +142,13 @@ export default function GatewayCallsTable({
         header: t("calls.server"),
         weight: 12,
         enableSorting: false,
+        cell: (value) => value || "—",
       }),
       tc.column("effective_tool_name", {
         header: t("calls.tool"),
         weight: 14,
         enableSorting: false,
+        cell: (value) => value || "—",
       }),
       tc.column("outcome", {
         header: t("calls.outcome"),
@@ -154,6 +178,7 @@ export default function GatewayCallsTable({
         header: t("calls.preview"),
         weight: 22,
         enableSorting: false,
+        cell: (value) => value || "—",
       }),
     ],
     [format, t]
@@ -204,19 +229,76 @@ export default function GatewayCallsTable({
       />
       {detail ? (
         <Modal open onOpenChange={(open) => !open && setDetail(null)}>
-          <Modal.Content width="md">
+          <Modal.Content width="lg">
             <Modal.Header
               icon={ADMIN_ROUTES.MCP_GATEWAY.icon}
               title={t("calls.detailTitle")}
               onClose={() => setDetail(null)}
             />
             <Modal.Body>
-              <pre
-                className="max-h-96 overflow-auto text-sm"
+              <div
+                className="flex flex-col gap-4"
                 data-testid="mcp-gateway-call-detail"
               >
-                {JSON.stringify(detail.arguments, null, 2)}
-              </pre>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <DetailField
+                    label={t("calls.requestId")}
+                    value={detail.request_id}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.parentCallId")}
+                    value={detail.parent_call_id}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.cacheKey")}
+                    value={detail.cache_key}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.userEmail")}
+                    value={detail.user_email}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.sessionId")}
+                    value={detail.session_id}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.packSlug")}
+                    value={detail.pack_slug}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.refreshMode")}
+                    value={detail.refresh_mode}
+                    empty={t("calls.missing")}
+                  />
+                  <DetailField
+                    label={t("calls.resultBlobId")}
+                    value={detail.result_blob_id}
+                    empty={t("calls.missing")}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Text as="p" secondaryBody text03>
+                    {t("calls.arguments")}
+                  </Text>
+                  <pre className="max-h-56 overflow-auto text-sm">
+                    {JSON.stringify(detail.arguments, null, 2)}
+                  </pre>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Text as="p" secondaryBody text03>
+                    {t("calls.payload")}
+                  </Text>
+                  <pre className="max-h-56 overflow-auto text-sm">
+                    {JSON.stringify(detail.payload ?? null, null, 2)}
+                  </pre>
+                </div>
+              </div>
             </Modal.Body>
           </Modal.Content>
         </Modal>

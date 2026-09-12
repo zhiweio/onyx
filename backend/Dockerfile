@@ -41,11 +41,20 @@ COPY ./requirements/ee.txt /tmp/ee-requirements.txt
 # without re-resolving. It is also required, not just an optimization: mitmproxy pins tight
 # transitive caps (e.g. hyperframe<=6.0.1) that are only loosened by [tool.uv] override-dependencies
 # in pyproject.toml, which is absent from this build context — a resolving install would fail.
-RUN uv pip install --system --no-cache-dir --no-deps --require-hashes \
+# Heartbeat keeps deploy platforms that cancel silent Docker steps (e.g. 10
+# minutes with no output) from killing a long hashed uv install.
+RUN set -eu; \
+    uv pip install --system --no-cache-dir --no-deps --require-hashes \
         -r /tmp/requirements.txt \
-        -r /tmp/ee-requirements.txt && \
+        -r /tmp/ee-requirements.txt & \
+    pid=$!; \
+    while kill -0 "$pid" 2>/dev/null; do \
+        echo "[uv] installing hashed requirements..."; \
+        sleep 60; \
+    done; \
+    wait "$pid"; \
     # https://github.com/tornadoweb/tornado/issues/3107
-    rm -f /usr/local/lib/python3.13/site-packages/tornado/test/test.key && \
+    rm -f /usr/local/lib/python3.13/site-packages/tornado/test/test.key; \
     rm -rf ~/.cache/uv /tmp/*.txt
 
 

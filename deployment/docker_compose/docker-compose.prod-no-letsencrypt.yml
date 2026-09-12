@@ -263,6 +263,7 @@ services:
       - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
       - MCP_GATEWAY_INTERNAL_TOKEN=${MCP_GATEWAY_INTERNAL_TOKEN:-}
       - MCP_GATEWAY_TRUSTED_HOSTS=${MCP_GATEWAY_TRUSTED_HOSTS:-}
+      - MCP_ICEBERG_WAREHOUSE=${MCP_ICEBERG_WAREHOUSE:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:

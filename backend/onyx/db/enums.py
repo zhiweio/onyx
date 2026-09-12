@@ -264,12 +264,13 @@ class MCPGatewayCallOutcome(str, PyEnum):
 class MCPResultStorage(str, PyEnum):
     """Where the body of a stored MCP result lives.
 
-    Small results are inlined in Postgres. Large ones go to the file store so
-    neither Redis nor a JSONB column has to carry multi-MB payloads.
+    New rows use ICEBERG. INLINE and OBJECT are leftover from the previous
+    tiers and are not written any more.
     """
 
     INLINE = "inline"
     OBJECT = "object"
+    ICEBERG = "iceberg"
 
 
 # Consistent with Celery task statuses

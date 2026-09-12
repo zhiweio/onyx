@@ -45,7 +45,7 @@ def gateway_enabled(admin_user: DATestUser) -> Generator[None, None, None]:
         _set_module_enabled(admin_user, previous)
 
 
-UPSTREAM = "http://127.0.0.1:9/mcp"
+UPSTREAM = "http://example.com/mcp"
 
 
 def _create_direct_org(
@@ -158,19 +158,19 @@ def test_bind_then_unbind_keeps_user_listing(
 
         patched = client.patch(
             f"{ADMIN_MCP}/server/{server_id}",
-            json={"server_url": "http://127.0.0.1:9/other"},
+            json={"server_url": "http://example.com/other"},
             headers=admin_user.headers,
             cookies=admin_user.cookies,
         )
         patched.raise_for_status()
         assert patched.json()["server_url"].endswith(f"/p/{slug}")
-        assert patched.json()["upstream_url"] == "http://127.0.0.1:9/other"
+        assert patched.json()["upstream_url"] == "http://example.com/other"
 
         unbound = _unbind(admin_user, server_id)
         assert unbound["id"] == server_id
         assert unbound["gateway_bound"] is False
         assert unbound["catalog_slug"] is None
-        assert unbound["server_url"] == "http://127.0.0.1:9/other"
+        assert unbound["server_url"] == "http://example.com/other"
         assert unbound["upstream_url"] is None
         assert _tool_names(admin_user, server_id) == before_tools
 

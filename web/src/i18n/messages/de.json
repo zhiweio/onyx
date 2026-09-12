@@ -8283,6 +8283,17 @@
         "detailTitle": "Aufrufdetails",
         "billedYes": "Ja",
         "billedNo": "Nein",
+        "requestId": "Anfrage-ID",
+        "missing": "—",
+        "parentCallId": "Übergeordneter Aufruf",
+        "cacheKey": "Cache-Schlüssel",
+        "userEmail": "Benutzer",
+        "sessionId": "Sitzung",
+        "packSlug": "Paket",
+        "refreshMode": "Aktualisierungsmodus",
+        "resultBlobId": "Ergebnis-Blob",
+        "arguments": "Argumente",
+        "payload": "Nutzlast",
         "outcomes": {
           "hit": "Treffer",
           "miss": "Kein Treffer",
@@ -8320,6 +8331,34 @@
         "results": "Ergebnisse",
         "stored": "Gespeichert",
         "transferred": "Übertragen"
+      },
+      "history": {
+        "clear": "Verlauf löschen",
+        "clearTitle": "Aufrufverlauf löschen?",
+        "cleared": "Aufrufverlauf gelöscht",
+        "clearAction": "Löschen",
+        "clearBody": "Dadurch werden gespeicherte Gateway-Aufrufprotokolle entfernt. Cache-Einträge bleiben."
+      },
+      "charts": {
+        "callsByOutcome": "Aufrufe nach Ergebnis",
+        "latency": "Latenz",
+        "billedVsSaved": "Abgerechnet vs. gespart",
+        "topServers": "Top-Server",
+        "topTools": "Top-Tools",
+        "bytesByServer": "Bytes nach Server",
+        "series": {
+          "hit": "Treffer",
+          "miss": "Fehlschlag",
+          "swr": "Veraltet weitergeben",
+          "bypass": "Umgehung",
+          "error": "Fehler",
+          "p50": "p50",
+          "p95": "p95",
+          "billed": "Abgerechnet",
+          "saved": "Gespart",
+          "count": "Anzahl",
+          "bytes": "Bytes"
+        }
       }
     },
     "mcpCatalog": {

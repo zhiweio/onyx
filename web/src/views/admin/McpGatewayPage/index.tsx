@@ -12,7 +12,10 @@ import {
   SettingsLayouts,
   toast,
 } from "@opal/layouts";
-import { getMcpGatewayStats } from "@/lib/mcp-catalog/api";
+import {
+  clearMcpGatewayHistory,
+  getMcpGatewayStats,
+} from "@/lib/mcp-catalog/api";
 import type { McpGatewayStats } from "@/lib/mcp-catalog/types";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { useAdminMcpServers } from "@/lib/tools/hooks";
@@ -25,9 +28,10 @@ import {
   type DateRange,
 } from "@/refresh-components/DateRangePicker";
 import GatewayFilters from "./GatewayFilters";
+import GatewayOverview from "./GatewayOverview";
 import GatewayCacheTable from "./GatewayCacheTable";
 import GatewayCallsTable from "./GatewayCallsTable";
-import { errorMessage, formatBytes, formatPercent } from "./format";
+import { errorMessage } from "./format";
 import { useDebouncedValue } from "./useDebouncedValue";
 
 const route = ADMIN_ROUTES.MCP_GATEWAY;
@@ -59,7 +63,10 @@ export default function McpGatewayPage() {
   const debouncedTool = useDebouncedValue(toolFilter);
   const [stats, setStats] = useState<McpGatewayStats | null>(null);
   const [pendingEnabled, setPendingEnabled] = useState<boolean | null>(null);
+  const [pendingClear, setPendingClear] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const setQuery = useCallback(
     (next: Record<string, string | null>) => {
@@ -96,7 +103,7 @@ export default function McpGatewayPage() {
       .catch((error) =>
         toast.error(errorMessage(error, t("toasts.loadFailed")))
       );
-  }, [dateRange, selectedSlug, t]);
+  }, [dateRange, selectedSlug, historyVersion, t]);
 
   async function applyToggle(enabled: boolean) {
     setIsSaving(true);
@@ -142,15 +149,24 @@ export default function McpGatewayPage() {
             </Text>
           ) : null}
 
-          <GatewayFilters
-            servers={boundServers}
-            selectedSlug={selectedSlug}
-            onServerChange={handleServerChange}
-            selectedTool={toolFilter}
-            onToolChange={setToolFilter}
-            dateRange={dateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <GatewayFilters
+              servers={boundServers}
+              selectedSlug={selectedSlug}
+              onServerChange={handleServerChange}
+              selectedTool={toolFilter}
+              onToolChange={setToolFilter}
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+            />
+            <Button
+              prominence="secondary"
+              data-testid="mcp-gateway-clear-history"
+              onClick={() => setPendingClear(true)}
+            >
+              {t("history.clear")}
+            </Button>
+          </div>
 
           {boundServers.length === 0 ? (
             <div className="flex flex-col gap-3">
@@ -181,37 +197,18 @@ export default function McpGatewayPage() {
             </Tabs.List>
             <Tabs.Content value="overview">
               {stats ? (
-                <div className="grid grid-cols-2 gap-4 pt-4 md:grid-cols-3">
-                  <Stat
-                    label={t("stats.total")}
-                    value={String(stats.total_calls)}
-                  />
-                  <Stat
-                    label={t("stats.hitRate")}
-                    value={formatPercent(stats.hit_rate)}
-                  />
-                  <Stat
-                    label={t("stats.billed")}
-                    value={String(stats.upstream_billed)}
-                  />
-                  <Stat
-                    label={t("stats.saved")}
-                    value={String(stats.saved_calls)}
-                  />
-                  <Stat
-                    label={t("storage.stored")}
-                    value={formatBytes(stats.blob_total_bytes)}
-                  />
-                  <Stat
-                    label={t("stats.hits")}
-                    value={String(stats.cache_hits)}
-                  />
-                </div>
+                <GatewayOverview
+                  key={historyVersion}
+                  stats={stats}
+                  dateRange={dateRange}
+                  catalogSlug={selectedSlug}
+                />
               ) : null}
             </Tabs.Content>
             <Tabs.Content value="cache">
               {tab === "cache" ? (
                 <GatewayCacheTable
+                  key={`cache-${historyVersion}`}
                   catalogSlug={selectedSlug}
                   tool={debouncedTool}
                 />
@@ -220,6 +217,7 @@ export default function McpGatewayPage() {
             <Tabs.Content value="calls">
               {tab === "calls" ? (
                 <GatewayCallsTable
+                  key={`calls-${historyVersion}`}
                   dateRange={dateRange}
                   catalogSlug={selectedSlug}
                   tool={debouncedTool}
@@ -229,6 +227,52 @@ export default function McpGatewayPage() {
           </Tabs>
         </div>
       </SettingsLayouts.Body>
+
+      {pendingClear && (
+        <ConfirmationModalLayout
+          hideCancel
+          icon={route.icon}
+          title={t("history.clearTitle")}
+          onClose={isClearing ? undefined : () => setPendingClear(false)}
+          submit={
+            <>
+              <Button
+                prominence="secondary"
+                disabled={isClearing}
+                data-testid="mcp-gateway-confirm-clear-cancel"
+                onClick={() => setPendingClear(false)}
+              >
+                {t("module.confirmCancel")}
+              </Button>
+              <Button
+                disabled={isClearing}
+                data-testid="mcp-gateway-confirm-clear"
+                onClick={() => {
+                  void (async () => {
+                    setIsClearing(true);
+                    try {
+                      await clearMcpGatewayHistory();
+                      setHistoryVersion((value) => value + 1);
+                      toast.success(t("history.cleared"));
+                      setPendingClear(false);
+                    } catch (error) {
+                      toast.error(errorMessage(error, t("toasts.loadFailed")));
+                    } finally {
+                      setIsClearing(false);
+                    }
+                  })();
+                }}
+              >
+                {t("history.clearAction")}
+              </Button>
+            </>
+          }
+        >
+          <Text as="p" text03>
+            {t("history.clearBody")}
+          </Text>
+        </ConfirmationModalLayout>
+      )}
 
       {pendingEnabled !== null && (
         <ConfirmationModalLayout
@@ -272,18 +316,5 @@ export default function McpGatewayPage() {
         </ConfirmationModalLayout>
       )}
     </SettingsLayouts.Root>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-12 border border-border-02 p-4">
-      <Text as="p" secondaryBody text03>
-        {label}
-      </Text>
-      <Text as="p" headingH3>
-        {value}
-      </Text>
-    </div>
   );
 }

@@ -8,6 +8,7 @@ the scope — never from a request header.
 import json
 from collections.abc import AsyncIterator, Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any
 
@@ -41,6 +42,8 @@ _TOOLS_CACHE_PREFIX = "mcp_gateway:tools:"
 _TOOLS_CACHE_TTL_SECONDS = 900
 
 TENANT_SCOPE_KEY = "onyx_tenant_id"
+USER_EMAIL_SCOPE_KEY = "onyx_user_email"
+_USER_EMAIL: ContextVar[str | None] = ContextVar("onyx_gateway_user_email", default=None)
 
 
 def _tools_cache_key(slug: str) -> str:
@@ -181,6 +184,7 @@ def build_provider_server(slug: str) -> Server[Any]:
             catalog_slug=slug,
             tool_name=name,
             arguments=arguments or {},
+            user_email=_USER_EMAIL.get(),
         )
         return call_result_from_payload(resolved.result)
 
@@ -210,10 +214,14 @@ class ProviderASGIApp:
             # The auth middleware always sets this. Reaching here means a
             # routing mistake, and guessing a tenant would be worse than 500.
             raise RuntimeError("MCP gateway request reached a provider unauthenticated")
+        raw_email = scope.get(USER_EMAIL_SCOPE_KEY)
+        email = raw_email if isinstance(raw_email, str) else None
         token = CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
+        email_token = _USER_EMAIL.set(email)
         try:
             await self.session_manager.handle_request(scope, receive, send)
         finally:
+            _USER_EMAIL.reset(email_token)
             CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
 
 

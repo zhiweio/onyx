@@ -158,7 +158,7 @@ class CacheListResponse(BaseModel):
 
 
 class CallLogListItem(BaseModel):
-    id: int
+    id: str
     created_at: datetime
     catalog_slug: str
     tool_name: str
@@ -182,3 +182,23 @@ class CallLogListResponse(BaseModel):
 
 class CallLogDetailResponse(CallLogListItem):
     arguments: dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] | None = None
+    request_id: str | None = None
+    parent_call_id: str | None = None
+    pack_slug: str | None = None
+    refresh_mode: str | None = None
+    result_blob_id: str | None = None
+
+
+class StatsSeriesResponse(BaseModel):
+    calls_by_outcome: list[dict[str, Any]] = Field(default_factory=list)
+    latency: list[dict[str, Any]] = Field(default_factory=list)
+    billed_vs_saved: list[dict[str, Any]] = Field(default_factory=list)
+    bytes_by_server: list[dict[str, Any]] = Field(default_factory=list)
+    top_servers: list[dict[str, Any]] = Field(default_factory=list)
+    top_tools: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class HistoryClearRequest(BaseModel):
+    cache: bool = True
+    calls: bool = True

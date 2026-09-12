@@ -22,6 +22,9 @@ export class AdminMcpGatewayPage {
   readonly callsSearch: Locator;
   readonly confirmToggle: Locator;
   readonly tableFooter: Locator;
+  readonly overview: Locator;
+  readonly clearHistory: Locator;
+  readonly confirmClear: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -40,6 +43,9 @@ export class AdminMcpGatewayPage {
     this.callsSearch = page.getByTestId("mcp-gateway-calls-search");
     this.confirmToggle = page.getByTestId("mcp-gateway-confirm-toggle");
     this.tableFooter = page.locator(".table-footer");
+    this.overview = page.getByTestId("mcp-gateway-overview");
+    this.clearHistory = page.getByTestId("mcp-gateway-clear-history");
+    this.confirmClear = page.getByTestId("mcp-gateway-confirm-clear");
   }
 
   async goto(query?: { tab?: string; server?: string }): Promise<void> {
@@ -123,5 +129,18 @@ export class AdminMcpGatewayPage {
     await expect(
       this.serverFilter.getByText(serverName, { exact: false }).first()
     ).toBeVisible();
+  }
+
+  async expectOverview(): Promise<void> {
+    await expect(this.overview).toBeVisible();
+  }
+
+  async expectConfirmOnClear(): Promise<void> {
+    await expect(this.clearHistory).toBeVisible();
+    await this.clearHistory.click();
+    await expect(this.page.getByRole("dialog")).toBeVisible();
+    await expect(this.confirmClear).toBeVisible();
+    await this.page.getByTestId("mcp-gateway-confirm-clear-cancel").click();
+    await expect(this.page.getByRole("dialog")).toHaveCount(0);
   }
 }

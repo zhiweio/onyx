@@ -59,7 +59,7 @@ def installed_server(
             "pack_slug": "generic_http",
             "name": slug,
             "slug": slug,
-            "upstream_url": "http://127.0.0.1:9/mcp",
+            "upstream_url": "http://example.com/mcp",
             "credentials": {"api_key": "test-key"},
             "is_public": False,
             "groups": [],

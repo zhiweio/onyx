@@ -6755,7 +6755,7 @@ class MCPResultBlob(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     storage: Mapped[MCPResultStorage] = mapped_column(
-        Enum(MCPResultStorage, native_enum=False), nullable=False
+        Enum(MCPResultStorage, native_enum=False, length=16), nullable=False
     )
     # Exactly one of these is set, per `storage`.
     inline_payload: Mapped[dict[str, Any] | None] = mapped_column(
@@ -6817,6 +6817,11 @@ class MCPGatewayCacheEntry(Base):
     )
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_refresh_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Iceberg prune keys so a later load_result can scan fact_results cheaply.
+    result_created_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    blob_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
     blob: Mapped["MCPResultBlob"] = relationship("MCPResultBlob")
 

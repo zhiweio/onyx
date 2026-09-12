@@ -20,6 +20,7 @@ from onyx.db.mcp_catalog import list_catalog_entries
 from onyx.error_handling.exceptions import register_onyx_exception_handlers
 from onyx.mcp_gateway.protocol import (
     TENANT_SCOPE_KEY,
+    USER_EMAIL_SCOPE_KEY,
     ProviderASGIApp,
     build_session_manager,
     run_session_managers,
@@ -114,6 +115,12 @@ def create_gateway_fastapi_app() -> FastAPI:
                 "every request"
             )
         SqlEngine.init_engine(pool_size=10, max_overflow=5)
+        try:
+            from onyx.db.mcp_iceberg import ensure_mcp_iceberg_tables
+
+            ensure_mcp_iceberg_tables()
+        except Exception:
+            logger.exception("Could not initialize MCP Iceberg tables")
 
         slugs: list[str] = []
         try:
@@ -169,6 +176,7 @@ def create_gateway_fastapi_app() -> FastAPI:
         # X-Onyx-Tenant-Id header is ignored on purpose.
         request.scope[TENANT_SCOPE_KEY] = claims.tenant_id
         request.scope["onyx_catalog_slug"] = claims.catalog_slug
+        request.scope[USER_EMAIL_SCOPE_KEY] = claims.user_email
         return await call_next(request)
 
     expose_prometheus_metrics(app, create_prometheus_instrumentator())
