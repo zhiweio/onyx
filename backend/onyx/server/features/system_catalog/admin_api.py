@@ -25,6 +25,7 @@ from onyx.db.enums import (
     SystemCatalogPublishStatus,
 )
 from onyx.db.models import SystemReportTemplate, SystemScenario, SystemSkill, User
+from onyx.db.system_catalog.constants import normalize_tags
 from onyx.db.system_catalog.publish import (
     publish_system_report_template,
     publish_system_scenario,
@@ -61,6 +62,9 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.scenario.playbook import playbook_as_dict
+from onyx.server.features.system_catalog.instructions import (
+    read_catalog_skill_instructions,
+)
 from onyx.server.features.system_catalog.models import (
     CatalogBoundSkill,
     CatalogBoundTemplate,
@@ -222,7 +226,9 @@ def create_catalog_skill_from_bundle(
 
 
 def _split_form_tags(raw: str) -> list[str]:
-    return [part for part in (chunk.strip() for chunk in raw.split(",")) if part]
+    return normalize_tags(
+        [part for part in (chunk.strip() for chunk in raw.split(",")) if part]
+    )
 
 
 @admin_router.get("/skills/{entry_id}")
@@ -231,7 +237,11 @@ def get_catalog_skill(
     _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> SystemSkillResponse:
-    return SystemSkillResponse.from_skill(get_system_skill(db_session, entry_id))
+    entry = get_system_skill(db_session, entry_id)
+    return SystemSkillResponse.from_skill(
+        entry,
+        instructions_markdown=read_catalog_skill_instructions(db_session, entry),
+    )
 
 
 @admin_router.patch("/skills/{entry_id}")

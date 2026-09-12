@@ -80,6 +80,10 @@ export function isReportTemplateItem(
   return "kind" in item && "body" in item;
 }
 
+export function isSystemSkillItem(item: CatalogItem): item is SystemSkillItem {
+  return "is_built_in_content" in item;
+}
+
 export function isDocxCatalogTemplate(
   item: CatalogItem,
 ): item is SystemReportTemplateItem {

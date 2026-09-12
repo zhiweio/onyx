@@ -6,6 +6,7 @@ import {
   groupCatalogItemsByCategory,
   isDocxCatalogTemplate,
   isForkOutdated,
+  isSystemSkillItem,
   publishStatusMessageKey,
   publishStatusTagColor,
   type CatalogItem,
@@ -167,6 +168,17 @@ describe("message key and colour helpers", () => {
     );
     expect(new Set(keys).size).toBe(keys.length);
     expect(publishStatusMessageKey("PUBLISHED")).toBe("status.published.label");
+  });
+
+  it("recognizes skill listings by the built-in flag", () => {
+    expect(
+      isSystemSkillItem({
+        ...item(),
+        is_built_in_content: true,
+        instructions_markdown: null,
+      })
+    ).toBe(true);
+    expect(isSystemSkillItem(item())).toBe(false);
   });
 
   it("only returns colours the design system supports", () => {

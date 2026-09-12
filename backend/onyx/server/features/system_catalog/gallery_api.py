@@ -21,14 +21,13 @@ from onyx.db.enums import (
     SystemCatalogCategory,
     SystemCatalogPublishStatus,
 )
-from onyx.db.models import SystemSkill, User
+from onyx.db.models import User
 from onyx.db.system_catalog.constants import require_published
 from onyx.db.system_catalog.fork import (
     fork_system_report_template_for_user,
     fork_system_scenario_for_user,
     fork_system_skill_for_user,
 )
-from onyx.db.system_catalog.publish import find_projected_skill
 from onyx.db.system_catalog.report_template import (
     get_system_report_template,
     list_system_report_templates,
@@ -47,10 +46,8 @@ from onyx.server.features.system_catalog.models import (
     SystemSkillListResponse,
     SystemSkillResponse,
 )
-from onyx.skills.built_in import BUILT_IN_SKILLS
-from onyx.skills.content import (
-    read_builtin_skill_instructions,
-    read_custom_skill_bundle_instructions,
+from onyx.server.features.system_catalog.instructions import (
+    read_catalog_skill_instructions,
 )
 
 router = APIRouter(
@@ -90,23 +87,8 @@ def get_gallery_skill(
     entry = require_published(get_system_skill(db_session, entry_id))
     return SystemSkillResponse.from_skill(
         entry,
-        instructions_markdown=_read_catalog_skill_instructions(db_session, entry),
+        instructions_markdown=read_catalog_skill_instructions(db_session, entry),
     )
-
-
-def _read_catalog_skill_instructions(
-    db_session: Session, entry: SystemSkill
-) -> str | None:
-    """Render the SKILL.md body for preview, from disk or from the projection."""
-    if entry.built_in_skill_id is not None:
-        definition = BUILT_IN_SKILLS.get(entry.built_in_skill_id)
-        if definition is None:
-            return None
-        return read_builtin_skill_instructions(definition)
-    projection = find_projected_skill(db_session, entry)
-    if projection is None:
-        return None
-    return read_custom_skill_bundle_instructions(projection)
 
 
 @router.post("/skills/{entry_id}/fork")

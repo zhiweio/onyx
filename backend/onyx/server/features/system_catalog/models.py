@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from onyx.db.enums import (
     ReportTemplateKind,
@@ -14,6 +14,8 @@ from onyx.db.enums import (
     SystemCatalogOrigin,
     SystemCatalogPublishStatus,
 )
+from onyx.db.system_catalog.constants import normalize_tags
+from onyx.error_handling.exceptions import OnyxError
 from onyx.db.models import (
     ReportTemplate,
     Scenario,
@@ -177,6 +179,15 @@ class ForkResponse(BaseModel):
         return cls(id=template.id, name=template.name)
 
 
+def _validated_tags(value: list[str] | None) -> list[str] | None:
+    if value is None:
+        return None
+    try:
+        return normalize_tags(value)
+    except OnyxError as exc:
+        raise ValueError(str(exc.detail)) from exc
+
+
 class SystemSkillCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=SLUG_MAX)
     name: str = Field(min_length=1, max_length=SKILL_NAME_MAX)
@@ -187,6 +198,11 @@ class SystemSkillCreateRequest(BaseModel):
     # path uses the separate multipart endpoint.
     built_in_skill_id: str | None = None
 
+    @field_validator("tags")
+    @classmethod
+    def normalize_skill_create_tags(cls, value: list[str]) -> list[str]:
+        return _validated_tags(value) or []
+
 
 class SystemSkillPatchRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=SKILL_NAME_MAX)
@@ -195,6 +211,11 @@ class SystemSkillPatchRequest(BaseModel):
     )
     category: SystemCatalogCategory | None = None
     tags: list[str] | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_skill_patch_tags(cls, value: list[str] | None) -> list[str] | None:
+        return _validated_tags(value)
 
 
 class SystemScenarioCreateRequest(BaseModel):
@@ -206,6 +227,11 @@ class SystemScenarioCreateRequest(BaseModel):
     rules: ScenarioPlaybook = Field(default_factory=ScenarioPlaybook)
     skill_slugs: list[str] = Field(default_factory=list)
     report_template_slug: str | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_scenario_create_tags(cls, value: list[str]) -> list[str]:
+        return _validated_tags(value) or []
 
 
 class SystemScenarioPatchRequest(BaseModel):
@@ -221,6 +247,11 @@ class SystemScenarioPatchRequest(BaseModel):
     # Explicit, because report_template_slug=None already means "unchanged".
     clear_report_template: bool = False
 
+    @field_validator("tags")
+    @classmethod
+    def normalize_scenario_patch_tags(cls, value: list[str] | None) -> list[str] | None:
+        return _validated_tags(value)
+
 
 class SystemReportTemplateCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=SLUG_MAX)
@@ -229,6 +260,11 @@ class SystemReportTemplateCreateRequest(BaseModel):
     body: str = Field(min_length=1, max_length=BODY_MAX)
     category: SystemCatalogCategory = SystemCatalogCategory.GENERAL
     tags: list[str] = Field(default_factory=list)
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_template_create_tags(cls, value: list[str]) -> list[str]:
+        return _validated_tags(value) or []
 
 
 class SystemReportTemplatePatchRequest(BaseModel):
@@ -239,6 +275,11 @@ class SystemReportTemplatePatchRequest(BaseModel):
     body: str | None = Field(default=None, min_length=1, max_length=BODY_MAX)
     category: SystemCatalogCategory | None = None
     tags: list[str] | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_template_patch_tags(cls, value: list[str] | None) -> list[str] | None:
+        return _validated_tags(value)
 
 
 class PublishRequest(BaseModel):

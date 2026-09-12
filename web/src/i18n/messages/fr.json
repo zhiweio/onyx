@@ -8504,17 +8504,24 @@
         },
         "fields": {
           "name": {
-            "label": "Name"
+            "label": "Name",
+            "placeholder": "Display name"
           },
           "description": {
-            "label": "Description"
+            "label": "Description",
+            "placeholder": "What this listing offers"
           },
           "category": {
             "label": "Category"
           },
           "tags": {
             "label": "Tags",
-            "placeholder": "Comma-separated tags"
+            "placeholder": "Add a tag and press Enter",
+            "hint": "At most 20 tags, 32 characters each. Tags are stored in lowercase."
+          },
+          "slug": {
+            "label": "Identifier",
+            "description": "Used in URLs. This value cannot change after create."
           },
           "skillSlugs": {
             "label": "Skill identifiers",
@@ -8530,6 +8537,17 @@
           "body": {
             "label": "Template body"
           }
+        },
+        "count": {
+          "label": "{used}/{max}"
+        },
+        "builtinNote": {
+          "title": "Built-in skill",
+          "description": "Listing metadata can change here. The skill files stay on disk."
+        },
+        "preview": {
+          "title": "Skill contents",
+          "empty": "No SKILL.md preview is available for this listing."
         }
       },
       "empty": {

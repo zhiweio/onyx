@@ -8504,17 +8504,24 @@
         },
         "fields": {
           "name": {
-            "label": "名称"
+            "label": "名称",
+            "placeholder": "展示名称"
           },
           "description": {
-            "label": "描述"
+            "label": "描述",
+            "placeholder": "说明这个条目提供什么"
           },
           "category": {
             "label": "分类"
           },
           "tags": {
             "label": "标签",
-            "placeholder": "用逗号分隔标签"
+            "placeholder": "输入标签后按回车",
+            "hint": "最多 20 个标签，每个不超过 32 个字符。标签会存成小写。"
+          },
+          "slug": {
+            "label": "标识",
+            "description": "用于链接。创建后不能改。"
           },
           "skillSlugs": {
             "label": "技能标识",
@@ -8530,6 +8537,17 @@
           "body": {
             "label": "模板正文"
           }
+        },
+        "count": {
+          "label": "{used}/{max}"
+        },
+        "builtinNote": {
+          "title": "内置技能",
+          "description": "这里只改广场展示信息。技能文件仍在磁盘上。"
+        },
+        "preview": {
+          "title": "技能内容",
+          "empty": "这个条目没有可预览的 SKILL.md。"
         }
       },
       "empty": {
