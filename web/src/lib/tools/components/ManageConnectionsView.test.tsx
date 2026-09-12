@@ -49,6 +49,7 @@ function renderView({
       onToggleServer={onToggleServer}
       servers={servers}
       toolsByServer={new Map()}
+      enabledServerIds={new Set()}
     />
   );
 
@@ -56,13 +57,13 @@ function renderView({
 }
 
 describe("ManageConnectionsView", () => {
-  it("shows search and a manage link for admins", () => {
+  it("shows search and a manage link to the user MCP library", () => {
     renderView();
 
     expect(screen.getByPlaceholderText("Search MCPs...")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Manage" })).toHaveAttribute(
       "href",
-      "/admin/mcp-actions"
+      "/craft/v1/mcp-actions"
     );
     expect(
       screen.getByRole("switch", { name: `Toggle ${deepWiki.name}` })
@@ -89,5 +90,21 @@ describe("ManageConnectionsView", () => {
     expect(
       screen.queryByRole("switch", { name: `Toggle ${parallelSearch.name}` })
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps every server off until the user turns one on", async () => {
+    const user = setupUser();
+    const { onToggleServer } = renderView();
+
+    const deepWikiSwitch = screen.getByRole("switch", {
+      name: `Toggle ${deepWiki.name}`,
+    });
+    expect(deepWikiSwitch).not.toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: `Toggle ${parallelSearch.name}` })
+    ).not.toBeChecked();
+
+    await user.click(deepWikiSwitch);
+    expect(onToggleServer).toHaveBeenCalledWith(deepWiki.id, true);
   });
 });

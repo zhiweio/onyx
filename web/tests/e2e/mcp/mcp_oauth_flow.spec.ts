@@ -148,14 +148,11 @@ async function verifyToolUsableFromChat(
   const actions = new ToolsPopover(page);
   // Confirm the (now-authenticated) server is listed in the chat actions popover.
   await actions.ensureServerVisible(artifacts.serverName, { agentId });
+  await actions.setServerEnabled(artifacts.serverName, true);
+  await actions.close();
   // Prove the tool is usable by forcing an invocation from chat. This is the
   // real end-to-end check (browser → backend → per-user OAuth token → mock
-  // server → tool output) and the tool is attached to the agent via API, so it
-  // runs regardless of the popover toggle. We deliberately do NOT drill into
-  // the popover's tool list here: the OAuth server's row re-renders on
-  // background auth-status revalidation and collapses the drilled-in view,
-  // making in-popover tool assertions flaky. That drill-in UI is already
-  // covered by the (stable) API-key and per-user-key specs.
+  // server → tool output). Servers stay off until the user turns them on.
   await expectMcpToolInvoked(page, artifacts.toolName, artifacts.toolId);
 }
 

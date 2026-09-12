@@ -6,7 +6,7 @@ import { useFocusOnMount } from "@opal/hooks";
 import { Button, InputTypeIn, PopoverMenu, Text } from "@opal/components";
 import { SvgChevronLeft, SvgExternalLink } from "@opal/icons";
 
-import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import { CRAFT_MCP_ACTIONS_PATH } from "@/app/craft/v1/constants";
 import MCPLineItem, { MCPServer } from "@/lib/tools/components/MCPLineItem";
 import type { ToolSnapshot } from "@/lib/tools/types";
 
@@ -20,6 +20,8 @@ export default function ManageConnectionsView({
   onToggleServer,
   servers,
   toolsByServer,
+  enabledServerIds,
+  manageHref = CRAFT_MCP_ACTIONS_PATH,
 }: {
   canManage: boolean;
   enabledToolsByServer: Map<number, ToolSnapshot[]>;
@@ -29,9 +31,13 @@ export default function ManageConnectionsView({
   onAuthenticate: (server: MCPServer) => void;
   onBack: () => void;
   onSelectServer: (serverId: number) => void;
-  onToggleServer: (serverId: number, disabled: boolean) => void;
+  onToggleServer: (serverId: number, enabled: boolean) => void;
   servers: MCPServer[];
   toolsByServer: Map<number, ToolSnapshot[]>;
+  /** Servers the current agent will use on the next send. Default none. */
+  enabledServerIds: ReadonlySet<number>;
+  /** User MCP page (Mine + Gallery). Do not send chat users to admin. */
+  manageHref?: string;
 }) {
   const t = useTranslations("actions");
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,7 +76,7 @@ export default function ManageConnectionsView({
           </div>
           {canManage ? (
             <Button
-              href={ADMIN_ROUTES.MCP_ACTIONS.path}
+              href={manageHref}
               target="_blank"
               prominence="tertiary"
               size="sm"
@@ -102,6 +108,7 @@ export default function ManageConnectionsView({
               };
               const serverTools = toolsByServer.get(server.id) ?? [];
               const enabledTools = enabledToolsByServer.get(server.id) ?? [];
+              const serverEnabled = enabledServerIds.has(server.id);
               return (
                 <MCPLineItem
                   key={server.id}
@@ -109,13 +116,14 @@ export default function ManageConnectionsView({
                   isActive={false}
                   tools={serverTools}
                   enabledTools={enabledTools}
+                  enabled={serverEnabled}
                   isAuthenticated={serverData.isAuthenticated}
                   isLoading={serverData.isLoading}
                   control="switch"
                   onSelect={() => onSelectServer(server.id)}
                   onAuthenticate={() => onAuthenticate(server)}
                   onToggleEnabled={() =>
-                    onToggleServer(server.id, enabledTools.length > 0)
+                    onToggleServer(server.id, !serverEnabled)
                   }
                 />
               );

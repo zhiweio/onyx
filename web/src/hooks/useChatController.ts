@@ -31,6 +31,7 @@ import {
 import { MinimalAgent } from "@/lib/agents/types";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { SEARCH_TOOL_ID } from "@/lib/tools/constants";
+import { uniqueMcpServerIds } from "@/lib/tools/mcpSelection";
 import { OnyxDocument } from "@/lib/search/interfaces";
 import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import {
@@ -1116,7 +1117,10 @@ export default function useChatController({
           origin: messageOrigin,
           additionalContext,
           selectedSkillIds,
-          selectedMcpServerIds,
+          selectedMcpServerIds: uniqueMcpServerIds(
+            selectedMcpServerIds,
+            toolConfiguration.selectedMcpServerIds
+          ),
           llmOverrides: isMultiModel
             ? selectedModels!.map((m) => ({
                 model_provider: m.name,
@@ -1313,10 +1317,11 @@ export default function useChatController({
               if (packetObj.type === PacketType.CONTEXT_USAGE) {
                 const usedTokens = (packetObj as ContextUsage).used_tokens;
                 if (typeof usedTokens === "number") {
-                  useChatSessionStore.getState().updateSessionData(
-                    frozenSessionId,
-                    { contextTokensUsed: usedTokens }
-                  );
+                  useChatSessionStore
+                    .getState()
+                    .updateSessionData(frozenSessionId, {
+                      contextTokensUsed: usedTokens,
+                    });
                 }
                 continue;
               }

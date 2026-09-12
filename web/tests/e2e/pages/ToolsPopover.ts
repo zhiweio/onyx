@@ -194,6 +194,32 @@ export class ToolsPopover {
     await expect(this.serverRow(serverName)).toBeVisible();
   }
 
+  serverSwitch(serverName: string): Locator {
+    return this.popover.getByRole("switch", {
+      name: new RegExp(`Toggle .*${escapeRegex(serverName)}`),
+    });
+  }
+
+  async setServerEnabled(serverName: string, enabled: boolean): Promise<void> {
+    await this.openMcpList();
+    const toggle = this.serverSwitch(serverName);
+    await expect(toggle).toBeVisible();
+    await expect(async () => {
+      const state = await toggle.getAttribute("data-state");
+      const checked =
+        state === "checked" ||
+        (await toggle.getAttribute("aria-checked")) === "true";
+      if (checked !== enabled) {
+        await toggle.click({ force: true, timeout: 3000 });
+      }
+      const nextState = await toggle.getAttribute("data-state");
+      const nextChecked =
+        nextState === "checked" ||
+        (await toggle.getAttribute("aria-checked")) === "true";
+      expect(nextChecked).toBe(enabled);
+    }).toPass({ timeout: 15000, intervals: [300, 700, 1500] });
+  }
+
   /**
    * Ensure the server row is visible, retrying once by re-selecting the agent
    * (the popover occasionally loses agent context after an OAuth round-trip).

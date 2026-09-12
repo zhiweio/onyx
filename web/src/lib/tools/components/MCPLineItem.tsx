@@ -50,6 +50,12 @@ export interface MCPLineItemProps {
   isAuthenticated: boolean;
   isLoading: boolean;
   onToggleEnabled?: () => void;
+  /**
+   * When set, the switch uses this instead of inferring enablement from
+   * tools already on the agent. Chat MCP selection is a server list, and
+   * most servers have no persona tools until the user turns them on.
+   */
+  enabled?: boolean;
   /** Slash is the older inline control. Switch matches the Cursor MCP list. */
   control?: "slash" | "switch";
 }
@@ -64,6 +70,7 @@ export default function MCPLineItem({
   isAuthenticated,
   isLoading,
   onToggleEnabled,
+  enabled,
   control = "slash",
 }: MCPLineItemProps) {
   const t = useTranslations("actions.mcpLineItem");
@@ -113,7 +120,7 @@ export default function MCPLineItem({
   }
 
   const allToolsDisabled = enabledTools.length === 0 && tools.length > 0;
-  const serverEnabled = isAuthenticated && enabledTools.length > 0;
+  const serverEnabled = enabled ?? (isAuthenticated && enabledTools.length > 0);
   const useSwitch = control === "switch";
   const toggleLabel = allToolsDisabled
     ? tActions("actionLineItem.enable.label")

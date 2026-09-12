@@ -173,6 +173,34 @@ describe("MCPLineItem", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it("can enable a server that has no tools on the agent", async () => {
+    const user = setupUser();
+    const onToggleEnabled = jest.fn();
+
+    render(
+      <MCPLineItem
+        server={oauthServer}
+        isActive={false}
+        onSelect={jest.fn()}
+        onAuthenticate={jest.fn()}
+        tools={[]}
+        enabledTools={[]}
+        enabled={false}
+        isAuthenticated
+        isLoading={false}
+        control="switch"
+        onToggleEnabled={onToggleEnabled}
+      />
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: `Toggle ${oauthServer.name}`,
+    });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(onToggleEnabled).toHaveBeenCalledTimes(1);
+  });
+
   it("toggles a switch without selecting the server", async () => {
     const user = setupUser();
     const onAuthenticate = jest.fn();

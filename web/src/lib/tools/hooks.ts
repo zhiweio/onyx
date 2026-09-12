@@ -11,6 +11,12 @@ import type {
   ToolSnapshot,
   ToolState,
 } from "@/lib/tools/types";
+import {
+  MCP_SELECTION_STORAGE_PREFIX,
+  parseMcpServerIds,
+  serializeMcpServerIds,
+  withMcpServerEnabled,
+} from "@/lib/tools/mcpSelection";
 import { useAppPosition } from "@/lib/position/hooks";
 import { useActiveAgent } from "@/lib/agents/hooks";
 import {
@@ -316,6 +322,36 @@ function storage(): Storage | null {
   }
 }
 
+function mcpStorageKeyFromToolsKey(toolsKey: string): string {
+  return `${MCP_SELECTION_STORAGE_PREFIX}${toolsKey.slice(STORAGE_PREFIX.length)}`;
+}
+
+function isChatMcpKey(key: string): boolean {
+  return key.startsWith(`${MCP_SELECTION_STORAGE_PREFIX}:chat:`);
+}
+
+function readMcpServerIds(key: string): number[] {
+  const store = storage();
+  if (!store) return [];
+  try {
+    const raw = store.getItem(key);
+    return raw === null ? [] : parseMcpServerIds(raw);
+  } catch {
+    return [];
+  }
+}
+
+function writeMcpServerIds(key: string, ids: readonly number[]) {
+  const store = storage();
+  if (!store) return;
+  try {
+    if (ids.length === 0) store.removeItem(key);
+    else store.setItem(key, serializeMcpServerIds(ids));
+  } catch {
+    // Blocked or full. The selection still holds for this composer.
+  }
+}
+
 function readConfiguration(key: string): ToolConfiguration {
   const store = storage();
   if (!store) return NEUTRAL;
@@ -401,6 +437,14 @@ export interface ToolConfigurationHandle {
    * Leaves the configuration where that page will find it, once.
    */
   handOffToNewChatWith: (agentId: number) => void;
+
+  /**
+   * MCP servers this user turned on for this chat. Empty means every server
+   * is off. The send path attaches these for the turn; they are not written
+   * onto a shared persona.
+   */
+  selectedMcpServerIds: number[];
+  setMcpServerEnabled: (serverId: number, enabled: boolean) => void;
 }
 
 /**
@@ -451,6 +495,8 @@ export function useToolConfiguration(
       : `${STORAGE_PREFIX}:new:${activeAgent.id}:${projectId}`;
   }, [newChatWithAgentId, appPosition, activeAgent]);
 
+  const mcpKey = key === null ? null : mcpStorageKeyFromToolsKey(key);
+
   // Tagged with the key it was read for, so a write cannot land on the entry
   // the composer has since moved to.
   const [entry, setEntry] = useState<{
@@ -477,6 +523,57 @@ export function useToolConfiguration(
   }, [key]);
 
   const configuration = entry.key === key ? entry.configuration : NEUTRAL;
+
+  const [mcpEntry, setMcpEntry] = useState<{
+    key: string | null;
+    ids: number[];
+  }>({ key: null, ids: [] });
+
+  useEffect(() => {
+    if (mcpKey === null) {
+      setMcpEntry({ key: null, ids: [] });
+      return;
+    }
+    const stored = readMcpServerIds(mcpKey);
+    // Same rule as tool configuration: a new-chat key keeps nothing, so a
+    // value found there was handed over by a send and is taken once.
+    if (!isChatMcpKey(mcpKey) && stored.length > 0) {
+      const store = storage();
+      try {
+        store?.removeItem(mcpKey);
+      } catch {
+        // Ignore blocked storage.
+      }
+    }
+    setMcpEntry({ key: mcpKey, ids: stored });
+  }, [mcpKey]);
+
+  const selectedMcpServerIds = mcpEntry.key === mcpKey ? mcpEntry.ids : [];
+
+  useEffect(() => {
+    if (mcpEntry.key !== null && isChatMcpKey(mcpEntry.key)) {
+      writeMcpServerIds(mcpEntry.key, mcpEntry.ids);
+    }
+  }, [mcpEntry]);
+
+  const setMcpServerEnabled = useCallback(
+    (serverId: number, enabled: boolean) => {
+      if (mcpKey === null) return;
+      setMcpEntry((previous) => {
+        const current = previous.key === mcpKey ? previous.ids : [];
+        const ids = withMcpServerEnabled(current, serverId, enabled);
+        if (
+          previous.key === mcpKey &&
+          ids.length === current.length &&
+          ids.every((id, index) => id === current[index])
+        ) {
+          return previous;
+        }
+        return { key: mcpKey, ids };
+      });
+    },
+    [mcpKey]
+  );
 
   // Written from an effect rather than inside the setter, so two changes made
   // in one tick compose instead of the later one landing on what the earlier
@@ -510,15 +607,26 @@ export function useToolConfiguration(
   // Both land before the position that follows reaches this hook, so the key
   // change reads the configuration back where it was left.
   const handOffTo = useCallback(
-    (chatSessionId: string) =>
-      writeConfiguration(chatKey(chatSessionId), configuration),
-    [configuration]
+    (chatSessionId: string) => {
+      writeConfiguration(chatKey(chatSessionId), configuration);
+      writeMcpServerIds(
+        mcpStorageKeyFromToolsKey(chatKey(chatSessionId)),
+        selectedMcpServerIds
+      );
+    },
+    [configuration, selectedMcpServerIds]
   );
 
   const handOffToNewChatWith = useCallback(
-    (agentId: number) =>
-      writeConfiguration(`${STORAGE_PREFIX}:new:${agentId}`, configuration),
-    [configuration]
+    (agentId: number) => {
+      const nextKey = `${STORAGE_PREFIX}:new:${agentId}`;
+      writeConfiguration(nextKey, configuration);
+      writeMcpServerIds(
+        mcpStorageKeyFromToolsKey(nextKey),
+        selectedMcpServerIds
+      );
+    },
+    [configuration, selectedMcpServerIds]
   );
 
   return useMemo(() => {
@@ -539,8 +647,17 @@ export function useToolConfiguration(
       ),
       handOffTo,
       handOffToNewChatWith,
+      selectedMcpServerIds,
+      setMcpServerEnabled,
     };
-  }, [configuration, setToolState, handOffTo, handOffToNewChatWith]);
+  }, [
+    configuration,
+    setToolState,
+    handOffTo,
+    handOffToNewChatWith,
+    selectedMcpServerIds,
+    setMcpServerEnabled,
+  ]);
 }
 
 /**

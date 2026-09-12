@@ -92,6 +92,7 @@ import {
   type PickerEntry,
   type SlashSelection,
 } from "@/lib/skills/picker";
+import { uniqueMcpServerIds } from "@/lib/tools/mcpSelection";
 import type { BaseInputBarHandle } from "@/sections/input/BaseInputBar";
 import { deleteTokenBeforeCursor, getTextContent } from "@/lib/contentEditable";
 
@@ -249,25 +250,41 @@ const AppInputBar = React.memo(
         return deleteTokenBeforeCursor(el, token);
       },
     };
-    const addEntry = useCallback((entry: PickerEntry) => {
-      const connectionPath = pickerEntryConnectionPath(entry);
-      if (connectionPath) {
-        window.location.assign(connectionPath);
-        return;
-      }
-      setActiveEntries((prev) =>
-        prev.some(
-          (candidate) => pickerEntryKey(candidate) === pickerEntryKey(entry)
-        )
-          ? prev
-          : [...prev, entry]
-      );
-    }, []);
+    const addEntry = useCallback(
+      (entry: PickerEntry) => {
+        const connectionPath = pickerEntryConnectionPath(entry);
+        if (connectionPath) {
+          window.location.assign(connectionPath);
+          return;
+        }
+        if (entry.kind === "mcp") {
+          toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
+        }
+        setActiveEntries((prev) =>
+          prev.some(
+            (candidate) => pickerEntryKey(candidate) === pickerEntryKey(entry)
+          )
+            ? prev
+            : [...prev, entry]
+        );
+      },
+      [toolConfiguration]
+    );
     const removeEntry = useCallback((entryKey: string) => {
       setActiveEntries((prev) =>
         prev.filter((entry) => pickerEntryKey(entry) !== entryKey)
       );
     }, []);
+
+    useEffect(() => {
+      const selected = new Set(toolConfiguration.selectedMcpServerIds);
+      setActiveEntries((prev) => {
+        const next = prev.filter(
+          (entry) => entry.kind !== "mcp" || selected.has(entry.mcpServerId)
+        );
+        return next.length === prev.length ? prev : next;
+      });
+    }, [toolConfiguration.selectedMcpServerIds]);
     const slashPicker = useSlashPicker({
       inputRef: slashInputRef,
       onSelect: addEntry,
@@ -388,10 +405,17 @@ const AppInputBar = React.memo(
     const handleSubmit = useCallback(
       (text: string) => {
         stopTTS();
-        onSubmit(text, slashSelectionFromEntries(activeEntries));
+        const slash = slashSelectionFromEntries(activeEntries);
+        onSubmit(text, {
+          skillIds: slash.skillIds,
+          mcpServerIds: uniqueMcpServerIds(
+            slash.mcpServerIds,
+            toolConfiguration.selectedMcpServerIds
+          ),
+        });
         setActiveEntries([]);
       },
-      [stopTTS, onSubmit, activeEntries]
+      [stopTTS, onSubmit, activeEntries, toolConfiguration.selectedMcpServerIds]
     );
     const submitMessage = useCallback(
       (text: string) => {

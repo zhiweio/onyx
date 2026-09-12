@@ -225,6 +225,10 @@ test.describe("Default Agent MCP Integration", () => {
       assistant.tools.some((tool) => tool.mcp_server_id === serverId)
     ).toBeTruthy();
 
+    const chatActions = new ToolsPopover(page);
+    await chatActions.setServerEnabled(serverName, true);
+    await chatActions.close();
+
     // The tool is enabled, so a forced call should actually invoke it.
     await expectMcpToolInvoked(page, MCP_ASSERTED_TOOL_NAME, assertedToolId);
 

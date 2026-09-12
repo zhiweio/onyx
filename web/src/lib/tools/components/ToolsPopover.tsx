@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useFocusOnMount } from "@opal/hooks";
 import {
@@ -21,8 +21,6 @@ import {
 import { MinimalAgent } from "@/lib/agents/types";
 import MCPApiKeyModal from "@/components/chat/MCPApiKeyModal";
 import useCCPairs from "@/hooks/useCCPairs";
-import { useLLMProviders } from "@/lib/languageModels/hooks";
-import { hasPermission } from "@/lib/permissions";
 import { useProjectsContext } from "@/lib/projects/providers";
 import { useSettings } from "@/lib/settings/hooks";
 import { SEARCH_TOOL_ID } from "@/lib/tools/constants";
@@ -30,8 +28,10 @@ import { shouldShowBuiltInToolInChatMenu } from "@/lib/tools/chatToolVisibility"
 import {
   useAvailableTools,
   useBuiltInToolNames,
+  useMcpServers,
   type ToolConfigurationHandle,
 } from "@/lib/tools/hooks";
+import { toChatMcpServer } from "@/lib/tools/mcpSelection";
 import { ToolsPopoverProvider } from "@/lib/tools/providers";
 import ManageConnectionsView from "@/lib/tools/components/ManageConnectionsView";
 import { MCPServer } from "@/lib/tools/components/MCPLineItem";
@@ -43,21 +43,18 @@ import {
   MCPAuthenticationPerformer,
   SecondaryViewState,
 } from "@/lib/tools/types";
-import { Permission } from "@/lib/types";
 import {
   getMCPUserOAuthNavigationUrl,
   saveMCPUserCredentials,
   startMCPUserOAuth,
 } from "@/lib/tools/svc";
-import { useUser } from "@/providers/UserProvider";
 
 /**
  * The actions popover.
  *
- * Takes the agent rather than resolving one. Everything the panel shows is
- * scoped to it — the rows are its tools, the toggles are its per-agent
- * preferences, the sources are what it can reach — so the caller decides
- * which agent this acts on, and the panel never has to ask whether it has one.
+ * Takes the agent rather than resolving one. Built-in tool rows are its
+ * tools; the MCP list is every server this user may use, default off, and
+ * turning one on attaches it for the current agent's next send.
  *
  * Callers should key this on the agent, so switching starts clean rather than
  * carrying the previous agent's open panel and search term across.
@@ -85,9 +82,11 @@ export default function ToolsPopover({
   );
   const [searchTerm, setSearchTerm] = useState("");
   const focusOnMount = useFocusOnMount<HTMLInputElement>();
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
-  const { llmProviders, isLoading: isLLMLoading } = useLLMProviders(agent.id);
-  const hasAnyProvider = !isLLMLoading && (llmProviders?.length ?? 0) > 0;
+  const { mcpData } = useMcpServers();
+  const mcpServers = useMemo(
+    () => (mcpData?.mcp_servers ?? []).map(toChatMcpServer),
+    [mcpData]
+  );
 
   // Store MCP server auth/loading state (tools are part of agent.tools)
   const [mcpServerData, setMcpServerData] = useState<{
@@ -114,18 +113,15 @@ export default function ToolsPopover({
     isAuthenticated: false,
   });
 
-  const { permissions } = useUser();
-  const { vectorDbEnabled } = useSettings();
+  const { vectorDbEnabled, onyx_craft_enabled } = useSettings();
   const { ccPairs } = useCCPairs(vectorDbEnabled);
   const { currentProjectId, allCurrentProjectFiles } = useProjectsContext();
   const { tools: availableTools, isLoading: isAvailableToolsLoading } =
     useAvailableTools();
 
   const hasNoConnectors = ccPairs.length === 0;
-  const canManageActions = hasPermission(
-    permissions,
-    Permission.MANAGE_ACTIONS
-  );
+  // Chat "Manage" opens the user MCP library, not the admin installer.
+  const canManageMcp = onyx_craft_enabled === true;
   const availableToolIds = isAvailableToolsLoading
     ? null
     : new Set(availableTools.map((tool) => tool.id));
@@ -146,47 +142,18 @@ export default function ToolsPopover({
     })
   );
 
-  // Fetch MCP servers for the agent on mount
   useEffect(() => {
-    if (agent == null || agent.id == null || !hasAnyProvider) return;
-
-    const abortController = new AbortController();
-
-    const fetchMCPServers = async () => {
-      try {
-        const response = await fetch(`/api/mcp/servers/persona/${agent.id}`, {
-          signal: abortController.signal,
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const servers = data.mcp_servers || [];
-          setMcpServers(servers);
-          // Seed auth/loading state based on response
-          setMcpServerData((prev) => {
-            const next = { ...prev } as any;
-            servers.forEach((s: any) => {
-              next[s.id as number] = {
-                isAuthenticated: !!s.user_can_authenticate,
-                isLoading: false,
-              };
-            });
-            return next;
-          });
-        }
-      } catch (error) {
-        if (abortController.signal.aborted) {
-          return;
-        }
-        console.error("Error fetching MCP servers:", error);
+    setMcpServerData((prev) => {
+      const next = { ...prev };
+      for (const server of mcpServers) {
+        next[server.id] = {
+          isAuthenticated: !!server.user_can_authenticate,
+          isLoading: prev[server.id]?.isLoading ?? false,
+        };
       }
-    };
-
-    fetchMCPServers();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [agent?.id, hasAnyProvider]);
+      return next;
+    });
+  }, [mcpServers]);
 
   // Handle MCP authentication
   const handleMCPAuthenticate = async (
@@ -276,7 +243,6 @@ export default function ToolsPopover({
             );
             return;
           }
-          // Update the authentication state after successful credential submission
           setMcpServerData((prev) => ({
             ...prev,
             [server.id]: {
@@ -285,6 +251,7 @@ export default function ToolsPopover({
               isLoading: false,
             },
           }));
+          toolConfiguration.setMcpServerEnabled(server.id, true);
         },
         isAuthenticated: server.user_can_authenticate,
         existingCredentials: server.user_credentials,
@@ -320,7 +287,7 @@ export default function ToolsPopover({
       server.name.toLowerCase().includes(searchLower)
     );
   const showMcpRow =
-    (mcpServers.length > 0 || canManageActions) && mcpRowMatchesSearch;
+    (mcpServers.length > 0 || canManageMcp) && mcpRowMatchesSearch;
 
   const selectedMcpServerId =
     secondaryView?.type === "mcp" ? secondaryView.serverId : null;
@@ -389,6 +356,17 @@ export default function ToolsPopover({
       ),
     ])
   );
+  const enabledServerIds = useMemo(
+    () => new Set(toolConfiguration.selectedMcpServerIds),
+    [toolConfiguration.selectedMcpServerIds]
+  );
+
+  const handleToggleServer = (serverId: number, enabled: boolean) => {
+    toolConfiguration.setMcpServerEnabled(serverId, enabled);
+    if (enabled) {
+      setServerToolsDisabled(serverId, false);
+    }
+  };
 
   const handleFooterReauthClick = () => {
     if (selectedMcpServer) {
@@ -459,7 +437,7 @@ export default function ToolsPopover({
 
   const manageView = (
     <ManageConnectionsView
-      canManage={canManageActions}
+      canManage={canManageMcp}
       enabledToolsByServer={enabledToolsByServer}
       mcpServerData={mcpServerData}
       onAuthenticate={handleServerAuthentication}
@@ -467,9 +445,10 @@ export default function ToolsPopover({
       onSelectServer={(serverId) =>
         setSecondaryView({ type: "mcp", serverId, from: "mcpList" })
       }
-      onToggleServer={setServerToolsDisabled}
+      onToggleServer={handleToggleServer}
       servers={mcpServers}
       toolsByServer={toolsByServer}
+      enabledServerIds={enabledServerIds}
     />
   );
 
@@ -496,11 +475,7 @@ export default function ToolsPopover({
     />
   );
 
-  if (
-    displayTools.length === 0 &&
-    mcpServers.length === 0 &&
-    !canManageActions
-  ) {
+  if (displayTools.length === 0 && mcpServers.length === 0 && !canManageMcp) {
     return null;
   }
 
