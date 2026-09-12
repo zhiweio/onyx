@@ -32,7 +32,6 @@ import { useProjectsContext } from "@/lib/projects/providers";
 import { useActiveProject, useProjects } from "@/lib/projects/hooks";
 import { FileCard } from "@/sections/cards/FileCard";
 import { ProjectFile, UserFileStatus } from "@/lib/projects/types";
-import FilePickerPopover from "@/refresh-components/popovers/FilePickerPopover";
 import { ToolsPopover } from "@/lib/tools/components";
 import {
   getIconForAction,
@@ -285,6 +284,7 @@ const AppInputBar = React.memo(
 
     const filesWrapperRef = useRef<HTMLDivElement>(null);
     const filesContentRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { state } = useQueryController();
     const isClassifying = state.phase === "classifying";
     const isSearchActive =
@@ -769,37 +769,21 @@ const AppInputBar = React.memo(
       >
         {/* Bottom left controls */}
         <div className="flex flex-row items-center">
-          {/* (+) button - always visible */}
-          <FilePickerPopover
-            onFileClick={handleFileClick}
-            onPickRecent={(file: ProjectFile) => {
-              // Check if file with same ID already exists
-              if (
-                !currentMessageFiles.some(
-                  (existingFile) => existingFile.file_id === file.file_id
-                )
-              ) {
-                setCurrentMessageFiles((prev) => [...prev, file]);
-              }
-            }}
-            onUnpickRecent={(file: ProjectFile) => {
-              setCurrentMessageFiles((prev) =>
-                prev.filter(
-                  (existingFile) => existingFile.file_id !== file.file_id
-                )
-              );
-            }}
-            handleUploadChange={handleUploadChange}
-            trigger={(open) => (
-              <Button
-                disabled={disabled}
-                icon={SvgPaperclip}
-                tooltip={t("appInputBar.attachFilesButton.tooltip")}
-                interaction={open ? "hover" : "rest"}
-                prominence="tertiary"
-              />
-            )}
-            selectedFileIds={currentMessageFiles.map((f) => f.id)}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            accept="*/*"
+            onChange={handleUploadChange}
+          />
+          <Button
+            disabled={disabled}
+            icon={SvgPaperclip}
+            tooltip={t("appInputBar.attachFilesButton.tooltip")}
+            prominence="tertiary"
+            aria-label={t("appInputBar.attachFilesButton.tooltip")}
+            onClick={() => fileInputRef.current?.click()}
           />
 
           {/* Controls that load in when data is ready */}
