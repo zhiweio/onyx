@@ -377,6 +377,8 @@ def test_assemble_brief_hides_protocol() -> None:
     assert "Current node: plan" in brief
     assert "Do not assume a report" in brief
     assert "User-visible reply" in brief
+    assert "lanes [{role" in brief
+    assert "ask_delivery boolean" in brief
 
 
 def test_continue_persists_empty_visible_text(monkeypatch) -> None:

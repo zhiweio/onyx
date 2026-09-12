@@ -387,6 +387,52 @@ def test_lane_done_when_sets_required_paths() -> None:
     assert literature.skill_id == "biomed-literature"
 
 
+def test_coerces_string_lanes_and_delivery_object() -> None:
+    plan = parse_plan(
+        {
+            "goal": "HMPL-760 1L DLBCL initiation",
+            "lanes": ["clinical", "regulatory", "ip", "commercial"],
+            "ask_delivery": {
+                "path": "outputs/markdown/clinical-initiation-report.md",
+                "note": "embed figures in the markdown.",
+            },
+        }
+    )
+    assert [lane.role for lane in plan.lanes] == [
+        "clinical",
+        "regulatory",
+        "ip",
+        "commercial",
+    ]
+    assert plan.ask_delivery is True
+
+
+def test_coerces_phase_shaped_lanes_without_role() -> None:
+    plan = parse_plan(
+        {
+            "goal": "HMPL-760 1L DLBCL initiation",
+            "lanes": [
+                {
+                    "id": "epi-soc",
+                    "kind": "work",
+                    "done_when": ["outputs/normalized/epi-patient-pool.md"],
+                },
+                {
+                    "id": "competitors",
+                    "kind": "work",
+                    "done_when": ["outputs/normalized/pipeline.csv"],
+                },
+            ],
+            "ask_delivery": {
+                "path": "outputs/markdown/clinical-initiation-report.md"
+            },
+        }
+    )
+    assert [lane.role for lane in plan.lanes] == ["epi-soc", "competitors"]
+    assert plan.lanes[0].done_path() == "outputs/normalized/epi-patient-pool.md"
+    assert plan.ask_delivery is True
+
+
 def test_ask_delivery_does_not_duplicate_review() -> None:
     from onyx.server.features.build.jobs.graph import compile_graph
 

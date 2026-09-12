@@ -95,6 +95,33 @@ def _lane_dir_allowed(path: str) -> bool:
     return True
 
 
+def _coerce_ask_delivery(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "yes", "1"}
+    if isinstance(value, dict):
+        return True
+    return False
+
+
+def _coerce_lane(item: Any) -> Any:
+    if isinstance(item, str):
+        role = item.strip()
+        return {"role": role} if role else item
+    if not isinstance(item, dict):
+        return item
+    role = item.get("role")
+    if isinstance(role, str) and role.strip():
+        return item
+    fallback = item.get("id") or item.get("name")
+    if isinstance(fallback, str) and fallback.strip():
+        return {**item, "role": fallback}
+    return item
+
+
 class JobPlanLane(BaseModel):
     role: str
     questions: list[str] = Field(default_factory=list)
@@ -196,6 +223,22 @@ class JobPlan(BaseModel):
     def _phases(cls, value: list[JobPlanPhase]) -> list[JobPlanPhase]:
         if not value:
             return [JobPlanPhase(id="plan", kind="plan")]
+        return value
+
+    @field_validator("ask_delivery", mode="before")
+    @classmethod
+    def _ask_delivery(cls, value: Any) -> bool:
+        return _coerce_ask_delivery(value)
+
+    @field_validator("lanes", mode="before")
+    @classmethod
+    def _coerce_lanes(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [_coerce_lane(value)]
+        if isinstance(value, list):
+            return [_coerce_lane(item) for item in value]
         return value
 
     @field_validator("lanes")

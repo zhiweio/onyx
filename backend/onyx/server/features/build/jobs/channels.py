@@ -9,9 +9,20 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from onyx.server.features.build.jobs.plan import JobPlan
+
+
+def strip_postgres_json_nuls(value: Any) -> Any:
+    """Postgres JSONB rejects ``\\u0000``. Drop NUL from dumped job state."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, list):
+        return [strip_postgres_json_nuls(item) for item in value]
+    if isinstance(value, dict):
+        return {key: strip_postgres_json_nuls(item) for key, item in value.items()}
+    return value
 
 
 class TodoItem(BaseModel):
@@ -30,6 +41,12 @@ class ArtifactRecord(BaseModel):
     summary: str = ""
     cite_ids: list[str] = Field(default_factory=list)
     nonempty: bool = True
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _summary(cls, value: Any) -> str:
+        text = "" if value is None else str(value)
+        return text.replace("\x00", "")
 
 
 class CitationRecord(BaseModel):

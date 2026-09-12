@@ -122,8 +122,10 @@ def assemble_brief(
     if node.kind == "plan":
         lines.append(
             f"Write {PLAN_JSON_PATH} so the host can compile THIS job's graph: "
-            "goal, optional phases [{id, kind, done_when as a path array}], "
-            "optional lanes, optional inputs, optional ask_delivery. "
+            "goal (string), optional phases [{id, kind, done_when as a path array}], "
+            "optional lanes [{role, optional skill_id, optional output_dir, "
+            "optional done_when path array}], optional inputs [paths], "
+            "optional ask_delivery boolean. "
             "You choose the graph. Do not assume a report. "
             f"When the user goal is met later, write {DONE_JSON_PATH}."
         )

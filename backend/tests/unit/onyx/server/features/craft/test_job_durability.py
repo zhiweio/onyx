@@ -187,6 +187,8 @@ def test_retry_brief_search_reason_leads_with_search() -> None:
 def test_retry_brief_missing_files_keeps_write_action() -> None:
     text = retry_brief("plan", ["outputs/PLAN.json"])
     assert "Write only the missing artifacts" in text
+    assert "lanes need {role: string}" in text
+    assert "ask_delivery must be true or false" in text
 
 
 def test_plan_gate_rejects_seed_markdown(monkeypatch) -> None:

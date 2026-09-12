@@ -31,6 +31,7 @@ from onyx.server.features.build.jobs.channels import (
     apply_writes,
     empty_state,
     migrate_from_phases,
+    strip_postgres_json_nuls,
 )
 from onyx.server.features.build.jobs.checkpoint import save_delta
 from onyx.server.features.build.jobs.durability import (
@@ -110,7 +111,7 @@ def load_state(job: CraftJob) -> JobState:
 
 
 def persist_state(job: CraftJob, state: JobState) -> None:
-    job.state = state.model_dump(mode="json")
+    job.state = strip_postgres_json_nuls(state.model_dump(mode="json"))
     graph = load_graph(job, state)
     completed = set(state.completed_nodes)
     phases = graph.to_phase_list(completed=list(completed))
@@ -1070,7 +1071,7 @@ def _checkpoint(
             job_id=job.id,
             ns=f"node:{node_id}",
             step=state.step,
-            writes=writes,
+            writes=strip_postgres_json_nuls(writes),
         )
     except Exception:
         logger.exception("Could not write job checkpoint")

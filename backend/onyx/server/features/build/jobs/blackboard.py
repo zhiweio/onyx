@@ -74,9 +74,7 @@ def _record_for(
     raw = _read_bytes(manager, sandbox_id, session_id, path)
     if raw is None:
         return None
-    digest = raw[:400].decode("utf-8", errors="replace").strip()
-    if len(digest) > 240:
-        digest = digest[:237] + "..."
+    digest = _safe_summary(raw)
     return ArtifactRecord(
         path=path,
         hash=hashlib.sha256(raw).hexdigest()[:16],
@@ -84,6 +82,16 @@ def _record_for(
         summary=digest,
         nonempty=bool(raw.strip()),
     )
+
+
+def _safe_summary(raw: bytes) -> str:
+    sample = raw[:400]
+    if b"\x00" in sample:
+        return "(binary)"
+    digest = sample.decode("utf-8", errors="replace").replace("\x00", "").strip()
+    if len(digest) > 240:
+        return digest[:237] + "..."
+    return digest
 
 
 def _read_bytes(

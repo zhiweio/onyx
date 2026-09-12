@@ -51,6 +51,8 @@ def test_first_phase_prompt_includes_user_text() -> None:
     assert "2026Q2" in prompt
     assert "plan" in prompt
     assert "PLAN.json" in prompt
+    assert "lanes [{role" in prompt
+    assert "ask_delivery boolean" in prompt
 
 
 def test_job_turn_budgets_respect_phase_cap(monkeypatch) -> None:

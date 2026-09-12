@@ -159,8 +159,10 @@ def retry_brief(
     extra = ""
     if node_id == "plan":
         extra = (
-            " PLAN.json done_when must be a JSON array of relative file paths, "
-            "not a sentence."
+            " PLAN.json lanes need {role: string} objects, not a name list "
+            "and not phase objects without role. ask_delivery must be true or "
+            "false, not a file object. done_when must be a JSON array of "
+            "relative file paths, not a sentence."
         )
     searchish = any(
         "search" in item.lower() or "citation" in item.lower() for item in reason_bits

@@ -70,7 +70,11 @@ def first_phase_prompt(*, user_prompt: str, domain: str, job_name: str) -> str:
     return (
         f"Start the long job `{job_name}` ({domain}).\n"
         f"Write `{PLAN_JSON_PATH}` so the host can compile THIS job. "
-        "Optional: phases, lanes, inputs, ask_delivery. "
+        "Required: goal (string). "
+        "Optional: phases [{id, kind, done_when as a path array}], "
+        "lanes [{role, optional skill_id, optional output_dir, "
+        "optional done_when path array}], inputs [paths], "
+        "ask_delivery boolean. "
         "Do not assume a report.\n"
         "User request:\n"
         f"{user_prompt.strip()}\n"

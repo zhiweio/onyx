@@ -5,11 +5,96 @@ from __future__ import annotations
 import pytest
 
 from onyx.server.features.build.jobs.channels import (
+    ArtifactRecord,
     JobState,
     PlanChannel,
     apply_writes,
     empty_state,
+    strip_postgres_json_nuls,
 )
+
+
+def test_artifact_summary_drops_nul() -> None:
+    record = ArtifactRecord(
+        path="outputs/a.md",
+        producer_node="plan",
+        summary="hello\x00world",
+    )
+    assert record.summary == "helloworld"
+    assert "\x00" not in strip_postgres_json_nuls({"summary": "a\x00b"})["summary"]
+
+
+def test_scan_artifacts_does_not_store_nul_summary(monkeypatch) -> None:
+    from uuid import uuid4
+
+    from onyx.server.features.build.jobs.blackboard import scan_artifacts
+
+    files = {
+        "outputs/PLAN.md": b"# Plan\nhello\x00world\n",
+        "outputs/mcp/hit.bin": b"\x89PNG\r\n\x1a\n\x00\x00binary",
+    }
+
+    class _FakeManager:
+        def read_file(self, _sandbox_id, _session_id, path: str) -> bytes:
+            if path not in files:
+                raise FileNotFoundError(path)
+            return files[path]
+
+        def list_directory(self, _sandbox_id, _session_id, path: str) -> list[str]:
+            prefix = path.rstrip("/") + "/"
+            names = [
+                key[len(prefix) :]
+                for key in files
+                if key.startswith(prefix) and "/" not in key[len(prefix) :]
+            ]
+            if names:
+                return names
+            raise FileNotFoundError(path)
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        lambda: _FakeManager(),
+    )
+    found = scan_artifacts(
+        sandbox_id=uuid4(), session_id=uuid4(), producer_node="plan"
+    )
+    assert found["outputs/PLAN.md"].summary == "(binary)"
+    assert found["outputs/mcp/hit.bin"].summary == "(binary)"
+    dumped = {path: record.model_dump(mode="json") for path, record in found.items()}
+    assert "\\u0000" not in str(strip_postgres_json_nuls(dumped))
+
+
+def test_persist_state_strips_nul_from_job_state() -> None:
+    from types import SimpleNamespace
+
+    from onyx.server.features.build.jobs.graph import compile_graph
+    from onyx.server.features.build.jobs.kernel import persist_state
+
+    job = SimpleNamespace(
+        state={},
+        phases=[],
+        current_phase_index=0,
+        domain="general",
+    )
+    state = apply_writes(
+        empty_state(),
+        {
+            "goal": "goal\x00x",
+            "cursor": ["plan"],
+            "graph": compile_graph().to_snapshot(),
+            "artifacts": {
+                "outputs/a.md": {
+                    "path": "outputs/a.md",
+                    "producer_node": "plan",
+                    "summary": "keep\x00nul",
+                }
+            },
+        },
+    )
+    persist_state(job, state)
+    assert job.state["goal"] == "goalx"
+    assert job.state["artifacts"]["outputs/a.md"]["summary"] == "keepnul"
+    assert "\x00" not in str(job.state)
 
 
 def test_artifact_and_citation_merge() -> None:
