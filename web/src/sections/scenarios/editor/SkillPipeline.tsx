@@ -28,9 +28,9 @@ import {
   Text,
   Tooltip,
 } from "@opal/components";
-import { Content } from "@opal/layouts";
 import { SvgHandle, SvgPlus, SvgTrash } from "@opal/icons";
 import { cn } from "@opal/utils";
+import EditorSection from "@/sections/scenarios/editor/EditorSection";
 import type { SkillOption } from "@/sections/scenarios/editor/types";
 
 interface SkillPipelineProps {
@@ -68,7 +68,7 @@ function SortableSkillRow({
       }}
       data-testid={`SkillPipeline/row-${skill.key}`}
       className={cn(
-        "flex items-center gap-2 rounded-08 border border-border-01 bg-background-neutral-00 px-2 py-1.5",
+        "flex items-center gap-2 rounded-08 border border-border-01 bg-background-neutral-00 px-3 py-2",
         isDragging && "z-10 shadow-md"
       )}
     >
@@ -165,14 +165,10 @@ export default function SkillPipeline({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <Content
-          title={t("pipeline.title")}
-          description={t("pipeline.count.label", { count: traySkills.length })}
-          sizePreset="main-content"
-          variant="section"
-        />
+    <EditorSection
+      title={t("sections.pipeline.title")}
+      description={t("sections.pipeline.description")}
+      action={
         <Popover
           open={open}
           onOpenChange={(next) => {
@@ -217,12 +213,20 @@ export default function SkillPipeline({
                           <Text font="main-ui-body" nowrap>
                             {skill.name}
                           </Text>
-                          <Text font="secondary-body" color="text-03" maxLines={1}>
+                          <Text
+                            font="secondary-body"
+                            color="text-03"
+                            maxLines={1}
+                          >
                             {skill.description}
                           </Text>
                         </div>
                         {added ? (
-                          <Tag size="sm" color="gray" title={t("pipeline.added.label")} />
+                          <Tag
+                            size="sm"
+                            color="gray"
+                            title={t("pipeline.added.label")}
+                          />
                         ) : (
                           <Button
                             size="sm"
@@ -241,10 +245,10 @@ export default function SkillPipeline({
             </div>
           </Popover.Content>
         </Popover>
-      </div>
-
+      }
+    >
       {traySkills.length === 0 ? (
-        <div className="flex min-h-40 flex-1 items-center justify-center rounded-12 border border-dashed border-border-02 px-4 text-center">
+        <div className="flex min-h-24 items-center justify-center rounded-12 border border-dashed border-border-02 px-4 py-6 text-center">
           <Text color="text-03">{t("pipeline.empty.text")}</Text>
         </div>
       ) : (
@@ -254,8 +258,11 @@ export default function SkillPipeline({
           modifiers={[restrictToVerticalAxis]}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={skillKeys} strategy={verticalListSortingStrategy}>
-            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+          <SortableContext
+            items={skillKeys}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col gap-2">
               {traySkills.map((skill, index) => (
                 <SortableSkillRow
                   key={skill.key}
@@ -276,6 +283,6 @@ export default function SkillPipeline({
           </SortableContext>
         </DndContext>
       )}
-    </div>
+    </EditorSection>
   );
 }

@@ -3,6 +3,8 @@ import {
   isBuiltinScenarioDomain,
   isUncategorizedDomain,
   normalizeScenarioDomain,
+  renderPlaybookSection,
+  renderScenarioProtocolPreview,
   scenarioDomain,
   type Scenario,
 } from "@/lib/scenarios/types";
@@ -44,5 +46,52 @@ describe("scenario domain helpers", () => {
         pack("制造业"),
       ])
     ).toEqual(["制造业", "新能源"]);
+  });
+});
+
+describe("scenario protocol preview", () => {
+  it("matches Craft SCENARIO.md playbook sections", () => {
+    const extraId = "skill-patent";
+    const preview = renderScenarioProtocolPreview({
+      name: "Due diligence",
+      description: "Tax pack",
+      skillNames: ["Alpha skill"],
+      reportTemplate: "compliance_risk",
+      skillLabels: { [extraId]: "Patent search" },
+      rules: {
+        domain: "tax",
+        objective: "Cite the filing.",
+        required_inputs: ["entity"],
+        conditional: [
+          {
+            if: { query_contains_any: ["专利", "patent"] },
+            add_skill_ids: [extraId],
+          },
+        ],
+      },
+    });
+    expect(preview).toContain("Use only these skills unless the user asks otherwise:");
+    expect(preview).toContain("## Domain");
+    expect(preview).toContain("tax");
+    expect(preview).toContain("## Extra skills");
+    expect(preview).toContain(
+      "If the query contains `专利` or `patent`, add `Patent search`"
+    );
+    expect(preview).toContain("Preferred report template: `compliance_risk`");
+    expect(preview).not.toContain("## Skills");
+  });
+
+  it("renders intent-only extra skills", () => {
+    const lines = renderPlaybookSection(
+      {
+        conditional: [
+          { if: { intent: "enforcement" }, add_skill_slugs: ["legal-review"] },
+        ],
+      },
+      { "legal-review": "Legal review" }
+    );
+    expect(lines.join("\n")).toContain(
+      "If the intent is `enforcement`, add `Legal review`"
+    );
   });
 });

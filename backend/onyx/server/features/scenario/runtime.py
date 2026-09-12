@@ -1,3 +1,4 @@
+from typing import Protocol
 from uuid import UUID
 
 from sqlalchemy import select
@@ -21,40 +22,138 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 
+class _WorkspaceWriter(Protocol):
+    def write_sandbox_file(
+        self, sandbox_id: UUID, path: str, content: str
+    ) -> None: ...
+
+
+def _scenario_header(name: str, description: str) -> list[str]:
+    return [
+        f"# Scenario: {name}",
+        "",
+        description or "",
+        "",
+        "Use only these skills unless the user asks otherwise:",
+        "",
+    ]
+
+
 def render_scenario_markdown(scenario: Scenario, query: str | None = None) -> str:
     skill_ids = resolve_scenario_skill_ids(scenario, query)
-    lines = [
-        f"# Scenario: {scenario.name}",
-        "",
-        scenario.description or "",
-        "",
-        "Use only the skills listed below for this session, unless the user asks otherwise.",
-        "",
-        "## Skills",
-    ]
+    lines = _scenario_header(scenario.name, scenario.description or "")
     if skill_ids:
         lines.extend(f"- `{skill_id}`" for skill_id in skill_ids)
     else:
         lines.append("- (no skills bound)")
     lines.extend(render_playbook_section(scenario.rules or {}))
     if scenario.report_template:
-        lines.extend(["", f"Report template: `{scenario.report_template}`"])
+        lines.extend(["", f"Preferred report template: `{scenario.report_template}`"])
     return "\n".join(lines).strip() + "\n"
 
 
-def skill_names_for_ids(db_session: Session, skill_ids: list[UUID]) -> list[str]:
+def skill_name_map(db_session: Session, skill_ids: list[UUID]) -> dict[str, str]:
     if not skill_ids:
-        return []
+        return {}
     rows = db_session.scalars(select(Skill).where(Skill.id.in_(skill_ids))).all()
-    by_id = {row.id: row.name for row in rows}
-    return [by_id[skill_id] for skill_id in skill_ids if skill_id in by_id]
+    return {str(row.id): row.name for row in rows}
 
 
-def render_playbook_section(rules: dict[str, object] | None) -> list[str]:
-    """Render the documented playbook keys. Skip runtime-only fields."""
+def skill_names_for_ids(db_session: Session, skill_ids: list[UUID]) -> list[str]:
+    labels = skill_name_map(db_session, skill_ids)
+    return [labels[str(skill_id)] for skill_id in skill_ids if str(skill_id) in labels]
+
+
+def _skill_label(raw: object, labels: dict[str, str] | None) -> str:
+    key = str(raw).strip()
+    if not key:
+        return ""
+    if labels and key in labels:
+        return labels[key]
+    return key
+
+
+def _conditional_skill_ids(rules: dict[str, object]) -> list[UUID]:
+    raw = rules.get("conditional")
+    if not isinstance(raw, list):
+        return []
+    skill_ids: list[UUID] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        values = item.get("add_skill_ids")
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            try:
+                skill_ids.append(UUID(str(value)))
+            except ValueError:
+                continue
+    return skill_ids
+
+
+def _render_extra_skill_rules(
+    rules: dict[str, object],
+    skill_labels: dict[str, str] | None,
+) -> list[str]:
+    raw = rules.get("conditional")
+    if not isinstance(raw, list) or not raw:
+        return []
+    lines: list[str] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        matcher = item.get("if")
+        if not isinstance(matcher, dict):
+            matcher = {}
+        needles_raw = matcher.get("query_contains_any")
+        needles = (
+            [str(needle).strip() for needle in needles_raw if str(needle).strip()]
+            if isinstance(needles_raw, list)
+            else []
+        )
+        intent_raw = matcher.get("intent")
+        intent = str(intent_raw).strip() if isinstance(intent_raw, str) else ""
+        refs: list[str] = []
+        for key in ("add_skill_ids", "add_skill_slugs"):
+            values = item.get(key)
+            if not isinstance(values, list):
+                continue
+            for value in values:
+                label = _skill_label(value, skill_labels)
+                if label:
+                    refs.append(label)
+        if not refs or (not needles and not intent):
+            continue
+        skill_text = ", ".join(f"`{ref}`" for ref in refs)
+        if needles and intent:
+            needle_text = " or ".join(f"`{needle}`" for needle in needles)
+            lines.append(
+                f"- If the query contains {needle_text} or the intent is "
+                f"`{intent}`, add {skill_text}"
+            )
+        elif needles:
+            needle_text = " or ".join(f"`{needle}`" for needle in needles)
+            lines.append(f"- If the query contains {needle_text}, add {skill_text}")
+        else:
+            lines.append(f"- If the intent is `{intent}`, add {skill_text}")
+    if not lines:
+        return []
+    return ["", "## Extra skills", ""] + lines
+
+
+def render_playbook_section(
+    rules: dict[str, object] | None,
+    skill_labels: dict[str, str] | None = None,
+) -> list[str]:
+    """Render documented playbook keys for SCENARIO.md and the editor preview."""
     if not rules:
         return []
     lines: list[str] = []
+    domain = rules.get("domain")
+    if isinstance(domain, str) and domain.strip():
+        lines.extend(["", "## Domain", "", domain.strip()])
+
     objective = rules.get("objective")
     if isinstance(objective, str) and objective.strip():
         lines.extend(["", "## Objective", "", objective.strip()])
@@ -63,6 +162,8 @@ def render_playbook_section(rules: dict[str, object] | None) -> list[str]:
     if isinstance(inputs, list) and inputs:
         lines.extend(["", "## Required inputs", ""])
         lines.extend(f"- {item}" for item in inputs if str(item).strip())
+
+    lines.extend(_render_extra_skill_rules(rules, skill_labels))
 
     phases = rules.get("phases")
     if isinstance(phases, list) and phases:
@@ -189,27 +290,68 @@ def render_report_template_section(template: ReportTemplate) -> list[str]:
 def render_scenario_markdown_named(
     db_session: Session, scenario: Scenario, query: str | None = None
 ) -> str:
+    rules = scenario.rules or {}
     skill_ids = resolve_scenario_skill_ids(scenario, query)
-    names = skill_names_for_ids(db_session, skill_ids)
-    lines = [
-        f"# Scenario: {scenario.name}",
-        "",
-        scenario.description or "",
-        "",
-        "Use only these skills unless the user asks otherwise:",
-        "",
-    ]
+    label_ids = list(dict.fromkeys(skill_ids + _conditional_skill_ids(rules)))
+    labels = skill_name_map(db_session, label_ids)
+    names = [labels[str(skill_id)] for skill_id in skill_ids if str(skill_id) in labels]
+    lines = _scenario_header(scenario.name, scenario.description or "")
     if names:
         lines.extend(f"- {name}" for name in names)
     else:
         lines.append("- (no skills bound)")
-    lines.extend(render_playbook_section(scenario.rules or {}))
+    lines.extend(render_playbook_section(rules, labels))
     if scenario.report_template:
         lines.extend(["", f"Preferred report template: `{scenario.report_template}`"])
         template = get_report_template_by_slug(db_session, scenario.report_template)
         if template is not None:
             lines.extend(render_report_template_section(template))
     return "\n".join(lines).strip() + "\n"
+
+
+def merge_skill_id_strings(*groups: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for group in groups:
+        for raw in group:
+            text = raw.strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            ordered.append(text)
+    return ordered
+
+
+def apply_scenario_to_turn(
+    db_session: Session,
+    *,
+    scenario_id: UUID,
+    user: User,
+    query: str,
+    selected_skill_ids: list[str],
+    sandbox_manager: _WorkspaceWriter | None = None,
+    sandbox_id: UUID | None = None,
+    session_id: UUID | None = None,
+) -> list[str]:
+    """Merge resolved scenario skills and rewrite SCENARIO.md for this prompt."""
+    scenario = get_scenario_for_user(db_session, scenario_id, user)
+    resolved = [str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, query)]
+    merged = merge_skill_id_strings(resolved, selected_skill_ids)
+    if (
+        sandbox_manager is not None
+        and sandbox_id is not None
+        and session_id is not None
+    ):
+        try:
+            content = render_scenario_markdown_named(db_session, scenario, query)
+            sandbox_manager.write_sandbox_file(
+                sandbox_id, f"sessions/{session_id}/SCENARIO.md", content
+            )
+        except Exception:
+            logger.exception(
+                "Failed to rewrite SCENARIO.md for session %s", session_id
+            )
+    return merged
 
 
 def write_scenario_md_to_session(
@@ -219,13 +361,17 @@ def write_scenario_md_to_session(
     session_id: UUID,
     scenario_id: UUID,
     user: User,
+    query: str | None = None,
+    *,
+    push_template: bool = True,
 ) -> None:
     scenario = get_scenario_for_user(db_session, scenario_id, user)
-    content = render_scenario_markdown_named(db_session, scenario)
+    content = render_scenario_markdown_named(db_session, scenario, query)
     sandbox_manager.write_sandbox_file(
         sandbox_id, f"sessions/{session_id}/SCENARIO.md", content
     )
-    _push_scenario_report_template(db_session, sandbox_manager, sandbox_id, scenario)
+    if push_template:
+        _push_scenario_report_template(db_session, sandbox_manager, sandbox_id, scenario)
 
 
 def _push_scenario_report_template(

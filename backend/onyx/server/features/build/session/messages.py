@@ -39,6 +39,7 @@ from onyx.server.features.build.interactive_turns.state import (
     get_active_turn,
     get_turn_for_request,
 )
+from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.sandbox.models import PromptAttachment
 from onyx.server.features.build.session.llm_config import GatewaySelection
 from onyx.server.features.build.session.manager import SessionManager
@@ -50,6 +51,7 @@ from onyx.server.features.build.session.models import (
     MessageResponse,
     SubagentMessageRequest,
 )
+from onyx.server.features.scenario.runtime import apply_scenario_to_turn
 from onyx.server.query_and_chat.token_limit import check_token_rate_limits
 from onyx.utils.logger import setup_logger
 
@@ -179,6 +181,21 @@ def send_message(
             ):
                 prompt_attachments = []
 
+        selected_skill_ids = request.selected_skill_ids
+        if session.scenario_id is not None:
+            selected_skill_ids = apply_scenario_to_turn(
+                db_session,
+                scenario_id=session.scenario_id,
+                user=user,
+                query=request.content,
+                selected_skill_ids=request.selected_skill_ids,
+                sandbox_manager=(
+                    get_sandbox_manager() if sandbox is not None else None
+                ),
+                sandbox_id=sandbox.id if sandbox is not None else None,
+                session_id=session_id,
+            )
+
         turn = create_interactive_turn(
             cache=cache,
             session_id=session_id,
@@ -187,7 +204,7 @@ def send_message(
             prompt=request.content,
             turn_index=turn_index,
             attachments=prompt_attachments,
-            selected_skill_ids=request.selected_skill_ids,
+            selected_skill_ids=selected_skill_ids,
             selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
 

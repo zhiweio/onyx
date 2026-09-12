@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "Aperçu"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# compétence} other {# compétences}}",
+          "extras": "{count, plural, one {# règle extra} other {# règles extra}}",
+          "noTemplate": "Aucun modèle"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "Aucun domaine correspondant. Saisissez un nom pour en créer un."
+          },
+          "tax": {
+            "description": "Fiscalité, finance et déclarations"
+          },
+          "biomed": {
+            "description": "Clinique, CMC et recherche"
+          },
+          "custom": {
+            "description": "Votre propre nom de domaine"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "Rechercher des modèles..."
         },
         "none": {
-          "label": "Aucun"
+          "label": "Aucun",
+          "title": "Aucun modèle",
+          "description": "L’agent rédige le rapport sans fichier lié."
         },
         "empty": {
           "text": "Aucun modèle correspondant."
+        },
+        "choose": {
+          "label": "Choisir un autre modèle"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "Retirer la condition"
+        },
+        "rule": {
+          "if": "Si la requête contient",
+          "or": "ou l’intention est",
+          "add": "ajouter"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "Clé de domaine facultative"
         },
         "objective": {
-          "title": "Objectif",
+          "title": "Que cela doit-il produire",
           "placeholder": "Ce qu’une exécution réussie produit"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "Phases",
           "id": {
-            "placeholder": "Id de phase"
+            "placeholder": "Id de phase",
+            "title": "Id de phase"
           },
           "doneWhen": {
-            "placeholder": "Terminé lorsque"
+            "placeholder": "Terminé lorsque",
+            "title": "Terminé lorsque"
           },
           "add": {
             "label": "Ajouter une phase"
-          }
+          },
+          "fold": "Phases ({count})"
         },
         "deliverables": {
           "title": "Livrables",
           "placeholder": "Fichier ou artefact de sortie",
           "add": {
             "label": "Ajouter un livrable"
-          }
+          },
+          "fold": "Livrables ({count})"
         },
         "gates": {
           "title": "Contrôles qualité",
           "placeholder": "Vérification avant clôture",
           "add": {
             "label": "Ajouter un contrôle"
-          }
+          },
+          "fold": "Contrôles qualité ({count})"
         },
         "refusals": {
           "title": "Règles de refus",
           "placeholder": "Quand l’agent doit s’arrêter",
           "add": {
             "label": "Ajouter une règle"
-          }
+          },
+          "fold": "Règles de refus ({count})"
         },
         "remove": {
           "ariaLabel": "Retirer l’élément"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "Scénario du catalogue enregistré"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "Identité",
+          "description": "Nommez le pack et dites à quoi il sert."
+        },
+        "brief": {
+          "title": "Brief",
+          "description": "Ce qu’une exécution réussie produit, et ce que l’agent doit collecter."
+        },
+        "pipeline": {
+          "title": "Compétences",
+          "description": "Ces compétences s’exécutent à chaque fois, dans cet ordre."
+        },
+        "conditional": {
+          "title": "Compétences extra",
+          "description": "Ajoutez une compétence seulement si la requête correspond."
+        },
+        "output": {
+          "title": "Sortie",
+          "description": "Modèle de rapport facultatif pour le fichier final."
+        },
+        "advanced": {
+          "title": "Avancé",
+          "description": "Phases, livrables, contrôles qualité et règles de refus."
+        },
+        "preview": {
+          "title": "Ce que l’agent lit",
+          "description": "Le texte de protocole envoyé au début d’une exécution."
         }
       }
     },

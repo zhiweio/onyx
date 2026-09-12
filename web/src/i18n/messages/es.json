@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "Vista previa"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# habilidad} other {# habilidades}}",
+          "extras": "{count, plural, one {# regla extra} other {# reglas extra}}",
+          "noTemplate": "Sin plantilla"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "No hay dominios coincidentes. Escribe un nombre para crear uno."
+          },
+          "tax": {
+            "description": "Impuestos, finanzas y declaraciones"
+          },
+          "biomed": {
+            "description": "Clínica, CMC e investigación"
+          },
+          "custom": {
+            "description": "Tu propio nombre de dominio"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "Buscar plantillas..."
         },
         "none": {
-          "label": "Ninguna"
+          "label": "Ninguna",
+          "title": "Sin plantilla",
+          "description": "El agente escribe el informe sin un archivo vinculado."
         },
         "empty": {
           "text": "No hay plantillas coincidentes."
+        },
+        "choose": {
+          "label": "Elegir otra plantilla"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "Quitar condición"
+        },
+        "rule": {
+          "if": "Si la consulta contiene",
+          "or": "o la intención es",
+          "add": "añadir"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "Clave de dominio opcional"
         },
         "objective": {
-          "title": "Objetivo",
+          "title": "Qué debe producir esto",
           "placeholder": "Qué produce una ejecución correcta"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "Fases",
           "id": {
-            "placeholder": "Id de fase"
+            "placeholder": "Id de fase",
+            "title": "Id de fase"
           },
           "doneWhen": {
-            "placeholder": "Hecho cuando"
+            "placeholder": "Hecho cuando",
+            "title": "Listo cuando"
           },
           "add": {
             "label": "Añadir fase"
-          }
+          },
+          "fold": "Fases ({count})"
         },
         "deliverables": {
           "title": "Entregables",
           "placeholder": "Archivo o artefacto de salida",
           "add": {
             "label": "Añadir entregable"
-          }
+          },
+          "fold": "Entregables ({count})"
         },
         "gates": {
           "title": "Controles de calidad",
           "placeholder": "Comprobación antes de cerrar",
           "add": {
             "label": "Añadir control"
-          }
+          },
+          "fold": "Controles de calidad ({count})"
         },
         "refusals": {
           "title": "Reglas de rechazo",
           "placeholder": "Cuándo debe detenerse el agente",
           "add": {
             "label": "Añadir regla"
-          }
+          },
+          "fold": "Reglas de rechazo ({count})"
         },
         "remove": {
           "ariaLabel": "Quitar elemento"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "Escenario del catálogo guardado"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "Identidad",
+          "description": "Nombra el paquete y di para qué sirve."
+        },
+        "brief": {
+          "title": "Resumen",
+          "description": "Qué produce una ejecución correcta y qué debe recoger el agente."
+        },
+        "pipeline": {
+          "title": "Habilidades",
+          "description": "Estas habilidades se ejecutan siempre, en este orden."
+        },
+        "conditional": {
+          "title": "Habilidades extra",
+          "description": "Añade una habilidad solo si la consulta coincide."
+        },
+        "output": {
+          "title": "Salida",
+          "description": "Plantilla de informe opcional para el archivo final."
+        },
+        "advanced": {
+          "title": "Avanzado",
+          "description": "Fases, entregables, controles de calidad y reglas de rechazo."
+        },
+        "preview": {
+          "title": "Lo que lee el agente",
+          "description": "El texto de protocolo enviado al iniciar una ejecución."
         }
       }
     },

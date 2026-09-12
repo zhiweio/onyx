@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "Vorschau"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# Skill} other {# Skills}}",
+          "extras": "{count, plural, one {# Extra-Regel} other {# Extra-Regeln}}",
+          "noTemplate": "Keine Vorlage"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "Keine passenden Domänen. Geben Sie einen Namen ein, um eine zu erstellen."
+          },
+          "tax": {
+            "description": "Steuern, Finanzen und Meldungen"
+          },
+          "biomed": {
+            "description": "Klinik, CMC und Forschung"
+          },
+          "custom": {
+            "description": "Eigener Domänenname"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "Vorlagen suchen..."
         },
         "none": {
-          "label": "Keine"
+          "label": "Keine",
+          "title": "Keine Vorlage",
+          "description": "Der Agent schreibt den Bericht ohne gebundene Datei."
         },
         "empty": {
           "text": "Keine passenden Vorlagen."
+        },
+        "choose": {
+          "label": "Andere Vorlage wählen"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "Bedingung entfernen"
+        },
+        "rule": {
+          "if": "Wenn die Anfrage enthält",
+          "or": "oder die Absicht ist",
+          "add": "hinzufügen"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "Optionale Domänenschlüssel"
         },
         "objective": {
-          "title": "Ziel",
+          "title": "Was soll das erzeugen",
           "placeholder": "Was ein erfolgreicher Lauf erzeugt"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "Phasen",
           "id": {
-            "placeholder": "Phasen-ID"
+            "placeholder": "Phasen-ID",
+            "title": "Phasen-ID"
           },
           "doneWhen": {
-            "placeholder": "Fertig, wenn"
+            "placeholder": "Fertig, wenn",
+            "title": "Fertig wenn"
           },
           "add": {
             "label": "Phase hinzufügen"
-          }
+          },
+          "fold": "Phasen ({count})"
         },
         "deliverables": {
           "title": "Liefergegenstände",
           "placeholder": "Ausgabedatei oder Artefakt",
           "add": {
             "label": "Liefergegenstand hinzufügen"
-          }
+          },
+          "fold": "Lieferergebnisse ({count})"
         },
         "gates": {
           "title": "Qualitätsprüfungen",
           "placeholder": "Prüfung vor dem Abschluss",
           "add": {
             "label": "Prüfung hinzufügen"
-          }
+          },
+          "fold": "Qualitätsregeln ({count})"
         },
         "refusals": {
           "title": "Ablehnungsregeln",
           "placeholder": "Wann der Agent stoppen muss",
           "add": {
             "label": "Regel hinzufügen"
-          }
+          },
+          "fold": "Ablehnungsregeln ({count})"
         },
         "remove": {
           "ariaLabel": "Element entfernen"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "Katalogszenario gespeichert"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "Identität",
+          "description": "Benenne das Paket und sage, wofür es da ist."
+        },
+        "brief": {
+          "title": "Briefing",
+          "description": "Was ein erfolgreicher Lauf erzeugt und was der Agent sammeln muss."
+        },
+        "pipeline": {
+          "title": "Skills",
+          "description": "Diese Skills laufen jedes Mal in dieser Reihenfolge."
+        },
+        "conditional": {
+          "title": "Extra-Skills",
+          "description": "Füge einen Skill nur hinzu, wenn die Anfrage passt."
+        },
+        "output": {
+          "title": "Ausgabe",
+          "description": "Optionale Berichtsvorlage für die Enddatei."
+        },
+        "advanced": {
+          "title": "Erweitert",
+          "description": "Phasen, Lieferergebnisse, Qualitätsregeln und Ablehnungsregeln."
+        },
+        "preview": {
+          "title": "Was der Agent liest",
+          "description": "Der Protokolltext, der zu Laufbeginn gesendet wird."
         }
       }
     },

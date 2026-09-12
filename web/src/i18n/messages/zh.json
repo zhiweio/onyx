@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "预览"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# 个技能} other {# 个技能}}",
+          "extras": "{count, plural, one {# 条附加规则} other {# 条附加规则}}",
+          "noTemplate": "无模板"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "没有匹配的领域。输入名称即可创建。"
+          },
+          "tax": {
+            "description": "税务、财务与申报"
+          },
+          "biomed": {
+            "description": "临床、CMC 与研究"
+          },
+          "custom": {
+            "description": "自定义领域名称"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "搜索模板..."
         },
         "none": {
-          "label": "无"
+          "label": "无",
+          "title": "无模板",
+          "description": "智能体在没有绑定文件的情况下撰写报告。"
         },
         "empty": {
           "text": "没有匹配的模板。"
+        },
+        "choose": {
+          "label": "选择其他模板"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "移除条件"
+        },
+        "rule": {
+          "if": "如果提问包含",
+          "or": "或意图为",
+          "add": "则添加"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "可选领域键"
         },
         "objective": {
-          "title": "目标",
+          "title": "这次应产出什么",
           "placeholder": "一次成功运行应产出什么"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "阶段",
           "id": {
-            "placeholder": "阶段标识"
+            "placeholder": "阶段标识",
+            "title": "阶段标识"
           },
           "doneWhen": {
-            "placeholder": "完成条件"
+            "placeholder": "完成条件",
+            "title": "完成条件"
           },
           "add": {
             "label": "添加阶段"
-          }
+          },
+          "fold": "阶段（{count}）"
         },
         "deliverables": {
           "title": "交付物",
           "placeholder": "输出文件或产物",
           "add": {
             "label": "添加交付物"
-          }
+          },
+          "fold": "交付物（{count}）"
         },
         "gates": {
           "title": "质量门禁",
           "placeholder": "结束前的检查",
           "add": {
             "label": "添加门禁"
-          }
+          },
+          "fold": "质量门（{count}）"
         },
         "refusals": {
           "title": "拒绝规则",
           "placeholder": "智能体必须停止的情况",
           "add": {
             "label": "添加规则"
-          }
+          },
+          "fold": "拒绝规则（{count}）"
         },
         "remove": {
           "ariaLabel": "移除项"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "目录场景已保存"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "身份",
+          "description": "给方案命名，并说明它做什么。"
+        },
+        "brief": {
+          "title": "简报",
+          "description": "一次成功运行应产出什么，以及智能体必须收集哪些信息。"
+        },
+        "pipeline": {
+          "title": "技能",
+          "description": "这些技能每次都会按此顺序运行。"
+        },
+        "conditional": {
+          "title": "附加技能",
+          "description": "仅在用户提问匹配时再加入技能。"
+        },
+        "output": {
+          "title": "输出",
+          "description": "可选的报告模板，用于最终文件。"
+        },
+        "advanced": {
+          "title": "高级",
+          "description": "阶段、交付物、质量门和拒绝规则。"
+        },
+        "preview": {
+          "title": "智能体将读取的内容",
+          "description": "运行开始时发送的协议文本。"
         }
       }
     },

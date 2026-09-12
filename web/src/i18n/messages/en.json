@@ -12970,6 +12970,41 @@
         },
         "preview": {
           "label": "Preview"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# skill} other {# skills}}",
+          "extras": "{count, plural, one {# extra rule} other {# extra rules}}",
+          "noTemplate": "No template"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "Identity",
+          "description": "Name the pack and say what it is for."
+        },
+        "brief": {
+          "title": "Brief",
+          "description": "What a successful run produces, and what the agent must collect."
+        },
+        "pipeline": {
+          "title": "Skills",
+          "description": "These skills run every time, in this order."
+        },
+        "conditional": {
+          "title": "Extra skills",
+          "description": "Add a skill only when the user query matches."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Optional report template for the final file."
+        },
+        "advanced": {
+          "title": "Advanced",
+          "description": "Phases, deliverables, quality gates, and refusal rules."
+        },
+        "preview": {
+          "title": "What the agent reads",
+          "description": "The protocol text sent at the start of a run."
         }
       },
       "error": {
@@ -13009,6 +13044,15 @@
           },
           "empty": {
             "text": "No matching domains. Type a name to create one."
+          },
+          "tax": {
+            "description": "Tax, finance, and filings"
+          },
+          "biomed": {
+            "description": "Clinical, CMC, and research"
+          },
+          "custom": {
+            "description": "Your own domain name"
           }
         },
         "category": {
@@ -13032,7 +13076,12 @@
           "placeholder": "Search templates..."
         },
         "none": {
-          "label": "None"
+          "label": "None",
+          "title": "No template",
+          "description": "The agent writes the report without a bound file."
+        },
+        "choose": {
+          "label": "Choose another template"
         },
         "empty": {
           "text": "No matching templates."
@@ -13084,6 +13133,11 @@
         },
         "remove": {
           "ariaLabel": "Remove condition"
+        },
+        "rule": {
+          "if": "If the query contains",
+          "or": "or intent is",
+          "add": "add"
         }
       },
       "playbook": {
@@ -13093,7 +13147,7 @@
           "placeholder": "Optional domain key"
         },
         "objective": {
-          "title": "Objective",
+          "title": "What should this produce",
           "placeholder": "What a successful run produces"
         },
         "inputs": {
@@ -13105,10 +13159,13 @@
         },
         "phases": {
           "title": "Phases",
+          "fold": "Phases ({count})",
           "id": {
+            "title": "Phase id",
             "placeholder": "Phase id"
           },
           "doneWhen": {
+            "title": "Done when",
             "placeholder": "Done when"
           },
           "add": {
@@ -13117,6 +13174,7 @@
         },
         "deliverables": {
           "title": "Deliverables",
+          "fold": "Deliverables ({count})",
           "placeholder": "Output file or artifact",
           "add": {
             "label": "Add deliverable"
@@ -13124,6 +13182,7 @@
         },
         "gates": {
           "title": "Quality gates",
+          "fold": "Quality gates ({count})",
           "placeholder": "Check before close",
           "add": {
             "label": "Add gate"
@@ -13131,6 +13190,7 @@
         },
         "refusals": {
           "title": "Refusal rules",
+          "fold": "Refusal rules ({count})",
           "placeholder": "When the agent must stop",
           "add": {
             "label": "Add rule"

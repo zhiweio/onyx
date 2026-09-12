@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "プレビュー"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# 件のスキル} other {# 件のスキル}}",
+          "extras": "{count, plural, one {# 件の追加ルール} other {# 件の追加ルール}}",
+          "noTemplate": "テンプレートなし"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "一致するドメインがありません。名前を入力して作成してください。"
+          },
+          "tax": {
+            "description": "税務・財務・申告"
+          },
+          "biomed": {
+            "description": "臨床、CMC、研究"
+          },
+          "custom": {
+            "description": "独自のドメイン名"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "テンプレートを検索..."
         },
         "none": {
-          "label": "なし"
+          "label": "なし",
+          "title": "テンプレートなし",
+          "description": "エージェントは紐づくファイルなしでレポートを書きます。"
         },
         "empty": {
           "text": "一致するテンプレートがありません。"
+        },
+        "choose": {
+          "label": "別のテンプレートを選ぶ"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "条件を削除"
+        },
+        "rule": {
+          "if": "質問に含まれる場合",
+          "or": "または意図が",
+          "add": "追加"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "任意のドメインキー"
         },
         "objective": {
-          "title": "目的",
+          "title": "何を生み出すか",
           "placeholder": "成功した実行が出力するもの"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "フェーズ",
           "id": {
-            "placeholder": "フェーズ ID"
+            "placeholder": "フェーズ ID",
+            "title": "フェーズ ID"
           },
           "doneWhen": {
-            "placeholder": "完了条件"
+            "placeholder": "完了条件",
+            "title": "完了条件"
           },
           "add": {
             "label": "フェーズを追加"
-          }
+          },
+          "fold": "フェーズ（{count}）"
         },
         "deliverables": {
           "title": "成果物",
           "placeholder": "出力ファイルまたは成果物",
           "add": {
             "label": "成果物を追加"
-          }
+          },
+          "fold": "成果物（{count}）"
         },
         "gates": {
           "title": "品質ゲート",
           "placeholder": "終了前の確認",
           "add": {
             "label": "ゲートを追加"
-          }
+          },
+          "fold": "品質ゲート（{count}）"
         },
         "refusals": {
           "title": "拒否ルール",
           "placeholder": "エージェントが停止すべき場合",
           "add": {
             "label": "ルールを追加"
-          }
+          },
+          "fold": "拒否ルール（{count}）"
         },
         "remove": {
           "ariaLabel": "項目を削除"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "カタログのシナリオを保存しました"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "基本情報",
+          "description": "パックに名前を付け、用途を書きます。"
+        },
+        "brief": {
+          "title": "ブリーフ",
+          "description": "成功時の成果と、エージェントが集める必須情報。"
+        },
+        "pipeline": {
+          "title": "スキル",
+          "description": "これらのスキルは毎回この順で実行されます。"
+        },
+        "conditional": {
+          "title": "追加スキル",
+          "description": "ユーザーの質問が一致したときだけスキルを追加します。"
+        },
+        "output": {
+          "title": "出力",
+          "description": "最終ファイル用の任意のレポートテンプレート。"
+        },
+        "advanced": {
+          "title": "詳細",
+          "description": "フェーズ、成果物、品質ゲート、拒否ルール。"
+        },
+        "preview": {
+          "title": "エージェントが読む内容",
+          "description": "実行開始時に送るプロトコル文。"
         }
       }
     },

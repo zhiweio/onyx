@@ -5231,6 +5231,7 @@ class Scenario(Base):
         Enum(ScenarioSharePermission, native_enum=False),
         nullable=True,
     )
+    # Playbook + runtime skill rules. Documented shape: ScenarioPlaybook.
     rules: Mapped[dict[str, Any]] = mapped_column(
         postgresql.JSONB(), nullable=False, default=dict
     )

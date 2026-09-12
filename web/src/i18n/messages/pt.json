@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "Pré-visualizar"
+        },
+        "summary": {
+          "skills": "{count, plural, one {# habilidade} other {# habilidades}}",
+          "extras": "{count, plural, one {# regra extra} other {# regras extra}}",
+          "noTemplate": "Sem modelo"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "Nenhum domínio correspondente. Escreva um nome para criar um."
+          },
+          "tax": {
+            "description": "Impostos, finanças e declarações"
+          },
+          "biomed": {
+            "description": "Clínica, CMC e pesquisa"
+          },
+          "custom": {
+            "description": "O seu próprio nome de domínio"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "Pesquisar modelos..."
         },
         "none": {
-          "label": "Nenhum"
+          "label": "Nenhum",
+          "title": "Sem modelo",
+          "description": "O agente escreve o relatório sem um ficheiro associado."
         },
         "empty": {
           "text": "Nenhum modelo correspondente."
+        },
+        "choose": {
+          "label": "Escolher outro modelo"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "Remover condição"
+        },
+        "rule": {
+          "if": "Se a consulta contém",
+          "or": "ou a intenção é",
+          "add": "adicionar"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "Chave de domínio opcional"
         },
         "objective": {
-          "title": "Objetivo",
+          "title": "O que isto deve produzir",
           "placeholder": "O que uma execução bem-sucedida produz"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "Fases",
           "id": {
-            "placeholder": "Id da fase"
+            "placeholder": "Id da fase",
+            "title": "Id da fase"
           },
           "doneWhen": {
-            "placeholder": "Concluído quando"
+            "placeholder": "Concluído quando",
+            "title": "Concluído quando"
           },
           "add": {
             "label": "Adicionar fase"
-          }
+          },
+          "fold": "Fases ({count})"
         },
         "deliverables": {
           "title": "Entregáveis",
           "placeholder": "Ficheiro ou artefacto de saída",
           "add": {
             "label": "Adicionar entregável"
-          }
+          },
+          "fold": "Entregas ({count})"
         },
         "gates": {
           "title": "Controlos de qualidade",
           "placeholder": "Verificação antes de fechar",
           "add": {
             "label": "Adicionar controlo"
-          }
+          },
+          "fold": "Portões de qualidade ({count})"
         },
         "refusals": {
           "title": "Regras de recusa",
           "placeholder": "Quando o agente deve parar",
           "add": {
             "label": "Adicionar regra"
-          }
+          },
+          "fold": "Regras de recusa ({count})"
         },
         "remove": {
           "ariaLabel": "Remover item"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "Cenário do catálogo guardado"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "Identidade",
+          "description": "Nomeie o pacote e diga para que serve."
+        },
+        "brief": {
+          "title": "Resumo",
+          "description": "O que uma execução bem-sucedida produz e o que o agente deve coletar."
+        },
+        "pipeline": {
+          "title": "Habilidades",
+          "description": "Estas habilidades são executadas sempre, nesta ordem."
+        },
+        "conditional": {
+          "title": "Habilidades extras",
+          "description": "Adicione uma habilidade só quando a consulta corresponder."
+        },
+        "output": {
+          "title": "Saída",
+          "description": "Modelo de relatório opcional para o arquivo final."
+        },
+        "advanced": {
+          "title": "Avançado",
+          "description": "Fases, entregas, portões de qualidade e regras de recusa."
+        },
+        "preview": {
+          "title": "O que o agente lê",
+          "description": "O texto de protocolo enviado no início de uma execução."
         }
       }
     },

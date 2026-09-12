@@ -12964,6 +12964,11 @@
         },
         "preview": {
           "label": "미리보기"
+        },
+        "summary": {
+          "skills": "{count, plural, one {#개 스킬} other {#개 스킬}}",
+          "extras": "{count, plural, one {#개 추가 규칙} other {#개 추가 규칙}}",
+          "noTemplate": "템플릿 없음"
         }
       },
       "error": {
@@ -13003,6 +13008,15 @@
           },
           "empty": {
             "text": "일치하는 도메인이 없습니다. 이름을 입력해 만드세요."
+          },
+          "tax": {
+            "description": "세무, 재무, 신고"
+          },
+          "biomed": {
+            "description": "임상, CMC, 연구"
+          },
+          "custom": {
+            "description": "직접 정한 도메인 이름"
           }
         },
         "category": {
@@ -13026,10 +13040,15 @@
           "placeholder": "템플릿 검색..."
         },
         "none": {
-          "label": "없음"
+          "label": "없음",
+          "title": "템플릿 없음",
+          "description": "에이전트가 연결된 파일 없이 보고서를 작성합니다."
         },
         "empty": {
           "text": "일치하는 템플릿이 없습니다."
+        },
+        "choose": {
+          "label": "다른 템플릿 선택"
         }
       },
       "pipeline": {
@@ -13078,6 +13097,11 @@
         },
         "remove": {
           "ariaLabel": "조건 제거"
+        },
+        "rule": {
+          "if": "질의에 포함되면",
+          "or": "또는 의도가",
+          "add": "추가"
         }
       },
       "playbook": {
@@ -13087,7 +13111,7 @@
           "placeholder": "선택적 도메인 키"
         },
         "objective": {
-          "title": "목표",
+          "title": "이것이 만들어야 할 것",
           "placeholder": "성공한 실행이 만드는 결과"
         },
         "inputs": {
@@ -13100,35 +13124,41 @@
         "phases": {
           "title": "단계",
           "id": {
-            "placeholder": "단계 ID"
+            "placeholder": "단계 ID",
+            "title": "단계 ID"
           },
           "doneWhen": {
-            "placeholder": "완료 조건"
+            "placeholder": "완료 조건",
+            "title": "완료 조건"
           },
           "add": {
             "label": "단계 추가"
-          }
+          },
+          "fold": "단계 ({count})"
         },
         "deliverables": {
           "title": "산출물",
           "placeholder": "출력 파일 또는 산출물",
           "add": {
             "label": "산출물 추가"
-          }
+          },
+          "fold": "산출물 ({count})"
         },
         "gates": {
           "title": "품질 게이트",
           "placeholder": "종료 전 확인",
           "add": {
             "label": "게이트 추가"
-          }
+          },
+          "fold": "품질 게이트 ({count})"
         },
         "refusals": {
           "title": "거부 규칙",
           "placeholder": "에이전트가 멈춰야 하는 경우",
           "add": {
             "label": "규칙 추가"
-          }
+          },
+          "fold": "거부 규칙 ({count})"
         },
         "remove": {
           "ariaLabel": "항목 제거"
@@ -13177,6 +13207,36 @@
         },
         "catalogSaved": {
           "message": "카탈로그 시나리오가 저장되었습니다"
+        }
+      },
+      "sections": {
+        "identity": {
+          "title": "정체성",
+          "description": "팩 이름을 짓고 용도를 적습니다."
+        },
+        "brief": {
+          "title": "브리프",
+          "description": "성공한 실행이 만드는 것과 에이전트가 수집해야 할 정보."
+        },
+        "pipeline": {
+          "title": "스킬",
+          "description": "이 스킬은 매번 이 순서로 실행됩니다."
+        },
+        "conditional": {
+          "title": "추가 스킬",
+          "description": "사용자 질의가 맞을 때만 스킬을 추가합니다."
+        },
+        "output": {
+          "title": "출력",
+          "description": "최종 파일을 위한 선택 보고서 템플릿."
+        },
+        "advanced": {
+          "title": "고급",
+          "description": "단계, 산출물, 품질 게이트, 거부 규칙."
+        },
+        "preview": {
+          "title": "에이전트가 읽는 내용",
+          "description": "실행 시작 시 보내는 프로토콜 텍스트."
         }
       }
     },

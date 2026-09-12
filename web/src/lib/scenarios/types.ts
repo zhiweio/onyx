@@ -276,9 +276,58 @@ export function buildScenarioRules(input: {
   };
 }
 
-export function renderPlaybookSection(rules: ScenarioRules | undefined): string[] {
+function skillLabel(
+  raw: string,
+  labels?: Record<string, string>
+): string {
+  const key = raw.trim();
+  if (!key) return "";
+  return labels?.[key] ?? key;
+}
+
+function renderExtraSkillRules(
+  rules: ScenarioRules,
+  skillLabels?: Record<string, string>
+): string[] {
+  const items = rules.conditional;
+  if (!items || items.length === 0) return [];
+  const lines: string[] = [];
+  for (const item of items) {
+    const needles = (item.if.query_contains_any ?? [])
+      .map((needle) => needle.trim())
+      .filter(Boolean);
+    const intent = item.if.intent?.trim() ?? "";
+    const refs = [...(item.add_skill_ids ?? []), ...(item.add_skill_slugs ?? [])]
+      .map((ref) => skillLabel(ref, skillLabels))
+      .filter(Boolean);
+    if (refs.length === 0 || (needles.length === 0 && !intent)) continue;
+    const skillText = refs.map((ref) => `\`${ref}\``).join(", ");
+    if (needles.length > 0 && intent) {
+      const needleText = needles.map((needle) => `\`${needle}\``).join(" or ");
+      lines.push(
+        `- If the query contains ${needleText} or the intent is \`${intent}\`, add ${skillText}`
+      );
+    } else if (needles.length > 0) {
+      const needleText = needles.map((needle) => `\`${needle}\``).join(" or ");
+      lines.push(`- If the query contains ${needleText}, add ${skillText}`);
+    } else {
+      lines.push(`- If the intent is \`${intent}\`, add ${skillText}`);
+    }
+  }
+  if (lines.length === 0) return [];
+  return ["", "## Extra skills", "", ...lines];
+}
+
+export function renderPlaybookSection(
+  rules: ScenarioRules | undefined,
+  skillLabels?: Record<string, string>
+): string[] {
   if (!rules) return [];
   const lines: string[] = [];
+  const domain = rules.domain?.trim();
+  if (domain) {
+    lines.push("", "## Domain", "", domain);
+  }
   const objective = rules.objective?.trim();
   if (objective) {
     lines.push("", "## Objective", "", objective);
@@ -291,6 +340,7 @@ export function renderPlaybookSection(rules: ScenarioRules | undefined): string[
         .map((item) => `- ${item}`)
     );
   }
+  lines.push(...renderExtraSkillRules(rules, skillLabels));
   if (rules.phases && rules.phases.length > 0) {
     lines.push("", "## Phases", "");
     for (const phase of rules.phases) {
@@ -332,24 +382,24 @@ export function renderScenarioProtocolPreview(input: {
   skillNames: string[];
   reportTemplate: string | null;
   rules?: ScenarioRules;
+  skillLabels?: Record<string, string>;
 }): string {
   const lines = [
     `# Scenario: ${input.name || "…"}`,
     "",
     input.description,
     "",
-    "Use only the skills listed below for this session, unless the user asks otherwise.",
+    "Use only these skills unless the user asks otherwise:",
     "",
-    "## Skills",
   ];
   if (input.skillNames.length > 0) {
     lines.push(...input.skillNames.map((name) => `- ${name}`));
   } else {
     lines.push("- (no skills bound)");
   }
-  lines.push(...renderPlaybookSection(input.rules));
+  lines.push(...renderPlaybookSection(input.rules, input.skillLabels));
   if (input.reportTemplate) {
-    lines.push("", `Report template: \`${input.reportTemplate}\``);
+    lines.push("", `Preferred report template: \`${input.reportTemplate}\``);
   }
   return `${lines.join("\n").trim()}\n`;
 }

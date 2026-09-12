@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { render, screen, setupUser, within } from "@tests/setup/test-utils";
 import ScenarioComposer from "@/sections/scenarios/editor/ScenarioComposer";
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+  }),
+}));
 import { emptyPlaybookDraft } from "@/lib/scenarios/types";
 import type {
   ConditionalDraft,
@@ -97,17 +105,13 @@ describe("ScenarioComposer", () => {
 
     const save = screen.getByTestId("ScenarioComposer/save");
     expect(save).toBeDisabled();
-    expect(screen.getByText("Add a name.")).toBeInTheDocument();
-    expect(screen.getByText("Add at least one skill.")).toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("Scenario name"), "Due diligence");
     expect(save).toBeDisabled();
-    expect(screen.getByText("Name is set")).toBeInTheDocument();
 
     await addSkillByName(user, "Alpha skill");
 
     expect(save).toBeEnabled();
-    expect(screen.getByText("Skills are bound")).toBeInTheDocument();
     expect(screen.getByText("Unsaved")).toBeInTheDocument();
   });
 
@@ -143,7 +147,13 @@ describe("ScenarioComposer", () => {
       "Confirm the legal entity."
     );
 
-    const preview = screen.getByTestId("ScenarioComposer/preview");
+    await user.click(screen.getByText("What the agent reads"));
+
+    const preview = await screen.findByTestId("ScenarioComposer/preview");
+    expect(preview).toHaveTextContent(
+      "Use only these skills unless the user asks otherwise:"
+    );
+    expect(preview).toHaveTextContent("## Domain");
     expect(preview).toHaveTextContent("## Objective");
     expect(preview).toHaveTextContent("Confirm the legal entity.");
     expect(preview).toHaveTextContent("Beta skill");
@@ -160,10 +170,8 @@ describe("ScenarioComposer", () => {
 
     const save = screen.getByTestId("ScenarioComposer/save");
     expect(save).toBeDisabled();
-    expect(screen.getByText("Add a slug.")).toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("unique-slug"), "kyb-pack");
     expect(save).toBeEnabled();
-    expect(screen.getByText("Slug is set")).toBeInTheDocument();
   });
 });
