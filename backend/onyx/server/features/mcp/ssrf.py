@@ -27,16 +27,14 @@ def validate_mcp_outbound_url(url: str, *, resolve_dns: bool = True) -> str:
     guard re-validates with DNS on every fetch."""
     from urllib.parse import urlparse
 
-    from onyx.configs.app_configs import (
-        MCP_GATEWAY_BLOCKED_HOSTS,
-        MCP_GATEWAY_TRUSTED_HOSTS,
-    )
+    from onyx.configs.app_configs import MCP_GATEWAY_BLOCKED_HOSTS
+    from onyx.utils.outbound_hosts import is_trusted_infra_host
 
     host = (urlparse(url).hostname or "").lower()
     if host in {item.lower() for item in MCP_GATEWAY_BLOCKED_HOSTS}:
         raise SSRFException(f"Access to hostname '{host}' is not allowed.")
-    # Infra allow for the local gateway process only — not vendor MCP hosts.
-    if host in {item.lower() for item in MCP_GATEWAY_TRUSTED_HOSTS}:
+    # Local gateway plus operator search/crawler services (SearXNG, Firecrawl).
+    if is_trusted_infra_host(host):
         return url
     params = outbound_ssrf_params(get_security_settings().ssrf_protection_level)
     return validate_outbound_http_url(

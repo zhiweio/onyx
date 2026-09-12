@@ -99,6 +99,12 @@ services:
       # injection. Without it, /me requests pass through bare with the
       # placeholder bearer and api_server 403s.
       - ONYX_SERVER_URL=${ONYX_SERVER_URL:-http://onyx-craft-api:8080}
+      # Same default as api_server. The proxy must allow this host:port
+      # so Craft MCP tools can reach the gateway.
+      - MCP_GATEWAY_PUBLIC_URL=${MCP_GATEWAY_PUBLIC_URL:-http://mcp_gateway:8091}
+      # Local SearXNG / Firecrawl (and similar). These resolve to Docker or
+      # the host and must not be treated as unknown internal targets.
+      - WEB_SEARCH_SERVICE_HOSTS=${WEB_SEARCH_SERVICE_HOSTS:-searxng,firecrawl,host.docker.internal}
     volumes:
       - sandbox_proxy_ca:/var/lib/sandbox-proxy/ca
       # RO: the proxy only inspects (events watcher + initial sync).

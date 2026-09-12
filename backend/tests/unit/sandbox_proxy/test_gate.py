@@ -64,6 +64,13 @@ from tests.unit.sandbox_proxy.conftest import (
 
 
 @pytest.fixture(autouse=True)
+def _isolate_web_search_service_hosts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default WEB_SEARCH_SERVICE_HOSTS includes searxng/firecrawl. Keep
+    destination_is_blocked tests from inheriting that allowlist."""
+    monkeypatch.setattr("onyx.configs.app_configs.WEB_SEARCH_SERVICE_HOSTS", set())
+
+
+@pytest.fixture(autouse=True)
 def _public_dns_for_request_tests(
     monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
 ) -> None:
@@ -1112,6 +1119,31 @@ def test_destination_is_blocked_allows_fake_ip_resolved_public_host(
     )
     assert gate.destination_is_blocked("html.duckduckgo.com", 443) is False
     assert gate.destination_is_blocked("eutils.ncbi.nlm.nih.gov", 443) is False
+
+
+def test_destination_is_blocked_allows_local_web_search_services(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.WEB_SEARCH_SERVICE_HOSTS",
+        {"searxng", "firecrawl", "host.docker.internal"},
+    )
+    monkeypatch.setattr(
+        gate.socket, "getaddrinfo", lambda *_a, **_k: _addrinfo("172.18.0.12")
+    )
+    assert gate.destination_is_blocked("searxng", 8080) is False
+    assert gate.destination_is_blocked("firecrawl", 3002) is False
+    assert gate.destination_is_blocked("host.docker.internal", 8888) is False
+    assert gate.destination_is_blocked("intra.svc.cluster.local", 443) is True
+
+
+def test_destination_is_blocked_denies_unlisted_search_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        gate.socket, "getaddrinfo", lambda *_a, **_k: _addrinfo("172.18.0.12")
+    )
+    assert gate.destination_is_blocked("searxng", 8080) is True
 
 
 def test_mcp_gateway_exception_is_port_scoped(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -60,6 +60,7 @@ def _isolate_gateway_host_lists(monkeypatch: pytest.MonkeyPatch) -> None:
     """Do not inherit deploy-time TRUSTED_HOSTS (localhost / 127.0.0.1)."""
     monkeypatch.setattr("onyx.configs.app_configs.MCP_GATEWAY_TRUSTED_HOSTS", set())
     monkeypatch.setattr("onyx.configs.app_configs.MCP_GATEWAY_BLOCKED_HOSTS", set())
+    monkeypatch.setattr("onyx.configs.app_configs.WEB_SEARCH_SERVICE_HOSTS", set())
 
 
 @pytest.fixture(autouse=True)
@@ -187,6 +188,50 @@ def test_csv_hosts_trims_and_drops_empty() -> None:
     assert _csv_hosts(" mcp_gateway, ,localhost ") == {"mcp_gateway", "localhost"}
     assert _csv_hosts("") == set()
     assert _csv_hosts("   ") == set()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://searxng:8080/search",
+        "http://firecrawl:3002/v2/scrape",
+        "http://host.docker.internal:8888/search",
+    ],
+)
+def test_local_web_search_services_are_not_blocked(
+    url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.WEB_SEARCH_SERVICE_HOSTS",
+        {"searxng", "firecrawl", "host.docker.internal"},
+    )
+    assert mcp_ssrf.validate_mcp_outbound_url(url) == url
+
+
+def test_blocked_hosts_override_web_search_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.WEB_SEARCH_SERVICE_HOSTS",
+        {"searxng"},
+    )
+    monkeypatch.setattr(
+        "onyx.configs.app_configs.MCP_GATEWAY_BLOCKED_HOSTS",
+        {"searxng"},
+    )
+    with pytest.raises(SSRFException):
+        mcp_ssrf.validate_mcp_outbound_url("http://searxng:8080/search")
+
+
+def test_unlisted_search_hostname_is_blocked_when_private(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _private(*_args: object, **_kwargs: object) -> list[object]:
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("172.18.0.12", 8080))]
+
+    monkeypatch.setattr("onyx.utils.url.socket.getaddrinfo", _private)
+    with pytest.raises(SSRFException):
+        mcp_ssrf.validate_mcp_outbound_url("http://searxng:8080/search")
 
 
 def test_factory_uses_guard_transport() -> None:

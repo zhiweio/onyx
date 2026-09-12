@@ -42,10 +42,6 @@ from onyx.sandbox_proxy.credential_injection import (
 )
 from onyx.sandbox_proxy.errors import SandboxProxyError, http_403
 from onyx.sandbox_proxy.identity import ResolvedSandbox, SessionContext
-from onyx.sandbox_proxy.research_hosts import (
-    apply_research_user_agent,
-    is_public_research_host,
-)
 from onyx.sandbox_proxy.logging_utils import (
     APPROVAL_DECIDED_FIELDS,
     EGRESS_APPROVAL_MATCHED_FIELDS,
@@ -63,6 +59,10 @@ from onyx.sandbox_proxy.logging_utils import (
     short_log_id,
 )
 from onyx.sandbox_proxy.request_evaluator import RequestEvaluator
+from onyx.sandbox_proxy.research_hosts import (
+    apply_research_user_agent,
+    is_public_research_host,
+)
 from onyx.server.features.build.configs import (
     MCP_SESSION_TAG_HEADER,
     ONYX_SERVER_URL,
@@ -107,7 +107,10 @@ def matched_actions_look_like_writes(matched_actions: AllMatchedActions) -> bool
     for action in matched_actions.actions:
         tokens = {
             token
-            for token in action.action_type.lower().replace(".", " ").replace("_", " ").split()
+            for token in action.action_type.lower()
+            .replace(".", " ")
+            .replace("_", " ")
+            .split()
             if token
         }
         if tokens & _WRITE_ACTION_TOKENS:
@@ -173,6 +176,13 @@ def _is_mcp_gateway(host: str, port: int) -> bool:
     )
 
 
+def _is_web_search_service(host: str) -> bool:
+    """Local SearXNG / Firecrawl (and similar) may resolve to a Docker IP."""
+    from onyx.utils.outbound_hosts import is_web_search_service_host
+
+    return is_web_search_service_host(host)
+
+
 def _ip_is_internal(ip_str: str) -> bool:
     """True if ``ip_str`` is not a globally-routable public address.
 
@@ -198,7 +208,8 @@ def destination_is_blocked(host: str, port: int) -> bool:
     """True if the sandbox must not be relayed to ``host:port``.
 
     Denied: anything that is, or resolves to, an internal address. Allowed: the
-    api-server (host + port), the MCP gateway (host + port), RFC 2544 fake-ip
+    api-server (host + port), the MCP gateway (host + port), local search /
+    crawler service hosts (SearXNG, Firecrawl), RFC 2544 fake-ip
     (198.18.0.0/15), and any public address. Fail closed: a resolution failure
     denies (with a warning) — a transient resolver error must not become an
     opening to an internal service. If a name resolves to a mix of public and
@@ -209,6 +220,8 @@ def destination_is_blocked(host: str, port: int) -> bool:
     if not host:
         return False
     if _is_api_server(host, port) or _is_mcp_gateway(host, port):
+        return False
+    if _is_web_search_service(host):
         return False
     try:
         ipaddress.ip_address(host)  # literal-IP destination: check directly, no DNS

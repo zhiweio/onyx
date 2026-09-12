@@ -1749,6 +1749,9 @@ configMap:
   # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the
   # module on in Admin Panel > System MCP. Both gates must be open before any
   # system MCP server is visible to users.
+  # Local SearXNG / Firecrawl (and similar) service hosts. These resolve to
+  # cluster or host addresses and must not be treated as unknown internals.
+  WEB_SEARCH_SERVICE_HOSTS: ""
   # Lifetime of the signed token the API server sends to the gateway.
   MCP_GATEWAY_TOKEN_TTL_SECONDS: ""
   # Days to keep gateway call-history rows. 0 or empty keeps every row.

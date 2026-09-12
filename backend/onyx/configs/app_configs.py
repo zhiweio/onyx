@@ -1942,6 +1942,12 @@ MCP_GATEWAY_TRUSTED_HOSTS = _csv_hosts(os.environ.get("MCP_GATEWAY_TRUSTED_HOSTS
 _gateway_public_host = urllib.parse.urlparse(MCP_GATEWAY_PUBLIC_URL).hostname
 if _gateway_public_host:
     MCP_GATEWAY_TRUSTED_HOSTS.add(_gateway_public_host)
+# Local web-search / crawler services. These resolve to Docker or host
+# addresses. Change the list only for a custom compose service name.
+WEB_SEARCH_SERVICE_HOSTS = _csv_hosts(
+    os.environ.get("WEB_SEARCH_SERVICE_HOSTS")
+    or "searxng,firecrawl,host.docker.internal"
+)
 
 # Lifetime of the signed token the API server mints for gateway calls. Short,
 # because it carries the tenant and is replayable within its window.
