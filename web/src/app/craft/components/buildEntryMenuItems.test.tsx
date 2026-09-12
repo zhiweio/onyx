@@ -3,6 +3,10 @@ import {
   type EntryMenuTranslate,
 } from "@/app/craft/components/buildEntryMenuItems";
 import type { PickerSections } from "@/lib/skills/picker";
+import {
+  CRAFT_MCP_ACTIONS_PATH,
+  CRAFT_SKILLS_PATH,
+} from "@/app/craft/v1/constants";
 
 function sections(over: Partial<PickerSections> = {}): PickerSections {
   return { commands: [], skills: [], apps: [], mcpServers: [], ...over };
@@ -16,9 +20,6 @@ const ACME_APP = {
   authenticated: true,
 };
 
-// Identity translator keeps assertions on stable key names.
-const tStub = ((key: string) => key) as unknown as EntryMenuTranslate;
-
 const ASANA_MCP = {
   kind: "mcp" as const,
   mcpServerId: 8,
@@ -27,80 +28,114 @@ const ASANA_MCP = {
   authenticated: true,
 };
 
-function appsFlyout(input: PickerSections) {
-  const items = buildEntryMenuItems(
-    input,
-    {
-      onAttachFiles: jest.fn(),
-      onSelectEntry: jest.fn(),
-      onBrowseSkills: jest.fn(),
-      onBrowseApps: jest.fn(),
-    },
-    tStub
-  );
-  const apps = items.find((item) => item?.key === "apps");
-  return apps?.flyoutItems ?? [];
+const PPTX_SKILL = {
+  kind: "skill" as const,
+  slug: "pptx",
+  name: "PPTX",
+  description: "Build PowerPoint decks.",
+};
+
+// Identity translator keeps assertions on stable key names.
+const tStub = ((key: string) => key) as unknown as EntryMenuTranslate;
+
+function handlers(
+  over: Partial<Parameters<typeof buildEntryMenuItems>[1]> = {}
+) {
+  return {
+    onAttachFiles: jest.fn(),
+    onSelectEntry: jest.fn(),
+    onRemoveEntry: jest.fn(),
+    ...over,
+  };
 }
 
-describe("buildEntryMenuItems Apps flyout", () => {
-  it("lists external apps and MCP servers together", () => {
-    const flyout = appsFlyout(
-      sections({ apps: [ACME_APP], mcpServers: [ASANA_MCP] })
-    );
+function panel(items: ReturnType<typeof buildEntryMenuItems>, key: string) {
+  return items.find((item) => item?.key === key)?.panel;
+}
 
-    expect(flyout.map((item) => item.label)).toEqual(["Acme CRM", "Asana MCP"]);
-  });
-
-  it("labels MCP rows so they are distinguishable from apps", () => {
-    const flyout = appsFlyout(
-      sections({ apps: [ACME_APP], mcpServers: [ASANA_MCP] })
-    );
-
-    expect(flyout.map((item) => [item.key, item.description])).toEqual([
-      ["app:3", undefined],
-      ["mcp:8", "mcpServer.description"],
-    ]);
-  });
-
-  it("offers a Connect affordance per row based on its own state", () => {
-    const flyout = appsFlyout(
-      sections({
-        apps: [{ ...ACME_APP, authenticated: false }],
-        mcpServers: [ASANA_MCP],
-      })
-    );
-
-    expect(flyout[0]?.rightContent).toBeDefined();
-    expect(flyout[1]?.rightContent).toBeUndefined();
-  });
-
-  it("selects the entry that was clicked, whichever kind it is", () => {
-    const onSelectEntry = jest.fn();
+describe("buildEntryMenuItems", () => {
+  it("exposes MCP instead of Apps, with apps and MCP servers in one list", () => {
     const items = buildEntryMenuItems(
       sections({ apps: [ACME_APP], mcpServers: [ASANA_MCP] }),
-      {
-        onAttachFiles: jest.fn(),
-        onSelectEntry,
-        onBrowseSkills: jest.fn(),
-        onBrowseApps: jest.fn(),
-      },
+      handlers(),
       tStub
     );
-    const flyout =
-      items.find((item) => item?.key === "apps")?.flyoutItems ?? [];
 
-    flyout[1]?.onSelect?.();
-    expect(onSelectEntry).toHaveBeenCalledWith(ASANA_MCP);
+    expect(items.find((item) => item?.key === "apps")).toBeUndefined();
+    expect(panel(items, "mcp")?.rows.map((row) => row.label)).toEqual([
+      "Acme CRM",
+      "Asana MCP",
+    ]);
+    expect(panel(items, "mcp")?.manageHref).toBe(CRAFT_MCP_ACTIONS_PATH);
   });
 
-  it("prompts to connect only when there is neither an app nor an MCP server", () => {
-    expect(appsFlyout(sections()).map((item) => item.key)).toEqual([
-      "apps-empty",
-    ]);
-    // An MCP server alone is still something to offer, so no empty state.
-    expect(appsFlyout(sections({ mcpServers: [ASANA_MCP] })).length).toBe(1);
-    expect(appsFlyout(sections({ mcpServers: [ASANA_MCP] }))[0]?.key).toBe(
-      "mcp:8"
+  it("toggles an MCP row on and off without treating it as a one-shot click", () => {
+    const onSelectEntry = jest.fn();
+    const onRemoveEntry = jest.fn();
+    const items = buildEntryMenuItems(
+      sections({ mcpServers: [ASANA_MCP] }),
+      handlers({
+        onSelectEntry,
+        onRemoveEntry,
+        activeEntries: [ASANA_MCP],
+      }),
+      tStub
     );
+    const row = panel(items, "mcp")?.rows[0];
+
+    expect(row?.checked).toBe(true);
+    row?.onCheckedChange(false);
+    expect(onRemoveEntry).toHaveBeenCalledWith("mcp:8");
+    expect(onSelectEntry).not.toHaveBeenCalled();
+  });
+
+  it("selects an unauthenticated connection when its switch is turned on", () => {
+    const onSelectEntry = jest.fn();
+    const items = buildEntryMenuItems(
+      sections({
+        apps: [{ ...ACME_APP, authenticated: false }],
+      }),
+      handlers({ onSelectEntry }),
+      tStub
+    );
+    const row = panel(items, "mcp")?.rows[0];
+
+    expect(row?.checked).toBe(false);
+    expect(row?.description).toBe("connect.hint");
+    row?.onCheckedChange(true);
+    expect(onSelectEntry).toHaveBeenCalledWith({
+      ...ACME_APP,
+      authenticated: false,
+    });
+  });
+
+  it("lists skills with a manage link to the skills page", () => {
+    const items = buildEntryMenuItems(
+      sections({ skills: [PPTX_SKILL] }),
+      handlers(),
+      tStub
+    );
+    const skills = panel(items, "skills");
+
+    expect(skills?.rows.map((row) => row.label)).toEqual(["PPTX"]);
+    expect(skills?.manageHref).toBe(CRAFT_SKILLS_PATH);
+  });
+
+  it("keeps library files behind a manage action that opens the existing modal", () => {
+    const onManageLibrary = jest.fn();
+    const items = buildEntryMenuItems(
+      sections(),
+      handlers({
+        onManageLibrary,
+        libraryFiles: [{ id: "file-1", name: "notes.pdf" }],
+      }),
+      tStub
+    );
+    const library = panel(items, "library");
+
+    expect(library?.rows.map((row) => row.label)).toEqual(["notes.pdf"]);
+    expect(library?.manageHref).toBeUndefined();
+    library?.onManage?.();
+    expect(onManageLibrary).toHaveBeenCalledTimes(1);
   });
 });

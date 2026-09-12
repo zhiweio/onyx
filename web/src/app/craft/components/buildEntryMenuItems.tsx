@@ -1,10 +1,9 @@
 import type { useTranslations } from "next-intl";
-import { Text } from "@opal/components";
 import {
   SvgFileText,
   SvgFolder,
+  SvgMcp,
   SvgPaperclip,
-  SvgPlug,
   SvgSparkle,
 } from "@opal/icons";
 import {
@@ -13,9 +12,13 @@ import {
   type PickerSections,
 } from "@/lib/skills/picker";
 import { pickerEntryIcon } from "@/lib/skills/pickerIcons";
+import {
+  CRAFT_MCP_ACTIONS_PATH,
+  CRAFT_SKILLS_PATH,
+} from "@/app/craft/v1/constants";
 import type {
-  PlusMenuFlyoutItem,
   PlusMenuItem,
+  PlusMenuPanelRow,
 } from "@/sections/input/PlusMenuButton";
 
 export type EntryMenuTranslate = ReturnType<
@@ -27,15 +30,44 @@ interface LibraryFile {
   name: string;
 }
 
-interface EntryMenuHandlers {
+export interface EntryMenuHandlers {
   onAttachFiles: () => void;
   onSelectEntry: (entry: PickerEntry) => void;
-  // Navigate to the Skills / Apps pages (used by the empty-state prompts).
-  onBrowseSkills: () => void;
-  onBrowseApps: () => void;
+  onRemoveEntry: (entryKey: string) => void;
+  activeEntries?: PickerEntry[];
   libraryFiles?: LibraryFile[];
-  /** Opens the library management modal. When set, a Library flyout is added. */
+  /** Opens the library management modal. When set, a Library row is added. */
   onManageLibrary?: () => void;
+}
+
+function entryRow(
+  entry: PickerEntry,
+  activeKeys: Set<string>,
+  {
+    onSelectEntry,
+    onRemoveEntry,
+  }: Pick<EntryMenuHandlers, "onSelectEntry" | "onRemoveEntry">,
+  connectHint?: string
+): PlusMenuPanelRow {
+  const key = pickerEntryKey(entry);
+  const checked = activeKeys.has(key);
+  return {
+    key,
+    icon: pickerEntryIcon(entry),
+    label: entry.name,
+    description:
+      (entry.kind === "app" || entry.kind === "mcp") && !entry.authenticated
+        ? connectHint
+        : undefined,
+    checked,
+    onCheckedChange: (next) => {
+      if (next) onSelectEntry(entry);
+      else onRemoveEntry(key);
+    },
+    onSelect: () => {
+      if (!checked) onSelectEntry(entry);
+    },
+  };
 }
 
 /** Maps picker sections onto the generic PlusMenuButton model. */
@@ -44,14 +76,19 @@ export function buildEntryMenuItems(
   {
     onAttachFiles,
     onSelectEntry,
-    onBrowseSkills,
-    onBrowseApps,
+    onRemoveEntry,
+    activeEntries = [],
     libraryFiles = [],
     onManageLibrary,
   }: EntryMenuHandlers,
   t: EntryMenuTranslate
 ): Array<PlusMenuItem | null> {
-  // Skills and Apps always show; when empty they prompt the user to browse/connect.
+  const activeKeys = new Set(activeEntries.map(pickerEntryKey));
+  const connectHint = t("connect.hint");
+  const mcpRows = [...sections.apps, ...sections.mcpServers].map((entry) =>
+    entryRow(entry, activeKeys, { onSelectEntry, onRemoveEntry }, connectHint)
+  );
+
   const items: Array<PlusMenuItem | null> = [
     {
       key: "files",
@@ -59,41 +96,33 @@ export function buildEntryMenuItems(
       label: t("addFiles.label"),
       onSelect: onAttachFiles,
     },
-    null,
     {
       key: "skills",
       icon: SvgSparkle,
       label: t("skills.label"),
-      flyoutItems:
-        sections.skills.length > 0
-          ? sections.skills.map((skill) => ({
-              key: skill.slug,
-              icon: SvgSparkle,
-              label: skill.name,
-              description: skill.description,
-              onSelect: () => onSelectEntry(skill),
-            }))
-          : [
-              {
-                key: "skills-empty",
-                icon: SvgSparkle,
-                label: t("browseSkills.label"),
-                onSelect: onBrowseSkills,
-              },
-            ],
+      panel: {
+        searchPlaceholder: t("skills.searchPlaceholder"),
+        manageLabel: t("skills.manage"),
+        manageHref: CRAFT_SKILLS_PATH,
+        manageTarget: "_blank",
+        emptyLabel: t("skills.empty"),
+        rows: sections.skills.map((skill) =>
+          entryRow(skill, activeKeys, { onSelectEntry, onRemoveEntry })
+        ),
+      },
     },
     {
-      key: "apps",
-      icon: SvgPlug,
-      label: t("apps.label"),
-      flyoutItems: buildAppFlyoutItems(
-        sections,
-        {
-          onSelectEntry,
-          onBrowseApps,
-        },
-        t
-      ),
+      key: "mcp",
+      icon: SvgMcp,
+      label: t("mcp.label"),
+      panel: {
+        searchPlaceholder: t("mcp.searchPlaceholder"),
+        manageLabel: t("mcp.manage"),
+        manageHref: CRAFT_MCP_ACTIONS_PATH,
+        manageTarget: "_blank",
+        emptyLabel: t("mcp.empty"),
+        rows: mcpRows,
+      },
     },
   ];
 
@@ -102,68 +131,24 @@ export function buildEntryMenuItems(
       key: "library",
       icon: SvgFolder,
       label: t("library.label"),
-      flyoutItems: [
-        // TODO(craft-library): file rows open the manage modal until per-file attach is wired.
-        ...libraryFiles.map((file) => ({
+      panel: {
+        searchPlaceholder: t("library.searchPlaceholder"),
+        manageLabel: t("library.manage"),
+        onManage: onManageLibrary,
+        emptyLabel: t("library.empty"),
+        rows: libraryFiles.map((file) => ({
           key: file.id,
           icon: SvgFileText,
           label: file.name,
+          checked: false,
+          onCheckedChange: (checked) => {
+            if (checked) onManageLibrary();
+          },
           onSelect: onManageLibrary,
         })),
-        {
-          key: "manage",
-          icon: SvgFolder,
-          label: t("manageLibrary.label"),
-          onSelect: onManageLibrary,
-        },
-      ],
+      },
     });
   }
 
   return items;
-}
-
-interface AppFlyoutHandlers {
-  onSelectEntry: (entry: PickerEntry) => void;
-  onBrowseApps: () => void;
-}
-
-/** Apps and craft-enabled MCP servers share this flyout — the agent reaches
- * both the same way from the user's point of view. MCP rows are labelled so the
- * two never read as one kind of thing. */
-function buildAppFlyoutItems(
-  sections: PickerSections,
-  { onSelectEntry, onBrowseApps }: AppFlyoutHandlers,
-  t: EntryMenuTranslate
-): PlusMenuFlyoutItem[] {
-  const connectHint = (authenticated: boolean) =>
-    authenticated ? undefined : (
-      <Text font="secondary-body" color="text-03">
-        {t("connect.hint")}
-      </Text>
-    );
-
-  const items: PlusMenuFlyoutItem[] = [
-    ...sections.apps,
-    ...sections.mcpServers,
-  ].map((entry) => ({
-    key: pickerEntryKey(entry),
-    icon: pickerEntryIcon(entry),
-    label: entry.name,
-    // Only MCP rows are labelled; apps are the default kind on this page.
-    description: entry.kind === "mcp" ? t("mcpServer.description") : undefined,
-    rightContent: connectHint(entry.authenticated),
-    onSelect: () => onSelectEntry(entry),
-  }));
-
-  return items.length > 0
-    ? items
-    : [
-        {
-          key: "apps-empty",
-          icon: SvgPlug,
-          label: t("connectApp.label"),
-          onSelect: onBrowseApps,
-        },
-      ];
 }

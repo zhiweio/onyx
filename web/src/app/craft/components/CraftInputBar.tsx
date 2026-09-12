@@ -309,8 +309,8 @@ const CraftInputBar = memo(
             {
               onAttachFiles: () => fileInputRef.current?.click(),
               onSelectEntry: addEntry,
-              onBrowseSkills: () => router.push("/craft/v1/skills"),
-              onBrowseApps: () => router.push("/craft/v1/apps"),
+              onRemoveEntry: removeEntry,
+              activeEntries,
               libraryFiles,
               // Defer the modal until the + popover finishes closing, else it paints over it.
               onManageLibrary: () =>
@@ -318,7 +318,14 @@ const CraftInputBar = memo(
             },
             entryMenuT
           ),
-        [pickerSections, addEntry, libraryFiles, router, entryMenuT]
+        [
+          pickerSections,
+          addEntry,
+          removeEntry,
+          activeEntries,
+          libraryFiles,
+          entryMenuT,
+        ]
       );
 
       const bottomLeftSlot = (
