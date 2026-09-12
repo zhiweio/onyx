@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "Alle Tools aktivieren"
       },
+      "integrations": {
+        "label": "Verbindungen"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "Verwalten",
+        "searchPlaceholder": "MCPs suchen..."
+      },
       "manageActions": {
-        "tooltip": "Aktionen verwalten"
+        "tooltip": "Tools für diesen Chat wählen"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "Öffnet die Verbindungseinstellungen in einem neuen Tab.",
+          "label": "Neue Verbindung hinzufügen"
+        },
+        "askAdmin": "Bitten Sie einen Admin, eine Verbindung hinzuzufügen.",
+        "description": "Schalten Sie eine Verbindung für diesen Chat aus, oder öffnen Sie sie, um die Tools zu wählen.",
+        "empty": "Noch keine Verbindungen. Fügen Sie eine hinzu, um sie im Chat zu nutzen.",
+        "label": "Verbindungen verwalten",
+        "title": "Verbindungen verwalten"
       },
       "mcpTools": {
         "searchPlaceholder": "{server}-Tools durchsuchen"
-      },
-      "moreActions": {
-        "label": "Weitere Aktionen"
       },
       "reauthenticate": {
         "label": "Erneut authentifizieren"
       },
       "search": {
-        "placeholder": "Aktionen durchsuchen..."
+        "placeholder": "Tools suchen..."
       },
       "serverFallback": {
         "label": "Server"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "Anweisungen festlegen"
         },
+        "upload": {
+          "browse": "Dateien durchsuchen",
+          "description": "Dokumente, Text und Bilder für Chats in diesem Projekt",
+          "dragging": "Zum Hinzufügen ablegen",
+          "title": "Klicken zum Hochladen oder Dateien ablegen",
+          "unsupported": "Dieser Dateityp wird hier nicht unterstützt."
+        },
         "viewAll": {
           "label": "Alle anzeigen"
         },
@@ -12087,16 +12110,28 @@
         "label": "App verbinden"
       },
       "library": {
-        "label": "Bibliothek"
+        "empty": "Noch keine Dateien.",
+        "label": "Bibliothek",
+        "manage": "Verwalten",
+        "searchPlaceholder": "Bibliothek durchsuchen..."
       },
       "manageLibrary": {
         "label": "Bibliothek verwalten…"
+      },
+      "mcp": {
+        "empty": "Noch keine MCP-Server.",
+        "label": "MCP",
+        "manage": "Verwalten",
+        "searchPlaceholder": "MCPs suchen..."
       },
       "mcpServer": {
         "description": "MCP-Server"
       },
       "skills": {
-        "label": "Skills"
+        "empty": "Noch keine Skills.",
+        "label": "Skills",
+        "manage": "Verwalten",
+        "searchPlaceholder": "Skills suchen..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "Kein Inhalt"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "Die Datei konnte nicht geladen werden.",
+        "title": "Dokumentvorschau nicht möglich"
+      },
+      "iframeTitle": "Dokumentvorschau",
+      "legacyDoc": {
+        "message": "Alte Word-Dateien (.doc) können hier nicht angezeigt werden. Laden Sie die Datei herunter, um sie zu öffnen."
+      },
+      "loading": {
+        "label": "Dokument wird geladen..."
+      },
+      "save": {
+        "label": "Speichern"
+      },
+      "saveFailed": {
+        "message": "Die Datei konnte nicht gespeichert werden"
+      },
+      "saved": {
+        "message": "Datei gespeichert"
+      },
+      "saving": {
+        "label": "Wird gespeichert..."
+      },
+      "unsupported": {
+        "message": "Dieser Dateityp kann nicht angezeigt werden."
+      },
+      "dirty": {
+        "message": "Sie haben nicht gespeicherte Änderungen."
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "URL kopieren: {url}"
+      },
+      "download": {
+        "button": ".md herunterladen"
       },
       "downloadFile": {
         "tooltip": "Datei herunterladen"

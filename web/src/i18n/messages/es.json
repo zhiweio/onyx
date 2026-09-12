@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "Activar todas las herramientas"
       },
+      "integrations": {
+        "label": "Conexiones"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "Gestionar",
+        "searchPlaceholder": "Buscar MCP..."
+      },
       "manageActions": {
-        "tooltip": "Gestionar acciones"
+        "tooltip": "Elegir herramientas para este chat"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "Abre la configuración de conexiones en una pestaña nueva.",
+          "label": "Añadir una conexión"
+        },
+        "askAdmin": "Pida a un administrador que añada una conexión.",
+        "description": "Desactive una conexión para este chat, o ábrala para elegir sus herramientas.",
+        "empty": "Aún no hay conexiones. Añada una para usarla en el chat.",
+        "label": "Gestionar conexiones",
+        "title": "Gestionar conexiones"
       },
       "mcpTools": {
         "searchPlaceholder": "Buscar herramientas de {server}"
-      },
-      "moreActions": {
-        "label": "Más acciones"
       },
       "reauthenticate": {
         "label": "Volver a autenticar"
       },
       "search": {
-        "placeholder": "Buscar acciones..."
+        "placeholder": "Buscar herramientas..."
       },
       "serverFallback": {
         "label": "servidor"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "Establecer instrucciones"
         },
+        "upload": {
+          "browse": "Explorar archivos",
+          "description": "Documentos, texto e imágenes para los chats de este proyecto",
+          "dragging": "Suelta para añadir",
+          "title": "Haz clic para subir o suelta archivos",
+          "unsupported": "Este tipo de archivo no se admite aquí."
+        },
         "viewAll": {
           "label": "Ver todo"
         },
@@ -12087,16 +12110,28 @@
         "label": "Conectar una aplicación"
       },
       "library": {
-        "label": "Biblioteca"
+        "empty": "Aún no hay archivos.",
+        "label": "Biblioteca",
+        "manage": "Gestionar",
+        "searchPlaceholder": "Buscar en la biblioteca..."
       },
       "manageLibrary": {
         "label": "Gestionar biblioteca…"
+      },
+      "mcp": {
+        "empty": "Aún no hay servidores MCP.",
+        "label": "MCP",
+        "manage": "Gestionar",
+        "searchPlaceholder": "Buscar MCP..."
       },
       "mcpServer": {
         "description": "Servidor MCP"
       },
       "skills": {
-        "label": "Habilidades"
+        "empty": "Aún no hay habilidades.",
+        "label": "Habilidades",
+        "manage": "Gestionar",
+        "searchPlaceholder": "Buscar habilidades..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "Sin contenido"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "No se pudo cargar el archivo.",
+        "title": "No se puede previsualizar el documento"
+      },
+      "iframeTitle": "Vista previa del documento",
+      "legacyDoc": {
+        "message": "Los archivos Word antiguos (.doc) no se pueden previsualizar aquí. Descarga el archivo para abrirlo."
+      },
+      "loading": {
+        "label": "Cargando documento..."
+      },
+      "save": {
+        "label": "Guardar"
+      },
+      "saveFailed": {
+        "message": "No se pudo guardar el archivo"
+      },
+      "saved": {
+        "message": "Archivo guardado"
+      },
+      "saving": {
+        "label": "Guardando..."
+      },
+      "unsupported": {
+        "message": "No se puede previsualizar este tipo de archivo."
+      },
+      "dirty": {
+        "message": "Tienes cambios sin guardar."
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "Copiar URL: {url}"
+      },
+      "download": {
+        "button": "Descargar .md"
       },
       "downloadFile": {
         "tooltip": "Descargar archivo"

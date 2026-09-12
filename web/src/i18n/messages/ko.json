@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "모든 도구 사용"
       },
+      "integrations": {
+        "label": "연결"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "관리",
+        "searchPlaceholder": "MCP 검색..."
+      },
       "manageActions": {
-        "tooltip": "작업 관리"
+        "tooltip": "이 채팅에서 사용할 도구 선택"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "새 탭에서 연결 설정을 엽니다.",
+          "label": "새 연결 추가"
+        },
+        "askAdmin": "관리자에게 연결 추가를 요청하세요.",
+        "description": "이 채팅에서 연결을 끄거나, 열어 사용할 도구를 고릅니다.",
+        "empty": "연결이 없습니다. 추가하면 채팅에서 사용할 수 있습니다.",
+        "label": "연결 관리",
+        "title": "연결 관리"
       },
       "mcpTools": {
         "searchPlaceholder": "{server} 도구 검색"
-      },
-      "moreActions": {
-        "label": "추가 작업"
       },
       "reauthenticate": {
         "label": "다시 인증"
       },
       "search": {
-        "placeholder": "작업 검색..."
+        "placeholder": "도구 검색..."
       },
       "serverFallback": {
         "label": "서버"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "지침 설정"
         },
+        "upload": {
+          "browse": "파일 찾아보기",
+          "description": "이 프로젝트 채팅에서 쓸 문서, 텍스트, 이미지",
+          "dragging": "놓아서 추가",
+          "title": "클릭하거나 파일을 놓아 업로드",
+          "unsupported": "이 파일 형식은 여기에서 지원되지 않습니다."
+        },
         "viewAll": {
           "label": "전체 보기"
         },
@@ -12087,16 +12110,28 @@
         "label": "앱 연결"
       },
       "library": {
-        "label": "라이브러리"
+        "empty": "파일이 없습니다.",
+        "label": "라이브러리",
+        "manage": "관리",
+        "searchPlaceholder": "라이브러리 검색..."
       },
       "manageLibrary": {
         "label": "라이브러리 관리…"
+      },
+      "mcp": {
+        "empty": "MCP가 없습니다.",
+        "label": "MCP",
+        "manage": "관리",
+        "searchPlaceholder": "MCP 검색..."
       },
       "mcpServer": {
         "description": "MCP 서버"
       },
       "skills": {
-        "label": "스킬"
+        "empty": "스킬이 없습니다.",
+        "label": "스킬",
+        "manage": "관리",
+        "searchPlaceholder": "스킬 검색..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "내용 없음"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "파일을 불러올 수 없습니다.",
+        "title": "문서를 미리 볼 수 없음"
+      },
+      "iframeTitle": "문서 미리보기",
+      "legacyDoc": {
+        "message": "레거시 Word 파일(.doc)은 여기에서 미리 볼 수 없습니다. 다운로드하여 여세요."
+      },
+      "loading": {
+        "label": "문서를 불러오는 중..."
+      },
+      "save": {
+        "label": "저장"
+      },
+      "saveFailed": {
+        "message": "파일을 저장할 수 없습니다"
+      },
+      "saved": {
+        "message": "파일이 저장되었습니다"
+      },
+      "saving": {
+        "label": "저장 중..."
+      },
+      "unsupported": {
+        "message": "이 파일 형식은 미리 볼 수 없습니다."
+      },
+      "dirty": {
+        "message": "저장하지 않은 변경 사항이 있습니다."
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "URL 복사: {url}"
+      },
+      "download": {
+        "button": ".md 다운로드"
       },
       "downloadFile": {
         "tooltip": "파일 다운로드"

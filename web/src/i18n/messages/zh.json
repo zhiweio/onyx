@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "启用所有工具"
       },
+      "integrations": {
+        "label": "连接"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "管理",
+        "searchPlaceholder": "搜索 MCP..."
+      },
       "manageActions": {
-        "tooltip": "管理操作"
+        "tooltip": "选择这次对话可用的工具"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "在新标签页打开连接设置。",
+          "label": "添加新连接"
+        },
+        "askAdmin": "请管理员添加连接。",
+        "description": "可关闭这次对话中的连接，或打开后选择可用工具。",
+        "empty": "还没有连接。添加后即可在对话中使用。",
+        "label": "管理连接",
+        "title": "管理连接"
       },
       "mcpTools": {
         "searchPlaceholder": "搜索 {server} 工具"
-      },
-      "moreActions": {
-        "label": "更多操作"
       },
       "reauthenticate": {
         "label": "重新验证"
       },
       "search": {
-        "placeholder": "搜索操作..."
+        "placeholder": "搜索工具..."
       },
       "serverFallback": {
         "label": "服务器"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "设置指令"
         },
+        "upload": {
+          "browse": "浏览文件",
+          "description": "文档、文本和图片，供此项目中的对话使用",
+          "dragging": "松开即可添加",
+          "title": "点击上传或拖入文件",
+          "unsupported": "此文件类型不受支持。"
+        },
         "viewAll": {
           "label": "查看全部"
         },
@@ -12087,16 +12110,28 @@
         "label": "连接应用"
       },
       "library": {
-        "label": "库"
+        "empty": "还没有文件。",
+        "label": "库",
+        "manage": "管理",
+        "searchPlaceholder": "搜索库..."
       },
       "manageLibrary": {
         "label": "管理库…"
+      },
+      "mcp": {
+        "empty": "还没有 MCP。",
+        "label": "MCP",
+        "manage": "管理",
+        "searchPlaceholder": "搜索 MCP..."
       },
       "mcpServer": {
         "description": "MCP 服务器"
       },
       "skills": {
-        "label": "技能"
+        "empty": "还没有技能。",
+        "label": "技能",
+        "manage": "管理",
+        "searchPlaceholder": "搜索技能..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "无内容"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "无法加载该文件。",
+        "title": "无法预览文档"
+      },
+      "iframeTitle": "文档预览",
+      "legacyDoc": {
+        "message": "无法在此预览旧版 Word 文件（.doc）。请下载后打开。"
+      },
+      "loading": {
+        "label": "正在加载文档..."
+      },
+      "save": {
+        "label": "保存"
+      },
+      "saveFailed": {
+        "message": "无法保存文件"
+      },
+      "saved": {
+        "message": "文件已保存"
+      },
+      "saving": {
+        "label": "正在保存..."
+      },
+      "unsupported": {
+        "message": "无法预览此文件类型。"
+      },
+      "dirty": {
+        "message": "你有未保存的更改。"
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "复制 URL：{url}"
+      },
+      "download": {
+        "button": "下载 .md"
       },
       "downloadFile": {
         "tooltip": "下载文件"

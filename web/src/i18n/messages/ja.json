@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "すべてのツールを有効にする"
       },
+      "integrations": {
+        "label": "接続"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "管理",
+        "searchPlaceholder": "MCP を検索..."
+      },
       "manageActions": {
-        "tooltip": "アクションを管理"
+        "tooltip": "このチャットで使うツールを選ぶ"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "接続設定を新しいタブで開きます。",
+          "label": "新しい接続を追加"
+        },
+        "askAdmin": "管理者に接続の追加を依頼してください。",
+        "description": "このチャットで接続をオフにするか、開いて使うツールを選べます。",
+        "empty": "接続はまだありません。追加するとチャットで使えます。",
+        "label": "接続を管理",
+        "title": "接続を管理"
       },
       "mcpTools": {
         "searchPlaceholder": "{server} のツールを検索"
-      },
-      "moreActions": {
-        "label": "その他のアクション"
       },
       "reauthenticate": {
         "label": "再認証"
       },
       "search": {
-        "placeholder": "アクションを検索..."
+        "placeholder": "ツールを検索..."
       },
       "serverFallback": {
         "label": "サーバー"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "指示を設定"
         },
+        "upload": {
+          "browse": "ファイルを選択",
+          "description": "このプロジェクトのチャットで使う文書・テキスト・画像",
+          "dragging": "ドロップして追加",
+          "title": "クリックまたはドロップしてファイルを追加",
+          "unsupported": "このファイル形式はここでは使えません。"
+        },
         "viewAll": {
           "label": "すべて表示"
         },
@@ -12087,16 +12110,28 @@
         "label": "アプリを接続"
       },
       "library": {
-        "label": "ライブラリ"
+        "empty": "ファイルはまだありません。",
+        "label": "ライブラリ",
+        "manage": "管理",
+        "searchPlaceholder": "ライブラリを検索..."
       },
       "manageLibrary": {
         "label": "ライブラリを管理…"
+      },
+      "mcp": {
+        "empty": "MCP はまだありません。",
+        "label": "MCP",
+        "manage": "管理",
+        "searchPlaceholder": "MCP を検索..."
       },
       "mcpServer": {
         "description": "MCP サーバー"
       },
       "skills": {
-        "label": "スキル"
+        "empty": "スキルはまだありません。",
+        "label": "スキル",
+        "manage": "管理",
+        "searchPlaceholder": "スキルを検索..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "コンテンツがありません"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "ファイルを読み込めませんでした。",
+        "title": "文書をプレビューできません"
+      },
+      "iframeTitle": "文書プレビュー",
+      "legacyDoc": {
+        "message": "旧形式の Word ファイル（.doc）はここではプレビューできません。ダウンロードして開いてください。"
+      },
+      "loading": {
+        "label": "文書を読み込んでいます..."
+      },
+      "save": {
+        "label": "保存"
+      },
+      "saveFailed": {
+        "message": "ファイルを保存できませんでした"
+      },
+      "saved": {
+        "message": "ファイルを保存しました"
+      },
+      "saving": {
+        "label": "保存しています..."
+      },
+      "unsupported": {
+        "message": "このファイル形式はプレビューできません。"
+      },
+      "dirty": {
+        "message": "未保存の変更があります。"
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "URL をコピー: {url}"
+      },
+      "download": {
+        "button": ".md をダウンロード"
       },
       "downloadFile": {
         "tooltip": "ファイルをダウンロード"

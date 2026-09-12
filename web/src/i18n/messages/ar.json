@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "تمكين جميع الأدوات"
       },
+      "integrations": {
+        "label": "الاتصالات"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "إدارة",
+        "searchPlaceholder": "البحث في MCP..."
+      },
       "manageActions": {
-        "tooltip": "إدارة الإجراءات"
+        "tooltip": "اختر أدوات هذه المحادثة"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "يفتح إعدادات الاتصال في علامة تبويب جديدة.",
+          "label": "إضافة اتصال جديد"
+        },
+        "askAdmin": "اطلب من المسؤول إضافة اتصال.",
+        "description": "أوقف اتصالًا لهذه المحادثة، أو افتحه لاختيار أدواته.",
+        "empty": "لا توجد اتصالات بعد. أضف اتصالًا لاستخدامه في المحادثة.",
+        "label": "إدارة الاتصالات",
+        "title": "إدارة الاتصالات"
       },
       "mcpTools": {
         "searchPlaceholder": "البحث في أدوات {server}"
-      },
-      "moreActions": {
-        "label": "المزيد من الإجراءات"
       },
       "reauthenticate": {
         "label": "إعادة المصادقة"
       },
       "search": {
-        "placeholder": "البحث في الإجراءات..."
+        "placeholder": "البحث عن أدوات..."
       },
       "serverFallback": {
         "label": "الخادم"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "تعيين التعليمات"
         },
+        "upload": {
+          "browse": "استعراض الملفات",
+          "description": "مستندات ونصوص وصور لمحادثات هذا المشروع",
+          "dragging": "أفلت للإضافة",
+          "title": "انقر للرفع أو أفلت الملفات",
+          "unsupported": "نوع الملف هذا غير مدعوم هنا."
+        },
         "viewAll": {
           "label": "عرض الكل"
         },
@@ -12087,16 +12110,28 @@
         "label": "ربط تطبيق"
       },
       "library": {
-        "label": "المكتبة"
+        "empty": "لا توجد ملفات بعد.",
+        "label": "المكتبة",
+        "manage": "إدارة",
+        "searchPlaceholder": "البحث في المكتبة..."
       },
       "manageLibrary": {
         "label": "إدارة المكتبة…"
+      },
+      "mcp": {
+        "empty": "لا توجد خوادم MCP بعد.",
+        "label": "MCP",
+        "manage": "إدارة",
+        "searchPlaceholder": "البحث في MCP..."
       },
       "mcpServer": {
         "description": "خادم MCP"
       },
       "skills": {
-        "label": "المهارات"
+        "empty": "لا توجد مهارات بعد.",
+        "label": "المهارات",
+        "manage": "إدارة",
+        "searchPlaceholder": "البحث في المهارات..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "لا يوجد محتوى"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "تعذر تحميل الملف.",
+        "title": "تعذر معاينة المستند"
+      },
+      "iframeTitle": "معاينة المستند",
+      "legacyDoc": {
+        "message": "لا يمكن معاينة ملفات Word القديمة (.doc) هنا. نزّل الملف لفتحه."
+      },
+      "loading": {
+        "label": "جارٍ تحميل المستند..."
+      },
+      "save": {
+        "label": "حفظ"
+      },
+      "saveFailed": {
+        "message": "تعذر حفظ الملف"
+      },
+      "saved": {
+        "message": "تم حفظ الملف"
+      },
+      "saving": {
+        "label": "جارٍ الحفظ..."
+      },
+      "unsupported": {
+        "message": "لا يمكن معاينة هذا النوع من الملفات."
+      },
+      "dirty": {
+        "message": "لديك تغييرات غير محفوظة."
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "نسخ الرابط: {url}"
+      },
+      "download": {
+        "button": "تنزيل .md"
       },
       "downloadFile": {
         "tooltip": "تنزيل الملف"

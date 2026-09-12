@@ -792,20 +792,36 @@
       "enableAllTools": {
         "label": "Enable All Tools"
       },
+      "integrations": {
+        "label": "Connections"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "Manage",
+        "searchPlaceholder": "Search MCPs..."
+      },
       "manageActions": {
-        "tooltip": "Manage Actions"
+        "tooltip": "Choose tools for this chat"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "Opens connection settings in a new tab.",
+          "label": "Add a connection"
+        },
+        "askAdmin": "Ask an admin to add a connection.",
+        "description": "Turn a connection off for this chat, or open it to choose which tools it can use.",
+        "empty": "No connections yet. Add one to use it in chat.",
+        "label": "Manage connections",
+        "title": "Manage connections"
       },
       "mcpTools": {
         "searchPlaceholder": "Search {server} tools"
-      },
-      "moreActions": {
-        "label": "More Actions"
       },
       "reauthenticate": {
         "label": "Re-authenticate"
       },
       "search": {
-        "placeholder": "Search actions..."
+        "placeholder": "Search tools..."
       },
       "serverFallback": {
         "label": "server"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "Set Instructions"
         },
+        "upload": {
+          "browse": "Browse files",
+          "description": "Documents, text, and images for chats in this project",
+          "dragging": "Drop to add",
+          "title": "Click to upload or drop files",
+          "unsupported": "This file type is not supported here."
+        },
         "viewAll": {
           "label": "View All"
         },
@@ -12093,16 +12116,28 @@
         "label": "Connect an app"
       },
       "library": {
-        "label": "Library"
+        "empty": "No files yet.",
+        "label": "Library",
+        "manage": "Manage",
+        "searchPlaceholder": "Search library..."
       },
       "manageLibrary": {
         "label": "Manage library…"
+      },
+      "mcp": {
+        "empty": "No MCP servers yet.",
+        "label": "MCP",
+        "manage": "Manage",
+        "searchPlaceholder": "Search MCPs..."
       },
       "mcpServer": {
         "description": "MCP server"
       },
       "skills": {
-        "label": "Skills"
+        "empty": "No skills yet.",
+        "label": "Skills",
+        "manage": "Manage",
+        "searchPlaceholder": "Search skills..."
       }
     },
     "filePreview": {
@@ -12118,6 +12153,37 @@
       },
       "noContent": {
         "label": "No content"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "The file could not be loaded.",
+        "title": "Cannot preview document"
+      },
+      "iframeTitle": "Document preview",
+      "legacyDoc": {
+        "message": "Legacy Word files (.doc) cannot be previewed here. Download the file to open it."
+      },
+      "loading": {
+        "label": "Loading document..."
+      },
+      "save": {
+        "label": "Save"
+      },
+      "saveFailed": {
+        "message": "Could not save the file"
+      },
+      "saved": {
+        "message": "File saved"
+      },
+      "saving": {
+        "label": "Saving..."
+      },
+      "unsupported": {
+        "message": "This file type cannot be previewed."
+      },
+      "dirty": {
+        "message": "You have unsaved changes."
       }
     },
     "filesTab": {
@@ -12851,6 +12917,9 @@
       },
       "copyUrl": {
         "ariaLabel": "Copy URL: {url}"
+      },
+      "download": {
+        "button": "Download .md"
       },
       "downloadFile": {
         "tooltip": "Download file"

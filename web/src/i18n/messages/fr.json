@@ -788,20 +788,36 @@
       "enableAllTools": {
         "label": "Activer tous les outils"
       },
+      "integrations": {
+        "label": "Connexions"
+      },
+      "mcp": {
+        "label": "MCP",
+        "manage": "Gérer",
+        "searchPlaceholder": "Rechercher des MCP..."
+      },
       "manageActions": {
-        "tooltip": "Gérer les actions"
+        "tooltip": "Choisir les outils de cette conversation"
+      },
+      "manageConnections": {
+        "addNew": {
+          "description": "Ouvre les paramètres de connexion dans un nouvel onglet.",
+          "label": "Ajouter une connexion"
+        },
+        "askAdmin": "Demandez à un administrateur d'ajouter une connexion.",
+        "description": "Désactivez une connexion pour cette conversation, ou ouvrez-la pour choisir ses outils.",
+        "empty": "Aucune connexion. Ajoutez-en une pour l'utiliser dans la conversation.",
+        "label": "Gérer les connexions",
+        "title": "Gérer les connexions"
       },
       "mcpTools": {
         "searchPlaceholder": "Rechercher les outils de {server}"
-      },
-      "moreActions": {
-        "label": "Plus d'actions"
       },
       "reauthenticate": {
         "label": "Se réauthentifier"
       },
       "search": {
-        "placeholder": "Rechercher des actions..."
+        "placeholder": "Rechercher des outils..."
       },
       "serverFallback": {
         "label": "serveur"
@@ -10892,6 +10908,13 @@
         "setInstructionsButton": {
           "label": "Définir les instructions"
         },
+        "upload": {
+          "browse": "Parcourir les fichiers",
+          "description": "Documents, texte et images pour les discussions de ce projet",
+          "dragging": "Déposez pour ajouter",
+          "title": "Cliquez pour importer ou déposez des fichiers",
+          "unsupported": "Ce type de fichier n'est pas pris en charge ici."
+        },
         "viewAll": {
           "label": "Tout voir"
         },
@@ -12087,16 +12110,28 @@
         "label": "Connecter une application"
       },
       "library": {
-        "label": "Bibliothèque"
+        "empty": "Aucun fichier pour le moment.",
+        "label": "Bibliothèque",
+        "manage": "Gérer",
+        "searchPlaceholder": "Rechercher dans la bibliothèque..."
       },
       "manageLibrary": {
         "label": "Gérer la bibliothèque…"
+      },
+      "mcp": {
+        "empty": "Aucun serveur MCP pour le moment.",
+        "label": "MCP",
+        "manage": "Gérer",
+        "searchPlaceholder": "Rechercher des MCP..."
       },
       "mcpServer": {
         "description": "Serveur MCP"
       },
       "skills": {
-        "label": "Compétences"
+        "empty": "Aucune compétence pour le moment.",
+        "label": "Compétences",
+        "manage": "Gérer",
+        "searchPlaceholder": "Rechercher des compétences..."
       }
     },
     "filePreview": {
@@ -12112,6 +12147,37 @@
       },
       "noContent": {
         "label": "Aucun contenu"
+      }
+    },
+    "documentPreview": {
+      "error": {
+        "description": "Le fichier n’a pas pu être chargé.",
+        "title": "Aperçu du document impossible"
+      },
+      "iframeTitle": "Aperçu du document",
+      "legacyDoc": {
+        "message": "Les fichiers Word hérités (.doc) ne peuvent pas être prévisualisés ici. Téléchargez le fichier pour l’ouvrir."
+      },
+      "loading": {
+        "label": "Chargement du document..."
+      },
+      "save": {
+        "label": "Enregistrer"
+      },
+      "saveFailed": {
+        "message": "Impossible d’enregistrer le fichier"
+      },
+      "saved": {
+        "message": "Fichier enregistré"
+      },
+      "saving": {
+        "label": "Enregistrement..."
+      },
+      "unsupported": {
+        "message": "Ce type de fichier ne peut pas être prévisualisé."
+      },
+      "dirty": {
+        "message": "Vous avez des modifications non enregistrées."
       }
     },
     "filesTab": {
@@ -12845,6 +12911,9 @@
       },
       "copyUrl": {
         "ariaLabel": "Copier l'URL : {url}"
+      },
+      "download": {
+        "button": "Télécharger le .md"
       },
       "downloadFile": {
         "tooltip": "Télécharger le fichier"
