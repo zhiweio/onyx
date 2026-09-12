@@ -46,6 +46,7 @@ import {
 } from "@/app/app/services/lib";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import { SWR_KEYS } from "@/lib/swr-keys";
+import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 
 export const usePublicCredentials = () => {
   const { mutate } = useSWRConfig();
@@ -658,7 +659,8 @@ export function useLlmManager(
 
   const [reasoningEffort, setReasoningEffort] =
     useState<ReasoningEffortOverride | null>(
-      currentChatSession?.current_reasoning_effort_override ?? null
+      currentChatSession?.current_reasoning_effort_override ??
+        DEFAULT_THOUGHT_LEVEL
     );
   const [temperatureExplicitlySet, setTemperatureExplicitlySet] =
     useState(false);
@@ -704,7 +706,8 @@ export function useLlmManager(
     setTemperatureExplicitlySet(false);
     persistedGenRef.current = selectionGen;
     setReasoningEffort(
-      currentChatSession?.current_reasoning_effort_override ?? null
+      currentChatSession?.current_reasoning_effort_override ??
+        DEFAULT_THOUGHT_LEVEL
     );
   }, [currentChatSession]);
 

@@ -74,6 +74,7 @@ import {
 import { findModelConfiguration } from "@/lib/languageModels/utils";
 import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
 import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
+import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
 import InterruptHint from "@/sections/input/InterruptHint";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
@@ -893,7 +894,7 @@ const AppInputBar = React.memo(
             supportsReasoning={currentModel?.supports_reasoning ?? false}
             supportedEfforts={currentModel?.supported_reasoning_efforts}
             effortMax={currentModel?.reasoning_effort_max}
-            fallback={currentModel?.reasoning_effort_default}
+            fallback={DEFAULT_THOUGHT_LEVEL}
             disabled={disabled}
           />
           {showMicButton &&

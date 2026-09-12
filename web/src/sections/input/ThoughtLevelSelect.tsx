@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { LineItemButton, Popover, SelectButton } from "@opal/components";
-import { SvgLightbulbSimple } from "@opal/icons";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
 import {
-  ALL_REASONING_STOPS,
-  cappedReasoningStop,
-  maxReasoningStop,
-} from "@/sections/model-selector/setting-controls";
+  COMPOSER_THOUGHT_STOPS,
+  DEFAULT_THOUGHT_LEVEL,
+  allowedComposerStop,
+  composerStopIndex,
+  toComposerThoughtLevel,
+} from "@/sections/input/thoughtLevel";
+import SvgThoughtBrain from "@/sections/input/thoughtLevelIcon";
 
 const THOUGHT_LABEL_KEYS = {
   off: "off",
@@ -33,37 +34,42 @@ export default function ThoughtLevelSelect({
   value,
   onChange,
   supportsReasoning,
-  supportedEfforts,
   effortMax,
-  fallback,
+  fallback = DEFAULT_THOUGHT_LEVEL,
   disabled = false,
 }: ThoughtLevelSelectProps) {
   const t = useTranslations("composer.thoughtLevel");
-  const capabilityStop = maxReasoningStop(supportedEfforts);
-  const maxStop = cappedReasoningStop(capabilityStop, effortMax);
-  const options = useMemo(
-    () => ALL_REASONING_STOPS.slice(0, maxStop + 1),
-    [maxStop]
-  );
+  const allowedStop = allowedComposerStop(effortMax);
+  const options = COMPOSER_THOUGHT_STOPS;
 
-  if (!supportsReasoning || maxStop < 0) return null;
+  const pickAllowed = (effort: ReasoningEffortOverride | null | undefined) => {
+    const normalized = toComposerThoughtLevel(effort);
+    return normalized != null && composerStopIndex(normalized) <= allowedStop
+      ? normalized
+      : null;
+  };
+
+  const defaultAllowed =
+    [...options]
+      .reverse()
+      .find((effort) => composerStopIndex(effort) <= allowedStop) ??
+    options[0];
+
+  if (!supportsReasoning) return null;
 
   const current =
-    value && options.includes(value)
-      ? value
-      : fallback && options.includes(fallback)
-        ? fallback
-        : options[0];
-  const currentLabel = current
-    ? t(`levels.${THOUGHT_LABEL_KEYS[current]}.label`)
-    : t("levels.low.label");
+    pickAllowed(value) ??
+    pickAllowed(fallback) ??
+    defaultAllowed ??
+    DEFAULT_THOUGHT_LEVEL;
+  const currentLabel = t(`levels.${THOUGHT_LABEL_KEYS[current]}.label`);
 
   return (
     <Popover>
       <Popover.Trigger asChild>
         <SelectButton
           disabled={disabled}
-          icon={SvgLightbulbSimple}
+          icon={SvgThoughtBrain}
           tooltip={t("tooltip")}
           foldable
         >
@@ -72,17 +78,25 @@ export default function ThoughtLevelSelect({
       </Popover.Trigger>
       <Popover.Content width="fit" align="end">
         <Popover.Menu>
-          {options.map((effort) => (
-            <LineItemButton
-              key={effort}
-              sizePreset="main-ui"
-              rounding={2}
-              state={effort === current ? "selected" : "empty"}
-              selectVariant={effort === current ? "select-heavy" : "select-light"}
-              title={t(`levels.${THOUGHT_LABEL_KEYS[effort]}.label`)}
-              onClick={() => onChange(effort)}
-            />
-          ))}
+          {options.map((effort) => {
+            const aboveCap = composerStopIndex(effort) > allowedStop;
+            return (
+              <LineItemButton
+                key={effort}
+                sizePreset="main-ui"
+                rounding={2}
+                disabled={aboveCap}
+                state={effort === current ? "selected" : "empty"}
+                selectVariant={
+                  effort === current ? "select-heavy" : "select-light"
+                }
+                title={t(`levels.${THOUGHT_LABEL_KEYS[effort]}.label`)}
+                onClick={() => {
+                  if (!aboveCap) onChange(effort);
+                }}
+              />
+            );
+          })}
         </Popover.Menu>
       </Popover.Content>
     </Popover>

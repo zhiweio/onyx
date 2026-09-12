@@ -28,6 +28,7 @@ import {
 } from "@/app/craft/types/displayTypes";
 
 import { MAX_QUEUED_MESSAGES } from "@/app/app/interfaces";
+import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 
 import {
   createSession as apiCreateSession,
@@ -948,7 +949,7 @@ const createInitialSessionData = (
   sandbox: null,
   agentProvider: null,
   agentModel: null,
-  reasoningEffort: null,
+  reasoningEffort: DEFAULT_THOUGHT_LEVEL,
   opencodeSessionId: null,
   skillsStale: false,
   skillsStaleRevision: 0,
@@ -1638,7 +1639,8 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         sandbox,
         agentProvider: sessionData.agent_provider,
         agentModel: sessionData.agent_model,
-        reasoningEffort: sessionData.reasoning_effort ?? null,
+        reasoningEffort:
+          sessionData.reasoning_effort ?? DEFAULT_THOUGHT_LEVEL,
         opencodeSessionId: sessionData.opencode_session_id ?? null,
         ...(sessionData.skills_stale &&
           canApplySkillsStale() && { skillsStale: true }),

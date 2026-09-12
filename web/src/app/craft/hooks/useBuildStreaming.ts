@@ -22,6 +22,7 @@ import {
 } from "@/app/craft/services/apiServices";
 import type { BuildLlmSelection } from "@/app/craft/onboarding/constants";
 import { SWR_KEYS } from "@/lib/swr-keys";
+import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 
 import {
   useBuildSessionStore,
@@ -1018,7 +1019,7 @@ export function useBuildStreaming() {
           attachments,
           selectedSkillIds,
           selectedMcpServerIds,
-          existingSession?.reasoningEffort ?? null
+          existingSession?.reasoningEffort ?? DEFAULT_THOUGHT_LEVEL
         );
         const currentSession = useBuildSessionStore
           .getState()

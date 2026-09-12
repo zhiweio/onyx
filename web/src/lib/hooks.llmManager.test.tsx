@@ -92,6 +92,6 @@ describe("useLlmManager override persistence", () => {
 
     // Coming back reads the row too, not the old local choice.
     rerender({ session: makeSession("session-1", null) });
-    expect(result.current.reasoningEffort).toBeNull();
+    expect(result.current.reasoningEffort).toBe("xhigh");
   });
 });

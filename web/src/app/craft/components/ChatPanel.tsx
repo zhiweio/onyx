@@ -66,6 +66,7 @@ import {
   updateSessionReasoning,
 } from "@/app/craft/services/apiServices";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
+import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 import CraftAskBar, {
   type AskBarAction,
 } from "@/app/craft/components/CraftAskBar";
@@ -338,12 +339,14 @@ export default function BuildChatPanel({
 
   const thoughtLevel = selectedModelConfig
     ? {
-        value: (storedThoughtEffort as ReasoningEffortOverride | null) ?? null,
+        value:
+          (storedThoughtEffort as ReasoningEffortOverride | null) ??
+          DEFAULT_THOUGHT_LEVEL,
         onChange: handleThoughtChange,
         supportsReasoning: selectedModelConfig.supports_reasoning,
         supportedEfforts: selectedModelConfig.supported_reasoning_efforts,
         effortMax: selectedModelConfig.reasoning_effort_max,
-        fallback: selectedModelConfig.reasoning_effort_default,
+        fallback: DEFAULT_THOUGHT_LEVEL,
       }
     : null;
 
