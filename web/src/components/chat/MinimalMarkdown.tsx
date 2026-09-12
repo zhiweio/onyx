@@ -82,12 +82,14 @@ export default function MinimalMarkdown({
   return (
     // dir="auto" backstops component overrides that do not forward the
     // per-block dir stamped by rehypeDirection.
-    <div dir="auto">
+    <div
+      dir="auto"
+      className={cn(
+        "prose dark:prose-invert max-w-full text-sm wrap-break-word",
+        className
+      )}
+    >
       <ReactMarkdown
-        className={cn(
-          "prose dark:prose-invert max-w-full text-sm wrap-break-word",
-          className
-        )}
         components={markdownComponents}
         rehypePlugins={rehypePlugins}
         remarkPlugins={[

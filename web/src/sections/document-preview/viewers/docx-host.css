@@ -1,0 +1,29 @@
+.docx-host {
+  font-family:
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Songti SC", "SimSun", sans-serif;
+  line-height: 1.5;
+}
+
+.docx-host section.docx {
+  background-color: var(--background-neutral-light-00);
+  border-radius: var(--radius-08);
+  margin-inline: auto;
+}
+
+.docx-host section.docx + section.docx {
+  margin-top: 1rem;
+}
+
+.docx-host p,
+.docx-host li,
+.docx-host td,
+.docx-host th {
+  line-height: 1.5 !important;
+}
+
+.docx-host td,
+.docx-host th {
+  padding-block: 0.35em;
+  vertical-align: top;
+}

@@ -143,6 +143,42 @@ describe("UrlBar", () => {
     ).toBeInTheDocument();
   });
 
+  test("shows markdown download as the first action before export buttons", async () => {
+    const user = setupUser();
+    const onDownloadFile = jest.fn();
+    const onDownload = jest.fn();
+    const onExportPdf = jest.fn();
+
+    render(
+      <UrlBar
+        displayUrl="sandbox://outputs/report.md"
+        onDownloadFile={onDownloadFile}
+        onDownload={onDownload}
+        onExportPdf={onExportPdf}
+      />
+    );
+
+    const downloadButton = screen.getByRole("button", { name: "Download .md" });
+    const exportDocxButton = screen.getByRole("button", {
+      name: "Export to .docx",
+    });
+    const exportPdfButton = screen.getByRole("button", {
+      name: "Export to .pdf",
+    });
+
+    expect(downloadButton.compareDocumentPosition(exportDocxButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(exportDocxButton.compareDocumentPosition(exportPdfButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
+    await user.click(downloadButton);
+    expect(onDownloadFile).toHaveBeenCalledTimes(1);
+    expect(onDownload).not.toHaveBeenCalled();
+    expect(onExportPdf).not.toHaveBeenCalled();
+  });
+
   test.each(["no-sandbox://", "artifacts://"])(
     "does not copy internal display URL %s",
     async (internalUrl) => {

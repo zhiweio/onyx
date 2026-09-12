@@ -9,6 +9,8 @@ import {
 import { ALLOWED_URL_PROTOCOLS } from "./constants";
 import { DEFAULT_LOCALE } from "@/i18n/config";
 
+export { cn } from "@opal/utils";
+
 const URI_SCHEME_REGEX = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
 const BARE_EMAIL_REGEX = /^[^\s@/]+@[^\s@/:]+\.[^\s@/:]+$/;
 

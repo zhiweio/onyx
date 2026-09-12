@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useDropzone } from "react-dropzone";
+import { useTheme } from "next-themes";
 import { useProjectsContext } from "@/lib/projects/providers";
 import FilePickerPopover from "@/refresh-components/popovers/FilePickerPopover";
 import { UserFileStatus, type ProjectFile } from "@/lib/projects/types";
@@ -13,8 +13,8 @@ import AddInstructionModal from "@/sections/modals/AddInstructionModal";
 import UserFilesModal from "@/sections/modals/UserFilesModal";
 import { useCreateModal } from "@opal/components";
 import { FileCard } from "@/sections/cards/FileCard";
+import { FileUpload } from "@/sections/extend/file-upload";
 import { hasNonImageFiles } from "@/lib/utils";
-import { cn } from "@opal/utils";
 import {
   SvgAddLines,
   SvgFiles,
@@ -35,6 +35,7 @@ export default function ProjectContextPanel({
   setPresentingDocument,
 }: ProjectContextPanelProps) {
   const t = useTranslations("chat");
+  const { resolvedTheme } = useTheme();
   const addInstructionModal = useCreateModal();
   const projectFilesModal = useCreateModal();
   // Convert ProjectFile to MinimalOnyxDocument format for viewing
@@ -87,17 +88,6 @@ export default function ProjectContextPanel({
     },
     [handleUploadFiles]
   );
-
-  // Nested dropzone for drag-and-drop within ProjectContextPanel
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    noClick: true,
-    noKeyboard: true,
-    multiple: true,
-    noDragEventsBubbling: true,
-    onDrop: (acceptedFiles) => {
-      void handleUploadFiles(acceptedFiles);
-    },
-  });
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
   const projectName =
@@ -169,10 +159,7 @@ export default function ProjectContextPanel({
           }
         />
 
-        <div
-          className="flex flex-col gap-2 pb-2"
-          {...getRootProps({ onClick: (e) => e.stopPropagation() })}
-        >
+        <div className="flex flex-col gap-2 pb-2">
           <ContentAction
             sizePreset="main-ui"
             variant="section"
@@ -211,8 +198,17 @@ export default function ProjectContextPanel({
             }
           />
 
-          {/* Hidden input just to satisfy dropzone contract; we rely on FilePicker for clicks */}
-          <input {...getInputProps()} />
+          <FileUpload
+            accept=""
+            showFileList={false}
+            borderBeamTheme={resolvedTheme === "dark" ? "dark" : "light"}
+            title={t("projects.contextPanel.upload.title")}
+            description={t("projects.contextPanel.upload.description")}
+            browseLabel={t("projects.contextPanel.upload.browse")}
+            draggingLabel={t("projects.contextPanel.upload.dragging")}
+            unsupportedLabel={t("projects.contextPanel.upload.unsupported")}
+            onFilesAccepted={(files) => void handleUploadFiles(files)}
+          />
 
           {isLoadingProjectDetails && !currentProjectDetails ? (
             <SvgSimpleLoader />
@@ -258,9 +254,6 @@ export default function ProjectContextPanel({
                     onClick={() => projectFilesModal.toggle(true)}
                   />
                 )}
-                {isDragActive && (
-                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-action-selection-05" />
-                )}
               </div>
 
               {projectTokenCount > availableContextTokens && (
@@ -269,22 +262,7 @@ export default function ProjectContextPanel({
                 </Text>
               )}
             </>
-          ) : (
-            <div
-              className={cn(
-                "h-12 rounded-xl border border-dashed flex items-center ps-2",
-                isDragActive
-                  ? "bg-action-selection-01 border-action-selection-05 text-action-selection-05"
-                  : "border-border-01 text-text-02"
-              )}
-            >
-              <Text as="p" font="secondary-body" color="inherit">
-                {isDragActive
-                  ? t("projects.contextPanel.dropFiles.message")
-                  : t("projects.contextPanel.emptyFiles.message")}
-              </Text>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </>

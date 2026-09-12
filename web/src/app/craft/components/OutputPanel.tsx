@@ -21,6 +21,7 @@ import { type PanelTab, panelTabId } from "@/app/craft/types/displayTypes";
 import {
   fetchWebappInfo,
   fetchArtifacts,
+  downloadArtifactFile,
   exportDocx,
   exportPdf,
 } from "@/app/craft/services/apiServices";
@@ -450,16 +451,7 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
 
   const handleRawFileDownload = useCallback(() => {
     if (!session?.id || !activeFilePath) return;
-    const encodedPath = activeFilePath
-      .split("/")
-      .map((s) => encodeURIComponent(s))
-      .join("/");
-    const link = document.createElement("a");
-    link.href = `/api/build/sessions/${session.id}/artifacts/${encodedPath}`;
-    link.download = activeFilePath.split("/").pop() || activeFilePath;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadArtifactFile(session.id, activeFilePath);
   }, [session?.id, activeFilePath]);
 
   // Unified refresh handler — dispatches based on the active tab/preview
@@ -704,7 +696,7 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
             : null
         }
         onDownloadRaw={
-          isMarkdownPreview || isPowerPointPreview || isPdfPreview
+          isPowerPointPreview || isPdfPreview
             ? handleRawFileDownload
             : undefined
         }
@@ -713,8 +705,9 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
             ? "Download PDF"
             : isPowerPointPreview
               ? "Download PowerPoint"
-              : "Download MD file"
+              : undefined
         }
+        onDownloadFile={isMarkdownPreview ? handleRawFileDownload : undefined}
         onDownload={isMarkdownPreview ? handleDocxDownload : undefined}
         isDownloading={isExportingDocx}
         onExportPdf={isMarkdownPreview ? handlePdfDownload : undefined}

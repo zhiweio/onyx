@@ -463,10 +463,12 @@ export const MessageTextRenderer: MessageRenderer<
         ) : displayedContent.length > 0 ? (
           <div
             dir="auto"
-            className={cn(!streamFullyDisplayed && "streaming-katex")}
+            className={cn(
+              "prose prose-onyx font-main-content-body max-w-full",
+              !streamFullyDisplayed && "streaming-katex"
+            )}
           >
             <ReactMarkdown
-              className="prose prose-onyx font-main-content-body max-w-full"
               components={markdownComponents}
               remarkPlugins={
                 streamFullyDisplayed

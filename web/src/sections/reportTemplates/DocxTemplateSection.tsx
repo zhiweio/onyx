@@ -2,7 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button, MessageCard, Tag } from "@opal/components";
+import { Button, MessageCard } from "@opal/components";
+import { FileUpload } from "@/sections/extend/file-upload";
+import { SchemaBuilderPanel } from "@/sections/extend/schema-builder";
+import { placeholdersToSchema } from "@/sections/reportTemplates/placeholdersToSchema";
 import { Content, InputVertical, toast } from "@opal/layouts";
 import { SvgDownload, SvgUploadCloud } from "@opal/icons";
 import {
@@ -11,7 +14,6 @@ import {
 } from "@/lib/report-templates/api";
 import {
   isDocxReportTemplate,
-  placeholderToken,
   sandboxTemplatePath,
   type PlaceholderSpec,
   type ReportTemplateKind,
@@ -63,14 +65,14 @@ export default function DocxTemplateSection({
       toast.success(
         t("editor.docx.uploaded.message", {
           count: updated.placeholders.length,
-        }),
+        })
       );
     } catch (uploadError) {
       console.error(uploadError);
       toast.error(
         uploadError instanceof Error
           ? uploadError.message
-          : t("editor.docx.uploadFailed.message"),
+          : t("editor.docx.uploadFailed.message")
       );
     } finally {
       setUploading(false);
@@ -97,38 +99,55 @@ export default function DocxTemplateSection({
         />
       )}
 
-      <div className="flex flex-row flex-wrap items-center gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept={DOCX_ACCEPT}
-          className="hidden"
-          data-testid="DocxTemplateSection/input"
-          onChange={(event) => void handleFile(event.target.files?.[0])}
-        />
-        <Button
-          prominence="secondary"
-          icon={SvgUploadCloud}
-          disabled={disabled || uploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          {isDocx
-            ? t("editor.docx.replaceButton.label")
-            : t("editor.docx.uploadButton.label")}
-        </Button>
-        {isDocx && (
-          <Button
-            prominence="tertiary"
-            icon={SvgDownload}
-            href={downloadUrl(template.id)}
-          >
-            {t("editor.docx.downloadButton.label")}
-          </Button>
+      <div className="flex flex-col gap-3">
+        {!disabled && (
+          <FileUpload
+            accept={DOCX_ACCEPT}
+            multiple={false}
+            showBorderBeam={false}
+            showFileList={false}
+            title={
+              isDocx
+                ? t("editor.docx.replaceButton.label")
+                : t("editor.docx.uploadButton.label")
+            }
+            description={t("editor.docx.hint")}
+            onFilesAccepted={(files) => void handleFile(files[0])}
+          />
         )}
+        <div className="flex flex-row flex-wrap items-center gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={DOCX_ACCEPT}
+            className="hidden"
+            data-testid="DocxTemplateSection/input"
+            onChange={(event) => void handleFile(event.target.files?.[0])}
+          />
+          <Button
+            prominence="secondary"
+            icon={SvgUploadCloud}
+            disabled={disabled || uploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {isDocx
+              ? t("editor.docx.replaceButton.label")
+              : t("editor.docx.uploadButton.label")}
+          </Button>
+          {isDocx && (
+            <Button
+              prominence="tertiary"
+              icon={SvgDownload}
+              href={downloadUrl(template.id)}
+            >
+              {t("editor.docx.downloadButton.label")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {isDocx && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <Content
             title={t("editor.docx.placeholders.title", {
               count: template.placeholders.length,
@@ -137,16 +156,9 @@ export default function DocxTemplateSection({
             variant="body"
           />
           {template.placeholders.length > 0 ? (
-            <div className="flex flex-row flex-wrap gap-1">
-              {template.placeholders.map((placeholder) => (
-                <Tag
-                  key={placeholder.name}
-                  size="sm"
-                  color="blue"
-                  title={placeholderToken(placeholder)}
-                />
-              ))}
-            </div>
+            <SchemaBuilderPanel
+              schema={placeholdersToSchema(template.placeholders)}
+            />
           ) : (
             <Content
               title={t("editor.docx.placeholders.none")}

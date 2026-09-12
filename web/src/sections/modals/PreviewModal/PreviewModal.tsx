@@ -18,6 +18,18 @@ import {
 import { fetchChatFile } from "@/lib/chat/svc";
 import { PreviewContext } from "@/sections/modals/PreviewModal/interfaces";
 import { resolveVariant } from "@/sections/modals/PreviewModal/variants";
+import {
+  DocumentPreview,
+  saveChatProjectFileBytes,
+} from "@/sections/document-preview";
+import {
+  chatFileIdFromDocumentId,
+  filePreviewKind,
+  isChatProjectFileDocumentId,
+  isDocumentPreviewKind,
+  resolveDocumentPreviewMode,
+} from "@/sections/document-preview/filePreviewKind";
+import UnsavedChangesModal from "@/sections/modals/UnsavedChangesModal";
 
 interface PreviewModalProps {
   presentingDocument: MinimalOnyxDocument;
@@ -36,6 +48,8 @@ export default function PreviewModal({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState("application/octet-stream");
   const [zoom, setZoom] = useState(100);
+  const [dirty, setDirty] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const variant = useMemo(
     () => resolveVariant(presentingDocument.semantic_identifier, mimeType),
@@ -86,6 +100,15 @@ export default function PreviewModal({
 
     try {
       setFileName(originalFileName);
+
+      const guessedMime =
+        mime.getType(originalFileName) ?? "application/octet-stream";
+      const documentKind = filePreviewKind(originalFileName, guessedMime);
+      if (isDocumentPreviewKind(documentKind)) {
+        updateFileUrl(rawFileUrl);
+        setMimeType(guessedMime);
+        return;
+      }
 
       // Variants that render from backend-parsed content (spreadsheets) don't
       // need the raw binary blob — skip downloading the full workbook and let
@@ -152,6 +175,8 @@ export default function PreviewModal({
   }, [presentingDocument, t]);
 
   useEffect(() => {
+    setDirty(false);
+    setConfirmClose(false);
     fetchFile();
   }, [fetchFile]);
 
@@ -169,6 +194,22 @@ export default function PreviewModal({
     () => setZoom((prev) => Math.max(prev - 25, 25)),
     []
   );
+
+  const previewKind = filePreviewKind(fileName, mimeType);
+  const previewMode = resolveDocumentPreviewMode(
+    isChatProjectFileDocumentId(presentingDocument.document_id)
+      ? "chat-project"
+      : "chat-preview",
+    previewKind
+  );
+
+  const requestClose = useCallback(() => {
+    if (dirty) {
+      setConfirmClose(true);
+      return;
+    }
+    onClose();
+  }, [dirty, onClose]);
 
   const ctx: PreviewContext = useMemo(
     () => ({
@@ -201,7 +242,7 @@ export default function PreviewModal({
     <Modal
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open) requestClose();
       }}
     >
       <Modal.Content
@@ -213,7 +254,7 @@ export default function PreviewModal({
         <Modal.Header
           title={fileName || t("header.fallbackTitle")}
           description={variant.headerDescription(ctx)}
-          onClose={onClose}
+          onClose={requestClose}
         />
 
         {/* Body — uses flex-1/min-h-0/overflow-hidden (not Modal.Body)
@@ -235,6 +276,28 @@ export default function PreviewModal({
                 </a>
               )}
             </Section>
+          ) : isDocumentPreviewKind(previewKind) ? (
+            <DocumentPreview
+              src={fileUrl}
+              fileName={fileName}
+              mimeType={mimeType}
+              mode={previewMode}
+              onDirtyChange={setDirty}
+              onSaveBytes={
+                previewMode === "edit"
+                  ? async (bytes, mime) => {
+                      await saveChatProjectFileBytes(
+                        chatFileIdFromDocumentId(
+                          presentingDocument.document_id
+                        ),
+                        fileName,
+                        bytes,
+                        mime
+                      );
+                    }
+                  : undefined
+              }
+            />
           ) : (
             variant.renderContent(ctx)
           )}
@@ -248,6 +311,15 @@ export default function PreviewModal({
           />
         )}
       </Modal.Content>
+      <UnsavedChangesModal
+        open={confirmClose}
+        onCancel={() => setConfirmClose(false)}
+        onDiscard={() => {
+          setConfirmClose(false);
+          setDirty(false);
+          onClose();
+        }}
+      />
     </Modal>
   );
 }

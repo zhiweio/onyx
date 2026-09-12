@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { ProjectFile } from "@/lib/projects/types";
 import { UserFileStatus } from "@/lib/projects/types";
 import { isImageFile } from "@/lib/utils";
 import { cn } from "@opal/utils";
 import { SvgFileText, SvgX, SvgSimpleLoader } from "@opal/icons";
+import { FileThumbnail as ExtendFileThumbnail } from "@/sections/extend/file-thumbnail";
 import { Interactive, Hoverable } from "@opal/core";
 import { AttachmentItemLayout } from "@/layouts/general-layouts";
 import { Spacer } from "@opal/components";
@@ -105,9 +106,6 @@ function ImageFileCard({
   compact = false,
 }: ImageFileCardProps) {
   const sizeClass = compact ? "h-11 w-11" : "h-20 w-20";
-  const loaderSize = compact ? "h-5 w-5" : "h-8 w-8";
-  const iconSize = compact ? "h-5 w-5" : "h-8 w-8";
-  const [imgError, setImgError] = useState(false);
 
   const doneUploading = String(file.status) !== UserFileStatus.UPLOADING;
 
@@ -129,22 +127,13 @@ function ImageFileCard({
           onFileClick && !isProcessing ? () => onFileClick(file) : undefined
         }
       >
-        {!doneUploading || !imageUrl ? (
-          <div className="h-full w-full flex items-center justify-center">
-            <SvgSimpleLoader className={loaderSize} />
-          </div>
-        ) : imgError ? (
-          <div className="h-full w-full flex items-center justify-center">
-            <SvgFileText className={iconSize} />
-          </div>
-        ) : (
-          <img
-            src={imageUrl}
-            alt={file.name}
-            className="h-full w-full object-cover rounded-08"
-            onError={() => setImgError(true)}
-          />
-        )}
+        <ExtendFileThumbnail
+          file={{ name: file.name, type: file.file_type || "image" }}
+          previewImageUrl={imageUrl}
+          isLoading={!doneUploading || isProcessing}
+          className={cn(sizeClass, "rounded-08")}
+          previewClassName="h-full w-full object-cover rounded-08"
+        />
       </FileThumbnail>
     </Removable>
   );
@@ -215,20 +204,33 @@ export function FileCard({
       }
     >
       <div className="min-w-0 max-w-48">
-        <Interactive.Container border size="fit" width="full">
-          <AttachmentItemLayout
-            icon={isProcessing ? SvgSimpleLoader : SvgFileText}
-            title={file.name}
-            description={
-              isProcessing
-                ? file.status === UserFileStatus.UPLOADING
-                  ? t("file.uploading.description")
-                  : t("file.processing.description")
-                : typeLabel
-            }
-          />
-          <Spacer orientation="horizontal" rem={0.5} />
-        </Interactive.Container>
+        <Interactive.Stateless
+          onClick={
+            onFileClick && !isProcessing ? () => onFileClick(file) : undefined
+          }
+        >
+          <Interactive.Container border size="fit" width="full">
+            <div className="flex items-center gap-2">
+              <ExtendFileThumbnail
+                file={{ name: file.name, type: file.file_type || typeLabel }}
+                isLoading={isProcessing}
+                className="size-10 shrink-0"
+              />
+              <AttachmentItemLayout
+                icon={isProcessing ? SvgSimpleLoader : SvgFileText}
+                title={file.name}
+                description={
+                  isProcessing
+                    ? file.status === UserFileStatus.UPLOADING
+                      ? t("file.uploading.description")
+                      : t("file.processing.description")
+                    : typeLabel
+                }
+              />
+            </div>
+            <Spacer orientation="horizontal" rem={0.5} />
+          </Interactive.Container>
+        </Interactive.Stateless>
       </div>
     </Removable>
   );

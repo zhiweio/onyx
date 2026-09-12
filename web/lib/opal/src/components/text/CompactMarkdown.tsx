@@ -192,18 +192,21 @@ export default function CompactMarkdown({
   components,
 }: CompactMarkdownProps) {
   return (
-    <ReactMarkdown
+    <div
       className={cn(
         "max-w-full min-w-0 font-main-content-body wrap-break-word",
         className
       )}
-      allowedElements={ALLOWED_ELEMENTS}
-      unwrapDisallowed
-      components={{ ...DEFAULT_COMPONENTS, ...components }}
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
     >
-      {children}
-    </ReactMarkdown>
+      <ReactMarkdown
+        allowedElements={ALLOWED_ELEMENTS}
+        unwrapDisallowed
+        components={{ ...DEFAULT_COMPONENTS, ...components }}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
+      >
+        {children}
+      </ReactMarkdown>
+    </div>
   );
 }

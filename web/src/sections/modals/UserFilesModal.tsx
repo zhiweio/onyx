@@ -27,6 +27,7 @@ import { Button } from "@opal/components";
 import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { timeAgo } from "@opal/time";
 import { useTranslations } from "next-intl";
+import { FileUpload } from "@/sections/extend/file-upload";
 
 function getIcon(
   file: ProjectFile,
@@ -132,6 +133,7 @@ export default function UserFilesModal({
   onUnpickRecent,
 }: UserFilesModalProps) {
   const t = useTranslations("chat.modals.userFiles");
+  const tChat = useTranslations("chat");
   const { isOpen, toggle } = useModal();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(selectedFileIds || [])
@@ -223,6 +225,34 @@ export default function UserFilesModal({
             gap={2}
             alignItems="center"
           >
+            {handleUploadChange && (
+              <FileUpload
+                accept=""
+                showFileList={false}
+                title={tChat("projects.contextPanel.upload.title")}
+                description={tChat("projects.contextPanel.upload.description")}
+                browseLabel={tChat("projects.contextPanel.upload.browse")}
+                draggingLabel={tChat("projects.contextPanel.upload.dragging")}
+                unsupportedLabel={tChat(
+                  "projects.contextPanel.upload.unsupported"
+                )}
+                onFilesAccepted={(files) => {
+                  const transfer = new DataTransfer();
+                  for (const file of files) {
+                    transfer.items.add(file);
+                  }
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.files = transfer.files;
+                  // SAFETY: handleUploadChange only reads target.files from
+                  // the change event; this synthetic input holds those files.
+                  handleUploadChange({
+                    target: input,
+                    currentTarget: input,
+                  } as React.ChangeEvent<HTMLInputElement>);
+                }}
+              />
+            )}
             {/* File display section */}
             {filtered.length === 0 ? (
               <Text text03>{t("emptyState.description")}</Text>

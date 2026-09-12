@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { SWR_KEYS } from "@/lib/swr-keys";
-import { fetchFileContent } from "@/app/craft/services/apiServices";
+import {
+  buildArtifactUrl,
+  fetchFileContent,
+} from "@/app/craft/services/apiServices";
 import { Text } from "@opal/components";
 import { SvgFileText } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
@@ -12,8 +15,7 @@ import ImagePreview from "@/app/craft/components/output-panel/ImagePreview";
 import MarkdownFilePreview, {
   type FileRendererProps,
 } from "@/app/craft/components/output-panel/MarkdownFilePreview";
-import PptxPreview from "@/app/craft/components/output-panel/PptxPreview";
-import PdfPreview from "@/app/craft/components/output-panel/PdfPreview";
+import { DocumentPreview } from "@/sections/document-preview";
 
 // ── Preview registry ─────────────────────────────────────────────────────
 // Unified registry for all file preview types. First match wins.
@@ -43,16 +45,36 @@ function ImageRendererWrapper({ content, fileName }: FileRendererProps) {
   return <ImagePreview src={content} fileName={fileName} />;
 }
 
+function ArtifactDocumentPreview({
+  sessionId,
+  filePath,
+  refreshKey,
+}: {
+  sessionId: string;
+  filePath: string;
+  refreshKey?: number;
+}) {
+  const fileName = filePath.split("/").pop() || filePath;
+  return (
+    <div className="h-full min-h-0">
+      <DocumentPreview
+        key={`${filePath}:${refreshKey ?? 0}`}
+        src={buildArtifactUrl(sessionId, filePath)}
+        fileName={fileName}
+        mode="view"
+      />
+    </div>
+  );
+}
+
 const PREVIEW_REGISTRY: PreviewEntry[] = [
   {
     type: "standalone",
-    matches: (path) => /\.pptx?$/i.test(path),
-    component: PptxPreview,
-  },
-  {
-    type: "standalone",
-    matches: (path) => /\.pdf$/i.test(path),
-    component: PdfPreview,
+    matches: (path) =>
+      /\.(pdf|docx?|xlsx|xlsm|pptx?|csv|tsv)$/i.test(path) &&
+      !/\.ppt\.txt$/i.test(path) &&
+      !/\.pptx\.txt$/i.test(path),
+    component: ArtifactDocumentPreview,
   },
   {
     type: "content",

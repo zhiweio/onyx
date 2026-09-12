@@ -41,9 +41,7 @@ function file(
   };
 }
 
-function session(
-  overrides: Partial<CraftProjectSession>
-): CraftProjectSession {
+function session(overrides: Partial<CraftProjectSession>): CraftProjectSession {
   return {
     id: overrides.id ?? "session",
     name: overrides.name ?? "Chat",
@@ -68,17 +66,23 @@ describe("craft project display helpers", () => {
     expect(usefulFolder("outputs/mcp/bash/1788711879701.json")).toBe("bash");
     expect(usefulFolder("outputs/mcp/1788711879701.json")).toBeNull();
     expect(pathLooksLikeMcp("outputs/mcp/1788711879701.json")).toBe(true);
-    expect(fileTitleSource(file({ name: "patent.csv", path: "patent.csv" }))).toEqual(
-      { source: "original", folder: null }
-    );
+    expect(
+      fileTitleSource(file({ name: "patent.csv", path: "patent.csv" }))
+    ).toEqual({ source: "original", folder: null });
     expect(
       fileTitleSource(
-        file({ name: "1788711879701.json", path: "outputs/mcp/bash/1788711879701.json" })
+        file({
+          name: "1788711879701.json",
+          path: "outputs/mcp/bash/1788711879701.json",
+        })
       )
     ).toEqual({ source: "folder", folder: "bash" });
     expect(
       fileTitleSource(
-        file({ name: "1788711879701.json", path: "outputs/mcp/1788711879701.json" })
+        file({
+          name: "1788711879701.json",
+          path: "outputs/mcp/1788711879701.json",
+        })
       )
     ).toEqual({ source: "mcp", folder: null });
   });
@@ -152,11 +156,17 @@ describe("craft project display helpers", () => {
 
   it("classifies preview kinds and groups files by folder", () => {
     expect(
-      projectFilePreviewKind(file({ name: "report.md", path: "outputs/report.md" }))
+      projectFilePreviewKind(
+        file({ name: "report.md", path: "outputs/report.md" })
+      )
     ).toBe("markdown");
     expect(
       projectFilePreviewKind(
-        file({ name: "PLAN.json", path: "outputs/plan/PLAN.json", mime_type: "application/json" })
+        file({
+          name: "PLAN.json",
+          path: "outputs/plan/PLAN.json",
+          mime_type: "application/json",
+        })
       )
     ).toBe("json");
     expect(
@@ -169,14 +179,27 @@ describe("craft project display helpers", () => {
     ).toBe("image");
     expect(
       projectFilePreviewKind(
-        file({ name: "rates.xlsx", path: "/rates.xlsx", mime_type: "application/vnd.ms-excel" })
+        file({
+          name: "rates.xlsx",
+          path: "/rates.xlsx",
+          mime_type: "application/vnd.ms-excel",
+        })
       )
-    ).toBe("unsupported");
+    ).toBe("xlsx");
+    expect(
+      projectFilePreviewKind(file({ name: "report.docx", path: "report.docx" }))
+    ).toBe("docx");
+    expect(
+      projectFilePreviewKind(file({ name: "brief.pdf", path: "brief.pdf" }))
+    ).toBe("pdf");
     expect(formatProjectFileText('{"a":1}', "json")).toBe('{\n  "a": 1\n}');
     expect(formatProjectFileText("not-json", "json")).toBe("not-json");
 
     const groups = groupProjectFilesByFolder([
-      file({ name: "FINDINGS.md", path: "project/research/literature/FINDINGS.md" }),
+      file({
+        name: "FINDINGS.md",
+        path: "project/research/literature/FINDINGS.md",
+      }),
       file({ name: "rates.xlsx", path: "/rates.xlsx" }),
       file({ name: "PLAN.json", path: "outputs/plan/PLAN.json" }),
     ]);
@@ -201,8 +224,16 @@ describe("craft project display helpers", () => {
     ]);
 
     const sessions = [
-      session({ id: "idle", status: "IDLE", last_activity_at: "2026-08-02T00:00:00Z" }),
-      session({ id: "active", status: "ACTIVE", last_activity_at: "2026-08-01T00:00:00Z" }),
+      session({
+        id: "idle",
+        status: "IDLE",
+        last_activity_at: "2026-08-02T00:00:00Z",
+      }),
+      session({
+        id: "active",
+        status: "ACTIVE",
+        last_activity_at: "2026-08-01T00:00:00Z",
+      }),
     ].sort(compareProjectSessions);
     expect(sessions.map((item) => item.id)).toEqual(["active", "idle"]);
   });

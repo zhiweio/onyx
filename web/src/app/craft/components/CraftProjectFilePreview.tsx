@@ -21,9 +21,17 @@ import {
 } from "@/lib/craft-projects/api";
 import {
   formatProjectFileText,
+  isProjectDocumentPreviewKind,
   projectFilePreviewKind,
 } from "@/lib/craft-projects/display";
 import type { CraftProjectFile } from "@/lib/craft-projects/types";
+import {
+  DocumentPreview,
+  resolveDocumentPreviewMode,
+  saveCraftProjectFileBytes,
+} from "@/sections/document-preview";
+import { filePreviewKind } from "@/sections/document-preview/filePreviewKind";
+import UnsavedChangesModal from "@/sections/modals/UnsavedChangesModal";
 
 interface CraftProjectFilePreviewProps {
   projectId: string;
@@ -45,17 +53,26 @@ export default function CraftProjectFilePreview({
   const t = useTranslations("craft.projects");
   const previewT = useTranslations("craft.filePreview");
   const kind = projectFilePreviewKind(file);
+  const previewMode = resolveDocumentPreviewMode(
+    "craft-project",
+    filePreviewKind(file.name, file.mime_type)
+  );
   const [payload, setPayload] = useState<CraftProjectFilePreviewPayload | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(kind !== "unsupported");
+  const [loading, setLoading] = useState(
+    kind !== "unsupported" && !isProjectDocumentPreviewKind(kind)
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const index = files.findIndex((item) => item.id === file.id);
   const previous = index > 0 ? files[index - 1] : undefined;
-  const next = index >= 0 && index < files.length - 1 ? files[index + 1] : undefined;
+  const next =
+    index >= 0 && index < files.length - 1 ? files[index + 1] : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +82,15 @@ export default function CraftProjectFilePreview({
       setError(null);
       setLoading(false);
       setImageUrl(null);
+      return;
+    }
+    if (isProjectDocumentPreviewKind(previewKind)) {
+      setPayload({ status: "document" });
+      setError(null);
+      setLoading(false);
+      setImageUrl(null);
+      setDirty(false);
+      setConfirmClose(false);
       return;
     }
 
@@ -133,8 +159,7 @@ export default function CraftProjectFilePreview({
   async function handleDelete() {
     setRemoving(true);
     const currentIndex = files.findIndex((item) => item.id === file.id);
-    const fallback =
-      files[currentIndex + 1] ?? files[currentIndex - 1] ?? null;
+    const fallback = files[currentIndex + 1] ?? files[currentIndex - 1] ?? null;
     try {
       await deleteCraftProjectFile(projectId, file.id);
       await onChanged();
@@ -155,18 +180,26 @@ export default function CraftProjectFilePreview({
     }
   }
 
+  function requestClose() {
+    if (dirty) {
+      setConfirmClose(true);
+      return;
+    }
+    onClose();
+  }
+
   return (
     <Modal
       open
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          requestClose();
         }
       }}
     >
       <Modal.Content
-        width="lg"
-        height="lg"
+        width="full"
+        height="full"
         preventAccidentalClose={false}
         data-testid="craft-project-file-preview"
       >
@@ -174,7 +207,7 @@ export default function CraftProjectFilePreview({
           icon={SvgFile}
           title={file.name}
           description={file.path || file.name}
-          onClose={onClose}
+          onClose={requestClose}
         >
           <div className="flex flex-wrap items-center gap-1 px-2 pb-1">
             <Button
@@ -214,8 +247,8 @@ export default function CraftProjectFilePreview({
             />
           </div>
         </Modal.Header>
-        <Modal.Body padding={0} gap={0} alignItems="stretch">
-          <div className="w-full min-h-[24rem]">
+        <Modal.Body padding={0} gap={0} alignItems="stretch" height="full">
+          <div className="flex h-full min-h-0 w-full flex-col">
             {loading && (
               <Section
                 height="full"
@@ -261,15 +294,18 @@ export default function CraftProjectFilePreview({
                   downloadLabel={t("detail.download.tooltip")}
                 />
               )}
-            {!loading && !error && payload?.status === "text" && kind === "markdown" && (
-              <MarkdownFilePreview
-                content={text}
-                fileName={file.name}
-                filePath={file.path}
-                mimeType={file.mime_type ?? "text/markdown"}
-                isImage={false}
-              />
-            )}
+            {!loading &&
+              !error &&
+              payload?.status === "text" &&
+              kind === "markdown" && (
+                <MarkdownFilePreview
+                  content={text}
+                  fileName={file.name}
+                  filePath={file.path}
+                  mimeType={file.mime_type ?? "text/markdown"}
+                  isImage={false}
+                />
+              )}
             {!loading &&
               !error &&
               payload?.status === "text" &&
@@ -281,9 +317,43 @@ export default function CraftProjectFilePreview({
             {!loading && !error && imageUrl && (
               <ImagePreview src={imageUrl} fileName={file.name} />
             )}
+            {!loading && !error && payload?.status === "document" && (
+              <div className="min-h-0 flex-1">
+                <DocumentPreview
+                  src={craftProjectFileUrl(projectId, file.id)}
+                  fileName={file.name}
+                  mimeType={file.mime_type}
+                  mode={previewMode}
+                  onDirtyChange={setDirty}
+                  onSaveBytes={
+                    previewMode === "edit"
+                      ? async (bytes, mime) => {
+                          await saveCraftProjectFileBytes(
+                            projectId,
+                            file.id,
+                            file.name,
+                            bytes,
+                            mime
+                          );
+                          await onChanged();
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            )}
           </div>
         </Modal.Body>
       </Modal.Content>
+      <UnsavedChangesModal
+        open={confirmClose}
+        onCancel={() => setConfirmClose(false)}
+        onDiscard={() => {
+          setConfirmClose(false);
+          setDirty(false);
+          onClose();
+        }}
+      />
     </Modal>
   );
 }

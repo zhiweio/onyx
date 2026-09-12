@@ -86,43 +86,44 @@ export function AppPopup() {
         />
         <Modal.Body>
           <div className="overflow-y-auto text-start">
-            <ReactMarkdown
-              className="prose prose-neutral dark:prose-invert max-w-full"
-              components={{
-                a: ({ node, children, ...props }) => (
-                  <a
-                    {...props}
-                    className="text-link hover:text-link-hover"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {children}
-                  </a>
-                ),
-                p: ({ node, ...props }) => (
-                  <Text as="p" mainUiBody text03 {...props} />
-                ),
-                strong: ({ node, ...props }) => (
-                  <Text mainUiBody text03 {...props} />
-                ),
-                h1: ({ node, ...props }) => (
-                  <Text as="p" headingH1 text03 {...props} />
-                ),
-                h2: ({ node, ...props }) => (
-                  <Text as="p" headingH2 text03 {...props} />
-                ),
-                h3: ({ node, ...props }) => (
-                  <Text as="p" headingH3 text03 {...props} />
-                ),
-                li: ({ node, ...props }) => (
-                  <Text as="li" mainUiBody text03 {...props} />
-                ),
-              }}
-              remarkPlugins={[remarkGfm]}
-              urlTransform={transformLinkUri}
-            >
-              {popupContent}
-            </ReactMarkdown>
+            <div className="prose prose-neutral dark:prose-invert max-w-full">
+              <ReactMarkdown
+                components={{
+                  a: ({ node, children, ...props }) => (
+                    <a
+                      {...props}
+                      className="text-link hover:text-link-hover"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {children}
+                    </a>
+                  ),
+                  p: ({ node, ...props }) => (
+                    <Text as="p" mainUiBody text03 {...props} />
+                  ),
+                  strong: ({ node, ...props }) => (
+                    <Text mainUiBody text03 {...props} />
+                  ),
+                  h1: ({ node, ...props }) => (
+                    <Text as="p" headingH1 text03 {...props} />
+                  ),
+                  h2: ({ node, ...props }) => (
+                    <Text as="p" headingH2 text03 {...props} />
+                  ),
+                  h3: ({ node, ...props }) => (
+                    <Text as="p" headingH3 text03 {...props} />
+                  ),
+                  li: ({ node, ...props }) => (
+                    <Text as="li" mainUiBody text03 {...props} />
+                  ),
+                }}
+                remarkPlugins={[remarkGfm]}
+                urlTransform={transformLinkUri}
+              >
+                {popupContent}
+              </ReactMarkdown>
+            </div>
             {isConsentScreen && settings.enterprise?.consent_screen_prompt && (
               <FormField
                 state={showConsentError ? "error" : "idle"}
@@ -142,40 +143,41 @@ export function AppPopup() {
                     />
                   </FormField.Control>
                   <FormField.Label>
-                    <ReactMarkdown
-                      className="prose prose-neutral dark:prose-invert max-w-full"
-                      components={{
-                        a: ({ node, children, ...props }) => (
-                          <a
-                            {...props}
-                            className="text-link hover:text-link-hover"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {children}
-                          </a>
-                        ),
-                        p: ({ node, ...props }) => (
-                          <Text
-                            as="p"
-                            mainUiBody
-                            text04
-                            className="my-0!" //dont remove the my-0! class, it's important for the markdown to render without any alignment issues
-                            {...props}
-                          />
-                        ),
-                        strong: ({ node, ...props }) => (
-                          <Text mainUiBody text04 {...props} />
-                        ),
-                        li: ({ node, ...props }) => (
-                          <Text as="li" mainUiBody text04 {...props} />
-                        ),
-                      }}
-                      remarkPlugins={[remarkGfm]}
-                      urlTransform={transformLinkUri}
-                    >
-                      {settings.enterprise.consent_screen_prompt}
-                    </ReactMarkdown>
+                    <div className="prose prose-neutral dark:prose-invert max-w-full">
+                      <ReactMarkdown
+                        components={{
+                          a: ({ node, children, ...props }) => (
+                            <a
+                              {...props}
+                              className="text-link hover:text-link-hover"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {children}
+                            </a>
+                          ),
+                          p: ({ node, ...props }) => (
+                            <Text
+                              as="p"
+                              mainUiBody
+                              text04
+                              className="my-0!" //dont remove the my-0! class, it's important for the markdown to render without any alignment issues
+                              {...props}
+                            />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <Text mainUiBody text04 {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <Text as="li" mainUiBody text04 {...props} />
+                          ),
+                        }}
+                        remarkPlugins={[remarkGfm]}
+                        urlTransform={transformLinkUri}
+                      >
+                        {settings.enterprise.consent_screen_prompt}
+                      </ReactMarkdown>
+                    </div>
                   </FormField.Label>
                 </div>
                 <FormField.Message

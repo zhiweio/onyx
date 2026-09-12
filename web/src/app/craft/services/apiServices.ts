@@ -25,6 +25,10 @@ import {
   RateLimitDetails,
 } from "@/app/app/interfaces";
 import { BUILD_API_BASE } from "@/app/craft/v1/constants";
+import {
+  BINARY_DOCUMENT_TEXT_ERROR,
+  isBinaryDocument,
+} from "@/sections/document-preview/binaryGuard";
 import { CRAFT_GATEWAY_PROVIDER } from "@/app/craft/onboarding/constants";
 import type { BuildLlmSelection } from "@/app/craft/onboarding/constants";
 
@@ -402,8 +406,7 @@ export async function fetchMessages(
   const data = await res.json();
   return data.messages
     .filter(
-      (m: ApiMessageResponse) =>
-        m.message_metadata?.craft_job_continue !== true
+      (m: ApiMessageResponse) => m.message_metadata?.craft_job_continue !== true
     )
     .map((m: ApiMessageResponse) => ({
       id: m.id,
@@ -774,7 +777,17 @@ export async function fetchFileContent(
     });
   }
 
-  const content = await res.text();
+  const buffer = await res.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (isBinaryDocument(bytes, path, mimeType)) {
+    return {
+      content: "",
+      mimeType,
+      isImage: false,
+      error: BINARY_DOCUMENT_TEXT_ERROR,
+    };
+  }
+  const content = new TextDecoder("utf-8").decode(bytes);
   return { content, mimeType, isImage: false };
 }
 
@@ -969,7 +982,9 @@ export async function createCraftJob(body: {
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to start long job: ${res.status}`);
+    throw new Error(
+      errorData.detail || `Failed to start long job: ${res.status}`
+    );
   }
   return res.json();
 }
@@ -986,14 +1001,14 @@ export async function resumeCraftJob(
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to resume long job: ${res.status}`);
+    throw new Error(
+      errorData.detail || `Failed to resume long job: ${res.status}`
+    );
   }
   return res.json();
 }
 
-export async function fetchCraftQuestionAsk(
-  sessionId: string
-): Promise<{
+export async function fetchCraftQuestionAsk(sessionId: string): Promise<{
   requestId: string;
   prompt: string;
   options: string[];
@@ -1056,7 +1071,9 @@ export async function cancelCraftJob(jobId: string): Promise<CraftJobResponse> {
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to cancel long job: ${res.status}`);
+    throw new Error(
+      errorData.detail || `Failed to cancel long job: ${res.status}`
+    );
   }
   return res.json();
 }

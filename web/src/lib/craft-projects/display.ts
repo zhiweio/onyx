@@ -235,6 +235,12 @@ export type ProjectFilePreviewKind =
   | "text"
   | "json"
   | "image"
+  | "pdf"
+  | "docx"
+  | "doc"
+  | "xlsx"
+  | "pptx"
+  | "csv"
   | "unsupported";
 
 export const PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES = 1_572_864;
@@ -251,7 +257,6 @@ const IMAGE_EXTENSIONS = new Set([
 
 const TEXT_EXTENSIONS = new Set([
   "css",
-  "csv",
   "html",
   "js",
   "jsonl",
@@ -259,7 +264,6 @@ const TEXT_EXTENSIONS = new Set([
   "py",
   "sh",
   "ts",
-  "tsv",
   "tsx",
   "txt",
   "xml",
@@ -275,6 +279,29 @@ export function projectFilePreviewKind(
   if (mime.startsWith("image/") || IMAGE_EXTENSIONS.has(ext)) {
     return "image";
   }
+  if (ext === "pdf" || mime === "application/pdf") {
+    return "pdf";
+  }
+  if (ext === "docx" || mime.includes("wordprocessingml.document")) {
+    return "docx";
+  }
+  if (ext === "doc" || mime === "application/msword") {
+    return "doc";
+  }
+  if (
+    ext === "xlsx" ||
+    ext === "xlsm" ||
+    mime.includes("spreadsheetml") ||
+    mime.includes("ms-excel")
+  ) {
+    return "xlsx";
+  }
+  if (ext === "pptx" || ext === "ppt" || mime.includes("presentationml")) {
+    return "pptx";
+  }
+  if (ext === "csv" || ext === "tsv" || mime === "text/csv") {
+    return "csv";
+  }
   if (ext === "md" || ext === "markdown") {
     return "markdown";
   }
@@ -285,6 +312,19 @@ export function projectFilePreviewKind(
     return "text";
   }
   return "unsupported";
+}
+
+export function isProjectDocumentPreviewKind(
+  kind: ProjectFilePreviewKind
+): boolean {
+  return (
+    kind === "pdf" ||
+    kind === "docx" ||
+    kind === "doc" ||
+    kind === "xlsx" ||
+    kind === "pptx" ||
+    kind === "csv"
+  );
 }
 
 export function formatProjectFileText(
@@ -302,7 +342,11 @@ export function formatProjectFileText(
 }
 
 export function fileFolderPath(path: string): string {
-  const parts = path.replace(/\\/g, "/").replace(/^\//, "").split("/").filter(Boolean);
+  const parts = path
+    .replace(/\\/g, "/")
+    .replace(/^\//, "")
+    .split("/")
+    .filter(Boolean);
   if (parts.length < 2) {
     return "";
   }
@@ -366,7 +410,5 @@ export function compareProjectSessions(
   if (byStatus !== 0) {
     return byStatus;
   }
-  return (
-    Date.parse(right.last_activity_at) - Date.parse(left.last_activity_at)
-  );
+  return Date.parse(right.last_activity_at) - Date.parse(left.last_activity_at);
 }

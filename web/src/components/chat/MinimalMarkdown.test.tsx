@@ -30,4 +30,12 @@ describe("MinimalMarkdown", () => {
       expect(link).not.toHaveAttribute("href");
     });
   });
+
+  test("applies className on the wrapper, not ReactMarkdown", () => {
+    render(
+      <MinimalMarkdown content="Hello markdown" className="text-text-05" />
+    );
+
+    expect(screen.getByText("Hello markdown")).toBeInTheDocument();
+  });
 });

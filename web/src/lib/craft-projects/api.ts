@@ -6,6 +6,7 @@ import type {
 } from "@/lib/craft-projects/types";
 import {
   PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES,
+  isProjectDocumentPreviewKind,
   projectFilePreviewKind,
 } from "@/lib/craft-projects/display";
 
@@ -41,7 +42,9 @@ export async function listCraftProjects(): Promise<CraftProject[]> {
   return payload.projects;
 }
 
-export async function getCraftProject(projectId: string): Promise<CraftProject> {
+export async function getCraftProject(
+  projectId: string
+): Promise<CraftProject> {
   const response = await fetch(`${PROJECTS_URL}/${projectId}`);
   return handle<CraftProject>(response);
 }
@@ -89,16 +92,28 @@ export async function uploadCraftProjectFile(
   return handle<CraftProjectFile>(response);
 }
 
-export function craftProjectFileUrl(
+export async function replaceCraftProjectFile(
   projectId: string,
-  fileId: string
-): string {
+  fileId: string,
+  file: File
+): Promise<CraftProjectFile> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${PROJECTS_URL}/${projectId}/files/${fileId}`, {
+    method: "PUT",
+    body: form,
+  });
+  return handle<CraftProjectFile>(response);
+}
+
+export function craftProjectFileUrl(projectId: string, fileId: string): string {
   return `${PROJECTS_URL}/${projectId}/files/${fileId}`;
 }
 
 export type CraftProjectFilePreviewPayload =
   | { status: "text"; text: string }
   | { status: "image"; blob: Blob }
+  | { status: "document" }
   | { status: "too-large"; sizeBytes: number }
   | { status: "unsupported" };
 
@@ -109,6 +124,9 @@ export async function fetchCraftProjectFileContent(
   const kind = projectFilePreviewKind(file);
   if (kind === "unsupported") {
     return { status: "unsupported" };
+  }
+  if (isProjectDocumentPreviewKind(kind)) {
+    return { status: "document" };
   }
   const knownSize = file.size_bytes ?? 0;
   if (kind !== "image" && knownSize > PROJECT_FILE_TEXT_PREVIEW_MAX_BYTES) {

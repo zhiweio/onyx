@@ -9,12 +9,14 @@ import { dataVariant } from "@/sections/modals/PreviewModal/variants/dataVariant
 import { textVariant } from "@/sections/modals/PreviewModal/variants/textVariant";
 import { unsupportedVariant } from "@/sections/modals/PreviewModal/variants/unsupportedVariant";
 import { docxVariant } from "@/sections/modals/PreviewModal/variants/docxVariant";
+import { pptxVariant } from "@/sections/modals/PreviewModal/variants/pptxVariant";
 
 // Note: Order does matter for the order that filters that are hit
 const PREVIEW_VARIANTS: PreviewVariant[] = [
   codeVariant,
   imageVariant,
   pdfVariant,
+  pptxVariant,
   csvVariant,
   xlsxVariant,
   markdownVariant,

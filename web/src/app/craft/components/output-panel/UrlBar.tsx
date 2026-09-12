@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { cn, copyText } from "@opal/utils";
 import { Text, Button } from "@opal/components";
 import {
+  SvgDownload,
   SvgDownloadCloud,
   SvgLoader,
   SvgArrowLeft,
@@ -35,6 +36,8 @@ export interface UrlBarProps {
   onDownloadRaw?: () => void;
   /** Tooltip text for the raw download button */
   downloadRawTooltip?: string;
+  /** Download the original file as the first action button (e.g. sandbox markdown) */
+  onDownloadFile?: () => void;
   /** Optional download callback — shows an export button in the URL bar when provided */
   onDownload?: () => void;
   /** Whether a download/export is currently in progress */
@@ -70,6 +73,7 @@ export default function UrlBar({
   previewUrl,
   onDownloadRaw,
   downloadRawTooltip,
+  onDownloadFile,
   onDownload,
   isDownloading = false,
   onExportPdf,
@@ -247,6 +251,16 @@ export default function UrlBar({
             </Tooltip>
           </div>
         </div>
+        {onDownloadFile && (
+          <Button
+            variant="action"
+            prominence="tertiary"
+            icon={SvgDownload}
+            onClick={onDownloadFile}
+          >
+            {t("download.button")}
+          </Button>
+        )}
         {/* Export button — shown for downloadable file previews (e.g. markdown → docx) */}
         {onDownload && (
           <Button

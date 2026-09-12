@@ -145,13 +145,14 @@ const StandardAnswersTableRow = ({
             </span>
           )}
         </div>,
-        <ReactMarkdown
+        <div
           key={`answer-${standardAnswer.id}`}
           className="prose dark:prose-invert"
-          remarkPlugins={[remarkGfm]}
         >
-          {standardAnswer.answer}
-        </ReactMarkdown>,
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {standardAnswer.answer}
+          </ReactMarkdown>
+        </div>,
         <Button
           key={`delete-${standardAnswer.id}`}
           icon={SvgTrash}

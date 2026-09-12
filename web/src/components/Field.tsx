@@ -672,9 +672,8 @@ export const MarkdownFormField = ({
           </button>
         </div>
         {isPreviewOpen ? (
-          <div className="p-4 border-t border-border-02">
+          <div className="p-4 border-t border-border-02 prose dark:prose-invert">
             <ReactMarkdown
-              className="prose dark:prose-invert"
               remarkPlugins={[remarkGfm]}
               urlTransform={transformLinkUri}
             >

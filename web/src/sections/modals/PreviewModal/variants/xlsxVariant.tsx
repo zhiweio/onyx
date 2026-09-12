@@ -1,12 +1,8 @@
 import { Section } from "@/layouts/general-layouts";
+import { DocumentPreview } from "@/sections/document-preview";
 import { PreviewVariant } from "@/sections/modals/PreviewModal/interfaces";
 import { DownloadButton } from "@/sections/modals/PreviewModal/variants/shared";
-import {
-  isSpreadsheetFileName,
-  parseSpreadsheetPreview,
-  SpreadsheetSheetsView,
-} from "@/components/tools/SpreadsheetContent";
-import { Text } from "@opal/components";
+import { isSpreadsheetFileName } from "@/components/tools/SpreadsheetContent";
 
 const SPREADSHEET_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -24,44 +20,16 @@ export const xlsxVariant: PreviewVariant = {
   width: "full",
   height: "full",
   needsTextContent: false,
-  needsParsedContent: true,
+  needsParsedContent: false,
   codeBackground: false,
-
-  headerDescription: (ctx) => {
-    const preview = parseSpreadsheetPreview(ctx.fileContent);
-    if (!preview) return "";
-    return ctx.t("xlsx.headerDescription", { count: preview.sheets.length });
-  },
-
-  renderContent: (ctx) => {
-    const preview = parseSpreadsheetPreview(ctx.fileContent);
-    if (!preview || preview.sheets.length === 0) {
-      return (
-        <Section padding={4}>
-          <Text as="p" font="main-ui-body" color="text-03">
-            {ctx.t("xlsx.parseError.message")}
-          </Text>
-        </Section>
-      );
-    }
-    return (
-      <SpreadsheetSheetsView
-        sheets={preview.sheets}
-        className="flex-1 min-h-0 p-1"
-      />
-    );
-  },
-
-  renderFooterLeft: (ctx) => {
-    const preview = parseSpreadsheetPreview(ctx.fileContent);
-    if (!preview) return null;
-    return (
-      <Text font="main-ui-body" color="text-03">
-        {ctx.t("xlsx.sheetCount", { count: preview.sheets.length })}
-      </Text>
-    );
-  },
+  headerDescription: () => "",
+  renderContent: (ctx) => (
+    <DocumentPreview src={ctx.fileUrl} fileName={ctx.fileName} mode="view" />
+  ),
+  renderFooterLeft: () => null,
   renderFooterRight: (ctx) => (
-    <DownloadButton fileUrl={ctx.fileUrl} fileName={ctx.fileName} />
+    <Section flexDirection="row" width="fit">
+      <DownloadButton fileUrl={ctx.fileUrl} fileName={ctx.fileName} />
+    </Section>
   ),
 };

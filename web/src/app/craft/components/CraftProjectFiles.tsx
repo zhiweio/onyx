@@ -2,74 +2,28 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useDropzone } from "react-dropzone";
-import {
-  Button,
-  Card,
-  InputTypeIn,
-  LineItemButton,
-  Text,
-} from "@opal/components";
+import { Card, Text } from "@opal/components";
 import { ContentAction, toast } from "@opal/layouts";
-import {
-  SvgDownload,
-  SvgFile,
-  SvgFileBraces,
-  SvgFileChartPie,
-  SvgFileText,
-  SvgFolder,
-  SvgTrash,
-  SvgUploadCloud,
-} from "@opal/icons";
-import type { IconFunctionComponent } from "@opal/types";
-import { cn } from "@opal/utils";
+import { SvgFolder } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import CraftProjectFilePreview from "@/app/craft/components/CraftProjectFilePreview";
 import {
   craftProjectFileUrl,
-  deleteCraftProjectFile,
   uploadCraftProjectFile,
 } from "@/lib/craft-projects/api";
-import {
-  fileExtension,
-  fileKind,
-  groupProjectFilesByFolder,
-  type CraftProjectFileKind,
-} from "@/lib/craft-projects/display";
-import type { CraftProjectFile } from "@/lib/craft-projects/types";
-import { formatBytes } from "@/lib/utils";
 
-const FILE_KIND_ICON: Record<CraftProjectFileKind, IconFunctionComponent> = {
-  markdown: SvgFileText,
-  table: SvgFileChartPie,
-  json: SvgFileBraces,
-  other: SvgFile,
-};
+import type { CraftProjectFile } from "@/lib/craft-projects/types";
+import { FileUpload } from "@/sections/extend/file-upload";
+import { FileSystem } from "@/sections/extend/file-system";
+import {
+  craftFilesToItems,
+  fileSystemFileId,
+} from "@/sections/document-preview/FileSystemAdapter";
 
 interface CraftProjectFilesProps {
   projectId: string;
   files: CraftProjectFile[];
   onChanged: () => Promise<void> | void;
-}
-
-function fileDescription(
-  file: CraftProjectFile,
-  t: ReturnType<typeof useTranslations>
-): string {
-  const path = file.path.replace(/\\/g, "/").replace(/^\//, "");
-  const parts: string[] = [];
-  if (path && path !== file.name) {
-    parts.push(path);
-  }
-  parts.push(
-    file.source === "session_output"
-      ? t("detail.sourceOutput.label")
-      : t("detail.sourceUpload.label")
-  );
-  if (file.size_bytes != null) {
-    parts.push(formatBytes(file.size_bytes, 1));
-  }
-  return parts.join(" · ");
 }
 
 export default function CraftProjectFiles({
@@ -78,38 +32,23 @@ export default function CraftProjectFiles({
   onChanged,
 }: CraftProjectFilesProps) {
   const t = useTranslations("craft.projects");
-  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const visibleFiles = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) {
-      return files;
-    }
-    return files.filter((item) => {
-      const haystack = `${item.name} ${item.path}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [files, query]);
-
-  const groups = useMemo(
-    () => groupProjectFilesByFolder(visibleFiles),
-    [visibleFiles]
+  const items = useMemo(
+    () =>
+      craftFilesToItems(files, (file) =>
+        craftProjectFileUrl(projectId, file.id)
+      ),
+    [files, projectId]
   );
-  const showFolderHeaders =
-    groups.length > 1 || (groups[0] !== undefined && groups[0].folder !== "");
-  const selected =
-    files.find((item) => item.id === selectedId) ??
-    visibleFiles.find((item) => item.id === selectedId) ??
-    null;
 
-  const onDrop = useCallback(
+  const selected = files.find((item) => item.id === selectedId) ?? null;
+
+  const handleUpload = useCallback(
     async (accepted: File[]) => {
       const file = accepted[0];
-      if (!file) {
-        return;
-      }
+      if (!file) return;
       setUploading(true);
       try {
         await uploadCraftProjectFile(projectId, file);
@@ -128,31 +67,6 @@ export default function CraftProjectFiles({
     [onChanged, projectId, t]
   );
 
-  const { getRootProps, getInputProps, open, isDragActive } = useDropzone({
-    disabled: uploading,
-    multiple: false,
-    noClick: true,
-    noKeyboard: true,
-    onDropAccepted: onDrop,
-  });
-
-  async function handleRemoveFile(file: CraftProjectFile) {
-    try {
-      await deleteCraftProjectFile(projectId, file.id);
-      if (selectedId === file.id) {
-        setSelectedId(null);
-      }
-      await onChanged();
-      toast.success(t("toasts.fileDeleted.message"));
-    } catch (removeError) {
-      toast.error(
-        removeError instanceof Error
-          ? removeError.message
-          : t("toasts.deleteFailed.message")
-      );
-    }
-  }
-
   return (
     <>
       <Card border="solid" rounding={4} padding={4}>
@@ -170,125 +84,66 @@ export default function CraftProjectFiles({
             variant="section"
             width="full"
             rightChildren={
-              <Button
-                prominence="secondary"
-                icon={SvgUploadCloud}
-                disabled={uploading}
-                onClick={open}
-              >
-                {t("detail.upload.label")}
-              </Button>
+              uploading ? (
+                <Text font="secondary-body" color="text-03">
+                  {t("detail.upload.label")}
+                </Text>
+              ) : null
             }
           />
-          <div
-            {...getRootProps()}
-            className={cn(
-              "rounded-12 p-2 flex flex-col gap-2 w-full min-w-0",
-              isDragActive
-                ? "border border-dashed border-border-03 bg-background-tint-02"
-                : files.length === 0
-                  ? "bg-background-tint-00"
-                  : "border border-border-01"
-            )}
-          >
-            <input {...getInputProps()} />
-            {files.length === 0 ? (
-              <Text font="secondary-body" color="text-03">
-                {isDragActive
-                  ? t("detail.dropHint.description")
-                  : t("detail.emptyFiles.description")}
-              </Text>
-            ) : (
-              <div className="flex w-full min-w-0 flex-col gap-2">
-                <InputTypeIn
-                  searchIcon
-                  placeholder={t("detail.fileSearch.placeholder")}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-                {visibleFiles.length === 0 ? (
-                  <Text font="secondary-body" color="text-03">
-                    {t("detail.noMatchingFiles.description")}
-                  </Text>
-                ) : (
-                  <div className="flex w-full min-w-0 flex-col gap-2">
-                    {groups.map((group) => (
-                      <div
-                        key={group.folder || "root"}
-                        className="flex w-full min-w-0 flex-col gap-0.5"
-                      >
-                        {showFolderHeaders && (
-                          <Text font="secondary-body" color="text-03">
-                            {group.folder || t("detail.fileFolder.root")}
-                          </Text>
-                        )}
-                        {group.files.map((file) => {
-                          const ext = fileExtension(file.name);
-                          return (
-                            <LineItemButton
-                              key={file.id}
-                              sizePreset="main-ui"
-                              variant="section"
-                              rounding={2}
-                              width="full"
-                              icon={FILE_KIND_ICON[fileKind(file)]}
-                              title={file.name}
-                              titleMaxLines={1}
-                              description={fileDescription(file, t)}
-                              descriptionMaxLines={1}
-                              tooltip={file.path || file.name}
-                              tag={
-                                ext
-                                  ? {
-                                      color: "gray",
-                                      title: ext.toUpperCase(),
-                                    }
-                                  : undefined
-                              }
-                              onClick={() => setSelectedId(file.id)}
-                              rightChildren={
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    prominence="tertiary"
-                                    size="sm"
-                                    icon={SvgDownload}
-                                    tooltip={t("detail.download.tooltip")}
-                                    aria-label={t("detail.download.tooltip")}
-                                    href={craftProjectFileUrl(
-                                      projectId,
-                                      file.id
-                                    )}
-                                  />
-                                  <Button
-                                    prominence="tertiary"
-                                    size="sm"
-                                    icon={SvgTrash}
-                                    tooltip={t("detail.removeFile.tooltip")}
-                                    aria-label={t("detail.removeFile.tooltip")}
-                                    onClick={() => void handleRemoveFile(file)}
-                                  />
-                                </div>
-                              }
-                            />
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <FileUpload
+            multiple={false}
+            showBorderBeam={false}
+            showFileList={false}
+            title={t("detail.dropHint.description")}
+            description={t("detail.emptyFiles.description")}
+            onFilesAccepted={(next) => void handleUpload(next)}
+          />
+          {files.length === 0 ? (
+            <Text font="secondary-body" color="text-03">
+              {t("detail.emptyFiles.description")}
+            </Text>
+          ) : (
+            <div className="h-[28rem] min-h-0 w-full">
+              <FileSystem
+                items={items}
+                title={t("detail.files.title")}
+                defaultView="list"
+                onFileOpen={(file) => {
+                  const id = fileSystemFileId(file);
+                  const match =
+                    files.find((item) => item.id === id) ??
+                    files.find(
+                      (item) =>
+                        (item.path || item.name).replace(/^\/+/, "") ===
+                          file.path.replace(/^\/+/, "") ||
+                        item.name === file.name
+                    );
+                  if (match) setSelectedId(match.id);
+                }}
+                onSelectionChange={(item) => {
+                  if (!item || item.kind !== "file") return;
+                  const id = fileSystemFileId(item);
+                  const match =
+                    files.find((entry) => entry.id === id) ??
+                    files.find(
+                      (entry) =>
+                        (entry.path || entry.name).replace(/^\/+/, "") ===
+                          item.path.replace(/^\/+/, "") ||
+                        entry.name === item.name
+                    );
+                  if (match) setSelectedId(match.id);
+                }}
+                getFileUrl={(file) => file.url ?? ""}
+              />
+            </div>
+          )}
         </Section>
       </Card>
       {selected && (
         <CraftProjectFilePreview
           projectId={projectId}
-          files={
-            visibleFiles.some((item) => item.id === selected.id)
-              ? visibleFiles
-              : files
-          }
+          files={files}
           file={selected}
           onClose={() => setSelectedId(null)}
           onSelect={(item) => setSelectedId(item.id)}

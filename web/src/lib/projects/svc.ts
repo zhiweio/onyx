@@ -184,6 +184,25 @@ export async function linkFileToProject(
   return response;
 }
 
+export async function replaceUserFile(
+  fileId: string,
+  file: File
+): Promise<ProjectFile> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(
+    `/api/user/projects/file/${encodeURIComponent(fileId)}`,
+    {
+      method: "PUT",
+      body: formData,
+    }
+  );
+  if (!response.ok) {
+    handleRequestError("Replace file", response);
+  }
+  return response.json();
+}
+
 export async function deleteUserFile(
   fileId: string
 ): Promise<UserFileDeleteResult> {

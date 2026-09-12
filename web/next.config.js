@@ -14,7 +14,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === "1",
   },
-  transpilePackages: ["@onyx-ai/opal", "@onyx-ai/shared"],
+  transpilePackages: [
+    "@onyx-ai/opal",
+    "@onyx-ai/shared",
+    "@extend-ai/react-docx",
+    "@extend-ai/react-xlsx",
+    "@extend-ai/react-pptx",
+    "@embedpdf/core",
+    "@embedpdf/engines",
+  ],
   typedRoutes: true,
   // `next dev` otherwise appends its own managed block to web/AGENTS.md on every
   // start, which dirties the tree. Keep our agent instructions author-owned.

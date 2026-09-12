@@ -1,6 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "default",
+  "style": "new-york",
+  "iconLibrary": "lucide",
   "rsc": true,
   "tsx": true,
   "tailwind": {
@@ -11,10 +12,13 @@
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@/sections",
+    "utils": "@/sections/extend/lib/utils",
+    "ui": "@/sections/extend/ui",
+    "lib": "@/sections/extend/lib",
+    "hooks": "@/sections/extend/hooks"
+  },
+  "registries": {
+    "@extend": "https://www.extend.ai/ui/r/styles/{style}/{name}.json"
   }
 }
