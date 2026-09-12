@@ -7295,9 +7295,7 @@ class CraftProject(Base):
     sessions: Mapped[list["BuildSession"]] = relationship(
         "BuildSession", back_populates="project"
     )
-    jobs: Mapped[list["CraftJob"]] = relationship(
-        "CraftJob", back_populates="project"
-    )
+    jobs: Mapped[list["CraftJob"]] = relationship("CraftJob", back_populates="project")
 
     __table_args__ = (
         Index("ix_craft_project_user_created", "user_id", desc("created_at")),

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Query, Session
 
 from onyx.configs.constants import FileOrigin, MessageType
 from onyx.db.craft_job import add_specialist, create_craft_job
+from onyx.db.craft_project import create_project, list_projects_for_user
 from onyx.db.enums import (
     AccountType,
     ArtifactType,
@@ -225,6 +226,23 @@ def test_refresh_mcp_config_hashes_stamps_current_fingerprint(
     assert sandbox_row.mcp_config_hash == expected
 
 
+def test_list_projects_hides_implicit_untitled(
+    db_session: Session, test_user: User
+) -> None:
+    hidden = create_project(db_session, user=test_user, name="Untitled project")
+    instructed = create_project(
+        db_session,
+        user=test_user,
+        name="Untitled project",
+        instructions="Be brief.",
+    )
+    visible = create_project(db_session, user=test_user, name="Tax pack")
+    listed_ids = {project.id for project in list_projects_for_user(db_session, test_user)}
+    assert hidden.id not in listed_ids
+    assert instructed.id in listed_ids
+    assert visible.id in listed_ids
+
+
 class TestCreateSession:
     def test_create_session_initializes_sandbox_row(
         self,
@@ -264,7 +282,7 @@ class TestCreateSession:
         # provision() was called exactly once for this first creation.
         assert stub_sandbox_manager.provision_count == 1
         assert build_session.user_id == test_user.id
-        assert build_session.project_id is not None
+        assert build_session.project_id is None
         assert build_session.opencode_session_id == "stub-opencode-session"
         assert build_session.skills_hash == sandbox_row.skills_hash
         assert build_session.skills_hash is not None
@@ -319,6 +337,38 @@ class TestCreateSession:
             "opencode_session_id": None,
         }
 
+    def test_create_session_binds_explicit_project(
+        self,
+        db_session: Session,
+        test_user: User,
+        sandbox: Callable[..., Sandbox],
+        session_manager_with_stub: SessionManager,
+        stub_sandbox_manager: StubSandboxManager,
+    ) -> None:
+        sandbox(user=test_user, status=SandboxStatus.RUNNING)
+        stub_sandbox_manager.health_check_returns = True
+        stub_sandbox_manager.setup_session_workspace_silent = True
+        stub_sandbox_manager.write_files_to_sandbox_silent = True
+        stub_sandbox_manager.write_sandbox_file_silent = True
+        project = create_project(db_session, user=test_user, name="Bound work")
+
+        session = session_manager_with_stub.create_session(
+            user_id=test_user.id, project_id=project.id
+        )
+        assert session.project_id == project.id
+
+        moved = session_manager_with_stub.update_session_project(
+            session.id, test_user, None
+        )
+        assert moved is not None
+        assert moved.project_id is None
+
+        restored = session_manager_with_stub.update_session_project(
+            session.id, test_user, project.id
+        )
+        assert restored is not None
+        assert restored.project_id == project.id
+
 
 # =============================================================================
 # Empty-session reuse
@@ -341,6 +391,7 @@ class TestEmptySessionReuse:
             user_id=test_user.id,
             name="pre-provisioned",
             status=BuildSessionStatus.ACTIVE,
+            origin=SessionOrigin.INTERACTIVE,
             opencode_session_id="stale-opencode-session",
         )
         db_session.add(existing_empty)
@@ -391,6 +442,40 @@ class TestEmptySessionReuse:
         reused_sandbox = get_sandbox_by_user_id(db_session, test_user.id)
         assert reused_sandbox is not None
         assert sandbox_row.id == reused_sandbox.id
+        assert result.project_id is None
+
+    def test_empty_session_reuse_skips_project_bound_row(
+        self,
+        db_session: Session,
+        test_user: User,
+        sandbox: Callable[..., Sandbox],
+        session_manager_with_stub: SessionManager,
+        stub_sandbox_manager: StubSandboxManager,
+    ) -> None:
+        sandbox(user=test_user, status=SandboxStatus.RUNNING)
+        project = create_project(db_session, user=test_user, name="Bound work")
+        bound_empty = BuildSession(
+            id=uuid4(),
+            user_id=test_user.id,
+            name="project-empty",
+            status=BuildSessionStatus.ACTIVE,
+            origin=SessionOrigin.INTERACTIVE,
+            project_id=project.id,
+        )
+        db_session.add(bound_empty)
+        db_session.commit()
+        bound_id = bound_empty.id
+
+        stub_sandbox_manager.health_check_returns = True
+        stub_sandbox_manager.setup_session_workspace_silent = True
+        stub_sandbox_manager.write_files_to_sandbox_silent = True
+        stub_sandbox_manager.write_sandbox_file_silent = True
+
+        created = session_manager_with_stub.get_or_create_empty_session(
+            user_id=test_user.id
+        )
+        assert created.id != bound_id
+        assert created.project_id is None
 
     def test_stale_empty_session_repaired_in_place_when_workspace_missing(
         self,

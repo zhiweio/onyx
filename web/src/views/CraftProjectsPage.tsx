@@ -24,6 +24,7 @@ import {
   startCraftProjectSession,
 } from "@/lib/craft-projects/api";
 import type { CraftProject } from "@/lib/craft-projects/types";
+import { isImplicitUntitledProject } from "@/lib/craft-projects/display";
 import CraftProjectCard from "@/sections/cards/CraftProjectCard";
 import {
   CRAFT_PATH,
@@ -55,9 +56,12 @@ export default function CraftProjectsPage() {
   });
 
   const visibleProjects = useMemo(() => {
+    const realProjects = projects.filter(
+      (project) => !isImplicitUntitledProject(project)
+    );
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return projects;
-    return projects.filter(
+    if (!query) return realProjects;
+    return realProjects.filter(
       (project) =>
         project.name.toLowerCase().includes(query) ||
         project.description.toLowerCase().includes(query)

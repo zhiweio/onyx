@@ -36,6 +36,7 @@ import {
   fetchSessionHistory,
   generateSessionName,
   updateSessionName,
+  updateSessionProject,
   deleteSession as apiDeleteSession,
   fetchMessages,
   fetchActiveTurn,
@@ -822,6 +823,10 @@ interface BuildSessionStore {
   refreshSessionHistory: () => Promise<void>;
   nameBuildSession: (sessionId: string) => Promise<void>;
   renameBuildSession: (sessionId: string, newName: string) => Promise<void>;
+  assignBuildSessionProject: (
+    sessionId: string,
+    projectId: string | null
+  ) => Promise<void>;
   deleteBuildSession: (sessionId: string) => Promise<void>;
 
   // Utilities
@@ -1753,6 +1758,27 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       // On error, refresh to get the actual state from backend
       await get().refreshSessionHistory();
     }
+  },
+
+  assignBuildSessionProject: async (
+    sessionId: string,
+    projectId: string | null
+  ) => {
+    const updated = await updateSessionProject(sessionId, projectId);
+    const nextProjectId = updated.project_id ?? projectId;
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      const sessions = new Map(state.sessions);
+      if (session) {
+        sessions.set(sessionId, { ...session, projectId: nextProjectId });
+      }
+      return {
+        sessions,
+        sessionHistory: state.sessionHistory.map((item) =>
+          item.id === sessionId ? { ...item, projectId: nextProjectId } : item
+        ),
+      };
+    });
   },
 
   renameBuildSession: async (sessionId: string, newName: string) => {

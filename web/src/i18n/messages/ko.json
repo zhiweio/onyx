@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "프로젝트를 삭제하지 못했습니다",
         "deletedProject": "\"{title}\"을(를) 삭제했습니다.",
         "renameProjectFailed": "프로젝트 이름을 바꾸지 못했습니다",
-        "renamedProject": "\"{title}\"으로 이름을 바꿨습니다."
+        "renamedProject": "\"{title}\"으로 이름을 바꿨습니다.",
+        "movedToProject": "\"{title}\"으로 옮겼습니다.",
+        "removedFromProject": "프로젝트에서 제거했습니다.",
+        "moveProjectFailed": "세션을 옮기지 못했습니다",
+        "saveAsProjectFailed": "프로젝트로 저장하지 못했습니다"
       },
       "projects": {
         "label": "프로젝트"
@@ -12661,6 +12665,33 @@
         "confirm": "삭제",
         "deleting": "삭제 중...",
         "title": "\"{title}\"을(를) 삭제할까요?"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "취소"
+        },
+        "saveAs": {
+          "label": "프로젝트로 저장",
+          "title": "프로젝트로 저장",
+          "submit": "저장",
+          "namePlaceholder": "프로젝트 이름",
+          "body": "프로젝트를 만들고 이 세션을 넣습니다."
+        },
+        "move": {
+          "label": "프로젝트로 이동"
+        },
+        "add": {
+          "label": "프로젝트에 추가"
+        },
+        "remove": {
+          "label": "프로젝트에서 제거"
+        },
+        "ungrouped": {
+          "label": "미분류"
+        },
+        "menu": {
+          "ariaLabel": "프로젝트 작업"
+        }
       }
     },
     "skillsStale": {

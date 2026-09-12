@@ -875,7 +875,6 @@ def _spawn_lanes(
     state: JobState,
     lanes: list[GraphNode],
 ) -> None:
-    from onyx.db.craft_project import create_project
     from onyx.server.features.build.configs import CRAFT_DEEP_JOB_MAX_SPECIALISTS
     from onyx.server.features.build.db.build_session import get_build_session
     from onyx.server.features.build.jobs.continuation import enqueue_job_phase_turn
@@ -892,12 +891,6 @@ def _spawn_lanes(
         return
 
     project_id = job.project_id
-    if project_id is None:
-        project = create_project(
-            db_session, user=_user_stub(user_id), name=job.name[:128]
-        )
-        project_id = project.id
-        job.project_id = project_id
 
     session_manager = SessionManager(db_session)
     parent = get_build_session(job.session_id, user_id, db_session)
@@ -1436,9 +1429,3 @@ def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) ->
     if reaped:
         _safe_commit(db_session)
     return reaped
-
-
-def _user_stub(user_id: UUID) -> Any:
-    from types import SimpleNamespace
-
-    return SimpleNamespace(id=user_id)

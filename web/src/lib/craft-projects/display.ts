@@ -400,6 +400,20 @@ export function compareProjectFiles(
   return left.name.localeCompare(right.name);
 }
 
+const IMPLICIT_UNTITLED_PROJECT_NAME = "Untitled project";
+
+export function isImplicitUntitledProject(project: {
+  name: string;
+  description: string;
+  instructions?: string | null;
+}): boolean {
+  return (
+    project.name === IMPLICIT_UNTITLED_PROJECT_NAME &&
+    !project.description.trim() &&
+    !(project.instructions ?? "").trim()
+  );
+}
+
 export function compareProjectSessions(
   left: CraftProjectSession,
   right: CraftProjectSession

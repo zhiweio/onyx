@@ -8,8 +8,9 @@ import re
 from io import BytesIO
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from onyx.configs.constants import FileOrigin
 from onyx.db.enums import CraftProjectFileSource
@@ -33,6 +34,7 @@ from onyx.server.features.build.configs import (
 
 _PATH_SEGMENT = re.compile(r"[^A-Za-z0-9._\- ]+")
 CRAFT_PROJECT_STORE_PREFIX = "craft/projects"
+IMPLICIT_UNTITLED_PROJECT_NAME = "Untitled project"
 _SESSION_WORKING_FILE_NAMES = frozenset(
     {
         "PLAN.md",
@@ -119,6 +121,27 @@ def require_project_write_for_user(
     return project
 
 
+def implicit_untitled_project_clause() -> ColumnElement[bool]:
+    """Auto-created home drafts used this exact empty Untitled project."""
+    empty_instructions = or_(
+        CraftProject.instructions.is_(None),
+        CraftProject.instructions == "",
+    )
+    return and_(
+        CraftProject.name == IMPLICIT_UNTITLED_PROJECT_NAME,
+        empty_instructions,
+        CraftProject.description == "",
+    )
+
+
+def is_implicit_untitled_project(project: CraftProject) -> bool:
+    return (
+        project.name == IMPLICIT_UNTITLED_PROJECT_NAME
+        and not (project.instructions or "").strip()
+        and not (project.description or "").strip()
+    )
+
+
 def list_projects_for_user(db_session: Session, user: User) -> list[CraftProject]:
     group_ids = select(User__UserGroup.user_group_id).where(
         User__UserGroup.user_id == user.id
@@ -130,7 +153,8 @@ def list_projects_for_user(db_session: Session, user: User) -> list[CraftProject
                 or_(
                     CraftProject.user_id == user.id,
                     CraftProject.user_group_id.in_(group_ids),
-                )
+                ),
+                ~implicit_untitled_project_clause(),
             )
             .order_by(CraftProject.updated_at.desc())
         )

@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "プロジェクトを削除できませんでした",
         "deletedProject": "「{title}」を削除しました。",
         "renameProjectFailed": "プロジェクト名を変更できませんでした",
-        "renamedProject": "「{title}」に変更しました。"
+        "renamedProject": "「{title}」に変更しました。",
+        "movedToProject": "「{title}」に移動しました。",
+        "removedFromProject": "プロジェクトから外しました。",
+        "moveProjectFailed": "セッションの移動に失敗しました",
+        "saveAsProjectFailed": "プロジェクトとして保存できませんでした"
       },
       "projects": {
         "label": "プロジェクト"
@@ -12661,6 +12665,33 @@
         "confirm": "削除",
         "deleting": "削除中...",
         "title": "「{title}」を削除しますか？"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "キャンセル"
+        },
+        "saveAs": {
+          "label": "プロジェクトとして保存",
+          "title": "プロジェクトとして保存",
+          "submit": "保存",
+          "namePlaceholder": "プロジェクト名",
+          "body": "プロジェクトを作成し、このセッションを入れます。"
+        },
+        "move": {
+          "label": "プロジェクトへ移動"
+        },
+        "add": {
+          "label": "プロジェクトに追加"
+        },
+        "remove": {
+          "label": "プロジェクトから外す"
+        },
+        "ungrouped": {
+          "label": "未分類"
+        },
+        "menu": {
+          "ariaLabel": "プロジェクト操作"
+        }
       }
     },
     "skillsStale": {

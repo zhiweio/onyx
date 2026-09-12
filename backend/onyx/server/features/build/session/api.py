@@ -58,6 +58,7 @@ from onyx.server.features.build.session.models import (
     SessionCreateRequest,
     SessionListResponse,
     SessionNameGenerateResponse,
+    SessionProjectUpdateRequest,
     SessionReasoningRequest,
     SessionResponse,
     SessionSkillsStateResponse,
@@ -313,6 +314,31 @@ def generate_session_name(
         raise HTTPException(status_code=404, detail="Session not found")
 
     return SessionNameGenerateResponse(name=generated_name)
+
+
+@router.patch("/{session_id}", response_model=SessionResponse)
+def update_session_project(
+    session_id: UUID,
+    request: SessionProjectUpdateRequest,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> SessionResponse:
+    """Move a session into a project, or remove it from its project."""
+    project_id = None
+    if request.project_id is not None:
+        try:
+            project_id = UUID(request.project_id)
+        except ValueError as exc:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "project_id must be a UUID",
+            ) from exc
+    session_manager = SessionManager(db_session)
+    session = session_manager.update_session_project(session_id, user, project_id)
+    if session is None:
+        raise OnyxError(OnyxErrorCode.SESSION_NOT_FOUND, "Session not found")
+    sandbox = get_sandbox_by_user_id(db_session, user.id)
+    return SessionResponse.from_model(session, sandbox)
 
 
 @router.put("/{session_id}/name", response_model=SessionResponse)

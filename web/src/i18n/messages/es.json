@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "No se pudo eliminar el proyecto",
         "deletedProject": "Se eliminó \"{title}\".",
         "renameProjectFailed": "No se pudo cambiar el nombre del proyecto",
-        "renamedProject": "Renombrado a \"{title}\"."
+        "renamedProject": "Renombrado a \"{title}\".",
+        "movedToProject": "Movido a \"{title}\".",
+        "removedFromProject": "Quitado del proyecto.",
+        "moveProjectFailed": "No se pudo mover la sesión",
+        "saveAsProjectFailed": "No se pudo guardar como proyecto"
       },
       "projects": {
         "label": "Proyectos"
@@ -12661,6 +12665,33 @@
         "confirm": "Eliminar",
         "deleting": "Eliminando...",
         "title": "¿Eliminar \"{title}\"?"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "Cancelar"
+        },
+        "saveAs": {
+          "label": "Guardar como proyecto",
+          "title": "Guardar como proyecto",
+          "submit": "Guardar",
+          "namePlaceholder": "Nombre del proyecto",
+          "body": "Crea un proyecto y mueve esta sesión a él."
+        },
+        "move": {
+          "label": "Mover a proyecto"
+        },
+        "add": {
+          "label": "Añadir a proyecto"
+        },
+        "remove": {
+          "label": "Quitar del proyecto"
+        },
+        "ungrouped": {
+          "label": "Sin proyecto"
+        },
+        "menu": {
+          "ariaLabel": "Acciones del proyecto"
+        }
       }
     },
     "skillsStale": {

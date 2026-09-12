@@ -7,6 +7,9 @@ from uuid import uuid4
 
 from tests.integration.common_utils.constants import API_SERVER_URL
 from tests.integration.common_utils.http_client import client
+from tests.integration.common_utils.managers.build_session import (
+    BuildSessionManager,
+)
 from tests.integration.common_utils.managers.user import UserManager
 from tests.integration.common_utils.test_models import DATestUser
 
@@ -141,6 +144,57 @@ def test_other_user_gets_404(admin_user: DATestUser) -> None:
         cookies=other.cookies,
     )
     assert upload.status_code == 404
+
+
+def test_implicit_untitled_project_is_hidden_from_list(
+    admin_user: DATestUser,
+) -> None:
+    hidden = _create_project(admin_user, "Untitled project")
+    visible = _create_project(admin_user, f"Tax pack {uuid4().hex[:6]}")
+    listed = client.get(
+        _url(), headers=admin_user.headers, cookies=admin_user.cookies
+    )
+    listed.raise_for_status()
+    ids = {row["id"] for row in listed.json()["projects"]}
+    assert hidden["id"] not in ids
+    assert visible["id"] in ids
+
+
+def test_project_session_bind_and_home_session_stay_separate(
+    admin_user: DATestUser,
+) -> None:
+    project = _create_project(admin_user, f"Bind {uuid4().hex[:6]}")
+    home = BuildSessionManager.create(admin_user, name="Home draft")
+    assert home.project_id is None
+
+    bound = client.post(
+        _url(project["id"], "sessions"),
+        json={"name": project["name"], "headless": True},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    bound.raise_for_status()
+    bound_body = bound.json()
+    assert bound_body["project_id"] == project["id"]
+    assert bound_body["id"] != home.id
+
+    moved = client.patch(
+        f"{API_SERVER_URL}/build/sessions/{home.id}",
+        json={"project_id": project["id"]},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    moved.raise_for_status()
+    assert moved.json()["project_id"] == project["id"]
+
+    cleared = client.patch(
+        f"{API_SERVER_URL}/build/sessions/{home.id}",
+        json={"project_id": None},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    cleared.raise_for_status()
+    assert cleared.json()["project_id"] is None
 
 
 def test_delete_project_unbinds_and_hides_row(admin_user: DATestUser) -> None:

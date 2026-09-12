@@ -36,6 +36,7 @@ def test_create_session_returns_200_with_session_and_sandbox_shape(
     body = response.json()
     assert body["user_id"] == owner.id
     assert body["sandbox"] is not None
+    assert body["project_id"] is None
 
 
 def test_create_session_preserves_requested_name(admin_user: DATestUser) -> None:

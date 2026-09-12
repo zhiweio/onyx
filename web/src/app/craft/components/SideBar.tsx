@@ -68,10 +68,12 @@ import {
 } from "@/lib/craft-projects/api";
 import type { CraftProject } from "@/lib/craft-projects/types";
 import {
+  isImplicitUntitledProject,
   isKnownSessionRole,
   sessionListLabel,
   sidebarListTitle,
 } from "@/lib/craft-projects/display";
+import { useCraftSessionProjectControls } from "@/app/craft/components/CraftSessionProjectControls";
 
 // ============================================================================
 // Build Session Button
@@ -307,6 +309,8 @@ function CraftProjectButton({
 interface BuildSessionButtonProps {
   historyItem: SessionHistoryItem;
   isActive: boolean;
+  projects: CraftProject[];
+  onProjectsChanged: () => Promise<unknown>;
   onLoad: () => void;
   onRename: (newName: string) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -316,6 +320,8 @@ interface BuildSessionButtonProps {
 function BuildSessionButton({
   historyItem,
   isActive,
+  projects,
+  onProjectsChanged,
   onLoad,
   onRename,
   onDelete,
@@ -380,6 +386,15 @@ function BuildSessionButton({
     ]
   );
 
+  const { picking, menuItems, modal: projectModal } =
+    useCraftSessionProjectControls({
+      sessionId: historyItem.id,
+      projectId: historyItem.projectId,
+      sessionTitle: historyItem.title,
+      projects,
+      onProjectsChanged,
+    });
+
   const lane = sessionListLabel(historyItem.title);
   const listTitle = sidebarListTitle(historyItem.title);
   const sessionLabel =
@@ -407,26 +422,29 @@ function BuildSessionButton({
       </Popover.Trigger>
       <Popover.Content side="right" align="start">
         <PopoverMenu>
-          {[
-            <LineItemButton
-              sizePreset="main-ui"
-              rounding={2}
-              key="rename"
-              icon={SvgEdit}
-              onClick={noProp(() => setRenaming(true))}
-              title={t("rename.label")}
-            />,
-            null,
-            <LineItemButton
-              sizePreset="main-ui"
-              rounding={2}
-              key="delete"
-              icon={SvgTrash}
-              onClick={noProp(() => setIsDeleteModalOpen(true))}
-              color="danger"
-              title={t("delete.label")}
-            />,
-          ]}
+          {picking
+            ? menuItems
+            : [
+                <LineItemButton
+                  sizePreset="main-ui"
+                  rounding={2}
+                  key="rename"
+                  icon={SvgEdit}
+                  onClick={noProp(() => setRenaming(true))}
+                  title={t("rename.label")}
+                />,
+                ...menuItems,
+                null,
+                <LineItemButton
+                  sizePreset="main-ui"
+                  rounding={2}
+                  key="delete"
+                  icon={SvgTrash}
+                  onClick={noProp(() => setIsDeleteModalOpen(true))}
+                  color="danger"
+                  title={t("delete.label")}
+                />,
+              ]}
         </PopoverMenu>
       </Popover.Content>
     </>
@@ -487,6 +505,7 @@ function BuildSessionButton({
           onConfirm={handleConfirmDelete}
         />
       )}
+      {projectModal}
     </>
   );
 }
@@ -517,13 +536,17 @@ const MemoizedBuildSidebarInner = memo(() => {
     (state) => state.returnToMainAgent
   );
   const { data: projects, refresh: refreshProjects } = useCraftProjects();
+  const visibleProjects = useMemo(
+    () => projects.filter((project) => !isImplicitUntitledProject(project)),
+    [projects]
+  );
   const projectNameById = useMemo(() => {
     const names = new Map<string, string>();
-    for (const project of projects) {
+    for (const project of visibleProjects) {
       names.set(project.id, project.name);
     }
     return names;
-  }, [projects]);
+  }, [visibleProjects]);
   const groupedHistory = useMemo(() => {
     const named = new Map<string, SessionHistoryItem[]>();
     const ungrouped: SessionHistoryItem[] = [];
@@ -576,6 +599,8 @@ const MemoizedBuildSidebarInner = memo(() => {
       <BuildSessionButton
         key={historyItem.id}
         historyItem={historyItem}
+        projects={visibleProjects}
+        onProjectsChanged={refreshProjects}
         isActive={
           !pathname.startsWith(CRAFT_TASKS_PATH) &&
           !pathname.startsWith(CRAFT_SKILLS_PATH) &&
@@ -601,7 +626,9 @@ const MemoizedBuildSidebarInner = memo(() => {
       navigate,
       pathname,
       renameBuildSession,
+      refreshProjects,
       session?.id,
+      visibleProjects,
     ]
   );
 
@@ -671,10 +698,10 @@ const MemoizedBuildSidebarInner = memo(() => {
       <SidebarLayouts.Body scrollKey="build-sidebar">
         {!folded && (
           <>
-            {projects.length > 0 && (
+            {visibleProjects.length > 0 && (
               <>
                 <SidebarLayouts.Section title={t("projectsSection.title")} />
-                {projects.slice(0, 8).map((project) => {
+                {visibleProjects.slice(0, 8).map((project) => {
                   const projectPath = `${CRAFT_PROJECTS_PATH}/${project.id}`;
                   return (
                     <CraftProjectButton

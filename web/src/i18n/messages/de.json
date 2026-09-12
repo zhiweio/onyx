@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "Projekt konnte nicht gelöscht werden",
         "deletedProject": "„{title}“ wurde gelöscht.",
         "renameProjectFailed": "Projekt konnte nicht umbenannt werden",
-        "renamedProject": "Umbenannt in „{title}“."
+        "renamedProject": "Umbenannt in „{title}“.",
+        "movedToProject": "Nach „{title}“ verschoben.",
+        "removedFromProject": "Aus dem Projekt entfernt.",
+        "moveProjectFailed": "Sitzung konnte nicht verschoben werden",
+        "saveAsProjectFailed": "Als Projekt speichern fehlgeschlagen"
       },
       "projects": {
         "label": "Projekte"
@@ -12661,6 +12665,33 @@
         "confirm": "Löschen",
         "deleting": "Löschen...",
         "title": "„{title}“ löschen?"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "Abbrechen"
+        },
+        "saveAs": {
+          "label": "Als Projekt speichern",
+          "title": "Als Projekt speichern",
+          "submit": "Speichern",
+          "namePlaceholder": "Projektname",
+          "body": "Erstellt ein Projekt und legt diese Sitzung dort ab."
+        },
+        "move": {
+          "label": "In Projekt verschieben"
+        },
+        "add": {
+          "label": "Zum Projekt hinzufügen"
+        },
+        "remove": {
+          "label": "Aus Projekt entfernen"
+        },
+        "ungrouped": {
+          "label": "Kein Projekt"
+        },
+        "menu": {
+          "ariaLabel": "Projektaktionen"
+        }
       }
     },
     "skillsStale": {

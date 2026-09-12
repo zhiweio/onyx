@@ -10,6 +10,7 @@ import {
   fileTitleSource,
   generatedDumpSuffix,
   isGeneratedDumpName,
+  isImplicitUntitledProject,
   normalizeSessionStatus,
   parseSessionLane,
   pathLooksLikeMcp,
@@ -236,5 +237,34 @@ describe("craft project display helpers", () => {
       }),
     ].sort(compareProjectSessions);
     expect(sessions.map((item) => item.id)).toEqual(["active", "idle"]);
+  });
+});
+
+describe("isImplicitUntitledProject", () => {
+  it("hides empty auto-created Untitled projects", () => {
+    expect(
+      isImplicitUntitledProject({
+        name: "Untitled project",
+        description: "",
+        instructions: null,
+      })
+    ).toBe(true);
+  });
+
+  it("keeps named or instructed projects", () => {
+    expect(
+      isImplicitUntitledProject({
+        name: "Tax pack",
+        description: "",
+        instructions: null,
+      })
+    ).toBe(false);
+    expect(
+      isImplicitUntitledProject({
+        name: "Untitled project",
+        description: "",
+        instructions: "Be brief.",
+      })
+    ).toBe(false);
   });
 });

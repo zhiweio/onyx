@@ -27,9 +27,8 @@ from onyx.configs.app_configs import WEB_DOMAIN
 from onyx.configs.constants import MessageType
 from onyx.db.craft_job import get_specialist_for_session
 from onyx.db.craft_project import (
-    create_project,
-    create_project__no_commit,
     require_project_for_user,
+    require_project_write_for_user,
 )
 from onyx.db.enums import BuildSessionStatus, SandboxStatus, SessionOrigin
 from onyx.db.external_app import get_connectable_apps_for_user
@@ -42,8 +41,8 @@ from onyx.db.models import BuildMessage, BuildSession, Sandbox, User
 from onyx.db.users import fetch_user_by_id
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
-from onyx.llm.models import ReasoningEffort
 from onyx.file_store.file_store import get_default_file_store
+from onyx.llm.models import ReasoningEffort
 from onyx.server.features.build.configs import (
     MAX_TOTAL_UPLOAD_SIZE_BYTES,
     MAX_UPLOAD_FILES_PER_SESSION,
@@ -585,9 +584,7 @@ class SessionManager:
         llm_config = self.build_llm_configs(user)
         self._db_session.commit()
 
-        project_id = self._ensure_project_id(
-            user, project_id, name, commit_project=True
-        )
+        project_id = self._resolve_project_id(user, project_id)
 
         sandbox, _outcome = self._ready_sandbox(user)
 
@@ -668,7 +665,6 @@ class SessionManager:
         if existing is None:
             # Validates the model configuration before any external work.
             llm_config = self.build_llm_configs(user)
-            project_id = self._ensure_project_id(user, None, name, commit_project=False)
             session = create_build_session__no_commit(
                 user_id,
                 self._db_session,
@@ -676,7 +672,7 @@ class SessionManager:
                 agent_provider=llm_config.provider,
                 agent_model=llm_config.model_name,
                 scenario_id=scenario_id,
-                project_id=project_id,
+                project_id=None,
             )
             if not headless:
                 reserve_nextjs_port__no_commit(self._db_session, session)
@@ -691,10 +687,6 @@ class SessionManager:
             session.name = name
         if scenario_id is not None:
             session.scenario_id = scenario_id
-        if session.project_id is None:
-            session.project_id = self._ensure_project_id(
-                user, None, name or session.name, commit_project=False
-            )
         self._db_session.commit()
         logger.info(
             "Found existing empty session %s (status=%s) for user %s",
@@ -1412,24 +1404,34 @@ class SessionManager:
     # Artifact Operations
     # =========================================================================
 
-    def _ensure_project_id(
+    def _resolve_project_id(
         self,
         user: User,
         project_id: UUID | None,
-        name: str | None,
-        *,
-        commit_project: bool,
-    ) -> UUID:
-        """Bind a Craft Project. Create one when the caller omitted ``project_id``."""
+    ) -> UUID | None:
+        """Return a bound project id, or None when the caller omitted one."""
+        if project_id is None:
+            return None
+        require_project_for_user(self._db_session, project_id, user)
+        return project_id
+
+    def update_session_project(
+        self,
+        session_id: UUID,
+        user: User,
+        project_id: UUID | None,
+    ) -> BuildSession | None:
+        """Move a session into a project, or out of its project when ``None``."""
+        session = get_build_session(session_id, user.id, self._db_session)
+        if session is None:
+            return None
         if project_id is not None:
-            require_project_for_user(self._db_session, project_id, user)
-            return project_id
-        project_name = (name or "").strip() or "Untitled project"
-        if commit_project:
-            return create_project(self._db_session, user=user, name=project_name).id
-        return create_project__no_commit(
-            self._db_session, user=user, name=project_name
-        ).id
+            require_project_write_for_user(self._db_session, project_id, user)
+        session.project_id = project_id
+        update_session_activity(session_id, self._db_session)
+        self._db_session.commit()
+        self._db_session.refresh(session)
+        return session
 
     @staticmethod
     def _sandbox_is_hot(sandbox: Sandbox) -> bool:

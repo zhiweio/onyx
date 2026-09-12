@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "Échec de la suppression du projet",
         "deletedProject": "« {title} » a été supprimé.",
         "renameProjectFailed": "Échec du renommage du projet",
-        "renamedProject": "Renommé en « {title} »."
+        "renamedProject": "Renommé en « {title} ».",
+        "movedToProject": "Déplacé vers « {title} ».",
+        "removedFromProject": "Retiré du projet.",
+        "moveProjectFailed": "Échec du déplacement de la session",
+        "saveAsProjectFailed": "Échec de l’enregistrement en projet"
       },
       "projects": {
         "label": "Projets"
@@ -12661,6 +12665,33 @@
         "confirm": "Supprimer",
         "deleting": "Suppression...",
         "title": "Supprimer « {title} » ?"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "Annuler"
+        },
+        "saveAs": {
+          "label": "Enregistrer comme projet",
+          "title": "Enregistrer comme projet",
+          "submit": "Enregistrer",
+          "namePlaceholder": "Nom du projet",
+          "body": "Crée un projet et y déplace cette session."
+        },
+        "move": {
+          "label": "Déplacer vers un projet"
+        },
+        "add": {
+          "label": "Ajouter au projet"
+        },
+        "remove": {
+          "label": "Retirer du projet"
+        },
+        "ungrouped": {
+          "label": "Sans projet"
+        },
+        "menu": {
+          "ariaLabel": "Actions du projet"
+        }
       }
     },
     "skillsStale": {

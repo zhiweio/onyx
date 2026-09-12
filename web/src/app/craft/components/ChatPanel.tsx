@@ -20,6 +20,7 @@ import {
   usePreProvisionedSessionId,
   useQueuedMessages,
   useViewedSubagentSessionId,
+  useCurrentSessionTitle,
 } from "@/app/craft/hooks/useBuildSessionStore";
 import { useBuildStreaming } from "@/app/craft/hooks/useBuildStreaming";
 import { useWakeOnIntent } from "@/app/craft/hooks/useWakeOnIntent";
@@ -74,6 +75,7 @@ import BuildWelcome from "@/app/craft/components/BuildWelcome";
 import BuildMessageList from "@/app/craft/components/BuildMessageList";
 import LiveApprovalsRegion from "@/app/craft/components/approvals/LiveApprovalsRegion";
 import AgentSwitcher from "@/app/craft/components/AgentSwitcher";
+import CraftSessionProjectCrumb from "@/app/craft/components/CraftSessionProjectCrumb";
 import SubagentView from "@/app/craft/components/SubagentView";
 import SandboxStatusIndicator from "@/app/craft/components/SandboxStatusIndicator";
 import SandboxAsleepNotice from "@/app/craft/components/SandboxAsleepNotice";
@@ -123,6 +125,7 @@ export default function BuildChatPanel({
   const outputPanelOpen = useOutputPanelOpen();
   const session = useSession();
   const sessionId = useSessionId();
+  const sessionTitle = useCurrentSessionTitle();
   const scheduledSessionId = sessionId ?? existingSessionId ?? null;
   // Gate on origin so interactive sessions don't 404 on scheduled-run-context.
   const scheduledRunSessionId =
@@ -964,6 +967,13 @@ export default function BuildChatPanel({
                     onClick={() => setLeftSidebarFolded(false)}
                     prominence="tertiary"
                     size="sm"
+                  />
+                )}
+                {sessionId && (
+                  <CraftSessionProjectCrumb
+                    sessionId={sessionId}
+                    projectId={session?.projectId ?? null}
+                    sessionTitle={sessionTitle ?? ""}
                   />
                 )}
                 <AgentSwitcher />

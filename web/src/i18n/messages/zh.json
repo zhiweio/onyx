@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "删除项目失败",
         "deletedProject": "已删除“{title}”。",
         "renameProjectFailed": "重命名项目失败",
-        "renamedProject": "已重命名为“{title}”。"
+        "renamedProject": "已重命名为“{title}”。",
+        "movedToProject": "已移至“{title}”。",
+        "removedFromProject": "已从项目中移除。",
+        "moveProjectFailed": "移动会话失败",
+        "saveAsProjectFailed": "另存为项目失败"
       },
       "projects": {
         "label": "项目"
@@ -12661,6 +12665,33 @@
         "confirm": "删除",
         "deleting": "正在删除...",
         "title": "删除“{title}”？"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "取消"
+        },
+        "saveAs": {
+          "label": "另存为项目",
+          "title": "另存为项目",
+          "submit": "保存",
+          "namePlaceholder": "项目名称",
+          "body": "将创建项目并把此会话移入其中。"
+        },
+        "move": {
+          "label": "移动到项目"
+        },
+        "add": {
+          "label": "加入项目"
+        },
+        "remove": {
+          "label": "移出项目"
+        },
+        "ungrouped": {
+          "label": "未分组"
+        },
+        "menu": {
+          "ariaLabel": "项目操作"
+        }
       }
     },
     "skillsStale": {

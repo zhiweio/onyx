@@ -12645,7 +12645,11 @@
         "deleteProjectFailed": "Failed to delete project",
         "deletedProject": "Deleted \"{title}\".",
         "renameProjectFailed": "Failed to rename project",
-        "renamedProject": "Renamed to \"{title}\"."
+        "renamedProject": "Renamed to \"{title}\".",
+        "movedToProject": "Moved to \"{title}\".",
+        "removedFromProject": "Removed from project.",
+        "moveProjectFailed": "Failed to move session",
+        "saveAsProjectFailed": "Failed to save as project"
       },
       "projects": {
         "label": "Projects"
@@ -12667,6 +12671,33 @@
         "confirm": "Delete",
         "deleting": "Deleting...",
         "title": "Delete \"{title}\"?"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "Cancel"
+        },
+        "saveAs": {
+          "label": "Save as project",
+          "title": "Save as project",
+          "submit": "Save",
+          "namePlaceholder": "Project name",
+          "body": "Creates a project and moves this session into it."
+        },
+        "move": {
+          "label": "Move to project"
+        },
+        "add": {
+          "label": "Add to project"
+        },
+        "remove": {
+          "label": "Remove from project"
+        },
+        "ungrouped": {
+          "label": "No project"
+        },
+        "menu": {
+          "ariaLabel": "Project actions"
+        }
       }
     },
     "skillsStale": {

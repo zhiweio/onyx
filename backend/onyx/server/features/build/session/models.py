@@ -46,6 +46,12 @@ class SessionUpdateRequest(BaseModel):
     name: str | None = None
 
 
+class SessionProjectUpdateRequest(BaseModel):
+    """Move a session into a project, or out when ``project_id`` is null."""
+
+    project_id: str | None
+
+
 class SessionReasoningRequest(BaseModel):
     reasoning_effort: ReasoningEffort | None = None
 

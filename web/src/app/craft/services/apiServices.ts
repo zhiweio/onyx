@@ -243,6 +243,23 @@ export async function updateSessionReasoning(
   }
 }
 
+export async function updateSessionProject(
+  sessionId: string,
+  projectId: string | null
+): Promise<ApiSessionResponse> {
+  const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ project_id: projectId }),
+  });
+
+  if (!res.ok) {
+    throw new Error(await errorDetail(res, "Failed to update session project"));
+  }
+
+  return res.json();
+}
+
 export async function updateSessionName(
   sessionId: string,
   name: string | null

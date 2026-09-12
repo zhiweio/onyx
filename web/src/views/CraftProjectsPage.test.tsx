@@ -72,6 +72,26 @@ describe("CraftProjectsPage", () => {
     mockRefresh.mockResolvedValue(undefined);
   });
 
+  it("hides implicit Untitled projects", () => {
+    mockUseCraftProjects.mockReturnValue({
+      data: [
+        taxProject,
+        project({
+          id: "proj-untitled",
+          name: "Untitled project",
+          description: "",
+          instructions: null,
+        }),
+      ],
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectsPage />);
+    expect(screen.getAllByText("年报税务复核").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Untitled project")).not.toBeInTheDocument();
+  });
+
   it("lists projects and opens the composer", async () => {
     const user = setupUser();
     render(<CraftProjectsPage />);

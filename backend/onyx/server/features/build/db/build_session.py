@@ -195,8 +195,10 @@ def get_empty_session_for_user(
     """Get an empty (pre-provisioned) session for the user if one exists.
 
     Returns a session with no messages, or None if all sessions have messages.
-    Only considers INTERACTIVE sessions — non-interactive origins (e.g. Slack)
-    skip port allocation and must not be handed to the Craft UI.
+    Only considers INTERACTIVE sessions with no project — project-bound empty
+    sessions stay in that project and must not be reused as the home draft.
+    Non-interactive origins (e.g. Slack) skip port allocation and must not be
+    handed to the Craft UI.
     """
     has_messages = exists().where(BuildMessage.session_id == BuildSession.id)
 
@@ -205,8 +207,10 @@ def get_empty_session_for_user(
         .filter(
             BuildSession.user_id == user_id,
             BuildSession.origin == SessionOrigin.INTERACTIVE,
+            BuildSession.project_id.is_(None),
             ~has_messages,
         )
+        .order_by(desc(BuildSession.created_at))
         .first()
     )
 

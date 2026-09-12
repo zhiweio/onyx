@@ -12636,7 +12636,11 @@
         "deleteProjectFailed": "تعذر حذف المشروع",
         "deletedProject": "تم حذف \"{title}\".",
         "renameProjectFailed": "تعذر إعادة تسمية المشروع",
-        "renamedProject": "تمت إعادة التسمية إلى \"{title}\"."
+        "renamedProject": "تمت إعادة التسمية إلى \"{title}\".",
+        "movedToProject": "تم النقل إلى \"{title}\".",
+        "removedFromProject": "تمت الإزالة من المشروع.",
+        "moveProjectFailed": "فشل نقل الجلسة",
+        "saveAsProjectFailed": "فشل الحفظ كمشروع"
       },
       "projects": {
         "label": "Projects"
@@ -12661,6 +12665,33 @@
         "confirm": "حذف",
         "deleting": "جارٍ الحذف...",
         "title": "حذف \"{title}\"؟"
+      },
+      "sessionProject": {
+        "cancel": {
+          "label": "إلغاء"
+        },
+        "saveAs": {
+          "label": "حفظ كمشروع",
+          "title": "حفظ كمشروع",
+          "submit": "حفظ",
+          "namePlaceholder": "اسم المشروع",
+          "body": "ينشئ مشروعًا وينقل هذه الجلسة إليه."
+        },
+        "move": {
+          "label": "نقل إلى مشروع"
+        },
+        "add": {
+          "label": "إضافة إلى مشروع"
+        },
+        "remove": {
+          "label": "إزالة من المشروع"
+        },
+        "ungrouped": {
+          "label": "بدون مشروع"
+        },
+        "menu": {
+          "ariaLabel": "إجراءات المشروع"
+        }
       }
     },
     "skillsStale": {
