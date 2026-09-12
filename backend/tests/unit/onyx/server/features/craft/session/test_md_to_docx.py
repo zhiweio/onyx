@@ -462,10 +462,27 @@ def test_default_font_matches_pandoc() -> None:
     assert doc.styles["Heading 1"].font.name == "Aptos Display"
 
 
-def test_line_spacing_is_single() -> None:
-    # python-docx's template defaults to 1.15x line spacing; pandoc uses single.
-    doc = _render("Body.\n")
-    assert doc.styles["Normal"].paragraph_format.line_spacing == 1.0
+def test_line_spacing_is_readable_for_cjk() -> None:
+    doc = _render("正文。\n")
+    assert doc.styles["Normal"].paragraph_format.line_spacing == 1.5
+    assert doc.styles["Body Text"].paragraph_format.line_spacing == 1.5
+    assert doc.styles["Compact"].paragraph_format.line_spacing == 1.5
+
+
+def test_table_cell_line_spacing_is_readable_for_cjk() -> None:
+    doc = _render("| 风险 | 说明 |\n|------|------|\n| 高 | 中文内容 |\n")
+    for row in doc.tables[0].rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                assert paragraph.paragraph_format.line_spacing == 1.5
+
+
+def test_document_grid_sets_cjk_line_pitch() -> None:
+    data = markdown_to_docx_bytes("正文。\n")
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        document_xml = archive.read("word/document.xml").decode("utf-8")
+    assert 'w:linePitch="360"' in document_xml
+    assert 'w:type="linesAndChars"' in document_xml
 
 
 def test_page_margins_match_pandoc() -> None:
@@ -512,3 +529,24 @@ def test_paragraph_style_sequence_matches_pandoc_rules() -> None:
         "First Paragraph",  # first prose after a blockquote
         "Body Text",  # prose after a table (the exception)
     ]
+
+
+def test_styles_declare_east_asia_fonts() -> None:
+    data = markdown_to_docx_bytes("# 标题\n\n正文内容。\n")
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        styles_xml = archive.read("word/styles.xml").decode("utf-8")
+    assert "宋体" in styles_xml
+    assert "黑体" in styles_xml
+
+
+def test_document_defaults_set_cjk_language_and_theme_fonts() -> None:
+    data = markdown_to_docx_bytes("# 标题\n\n正文内容。\n")
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        settings_xml = archive.read("word/settings.xml").decode("utf-8")
+        styles_xml = archive.read("word/styles.xml").decode("utf-8")
+        theme_xml = archive.read("word/theme/theme1.xml").decode("utf-8")
+    assert 'w:eastAsia="zh-CN"' in settings_xml
+    assert "宋体" in styles_xml
+    assert 'w:eastAsia="zh-CN"' in styles_xml
+    assert 'typeface="黑体"' in theme_xml
+    assert 'typeface="宋体"' in theme_xml

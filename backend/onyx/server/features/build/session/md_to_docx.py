@@ -1,7 +1,7 @@
-"""Convert Markdown to a DOCX document using mistune + python-docx.
+"""Convert Markdown to a DOCX document using the shared GFM AST + python-docx.
 
-Used by the build session "export as DOCX" feature. ``mistune`` parses the
-Markdown into an AST and ``python-docx`` writes the ``.docx``; both are
+Used by the build session "export as DOCX" feature. ``parse_markdown`` builds
+the same mistune tree as PDF export; ``python-docx`` writes OOXML. Both are
 pure-Python, so the conversion needs no external binary.
 
 Supported constructs (covering what the LLM-generated documents emit):
@@ -18,7 +18,6 @@ from html import unescape
 from io import BytesIO
 from typing import Any, cast
 
-import mistune
 from docx import Document
 from docx.document import Document as DocxDocument
 from docx.enum.style import WD_STYLE_TYPE
@@ -33,6 +32,12 @@ from docx.shared import Inches, Pt, RGBColor, Twips
 from docx.styles.style import ParagraphStyle
 from docx.table import _Cell
 from docx.text.paragraph import Paragraph
+from lxml import etree
+
+from onyx.server.features.build.session.md_document import (
+    Node,
+    parse_markdown,
+)
 
 _MONOSPACE_FONT = "Courier New"
 _CODE_FONT_SIZE = Pt(9)
@@ -70,7 +75,14 @@ _HEADING_SIZES = {1: Pt(20), 2: Pt(16), 3: Pt(14), 4: Pt(12), 5: Pt(11), 6: Pt(1
 # Aptos Display headings) instead of python-docx's Cambria 11pt default.
 _BODY_FONT = "Aptos"
 _HEADING_FONT = "Aptos Display"
+_BODY_EAST_ASIA = "宋体"
+_HEADING_EAST_ASIA = "黑体"
 _BODY_FONT_SIZE = Pt(12)
+# 1.5 line spacing (360 twips) so CJK body text keeps readable leading.
+# The browser viewer treats Word "single" (240 twips) as 0.88x Latin metrics
+# and stacks 宋体 glyphs; Word itself looks tighter than a Chinese report.
+_CJK_LINE_SPACING = 1.5
+_DOC_GRID_LINE_PITCH = "360"
 # pandoc emits no page margins, so Word renders its 1" default; python-docx's
 # template uses 1.25" left/right. Set 1" all round to match the pandoc look.
 _PAGE_MARGIN = Inches(1)
@@ -91,32 +103,7 @@ _FOOTNOTES_REL_TYPE = (
 )
 _W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
-# Enable the GFM table/strikethrough/url plugins, plus footnotes, so the AST
-# covers the Markdown features that appear in these documents.
-_markdown_parser = mistune.create_markdown(
-    renderer=None,
-    plugins=["table", "strikethrough", "url", "footnotes"],
-)
-
-Node = dict[str, Any]
-
-
-# Code points XML 1.0 forbids: C0 controls except tab/newline/CR, the UTF-16
-# surrogate range, and U+FFFE/U+FFFF. Mapped to None for str.translate (C-speed).
-_XML_INVALID_TRANSLATION = {
-    **{code: None for code in range(0x20) if code not in (0x09, 0x0A, 0x0D)},
-    **{code: None for code in range(0xD800, 0xE000)},
-    0xFFFE: None,
-    0xFFFF: None,
-}
-
-
-def _strip_invalid_xml_chars(text: str) -> str:
-    """Drop characters XML 1.0 forbids (NULL and most C0 controls).
-
-    LLM output occasionally contains them and python-docx raises when
-    writing them, so they are stripped before parsing."""
-    return text.translate(_XML_INVALID_TRANSLATION)
+_A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
 
 @dataclass(frozen=True)
@@ -131,11 +118,11 @@ class _Fmt:
 
 def markdown_to_docx_bytes(md_text: str) -> bytes:
     """Render Markdown text to the bytes of a .docx file."""
-    tokens = _markdown_parser(_strip_invalid_xml_chars(md_text))
-    nodes: list[Node] = tokens if isinstance(tokens, list) else []
+    nodes = parse_markdown(md_text)
 
     document = Document()
     _apply_pandoc_styles(document)
+    _apply_cjk_document_defaults(document)
     footnote_block = next(
         (node for node in nodes if node.get("type") == "footnotes"), None
     )
@@ -169,11 +156,18 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
     styles = document.styles
     existing = {style.name for style in styles}
 
+    def set_east_asia(style: ParagraphStyle, latin: str, east_asia: str) -> None:
+        style.font.name = latin
+        r_pr = style.element.get_or_add_rPr()
+        r_fonts = r_pr.get_or_add_rFonts()
+        r_fonts.set(qn("w:ascii"), latin)
+        r_fonts.set(qn("w:hAnsi"), latin)
+        r_fonts.set(qn("w:eastAsia"), east_asia)
+
     normal = cast(ParagraphStyle, styles["Normal"])
-    normal.font.name = _BODY_FONT
+    set_east_asia(normal, _BODY_FONT, _BODY_EAST_ASIA)
     normal.font.size = _BODY_FONT_SIZE
-    # python-docx's template defaults to 1.15x line spacing; pandoc uses single.
-    normal.paragraph_format.line_spacing = 1.0
+    normal.paragraph_format.line_spacing = _CJK_LINE_SPACING
 
     def ensure(name: str, base: str) -> ParagraphStyle:
         if name not in existing:
@@ -185,12 +179,14 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
     body = cast(ParagraphStyle, styles[_STYLE_BODY])  # ships in the default template
     body.paragraph_format.space_before = _BODY_SPACE
     body.paragraph_format.space_after = _BODY_SPACE
+    body.paragraph_format.line_spacing = _CJK_LINE_SPACING
 
     ensure(_STYLE_FIRST_PARAGRAPH, _STYLE_BODY)
 
     compact = ensure(_STYLE_COMPACT, _STYLE_BODY)
     compact.paragraph_format.space_before = _COMPACT_SPACE
     compact.paragraph_format.space_after = _COMPACT_SPACE
+    compact.paragraph_format.line_spacing = _CJK_LINE_SPACING
 
     block_text = ensure(_STYLE_BLOCK_TEXT, _STYLE_BODY)
     block_text.paragraph_format.space_before = _BLOCK_TEXT_SPACE
@@ -212,11 +208,113 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
 
     for level, size in _HEADING_SIZES.items():
         heading = styles[f"Heading {level}"]
-        heading.font.name = _HEADING_FONT
+        set_east_asia(heading, _HEADING_FONT, _HEADING_EAST_ASIA)
         heading.font.size = size
         heading.font.color.rgb = _HEADING_COLOR
         # pandoc headings are coloured + sized, not bold; python-docx's are bold.
         heading.font.bold = False
+        heading.paragraph_format.line_spacing = _CJK_LINE_SPACING
+
+    set_east_asia(body, _BODY_FONT, _BODY_EAST_ASIA)
+    for inherited in (
+        _STYLE_FIRST_PARAGRAPH,
+        _STYLE_COMPACT,
+        _STYLE_BLOCK_TEXT,
+        _STYLE_IMAGE_CAPTION,
+        _STYLE_FOOTNOTE_TEXT,
+        "List Bullet",
+        "List Number",
+        "List Continue",
+        "List Bullet 2",
+        "List Number 2",
+        "List Continue 2",
+        "List Bullet 3",
+        "List Number 3",
+        "List Continue 3",
+    ):
+        if inherited in existing:
+            set_east_asia(
+                cast(ParagraphStyle, styles[inherited]),
+                _BODY_FONT,
+                _BODY_EAST_ASIA,
+            )
+
+
+def _apply_cjk_document_defaults(document: DocxDocument) -> None:
+    """Set Word document language and theme fonts the way Word/WPS do.
+
+    Style-level w:eastAsia is not enough: the template defaults to ja-JP
+    theme language and theme-linked East-Asian fonts. Document defaults
+    plus the theme font scheme make 宋体/黑体 apply to unstyled runs too.
+    """
+    theme_lang = document.settings.element.find(qn("w:themeFontLang"))
+    if theme_lang is None:
+        theme_lang = OxmlElement("w:themeFontLang")
+        document.settings.element.append(theme_lang)
+    theme_lang.set(qn("w:val"), "en-US")
+    theme_lang.set(qn("w:eastAsia"), "zh-CN")
+
+    styles_el = document.styles.element
+    doc_defaults = styles_el.find(qn("w:docDefaults"))
+    if doc_defaults is None:
+        doc_defaults = OxmlElement("w:docDefaults")
+        styles_el.insert(0, doc_defaults)
+    rpr_default = doc_defaults.find(qn("w:rPrDefault"))
+    if rpr_default is None:
+        rpr_default = OxmlElement("w:rPrDefault")
+        doc_defaults.append(rpr_default)
+    rpr = rpr_default.find(qn("w:rPr"))
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        rpr_default.append(rpr)
+    r_fonts = rpr.find(qn("w:rFonts"))
+    if r_fonts is None:
+        r_fonts = OxmlElement("w:rFonts")
+        rpr.insert(0, r_fonts)
+    r_fonts.set(qn("w:ascii"), _BODY_FONT)
+    r_fonts.set(qn("w:hAnsi"), _BODY_FONT)
+    r_fonts.set(qn("w:eastAsia"), _BODY_EAST_ASIA)
+    r_fonts.set(qn("w:cs"), _BODY_FONT)
+    lang = rpr.find(qn("w:lang"))
+    if lang is None:
+        lang = OxmlElement("w:lang")
+        rpr.append(lang)
+    lang.set(qn("w:val"), "en-US")
+    lang.set(qn("w:eastAsia"), "zh-CN")
+
+    _apply_cjk_document_grid(document)
+
+    for rel in document.part.rels.values():
+        if rel.reltype != RELATIONSHIP_TYPE.THEME:
+            continue
+        root = etree.fromstring(rel.target_part.blob)
+        for tag, typeface in (
+            ("majorFont", _HEADING_EAST_ASIA),
+            ("minorFont", _BODY_EAST_ASIA),
+        ):
+            for node in root.findall(f".//{{{_A_NS}}}{tag}"):
+                east_asia = node.find(f"{{{_A_NS}}}ea")
+                if east_asia is not None:
+                    east_asia.set("typeface", typeface)
+        # Theme parts are generic OPC blobs, not XmlPart.
+        rel.target_part._blob = etree.tostring(
+            root,
+            xml_declaration=True,
+            encoding="UTF-8",
+            standalone=True,
+        )
+
+
+def _apply_cjk_document_grid(document: DocxDocument) -> None:
+    """Snap section line pitch to 1.5 so Word and the browser viewer agree."""
+    for section in document.sections:
+        sect_pr = section._sectPr
+        doc_grid = sect_pr.find(qn("w:docGrid"))
+        if doc_grid is None:
+            doc_grid = OxmlElement("w:docGrid")
+            sect_pr.append(doc_grid)
+        doc_grid.set(qn("w:type"), "linesAndChars")
+        doc_grid.set(qn("w:linePitch"), _DOC_GRID_LINE_PITCH)
 
 
 # --------------------------------------------------------------------------- #
@@ -632,9 +730,9 @@ def _remove_fixed_cell_widths(table: Any) -> None:
 
 
 def _set_table_cell_margins(table: Any) -> None:
-    """Apply pandoc's table cell padding (108 twips left/right, 0 top/bottom)."""
+    """Pad cells so CJK wraps stay readable (108 twips left/right, 80 top/bottom)."""
     margins = OxmlElement("w:tblCellMar")
-    for edge, width in (("top", 0), ("left", 108), ("bottom", 0), ("right", 108)):
+    for edge, width in (("top", 80), ("left", 108), ("bottom", 80), ("right", 108)):
         element = OxmlElement(f"w:{edge}")
         element.set(qn("w:w"), str(width))
         element.set(qn("w:type"), "dxa")
@@ -669,6 +767,10 @@ def _fill_cell(
     # pandoc uses the tight "Compact" style in cells and honours the column
     # alignment from the Markdown separator row (e.g. ``:--:`` -> centered).
     _set_paragraph_style(paragraph, _STYLE_COMPACT)
+    # The browser viewer treats table cells without explicit line spacing as
+    # Word "single" (0.88x), which stacks 宋体 glyphs. Write 1.5 on the
+    # paragraph so preview and Word agree.
+    paragraph.paragraph_format.line_spacing = _CJK_LINE_SPACING
     alignment = _TABLE_CELL_ALIGN.get(str(cell_node.get("attrs", {}).get("align")))
     if alignment is not None:
         paragraph.alignment = alignment

@@ -99,6 +99,7 @@ RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
     fonts-crosextra-carlito \
     fonts-crosextra-caladea \
     fonts-noto-core \
+    fonts-noto-cjk \
     fonts-noto-color-emoji \
     fonts-inter \
     fonts-montserrat \
@@ -107,6 +108,11 @@ RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
     fonts-firacode \
     && rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Map SimSun / 微软雅黑 / MS Gothic and other document fonts to Noto CJK so
+# LibreOffice can draw East-Asian glyphs when converting Office files to PDF.
+COPY fonts/99-cjk-aliases.conf /etc/fonts/conf.d/99-cjk-aliases.conf
+RUN if [ "$ENABLE_SKILLS" = "true" ]; then fc-cache -f; fi
 
 # Chromium engine + certutil (libnss3-tools imports the egress-proxy CA into
 # Chromium's NSS db). Its own layer: big and rarely-changing, so an

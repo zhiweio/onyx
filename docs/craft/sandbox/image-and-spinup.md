@@ -120,6 +120,17 @@ If you add a new skill that depends on a heavy system package (Chrome,
 ffmpeg, etc.), add it under the `if [ "$ENABLE_SKILLS" = "true" ]` block
 so the prod image still has it but dev/CI images can opt out.
 
+## CJK fonts for Office conversion
+
+Word and PowerPoint files often name East-Asian fonts that Debian does
+not ship (宋体, 微软雅黑, SimSun, MS Gothic). LibreOffice then
+substitutes a Latin family and the converted PDF shows empty boxes.
+
+The skills image installs `fonts-noto-cjk` and
+`fonts/99-cjk-aliases.conf` so those names resolve to Noto Sans/Serif
+CJK. Rebuild the sandbox image after changing either file. This package
+adds size; keep it behind `ENABLE_SKILLS`.
+
 ## Cold pulls vs. image warming — decision and roadmap
 
 **Current state: we pre-pull the sandbox image on both backends.**
