@@ -400,6 +400,56 @@ def store_uploaded_project_file(
     return row
 
 
+def replace_uploaded_project_file(
+    db_session: Session,
+    *,
+    project: CraftProject,
+    row: CraftProjectFile,
+    content: bytes,
+    content_type: str | None,
+) -> CraftProjectFile:
+    """Replace the stored bytes of an existing project file. Keep the same row."""
+    if row.project_id != project.id or row.deleted:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "File not found")
+    if len(content) > CRAFT_PROJECT_MAX_FILE_SIZE_BYTES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "File is too large")
+
+    _, total = _project_usage(db_session, project.id)
+    added = len(content) - (row.size_bytes or 0)
+    if added > 0 and total + added > CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "This project is over the storage limit",
+        )
+
+    mime_type = content_type or row.mime_type or mimetypes.guess_type(row.path)[0]
+    digest = hashlib.sha256(content).hexdigest()
+    if row.content_hash == digest and not row.deleted:
+        return row
+
+    file_store = get_default_file_store()
+    stored_id = file_store.save_file(
+        content=BytesIO(content),
+        display_name=row.path.rsplit("/", 1)[-1],
+        file_origin=FileOrigin.CRAFT_PROJECT,
+        file_type=mime_type or "application/octet-stream",
+        file_metadata={
+            "project_id": str(project.id),
+            "path": row.path,
+            "prefix": f"{CRAFT_PROJECT_STORE_PREFIX}/{project.id}",
+        },
+    )
+    row.file_id = stored_id
+    row.mime_type = mime_type
+    row.size_bytes = len(content)
+    row.content_hash = digest
+    row.version = row.version + 1
+    row.source = CraftProjectFileSource.UPLOAD
+    db_session.commit()
+    db_session.refresh(row)
+    return row
+
+
 def delete_project_file(db_session: Session, row: CraftProjectFile) -> None:
     row.deleted = True
     db_session.commit()

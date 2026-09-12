@@ -32,7 +32,9 @@ from onyx.db.models import ChatSession, Project__UserFile, User, UserFile, UserP
 from onyx.db.persona import get_personas_by_ids
 from onyx.db.projects import (
     check_project_ownership,
+    enqueue_user_file_processing,
     get_project_token_count,
+    replace_user_file_content,
     upload_files_to_user_files_with_indexing,
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -512,6 +514,38 @@ def delete_project(
     db_session.delete(project)
     db_session.commit()
     return Response(status_code=204)
+
+
+@router.put("/file/{file_id}", tags=PUBLIC_API_TAGS)
+def replace_user_file(
+    file_id: UUID,
+    bg_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> UserFileSnapshot:
+    """Replace the bytes of an existing user file. Keep the same file id."""
+    user_file = (
+        db_session.query(UserFile)
+        .filter(UserFile.id == file_id, UserFile.user_id == user.id)
+        .filter(UserFile.status != UserFileStatus.DELETING)
+        .one_or_none()
+    )
+    if user_file is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "File not found")
+
+    content = file.file.read()
+    updated = replace_user_file_content(
+        db_session,
+        user,
+        user_file,
+        content,
+        file.content_type,
+    )
+    enqueue_user_file_processing(
+        [updated], bg_tasks if DISABLE_VECTOR_DB else None
+    )
+    return UserFileSnapshot.from_model(updated)
 
 
 @router.delete("/file/{file_id}", tags=PUBLIC_API_TAGS)

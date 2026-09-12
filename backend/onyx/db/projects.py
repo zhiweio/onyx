@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from io import BytesIO
 from typing import List
 from uuid import UUID
 
@@ -19,6 +20,9 @@ from onyx.configs.constants import (
 )
 from onyx.db.enums import UserFileStatus
 from onyx.db.models import Project__UserFile, User, UserFile, UserProject
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
+from onyx.file_store.file_store import get_default_file_store
 from onyx.server.documents.connector import upload_files
 from onyx.server.features.projects.projects_file_utils import (
     RejectedFile,
@@ -142,37 +146,12 @@ def upload_files_to_user_files_with_indexing(
     rejected_files = categorized_files_result.rejected_files
     id_to_temp_id = categorized_files_result.id_to_temp_id
     indexable_files = categorized_files_result.indexable_files
-    # Trigger per-file processing immediately for the current tenant
-    tenant_id = get_current_tenant_id()
     for rejected_file in rejected_files:
         logger.warning(
             "File %s rejected for %s", rejected_file.filename, rejected_file.reason
         )
 
-    if DISABLE_VECTOR_DB and background_tasks is not None:
-        from onyx.background.task_utils import drain_processing_loop
-
-        background_tasks.add_task(drain_processing_loop, tenant_id)
-        for user_file in indexable_files:
-            logger.info(
-                "Queued in-process processing for user_file_id=%s", user_file.id
-            )
-    else:
-        from onyx.background.celery.versioned_apps.client import app as client_app
-
-        for user_file in indexable_files:
-            task = client_app.send_task(
-                OnyxCeleryTask.PROCESS_SINGLE_USER_FILE,
-                kwargs={"user_file_id": user_file.id, "tenant_id": tenant_id},
-                queue=OnyxCeleryQueues.USER_FILE_PROCESSING,
-                priority=OnyxCeleryPriority.HIGH,
-                expires=CELERY_USER_FILE_PROCESSING_TASK_EXPIRES,
-            )
-            logger.info(
-                "Triggered indexing for user_file_id=%s with task_id=%s",
-                user_file.id,
-                task.id,
-            )
+    enqueue_user_file_processing(indexable_files, background_tasks)
 
     return CategorizedFilesResult(
         user_files=user_files,
@@ -180,6 +159,75 @@ def upload_files_to_user_files_with_indexing(
         id_to_temp_id=id_to_temp_id,
         skip_indexing_filenames=categorized_files_result.skip_indexing_filenames,
     )
+
+
+def enqueue_user_file_processing(
+    user_files: list[UserFile],
+    background_tasks: BackgroundTasks | None = None,
+) -> None:
+    """Queue indexing for user files that already have a stored payload."""
+    if not user_files:
+        return
+    tenant_id = get_current_tenant_id()
+    if DISABLE_VECTOR_DB and background_tasks is not None:
+        from onyx.background.task_utils import drain_processing_loop
+
+        background_tasks.add_task(drain_processing_loop, tenant_id)
+        for user_file in user_files:
+            logger.info(
+                "Queued in-process processing for user_file_id=%s", user_file.id
+            )
+        return
+
+    from onyx.background.celery.versioned_apps.client import app as client_app
+
+    for user_file in user_files:
+        task = client_app.send_task(
+            OnyxCeleryTask.PROCESS_SINGLE_USER_FILE,
+            kwargs={"user_file_id": user_file.id, "tenant_id": tenant_id},
+            queue=OnyxCeleryQueues.USER_FILE_PROCESSING,
+            priority=OnyxCeleryPriority.HIGH,
+            expires=CELERY_USER_FILE_PROCESSING_TASK_EXPIRES,
+        )
+        logger.info(
+            "Triggered indexing for user_file_id=%s with task_id=%s",
+            user_file.id,
+            task.id,
+        )
+
+
+def replace_user_file_content(
+    db_session: Session,
+    user: User,
+    user_file: UserFile,
+    content: bytes,
+    content_type: str | None,
+) -> UserFile:
+    """Replace stored bytes for an existing user file. Keep the same row id."""
+    if user_file.user_id != user.id or user_file.status == UserFileStatus.DELETING:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "File not found")
+    if not content:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "File is empty")
+
+    mime_type = content_type or user_file.content_type or user_file.file_type
+    file_store = get_default_file_store()
+    stored_id = file_store.save_file(
+        content=BytesIO(content),
+        display_name=user_file.name,
+        file_origin=FileOrigin.USER_FILE,
+        file_type=mime_type or "application/octet-stream",
+    )
+    user_file.file_id = stored_id
+    user_file.content_type = mime_type
+    user_file.file_type = mime_type or user_file.file_type
+    user_file.status = UserFileStatus.PROCESSING
+    user_file.token_count = None
+    user_file.chunk_count = None
+    user_file.needs_project_sync = bool(user_file.projects)
+    user_file.last_accessed_at = datetime.datetime.now(datetime.timezone.utc)
+    db_session.commit()
+    db_session.refresh(user_file)
+    return user_file
 
 
 def check_project_ownership(

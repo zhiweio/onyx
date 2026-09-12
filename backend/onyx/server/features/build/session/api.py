@@ -4,9 +4,10 @@ import json
 import time
 from collections.abc import Generator
 from datetime import datetime, timezone
+from io import BytesIO
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import exists
@@ -73,6 +74,10 @@ from onyx.server.features.build.session.session_ready import ensure_session_read
 from onyx.server.features.build.session.streaming import SSE_KEEPALIVE
 from onyx.server.features.build.timeouts import POLL_INTERVAL_SECONDS
 from onyx.server.features.build.utils import sanitize_filename, validate_file
+from onyx.server.query_and_chat.chat_utils import (
+    is_spreadsheet_mime_type,
+    parse_spreadsheet_for_preview,
+)
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import get_current_tenant_id
 
@@ -608,6 +613,7 @@ def list_directory(
 def download_artifact(
     session_id: UUID,
     path: str,
+    parsed: bool = Query(False),
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> Response:
@@ -632,6 +638,10 @@ def download_artifact(
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     content, mime_type, filename = result
+    is_xlsx = filename.lower().endswith((".xlsx", ".xlsm"))
+    if parsed and (is_spreadsheet_mime_type(mime_type) or is_xlsx):
+        preview = parse_spreadsheet_for_preview(BytesIO(content), filename)
+        return JSONResponse(content=preview.model_dump())
 
     # Handle Unicode filenames in Content-Disposition header
     # HTTP headers require Latin-1 encoding, so we use RFC 5987 for Unicode

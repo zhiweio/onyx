@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
@@ -14,6 +14,7 @@ from onyx.db.craft_project import (
     list_project_files,
     list_project_sessions,
     list_projects_for_user,
+    replace_uploaded_project_file,
     require_project_for_user,
     require_project_write_for_user,
     store_uploaded_project_file,
@@ -39,6 +40,10 @@ from onyx.server.features.craft_project.models import (
     CraftProjectPatchRequest,
     CraftProjectResponse,
     CraftProjectUpsertRequest,
+)
+from onyx.server.query_and_chat.chat_utils import (
+    is_spreadsheet_mime_type,
+    parse_spreadsheet_for_preview,
 )
 
 router = APIRouter(
@@ -174,18 +179,49 @@ def upload_craft_project_file(
 def download_craft_project_file(
     project_id: UUID,
     file_id: UUID,
+    parsed: bool = Query(False),
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> Response:
     project = require_project_for_user(db_session, project_id, user)
     row = get_project_file(db_session, project.id, file_id)
-    content = get_default_file_store().read_file(row.file_id).read()
     filename = row.path.rsplit("/", 1)[-1]
+    mime_type = row.mime_type or "application/octet-stream"
+    is_xlsx = filename.lower().endswith((".xlsx", ".xlsm"))
+    if parsed and (is_spreadsheet_mime_type(mime_type) or is_xlsx):
+        with get_default_file_store().read_file(
+            row.file_id, mode="b", use_tempfile=True
+        ) as xlsx_io:
+            preview = parse_spreadsheet_for_preview(xlsx_io, filename)
+        return JSONResponse(content=preview.model_dump())
+    content = get_default_file_store().read_file(row.file_id).read()
     return Response(
         content=content,
-        media_type=row.mime_type or "application/octet-stream",
+        media_type=mime_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.put("/{project_id}/files/{file_id}")
+def replace_craft_project_file(
+    project_id: UUID,
+    file_id: UUID,
+    file: UploadFile = File(...),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> CraftProjectFileResponse:
+    """Replace the bytes of an existing project file. Keep the same file id."""
+    project = require_project_write_for_user(db_session, project_id, user)
+    row = get_project_file(db_session, project.id, file_id)
+    content = file.file.read()
+    updated = replace_uploaded_project_file(
+        db_session,
+        project=project,
+        row=row,
+        content=content,
+        content_type=file.content_type,
+    )
+    return CraftProjectFileResponse.from_model(updated)
 
 
 @router.delete("/{project_id}/files/{file_id}")

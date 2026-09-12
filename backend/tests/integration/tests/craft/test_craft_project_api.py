@@ -82,6 +82,35 @@ def test_upload_download_and_delete_file(admin_user: DATestUser) -> None:
     download.raise_for_status()
     assert download.content == payload
 
+    replaced_payload = b"xlsx-bytes-replaced-" + uuid4().hex.encode()
+    replaced = client.put(
+        _url(project["id"], "files", file_row["id"]),
+        files={
+            "file": (
+                "rates.xlsx",
+                io.BytesIO(replaced_payload),
+                "application/octet-stream",
+            )
+        },
+        headers={
+            key: value
+            for key, value in admin_user.headers.items()
+            if key.lower() != "content-type"
+        },
+        cookies=admin_user.cookies,
+    )
+    replaced.raise_for_status()
+    assert replaced.json()["id"] == file_row["id"]
+    assert replaced.json()["version"] == file_row["version"] + 1
+
+    download_replaced = client.get(
+        _url(project["id"], "files", file_row["id"]),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    download_replaced.raise_for_status()
+    assert download_replaced.content == replaced_payload
+
     deleted = client.delete(
         _url(project["id"], "files", file_row["id"]),
         headers=admin_user.headers,
