@@ -45,6 +45,16 @@ def test_sanitize_filename_caps_length_preserves_extension() -> None:
     assert Path(result).stem != ""
 
 
+def test_sanitize_filename_preserves_cjk_letters() -> None:
+    """Unicode letters stay in the name; only unsafe punctuation is replaced."""
+    original = (
+        "君禾泵业2021-2025年度及2026年上半年财务及税务风险分析报告-20260829.docx"
+    )
+    assert sanitize_filename(original) == original
+    assert sanitize_filename("報告*.pdf") == "報告_.pdf"
+    assert sanitize_filename("résumé.docx") == "résumé.docx"
+
+
 def test_validate_file_accepts_any_size_within_cap() -> None:
     """Only size is enforced - a normal-sized file is accepted."""
     is_valid, error = validate_file(100)

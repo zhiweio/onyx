@@ -31,12 +31,18 @@ logger = setup_logger()
 # pod: non-root, dropped caps, egress-gated), which is the real security
 # boundary, and downloads are served as attachments. Only size is enforced.
 
-# Regex for sanitizing filenames (allow alphanumeric, dash, underscore, period)
-SAFE_FILENAME_PATTERN = re.compile(r"[^a-zA-Z0-9._-]")
+# Allow letters and numbers from any language (CJK, accented Latin, etc.),
+# plus dash, underscore, and period. Path separators and other punctuation
+# become underscore. `\w` is Unicode-aware in Python 3 (do not pass re.ASCII).
+SAFE_FILENAME_PATTERN = re.compile(r"[^\w.-]")
 
 
 def sanitize_filename(filename: str) -> str:
     """Sanitize filename to prevent path traversal and other issues.
+
+    Letters and numbers from any language are kept. Path components, null
+    bytes, and punctuation other than ``.``, ``_``, and ``-`` are removed
+    or replaced.
 
     Args:
         filename: The original filename
