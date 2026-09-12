@@ -83,6 +83,16 @@ We keep only:
   `pydantic`, `cryptography`.
 - **Skill-specific runtime**: `google-genai` (image-generation skill),
   `onyx-cli`.
+- **Kimi official skill scripts**: `statsmodels` (regression-insight),
+  `markdown` / `playwright` / `xhs` / `python-dotenv` / `pyyaml`
+  (xhs-note-creator), `psycopg2-binary` (database-inspector). Pin
+  `playwright==1.58.0` to match the workspace and the Node `playwright@1.58.0`
+  layer so both CLIs share `PLAYWRIGHT_BROWSERS_PATH`.
+
+Do **not** pre-install optional Kimi stacks the shipped scripts do not
+import: remotion, create-react-app, rustc/cargo, kimi-cli, Codex CLI,
+`@mermaid-js/mermaid-cli`, weasyprint, ffmpeg. Agents can install those
+on demand. `code-to-chart` defaults to Mermaid text when `mmdc` is absent.
 
 We deliberately do **not** pre-install the heavy ML/CV stack
 (`opencv-python`, `scikit-learn`, `scikit-image`, `scipy`, `xgboost`,
@@ -96,10 +106,15 @@ here.
 ## `ENABLE_SKILLS` build arg
 
 The pptx skill needs LibreOffice + poppler-utils + extra fonts +
-pptxgenjs in the image (~700 MB). Skills themselves are pushed by the
-API server at session setup, but their **runtime tools** must be in
-the image already (the in-pod `soffice` / `pdftoppm` / `pptxgenjs` calls
-from `onyx/skills/builtin/pptx/scripts/`).
+pptxgenjs in the image (~700 MB). Kimi official skills add global npm
+packages (`vega`, `vega-lite`, `js-yaml`, `yaml`, `marked`,
+`node-edge-tts`, `commander`, `playwright`) plus a Playwright Chromium
+cache at `/opt/ms-playwright`. `/node_modules` is a symlink to
+`/usr/local/lib/node_modules` so ESM skill scripts (for example
+`chart-gen/scripts/chart.mjs`) resolve those packages. Skills themselves
+are pushed by the API server at session setup, but their **runtime tools**
+must be in the image already (the in-pod `soffice` / `pdftoppm` /
+`pptxgenjs` / `playwright` / `vega` calls from shipped skill scripts).
 
 - Prod / default: `ENABLE_SKILLS=true` — full image, all skills work.
 - Dev kind clusters / CI: `ENABLE_SKILLS=false` — ~700 MB smaller, but

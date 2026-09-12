@@ -14050,6 +14050,21 @@
         "document": {
           "label": "Documents"
         },
+        "content": {
+          "label": "Texterstellung"
+        },
+        "academic": {
+          "label": "Wissenschaft"
+        },
+        "report": {
+          "label": "Berichte"
+        },
+        "graphic": {
+          "label": "Grafik"
+        },
+        "devTool": {
+          "label": "Entwicklertools"
+        },
         "general": {
           "label": "General"
         }

@@ -19,6 +19,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from onyx.db.enums import ReportTemplateKind, SystemCatalogCategory
+from onyx.skills.kimi_official import KIMI_OFFICIAL_SKILLS
 from onyx.skills.models import SKILL_NAME_PATTERN
 
 _REPORT_TEMPLATE_DIR: Final[Path] = Path(__file__).parent / "report_templates"
@@ -487,6 +488,28 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         category=SystemCatalogCategory.GENERAL,
         tags=("qcc", "competitor"),
         built_in_skill_id="competitor-analysis-qcc",
+    ),
+    BuiltInSkillEntry(
+        slug="financial-report-analysis",
+        name="财报解读",
+        description=(
+            "解读最新季报年报：三表同比环比、异常检测、季度趋势与经营KPI。"
+            "支持上传财报，并调用同花顺、企查查、智慧芽与公开检索出图。"
+        ),
+        category=SystemCatalogCategory.REPORT,
+        tags=("finance", "earnings", "report"),
+        built_in_skill_id="financial-report-analysis",
+    ),
+    *(
+        BuiltInSkillEntry(
+            slug=skill.slug,
+            name=skill.name,
+            description=skill.description,
+            category=skill.category,
+            tags=skill.tags,
+            built_in_skill_id=skill.slug,
+        )
+        for skill in KIMI_OFFICIAL_SKILLS
     ),
 )
 

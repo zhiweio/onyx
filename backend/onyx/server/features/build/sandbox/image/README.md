@@ -77,7 +77,9 @@ staging, cloud, and emergency operations.
 
 - **Base**: `python:3.13-slim` (Debian-based) with Node.js 24 copied from `node:24-trixie-slim`
 - **Templates**: `/workspace/templates/outputs/` — Next.js web app scaffold
-- **Python venv**: `/workspace/.venv/` with packages from `initial-requirements.txt`
+- **Python venv**: `/workspace/.venv/` with packages from `initial-requirements.txt` (includes Kimi skill runtimes: statsmodels, markdown, playwright, psycopg2-binary, xhs)
+- **Global npm** (ENABLE_SKILLS): pptxgenjs, sharp, vega, vega-lite, playwright, node-edge-tts, and related packages; `/node_modules` → `/usr/local/lib/node_modules` for ESM
+- **Playwright Chromium** (ENABLE_SKILLS): `/opt/ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`)
 - **OpenCode CLI**: Installed in `/home/sandbox/.opencode/bin/`
 - **onyx-cli**: `/usr/local/bin/onyx-cli` — Onyx CLI for search
 - **Snapshot sidecar daemon**: Packages and restores session files; durable storage is handled by the api_server through the Onyx FileStore

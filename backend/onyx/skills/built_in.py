@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from onyx.db.enums import ExternalAppType
 from onyx.image_gen.generation import is_image_generation_configured
 from onyx.server.features.build.configs import ENABLE_BROWSER
+from onyx.skills.kimi_official import KIMI_OFFICIAL_SKILLS
 from onyx.skills.metadata import parse_skill_document
 from onyx.skills.models import SKILL_NAME_PATTERN
 
@@ -205,6 +206,7 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="listed-co-ip-rd"),
         SeededBuiltInProvider(skill_id="listed-co-red-blue-review"),
         SeededBuiltInProvider(skill_id="listed-co-report-compose"),
+        SeededBuiltInProvider(skill_id="financial-report-analysis"),
         SeededBuiltInProvider(skill_id="kyb-verification-qcc"),
         SeededBuiltInProvider(skill_id="litigation-analysis-qcc"),
         SeededBuiltInProvider(skill_id="credit-due-diligence-qcc"),
@@ -232,6 +234,7 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="vendor-assessment-qcc"),
         SeededBuiltInProvider(skill_id="supplier-annual-check-qcc"),
         SeededBuiltInProvider(skill_id="new-supplier-screening-qcc"),
+        *(SeededBuiltInProvider(skill_id=skill.slug) for skill in KIMI_OFFICIAL_SKILLS),
         ExternalAppBuiltInProvider(skill_id="slack", app_type=ExternalAppType.SLACK),
         ExternalAppBuiltInProvider(skill_id="linear", app_type=ExternalAppType.LINEAR),
         ExternalAppBuiltInProvider(

@@ -14050,6 +14050,21 @@
         "document": {
           "label": "Documents"
         },
+        "content": {
+          "label": "コンテンツ制作"
+        },
+        "academic": {
+          "label": "学術"
+        },
+        "report": {
+          "label": "レポート"
+        },
+        "graphic": {
+          "label": "グラフィック"
+        },
+        "devTool": {
+          "label": "開発ツール"
+        },
         "general": {
           "label": "General"
         }

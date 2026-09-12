@@ -14050,6 +14050,21 @@
         "document": {
           "label": "文档"
         },
+        "content": {
+          "label": "内容写作"
+        },
+        "academic": {
+          "label": "学术研究"
+        },
+        "report": {
+          "label": "报告写作"
+        },
+        "graphic": {
+          "label": "图形设计"
+        },
+        "devTool": {
+          "label": "开发工具"
+        },
         "general": {
           "label": "通用"
         }

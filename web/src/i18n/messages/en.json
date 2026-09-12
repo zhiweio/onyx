@@ -14056,6 +14056,21 @@
         "document": {
           "label": "Documents"
         },
+        "content": {
+          "label": "Content writing"
+        },
+        "academic": {
+          "label": "Academic"
+        },
+        "report": {
+          "label": "Reports"
+        },
+        "graphic": {
+          "label": "Graphics"
+        },
+        "devTool": {
+          "label": "Developer tools"
+        },
         "general": {
           "label": "General"
         }

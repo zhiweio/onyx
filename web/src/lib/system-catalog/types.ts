@@ -7,6 +7,11 @@ export type SystemCatalogCategory =
   | "BIOMED"
   | "OFFICE"
   | "DOCUMENT"
+  | "CONTENT"
+  | "ACADEMIC"
+  | "REPORT"
+  | "GRAPHIC"
+  | "DEV_TOOL"
   | "GENERAL";
 
 export type SystemCatalogPublishStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -20,6 +25,11 @@ export type CatalogViewMode = "cards" | "list";
 export const SYSTEM_CATALOG_CATEGORIES: readonly SystemCatalogCategory[] = [
   "DOCUMENT",
   "OFFICE",
+  "CONTENT",
+  "ACADEMIC",
+  "REPORT",
+  "GRAPHIC",
+  "DEV_TOOL",
   "TAX",
   "BIOMED",
   "GENERAL",
@@ -75,7 +85,7 @@ export interface SystemReportTemplateItem extends CatalogItem {
 }
 
 export function isReportTemplateItem(
-  item: CatalogItem,
+  item: CatalogItem
 ): item is SystemReportTemplateItem {
   return "kind" in item && "body" in item;
 }
@@ -85,7 +95,7 @@ export function isSystemSkillItem(item: CatalogItem): item is SystemSkillItem {
 }
 
 export function isDocxCatalogTemplate(
-  item: CatalogItem,
+  item: CatalogItem
 ): item is SystemReportTemplateItem {
   return isReportTemplateItem(item) && item.kind === "DOCX";
 }
@@ -120,10 +130,15 @@ export type CatalogCategoryMessageKey =
   | "category.biomed.label"
   | "category.office.label"
   | "category.document.label"
+  | "category.content.label"
+  | "category.academic.label"
+  | "category.report.label"
+  | "category.graphic.label"
+  | "category.devTool.label"
   | "category.general.label";
 
 export function categoryMessageKey(
-  category: SystemCatalogCategory | "all",
+  category: SystemCatalogCategory | "all"
 ): CatalogCategoryMessageKey {
   switch (category) {
     case "all":
@@ -136,6 +151,16 @@ export function categoryMessageKey(
       return "category.office.label";
     case "DOCUMENT":
       return "category.document.label";
+    case "CONTENT":
+      return "category.content.label";
+    case "ACADEMIC":
+      return "category.academic.label";
+    case "REPORT":
+      return "category.report.label";
+    case "GRAPHIC":
+      return "category.graphic.label";
+    case "DEV_TOOL":
+      return "category.devTool.label";
     case "GENERAL":
       return "category.general.label";
   }
@@ -147,7 +172,7 @@ export type CatalogStatusMessageKey =
   | "status.archived.label";
 
 export function publishStatusMessageKey(
-  status: SystemCatalogPublishStatus,
+  status: SystemCatalogPublishStatus
 ): CatalogStatusMessageKey {
   switch (status) {
     case "DRAFT":
@@ -163,7 +188,7 @@ export function publishStatusMessageKey(
 export type CatalogTagColor = "blue" | "purple" | "green" | "amber" | "gray";
 
 export function categoryTagColor(
-  category: SystemCatalogCategory,
+  category: SystemCatalogCategory
 ): CatalogTagColor {
   switch (category) {
     case "TAX":
@@ -174,13 +199,23 @@ export function categoryTagColor(
       return "green";
     case "OFFICE":
       return "amber";
+    case "CONTENT":
+      return "amber";
+    case "ACADEMIC":
+      return "purple";
+    case "REPORT":
+      return "green";
+    case "GRAPHIC":
+      return "blue";
+    case "DEV_TOOL":
+      return "gray";
     case "GENERAL":
       return "gray";
   }
 }
 
 export function publishStatusTagColor(
-  status: SystemCatalogPublishStatus,
+  status: SystemCatalogPublishStatus
 ): CatalogTagColor {
   switch (status) {
     case "PUBLISHED":
@@ -198,7 +233,7 @@ export function publishStatusTagColor(
  */
 export function isForkOutdated(
   forkVersion: number | null | undefined,
-  upstreamVersion: number | null | undefined,
+  upstreamVersion: number | null | undefined
 ): boolean {
   if (
     forkVersion === null ||
@@ -213,7 +248,7 @@ export function isForkOutdated(
 
 export function filterCatalogItems<T extends CatalogItem>(
   items: T[],
-  filters: CatalogFilters,
+  filters: CatalogFilters
 ): T[] {
   const query = filters.query?.trim().toLowerCase() ?? "";
   return items.filter((item) => {
@@ -239,7 +274,7 @@ export function filterCatalogItems<T extends CatalogItem>(
 
 /** Categories actually present, so the filter bar never offers an empty one. */
 export function collectCatalogCategories(
-  items: CatalogItem[],
+  items: CatalogItem[]
 ): SystemCatalogCategory[] {
   const present = new Set(items.map((item) => item.category));
   return SYSTEM_CATALOG_CATEGORIES.filter((category) => present.has(category));
@@ -247,7 +282,7 @@ export function collectCatalogCategories(
 
 /** Group items in the category display order used by the filter bar. */
 export function groupCatalogItemsByCategory<T extends CatalogItem>(
-  items: T[],
+  items: T[]
 ): { category: SystemCatalogCategory; items: T[] }[] {
   const grouped = new Map<SystemCatalogCategory, T[]>();
   for (const item of items) {

@@ -319,9 +319,10 @@ This template provides a modern development environment without the complexity o
 
 The Python venv (built into the sandbox image at `/workspace/.venv`) includes packages from `image/initial-requirements.txt`:
 
-- Data processing: pandas, numpy, matplotlib
+- Data processing: pandas, numpy, matplotlib, scipy, seaborn, statsmodels
 - HTTP clients: requests, httpx
 - Utilities: python-dotenv, pydantic
+- Kimi skill runtimes: markdown, playwright, psycopg2-binary, xhs
 
 ## References
 

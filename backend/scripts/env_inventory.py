@@ -63,6 +63,10 @@ SKIP_DIR_NAMES = {
     ".pytest_cache",
 }
 
+# Skill bundles may ship helper scripts that read their own env vars.
+# Those are not Onyx operator knobs.
+SKIP_PATH_MARKERS = ("skills/builtin",)
+
 # The canonical "config" location. Reads outside this set are "ad-hoc".
 CONFIG_DIR_MARKERS = ("/configs/", "/shared_configs/")
 
@@ -371,6 +375,9 @@ class EnvVisitor(ast.NodeVisitor):
 def iter_python_files(root: Path):
     for path in root.rglob("*.py"):
         if any(part in SKIP_DIR_NAMES for part in path.parts):
+            continue
+        posix = path.as_posix()
+        if any(marker in posix for marker in SKIP_PATH_MARKERS):
             continue
         yield path
 

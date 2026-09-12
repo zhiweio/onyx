@@ -882,6 +882,11 @@ class SystemCatalogCategory(str, PyEnum):
     BIOMED = "BIOMED"
     OFFICE = "OFFICE"
     DOCUMENT = "DOCUMENT"
+    CONTENT = "CONTENT"
+    ACADEMIC = "ACADEMIC"
+    REPORT = "REPORT"
+    GRAPHIC = "GRAPHIC"
+    DEV_TOOL = "DEV_TOOL"
     GENERAL = "GENERAL"
 
 

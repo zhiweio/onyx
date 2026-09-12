@@ -71,7 +71,7 @@ describe("filterCatalogItems", () => {
       tax,
     ]);
     expect(filterCatalogItems(items, { query: "Tax compliance risk" })).toEqual(
-      [],
+      []
     );
   });
 
@@ -90,10 +90,10 @@ describe("filterCatalogItems", () => {
 
   it("applies query and category together", () => {
     expect(
-      filterCatalogItems(items, { query: "compliance", category: "DOCUMENT" }),
+      filterCatalogItems(items, { query: "compliance", category: "DOCUMENT" })
     ).toEqual([]);
     expect(
-      filterCatalogItems(items, { query: "word", category: "DOCUMENT" }),
+      filterCatalogItems(items, { query: "word", category: "DOCUMENT" })
     ).toEqual([docx]);
   });
 });
@@ -121,7 +121,7 @@ describe("groupCatalogItemsByCategory", () => {
       item({ id: "bio", category: "BIOMED" }),
     ];
     expect(
-      groupCatalogItemsByCategory(items).map((group) => group.category),
+      groupCatalogItemsByCategory(items).map((group) => group.category)
     ).toEqual(["DOCUMENT", "TAX", "BIOMED"]);
   });
 });
@@ -156,7 +156,19 @@ describe("isForkOutdated", () => {
 describe("message key and colour helpers", () => {
   it("maps every category to a distinct message key", () => {
     const keys = (
-      ["all", "TAX", "BIOMED", "OFFICE", "DOCUMENT", "GENERAL"] as const
+      [
+        "all",
+        "TAX",
+        "BIOMED",
+        "OFFICE",
+        "DOCUMENT",
+        "CONTENT",
+        "ACADEMIC",
+        "REPORT",
+        "GRAPHIC",
+        "DEV_TOOL",
+        "GENERAL",
+      ] as const
     ).map(categoryMessageKey);
     expect(new Set(keys).size).toBe(keys.length);
     expect(categoryMessageKey("TAX")).toBe("category.tax.label");
@@ -164,7 +176,7 @@ describe("message key and colour helpers", () => {
 
   it("maps every publish status to a distinct message key", () => {
     const keys = (["DRAFT", "PUBLISHED", "ARCHIVED"] as const).map(
-      publishStatusMessageKey,
+      publishStatusMessageKey
     );
     expect(new Set(keys).size).toBe(keys.length);
     expect(publishStatusMessageKey("PUBLISHED")).toBe("status.published.label");
@@ -188,6 +200,11 @@ describe("message key and colour helpers", () => {
       "BIOMED",
       "OFFICE",
       "DOCUMENT",
+      "CONTENT",
+      "ACADEMIC",
+      "REPORT",
+      "GRAPHIC",
+      "DEV_TOOL",
       "GENERAL",
     ] as const) {
       expect(supported).toContain(categoryTagColor(category));

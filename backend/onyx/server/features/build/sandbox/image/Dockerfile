@@ -44,9 +44,9 @@ RUN set -eux; \
 FROM ${BASE_IMAGE_REGISTRY}/library/python:3.13-slim@sha256:f82c96458eedc847b233e582eb31336f4954b39cae020b6dcf5b3ed0e5cbcd74
 
 # Set ENABLE_SKILLS=false in dev/CI to skip skill-runtime deps (LibreOffice,
-# poppler, fonts, pptxgenjs) and shave ~700 MB. Skills themselves are pushed by
-# the API server at session-setup, but their runtime tools must already be in
-# the image.
+# poppler, fonts, pptxgenjs, Kimi npm packages, Playwright browsers) and shave
+# ~700 MB plus the browser cache. Skills themselves are pushed by the API
+# server at session-setup, but their runtime tools must already be in the image.
 ARG ENABLE_SKILLS=true
 ARG ENABLE_BROWSER=true
 ARG OPENCODE_VERSION=1.18.19
@@ -162,26 +162,47 @@ COPY initial-requirements.txt /tmp/initial-requirements.txt
 RUN python3 -m venv /workspace/.venv && \
     /workspace/.venv/bin/pip install --no-cache-dir --upgrade pip && \
     /workspace/.venv/bin/pip install --no-cache-dir --only-binary=:all: -r /tmp/initial-requirements.txt && \
+    /workspace/.venv/bin/python -c "import markdown, playwright, psycopg2, statsmodels, yaml, dotenv, xhs" && \
     rm -rf /tmp/initial-requirements.txt /root/.cache/pip && \
     chown -R sandbox:sandbox /workspace/.venv
 
 ENV PATH="/workspace/.venv/bin:${PATH}"
 ENV PYTHONPATH="/workspace"
+ENV NODE_PATH=/usr/local/lib/node_modules
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # pptxgenjs: from-scratch deck generation. lucide-static/@tabler/icons: plain
 # .svg icon files + sharp as rasterizer, for the pptx skill's scripts/icon.js.
+# Kimi official skills: vega/vega-lite (chart-gen ESM), js-yaml/yaml/marked
+# (xhs-note-creator), node-edge-tts/commander (speech-synthesis), playwright
+# (xhs + equity-researcher Mermaid). /node_modules is a symlink so native ESM
+# imports from /workspace/managed/skills resolve globally installed packages.
 # sharp pulls its per-arch prebuilt libvips binary via optionalDependencies
 # (@img/sharp-linux-x64 / @img/sharp-linux-arm64, no install scripts); the
 # smoke test fails the build if the native binary didn't resolve for the
 # target arch, and verifies one known SVG exists from each icon package.
+# Pin Node playwright to the same 1.58.0 as initial-requirements.in so both
+# CLIs share PLAYWRIGHT_BROWSERS_PATH.
 RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
     npm install -g pptxgenjs@4.0.1 lucide-static@1.24.0 @tabler/icons@3.44.0 sharp@0.35.3 \
-      @hithink-tech/hithink-finance-cli qcc-agent-cli && \
-    NODE_PATH=/usr/local/lib/node_modules node -e "require('pptxgenjs'); require('sharp'); const fs = require('fs'); fs.accessSync('/usr/local/lib/node_modules/lucide-static/icons/circle-check.svg'); fs.accessSync('/usr/local/lib/node_modules/@tabler/icons/icons/outline/shield-check.svg')" && \
+      @hithink-tech/hithink-finance-cli qcc-agent-cli \
+      vega@5.30.0 vega-lite@5.21.0 \
+      js-yaml@4.1.0 yaml@2.7.1 marked@11.1.1 \
+      node-edge-tts@1.2.9 commander@11.1.0 \
+      playwright@1.58.0 && \
+    ln -sfn /usr/local/lib/node_modules /node_modules && \
+    NODE_PATH=/usr/local/lib/node_modules node -e "require('pptxgenjs'); require('sharp'); require('js-yaml'); require('yaml'); require('marked'); require('commander'); require('playwright'); require('node-edge-tts'); const fs = require('fs'); fs.accessSync('/usr/local/lib/node_modules/lucide-static/icons/circle-check.svg'); fs.accessSync('/usr/local/lib/node_modules/@tabler/icons/icons/outline/shield-check.svg'); fs.accessSync('/node_modules/vega/package.json'); fs.accessSync('/node_modules/vega-lite/package.json')" && \
     hithink-finance version --format json && \
     qcc --help >/dev/null && \
     npm cache clean --force && \
     rm -rf /root/.npm; \
+    fi
+
+# Shared Chromium for Python and Node Playwright. System chromium stays for
+# agent-browser; skill scripts do not pass executable_path.
+RUN if [ "$ENABLE_SKILLS" = "true" ]; then \
+    /workspace/.venv/bin/playwright install chromium && \
+    chmod -R a+rX /opt/ms-playwright; \
     fi
 
 # bun copied from the binary-source stage defined at the top of this file.
