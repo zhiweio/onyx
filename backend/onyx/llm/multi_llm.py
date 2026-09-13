@@ -620,6 +620,9 @@ class LitellmLLM(LLM):
         is_claude_model = any("claude" in name.lower() for name in model_identity_names)
         is_qwen_model = any("qwen" in name.lower() for name in model_identity_names)
         is_glm_model = any("glm" in name.lower() for name in model_identity_names)
+        is_deepseek_model = self._model_provider == LlmProviderNames.DEEPSEEK or any(
+            "deepseek" in name.lower() for name in model_identity_names
+        )
         uses_adaptive_thinking = any(
             anthropic_uses_adaptive_thinking(name) for name in model_identity_names
         )
@@ -709,6 +712,14 @@ class LitellmLLM(LLM):
             tool_choice == ToolChoiceOptions.REQUIRED
         ):
             tool_choice = ToolChoiceOptions.AUTO
+
+        # DeepSeek V4 thinking (default on for Flash/Pro) rejects the
+        # tool_choice field itself — including "auto". Official tool-call
+        # samples keep `tools` and omit `tool_choice`. Drop it here so chat
+        # and forced-tool turns do not 400 with "Thinking mode does not
+        # support this tool_choice".
+        if is_deepseek_model:
+            tool_choice = None
 
         # If no tools are provided, tool_choice should be None
         if not tools:

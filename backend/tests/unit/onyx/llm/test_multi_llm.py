@@ -2595,6 +2595,54 @@ def test_qwen_only_in_deployment_name_downgrades_tool_choice() -> None:
         assert kwargs["tool_choice"] == ToolChoiceOptions.AUTO
 
 
+@pytest.mark.parametrize(
+    "model_provider, model_name, deployment_name",
+    [
+        (LlmProviderNames.DEEPSEEK, "deepseek-flash", None),
+        (LlmProviderNames.LITELLM_PROXY, "foundry-deploy-3", "deepseek-flash"),
+    ],
+)
+@pytest.mark.parametrize(
+    "tool_choice",
+    [
+        ToolChoiceOptions.AUTO,
+        ToolChoiceOptions.REQUIRED,
+        NamedToolChoice(name="get_weather"),
+    ],
+)
+def test_deepseek_thinking_omits_tool_choice(
+    model_provider: str,
+    model_name: str,
+    deployment_name: str | None,
+    tool_choice: ToolChoiceOptions | NamedToolChoice,
+) -> None:
+    """DeepSeek thinking mode rejects any tool_choice value, including auto."""
+    llm = LitellmLLM(
+        api_key="test_key",
+        timeout=30,
+        model_provider=model_provider,
+        model_name=model_name,
+        deployment_name=deployment_name,
+        max_input_tokens=32000,
+    )
+
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.return_value = []
+
+        messages: LanguageModelInput = [UserMessage(content="Weather in NYC?")]
+        list(
+            llm.stream(
+                messages,
+                tools=_TOOL_CHOICE_DOWNGRADE_TOOLS,
+                tool_choice=tool_choice,
+            )
+        )
+
+        kwargs = mock_completion.call_args.kwargs
+        assert "tool_choice" not in kwargs
+        assert kwargs["tools"] == _TOOL_CHOICE_DOWNGRADE_TOOLS
+
+
 def test_required_tool_choice_preserved_for_other_models(
     default_multi_llm: LitellmLLM,
 ) -> None:
