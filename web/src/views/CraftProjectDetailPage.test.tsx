@@ -293,6 +293,54 @@ describe("CraftProjectDetailPage", () => {
     await waitFor(() =>
       expect(mockResetSandbox).toHaveBeenCalledWith("proj-tax", false)
     );
+    expect(
+      screen.queryByRole("dialog", { name: /Reset the sandbox/ })
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
+  });
+
+  it("closes the reset dialog while the sandbox is still starting", async () => {
+    const user = setupUser();
+    let finishReset: ((value: CraftProject) => void) | undefined;
+    mockResetSandbox.mockImplementation(
+      () =>
+        new Promise<CraftProject>((resolve) => {
+          finishReset = resolve;
+        })
+    );
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        sandbox: {
+          id: "sandbox-old",
+          status: "running",
+          last_heartbeat: "2026-08-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        },
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Reset" })
+    );
+
+    await waitFor(() =>
+      expect(mockResetSandbox).toHaveBeenCalledWith("proj-tax", false)
+    );
+    expect(
+      screen.queryByRole("dialog", { name: /Reset the sandbox/ })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Starting a new workspace. You can keep using this page."
+    );
+    expect(screen.getByRole("button", { name: "Resetting" })).toBeDisabled();
+
+    finishReset?.({ ...project });
     await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
   });
 

@@ -13953,13 +13953,22 @@
           },
           "title": "Sandbox",
           "reset": {
+            "cancel": {
+              "label": "Cancel"
+            },
             "confirm": {
               "label": "Reset"
             },
             "description": "This starts a new sandbox. This project's files and chats move with it.",
             "label": "Reset",
             "migrateOutputs": {
+              "description": "Project files and chats always move. Check this to also keep generated reports.",
               "label": "Also copy every output file from the old sandbox"
+            },
+            "progress": {
+              "description": "Starting a new workspace. You can keep using this page.",
+              "label": "Resetting",
+              "migrateDescription": "Copying output files and starting a new workspace. This can take a few minutes."
             },
             "title": "Reset the sandbox?"
           }

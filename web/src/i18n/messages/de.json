@@ -13953,13 +13953,22 @@
           },
           "title": "Sandbox",
           "reset": {
+            "cancel": {
+              "label": "Abbrechen"
+            },
             "confirm": {
               "label": "Zurücksetzen"
             },
             "description": "Dies startet eine neue Sandbox. Dateien und Chats dieses Projekts werden mit übernommen.",
             "label": "Zurücksetzen",
             "migrateOutputs": {
+              "description": "Projektdateien und Chats werden immer übernommen. Aktivieren Sie dies, um erzeugte Berichte zu behalten.",
               "label": "Alle Ausgabedateien der alten Sandbox ebenfalls kopieren"
+            },
+            "progress": {
+              "description": "Ein neuer Arbeitsbereich startet. Sie können diese Seite weiter nutzen.",
+              "label": "Wird zurückgesetzt",
+              "migrateDescription": "Ausgabedateien werden kopiert und ein neuer Arbeitsbereich startet. Das kann einige Minuten dauern."
             },
             "title": "Sandbox zurücksetzen?"
           }

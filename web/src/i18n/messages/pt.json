@@ -13953,13 +13953,22 @@
           },
           "title": "Sandbox",
           "reset": {
+            "cancel": {
+              "label": "Cancelar"
+            },
             "confirm": {
               "label": "Redefinir"
             },
             "description": "Isso inicia um sandbox novo. Os arquivos e chats deste projeto vão com ele.",
             "label": "Redefinir",
             "migrateOutputs": {
+              "description": "Arquivos e chats do projeto sempre vão junto. Marque isto para também manter os relatórios gerados.",
               "label": "Também copiar todos os arquivos de saída do sandbox antigo"
+            },
+            "progress": {
+              "description": "Um novo espaço de trabalho está iniciando. Você pode continuar nesta página.",
+              "label": "Redefinindo",
+              "migrateDescription": "Copiando arquivos de saída e iniciando um novo espaço de trabalho. Isso pode levar alguns minutos."
             },
             "title": "Redefinir o sandbox?"
           }

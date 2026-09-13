@@ -13953,13 +13953,22 @@
           },
           "title": "Sandbox",
           "reset": {
+            "cancel": {
+              "label": "Annuler"
+            },
             "confirm": {
               "label": "Réinitialiser"
             },
             "description": "Cela démarre un nouveau sandbox. Les fichiers et discussions de ce projet sont déplacés avec lui.",
             "label": "Réinitialiser",
             "migrateOutputs": {
+              "description": "Les fichiers et discussions du projet sont toujours déplacés. Cochez pour aussi garder les rapports générés.",
               "label": "Copier aussi tous les fichiers de sortie de l'ancien sandbox"
+            },
+            "progress": {
+              "description": "Un nouvel espace de travail démarre. Vous pouvez continuer à utiliser cette page.",
+              "label": "Réinitialisation",
+              "migrateDescription": "Copie des fichiers de sortie et démarrage d'un nouvel espace de travail. Cela peut prendre quelques minutes."
             },
             "title": "Réinitialiser le sandbox ?"
           }

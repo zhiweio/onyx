@@ -13953,13 +13953,22 @@
           },
           "title": "沙箱",
           "reset": {
+            "cancel": {
+              "label": "取消"
+            },
             "confirm": {
               "label": "重置"
             },
             "description": "这会启动新的沙箱。此项目的文件和对话会一并迁入。",
             "label": "重置",
             "migrateOutputs": {
+              "description": "项目文件和对话总会迁入。勾选此项也会保留已生成的报告。",
               "label": "同时把旧沙箱里的全部输出产物迁入新沙箱"
+            },
+            "progress": {
+              "description": "正在启动新工作区。你可以继续使用此页面。",
+              "label": "重置中",
+              "migrateDescription": "正在复制输出文件并启动新工作区。这可能需要几分钟。"
             },
             "title": "重置沙箱？"
           }
