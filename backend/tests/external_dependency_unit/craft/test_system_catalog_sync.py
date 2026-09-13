@@ -158,6 +158,39 @@ def test_sync_publishes_every_manifest_entry(db_session: Session) -> None:
 
 
 @pytest.mark.usefixtures("synced")
+def test_sync_restores_a_missing_builtin_skill_projection(
+    db_session: Session,
+) -> None:
+    """Craft mounts the workspace ``skill`` row, not the gallery row.
+
+    A later boot must republish when that projection is gone, then stop
+    bumping versions once the row is back.
+    """
+    catalog_entry = get_system_skill_by_slug(db_session, "chart-gen")
+    assert catalog_entry is not None
+    projection = find_projected_skill(db_session, catalog_entry)
+    assert projection is not None
+    version_before = catalog_entry.version
+
+    db_session.delete(projection)
+    db_session.commit()
+
+    sync_builtin_system_catalog(db_session)
+    db_session.refresh(catalog_entry)
+
+    restored = find_projected_skill(db_session, catalog_entry)
+    assert restored is not None
+    assert restored.built_in_skill_id == "chart-gen"
+    version_after_heal = catalog_entry.version
+    assert version_after_heal == version_before + 1
+
+    sync_builtin_system_catalog(db_session)
+    db_session.refresh(catalog_entry)
+    assert find_projected_skill(db_session, catalog_entry) is not None
+    assert catalog_entry.version == version_after_heal
+
+
+@pytest.mark.usefixtures("synced")
 def test_sync_is_idempotent(db_session: Session) -> None:
     before = _counts(db_session)
     versions_before = _skill_versions(db_session)

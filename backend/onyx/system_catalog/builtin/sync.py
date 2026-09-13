@@ -8,6 +8,10 @@ Runs at startup and is idempotent. Rules that keep it safe to re-run:
   ``Shipped with Onyx.``) is updated when the manifest or official Word
   asset changes. Republish only when content actually changed, so versions
   do not bump on every boot.
+- **Restore a missing workspace skill.** A shipped skill can stay
+  ``PUBLISHED`` in the gallery after its workspace ``skill`` row is gone.
+  Craft mounts that row, so sync republishes when the projection is
+  missing. Metadata that already matches is left alone.
 - **Never overwrite admin work.** A row an admin published or patched is
   left alone.
 - **Adopt before creating.** Earlier releases seeded workspace-owned rows
@@ -46,6 +50,7 @@ from onyx.db.models import (
     SystemSkill,
 )
 from onyx.db.system_catalog.publish import (
+    find_projected_skill,
     publish_system_report_template,
     publish_system_scenario,
     publish_system_skill,
@@ -252,17 +257,20 @@ def _sync_skills(db_session: Session) -> None:
         ):
             continue
 
-        if not _skill_needs_refresh(catalog_entry, entry):
+        needs_refresh = _skill_needs_refresh(catalog_entry, entry)
+        needs_projection = find_projected_skill(db_session, catalog_entry) is None
+        if not needs_refresh and not needs_projection:
             continue
 
-        update_system_skill(
-            db_session,
-            catalog_entry,
-            name=entry.name,
-            description=entry.description,
-            category=entry.category,
-            tags=list(entry.tags),
-        )
+        if needs_refresh:
+            update_system_skill(
+                db_session,
+                catalog_entry,
+                name=entry.name,
+                description=entry.description,
+                category=entry.category,
+                tags=list(entry.tags),
+            )
         _publish_isolated(
             db_session,
             entry.slug,
