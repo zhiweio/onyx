@@ -78,7 +78,7 @@ const meta: Meta<typeof UserLibraryModal> = {
 export default meta;
 type Story = StoryObj<typeof UserLibraryModal>;
 
-// Empty state — the click/drag upload dropzone.
+// Empty state — a single click/drag upload dropzone.
 export const Empty: Story = {
   decorators: [withLibrary([])],
 };

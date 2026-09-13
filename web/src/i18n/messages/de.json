@@ -12665,6 +12665,9 @@
       "projects": {
         "label": "Projekte"
       },
+      "library": {
+        "label": "Bibliothek"
+      },
       "scenarios": {
         "label": "Szenarien"
       },
@@ -13067,9 +13070,20 @@
         "label": "Dateien werden geladen…"
       },
       "modal": {
-        "description": "Dateien, die dein Agent in jeder Sitzung lesen kann.",
+        "description": "Persönliche Dateien für jedes Gespräch. Projektdateien bleiben auf der Projektseite.",
         "doneButton": "Fertig",
         "title": "Bibliothek"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# Datei} other {# Dateien}}"
+        },
+        "description": {
+          "text": "Persönliche Dateien für jedes Gespräch. Projektdateien bleiben auf der Projektseite."
+        },
+        "title": {
+          "text": "Bibliothek"
+        }
       },
       "newFolder": {
         "cancelButton": "Abbrechen",

@@ -12665,6 +12665,9 @@
       "projects": {
         "label": "プロジェクト"
       },
+      "library": {
+        "label": "ライブラリ"
+      },
       "scenarios": {
         "label": "シナリオ"
       },
@@ -13067,9 +13070,20 @@
         "label": "ファイルを読み込み中…"
       },
       "modal": {
-        "description": "エージェントがすべてのセッションで読み取れるファイルです。",
+        "description": "すべての会話で使える個人ファイルです。プロジェクトファイルはプロジェクトページで管理します。",
         "doneButton": "完了",
         "title": "ライブラリ"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# 件} other {# 件}}"
+        },
+        "description": {
+          "text": "すべての会話で使える個人ファイルです。プロジェクトファイルはプロジェクトページで管理します。"
+        },
+        "title": {
+          "text": "ライブラリ"
+        }
       },
       "newFolder": {
         "cancelButton": "キャンセル",

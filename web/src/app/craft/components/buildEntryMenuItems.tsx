@@ -13,6 +13,7 @@ import {
 } from "@/lib/skills/picker";
 import { pickerEntryIcon } from "@/lib/skills/pickerIcons";
 import {
+  CRAFT_LIBRARY_PATH,
   CRAFT_MCP_ACTIONS_PATH,
   CRAFT_SKILLS_PATH,
 } from "@/app/craft/v1/constants";
@@ -36,8 +37,6 @@ export interface EntryMenuHandlers {
   onRemoveEntry: (entryKey: string) => void;
   activeEntries?: PickerEntry[];
   libraryFiles?: LibraryFile[];
-  /** Opens the library management modal. When set, a Library row is added. */
-  onManageLibrary?: () => void;
 }
 
 function entryRow(
@@ -79,7 +78,6 @@ export function buildEntryMenuItems(
     onRemoveEntry,
     activeEntries = [],
     libraryFiles = [],
-    onManageLibrary,
   }: EntryMenuHandlers,
   t: EntryMenuTranslate
 ): Array<PlusMenuItem | null> {
@@ -126,29 +124,24 @@ export function buildEntryMenuItems(
     },
   ];
 
-  if (onManageLibrary) {
-    items.push({
-      key: "library",
-      icon: SvgFolder,
-      label: t("library.label"),
-      panel: {
-        searchPlaceholder: t("library.searchPlaceholder"),
-        manageLabel: t("library.manage"),
-        onManage: onManageLibrary,
-        emptyLabel: t("library.empty"),
-        rows: libraryFiles.map((file) => ({
-          key: file.id,
-          icon: SvgFileText,
-          label: file.name,
-          checked: false,
-          onCheckedChange: (checked) => {
-            if (checked) onManageLibrary();
-          },
-          onSelect: onManageLibrary,
-        })),
-      },
-    });
-  }
+  items.push({
+    key: "library",
+    icon: SvgFolder,
+    label: t("library.label"),
+    panel: {
+      searchPlaceholder: t("library.searchPlaceholder"),
+      manageLabel: t("library.manage"),
+      manageHref: CRAFT_LIBRARY_PATH,
+      emptyLabel: t("library.empty"),
+      rows: libraryFiles.map((file) => ({
+        key: file.id,
+        icon: SvgFileText,
+        label: file.name,
+        checked: false,
+        onCheckedChange: () => undefined,
+      })),
+    },
+  });
 
   return items;
 }

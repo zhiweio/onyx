@@ -24,10 +24,6 @@ jest.mock("@/sections/extend/file-system", () => ({
   FileSystem: () => <div data-testid="file-system" />,
 }));
 
-jest.mock("@/sections/extend/file-upload", () => ({
-  FileUpload: () => <div data-testid="file-upload" />,
-}));
-
 const mockedFetchLibraryTree = jest.mocked(fetchLibraryTree);
 const mockedCreateLibraryDirectory = jest.mocked(createLibraryDirectory);
 
@@ -58,6 +54,39 @@ async function openCreateFolder() {
   await user.click(screen.getByRole("button", { name: "New folder" }));
   return user;
 }
+
+describe("UserLibraryModal layout", () => {
+  beforeEach(() => {
+    mockedFetchLibraryTree.mockReset();
+    mockedCreateLibraryDirectory.mockReset();
+  });
+
+  it("shows one empty dropzone and no second upload well", () => {
+    renderLibrary();
+
+    expect(
+      screen.getByRole("button", { name: "Drag files here or click to upload" })
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("file-upload")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("file-system")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        "Personal files for every conversation. Project files stay on the project page."
+      ).length
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows the file list without an extra upload well", () => {
+    renderLibrary([reportsFolder]);
+
+    expect(screen.getByTestId("file-system")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Drag files here or click to upload",
+      })
+    ).not.toBeInTheDocument();
+  });
+});
 
 describe("UserLibraryModal create folder", () => {
   beforeEach(() => {

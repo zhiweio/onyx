@@ -4,6 +4,7 @@ import {
 } from "@/app/craft/components/buildEntryMenuItems";
 import type { PickerSections } from "@/lib/skills/picker";
 import {
+  CRAFT_LIBRARY_PATH,
   CRAFT_MCP_ACTIONS_PATH,
   CRAFT_SKILLS_PATH,
 } from "@/app/craft/v1/constants";
@@ -121,12 +122,10 @@ describe("buildEntryMenuItems", () => {
     expect(skills?.manageHref).toBe(CRAFT_SKILLS_PATH);
   });
 
-  it("keeps library files behind a manage action that opens the existing modal", () => {
-    const onManageLibrary = jest.fn();
+  it("lists library files with a manage link to the library page", () => {
     const items = buildEntryMenuItems(
       sections(),
       handlers({
-        onManageLibrary,
         libraryFiles: [{ id: "file-1", name: "notes.pdf" }],
       }),
       tStub
@@ -134,8 +133,7 @@ describe("buildEntryMenuItems", () => {
     const library = panel(items, "library");
 
     expect(library?.rows.map((row) => row.label)).toEqual(["notes.pdf"]);
-    expect(library?.manageHref).toBeUndefined();
-    library?.onManage?.();
-    expect(onManageLibrary).toHaveBeenCalledTimes(1);
+    expect(library?.manageHref).toBe(CRAFT_LIBRARY_PATH);
+    expect(library?.onManage).toBeUndefined();
   });
 });

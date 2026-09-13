@@ -12183,12 +12183,12 @@
       },
       "library": {
         "empty": "还没有文件。",
-        "label": "库",
+        "label": "资料库",
         "manage": "管理",
-        "searchPlaceholder": "搜索库..."
+        "searchPlaceholder": "搜索资料库..."
       },
       "manageLibrary": {
-        "label": "管理库…"
+        "label": "管理资料库…"
       },
       "mcp": {
         "empty": "还没有 MCP。",
@@ -12665,6 +12665,9 @@
       "projects": {
         "label": "项目"
       },
+      "library": {
+        "label": "资料库"
+      },
       "scenarios": {
         "label": "场景"
       },
@@ -13067,9 +13070,20 @@
         "label": "正在加载文件…"
       },
       "modal": {
-        "description": "您的智能体在每个会话中都可以读取的文件。",
+        "description": "个人资料，每个会话都能读取。项目文件请在项目页管理。",
         "doneButton": "完成",
         "title": "资料库"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# 个文件} other {# 个文件}}"
+        },
+        "description": {
+          "text": "个人资料，每个会话都能读取。项目文件请在项目页管理。"
+        },
+        "title": {
+          "text": "资料库"
+        }
       },
       "newFolder": {
         "cancelButton": "取消",

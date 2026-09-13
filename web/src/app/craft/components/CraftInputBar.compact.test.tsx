@@ -89,8 +89,6 @@ jest.mock("@/sections/input/InputChipStrip", () => ({
 jest.mock("@/sections/input/PlusMenuButton", () => ({
   PlusMenuButton: () => null,
 }));
-jest.mock("@/app/craft/components/UserLibraryModal", () => () => null);
-
 describe("CraftInputBar compact command", () => {
   it("routes a compact picker selection to onCompact, not a chip", () => {
     const onCompact = jest.fn();

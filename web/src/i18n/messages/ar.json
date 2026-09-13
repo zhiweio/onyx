@@ -12665,6 +12665,9 @@
       "projects": {
         "label": "Projects"
       },
+      "library": {
+        "label": "المكتبة"
+      },
       "scenarios": {
         "label": "Scenarios"
       },
@@ -13067,9 +13070,20 @@
         "label": "جارٍ تحميل الملفات…"
       },
       "modal": {
-        "description": "الملفات التي يمكن لوكيلك قراءتها في كل جلسة.",
+        "description": "ملفات شخصية لكل محادثة. ملفات المشروع تبقى في صفحة المشروع.",
         "doneButton": "تم",
         "title": "المكتبة"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# ملف} other {# ملفات}}"
+        },
+        "description": {
+          "text": "ملفات شخصية لكل محادثة. ملفات المشروع تبقى في صفحة المشروع."
+        },
+        "title": {
+          "text": "المكتبة"
+        }
       },
       "newFolder": {
         "cancelButton": "إلغاء",

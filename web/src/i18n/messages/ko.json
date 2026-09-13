@@ -12665,6 +12665,9 @@
       "projects": {
         "label": "프로젝트"
       },
+      "library": {
+        "label": "라이브러리"
+      },
       "scenarios": {
         "label": "시나리오"
       },
@@ -13067,9 +13070,20 @@
         "label": "파일 불러오는 중…"
       },
       "modal": {
-        "description": "에이전트가 모든 세션에서 읽을 수 있는 파일입니다.",
+        "description": "모든 대화에서 쓰는 개인 파일입니다. 프로젝트 파일은 프로젝트 페이지에 있습니다.",
         "doneButton": "완료",
         "title": "라이브러리"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {#개 파일} other {#개 파일}}"
+        },
+        "description": {
+          "text": "모든 대화에서 쓰는 개인 파일입니다. 프로젝트 파일은 프로젝트 페이지에 있습니다."
+        },
+        "title": {
+          "text": "라이브러리"
+        }
       },
       "newFolder": {
         "cancelButton": "취소",

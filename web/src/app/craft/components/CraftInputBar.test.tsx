@@ -134,7 +134,6 @@ jest.mock("@/sections/input/InputChipStrip", () => ({
 jest.mock("@/sections/input/PlusMenuButton", () => ({
   PlusMenuButton: () => null,
 }));
-jest.mock("@/app/craft/components/UserLibraryModal", () => () => null);
 
 describe("CraftInputBar queued attachments", () => {
   beforeEach(() => {

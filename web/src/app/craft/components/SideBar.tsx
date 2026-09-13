@@ -46,6 +46,7 @@ import {
   SvgShare,
   SvgSimpleLoader,
   SvgFolder,
+  SvgFolderOpen,
   SvgFileText,
 } from "@opal/icons";
 import TypewriterText from "@/app/craft/components/TypewriterText";
@@ -56,6 +57,7 @@ import {
   CRAFT_SCENARIOS_PATH,
   CRAFT_REPORT_TEMPLATES_PATH,
   CRAFT_PROJECTS_PATH,
+  CRAFT_LIBRARY_PATH,
   CRAFT_APPS_PATH,
   CRAFT_MCP_ACTIONS_PATH,
   CRAFT_TASKS_PATH,
@@ -607,7 +609,9 @@ const MemoizedBuildSidebarInner = memo(() => {
           !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
           !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
           !pathname.startsWith(CRAFT_PROJECTS_PATH) &&
+          !pathname.startsWith(CRAFT_LIBRARY_PATH) &&
           !pathname.startsWith(CRAFT_APPS_PATH) &&
+          !pathname.startsWith(CRAFT_MCP_ACTIONS_PATH) &&
           session?.id === historyItem.id
         }
         onLoad={() => handleLoadSession(historyItem.id)}
@@ -664,6 +668,13 @@ const MemoizedBuildSidebarInner = memo(() => {
             selected={pathname.startsWith(CRAFT_PROJECTS_PATH)}
           >
             {t("projects.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgFolderOpen}
+            onClick={() => navigate(CRAFT_LIBRARY_PATH)}
+            selected={pathname.startsWith(CRAFT_LIBRARY_PATH)}
+          >
+            {t("library.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgShare}

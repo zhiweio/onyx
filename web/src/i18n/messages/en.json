@@ -12674,6 +12674,9 @@
       "projects": {
         "label": "Projects"
       },
+      "library": {
+        "label": "Library"
+      },
       "scenarios": {
         "label": "Scenarios"
       },
@@ -13073,9 +13076,20 @@
         "label": "Loading files…"
       },
       "modal": {
-        "description": "Files your agent can read in every session.",
+        "description": "Personal files for every conversation. Project files stay on the project page.",
         "doneButton": "Done",
         "title": "Library"
+      },
+      "page": {
+        "count": {
+          "label": "{count, plural, one {# file} other {# files}}"
+        },
+        "description": {
+          "text": "Personal files for every conversation. Project files stay on the project page."
+        },
+        "title": {
+          "text": "Library"
+        }
       },
       "newFolder": {
         "cancelButton": "Cancel",

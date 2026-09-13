@@ -26,7 +26,6 @@ import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
 import { SelectButton } from "@opal/components";
 import { SvgHourglass } from "@opal/icons";
 import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
-import UserLibraryModal from "@/app/craft/components/UserLibraryModal";
 import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
 import useSlashPicker from "@/hooks/useSlashPicker";
 import {
@@ -168,7 +167,7 @@ const CraftInputBar = memo(
         [skillsData, appsData, craftMcpData, compactAvailable, compactCommand]
       );
 
-      const { data: libraryTree, mutate: mutateLibrary } = useSWR(
+      const { data: libraryTree } = useSWR(
         SWR_KEYS.buildUserLibraryTree,
         fetchLibraryTree
       );
@@ -179,7 +178,6 @@ const CraftInputBar = memo(
             .map((entry) => ({ id: entry.id, name: entry.name })),
         [libraryTree]
       );
-      const [libraryModalOpen, setLibraryModalOpen] = useState(false);
 
       const [activeEntries, setActiveEntries] = useState<PickerEntry[]>(
         initialEntries ?? []
@@ -331,9 +329,6 @@ const CraftInputBar = memo(
               onRemoveEntry: removeEntry,
               activeEntries,
               libraryFiles,
-              // Defer the modal until the + popover finishes closing, else it paints over it.
-              onManageLibrary: () =>
-                window.setTimeout(() => setLibraryModalOpen(true), 200),
             },
             entryMenuT
           ),
@@ -457,11 +452,6 @@ const CraftInputBar = memo(
               onDismiss={dismissEntryInfo}
             />
           )}
-          <UserLibraryModal
-            open={libraryModalOpen}
-            onClose={() => setLibraryModalOpen(false)}
-            onChanges={() => mutateLibrary()}
-          />
         </>
       );
     }
