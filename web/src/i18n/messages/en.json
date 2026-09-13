@@ -8266,7 +8266,13 @@
         "invalidate": "Invalidate",
         "refresh": "Refresh",
         "empty": "No cache entries.",
-        "searchPlaceholder": "Search cache"
+        "searchPlaceholder": "Search cache",
+        "statuses": {
+          "ok": "OK",
+          "error": "Error",
+          "failed": "Failed",
+          "pending": "Pending"
+        }
       },
       "calls": {
         "time": "Time",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "Result blob",
         "arguments": "Arguments",
         "payload": "Payload",
+        "moreParams": "+{count}",
+        "loadingDetail": "Loading details…",
+        "errorMessage": "Error",
+        "identifiers": "Identifiers",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "Hit",
           "miss": "Miss",

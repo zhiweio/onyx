@@ -8266,7 +8266,13 @@
         "invalidate": "Invalidar",
         "refresh": "Actualizar",
         "empty": "No hay entradas de caché.",
-        "searchPlaceholder": "Buscar en la caché"
+        "searchPlaceholder": "Buscar en la caché",
+        "statuses": {
+          "ok": "Correcto",
+          "error": "Error",
+          "failed": "Fallido",
+          "pending": "Pendiente"
+        }
       },
       "calls": {
         "time": "Hora",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "Blob de resultado",
         "arguments": "Argumentos",
         "payload": "Carga",
+        "moreParams": "+{count}",
+        "loadingDetail": "Cargando detalles…",
+        "errorMessage": "Error",
+        "identifiers": "Identificadores",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "Acierto",
           "miss": "Fallo",

@@ -8266,7 +8266,13 @@
         "invalidate": "إبطال",
         "refresh": "تحديث",
         "empty": "لا توجد عناصر تخزين.",
-        "searchPlaceholder": "البحث في التخزين"
+        "searchPlaceholder": "البحث في التخزين",
+        "statuses": {
+          "ok": "سليم",
+          "error": "خطأ",
+          "failed": "فشل",
+          "pending": "قيد الانتظار"
+        }
       },
       "calls": {
         "time": "الوقت",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "كائن النتيجة",
         "arguments": "المعاملات",
         "payload": "الحمولة",
+        "moreParams": "+{count}",
+        "loadingDetail": "جارٍ تحميل التفاصيل…",
+        "errorMessage": "خطأ",
+        "identifiers": "المعرفات",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "إصابة",
           "miss": "تفويت",

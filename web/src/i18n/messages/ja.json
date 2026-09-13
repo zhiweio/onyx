@@ -8266,7 +8266,13 @@
         "invalidate": "無効化",
         "refresh": "更新",
         "empty": "キャッシュ項目はありません。",
-        "searchPlaceholder": "キャッシュを検索"
+        "searchPlaceholder": "キャッシュを検索",
+        "statuses": {
+          "ok": "正常",
+          "error": "エラー",
+          "failed": "失敗",
+          "pending": "処理中"
+        }
       },
       "calls": {
         "time": "時刻",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "結果ブロブ",
         "arguments": "引数",
         "payload": "ペイロード",
+        "moreParams": "+{count}",
+        "loadingDetail": "詳細を読み込み中…",
+        "errorMessage": "エラー",
+        "identifiers": "識別子",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "ヒット",
           "miss": "ミス",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import {
   Button,
   InputTypeIn,
@@ -17,6 +17,13 @@ import {
 } from "@/lib/mcp-catalog/api";
 import type { McpGatewayCacheEntry } from "@/lib/mcp-catalog/types";
 import { errorMessage, formatBytes, PAGE_SIZE } from "./format";
+import {
+  DateTimeCell,
+  MetricCell,
+  RefreshStatusTag,
+  ServerTagCell,
+  TruncatedTextCell,
+} from "./GatewayTableCells";
 import { useDebouncedValue } from "./useDebouncedValue";
 
 const tc = createTableColumns<McpGatewayCacheEntry>();
@@ -31,7 +38,6 @@ export default function GatewayCacheTable({
   tool,
 }: GatewayCacheTableProps) {
   const t = useTranslations("admin.mcpGateway");
-  const format = useFormatter();
   const [searchInput, setSearchInput] = useState("");
   const searchTerm = useDebouncedValue(searchInput);
   const filterKey = `${catalogSlug}\0${tool}\0${searchTerm}`;
@@ -77,43 +83,45 @@ export default function GatewayCacheTable({
     () => [
       tc.column("effective_tool_name", {
         header: t("cache.tool"),
-        weight: 20,
+        weight: 22,
         enableSorting: false,
-        cell: (value) => value || "—",
+        cell: (value) => (
+          <TruncatedTextCell value={value} empty={t("calls.missing")} mono />
+        ),
       }),
       tc.column("catalog_slug", {
         header: t("cache.server"),
-        weight: 16,
+        weight: 14,
         enableSorting: false,
-        cell: (value) => value || "—",
+        cell: (value) => (
+          <ServerTagCell value={value} empty={t("calls.missing")} />
+        ),
       }),
       tc.column("hit_count", {
         header: t("cache.hits"),
         weight: 8,
         enableSorting: false,
-        cell: (value) => String(value ?? 0),
+        cell: (value) => <MetricCell value={String(value ?? 0)} />,
       }),
       tc.column("size_bytes", {
         header: t("cache.size"),
-        weight: 10,
+        weight: 8,
         enableSorting: false,
-        cell: (value) => formatBytes(value),
+        cell: (value) => <MetricCell value={formatBytes(value)} />,
       }),
       tc.column("last_accessed_at", {
         header: t("cache.lastAccess"),
-        weight: 16,
+        weight: 12,
         enableSorting: false,
-        cell: (value) =>
-          format.dateTime(new Date(value), {
-            dateStyle: "short",
-            timeStyle: "short",
-          }),
+        cell: (value) => <DateTimeCell value={value} timeStyle="short" />,
       }),
       tc.column("last_refresh_status", {
         header: t("cache.status"),
-        weight: 12,
+        weight: 10,
         enableSorting: false,
-        cell: (value) => value ?? "—",
+        cell: (value) => (
+          <RefreshStatusTag status={value} empty={t("calls.missing")} />
+        ),
       }),
       tc.actions({
         showColumnVisibility: false,
@@ -151,7 +159,7 @@ export default function GatewayCacheTable({
         ),
       }),
     ],
-    [format, load, t]
+    [load, t]
   );
 
   return (

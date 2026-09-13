@@ -8266,7 +8266,13 @@
         "invalidate": "失效",
         "refresh": "刷新",
         "empty": "没有缓存条目。",
-        "searchPlaceholder": "搜索缓存"
+        "searchPlaceholder": "搜索缓存",
+        "statuses": {
+          "ok": "正常",
+          "error": "错误",
+          "failed": "失败",
+          "pending": "进行中"
+        }
       },
       "calls": {
         "time": "时间",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "结果对象",
         "arguments": "参数",
         "payload": "载荷",
+        "moreParams": "+{count}",
+        "loadingDetail": "正在加载详情…",
+        "errorMessage": "错误",
+        "identifiers": "标识",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "命中",
           "miss": "未命中",

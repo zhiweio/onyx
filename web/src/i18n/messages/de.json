@@ -8266,7 +8266,13 @@
         "invalidate": "Ungültig machen",
         "refresh": "Aktualisieren",
         "empty": "Keine Cache-Einträge.",
-        "searchPlaceholder": "Cache durchsuchen"
+        "searchPlaceholder": "Cache durchsuchen",
+        "statuses": {
+          "ok": "OK",
+          "error": "Fehler",
+          "failed": "Fehlgeschlagen",
+          "pending": "Ausstehend"
+        }
       },
       "calls": {
         "time": "Zeit",
@@ -8294,6 +8300,11 @@
         "resultBlobId": "Ergebnis-Blob",
         "arguments": "Argumente",
         "payload": "Nutzlast",
+        "moreParams": "+{count}",
+        "loadingDetail": "Details werden geladen…",
+        "errorMessage": "Fehler",
+        "identifiers": "Kennungen",
+        "detailDescription": "{tool} · {server}",
         "outcomes": {
           "hit": "Treffer",
           "miss": "Kein Treffer",
