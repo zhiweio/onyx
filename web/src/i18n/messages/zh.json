@@ -13909,6 +13909,7 @@
           "label": "继续"
         },
         "details": {
+          "description": "这段文字会显示在项目名称下方。",
           "title": "详情"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "文件"
         },
         "instructions": {
+          "description": "此项目中的每次对话都会遵守这些规则。",
           "title": "说明"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "未能启动。打开对话后可重试。",
+            "missing": "尚未启动。打开对话即可创建。",
+            "provisioning": "正在启动工作区。",
+            "running": "已就绪，可用于此项目的对话。",
+            "sleeping": "已休眠。打开对话即可唤醒。",
+            "terminated": "已停止。打开对话即可再次启动。"
+          },
+          "lastHeartbeat": "最近信号 {time}",
+          "status": {
+            "failed": "失败",
+            "missing": "未启动",
+            "provisioning": "启动中",
+            "running": "运行中",
+            "sleeping": "休眠",
+            "terminated": "已停止"
+          },
+          "title": "沙箱"
         },
         "newChat": {
           "label": "新对话"

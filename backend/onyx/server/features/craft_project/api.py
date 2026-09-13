@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
+from onyx.cache.factory import get_cache_backend
+from onyx.db.craft_job import latest_job_statuses_for_sessions
 from onyx.db.craft_project import (
     count_project_sessions,
     create_project,
@@ -22,8 +24,8 @@ from onyx.db.craft_project import (
     update_project,
 )
 from onyx.db.engine.sql_engine import get_session
-from onyx.db.enums import Permission
-from onyx.db.models import User
+from onyx.db.enums import CraftJobStatus, Permission
+from onyx.db.models import BuildSession, CraftProject, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
@@ -42,10 +44,16 @@ from onyx.server.features.craft_project.models import (
     CraftProjectResponse,
     CraftProjectUpsertRequest,
 )
+from onyx.server.features.craft_project.session_status import (
+    session_ids_with_active_turns,
+)
 from onyx.server.query_and_chat.chat_utils import (
     is_spreadsheet_mime_type,
     parse_spreadsheet_for_preview,
 )
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
 
 router = APIRouter(
     prefix="/craft-projects",
@@ -62,7 +70,7 @@ def content_disposition(filename: str) -> str:
     return f'attachment; filename="{filename}"'
 
 
-def _summary(db_session: Session, project) -> CraftProjectResponse:
+def _summary(db_session: Session, project: CraftProject) -> CraftProjectResponse:
     files = list_project_files(db_session, project.id)
     return CraftProjectResponse.from_model(
         project,
@@ -71,15 +79,42 @@ def _summary(db_session: Session, project) -> CraftProjectResponse:
     )
 
 
-def _detail(db_session: Session, project) -> CraftProjectResponse:
+def _session_activity(
+    db_session: Session, user: User, sessions: list[BuildSession]
+) -> tuple[dict[UUID, CraftJobStatus], set[UUID]]:
+    session_ids = [row.id for row in sessions]
+    job_statuses = latest_job_statuses_for_sessions(db_session, session_ids)
+    active_turns: set[UUID] = set()
+    if not session_ids:
+        return job_statuses, active_turns
+    try:
+        active_turns = session_ids_with_active_turns(
+            get_cache_backend(), user.id, session_ids
+        )
+    except Exception:
+        logger.warning(
+            "Failed to read active Craft turns for project %s",
+            sessions[0].project_id,
+            exc_info=True,
+        )
+    return job_statuses, active_turns
+
+
+def _detail(
+    db_session: Session, project: CraftProject, user: User
+) -> CraftProjectResponse:
     files = list_project_files(db_session, project.id)
     sessions = list_project_sessions(db_session, project.id)
+    job_statuses, active_turns = _session_activity(db_session, user, sessions)
     return CraftProjectResponse.from_model(
         project,
         file_count=len(files),
         session_count=len(sessions),
         files=files,
         sessions=sessions,
+        job_statuses=job_statuses,
+        active_turns=active_turns,
+        sandbox=get_sandbox_by_user_id(db_session, user.id),
     )
 
 
@@ -108,7 +143,7 @@ def create_craft_project(
         instructions=request.instructions,
         user_group_id=request.user_group_id,
     )
-    return _detail(db_session, project)
+    return _detail(db_session, project, user)
 
 
 @router.get("/{project_id}")
@@ -118,7 +153,7 @@ def get_craft_project(
     db_session: Session = Depends(get_session),
 ) -> CraftProjectResponse:
     project = require_project_for_user(db_session, project_id, user)
-    return _detail(db_session, project)
+    return _detail(db_session, project, user)
 
 
 @router.patch("/{project_id}")
@@ -139,7 +174,7 @@ def patch_craft_project(
         set_user_group="user_group_id" in request.model_fields_set,
         acting_user=user,
     )
-    return _detail(db_session, project)
+    return _detail(db_session, project, user)
 
 
 @router.delete("/{project_id}")

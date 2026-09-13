@@ -6,11 +6,16 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus
-from onyx.db.models import CraftJob, CraftJobCheckpoint, CraftJobEvent, CraftJobSpecialist
+from onyx.db.models import (
+    CraftJob,
+    CraftJobCheckpoint,
+    CraftJobEvent,
+    CraftJobSpecialist,
+)
 
 OPEN_JOB_STATUSES = (
     CraftJobStatus.PENDING,
@@ -44,9 +49,7 @@ def get_craft_job_for_user(
     return job
 
 
-def get_open_job_for_session(
-    db_session: Session, session_id: UUID
-) -> CraftJob | None:
+def get_open_job_for_session(db_session: Session, session_id: UUID) -> CraftJob | None:
     return db_session.scalar(
         select(CraftJob)
         .options(selectinload(CraftJob.specialists), selectinload(CraftJob.events))
@@ -69,6 +72,32 @@ def get_latest_job_for_session(
         .order_by(CraftJob.created_at.desc())
         .limit(1)
     )
+
+
+def latest_job_statuses_for_sessions(
+    db_session: Session, session_ids: list[UUID]
+) -> dict[UUID, CraftJobStatus]:
+    """Return the newest job status for each parent session."""
+    if not session_ids:
+        return {}
+    ranked = (
+        select(
+            CraftJob.session_id,
+            CraftJob.status,
+            func.row_number()
+            .over(
+                partition_by=CraftJob.session_id,
+                order_by=(CraftJob.created_at.desc(), CraftJob.id.desc()),
+            )
+            .label("rn"),
+        )
+        .where(CraftJob.session_id.in_(session_ids))
+        .subquery()
+    )
+    rows = db_session.execute(
+        select(ranked.c.session_id, ranked.c.status).where(ranked.c.rn == 1)
+    ).all()
+    return {session_id: status for session_id, status in rows}
 
 
 def get_specialist_for_session(
@@ -283,9 +312,7 @@ def specialists_all_terminal(job: CraftJob) -> bool:
 
 
 def specialists_any_failed(job: CraftJob) -> bool:
-    return any(
-        row.status == CraftJobSpecialistStatus.FAILED for row in job.specialists
-    )
+    return any(row.status == CraftJobSpecialistStatus.FAILED for row in job.specialists)
 
 
 def count_open_specialists(job: CraftJob) -> int:
@@ -341,11 +368,15 @@ def list_job_checkpoints(
     stmt = select(CraftJobCheckpoint).where(CraftJobCheckpoint.job_id == job_id)
     if ns is not None:
         stmt = stmt.where(CraftJobCheckpoint.ns == ns)
-    stmt = stmt.order_by(CraftJobCheckpoint.step.asc(), CraftJobCheckpoint.created_at.asc())
+    stmt = stmt.order_by(
+        CraftJobCheckpoint.step.asc(), CraftJobCheckpoint.created_at.asc()
+    )
     return list(db_session.scalars(stmt))
 
 
-def list_job_events(db_session: Session, *, job_id: UUID, limit: int = 50) -> list[CraftJobEvent]:
+def list_job_events(
+    db_session: Session, *, job_id: UUID, limit: int = 50
+) -> list[CraftJobEvent]:
     stmt = (
         select(CraftJobEvent)
         .where(CraftJobEvent.job_id == job_id)

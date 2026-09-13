@@ -13909,6 +13909,7 @@
           "label": "Continue"
         },
         "details": {
+          "description": "This text appears under the project name.",
           "title": "Details"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "Files"
         },
         "instructions": {
+          "description": "The agent follows these rules in every chat in this project.",
           "title": "Instructions"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "Could not start. Open a chat to retry.",
+            "missing": "Not started. Open a chat to create it.",
+            "provisioning": "Starting the workspace.",
+            "running": "Ready for chats in this project.",
+            "sleeping": "Asleep. A chat will wake it.",
+            "terminated": "Stopped. A chat will start it again."
+          },
+          "lastHeartbeat": "Last signal {time}",
+          "status": {
+            "failed": "Failed",
+            "missing": "Not started",
+            "provisioning": "Starting",
+            "running": "Running",
+            "sleeping": "Sleeping",
+            "terminated": "Stopped"
+          },
+          "title": "Sandbox"
         },
         "newChat": {
           "label": "New chat"

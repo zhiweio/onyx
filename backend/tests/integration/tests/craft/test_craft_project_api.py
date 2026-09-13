@@ -15,9 +15,7 @@ from tests.integration.common_utils.test_models import DATestUser
 
 
 def _url(*parts: str) -> str:
-    return f"{API_SERVER_URL}/craft-projects" + (
-        "/" + "/".join(parts) if parts else ""
-    )
+    return f"{API_SERVER_URL}/craft-projects" + ("/" + "/".join(parts) if parts else "")
 
 
 def _create_project(user: DATestUser, name: str, **body: object) -> dict:
@@ -43,9 +41,7 @@ def test_create_list_and_get_project(admin_user: DATestUser) -> None:
     assert created["file_count"] == 0
     assert created["sessions"] == []
 
-    listed = client.get(
-        _url(), headers=admin_user.headers, cookies=admin_user.cookies
-    )
+    listed = client.get(_url(), headers=admin_user.headers, cookies=admin_user.cookies)
     listed.raise_for_status()
     names = {row["name"] for row in listed.json()["projects"]}
     assert name in names
@@ -57,6 +53,7 @@ def test_create_list_and_get_project(admin_user: DATestUser) -> None:
     )
     detail.raise_for_status()
     assert detail.json()["instructions"] == "Cite the source."
+    assert "sandbox" in detail.json()
 
 
 def test_upload_download_and_delete_file(admin_user: DATestUser) -> None:
@@ -151,9 +148,7 @@ def test_implicit_untitled_project_is_hidden_from_list(
 ) -> None:
     hidden = _create_project(admin_user, "Untitled project")
     visible = _create_project(admin_user, f"Tax pack {uuid4().hex[:6]}")
-    listed = client.get(
-        _url(), headers=admin_user.headers, cookies=admin_user.cookies
-    )
+    listed = client.get(_url(), headers=admin_user.headers, cookies=admin_user.cookies)
     listed.raise_for_status()
     ids = {row["id"] for row in listed.json()["projects"]}
     assert hidden["id"] not in ids
@@ -195,6 +190,35 @@ def test_project_session_bind_and_home_session_stay_separate(
     )
     cleared.raise_for_status()
     assert cleared.json()["project_id"] is None
+
+
+def test_project_lists_main_chat_activity_not_sandbox_status(
+    admin_user: DATestUser,
+) -> None:
+    project = _create_project(admin_user, f"Chats {uuid4().hex[:6]}")
+    created = client.post(
+        _url(project["id"], "sessions"),
+        json={"name": "Main chat", "headless": True},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    created.raise_for_status()
+
+    detail = client.get(
+        _url(project["id"]),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    detail.raise_for_status()
+    body = detail.json()
+    sessions = body["sessions"]
+    assert len(sessions) == 1
+    assert sessions[0]["id"] == created.json()["id"]
+    assert sessions[0]["origin"] == "INTERACTIVE"
+    assert sessions[0]["job_status"] is None
+    assert sessions[0]["has_active_turn"] is False
+    assert sessions[0]["status"] in {"idle", "initializing"}
+    assert body["session_count"] == 1
 
 
 def test_delete_project_unbinds_and_hides_row(admin_user: DATestUser) -> None:

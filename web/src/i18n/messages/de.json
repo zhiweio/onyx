@@ -13909,6 +13909,7 @@
           "label": "Weiter"
         },
         "details": {
+          "description": "Dieser Text erscheint unter dem Projektnamen.",
           "title": "Details"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "Dateien"
         },
         "instructions": {
+          "description": "Der Agent folgt diesen Regeln in jedem Chat dieses Projekts.",
           "title": "Anweisungen"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "Start fehlgeschlagen. Öffnen Sie einen Chat, um es erneut zu versuchen.",
+            "missing": "Noch nicht gestartet. Öffnen Sie einen Chat, um sie zu erstellen.",
+            "provisioning": "Arbeitsbereich wird gestartet.",
+            "running": "Bereit für Chats in diesem Projekt.",
+            "sleeping": "Im Ruhezustand. Ein Chat weckt sie auf.",
+            "terminated": "Gestoppt. Ein Chat startet sie erneut."
+          },
+          "lastHeartbeat": "Letztes Signal {time}",
+          "status": {
+            "failed": "Fehlgeschlagen",
+            "missing": "Nicht gestartet",
+            "provisioning": "Startet",
+            "running": "Aktiv",
+            "sleeping": "Ruhezustand",
+            "terminated": "Gestoppt"
+          },
+          "title": "Sandbox"
         },
         "newChat": {
           "label": "Neuer Chat"

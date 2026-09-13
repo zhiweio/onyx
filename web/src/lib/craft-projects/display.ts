@@ -1,5 +1,8 @@
 import type {
+  CraftProject,
   CraftProjectFile,
+  CraftProjectSandbox,
+  CraftProjectSandboxStatus,
   CraftProjectSession,
   CraftProjectSessionStatus,
 } from "@/lib/craft-projects/types";
@@ -214,6 +217,14 @@ export function sessionListLabel(name: string | null): {
   return { role: null, text: full, full };
 }
 
+const OPEN_JOB_STATUSES = new Set([
+  "pending",
+  "running",
+  "waiting_specialists",
+  "waiting_lanes",
+  "interrupted",
+]);
+
 export function normalizeSessionStatus(
   status: CraftProjectSessionStatus | string
 ): CraftProjectSessionStatusKey {
@@ -228,6 +239,61 @@ export function normalizeSessionStatus(
     return "failed";
   }
   return "idle";
+}
+
+export function isProjectMainSession(session: CraftProjectSession): boolean {
+  return !session.origin || session.origin === "INTERACTIVE";
+}
+
+export function projectSessionDisplayStatus(
+  session: CraftProjectSession
+): CraftProjectSessionStatusKey {
+  const sandbox = normalizeSessionStatus(session.status);
+  if (sandbox === "initializing" || sandbox === "failed") {
+    return sandbox;
+  }
+  if (session.has_active_turn) {
+    return "active";
+  }
+  if (session.job_status && OPEN_JOB_STATUSES.has(session.job_status)) {
+    return "active";
+  }
+  if (session.job_status === "failed") {
+    return "failed";
+  }
+  if (
+    session.origin != null ||
+    session.job_status !== undefined ||
+    session.has_active_turn !== undefined
+  ) {
+    return sandbox === "active" ? "idle" : sandbox;
+  }
+  return sandbox;
+}
+
+export function projectSessionNeedsRefresh(
+  session: CraftProjectSession
+): boolean {
+  const status = projectSessionDisplayStatus(session);
+  return status === "active" || status === "initializing";
+}
+
+export type CraftProjectSandboxStatusKey = CraftProjectSandboxStatus | "missing";
+
+export function projectSandboxStatus(
+  sandbox: CraftProjectSandbox | null | undefined
+): CraftProjectSandboxStatusKey {
+  return sandbox?.status ?? "missing";
+}
+
+export function projectNeedsRefresh(project: CraftProject | undefined): boolean {
+  if (!project) {
+    return false;
+  }
+  if ((project.sessions ?? []).some(projectSessionNeedsRefresh)) {
+    return true;
+  }
+  return projectSandboxStatus(project.sandbox) === "provisioning";
 }
 
 export type ProjectFilePreviewKind =
@@ -422,8 +488,8 @@ export function compareProjectSessions(
   right: CraftProjectSession
 ): number {
   const byStatus =
-    STATUS_RANK[normalizeSessionStatus(left.status)] -
-    STATUS_RANK[normalizeSessionStatus(right.status)];
+    STATUS_RANK[projectSessionDisplayStatus(left)] -
+    STATUS_RANK[projectSessionDisplayStatus(right)];
   if (byStatus !== 0) {
     return byStatus;
   }

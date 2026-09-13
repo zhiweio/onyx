@@ -13909,6 +13909,7 @@
           "label": "続ける"
         },
         "details": {
+          "description": "このテキストはプロジェクト名の下に表示されます。",
           "title": "詳細"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "ファイル"
         },
         "instructions": {
+          "description": "このプロジェクトのすべてのチャットで、エージェントはこれらの規則に従います。",
           "title": "指示"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "起動できませんでした。チャットを開いて再試行してください。",
+            "missing": "未起動です。チャットを開くと作成されます。",
+            "provisioning": "ワークスペースを起動しています。",
+            "running": "このプロジェクトのチャットに利用できます。",
+            "sleeping": "スリープ中です。チャットを開くと起動します。",
+            "terminated": "停止しています。チャットを開くと再起動します。"
+          },
+          "lastHeartbeat": "最終信号 {time}",
+          "status": {
+            "failed": "失敗",
+            "missing": "未起動",
+            "provisioning": "起動中",
+            "running": "実行中",
+            "sleeping": "スリープ",
+            "terminated": "停止"
+          },
+          "title": "サンドボックス"
         },
         "newChat": {
           "label": "新しいチャット"

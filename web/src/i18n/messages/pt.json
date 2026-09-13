@@ -13909,6 +13909,7 @@
           "label": "Continuar"
         },
         "details": {
+          "description": "Este texto aparece abaixo do nome do projeto.",
           "title": "Detalhes"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "Arquivos"
         },
         "instructions": {
+          "description": "O agente segue estas regras em cada chat deste projeto.",
           "title": "Instruções"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "Não foi possível iniciar. Abra um chat para tentar de novo.",
+            "missing": "Ainda não iniciado. Abra um chat para criá-lo.",
+            "provisioning": "Iniciando o espaço de trabalho.",
+            "running": "Pronto para os chats deste projeto.",
+            "sleeping": "Em espera. Um chat o acordará.",
+            "terminated": "Parado. Um chat o iniciará de novo."
+          },
+          "lastHeartbeat": "Último sinal {time}",
+          "status": {
+            "failed": "Falhou",
+            "missing": "Não iniciado",
+            "provisioning": "Iniciando",
+            "running": "Em execução",
+            "sleeping": "Em espera",
+            "terminated": "Parado"
+          },
+          "title": "Sandbox"
         },
         "newChat": {
           "label": "Novo chat"

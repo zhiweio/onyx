@@ -7,9 +7,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import {
   Button,
   Card,
-  Divider,
   InputTextArea,
-  InputTypeIn,
   LineItemButton,
   MessageCard,
   Text,
@@ -18,19 +16,21 @@ import {
 import {
   ConfirmationModalLayout,
   Content,
-  InputVertical,
   SettingsLayouts,
   toast,
 } from "@opal/layouts";
 import {
   SvgEdit,
+  SvgFileText,
   SvgFolder,
   SvgPlayCircle,
   SvgSimpleLoader,
+  SvgSliders,
   SvgTrash,
 } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import CraftProjectFiles from "@/app/craft/components/CraftProjectFiles";
+import CraftProjectSandboxCard from "@/app/craft/components/CraftProjectSandboxCard";
 import {
   useCraftProject,
   useRefreshCraftProjects,
@@ -44,21 +44,17 @@ import type { CraftProjectSession } from "@/lib/craft-projects/types";
 import {
   compareProjectSessions,
   isKnownSessionRole,
-  normalizeSessionStatus,
+  isProjectMainSession,
   parseSessionLane,
   projectHeadline,
+  projectSessionDisplayStatus,
+  type CraftProjectSessionStatusKey,
 } from "@/lib/craft-projects/display";
-import {
-  CRAFT_PATH,
-  CRAFT_PROJECTS_PATH,
-} from "@/app/craft/v1/constants";
+import { CRAFT_PATH, CRAFT_PROJECTS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 
-const SESSION_STATUS_COLOR: Record<
-  ReturnType<typeof normalizeSessionStatus>,
-  TagColor
-> = {
+const SESSION_STATUS_COLOR: Record<CraftProjectSessionStatusKey, TagColor> = {
   initializing: "amber",
   active: "green",
   idle: "gray",
@@ -147,11 +143,17 @@ export default function CraftProjectDetailPage({
     }
   }
 
-  async function handleSave() {
+  async function handleSaveInstructions() {
+    if (!data) return;
+    await persistProject({
+      instructions: instructions.trim() || null,
+    });
+  }
+
+  async function handleSaveDetails() {
     if (!data) return;
     await persistProject({
       description: description.trim(),
-      instructions: instructions.trim() || null,
     });
   }
 
@@ -220,7 +222,7 @@ export default function CraftProjectDetailPage({
   }
 
   const sessions = useMemo(() => {
-    const items = [...(data?.sessions ?? [])];
+    const items = (data?.sessions ?? []).filter(isProjectMainSession);
     items.sort(compareProjectSessions);
     return items;
   }, [data?.sessions]);
@@ -291,6 +293,8 @@ export default function CraftProjectDetailPage({
               onChanged={refresh}
             />
 
+            <CraftProjectSandboxCard sandbox={data.sandbox} />
+
             <Card border="solid" rounding={4} padding={4}>
               <Section
                 gap={2}
@@ -311,7 +315,7 @@ export default function CraftProjectDetailPage({
                 {hasSessions ? (
                   <div className="flex w-full min-w-0 flex-col gap-0.5">
                     {sessions.map((session) => {
-                      const statusKey = normalizeSessionStatus(session.status);
+                      const statusKey = projectSessionDisplayStatus(session);
                       const copy = sessionTitle(session, t);
                       const activity = format.relativeTime(
                         new Date(session.last_activity_at)
@@ -349,19 +353,23 @@ export default function CraftProjectDetailPage({
               </Section>
             </Card>
 
-            <Divider
-              foldable
-              defaultOpen={Boolean(data.instructions)}
-              title={t("detail.instructions.title")}
-            >
+            <Card border="solid" rounding={4} padding={4}>
               <Section
-                gap={2}
+                gap={3}
                 alignItems="stretch"
                 justifyContent="start"
                 height="auto"
               >
+                <Content
+                  icon={SvgFileText}
+                  title={t("detail.instructions.title")}
+                  description={t("detail.instructions.description")}
+                  sizePreset="main-ui"
+                  variant="section"
+                  width="full"
+                />
                 <InputTextArea
-                  rows={5}
+                  rows={4}
                   value={instructions}
                   onChange={(event) => setInstructions(event.target.value)}
                   placeholder={t("create.instructions.placeholder")}
@@ -371,41 +379,47 @@ export default function CraftProjectDetailPage({
                 {instructionsDirty && (
                   <Button
                     disabled={saving}
-                    onClick={() => void handleSave()}
+                    onClick={() => void handleSaveInstructions()}
                   >
                     {t("detail.save.label")}
                   </Button>
                 )}
               </Section>
-            </Divider>
+            </Card>
 
-            <Divider foldable title={t("detail.details.title")}>
+            <Card border="solid" rounding={4} padding={4}>
               <Section
                 gap={3}
                 alignItems="stretch"
                 justifyContent="start"
                 height="auto"
               >
-                <InputVertical
-                  title={t("create.description.label")}
-                  withLabel
-                >
-                  <InputTypeIn
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    placeholder={t("create.description.placeholder")}
-                  />
-                </InputVertical>
+                <Content
+                  icon={SvgSliders}
+                  title={t("detail.details.title")}
+                  description={t("detail.details.description")}
+                  sizePreset="main-ui"
+                  variant="section"
+                  width="full"
+                />
+                <InputTextArea
+                  rows={2}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={t("create.description.placeholder")}
+                  autoResize
+                  maxRows={6}
+                />
                 {detailsDirty && (
                   <Button
                     disabled={saving}
-                    onClick={() => void handleSave()}
+                    onClick={() => void handleSaveDetails()}
                   >
                     {t("detail.save.label")}
                   </Button>
                 )}
               </Section>
-            </Divider>
+            </Card>
           </Section>
         )}
       </SettingsLayouts.Body>

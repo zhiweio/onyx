@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from onyx.configs.constants import FileOrigin
-from onyx.db.enums import CraftProjectFileSource
+from onyx.db.enums import CraftProjectFileSource, SessionOrigin
 from onyx.db.models import (
     BuildSession,
     CraftProject,
@@ -481,11 +481,19 @@ def delete_project_file(db_session: Session, row: CraftProjectFile) -> None:
     db_session.commit()
 
 
+def _project_main_session_clause(project_id: UUID) -> ColumnElement[bool]:
+    """User chats only. Specialist / scheduled / Slack rows stay off the list."""
+    return and_(
+        BuildSession.project_id == project_id,
+        BuildSession.origin == SessionOrigin.INTERACTIVE,
+    )
+
+
 def count_project_sessions(db_session: Session, project_id: UUID) -> int:
     return int(
         db_session.scalar(
             select(func.count(BuildSession.id)).where(
-                BuildSession.project_id == project_id
+                _project_main_session_clause(project_id)
             )
         )
         or 0
@@ -496,7 +504,7 @@ def list_project_sessions(db_session: Session, project_id: UUID) -> list[BuildSe
     return list(
         db_session.scalars(
             select(BuildSession)
-            .where(BuildSession.project_id == project_id)
+            .where(_project_main_session_clause(project_id))
             .order_by(BuildSession.created_at.desc())
         )
     )

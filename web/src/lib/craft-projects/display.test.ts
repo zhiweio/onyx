@@ -11,6 +11,7 @@ import {
   generatedDumpSuffix,
   isGeneratedDumpName,
   isImplicitUntitledProject,
+  isProjectMainSession,
   normalizeSessionStatus,
   parseSessionLane,
   pathLooksLikeMcp,
@@ -18,6 +19,10 @@ import {
   groupProjectFilesByFolder,
   projectFilePreviewKind,
   projectHeadline,
+  projectNeedsRefresh,
+  projectSandboxStatus,
+  projectSessionDisplayStatus,
+  projectSessionNeedsRefresh,
   sessionListLabel,
   sidebarListTitle,
   stripInternalProjectSuffix,
@@ -47,6 +52,9 @@ function session(overrides: Partial<CraftProjectSession>): CraftProjectSession {
     id: overrides.id ?? "session",
     name: overrides.name ?? "Chat",
     status: overrides.status ?? "IDLE",
+    origin: overrides.origin,
+    job_status: overrides.job_status,
+    has_active_turn: overrides.has_active_turn,
     created_at: "2026-08-01T00:00:00Z",
     last_activity_at: overrides.last_activity_at ?? "2026-08-01T00:00:00Z",
   };
@@ -246,6 +254,91 @@ describe("craft project display helpers", () => {
       }),
     ].sort(compareProjectSessions);
     expect(sessions.map((item) => item.id)).toEqual(["active", "idle"]);
+  });
+
+  it("keeps only the main interactive chat and hides planned lanes", () => {
+    expect(
+      isProjectMainSession(
+        session({ id: "main", origin: "INTERACTIVE", status: "ACTIVE" })
+      )
+    ).toBe(true);
+    expect(
+      isProjectMainSession(
+        session({
+          id: "lane",
+          origin: "JOB",
+          name: "Report / visualize-and-compose",
+          status: "ACTIVE",
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("treats a finished job as idle even when the sandbox is still active", () => {
+    expect(
+      projectSessionDisplayStatus(
+        session({
+          origin: "INTERACTIVE",
+          status: "ACTIVE",
+          job_status: "succeeded",
+          has_active_turn: false,
+        })
+      )
+    ).toBe("idle");
+    expect(
+      projectSessionDisplayStatus(
+        session({
+          origin: "INTERACTIVE",
+          status: "ACTIVE",
+          job_status: "running",
+          has_active_turn: false,
+        })
+      )
+    ).toBe("active");
+    expect(
+      projectSessionDisplayStatus(
+        session({
+          origin: "INTERACTIVE",
+          status: "ACTIVE",
+          job_status: "succeeded",
+          has_active_turn: true,
+        })
+      )
+    ).toBe("active");
+    expect(
+      projectSessionNeedsRefresh(
+        session({
+          origin: "INTERACTIVE",
+          status: "IDLE",
+          job_status: "succeeded",
+        })
+      )
+    ).toBe(false);
+    expect(projectSandboxStatus(undefined)).toBe("missing");
+    expect(
+      projectSandboxStatus({
+        status: "running",
+        last_heartbeat: "2026-08-01T00:00:00Z",
+        created_at: "2026-08-01T00:00:00Z",
+      })
+    ).toBe("running");
+    expect(
+      projectNeedsRefresh({
+        id: "proj",
+        name: "Tax",
+        description: "",
+        instructions: null,
+        file_count: 0,
+        session_count: 0,
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-01T00:00:00Z",
+        sandbox: {
+          status: "provisioning",
+          last_heartbeat: null,
+          created_at: "2026-08-01T00:00:00Z",
+        },
+      })
+    ).toBe(true);
   });
 });
 

@@ -1,4 +1,10 @@
-import { render, screen, setupUser, waitFor, within } from "@tests/setup/test-utils";
+import {
+  render,
+  screen,
+  setupUser,
+  waitFor,
+  within,
+} from "@tests/setup/test-utils";
 import CraftProjectDetailPage from "@/views/CraftProjectDetailPage";
 import type { CraftProject } from "@/lib/craft-projects/types";
 
@@ -175,8 +181,16 @@ describe("CraftProjectDetailPage", () => {
     render(<CraftProjectDetailPage projectId="proj-tax" />);
 
     expect(screen.getAllByText("年报税务复核").length).toBeGreaterThan(0);
-    expect(screen.getByText("Tax review files")).toBeInTheDocument();
+    expect(screen.getAllByText("Tax review files").length).toBeGreaterThan(0);
     expect(screen.getByText("rates.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("Sandbox")).toBeInTheDocument();
+    expect(screen.getByText("Not started")).toBeInTheDocument();
+    expect(
+      screen.getByText("The agent follows these rules in every chat in this project.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("This text appears under the project name.")
+    ).toBeInTheDocument();
     expect(screen.getByText(/First pass/)).toBeInTheDocument();
     expect(screen.getByText("Idle")).toBeInTheDocument();
     expect(
@@ -204,7 +218,9 @@ describe("CraftProjectDetailPage", () => {
     });
     render(<CraftProjectDetailPage projectId="proj-tax" />);
 
-    expect(screen.getByRole("button", { name: "Start chat" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start chat" })
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "New chat" })
     ).not.toBeInTheDocument();
@@ -212,6 +228,68 @@ describe("CraftProjectDetailPage", () => {
       screen.getByText("Start a chat to work in this project.")
     ).toBeInTheDocument();
     expect(screen.queryByText("No chats yet")).not.toBeInTheDocument();
+  });
+
+  it("shows sandbox status between files and chats", () => {
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        sandbox: {
+          status: "running",
+          last_heartbeat: "2026-08-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        },
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    const sandbox = screen.getByTestId("craft-project-sandbox");
+    expect(sandbox).toHaveTextContent("Sandbox");
+    expect(sandbox).toHaveTextContent("Running");
+    expect(sandbox).toHaveTextContent("Ready for chats in this project.");
+  });
+
+  it("hides planned specialist chats and shows a finished job as idle", () => {
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        sessions: [
+          {
+            id: "session-main",
+            name: "君禾股份财报分析",
+            status: "ACTIVE",
+            origin: "INTERACTIVE",
+            job_status: "succeeded",
+            has_active_turn: false,
+            created_at: "2026-08-01T00:00:00Z",
+            last_activity_at: "2026-08-02T00:00:00Z",
+          },
+          {
+            id: "session-lane",
+            name: "撰写一份 GLP-1 立项深度研究报告 / literature",
+            status: "ACTIVE",
+            origin: "JOB",
+            job_status: null,
+            has_active_turn: false,
+            created_at: "2026-08-01T00:00:00Z",
+            last_activity_at: "2026-08-01T00:00:00Z",
+          },
+        ],
+        session_count: 1,
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    expect(screen.getByText("君禾股份财报分析")).toBeInTheDocument();
+    expect(screen.getByText("Idle")).toBeInTheDocument();
+    expect(screen.queryByText("Literature")).not.toBeInTheDocument();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
   it("shows a short lane title and a readable generated file name", () => {
@@ -281,7 +359,9 @@ describe("CraftProjectDetailPage", () => {
     render(<CraftProjectDetailPage projectId="proj-tax" />);
 
     await user.click(
-      within(screen.getByLabelText("admin-page-title")).getByText("年报税务复核")
+      within(screen.getByLabelText("admin-page-title")).getByText(
+        "年报税务复核"
+      )
     );
     const input = screen.getByDisplayValue("年报税务复核");
     await user.clear(input);
@@ -308,7 +388,9 @@ describe("CraftProjectDetailPage", () => {
     render(<CraftProjectDetailPage projectId="proj-tax" />);
 
     await user.click(
-      within(screen.getByLabelText("admin-page-title")).getByText("年报税务复核")
+      within(screen.getByLabelText("admin-page-title")).getByText(
+        "年报税务复核"
+      )
     );
     const input = screen.getByDisplayValue("年报税务复核");
     await user.clear(input);
@@ -328,9 +410,15 @@ describe("CraftProjectDetailPage", () => {
     const user = setupUser();
     render(<CraftProjectDetailPage projectId="proj-tax" />);
 
-    expect(screen.queryByRole("button", { name: "Tables" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Markdown" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "All" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tables" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Markdown" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "All" })
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /rates\.xlsx/ }));
     const preview = await screen.findByTestId("craft-project-file-preview");

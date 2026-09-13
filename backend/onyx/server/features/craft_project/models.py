@@ -3,8 +3,17 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from onyx.db.enums import BuildSessionStatus, CraftProjectFileSource
-from onyx.db.models import BuildSession, CraftProject, CraftProjectFile
+from onyx.db.enums import (
+    BuildSessionStatus,
+    CraftJobStatus,
+    CraftProjectFileSource,
+    SandboxStatus,
+    SessionOrigin,
+)
+from onyx.db.models import BuildSession, CraftProject, CraftProjectFile, Sandbox
+from onyx.server.features.craft_project.session_status import (
+    project_session_activity_status,
+)
 
 
 class CraftProjectUpsertRequest(BaseModel):
@@ -57,17 +66,47 @@ class CraftProjectSessionResponse(BaseModel):
     id: UUID
     name: str | None
     status: BuildSessionStatus
+    origin: SessionOrigin
+    job_status: CraftJobStatus | None = None
+    has_active_turn: bool = False
     created_at: datetime
     last_activity_at: datetime
 
     @classmethod
-    def from_model(cls, session: BuildSession) -> "CraftProjectSessionResponse":
+    def from_model(
+        cls,
+        session: BuildSession,
+        *,
+        job_status: CraftJobStatus | None = None,
+        has_active_turn: bool = False,
+    ) -> "CraftProjectSessionResponse":
         return cls(
             id=session.id,
             name=session.name,
-            status=session.status,
+            status=project_session_activity_status(
+                session.status,
+                job_status=job_status,
+                has_active_turn=has_active_turn,
+            ),
+            origin=session.origin,
+            job_status=job_status,
+            has_active_turn=has_active_turn,
             created_at=session.created_at,
             last_activity_at=session.last_activity_at,
+        )
+
+
+class CraftProjectSandboxResponse(BaseModel):
+    status: SandboxStatus
+    last_heartbeat: datetime | None
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, sandbox: Sandbox) -> "CraftProjectSandboxResponse":
+        return cls(
+            status=sandbox.status,
+            last_heartbeat=sandbox.last_heartbeat,
+            created_at=sandbox.created_at,
         )
 
 
@@ -83,6 +122,7 @@ class CraftProjectResponse(BaseModel):
     updated_at: datetime
     files: list[CraftProjectFileResponse] | None = None
     sessions: list[CraftProjectSessionResponse] | None = None
+    sandbox: CraftProjectSandboxResponse | None = None
 
     @classmethod
     def from_model(
@@ -93,7 +133,12 @@ class CraftProjectResponse(BaseModel):
         session_count: int,
         files: list[CraftProjectFile] | None = None,
         sessions: list[BuildSession] | None = None,
+        job_statuses: dict[UUID, CraftJobStatus] | None = None,
+        active_turns: set[UUID] | None = None,
+        sandbox: Sandbox | None = None,
     ) -> "CraftProjectResponse":
+        statuses = job_statuses or {}
+        turns = active_turns or set()
         return cls(
             id=project.id,
             name=project.name,
@@ -110,8 +155,20 @@ class CraftProjectResponse(BaseModel):
                 else None
             ),
             sessions=(
-                [CraftProjectSessionResponse.from_model(row) for row in sessions]
+                [
+                    CraftProjectSessionResponse.from_model(
+                        row,
+                        job_status=statuses.get(row.id),
+                        has_active_turn=row.id in turns,
+                    )
+                    for row in sessions
+                ]
                 if sessions is not None
+                else None
+            ),
+            sandbox=(
+                CraftProjectSandboxResponse.from_model(sandbox)
+                if sandbox is not None
                 else None
             ),
         )

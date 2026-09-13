@@ -13909,6 +13909,7 @@
           "label": "Continuer"
         },
         "details": {
+          "description": "Ce texte apparaît sous le nom du projet.",
           "title": "Détails"
         },
         "download": {
@@ -13929,7 +13930,28 @@
           "title": "Fichiers"
         },
         "instructions": {
+          "description": "L’agent suit ces règles dans chaque discussion de ce projet.",
           "title": "Instructions"
+        },
+        "sandbox": {
+          "description": {
+            "failed": "Échec du démarrage. Ouvrez une discussion pour réessayer.",
+            "missing": "Pas encore démarré. Ouvrez une discussion pour le créer.",
+            "provisioning": "Démarrage de l’espace de travail.",
+            "running": "Prêt pour les discussions de ce projet.",
+            "sleeping": "En veille. Une discussion le réveillera.",
+            "terminated": "Arrêté. Une discussion le relancera."
+          },
+          "lastHeartbeat": "Dernier signal {time}",
+          "status": {
+            "failed": "Échec",
+            "missing": "Non démarré",
+            "provisioning": "Démarrage",
+            "running": "En cours",
+            "sleeping": "En veille",
+            "terminated": "Arrêté"
+          },
+          "title": "Sandbox"
         },
         "newChat": {
           "label": "Nouvelle discussion"

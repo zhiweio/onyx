@@ -6,6 +6,22 @@ export type CraftProjectSessionStatus =
   | "IDLE"
   | "FAILED";
 
+export type CraftProjectSessionOrigin =
+  | "INTERACTIVE"
+  | "SCHEDULED"
+  | "SLACK"
+  | "JOB";
+
+export type CraftProjectJobStatus =
+  | "pending"
+  | "running"
+  | "waiting_specialists"
+  | "waiting_lanes"
+  | "interrupted"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
 export interface CraftProjectFile {
   id: string;
   project_id: string;
@@ -21,10 +37,26 @@ export interface CraftProjectFile {
   updated_at: string;
 }
 
+export type CraftProjectSandboxStatus =
+  | "provisioning"
+  | "running"
+  | "sleeping"
+  | "terminated"
+  | "failed";
+
+export interface CraftProjectSandbox {
+  status: CraftProjectSandboxStatus;
+  last_heartbeat: string | null;
+  created_at: string;
+}
+
 export interface CraftProjectSession {
   id: string;
   name: string | null;
   status: CraftProjectSessionStatus;
+  origin?: CraftProjectSessionOrigin;
+  job_status?: CraftProjectJobStatus | null;
+  has_active_turn?: boolean;
   created_at: string;
   last_activity_at: string;
 }
@@ -41,6 +73,7 @@ export interface CraftProject {
   updated_at: string;
   files?: CraftProjectFile[] | null;
   sessions?: CraftProjectSession[] | null;
+  sandbox?: CraftProjectSandbox | null;
 }
 
 export interface CraftProjectListResponse {
