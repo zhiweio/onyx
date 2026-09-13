@@ -11,6 +11,7 @@ import {
   SvgTrash,
 } from "@opal/icons";
 import { Section, toast } from "@opal/layouts";
+import HtmlFilePreview from "@/app/craft/components/output-panel/HtmlFilePreview";
 import ImagePreview from "@/app/craft/components/output-panel/ImagePreview";
 import MarkdownFilePreview from "@/app/craft/components/output-panel/MarkdownFilePreview";
 import {
@@ -24,6 +25,10 @@ import {
   isProjectDocumentPreviewKind,
   projectFilePreviewKind,
 } from "@/lib/craft-projects/display";
+import {
+  makeProjectMarkdownPreviewUrlTransform,
+  rewriteProjectHtmlForPreview,
+} from "@/lib/craft-projects/previewUrls";
 import type { CraftProjectFile } from "@/lib/craft-projects/types";
 import {
   DocumentPreview,
@@ -155,6 +160,12 @@ export default function CraftProjectFilePreview({
     }
     return formatProjectFileText(payload.text, kind);
   }, [kind, payload]);
+
+  const markdownUrlTransform = useMemo(
+    () =>
+      makeProjectMarkdownPreviewUrlTransform(projectId, file.path, files),
+    [file.path, files, projectId]
+  );
 
   async function handleDelete() {
     setRemoving(true);
@@ -298,13 +309,29 @@ export default function CraftProjectFilePreview({
               !error &&
               payload?.status === "text" &&
               kind === "markdown" && (
-                <MarkdownFilePreview
-                  content={text}
-                  fileName={file.name}
-                  filePath={file.path}
-                  mimeType={file.mime_type ?? "text/markdown"}
-                  isImage={false}
-                />
+                <div className="min-h-0 flex-1">
+                  <MarkdownFilePreview
+                    content={text}
+                    fileName={file.name}
+                    filePath={file.path}
+                    mimeType={file.mime_type ?? "text/markdown"}
+                    isImage={false}
+                    urlTransform={markdownUrlTransform}
+                  />
+                </div>
+              )}
+            {!loading &&
+              !error &&
+              payload?.status === "text" &&
+              kind === "html" && (
+                <div className="min-h-0 flex-1">
+                  <ProjectHtmlPreview
+                    content={text}
+                    file={file}
+                    files={files}
+                    projectId={projectId}
+                  />
+                </div>
               )}
             {!loading &&
               !error &&
@@ -355,6 +382,54 @@ export default function CraftProjectFilePreview({
         }}
       />
     </Modal>
+  );
+}
+
+function ProjectHtmlPreview({
+  content,
+  file,
+  files,
+  projectId,
+}: {
+  content: string;
+  file: CraftProjectFile;
+  files: CraftProjectFile[];
+  projectId: string;
+}) {
+  const [html, setHtml] = useState(content);
+
+  useEffect(() => {
+    let active = true;
+    let revoke = () => undefined;
+    setHtml(content);
+    void rewriteProjectHtmlForPreview(content, file.path, projectId, files)
+      .then((result) => {
+        if (!active) {
+          result.revoke();
+          return;
+        }
+        revoke = result.revoke;
+        setHtml(result.html);
+      })
+      .catch(() => {
+        if (active) {
+          setHtml(content);
+        }
+      });
+    return () => {
+      active = false;
+      revoke();
+    };
+  }, [content, file.path, files, projectId]);
+
+  return (
+    <HtmlFilePreview
+      content={html}
+      fileName={file.name}
+      filePath={file.path}
+      mimeType={file.mime_type ?? "text/html"}
+      isImage={false}
+    />
   );
 }
 

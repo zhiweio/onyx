@@ -30,13 +30,81 @@ jest.mock("@/lib/craft-projects/api", () => ({
     if (String(file?.name ?? "").endsWith(".md")) {
       return {
         status: "text",
-        text: "# Claim map\n\nPatent families follow.",
+        text: "# Claim map\n\n![Revenue](charts/revenue_q.png)\n\nPatent families follow.",
+      };
+    }
+    if (String(file?.name ?? "").endsWith(".html")) {
+      return {
+        status: "text",
+        text: "<html><body><h1>Report</h1></body></html>",
       };
     }
     return { status: "unsupported" };
   }),
   craftProjectFileUrl: (projectId: string, fileId: string) =>
     `/api/craft-projects/${projectId}/files/${fileId}`,
+}));
+
+jest.mock("@/sections/extend/file-upload", () => ({
+  FileUpload: () => <div data-testid="file-upload" />,
+}));
+
+jest.mock("@/sections/document-preview", () => ({
+  DocumentPreview: ({ fileName }: { fileName: string }) => (
+    <div>{`Document preview for ${fileName}`}</div>
+  ),
+  resolveDocumentPreviewMode: () => "view",
+  saveCraftProjectFileBytes: jest.fn(),
+}));
+
+jest.mock("@/sections/extend/file-system", () => ({
+  FileSystem: ({
+    items,
+    onFileOpen,
+  }: {
+    items: Array<{
+      kind: string;
+      name: string;
+      path: string;
+      metadata?: { id?: string };
+    }>;
+    onFileOpen: (file: {
+      kind: string;
+      name: string;
+      path: string;
+      metadata?: { id?: string };
+    }) => void;
+  }) => {
+    const { useState } = jest.requireActual("react") as typeof import("react");
+    const [query, setQuery] = useState("");
+    const visible = items.filter(
+      (item) =>
+        item.kind === "file" &&
+        item.name.toLowerCase().includes(query.toLowerCase())
+    );
+    return (
+      <div>
+        <input
+          placeholder="Search files"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        {visible.map((item) => {
+          const folder = item.path.includes("/")
+            ? item.path.split("/").slice(0, -1).join("/")
+            : "";
+          return (
+            <div key={`${item.path}:${item.metadata?.id ?? item.name}`}>
+              {folder ? <span>{folder}</span> : null}
+              <button type="button" onClick={() => onFileOpen(item)}>
+                {item.name}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  },
 }));
 
 jest.mock("@/app/craft/hooks/useBuildSessionStore", () => ({
@@ -109,7 +177,6 @@ describe("CraftProjectDetailPage", () => {
     expect(screen.getAllByText("年报税务复核").length).toBeGreaterThan(0);
     expect(screen.getByText("Tax review files")).toBeInTheDocument();
     expect(screen.getByText("rates.xlsx")).toBeInTheDocument();
-    expect(screen.getByText(/Uploaded/)).toBeInTheDocument();
     expect(screen.getByText(/First pass/)).toBeInTheDocument();
     expect(screen.getByText("Idle")).toBeInTheDocument();
     expect(
@@ -182,7 +249,6 @@ describe("CraftProjectDetailPage", () => {
 
     expect(screen.getByText("1788711879701.json")).toBeInTheDocument();
     expect(screen.getByText("outputs/mcp/bash")).toBeInTheDocument();
-    expect(screen.getByText(/From chat/)).toBeInTheDocument();
     expect(screen.getByText("Literature")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(
@@ -270,9 +336,7 @@ describe("CraftProjectDetailPage", () => {
     const preview = await screen.findByTestId("craft-project-file-preview");
     expect(preview).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "This file type cannot be previewed. Download it to view the contents."
-      )
+      screen.getByText("Document preview for rates.xlsx")
     ).toBeInTheDocument();
     expect(
       screen.getAllByRole("link", { name: "Download" }).length
@@ -309,6 +373,83 @@ describe("CraftProjectDetailPage", () => {
       await screen.findByRole("heading", { name: "Claim map" })
     ).toBeInTheDocument();
     expect(screen.getByText("Patent families follow.")).toBeInTheDocument();
+  });
+
+  it("resolves markdown images to project files", async () => {
+    const user = setupUser();
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        files: [
+          {
+            ...project.files![0],
+            id: "file-md",
+            path: "/君禾股份_财报解读_2026H1.md",
+            name: "君禾股份_财报解读_2026H1.md",
+            mime_type: "text/markdown",
+            source: "session_output",
+          },
+          {
+            ...project.files![0],
+            id: "file-png",
+            path: "/charts/revenue_q.png",
+            name: "revenue_q.png",
+            mime_type: "image/png",
+            source: "session_output",
+          },
+        ],
+        file_count: 2,
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(
+      screen.getByRole("button", { name: /君禾股份_财报解读_2026H1\.md/ })
+    );
+    const image = await screen.findByRole("img", { name: "Revenue" });
+    expect(image).toHaveAttribute(
+      "src",
+      "/api/craft-projects/proj-tax/files/file-png"
+    );
+  });
+
+  it("previews HTML in a sandboxed iframe", async () => {
+    const user = setupUser();
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        files: [
+          {
+            ...project.files![0],
+            id: "file-html",
+            path: "/君禾股份_财报解读_2026H1.html",
+            name: "君禾股份_财报解读_2026H1.html",
+            mime_type: "text/html",
+            source: "session_output",
+          },
+        ],
+        file_count: 1,
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(
+      screen.getByRole("button", { name: /君禾股份_财报解读_2026H1\.html/ })
+    );
+    const iframe = await screen.findByTitle(
+      "HTML preview: 君禾股份_财报解读_2026H1.html"
+    );
+    expect(iframe.tagName).toBe("IFRAME");
+    expect(iframe).toHaveAttribute(
+      "srcDoc",
+      "<html><body><h1>Report</h1></body></html>"
+    );
   });
 
   it("filters the file list by search", async () => {

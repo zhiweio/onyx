@@ -428,6 +428,7 @@ export default function UserLibraryModal({
                           </div>
                         )}
                         <FileSystem
+                          className="h-full"
                           items={flattenLibraryTree(visibleTree)}
                           title={t("modal.title")}
                           defaultView="list"

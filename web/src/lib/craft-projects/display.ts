@@ -232,6 +232,7 @@ export function normalizeSessionStatus(
 
 export type ProjectFilePreviewKind =
   | "markdown"
+  | "html"
   | "text"
   | "json"
   | "image"
@@ -257,7 +258,6 @@ const IMAGE_EXTENSIONS = new Set([
 
 const TEXT_EXTENSIONS = new Set([
   "css",
-  "html",
   "js",
   "jsonl",
   "log",
@@ -304,6 +304,9 @@ export function projectFilePreviewKind(
   }
   if (ext === "md" || ext === "markdown") {
     return "markdown";
+  }
+  if (ext === "html" || ext === "htm" || mime === "text/html") {
+    return "html";
   }
   if (ext === "json" || (mime.includes("json") && ext !== "jsonl")) {
     return "json";

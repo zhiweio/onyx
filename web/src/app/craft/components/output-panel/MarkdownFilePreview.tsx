@@ -18,10 +18,15 @@ export default function MarkdownFilePreview({
   content,
   filePath,
   sessionId,
-}: FileRendererProps) {
+  urlTransform: urlTransformOverride,
+}: FileRendererProps & {
+  urlTransform?: (href: string) => string | null;
+}) {
   const urlTransform = useMemo(
-    () => makeMarkdownPreviewUrlTransform(sessionId, filePath),
-    [sessionId, filePath]
+    () =>
+      urlTransformOverride ??
+      makeMarkdownPreviewUrlTransform(sessionId, filePath),
+    [filePath, sessionId, urlTransformOverride]
   );
 
   return (

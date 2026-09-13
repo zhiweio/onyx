@@ -175,6 +175,15 @@ describe("craft project display helpers", () => {
     ).toBe("text");
     expect(
       projectFilePreviewKind(
+        file({
+          name: "report.html",
+          path: "/君禾股份_财报解读_2026H1.html",
+          mime_type: "text/html",
+        })
+      )
+    ).toBe("html");
+    expect(
+      projectFilePreviewKind(
         file({ name: "chart.png", path: "chart.png", mime_type: "image/png" })
       )
     ).toBe("image");

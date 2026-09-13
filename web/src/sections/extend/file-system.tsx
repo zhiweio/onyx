@@ -234,6 +234,8 @@ export type FileSystemProps = {
   className?: string;
   /** Label for the root folder. */
   title?: string;
+  /** Status row under the file list. Defaults to true. */
+  showStatusBar?: boolean;
   defaultView?: FileSystemView;
   view?: FileSystemView;
   onViewChange?: (view: FileSystemView) => void;
@@ -1302,6 +1304,7 @@ export function FileSystem({
   items,
   className,
   title = "Files",
+  showStatusBar = true,
   defaultView = "icons",
   view: viewProp,
   onViewChange,
@@ -2149,23 +2152,33 @@ export function FileSystem({
           <FileSystemGalleryView {...viewProps} />
         )}
       </div>
-      <div
-        aria-live="polite"
-        className="flex h-7 shrink-0 items-center justify-center gap-1 border-t bg-oklch(0.97 0 0)/40 px-3 text-xs text-oklch(0.556 0 0) dark:bg-oklch(0.269 0 0)/40 dark:text-oklch(0.708 0 0)"
-      >
-        <span>
-          {currentEntries.length}
-          {""}
-          {isSearching
-            ? currentEntries.length === 1
-              ? "result"
-              : "results"
-            : currentEntries.length === 1
-              ? "item"
-              : "items"}
-        </span>
-        {selectedEntry ? <span>· “{selectedEntry.name}” selected</span> : null}
-      </div>
+      {showStatusBar ? (
+        <div
+          aria-live="polite"
+          className="flex h-7 min-w-0 shrink-0 items-center justify-center border-t bg-oklch(0.97 0 0)/40 px-3 text-xs text-oklch(0.556 0 0) dark:bg-oklch(0.269 0 0)/40 dark:text-oklch(0.708 0 0)"
+        >
+          <span className="flex min-w-0 max-w-full items-center justify-center gap-1">
+            <span className="shrink-0">
+              {currentEntries.length}{" "}
+              {isSearching
+                ? currentEntries.length === 1
+                  ? "result"
+                  : "results"
+                : currentEntries.length === 1
+                  ? "item"
+                  : "items"}
+            </span>
+            {selectedEntry ? (
+              <span
+                className="min-w-0 truncate"
+                title={selectedEntry.name}
+              >
+                · “{selectedEntry.name}” selected
+              </span>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
       <Dialog
         open={openedFile !== null}
         onOpenChange={(open) => {
