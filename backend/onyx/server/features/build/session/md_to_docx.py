@@ -29,15 +29,58 @@ from docx.opc.packuri import PackURI
 from docx.opc.part import XmlPart
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt, RGBColor, Twips
+from docx.shared import Inches, Mm, Pt, RGBColor, Twips
 from docx.styles.style import ParagraphStyle
 from docx.table import _Cell
 from docx.text.paragraph import Paragraph
+from docx.text.run import Run
 from lxml import etree
 
 from onyx.server.features.build.session.md_document import (
     Node,
     parse_markdown,
+)
+from onyx.server.features.build.session.md_export_style import (
+    ACCENT,
+    BLOCK_INDENT_IN,
+    BLOCK_SPACE_PT,
+    BODY_EAST_ASIA,
+    BODY_FONT,
+    BODY_LINE_SPACING,
+    BODY_SIZE_PT,
+    BODY_SPACE_AFTER_PT,
+    CELL_LINE_SPACING,
+    CELL_SIZE_PT,
+    CODE_BG,
+    CODE_LINE_SPACING,
+    CODE_SIZE_PT,
+    COMPACT_LINE_SPACING,
+    COMPACT_SPACE_PT,
+    DOC_GRID_LINE_PITCH,
+    FOOTER_DISTANCE_MM,
+    HEADER_DISTANCE_MM,
+    HEADING_EAST_ASIA,
+    HEADING_FONT,
+    HEADING_LINE_SPACING,
+    HEADING_SIZES_PT,
+    HEADING_SPACE_AFTER_PT,
+    HEADING_SPACE_BEFORE_PT,
+    INK,
+    LINK,
+    MARGIN_BOTTOM_MM,
+    MARGIN_LEFT_MM,
+    MARGIN_RIGHT_MM,
+    MARGIN_TOP_MM,
+    MONO_FONT,
+    MUTED,
+    PAGE_HEIGHT_MM,
+    PAGE_WIDTH_MM,
+    RULE,
+    TABLE_ALT_FILL,
+    TABLE_BORDER,
+    TABLE_HEADER_FILL,
+    WHITE,
+    first_heading_text,
 )
 from onyx.server.features.build.session.md_images import (
     ImageLoader,
@@ -46,13 +89,21 @@ from onyx.server.features.build.session.md_images import (
     image_bytes,
 )
 
-_MONOSPACE_FONT = "Courier New"
-_CODE_FONT_SIZE = Pt(9)
-# pandoc styles links with a "Hyperlink" character style: muted blue, no
-# underline (unlike python-docx's brighter underlined default).
+_MONOSPACE_FONT = MONO_FONT
+_CODE_FONT_SIZE = Pt(CODE_SIZE_PT)
+# Links use a "Hyperlink" character style: muted blue, no underline.
 _STYLE_HYPERLINK = "Hyperlink"
 _STYLE_ID_HYPERLINK = "Hyperlink"
-_LINK_COLOR = RGBColor(0x4F, 0x81, 0xBD)
+
+
+def _rgb(hex6: str) -> RGBColor:
+    return RGBColor(int(hex6[0:2], 16), int(hex6[2:4], 16), int(hex6[4:6], 16))
+
+
+_LINK_COLOR = _rgb(LINK)
+_HEADER_COLOR = _rgb(WHITE)
+_HEADING_COLOR = _rgb(ACCENT)
+_MUTED_COLOR = _rgb(MUTED)
 # python-docx ships built-in "List Bullet"/"List Number" styles plus numbered
 # variants up to level 3 ("List Bullet 2", "List Bullet 3", ...). Deeper nesting
 # reuses the level-3 style.
@@ -62,37 +113,18 @@ _MAX_LIST_LEVEL = 3
 _LIST_INDENT_PER_LEVEL = 720
 _LIST_HANGING_INDENT = 360
 
-# Paragraph styles, mirroring how pandoc's default reference.docx names and
-# spaces its prose so the output reads like the previous pandoc export. The
-# spacing/indent/heading values below are reproduced from that reference (plain
-# measurements, not the file itself, which stays out of the repo for licensing).
+# Paragraph style names stay aligned with the previous pandoc mapping so
+# existing assignment rules (First Paragraph / Body Text / Compact) still hold.
 _STYLE_BODY = "Body Text"
 _STYLE_FIRST_PARAGRAPH = "First Paragraph"
 _STYLE_COMPACT = "Compact"
 _STYLE_IMAGE_CAPTION = "Image Caption"
 _STYLE_BLOCK_TEXT = "Block Text"
 
-_BODY_SPACE = Pt(9)  # Body Text: 180 twips before/after
-_COMPACT_SPACE = Pt(1.8)  # Compact (tight lists): 36 twips
-_BLOCK_TEXT_SPACE = Pt(5)  # Block Text (blockquote): 100 twips
-_BLOCK_TEXT_INDENT = Inches(1 / 3)  # Block Text left/right: 480 twips
-_HEADING_COLOR = RGBColor(0x0F, 0x47, 0x61)
-_HEADING_SIZES = {1: Pt(20), 2: Pt(16), 3: Pt(14), 4: Pt(12), 5: Pt(11), 6: Pt(11)}
-# Document default font/size, matching pandoc's reference (Aptos 12pt body,
-# Aptos Display headings) instead of python-docx's Cambria 11pt default.
-_BODY_FONT = "Aptos"
-_HEADING_FONT = "Aptos Display"
-_BODY_EAST_ASIA = "宋体"
-_HEADING_EAST_ASIA = "黑体"
-_BODY_FONT_SIZE = Pt(12)
-# 1.5 line spacing (360 twips) so CJK body text keeps readable leading.
-# The browser viewer treats Word "single" (240 twips) as 0.88x Latin metrics
-# and stacks 宋体 glyphs; Word itself looks tighter than a Chinese report.
-_CJK_LINE_SPACING = 1.5
-_DOC_GRID_LINE_PITCH = "360"
-# pandoc emits no page margins, so Word renders its 1" default; python-docx's
-# template uses 1.25" left/right. Set 1" all round to match the pandoc look.
-_PAGE_MARGIN = Inches(1)
+_BODY_SPACE_AFTER = Pt(BODY_SPACE_AFTER_PT)
+_COMPACT_SPACE = Pt(COMPACT_SPACE_PT)
+_BLOCK_TEXT_SPACE = Pt(BLOCK_SPACE_PT)
+_BLOCK_TEXT_INDENT = Inches(BLOCK_INDENT_IN)
 
 # Footnotes are written as a real Word footnotes part (python-docx has no native
 # API for them), so [^n] citations become superscript references that Word links
@@ -121,6 +153,7 @@ class _Fmt:
     italic: bool = False
     strike: bool = False
     code: bool = False
+    color: RGBColor | None = None
 
 
 def markdown_to_docx_bytes(
@@ -133,8 +166,9 @@ def markdown_to_docx_bytes(
     attach_image_bytes(nodes, image_loader)
 
     document = Document()
-    _apply_pandoc_styles(document)
+    _apply_report_styles(document)
     _apply_cjk_document_defaults(document)
+    _apply_page_chrome(document, first_heading_text(nodes))
     footnote_block = next(
         (node for node in nodes if node.get("type") == "footnotes"), None
     )
@@ -150,20 +184,17 @@ def markdown_to_docx_bytes(
     return buffer.getvalue()
 
 
-def _apply_pandoc_styles(document: DocxDocument) -> None:
-    """Add/configure the prose styles, approximating pandoc's reference.docx.
-
-    python-docx's bare default template puts everything in ``Normal``; pandoc
-    instead distributes prose across ``Body Text``/``First Paragraph``, tight
-    lists into ``Compact``, blockquotes into ``Block Text``, and image captions
-    into ``Image Caption``. Defining the same styles here lets the renderer
-    assign them so the document reads like the pandoc export.
-    """
+def _apply_report_styles(document: DocxDocument) -> None:
+    """Configure A4 page, compact body, and navy heading hierarchy."""
     for section in document.sections:
-        section.left_margin = _PAGE_MARGIN
-        section.right_margin = _PAGE_MARGIN
-        section.top_margin = _PAGE_MARGIN
-        section.bottom_margin = _PAGE_MARGIN
+        section.page_width = Mm(PAGE_WIDTH_MM)
+        section.page_height = Mm(PAGE_HEIGHT_MM)
+        section.left_margin = Mm(MARGIN_LEFT_MM)
+        section.right_margin = Mm(MARGIN_RIGHT_MM)
+        section.top_margin = Mm(MARGIN_TOP_MM)
+        section.bottom_margin = Mm(MARGIN_BOTTOM_MM)
+        section.header_distance = Mm(HEADER_DISTANCE_MM)
+        section.footer_distance = Mm(FOOTER_DISTANCE_MM)
 
     styles = document.styles
     existing = {style.name for style in styles}
@@ -177,9 +208,12 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
         r_fonts.set(qn("w:eastAsia"), east_asia)
 
     normal = cast(ParagraphStyle, styles["Normal"])
-    set_east_asia(normal, _BODY_FONT, _BODY_EAST_ASIA)
-    normal.font.size = _BODY_FONT_SIZE
-    normal.paragraph_format.line_spacing = _CJK_LINE_SPACING
+    set_east_asia(normal, BODY_FONT, BODY_EAST_ASIA)
+    normal.font.size = Pt(BODY_SIZE_PT)
+    normal.font.color.rgb = _rgb(INK)
+    normal.paragraph_format.line_spacing = BODY_LINE_SPACING
+    normal.paragraph_format.space_before = Pt(0)
+    normal.paragraph_format.space_after = _BODY_SPACE_AFTER
 
     def ensure(name: str, base: str) -> ParagraphStyle:
         if name not in existing:
@@ -189,25 +223,27 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
         return cast(ParagraphStyle, styles[name])
 
     body = cast(ParagraphStyle, styles[_STYLE_BODY])  # ships in the default template
-    body.paragraph_format.space_before = _BODY_SPACE
-    body.paragraph_format.space_after = _BODY_SPACE
-    body.paragraph_format.line_spacing = _CJK_LINE_SPACING
+    body.paragraph_format.space_before = Pt(0)
+    body.paragraph_format.space_after = _BODY_SPACE_AFTER
+    body.paragraph_format.line_spacing = BODY_LINE_SPACING
 
     ensure(_STYLE_FIRST_PARAGRAPH, _STYLE_BODY)
 
     compact = ensure(_STYLE_COMPACT, _STYLE_BODY)
     compact.paragraph_format.space_before = _COMPACT_SPACE
     compact.paragraph_format.space_after = _COMPACT_SPACE
-    compact.paragraph_format.line_spacing = _CJK_LINE_SPACING
+    compact.paragraph_format.line_spacing = COMPACT_LINE_SPACING
 
     block_text = ensure(_STYLE_BLOCK_TEXT, _STYLE_BODY)
     block_text.paragraph_format.space_before = _BLOCK_TEXT_SPACE
     block_text.paragraph_format.space_after = _BLOCK_TEXT_SPACE
     block_text.paragraph_format.left_indent = _BLOCK_TEXT_INDENT
-    block_text.paragraph_format.right_indent = _BLOCK_TEXT_INDENT
+    block_text.paragraph_format.right_indent = Pt(0)
 
     caption = ensure(_STYLE_IMAGE_CAPTION, "Caption")
     caption.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    caption.font.size = Pt(9)
+    caption.font.color.rgb = _MUTED_COLOR
 
     ensure(_STYLE_FOOTNOTE_TEXT, "Normal")
     if _STYLE_FOOTNOTE_REFERENCE not in existing:
@@ -218,22 +254,21 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
         hyperlink = styles.add_style(_STYLE_HYPERLINK, WD_STYLE_TYPE.CHARACTER)
         hyperlink.font.color.rgb = _LINK_COLOR
 
-    for level, size in _HEADING_SIZES.items():
+    for level, size in HEADING_SIZES_PT.items():
         heading = styles[f"Heading {level}"]
-        set_east_asia(heading, _HEADING_FONT, _HEADING_EAST_ASIA)
-        heading.font.size = size
+        set_east_asia(heading, HEADING_FONT, HEADING_EAST_ASIA)
+        heading.font.size = Pt(size)
         heading.font.color.rgb = _HEADING_COLOR
-        # pandoc headings are coloured + sized, not bold; python-docx's are bold.
-        heading.font.bold = False
-        heading.paragraph_format.line_spacing = _CJK_LINE_SPACING
+        heading.font.bold = True
+        heading.paragraph_format.line_spacing = HEADING_LINE_SPACING
+        heading.paragraph_format.space_before = Pt(HEADING_SPACE_BEFORE_PT[level])
+        heading.paragraph_format.space_after = Pt(HEADING_SPACE_AFTER_PT[level])
+        heading.paragraph_format.keep_with_next = True
+        heading.paragraph_format.keep_together = True
+        heading.paragraph_format.widow_control = True
 
-    set_east_asia(body, _BODY_FONT, _BODY_EAST_ASIA)
-    for inherited in (
-        _STYLE_FIRST_PARAGRAPH,
-        _STYLE_COMPACT,
-        _STYLE_BLOCK_TEXT,
-        _STYLE_IMAGE_CAPTION,
-        _STYLE_FOOTNOTE_TEXT,
+    set_east_asia(body, BODY_FONT, BODY_EAST_ASIA)
+    list_styles = (
         "List Bullet",
         "List Number",
         "List Continue",
@@ -243,13 +278,23 @@ def _apply_pandoc_styles(document: DocxDocument) -> None:
         "List Bullet 3",
         "List Number 3",
         "List Continue 3",
+    )
+    for inherited in (
+        _STYLE_FIRST_PARAGRAPH,
+        _STYLE_COMPACT,
+        _STYLE_BLOCK_TEXT,
+        _STYLE_IMAGE_CAPTION,
+        _STYLE_FOOTNOTE_TEXT,
+        *list_styles,
     ):
-        if inherited in existing:
-            set_east_asia(
-                cast(ParagraphStyle, styles[inherited]),
-                _BODY_FONT,
-                _BODY_EAST_ASIA,
-            )
+        if inherited not in existing:
+            continue
+        style = cast(ParagraphStyle, styles[inherited])
+        set_east_asia(style, BODY_FONT, BODY_EAST_ASIA)
+        if inherited in list_styles:
+            style.paragraph_format.line_spacing = COMPACT_LINE_SPACING
+            style.paragraph_format.space_before = Pt(0)
+            style.paragraph_format.space_after = _COMPACT_SPACE
 
 
 def _apply_cjk_document_defaults(document: DocxDocument) -> None:
@@ -257,7 +302,7 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
 
     Style-level w:eastAsia is not enough: the template defaults to ja-JP
     theme language and theme-linked East-Asian fonts. Document defaults
-    plus the theme font scheme make 宋体/黑体 apply to unstyled runs too.
+    plus the theme font scheme make 微软雅黑/黑体 apply to unstyled runs too.
     """
     theme_lang = document.settings.element.find(qn("w:themeFontLang"))
     if theme_lang is None:
@@ -283,10 +328,10 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
     if r_fonts is None:
         r_fonts = OxmlElement("w:rFonts")
         rpr.insert(0, r_fonts)
-    r_fonts.set(qn("w:ascii"), _BODY_FONT)
-    r_fonts.set(qn("w:hAnsi"), _BODY_FONT)
-    r_fonts.set(qn("w:eastAsia"), _BODY_EAST_ASIA)
-    r_fonts.set(qn("w:cs"), _BODY_FONT)
+    r_fonts.set(qn("w:ascii"), BODY_FONT)
+    r_fonts.set(qn("w:hAnsi"), BODY_FONT)
+    r_fonts.set(qn("w:eastAsia"), BODY_EAST_ASIA)
+    r_fonts.set(qn("w:cs"), BODY_FONT)
     lang = rpr.find(qn("w:lang"))
     if lang is None:
         lang = OxmlElement("w:lang")
@@ -301,8 +346,8 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
             continue
         root = etree.fromstring(rel.target_part.blob)
         for tag, typeface in (
-            ("majorFont", _HEADING_EAST_ASIA),
-            ("minorFont", _BODY_EAST_ASIA),
+            ("majorFont", HEADING_EAST_ASIA),
+            ("minorFont", BODY_EAST_ASIA),
         ):
             for node in root.findall(f".//{{{_A_NS}}}{tag}"):
                 east_asia = node.find(f"{{{_A_NS}}}ea")
@@ -318,15 +363,96 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
 
 
 def _apply_cjk_document_grid(document: DocxDocument) -> None:
-    """Snap section line pitch to 1.5 so Word and the browser viewer agree."""
+    """Keep a line-pitch hint without snapping paragraphs to the grid.
+
+    ``type="lines"`` pads each paragraph up to the next grid row. With 1.15
+    leading plus space-after, Word then uses two rows per body paragraph.
+    """
     for section in document.sections:
         sect_pr = section._sectPr
         doc_grid = sect_pr.find(qn("w:docGrid"))
         if doc_grid is None:
             doc_grid = OxmlElement("w:docGrid")
             sect_pr.append(doc_grid)
-        doc_grid.set(qn("w:type"), "linesAndChars")
-        doc_grid.set(qn("w:linePitch"), _DOC_GRID_LINE_PITCH)
+        doc_grid.set(qn("w:type"), "default")
+        doc_grid.set(qn("w:linePitch"), DOC_GRID_LINE_PITCH)
+
+
+def _apply_page_chrome(document: DocxDocument, title: str) -> None:
+    """Add a running header after page 1 and a centred page number."""
+    section = document.sections[0]
+    section.different_first_page_header_footer = True
+    _fill_header(section.first_page_header.paragraphs[0], "")
+    _fill_header(section.header.paragraphs[0], title)
+    _fill_footer(section.first_page_footer.paragraphs[0])
+    _fill_footer(section.footer.paragraphs[0])
+
+
+def _fill_header(paragraph: Paragraph, title: str) -> None:
+    paragraph.text = ""
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    if not title:
+        return
+    run = paragraph.add_run(title[:40])
+    _set_run_typefaces(run, BODY_FONT, BODY_EAST_ASIA)
+    run.font.size = Pt(8)
+    run.font.color.rgb = _MUTED_COLOR
+    _add_paragraph_border(paragraph, "bottom", RULE)
+
+
+def _fill_footer(paragraph: Paragraph) -> None:
+    paragraph.text = ""
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_paragraph_border(paragraph, "top", RULE)
+    prefix = paragraph.add_run("— ")
+    _set_run_typefaces(prefix, BODY_FONT, BODY_EAST_ASIA)
+    prefix.font.size = Pt(8)
+    prefix.font.color.rgb = _MUTED_COLOR
+    _add_page_field(paragraph)
+    suffix = paragraph.add_run(" —")
+    _set_run_typefaces(suffix, BODY_FONT, BODY_EAST_ASIA)
+    suffix.font.size = Pt(8)
+    suffix.font.color.rgb = _MUTED_COLOR
+
+
+def _set_run_typefaces(run: Run, latin: str, east_asia: str) -> None:
+    run.font.name = latin
+    r_pr = run._element.get_or_add_rPr()
+    r_fonts = r_pr.get_or_add_rFonts()
+    r_fonts.set(qn("w:ascii"), latin)
+    r_fonts.set(qn("w:hAnsi"), latin)
+    r_fonts.set(qn("w:eastAsia"), east_asia)
+
+
+def _add_paragraph_border(paragraph: Paragraph, edge: str, color: str) -> None:
+    p_pr = paragraph._p.get_or_add_pPr()
+    borders = p_pr.find(qn("w:pBdr"))
+    if borders is None:
+        borders = OxmlElement("w:pBdr")
+        p_pr.append(borders)
+    line = OxmlElement(f"w:{edge}")
+    line.set(qn("w:val"), "single")
+    line.set(qn("w:sz"), "6")
+    line.set(qn("w:space"), "4")
+    line.set(qn("w:color"), color)
+    borders.append(line)
+
+
+def _add_page_field(paragraph: Paragraph) -> None:
+    run = paragraph.add_run()
+    _set_run_typefaces(run, BODY_FONT, BODY_EAST_ASIA)
+    run.font.size = Pt(8)
+    run.font.color.rgb = _MUTED_COLOR
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    run._r.append(begin)
+    run._r.append(instr)
+    run._r.append(end)
 
 
 # --------------------------------------------------------------------------- #
@@ -510,6 +636,10 @@ def _render_blocks(
 def _render_code(document: DocxDocument, node: Node) -> None:
     raw = str(node.get("raw", "")).rstrip("\n")
     paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(3)
+    paragraph.paragraph_format.space_after = Pt(4)
+    paragraph.paragraph_format.line_spacing = CODE_LINE_SPACING
+    _shade_paragraph(paragraph, CODE_BG)
     for index, line in enumerate(raw.split("\n")):
         if index:
             paragraph.add_run().add_break()
@@ -524,6 +654,7 @@ def _render_quote(
     for child in node.get("children", []):
         if child.get("type") == "paragraph":
             paragraph = _add_styled_paragraph(document, _STYLE_BLOCK_TEXT)
+            _add_paragraph_border(paragraph, "left", ACCENT)
             _add_runs(paragraph, child.get("children", []), _Fmt(), footnotes)
         else:
             _render_blocks(document, [child], footnotes)
@@ -711,7 +842,7 @@ def _render_thematic_break(document: DocxDocument) -> None:
     bottom.set(qn("w:val"), "single")
     bottom.set(qn("w:sz"), "6")
     bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), "auto")
+    bottom.set(qn("w:color"), RULE)
     borders.append(bottom)
     p_pr.append(borders)
 
@@ -734,20 +865,29 @@ def _render_table(
     if num_cols == 0:
         return
 
-    # pandoc renders a borderless table (python-docx's default "Normal Table")
-    # with only a rule under the header row, and small left/right cell padding.
     table = document.add_table(rows=0, cols=num_cols)
+    _set_table_full_width(table)
+    _set_table_borders(table)
     _set_table_cell_margins(table)
 
     if header_cells:
         cells = table.add_row().cells
+        _mark_header_row(table.rows[0])
         for index, cell_node in enumerate(header_cells[:num_cols]):
-            _fill_cell(cells[index], cell_node, bold=True, footnotes=footnotes)
-        _underline_header_cells(cells)
-    for row in body_rows:
+            _fill_cell(
+                cells[index],
+                cell_node,
+                footnotes=footnotes,
+                header=True,
+            )
+            _shade_cell(cells[index], TABLE_HEADER_FILL)
+    for row_index, row in enumerate(body_rows):
         cells = table.add_row().cells
+        _keep_row_together(table.rows[-1])
         for index, cell_node in enumerate(row[:num_cols]):
-            _fill_cell(cells[index], cell_node, bold=False, footnotes=footnotes)
+            _fill_cell(cells[index], cell_node, footnotes=footnotes, header=False)
+            if row_index % 2 == 1:
+                _shade_cell(cells[index], TABLE_ALT_FILL)
 
     _remove_fixed_cell_widths(table)
 
@@ -767,10 +907,29 @@ def _remove_fixed_cell_widths(table: Any) -> None:
                 tc_pr.remove(tc_w)
 
 
+def _set_table_full_width(table: Any) -> None:
+    width = OxmlElement("w:tblW")
+    width.set(qn("w:w"), "5000")
+    width.set(qn("w:type"), "pct")
+    table._tbl.tblPr.append(width)
+
+
+def _set_table_borders(table: Any) -> None:
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        line = OxmlElement(f"w:{edge}")
+        line.set(qn("w:val"), "single")
+        line.set(qn("w:sz"), "4")
+        line.set(qn("w:space"), "0")
+        line.set(qn("w:color"), TABLE_BORDER)
+        borders.append(line)
+    table._tbl.tblPr.append(borders)
+
+
 def _set_table_cell_margins(table: Any) -> None:
-    """Pad cells so CJK wraps stay readable (108 twips left/right, 80 top/bottom)."""
+    """Compact cell padding: 40 twips vertical, 80 twips horizontal."""
     margins = OxmlElement("w:tblCellMar")
-    for edge, width in (("top", 80), ("left", 108), ("bottom", 80), ("right", 108)):
+    for edge, width in (("top", 40), ("left", 80), ("bottom", 40), ("right", 80)):
         element = OxmlElement(f"w:{edge}")
         element.set(qn("w:w"), str(width))
         element.set(qn("w:type"), "dxa")
@@ -778,17 +937,33 @@ def _set_table_cell_margins(table: Any) -> None:
     table._tbl.tblPr.append(margins)
 
 
-def _underline_header_cells(cells: Any) -> None:
-    """Draw a single bottom rule under each header cell, like pandoc."""
-    for cell in cells:
-        borders = OxmlElement("w:tcBorders")
-        bottom = OxmlElement("w:bottom")
-        bottom.set(qn("w:val"), "single")
-        bottom.set(qn("w:sz"), "4")
-        bottom.set(qn("w:space"), "0")
-        bottom.set(qn("w:color"), "auto")
-        borders.append(bottom)
-        cell._tc.get_or_add_tcPr().append(borders)
+def _shade_cell(cell: _Cell, fill: str) -> None:
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), fill)
+    cell._tc.get_or_add_tcPr().append(shading)
+
+
+def _shade_paragraph(paragraph: Paragraph, fill: str) -> None:
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), fill)
+    paragraph._p.get_or_add_pPr().append(shading)
+
+
+def _mark_header_row(row: Any) -> None:
+    row_pr = row._tr.get_or_add_trPr()
+    header = OxmlElement("w:tblHeader")
+    row_pr.append(header)
+    _keep_row_together(row)
+
+
+def _keep_row_together(row: Any) -> None:
+    row_pr = row._tr.get_or_add_trPr()
+    if row_pr.find(qn("w:cantSplit")) is None:
+        row_pr.append(OxmlElement("w:cantSplit"))
 
 
 _TABLE_CELL_ALIGN = {
@@ -799,20 +974,27 @@ _TABLE_CELL_ALIGN = {
 
 
 def _fill_cell(
-    cell: _Cell, cell_node: Node, bold: bool, footnotes: "_Footnotes | None"
+    cell: _Cell,
+    cell_node: Node,
+    footnotes: "_Footnotes | None",
+    *,
+    header: bool,
 ) -> None:
     paragraph = cell.paragraphs[0]
-    # pandoc uses the tight "Compact" style in cells and honours the column
-    # alignment from the Markdown separator row (e.g. ``:--:`` -> centered).
     _set_paragraph_style(paragraph, _STYLE_COMPACT)
-    # The browser viewer treats table cells without explicit line spacing as
-    # Word "single" (0.88x), which stacks 宋体 glyphs. Write 1.5 on the
-    # paragraph so preview and Word agree.
-    paragraph.paragraph_format.line_spacing = _CJK_LINE_SPACING
+    paragraph.paragraph_format.line_spacing = CELL_LINE_SPACING
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(0)
     alignment = _TABLE_CELL_ALIGN.get(str(cell_node.get("attrs", {}).get("align")))
     if alignment is not None:
         paragraph.alignment = alignment
-    _add_runs(paragraph, cell_node.get("children", []), _Fmt(bold=bold), footnotes)
+    fmt = _Fmt(bold=header, color=_HEADER_COLOR if header else None)
+    _add_runs(paragraph, cell_node.get("children", []), fmt, footnotes)
+    for run in paragraph.runs:
+        run.font.size = Pt(CELL_SIZE_PT)
+        if header:
+            run.bold = True
+            run.font.color.rgb = _HEADER_COLOR
 
 
 # --------------------------------------------------------------------------- #
@@ -922,6 +1104,8 @@ def _styled_run(paragraph: Paragraph, text: str, fmt: _Fmt) -> None:
         run.font.strike = True
     if fmt.code:
         run.font.name = _MONOSPACE_FONT
+    if fmt.color is not None:
+        run.font.color.rgb = fmt.color
 
 
 def _add_hyperlink(

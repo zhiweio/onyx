@@ -9,9 +9,14 @@ from docx import Document
 from docx.document import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
-from docx.table import _Cell
 from PIL import Image as PILImage
 
+from onyx.server.features.build.session.md_export_style import (
+    BODY_LINE_SPACING,
+    CELL_LINE_SPACING,
+    COMPACT_LINE_SPACING,
+    DOC_GRID_LINE_PITCH,
+)
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
 
 
@@ -258,21 +263,19 @@ def test_table_is_rendered_with_header_and_rows() -> None:
     assert [c.text for c in table.rows[1].cells] == ["a", "1"]
 
 
-def test_table_is_borderless_with_header_rule_only() -> None:
-    # pandoc renders tables with no grid, just a rule under the header row.
+def test_table_has_grid_and_header_fill() -> None:
     doc = _render("| Name | Value |\n|------|-------|\n| a | 1 |\n| b | 2 |\n")
     table = doc.tables[0]
-    assert table.style is not None and table.style.name == "Normal Table"
-
-    def has_bottom_border(cell: _Cell) -> bool:
-        tc_pr = cell._tc.tcPr
-        if tc_pr is None:
-            return False
-        borders = tc_pr.find(qn("w:tcBorders"))
-        return borders is not None and borders.find(qn("w:bottom")) is not None
-
-    assert all(has_bottom_border(cell) for cell in table.rows[0].cells)
-    assert not any(has_bottom_border(cell) for cell in table.rows[1].cells)
+    tbl_pr = table._tbl.tblPr
+    assert tbl_pr is not None
+    borders = tbl_pr.find(qn("w:tblBorders"))
+    assert borders is not None
+    assert borders.find(qn("w:insideH")) is not None
+    header_pr = table.rows[0].cells[0]._tc.tcPr
+    assert header_pr is not None
+    shading = header_pr.find(qn("w:shd"))
+    assert shading is not None
+    assert shading.get(qn("w:fill")) == "185FA5"
 
 
 def test_table_columns_auto_fit_content() -> None:
@@ -371,7 +374,7 @@ def test_hyperlink_uses_pandoc_style_without_underline() -> None:
     link_props = doc.element.xml.split("w:hyperlink")[1]
     assert 'w:val="Hyperlink"' in link_props  # applies the character style
     assert "<w:u " not in link_props  # no underline
-    assert str(doc.styles["Hyperlink"].font.color.rgb) == "4F81BD"
+    assert str(doc.styles["Hyperlink"].font.color.rgb) == "2B6CB0"
 
 
 def test_link_without_url_falls_back_to_text() -> None:
@@ -476,50 +479,73 @@ def test_document_without_footnotes_has_no_footnotes_part() -> None:
     assert "word/footnotes.xml" not in zipfile.ZipFile(BytesIO(data)).namelist()
 
 
-def test_default_font_matches_pandoc() -> None:
-    # pandoc's reference uses Aptos 12pt body / Aptos Display headings, not
-    # python-docx's Cambria 11pt default.
+def test_default_font_is_compact_report_body() -> None:
     doc = _render("# Heading\n\nBody.\n")
     normal = doc.styles["Normal"]
-    assert normal.font.name == "Aptos"
-    assert normal.font.size is not None and normal.font.size.pt == 12
-    assert doc.styles["Heading 1"].font.name == "Aptos Display"
+    assert normal.font.name == "Calibri"
+    assert normal.font.size is not None and normal.font.size.pt == 10.5
+    heading = doc.styles["Heading 1"]
+    assert heading.font.name == "Calibri"
+    assert heading.font.bold is True
+    assert heading.font.size is not None and heading.font.size.pt == 16
 
 
-def test_line_spacing_is_readable_for_cjk() -> None:
+def test_page_is_a4_with_compact_margins() -> None:
+    section = _render("Body.\n").sections[0]
+    assert section.page_width is not None and abs(section.page_width.mm - 210) < 0.2
+    assert section.page_height is not None and abs(section.page_height.mm - 297) < 0.2
+    assert section.left_margin is not None and abs(section.left_margin.mm - 18) < 0.2
+    assert section.right_margin is not None and abs(section.right_margin.mm - 18) < 0.2
+
+
+def test_line_spacing_is_compact_for_cjk() -> None:
     doc = _render("正文。\n")
-    assert doc.styles["Normal"].paragraph_format.line_spacing == 1.5
-    assert doc.styles["Body Text"].paragraph_format.line_spacing == 1.5
-    assert doc.styles["Compact"].paragraph_format.line_spacing == 1.5
+    assert doc.styles["Normal"].paragraph_format.line_spacing == BODY_LINE_SPACING
+    assert doc.styles["Body Text"].paragraph_format.line_spacing == BODY_LINE_SPACING
+    assert doc.styles["Compact"].paragraph_format.line_spacing == COMPACT_LINE_SPACING
 
 
-def test_table_cell_line_spacing_is_readable_for_cjk() -> None:
+def test_table_cell_line_spacing_is_compact() -> None:
     doc = _render("| 风险 | 说明 |\n|------|------|\n| 高 | 中文内容 |\n")
     for row in doc.tables[0].rows:
         for cell in row.cells:
             for paragraph in cell.paragraphs:
-                assert paragraph.paragraph_format.line_spacing == 1.5
+                assert paragraph.paragraph_format.line_spacing == CELL_LINE_SPACING
 
 
-def test_document_grid_sets_cjk_line_pitch() -> None:
+def test_document_grid_does_not_snap_lines() -> None:
     data = markdown_to_docx_bytes("正文。\n")
     with zipfile.ZipFile(BytesIO(data)) as archive:
-        document_xml = archive.read("word/document.xml").decode("utf-8")
-    assert 'w:linePitch="360"' in document_xml
-    assert 'w:type="linesAndChars"' in document_xml
-
-
-def test_page_margins_match_pandoc() -> None:
-    # pandoc renders 1" margins (Word default); python-docx's template uses 1.25"
-    # left/right, so set 1" all round to match.
-    section = _render("Body.\n").sections[0]
-    margins = (
-        section.left_margin,
-        section.right_margin,
-        section.top_margin,
-        section.bottom_margin,
+        document_xml = archive.read("word/document.xml")
+    root = ElementTree.fromstring(document_xml)
+    grids = root.findall(
+        ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}docGrid"
     )
-    assert all(margin is not None and margin.inches == 1.0 for margin in margins)
+    assert grids
+    for grid in grids:
+        assert grid.get(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type"
+        ) == ("default")
+        assert grid.get(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}linePitch"
+        ) == (DOC_GRID_LINE_PITCH)
+
+
+def test_page_chrome_includes_title_and_page_field() -> None:
+    data = markdown_to_docx_bytes("# 君禾股份财报解读\n\n正文。\n")
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        headers = [
+            archive.read(name).decode("utf-8")
+            for name in archive.namelist()
+            if name.startswith("word/header")
+        ]
+        footers = [
+            archive.read(name).decode("utf-8")
+            for name in archive.namelist()
+            if name.startswith("word/footer")
+        ]
+    assert any("君禾股份财报解读" in xml for xml in headers)
+    assert any("PAGE" in xml for xml in footers)
 
 
 def test_paragraph_style_sequence_matches_pandoc_rules() -> None:
@@ -559,7 +585,7 @@ def test_styles_declare_east_asia_fonts() -> None:
     data = markdown_to_docx_bytes("# 标题\n\n正文内容。\n")
     with zipfile.ZipFile(BytesIO(data)) as archive:
         styles_xml = archive.read("word/styles.xml").decode("utf-8")
-    assert "宋体" in styles_xml
+    assert "微软雅黑" in styles_xml
     assert "黑体" in styles_xml
 
 
@@ -570,7 +596,7 @@ def test_document_defaults_set_cjk_language_and_theme_fonts() -> None:
         styles_xml = archive.read("word/styles.xml").decode("utf-8")
         theme_xml = archive.read("word/theme/theme1.xml").decode("utf-8")
     assert 'w:eastAsia="zh-CN"' in settings_xml
-    assert "宋体" in styles_xml
+    assert "微软雅黑" in styles_xml
     assert 'w:eastAsia="zh-CN"' in styles_xml
     assert 'typeface="黑体"' in theme_xml
-    assert 'typeface="宋体"' in theme_xml
+    assert 'typeface="微软雅黑"' in theme_xml

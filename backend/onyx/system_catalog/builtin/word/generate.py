@@ -1,7 +1,8 @@
-"""Build official Word report templates from a per-slug spec.
+"""Build catalog Word report templates from a per-slug spec.
 
 ``generate_official_docx(slug)`` returns the document bytes that sync
-attaches. The file is a layout reference for the agent.
+attaches. The file is a layout reference: A4 research-note styles plus
+the placeholder tokens the agent must fill.
 """
 
 from __future__ import annotations

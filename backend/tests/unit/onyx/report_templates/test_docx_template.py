@@ -41,3 +41,21 @@ def test_official_builder_returns_a_readable_docx() -> None:
     asset_bytes = generate_official_docx("monthly_close")
     validate_docx_asset(asset_bytes)
     assert asset_bytes.startswith(b"PK")
+
+
+def test_official_builder_uses_research_note_layout() -> None:
+    asset_bytes = generate_official_docx("monthly_close")
+    with zipfile.ZipFile(io.BytesIO(asset_bytes)) as archive:
+        document_xml = archive.read("word/document.xml").decode("utf-8")
+        styles_xml = archive.read("word/styles.xml").decode("utf-8")
+        footer_xml = archive.read("word/footer1.xml").decode("utf-8")
+        header_xml = archive.read("word/header1.xml").decode("utf-8")
+    assert "微软雅黑" in styles_xml
+    assert "黑体" in document_xml
+    assert "宋体" not in styles_xml + document_xml
+    assert "机密" not in footer_xml
+    assert "PAGE" in footer_xml
+    assert "{{company_header}}" in header_xml
+    assert 'w:fill="185FA5"' in document_xml
+    assert "{{entity_name}}" in document_xml
+    assert "{{conclusion}}" in document_xml

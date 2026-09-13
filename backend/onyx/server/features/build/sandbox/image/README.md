@@ -78,6 +78,7 @@ staging, cloud, and emergency operations.
 - **Base**: `python:3.13-slim` (Debian-based) with Node.js 24 copied from `node:24-trixie-slim`
 - **Templates**: `/workspace/templates/outputs/` — Next.js web app scaffold
 - **Python venv**: `/workspace/.venv/` with packages from `initial-requirements.txt` (includes Kimi skill runtimes: statsmodels, markdown, playwright, psycopg2-binary, xhs)
+- **LibreOffice + CJK fonts** (ENABLE_SKILLS): `soffice`, `fonts-noto-cjk`, and `fonts/99-cjk-aliases.conf` (微软雅黑/宋体 → Noto CJK)
 - **Global npm** (ENABLE_SKILLS): pptxgenjs, sharp, vega, vega-lite, playwright, node-edge-tts, and related packages; `/node_modules` → `/usr/local/lib/node_modules` for ESM
 - **Playwright Chromium** (ENABLE_SKILLS): `/opt/ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`)
 - **OpenCode CLI**: Installed in `/home/sandbox/.opencode/bin/`

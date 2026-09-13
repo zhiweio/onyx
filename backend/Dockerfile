@@ -142,6 +142,21 @@ RUN ln -s /usr/local/bin/supervisord /usr/bin/supervisord && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
+# Craft Markdown→PDF (ReportLab) and Chromium need real CJK faces. The slim
+# image plus `playwright install-deps` only ship WenQuanYi; md_export_style.py
+# looks for Debian Noto CJK TTC first. --no-install-recommends keeps
+# fonts-noto-cjk-extra out of the layer.
+COPY onyx/server/features/build/sandbox/image/fonts/99-cjk-aliases.conf /etc/fonts/conf.d/99-cjk-aliases.conf
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        fonts-noto-cjk \
+        fonts-crosextra-carlito \
+        && \
+    fc-cache -f && \
+    find /usr/share/fonts -iname 'NotoSansCJK-Regular.ttc' | grep -q . && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
 # Pre-downloading models for setups with limited egress
 RUN python -c "from tokenizers import Tokenizer; \
 Tokenizer.from_pretrained('nomic-ai/nomic-embed-text-v1')"

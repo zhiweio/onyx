@@ -11,6 +11,8 @@ from typing import Any
 
 import mistune
 
+from onyx.server.features.build.session.md_export_style import print_html_document
+
 MISTUNE_PLUGINS = ("table", "strikethrough", "url", "footnotes")
 
 # XML 1.0 forbids C0 controls except tab/newline/CR, UTF-16 surrogates, and
@@ -21,46 +23,6 @@ _XML_INVALID_TRANSLATION = {
     0xFFFE: None,
     0xFFFF: None,
 }
-
-_PRINT_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8"/>
-<title>Document</title>
-<style>
-  @page { size: letter; margin: 1in; }
-  body {
-    font-family: "Songti SC", "SimSun", "STSong", serif;
-    font-size: 12pt;
-    line-height: 1.45;
-    color: #222;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    color: #0F4761;
-    font-family: "Heiti SC", "SimHei", "STHeiti", sans-serif;
-    font-weight: normal;
-  }
-  h1 { font-size: 20pt; }
-  h2 { font-size: 16pt; }
-  h3 { font-size: 14pt; }
-  pre, code { font-family: "Courier New", Courier, monospace; }
-  pre { background: #F4F4F4; padding: 8px; }
-  blockquote {
-    margin-left: 0.33in;
-    margin-right: 0.33in;
-    color: #444;
-  }
-  table { border-collapse: collapse; }
-  th, td { border: 0.25pt solid #CCC; padding: 4px 6px; }
-  th { font-weight: bold; }
-  a { color: #4F81BD; text-decoration: none; }
-</style>
-</head>
-<body>
-__BODY__
-</body>
-</html>
-"""
 
 Node = dict[str, Any]
 
@@ -82,4 +44,4 @@ def parse_markdown(md_text: str) -> list[Node]:
 def markdown_to_html(md_text: str) -> str:
     """Render GFM Markdown to a print-ready HTML document."""
     body = _html_parser(strip_invalid_xml_chars(md_text))
-    return _PRINT_HTML.replace("__BODY__", str(body))
+    return print_html_document(str(body))
