@@ -4,19 +4,24 @@ sandbox managers.
 The script is replay-safe: the whole setup is serialized per session with an
 in-sandbox ``flock``, and an in-progress marker distinguishes a partial
 directory from a complete workspace. Setup stays small: empty ``outputs/`` and
-``attachments/``, plus the session venv and agent config. It does not create
-job trees or seed PLAN/TODO/MEMORY files. The web app stays lazy too: it
-writes the tamper-hardened ``start-webapp.sh`` (when the session has a port)
-but never scaffolds the template, installs dependencies, or starts a
-dev server itself. Re-running the script after an interruption converges on
-the same completed workspace.
+``attachments/`` (or links to the parent job session), plus the session venv
+and agent config. It does not create job trees or seed PLAN/TODO/MEMORY files.
+The web app stays lazy too: it writes the tamper-hardened ``start-webapp.sh``
+(when the session has a port) but never scaffolds the template, installs
+dependencies, or starts a dev server itself. Re-running the script after an
+interruption converges on the same completed workspace.
 """
 
+import base64
 import shlex
 from pathlib import Path
+from uuid import UUID
 
 from onyx.server.features.build.sandbox.nextjs_dev import (
     build_webapp_script_write_snippet,
+)
+from onyx.server.features.build.sandbox.util.agent_instructions import (
+    ATTACHMENTS_SECTION_CONTENT,
 )
 
 _RG_SHIM_SOURCE = Path(__file__).with_name("ripgrep_shim.py")
@@ -49,20 +54,67 @@ def build_workspace_exists_check_script(session_path: str) -> str:
     )
 
 
+def shared_parent_workspace_paths(
+    share_workspace_from: UUID | str | None,
+) -> tuple[str | None, str | None]:
+    """Return parent ``outputs/`` and ``attachments/`` paths for a job lane."""
+    if share_workspace_from is None:
+        return None, None
+    parent = f"{SESSIONS_ROOT}/{share_workspace_from}"
+    return f"{parent}/outputs", f"{parent}/attachments"
+
+
+def _shared_or_local_dir_snippet(
+    session_path: str, name: str, shared_path: str | None
+) -> str:
+    """Link ``name`` to a parent session directory, or create a local one."""
+    dest = f"{session_path}/{name}"
+    if not shared_path:
+        return f"mkdir -p {dest}\n"
+    quoted = shlex.quote(shared_path.rstrip("/"))
+    return f"""
+mkdir -p {quoted}
+if [ -e {dest} ] && [ ! -L {dest} ]; then
+  if [ -n "$(ls -A {dest} 2>/dev/null)" ]; then
+    echo "Refusing to replace a real {name} directory with a shared link"
+    exit 1
+  fi
+  rmdir {dest}
+fi
+ln -sfn {quoted} {dest}
+"""
+
+
+def build_shared_workspace_dirs_snippet(
+    session_path: str,
+    share_workspace_from: UUID | str | None,
+) -> str:
+    """Link ``outputs/`` and ``attachments/`` to the parent job session."""
+    shared_outputs, shared_attachments = shared_parent_workspace_paths(
+        share_workspace_from
+    )
+    if shared_outputs is None:
+        return ""
+    return _shared_or_local_dir_snippet(
+        session_path, "outputs", shared_outputs
+    ) + _shared_or_local_dir_snippet(session_path, "attachments", shared_attachments)
+
+
 def build_session_workspace_setup_script(
     session_path: str,
     agents_md: str,
     session_opencode_config_json: str,
     nextjs_port: int | None,
     shared_outputs_path: str | None = None,
+    shared_attachments_path: str | None = None,
 ) -> str:
     """Build the shell script that creates a session workspace.
 
     Headless callers (scheduled tasks) pass ``nextjs_port=None`` — the agent's
     tools work without a dev server, and no ``start-webapp.sh`` is written.
-    Job lanes pass ``shared_outputs_path`` so ``outputs/`` points at the parent
-    session. The virtualenv lives at ``{session_path}/.venv``, never under
-    ``outputs/``.
+    Job lanes pass ``shared_outputs_path`` and ``shared_attachments_path`` so
+    those directories point at the parent session. The virtualenv lives at
+    ``{session_path}/.venv``, never under ``outputs/``.
     """
     webapp_script_write_snippet = (
         # Lazy provisioning: write start-webapp.sh, but don't scaffold
@@ -71,22 +123,12 @@ def build_session_workspace_setup_script(
         if nextjs_port is not None
         else ""
     )
-    if shared_outputs_path:
-        quoted_shared = shlex.quote(shared_outputs_path.rstrip("/"))
-        outputs_snippet = f"""
-mkdir -p {quoted_shared}
-if [ -e {session_path}/outputs ] && [ ! -L {session_path}/outputs ]; then
-  echo "Refusing to replace a real outputs directory with a shared link"
-  exit 1
-fi
-ln -sfn {quoted_shared} {session_path}/outputs
-"""
-    else:
-        # Empty outputs/ only. Job trees and seed PLAN/TODO/MEMORY files are
-        # created when the agent or host actually writes them.
-        outputs_snippet = f"""
-mkdir -p {session_path}/outputs
-"""
+    outputs_snippet = _shared_or_local_dir_snippet(
+        session_path, "outputs", shared_outputs_path
+    )
+    attachments_snippet = _shared_or_local_dir_snippet(
+        session_path, "attachments", shared_attachments_path
+    )
     ripgrep_fallback_snippet = (
         "if ! command -v rg >/dev/null 2>&1 || ! rg --version >/dev/null 2>&1; then\n"
         "  mkdir -p /workspace/.venv/bin /home/sandbox/.opencode/bin\n"
@@ -96,6 +138,9 @@ mkdir -p {session_path}/outputs
         "  chmod 755 /home/sandbox/.opencode/bin/rg\n"
         "fi\n"
     )
+    attachments_section_b64 = base64.b64encode(
+        ATTACHMENTS_SECTION_CONTENT.encode()
+    ).decode()
 
     return f"""
 set -e
@@ -113,8 +158,8 @@ mkdir -p {session_path}
 chmod 755 {session_path}
 touch {session_path}/{SETUP_IN_PROGRESS_MARKER}
 {outputs_snippet}
+{attachments_snippet}
 mkdir -p {session_path}/.venv-lock
-mkdir -p {session_path}/attachments
 if [ ! -x {session_path}/.venv/bin/python ]; then
   python3 -m venv --system-site-packages {session_path}/.venv
 fi
@@ -136,6 +181,12 @@ echo "Linked user_library to {MANAGED_USER_LIBRARY_PATH}"
 # Write agent instructions
 echo "Writing AGENTS.md"
 printf '%s' {shlex.quote(agents_md)} > {session_path}/AGENTS.md
+if [ -n "$(find {session_path}/attachments -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+  if ! grep -q "## Attachments (PRIORITY)" "{session_path}/AGENTS.md" 2>/dev/null; then
+    printf '\\n\\n' >> {session_path}/AGENTS.md
+    echo '{attachments_section_b64}' | base64 -d >> {session_path}/AGENTS.md
+  fi
+fi
 
 printf '%s' {shlex.quote(session_opencode_config_json)} > {session_path}/opencode.json
 

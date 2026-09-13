@@ -122,6 +122,22 @@ class TestSetupScriptReplaySafety:
         assert f"{_SESSION_PATH}/.venv" in script
         assert f"{_SESSION_PATH}/outputs/.venv" not in script
 
+    def test_shared_attachments_link_replaces_empty_local_dir(self) -> None:
+        parent_attachments = (
+            "/workspace/sessions/11111111-1111-1111-1111-111111111111/attachments"
+        )
+        script = build_session_workspace_setup_script(
+            session_path=_SESSION_PATH,
+            agents_md="x",
+            session_opencode_config_json="{}",
+            nextjs_port=None,
+            shared_attachments_path=parent_attachments,
+        )
+        assert f"mkdir -p {parent_attachments}" in script
+        assert f"ln -sfn {parent_attachments} {_SESSION_PATH}/attachments" in script
+        assert f"mkdir -p {_SESSION_PATH}/attachments" not in script
+        assert "Refusing to replace a real attachments directory" in script
+
 
 class TestNextjsStartReplaySafety:
     def test_reuses_live_server_instead_of_spawning_duplicate(self) -> None:

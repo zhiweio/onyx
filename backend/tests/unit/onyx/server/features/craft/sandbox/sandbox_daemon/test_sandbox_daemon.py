@@ -1455,6 +1455,31 @@ def test_snapshot_create_skips_shared_session_outputs(
     assert chunks
 
 
+def test_snapshot_create_skips_shared_session_attachments(
+    sandbox_daemon_modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, _ = sandbox_daemon_modules
+    snapshot_mod = sys.modules["sandbox_daemon.snapshot"]
+    sessions_root = tmp_path / "sessions"
+    parent_id = UUID("00000000-0000-0000-0000-0000000000aa")
+    child_id = UUID("00000000-0000-0000-0000-0000000000bb")
+    parent_outputs = sessions_root / str(parent_id) / "outputs"
+    parent_attachments = sessions_root / str(parent_id) / "attachments"
+    parent_outputs.mkdir(parents=True)
+    parent_attachments.mkdir(parents=True)
+    (parent_attachments / "brief.pdf").write_text("pdf\n")
+    child_path = sessions_root / str(child_id)
+    child_path.mkdir(parents=True)
+    (child_path / "outputs").symlink_to(parent_outputs)
+    (child_path / "attachments").symlink_to(parent_attachments)
+    monkeypatch.setattr(snapshot_mod, "SESSIONS_ROOT", sessions_root)
+
+    dirs = snapshot_mod._snapshot_dirs(child_path)
+    assert dirs == []
+
+
 def test_snapshot_create_skips_nested_unsupported_entries(
     sandbox_daemon_modules: tuple[ModuleType, ModuleType],
     tmp_path: Path,

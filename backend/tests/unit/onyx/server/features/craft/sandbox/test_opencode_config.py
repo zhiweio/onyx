@@ -328,7 +328,7 @@ def test_permissions_deny_other_sessions_and_allow_current() -> None:
     )
 
 
-def test_lane_permissions_allow_parent_outputs_only() -> None:
+def test_lane_permissions_allow_parent_outputs_and_attachments() -> None:
     parent = "11111111-1111-1111-1111-111111111111"
     lane = "22222222-2222-2222-2222-222222222222"
     config = build_provider_opencode_config(
@@ -337,6 +337,7 @@ def test_lane_permissions_allow_parent_outputs_only() -> None:
     permission = config["permission"]
     parent_root = f"/workspace/sessions/{parent}"
     parent_outputs = f"{parent_root}/outputs"
+    parent_attachments = f"{parent_root}/attachments"
     lane_root = f"/workspace/sessions/{lane}"
     for tool_name in ("read", "grep", "glob", "list"):
         rules = permission[tool_name]
@@ -345,11 +346,14 @@ def test_lane_permissions_allow_parent_outputs_only() -> None:
         assert rules[f"{lane_root}/**"] == "allow"
         assert rules[parent_outputs] == "allow"
         assert rules[f"{parent_outputs}/**"] == "allow"
+        assert rules[parent_attachments] == "allow"
+        assert rules[f"{parent_attachments}/**"] == "allow"
         assert parent_root not in rules
     bash = permission["bash"]
     assert bash["*/workspace/sessions/*"] == "deny"
     assert bash[f"*{lane_root}*"] == "allow"
     assert bash[f"*{parent_outputs}*"] == "allow"
+    assert bash[f"*{parent_attachments}*"] == "allow"
     assert f"*{parent_root}*" not in bash
 
 

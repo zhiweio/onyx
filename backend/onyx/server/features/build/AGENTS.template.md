@@ -43,7 +43,7 @@ denied on purpose. Use relative paths from this directory.
 
 ```
 ./
-├── attachments/           # files attached to THIS session (may be empty)
+├── attachments/           # files attached to this session (job lanes share the parent session)
 ├── user_library/          # persistent library (symlink)
 ├── project/               # shared project files (only when the project has some)
 ├── .venv/                 # session Python installs

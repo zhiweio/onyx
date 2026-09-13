@@ -60,16 +60,28 @@ def _safe_session_path(session_id: UUID, *, create: bool) -> Path:
     return session_path
 
 
-def _is_shared_outputs_link(outputs_path: Path) -> bool:
-    """True when outputs points at another session's outputs under SESSIONS_ROOT."""
-    if not outputs_path.is_symlink():
+def _is_shared_session_dir_link(path: Path, dirname: str) -> bool:
+    """True when ``path`` points at another session's ``dirname`` under SESSIONS_ROOT."""
+    if not path.is_symlink():
         return False
     try:
-        target = outputs_path.resolve(strict=True)
+        target = path.resolve(strict=True)
         rel = target.relative_to(SESSIONS_ROOT.resolve())
     except (OSError, ValueError):
         return False
-    return len(rel.parts) >= 2 and rel.parts[1] == "outputs"
+    return len(rel.parts) >= 2 and rel.parts[1] == dirname
+
+
+def _append_snapshot_dir(session_path: Path, name: str, dirs: list[str]) -> None:
+    candidate = session_path / name
+    if candidate.is_symlink():
+        if name == "attachments" and _is_shared_session_dir_link(
+            candidate, "attachments"
+        ):
+            return
+        raise SnapshotError(f"{name} is a symlink; refusing to snapshot")
+    if candidate.is_dir() and any(candidate.iterdir()):
+        dirs.append(name)
 
 
 def _snapshot_dirs(session_path: Path) -> list[str]:
@@ -77,7 +89,8 @@ def _snapshot_dirs(session_path: Path) -> list[str]:
 
     ``outputs`` is required; the others are included only when present and
     non-empty. Refuse top-level symlinks so a compromised workspace cannot
-    redirect snapshotting outside the session tree.
+    redirect snapshotting outside the session tree. Shared job-lane links to
+    the parent session are skipped, not archived.
     """
     outputs_path = session_path / "outputs"
     if session_path.is_symlink():
@@ -85,26 +98,18 @@ def _snapshot_dirs(session_path: Path) -> list[str]:
     if session_path.exists() and not session_path.is_dir():
         raise SnapshotError("session path is not a directory")
     if outputs_path.is_symlink():
-        if _is_shared_outputs_link(outputs_path):
+        if _is_shared_session_dir_link(outputs_path, "outputs"):
             dirs: list[str] = []
-            for name in ("attachments", "project"):
-                candidate = session_path / name
-                if candidate.is_symlink():
-                    raise SnapshotError(f"{name} is a symlink; refusing to snapshot")
-                if candidate.is_dir() and any(candidate.iterdir()):
-                    dirs.append(name)
+            _append_snapshot_dir(session_path, "attachments", dirs)
+            _append_snapshot_dir(session_path, "project", dirs)
             return dirs
         raise SnapshotError("outputs is a symlink; refusing to snapshot")
     if not outputs_path.is_dir():
         return []
 
     dirs = ["outputs"]
-    for name in ("attachments", "project"):
-        candidate = session_path / name
-        if candidate.is_symlink():
-            raise SnapshotError(f"{name} is a symlink; refusing to snapshot")
-        if candidate.is_dir() and any(candidate.iterdir()):
-            dirs.append(name)
+    _append_snapshot_dir(session_path, "attachments", dirs)
+    _append_snapshot_dir(session_path, "project", dirs)
     return dirs
 
 

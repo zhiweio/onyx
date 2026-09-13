@@ -18,6 +18,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from onyx.configs.constants import FileOrigin
+from onyx.db.craft_job import get_specialist_for_session
 from onyx.db.craft_project import retract_session_working_files, upsert_project_file
 from onyx.db.enums import ArtifactType, CraftProjectFileSource
 from onyx.db.models import Artifact, BuildSession
@@ -209,18 +210,21 @@ def persist_session_workspace_files(
                 budget=budget,
             )
         )
-        persisted.extend(
-            _persist_walked_tree(
-                db_session,
-                sandbox_manager,
-                sandbox_id=sandbox_id,
-                session_id=session_id,
-                turn_index=turn_index,
-                budget=budget,
-                base_dir="attachments",
-                catalog_for=lambda rel: f"{ATTACHMENTS_PREFIX}{rel}",
+        # Job lanes share the parent session's attachments/. Do not catalog
+        # those files again as lane artifacts.
+        if get_specialist_for_session(db_session, session_id) is None:
+            persisted.extend(
+                _persist_walked_tree(
+                    db_session,
+                    sandbox_manager,
+                    sandbox_id=sandbox_id,
+                    session_id=session_id,
+                    turn_index=turn_index,
+                    budget=budget,
+                    base_dir="attachments",
+                    catalog_for=lambda rel: f"{ATTACHMENTS_PREFIX}{rel}",
+                )
             )
-        )
         persisted.extend(
             _persist_walked_tree(
                 db_session,

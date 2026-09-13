@@ -152,9 +152,9 @@ def _build_permissions(
     if session_id:
         _allow_session_tree(permissions, f"/workspace/sessions/{session_id}")
     if share_workspace_from and share_workspace_from != session_id:
-        _allow_session_tree(
-            permissions, f"/workspace/sessions/{share_workspace_from}/outputs"
-        )
+        parent_root = f"/workspace/sessions/{share_workspace_from}"
+        _allow_session_tree(permissions, f"{parent_root}/outputs")
+        _allow_session_tree(permissions, f"{parent_root}/attachments")
     if disabled_tools:
         for tool in disabled_tools:
             permissions[tool] = "deny"

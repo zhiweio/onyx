@@ -127,7 +127,9 @@ from onyx.server.features.build.sandbox.session_workspace import (
     SESSIONS_ROOT,
     WORKSPACE_SETUP_COMPLETE_SENTINEL,
     build_session_workspace_setup_script,
+    build_shared_workspace_dirs_snippet,
     build_workspace_exists_check_script,
+    shared_parent_workspace_paths,
 )
 from onyx.server.features.build.sandbox.snapshot_manager import SnapshotManager
 from onyx.server.features.build.sandbox.util.agent_instructions import (
@@ -1430,16 +1432,16 @@ class KubernetesSandboxManager(SandboxManager):
                 ),
             )
         )
+        shared_outputs_path, shared_attachments_path = shared_parent_workspace_paths(
+            share_workspace_from
+        )
         setup_script = build_session_workspace_setup_script(
             session_path=session_path,
             agents_md=agent_instructions,
             session_opencode_config_json=session_opencode_config,
             nextjs_port=nextjs_port,
-            shared_outputs_path=(
-                f"{SESSIONS_ROOT}/{share_workspace_from}/outputs"
-                if share_workspace_from is not None
-                else None
-            ),
+            shared_outputs_path=shared_outputs_path,
+            shared_attachments_path=shared_attachments_path,
         )
 
         logger.info(
@@ -1953,11 +1955,15 @@ echo "Session cleanup complete"
         attachments_content_b64 = base64.b64encode(
             ATTACHMENTS_SECTION_CONTENT.encode()
         ).decode()
+        shared_dirs_snippet = build_shared_workspace_dirs_snippet(
+            session_path, share_workspace_from
+        )
         config_script = f"""
 set -e
 mkdir -p {session_path}/.opencode
 ln -sfn /workspace/managed/skills {session_path}/.opencode/skills
 ln -sfn /workspace/managed/user_library {session_path}/user_library
+{shared_dirs_snippet}
 printf '%s' '{agent_instructions_escaped}' > {session_path}/AGENTS.md
 {session_opencode_config_setup}
 if [ -n "$(find {session_path}/attachments -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
