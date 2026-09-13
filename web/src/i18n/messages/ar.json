@@ -13951,7 +13951,18 @@
             "sleeping": "Sleeping",
             "terminated": "Stopped"
           },
-          "title": "Sandbox"
+          "title": "Sandbox",
+          "reset": {
+            "confirm": {
+              "label": "Reset"
+            },
+            "description": "This starts a new sandbox. This project's files and chats move with it.",
+            "label": "Reset",
+            "migrateOutputs": {
+              "label": "Also copy every output file from the old sandbox"
+            },
+            "title": "Reset the sandbox?"
+          }
         },
         "newChat": {
           "label": "New chat"
@@ -14088,6 +14099,12 @@
         },
         "renameFailed": {
           "message": "تعذر إعادة تسمية هذا المشروع."
+        },
+        "sandboxReset": {
+          "message": "New sandbox is starting."
+        },
+        "sandboxResetFailed": {
+          "message": "Could not reset the sandbox."
         }
       },
       "rename": {

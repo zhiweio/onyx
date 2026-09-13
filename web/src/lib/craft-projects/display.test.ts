@@ -317,6 +317,7 @@ describe("craft project display helpers", () => {
     expect(projectSandboxStatus(undefined)).toBe("missing");
     expect(
       projectSandboxStatus({
+        id: "sandbox-1",
         status: "running",
         last_heartbeat: "2026-08-01T00:00:00Z",
         created_at: "2026-08-01T00:00:00Z",
@@ -333,6 +334,7 @@ describe("craft project display helpers", () => {
         created_at: "2026-08-01T00:00:00Z",
         updated_at: "2026-08-01T00:00:00Z",
         sandbox: {
+          id: "sandbox-2",
           status: "provisioning",
           last_heartbeat: null,
           created_at: "2026-08-01T00:00:00Z",

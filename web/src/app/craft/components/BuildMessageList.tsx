@@ -337,9 +337,9 @@ export default function BuildMessageList({
     return -1;
   }, [messages]);
 
-  const streamRender = hasStreamItems
+    const streamRender = hasStreamItems
     ? renderStreamItems(streamItems, {
-        isCurrentStream: true,
+        isCurrentStream: isStreaming,
         extractLatestTodo: true,
       })
     : null;

@@ -15,6 +15,7 @@ const mockRefreshHistory = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshProjects = jest.fn();
 const mockUpdateProject = jest.fn();
+const mockResetSandbox = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockRouterPush }),
@@ -29,6 +30,7 @@ jest.mock("@/lib/craft-projects/hooks", () => ({
 jest.mock("@/lib/craft-projects/api", () => ({
   startCraftProjectSession: (...args: unknown[]) => mockStartSession(...args),
   updateCraftProject: (...args: unknown[]) => mockUpdateProject(...args),
+  resetCraftProjectSandbox: (...args: unknown[]) => mockResetSandbox(...args),
   deleteCraftProject: jest.fn(),
   deleteCraftProjectFile: jest.fn(),
   uploadCraftProjectFile: jest.fn(),
@@ -169,7 +171,9 @@ describe("CraftProjectDetailPage", () => {
     mockRefresh.mockReset();
     mockRefreshProjects.mockReset();
     mockUpdateProject.mockReset();
+    mockResetSandbox.mockReset();
     mockRefreshHistory.mockResolvedValue(undefined);
+    mockResetSandbox.mockResolvedValue({ ...project });
     mockRefreshProjects.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
     mockUpdateProject.mockResolvedValue({ ...project });
@@ -235,6 +239,7 @@ describe("CraftProjectDetailPage", () => {
       data: {
         ...project,
         sandbox: {
+          id: "sandbox-1",
           status: "running",
           last_heartbeat: "2026-08-01T00:00:00Z",
           created_at: "2026-08-01T00:00:00Z",
@@ -250,6 +255,77 @@ describe("CraftProjectDetailPage", () => {
     expect(sandbox).toHaveTextContent("Sandbox");
     expect(sandbox).toHaveTextContent("Running");
     expect(sandbox).toHaveTextContent("Ready for chats in this project.");
+    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
+  });
+
+  it("resets the sandbox after confirmation", async () => {
+    const user = setupUser();
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        sandbox: {
+          id: "sandbox-old",
+          status: "running",
+          last_heartbeat: "2026-08-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        },
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    expect(
+      screen.getByRole("dialog", { name: /Reset the sandbox/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Also copy every output file from the old sandbox",
+      })
+    ).not.toBeChecked();
+    expect(mockResetSandbox).not.toHaveBeenCalled();
+
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Reset" })
+    );
+    await waitFor(() =>
+      expect(mockResetSandbox).toHaveBeenCalledWith("proj-tax", false)
+    );
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
+  });
+
+  it("can copy old sandbox outputs when the reset box is checked", async () => {
+    const user = setupUser();
+    mockUseCraftProject.mockReturnValue({
+      data: {
+        ...project,
+        sandbox: {
+          id: "sandbox-old",
+          status: "running",
+          last_heartbeat: "2026-08-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        },
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    });
+    render(<CraftProjectDetailPage projectId="proj-tax" />);
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Also copy every output file from the old sandbox",
+      })
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Reset" })
+    );
+    await waitFor(() =>
+      expect(mockResetSandbox).toHaveBeenCalledWith("proj-tax", true)
+    );
   });
 
   it("hides planned specialist chats and shows a finished job as idle", () => {

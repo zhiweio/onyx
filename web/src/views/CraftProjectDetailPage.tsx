@@ -37,6 +37,7 @@ import {
 } from "@/lib/craft-projects/hooks";
 import {
   deleteCraftProject,
+  resetCraftProjectSandbox,
   startCraftProjectSession,
   updateCraftProject,
 } from "@/lib/craft-projects/api";
@@ -100,6 +101,7 @@ export default function CraftProjectDetailPage({
   const [deleting, setDeleting] = useState(false);
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const [resettingSandbox, setResettingSandbox] = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -171,6 +173,25 @@ export default function CraftProjectDetailPage({
       if (saved) setPendingName(null);
     } finally {
       setRenaming(false);
+    }
+  }
+
+  async function handleResetSandbox(migrateOutputs: boolean) {
+    if (!data) return;
+    setResettingSandbox(true);
+    try {
+      await resetCraftProjectSandbox(data.id, migrateOutputs);
+      await refresh();
+      toast.success(t("toasts.sandboxReset.message"));
+    } catch (resetError) {
+      console.error(resetError);
+      toast.error(
+        resetError instanceof Error
+          ? resetError.message
+          : t("toasts.sandboxResetFailed.message")
+      );
+    } finally {
+      setResettingSandbox(false);
     }
   }
 
@@ -293,7 +314,11 @@ export default function CraftProjectDetailPage({
               onChanged={refresh}
             />
 
-            <CraftProjectSandboxCard sandbox={data.sandbox} />
+            <CraftProjectSandboxCard
+              sandbox={data.sandbox}
+              resetting={resettingSandbox}
+              onReset={handleResetSandbox}
+            />
 
             <Card border="solid" rounding={4} padding={4}>
               <Section

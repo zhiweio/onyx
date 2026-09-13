@@ -157,6 +157,18 @@ export async function deleteCraftProjectFile(
   await handle<void>(response);
 }
 
+export async function resetCraftProjectSandbox(
+  projectId: string,
+  migrateOutputs = false
+): Promise<CraftProject> {
+  const response = await fetch(`${PROJECTS_URL}/${projectId}/sandbox/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ migrate_outputs: migrateOutputs }),
+  });
+  return handle<CraftProject>(response);
+}
+
 export async function startCraftProjectSession(
   projectId: string,
   name?: string

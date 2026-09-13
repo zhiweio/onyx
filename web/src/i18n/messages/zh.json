@@ -13951,7 +13951,18 @@
             "sleeping": "休眠",
             "terminated": "已停止"
           },
-          "title": "沙箱"
+          "title": "沙箱",
+          "reset": {
+            "confirm": {
+              "label": "重置"
+            },
+            "description": "这会启动新的沙箱。此项目的文件和对话会一并迁入。",
+            "label": "重置",
+            "migrateOutputs": {
+              "label": "同时把旧沙箱里的全部输出产物迁入新沙箱"
+            },
+            "title": "重置沙箱？"
+          }
         },
         "newChat": {
           "label": "新对话"
@@ -14088,6 +14099,12 @@
         },
         "renameFailed": {
           "message": "无法重命名此项目。"
+        },
+        "sandboxReset": {
+          "message": "新沙箱正在启动。"
+        },
+        "sandboxResetFailed": {
+          "message": "无法重置沙箱。"
         }
       },
       "rename": {

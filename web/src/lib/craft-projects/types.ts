@@ -45,6 +45,7 @@ export type CraftProjectSandboxStatus =
   | "failed";
 
 export interface CraftProjectSandbox {
+  id: string;
   status: CraftProjectSandboxStatus;
   last_heartbeat: string | null;
   created_at: string;

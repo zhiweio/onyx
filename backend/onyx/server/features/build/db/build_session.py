@@ -194,6 +194,15 @@ def get_user_build_sessions(
     )
 
 
+def list_all_sessions_for_user(
+    user_id: UUID, db_session: Session
+) -> list[BuildSession]:
+    """Every session owned by the user, including specialist / scheduled rows."""
+    return list(
+        db_session.scalars(select(BuildSession).where(BuildSession.user_id == user_id))
+    )
+
+
 def get_empty_session_for_user(
     user_id: UUID,
     db_session: Session,

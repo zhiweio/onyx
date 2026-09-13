@@ -13951,7 +13951,18 @@
             "sleeping": "スリープ",
             "terminated": "停止"
           },
-          "title": "サンドボックス"
+          "title": "サンドボックス",
+          "reset": {
+            "confirm": {
+              "label": "リセット"
+            },
+            "description": "新しいサンドボックスを起動します。このプロジェクトのファイルとチャットは一緒に移します。",
+            "label": "リセット",
+            "migrateOutputs": {
+              "label": "旧サンドボックスの出力ファイルもすべてコピーする"
+            },
+            "title": "サンドボックスをリセットしますか？"
+          }
         },
         "newChat": {
           "label": "新しいチャット"
@@ -14088,6 +14099,12 @@
         },
         "renameFailed": {
           "message": "プロジェクト名を変更できませんでした。"
+        },
+        "sandboxReset": {
+          "message": "新しいサンドボックスを起動しています。"
+        },
+        "sandboxResetFailed": {
+          "message": "サンドボックスをリセットできませんでした。"
         }
       },
       "rename": {

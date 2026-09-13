@@ -8,16 +8,18 @@ import re
 from io import BytesIO
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from onyx.configs.constants import FileOrigin
 from onyx.db.enums import CraftProjectFileSource, SessionOrigin
 from onyx.db.models import (
+    BuildMessage,
     BuildSession,
     CraftProject,
     CraftProjectFile,
+    Snapshot,
     User,
     User__UserGroup,
 )
@@ -482,10 +484,12 @@ def delete_project_file(db_session: Session, row: CraftProjectFile) -> None:
 
 
 def _project_main_session_clause(project_id: UUID) -> ColumnElement[bool]:
-    """User chats only. Specialist / scheduled / Slack rows stay off the list."""
+    """User chats with history. Empty leftovers and specialist rows stay off."""
+    has_messages = exists().where(BuildMessage.session_id == BuildSession.id)
     return and_(
         BuildSession.project_id == project_id,
         BuildSession.origin == SessionOrigin.INTERACTIVE,
+        has_messages,
     )
 
 
@@ -506,6 +510,30 @@ def list_project_sessions(db_session: Session, project_id: UUID) -> list[BuildSe
             select(BuildSession)
             .where(_project_main_session_clause(project_id))
             .order_by(BuildSession.created_at.desc())
+        )
+    )
+
+
+def list_all_sessions_for_project(
+    db_session: Session, project_id: UUID
+) -> list[BuildSession]:
+    """Every session on the project, including specialist / scheduled rows."""
+    return list(
+        db_session.scalars(
+            select(BuildSession).where(BuildSession.project_id == project_id)
+        )
+    )
+
+
+def list_snapshots_for_project(
+    db_session: Session, project_id: UUID
+) -> list[Snapshot]:
+    """Snapshots for every session on the project, including specialist rows."""
+    return list(
+        db_session.scalars(
+            select(Snapshot)
+            .join(BuildSession, BuildSession.id == Snapshot.session_id)
+            .where(BuildSession.project_id == project_id)
         )
     )
 

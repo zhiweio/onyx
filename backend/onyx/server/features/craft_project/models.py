@@ -97,6 +97,7 @@ class CraftProjectSessionResponse(BaseModel):
 
 
 class CraftProjectSandboxResponse(BaseModel):
+    id: UUID
     status: SandboxStatus
     last_heartbeat: datetime | None
     created_at: datetime
@@ -104,6 +105,7 @@ class CraftProjectSandboxResponse(BaseModel):
     @classmethod
     def from_model(cls, sandbox: Sandbox) -> "CraftProjectSandboxResponse":
         return cls(
+            id=sandbox.id,
             status=sandbox.status,
             last_heartbeat=sandbox.last_heartbeat,
             created_at=sandbox.created_at,
@@ -181,3 +183,7 @@ class CraftProjectListResponse(BaseModel):
 class CraftProjectCreateSessionRequest(BaseModel):
     name: str | None = None
     headless: bool = False
+
+
+class CraftProjectSandboxResetRequest(BaseModel):
+    migrate_outputs: bool = False

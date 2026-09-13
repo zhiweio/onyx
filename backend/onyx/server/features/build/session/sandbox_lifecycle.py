@@ -30,14 +30,19 @@ from uuid import UUID
 from redis.lock import Lock as RedisLock
 from sqlalchemy.orm import Session as DBSession
 
+from onyx.db.craft_project import (
+    list_all_sessions_for_project,
+    list_snapshots_for_project,
+)
 from onyx.db.enums import SandboxStatus
-from onyx.db.models import Sandbox, User
+from onyx.db.models import BuildSession, Sandbox, User
 from onyx.db.users import fetch_user_by_id
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.configs import SANDBOX_IDLE_TIMEOUT_SECONDS
 from onyx.server.features.build.db.build_session import (
     clear_nextjs_ports_for_user,
     get_orphan_build_session_ids,
+    list_all_sessions_for_user,
     mark_user_sessions_idle__no_commit,
 )
 from onyx.server.features.build.db.sandbox import (
@@ -45,9 +50,11 @@ from onyx.server.features.build.db.sandbox import (
     begin_recovery_attempt__no_commit,
     create_sandbox__no_commit,
     create_snapshot__no_commit,
+    delete_sandbox__no_commit,
     delete_snapshot__no_commit,
     ensure_sandbox_pat,
     finalize_provisioning_attempt__no_commit,
+    get_latest_snapshot_for_session,
     get_sandbox_by_id,
     get_sandbox_by_user_id,
     get_sandbox_user_map,
@@ -1063,3 +1070,277 @@ def refresh_mcp_config_hashes_for_users(
             "Failed to refresh MCP config hashes for users %s", user_ids, exc_info=True
         )
         db_session.rollback()
+
+
+def _delete_snapshot_blobs(storage_paths: list[str]) -> None:
+    if not storage_paths:
+        return
+    snapshot_manager = SnapshotManager(get_default_file_store())
+    for storage_path in storage_paths:
+        try:
+            snapshot_manager.delete_snapshot(storage_path)
+        except Exception:
+            logger.warning(
+                "Failed to delete snapshot blob %s during sandbox reset",
+                storage_path,
+                exc_info=True,
+            )
+
+
+def _capture_opencode_history(
+    sandbox_manager: SandboxManager, sandbox_id: UUID, tenant_id: str
+) -> None:
+    if not sandbox_manager.supports_opencode_history_persistence:
+        return
+    try:
+        sandbox_manager.create_opencode_history_snapshot(sandbox_id, tenant_id)
+    except Exception:
+        logger.warning(
+            "Failed to snapshot opencode history for sandbox %s during reset",
+            sandbox_id,
+            exc_info=True,
+        )
+
+
+def _snapshot_sessions_best_effort(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    sandbox_id: UUID,
+    session_ids: list[UUID],
+    tenant_id: str,
+) -> None:
+    for session_id in session_ids:
+        try:
+            create_session_snapshot_keep_latest(
+                sandbox_manager, db_session, sandbox_id, session_id, tenant_id
+            )
+        except Exception:
+            logger.warning(
+                "Failed to snapshot session %s during sandbox reset",
+                session_id,
+                exc_info=True,
+            )
+
+
+def _move_opencode_history(tenant_id: str, old_id: UUID, new_id: UUID) -> None:
+    snapshot_manager = SnapshotManager(get_default_file_store())
+    try:
+        snapshot_manager.copy_opencode_history_snapshot(
+            tenant_id, str(old_id), str(new_id)
+        )
+        snapshot_manager.delete_opencode_history_snapshot(tenant_id, str(old_id))
+    except Exception:
+        logger.warning(
+            "Failed to move opencode history from sandbox %s to %s",
+            old_id,
+            new_id,
+            exc_info=True,
+        )
+
+
+def _hydrate_reset_workspaces(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    sandbox: Sandbox,
+    user: User,
+    project_id: UUID,
+    *,
+    migrate_outputs: bool,
+) -> None:
+    """Write this project's files and chats into the new sandbox.
+
+    When ``migrate_outputs`` is set, restore every session workspace the user
+    had on the old sandbox. Otherwise only this project's chats get a fresh
+    workspace plus remounted project files.
+    """
+    from onyx.db.external_app import get_connectable_apps_for_user
+    from onyx.server.features.build.sandbox.util.agent_instructions import (
+        build_connectable_apps_list,
+    )
+    from onyx.server.features.build.session.artifact_persist import (
+        restore_archived_files_to_session,
+    )
+    from onyx.server.features.build.session.manager import (
+        SessionManager,
+        _share_workspace_from_session,
+    )
+    from onyx.server.features.craft_project.runtime import write_project_to_session
+
+    session_manager = SessionManager(db_session)
+    try:
+        llm_config = session_manager.build_llm_configs(user)
+    except Exception:
+        logger.warning(
+            "Skipping workspace migrate after sandbox reset; no LLM config",
+            exc_info=True,
+        )
+        return
+
+    sessions: list[BuildSession] = (
+        list_all_sessions_for_user(user.id, db_session)
+        if migrate_outputs
+        else list_all_sessions_for_project(db_session, project_id)
+    )
+    plans = [(row.id, row.nextjs_port, row.project_id) for row in sessions]
+    connectable_apps_section = build_connectable_apps_list(
+        get_connectable_apps_for_user(db_session, user)
+    )
+    mcp_servers = resolve_craft_mcp_servers(db_session, user)
+    db_session.commit()
+
+    for session_id, nextjs_port, session_project_id in plans:
+        snapshot = (
+            get_latest_snapshot_for_session(db_session, session_id)
+            if migrate_outputs
+            else None
+        )
+        share_workspace_from = _share_workspace_from_session(db_session, session_id)
+        db_session.commit()
+        try:
+            if snapshot is not None:
+                sandbox_manager.restore_snapshot(
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    snapshot_storage_path=snapshot.storage_path,
+                    nextjs_port=nextjs_port,
+                    llm_config=llm_config,
+                    connectable_apps_section=connectable_apps_section,
+                    mcp_servers=mcp_servers,
+                )
+            else:
+                sandbox_manager.setup_session_workspace(
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                    llm_config=llm_config,
+                    nextjs_port=nextjs_port,
+                    connectable_apps_section=connectable_apps_section,
+                    mcp_servers=mcp_servers,
+                    share_workspace_from=share_workspace_from,
+                )
+            if session_project_id is not None:
+                write_project_to_session(
+                    db_session,
+                    sandbox_manager,
+                    sandbox.id,
+                    session_id,
+                    session_project_id,
+                    user,
+                )
+            if migrate_outputs:
+                restore_archived_files_to_session(
+                    db_session,
+                    sandbox_manager,
+                    sandbox_id=sandbox.id,
+                    session_id=session_id,
+                )
+        except Exception:
+            logger.warning(
+                "Failed to migrate workspace for session %s after sandbox reset",
+                session_id,
+                exc_info=True,
+            )
+
+
+def reset_user_sandbox(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    user: User,
+    *,
+    project_id: UUID,
+    migrate_outputs: bool = False,
+) -> Sandbox:
+    """Destroy the user's current sandbox and provision a new one.
+
+    This project's files and chats move into the new sandbox. Output
+    archives stay behind unless ``migrate_outputs`` is set. The new row
+    uses a new sandbox id.
+
+    ``db_session`` must be at a clean transaction boundary.
+    """
+    from onyx.server.features.build.session.locks import session_creation_lock
+
+    started_at = time.monotonic()
+    outcome = SandboxReadyOutcome.CREATED
+    with session_creation_lock(user.id):
+        try:
+            db_session.rollback()
+            old = get_sandbox_by_user_id(db_session, user.id)
+            old_id = old.id if old is not None else None
+            old_running = old is not None and old.status == SandboxStatus.RUNNING
+            tenant_id = get_current_tenant_id()
+
+            if old_running and old_id is not None:
+                _capture_opencode_history(sandbox_manager, old_id, tenant_id)
+                if migrate_outputs:
+                    session_ids = [
+                        row.id for row in list_all_sessions_for_user(user.id, db_session)
+                    ]
+                    db_session.commit()
+                    _snapshot_sessions_best_effort(
+                        db_session, sandbox_manager, old_id, session_ids, tenant_id
+                    )
+
+            if not migrate_outputs:
+                storage_paths = [
+                    row.storage_path
+                    for row in list_snapshots_for_project(db_session, project_id)
+                ]
+                db_session.rollback()
+                _delete_snapshot_blobs(storage_paths)
+            else:
+                db_session.rollback()
+
+            locked_user = fetch_user_by_id(db_session, user.id, for_update=True)
+            if locked_user is None:
+                raise ValueError(f"User {user.id} not found")
+
+            if not migrate_outputs:
+                for snapshot in list_snapshots_for_project(db_session, project_id):
+                    delete_snapshot__no_commit(db_session, snapshot)
+
+            old = get_sandbox_by_user_id(db_session, locked_user.id)
+            if old is not None:
+                delete_sandbox__no_commit(db_session, old)
+
+            sandbox = create_sandbox__no_commit(db_session, locked_user.id)
+            attempt_number = begin_provisioning_attempt__no_commit(db_session, sandbox)
+            onyx_pat = ensure_sandbox_pat(db_session, sandbox, locked_user)
+            reservation = SandboxReservation(
+                sandbox_id=sandbox.id,
+                tenant_id=tenant_id,
+                attempt_number=attempt_number,
+                onyx_pat=onyx_pat,
+                requires_provisioning=True,
+                sandbox_preexisted=False,
+                terminate_before_provision=False,
+            )
+            db_session.commit()
+
+            if old_id is not None:
+                _move_opencode_history(tenant_id, old_id, sandbox.id)
+                try:
+                    sandbox_manager.terminate(old_id)
+                except Exception:
+                    logger.warning(
+                        "Best-effort terminate of old sandbox %s failed; continuing",
+                        old_id,
+                        exc_info=True,
+                    )
+
+            sandbox, outcome = reconcile_sandbox(
+                db_session, sandbox_manager, reservation, locked_user
+            )
+            _hydrate_reset_workspaces(
+                db_session,
+                sandbox_manager,
+                sandbox,
+                locked_user,
+                project_id,
+                migrate_outputs=migrate_outputs,
+            )
+            return sandbox
+        except BaseException:
+            db_session.rollback()
+            raise
+        finally:
+            observe_sandbox_ready(outcome, time.monotonic() - started_at)

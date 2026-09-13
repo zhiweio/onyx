@@ -155,6 +155,13 @@ export function makeLaneTaskStreamItem(args: {
   };
 }
 
+export function dropLaneTaskCards(items: StreamItem[]): StreamItem[] {
+  return items.filter((item) => {
+    if (item.type !== "tool_call") return true;
+    return laneTaskNodeIdFromToolId(item.toolCall.id) == null;
+  });
+}
+
 export function settleOpenLaneTaskCards(
   items: StreamItem[],
   status: Extract<ToolCallState["status"], "failed" | "cancelled">

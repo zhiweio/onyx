@@ -110,6 +110,7 @@ from onyx.server.features.build.session.naming import generate_session_name
 from onyx.server.features.build.session.sandbox_lifecycle import (
     ProvisioningPolicy,
     ensure_sandbox_ready,
+    reset_user_sandbox,
     sync_managed_content,
 )
 from onyx.server.features.build.session.streaming import BuildStreamingState
@@ -530,6 +531,25 @@ class SessionManager:
             provisioning_wait_seconds=provisioning_wait_seconds,
         )
         return sandbox
+
+    def reset_sandbox(
+        self,
+        user_id: UUID,
+        *,
+        project_id: UUID,
+        migrate_outputs: bool = False,
+    ) -> Sandbox:
+        """Destroy the user's sandbox and provision a new one for this project."""
+        user = fetch_user_by_id(self._db_session, user_id)
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+        return reset_user_sandbox(
+            self._db_session,
+            self._sandbox_manager,
+            user,
+            project_id=project_id,
+            migrate_outputs=migrate_outputs,
+        )
 
     def _ready_sandbox(self, user: User) -> tuple[Sandbox, SandboxReadyOutcome]:
         """Ensure the user's sandbox is RUNNING with current managed content.

@@ -90,6 +90,12 @@ def get_sandbox_by_user_id(db_session: Session, user_id: UUID) -> Sandbox | None
     return db_session.execute(stmt).scalar_one_or_none()
 
 
+def delete_sandbox__no_commit(db_session: Session, sandbox: Sandbox) -> None:
+    """Remove the sandbox row. Caller owns the transaction boundary."""
+    db_session.delete(sandbox)
+    db_session.flush()
+
+
 def begin_provisioning_attempt__no_commit(
     db_session: Session,
     sandbox: Sandbox,

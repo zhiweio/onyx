@@ -65,6 +65,21 @@ function renderList(props: {
   );
 }
 
+const settledTaskItem: StreamItem = {
+  type: "tool_call",
+  id: "task-1",
+  toolCall: {
+    id: "task-1",
+    kind: "task",
+    toolName: "task",
+    title: "Researcher",
+    description: "Researcher",
+    command: "",
+    status: "completed",
+    rawOutput: "",
+  },
+};
+
 const savedAssistantMessage: BuildMessage = {
   id: "assistant-1",
   type: "assistant",
@@ -194,6 +209,24 @@ describe("BuildMessageList thinking visibility", () => {
     expect(screen.getAllByText("Checking the app structure.").length).toBeGreaterThan(
       1
     );
+  });
+
+  it("does not show planning next after a settled task when idle", () => {
+    renderList({
+      isStreaming: false,
+      streamItems: [settledTaskItem],
+    });
+    expect(screen.getByRole("button", { name: /Ran task/ })).toBeInTheDocument();
+    expect(screen.queryByText("Planning next moves")).not.toBeInTheDocument();
+  });
+
+  it("shows planning next after a settled task only while live", () => {
+    renderList({
+      isStreaming: true,
+      streamItems: [settledTaskItem],
+    });
+    expect(screen.getByRole("button", { name: /Ran task/ })).toBeInTheDocument();
+    expect(screen.getByText("Planning next moves")).toBeInTheDocument();
   });
 
   it("shows stream error packets inline", () => {

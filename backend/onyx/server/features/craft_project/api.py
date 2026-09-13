@@ -1,7 +1,7 @@
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -31,6 +31,11 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.server.features.build.api import require_onyx_craft_enabled
 from onyx.server.features.build.db.sandbox import get_sandbox_by_user_id
+from onyx.server.features.build.session.errors import (
+    SandboxProvisioningError,
+    SandboxProvisioningInProgressError,
+)
+from onyx.server.features.build.session.locks import SessionCreationLockAcquisitionError
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.features.build.session.models import (
     DetailedSessionResponse,
@@ -42,6 +47,7 @@ from onyx.server.features.craft_project.models import (
     CraftProjectListResponse,
     CraftProjectPatchRequest,
     CraftProjectResponse,
+    CraftProjectSandboxResetRequest,
     CraftProjectUpsertRequest,
 )
 from onyx.server.features.craft_project.session_status import (
@@ -280,6 +286,41 @@ def delete_craft_project_file_endpoint(
     row = get_project_file(db_session, project.id, file_id)
     delete_project_file(db_session, row)
     return Response(status_code=204)
+
+
+@router.post("/{project_id}/sandbox/reset")
+def reset_craft_project_sandbox(
+    project_id: UUID,
+    request: CraftProjectSandboxResetRequest = Body(
+        default=CraftProjectSandboxResetRequest()
+    ),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> CraftProjectResponse:
+    project = require_project_write_for_user(db_session, project_id, user)
+    session_manager = SessionManager(db_session)
+    try:
+        session_manager.reset_sandbox(
+            user.id,
+            project_id=project.id,
+            migrate_outputs=request.migrate_outputs,
+        )
+    except SessionCreationLockAcquisitionError as exc:
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT,
+            "Sandbox is already starting. Try again shortly.",
+        ) from exc
+    except SandboxProvisioningInProgressError as exc:
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT,
+            "Sandbox is already starting. Try again shortly.",
+        ) from exc
+    except SandboxProvisioningError as exc:
+        raise OnyxError(
+            OnyxErrorCode.SERVICE_UNAVAILABLE,
+            "Could not start a new sandbox.",
+        ) from exc
+    return _detail(db_session, project, user)
 
 
 @router.post("/{project_id}/sessions")

@@ -13951,7 +13951,18 @@
             "sleeping": "En reposo",
             "terminated": "Detenido"
           },
-          "title": "Sandbox"
+          "title": "Sandbox",
+          "reset": {
+            "confirm": {
+              "label": "Restablecer"
+            },
+            "description": "Esto inicia un sandbox nuevo. Los archivos y chats de este proyecto se mueven con él.",
+            "label": "Restablecer",
+            "migrateOutputs": {
+              "label": "Copiar también todos los archivos de salida del sandbox anterior"
+            },
+            "title": "¿Restablecer el sandbox?"
+          }
         },
         "newChat": {
           "label": "Nuevo chat"
@@ -14088,6 +14099,12 @@
         },
         "renameFailed": {
           "message": "No se pudo cambiar el nombre de este proyecto."
+        },
+        "sandboxReset": {
+          "message": "El sandbox nuevo se está iniciando."
+        },
+        "sandboxResetFailed": {
+          "message": "No se pudo restablecer el sandbox."
         }
       },
       "rename": {

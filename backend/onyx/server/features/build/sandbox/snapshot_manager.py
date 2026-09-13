@@ -207,6 +207,54 @@ class SnapshotManager:
         storage_path = self.opencode_history_storage_path(tenant_id, sandbox_id)
         self._file_store.delete_file(storage_path, error_on_missing=False)
 
+    def copy_opencode_history_snapshot(
+        self,
+        tenant_id: str,
+        source_sandbox_id: str,
+        dest_sandbox_id: str,
+    ) -> bool:
+        """Copy durable opencode history to a new sandbox id.
+
+        Returns False when the source archive is missing. A same-id copy
+        is a no-op success when the archive already exists.
+        """
+        if source_sandbox_id == dest_sandbox_id:
+            return self.has_opencode_history_snapshot(tenant_id, source_sandbox_id)
+        if not self.has_opencode_history_snapshot(tenant_id, source_sandbox_id):
+            return False
+
+        source_path = self.opencode_history_storage_path(tenant_id, source_sandbox_id)
+        dest_path = self.opencode_history_storage_path(tenant_id, dest_sandbox_id)
+        file_io = None
+        try:
+            file_io = self._file_store.read_file(source_path, use_tempfile=True)
+            self._persist_archive_to_file_store(
+                stream=file_io,
+                storage_path=dest_path,
+                display_name=f"sandbox-opencode-history-{dest_sandbox_id}.tar.gz",
+                metadata={
+                    "sandbox_id": dest_sandbox_id,
+                    "tenant_id": tenant_id,
+                    "snapshot_kind": "opencode_history",
+                },
+                reject_empty=True,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to copy opencode history from sandbox %s to %s: %s",
+                source_sandbox_id,
+                dest_sandbox_id,
+                e,
+            )
+            raise RuntimeError(f"Failed to copy opencode history snapshot: {e}") from e
+        finally:
+            try:
+                if file_io:
+                    file_io.close()
+            except Exception:
+                pass
+        return True
+
     def restore_snapshot_to_stream(
         self,
         storage_path: str,

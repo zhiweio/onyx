@@ -1,5 +1,6 @@
 import {
   childSessionIdForTask,
+  dropLaneTaskCards,
   filenameFromLaneLabel,
   isGenericRoleLabel,
   lastUserMessageIndex,
@@ -236,6 +237,44 @@ describe("lane task labels", () => {
     expect(pinned[0]?.type === "tool_call" && pinned[0].toolCall.status).toBe(
       "cancelled"
     );
+  });
+
+  it("drops finished lane cards from the live stream", () => {
+    const kept = dropLaneTaskCards([
+      {
+        type: "thinking",
+        id: "th1",
+        content: "next",
+        isStreaming: false,
+      },
+      {
+        type: "tool_call",
+        id: "lane-task-lane:researcher",
+        toolCall: {
+          id: "lane-task-lane:researcher",
+          kind: "task",
+          title: "Researcher",
+          description: "Researcher",
+          command: "",
+          status: "completed",
+          rawOutput: "",
+        },
+      },
+      {
+        type: "tool_call",
+        id: "bash-1",
+        toolCall: {
+          id: "bash-1",
+          kind: "execute",
+          title: "Running command",
+          description: "ls",
+          command: "ls",
+          status: "completed",
+          rawOutput: "",
+        },
+      },
+    ]);
+    expect(kept.map((item) => item.id)).toEqual(["th1", "bash-1"]);
   });
 
   it("finds the last visible user message", () => {

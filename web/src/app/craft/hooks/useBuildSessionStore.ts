@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { mutate } from "swr";
 
 import {
   ApiSessionResponse,
@@ -32,6 +33,7 @@ import {
 } from "@/app/craft/types/displayTypes";
 
 import { MAX_QUEUED_MESSAGES } from "@/app/app/interfaces";
+import { SWR_KEYS } from "@/lib/swr-keys";
 import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 
 import {
@@ -64,6 +66,7 @@ import {
   specialistUiStatus,
 } from "@/app/craft/utils/subagentActivity";
 import {
+  dropLaneTaskCards,
   isGenericRoleLabel,
   jobStatusIsLive,
   laneTaskCardLabel,
@@ -1918,7 +1921,17 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   },
 
   deleteBuildSession: async (sessionId: string) => {
-    const { currentSessionId, abortSession, refreshSessionHistory } = get();
+    const {
+      currentSessionId,
+      abortSession,
+      refreshSessionHistory,
+      sessions,
+      sessionHistory,
+    } = get();
+    const projectId =
+      sessions.get(sessionId)?.projectId ??
+      sessionHistory.find((item) => item.id === sessionId)?.projectId ??
+      null;
 
     try {
       abortSession(sessionId);
@@ -1939,6 +1952,10 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       });
 
       void refreshSessionHistory();
+      void mutate(SWR_KEYS.craftProjects);
+      if (projectId) {
+        void mutate(SWR_KEYS.craftProject(projectId));
+      }
     } catch (err) {
       console.error("Failed to delete session:", err);
       throw err;
@@ -2857,7 +2874,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
               Array.isArray(items) && cardHasSession(items as StreamItem[])
             );
           });
-        if (!hasCard) {
+        if (!hasCard && jobStatusIsLive(jobStatus)) {
           streamItems = [
             ...streamItems,
             makeLaneTaskStreamItem({
@@ -2927,6 +2944,14 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
             completedAt: entry.completedAt ?? Date.now(),
           });
         }
+      }
+
+      if (
+        jobStatus === "succeeded" ||
+        jobStatus === "cancelled" ||
+        jobStatus === "failed"
+      ) {
+        streamItems = dropLaneTaskCards(streamItems);
       }
 
       const newSessions = new Map(state.sessions);

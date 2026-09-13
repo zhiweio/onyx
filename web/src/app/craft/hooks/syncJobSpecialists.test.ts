@@ -299,6 +299,60 @@ describe("syncJobSpecialists and hydrateSubagentFromMessages", () => {
     expect(session?.subagents.get(newChild)?.status).toBe("running");
   });
 
+  it("does not put finished lane cards on the live stream", () => {
+    useBuildSessionStore.getState().createSession(PARENT, {
+      status: "active",
+      isLoaded: true,
+      streamItems: [
+        {
+          type: "tool_call",
+          id: "lane-task-lane:researcher",
+          toolCall: {
+            id: "lane-task-lane:researcher",
+            kind: "task",
+            title: "Researcher",
+            description: "Researcher",
+            command: "",
+            status: "completed",
+            rawOutput: "",
+            subagentSessionId: CHILD,
+          },
+        },
+      ],
+      messages: [
+        {
+          id: "u1",
+          type: "user",
+          content: "go",
+          timestamp: new Date(),
+        },
+        {
+          id: "a1",
+          type: "assistant",
+          content: "done",
+          timestamp: new Date(),
+        },
+      ],
+    });
+    useBuildSessionStore.getState().syncJobSpecialists(
+      PARENT,
+      [
+        {
+          id: "spec-1",
+          session_id: CHILD,
+          role: "researcher",
+          status: "succeeded",
+          node_id: "lane:researcher",
+          last_activity: "Done",
+        },
+      ],
+      "cancelled"
+    );
+    expect(
+      useBuildSessionStore.getState().sessions.get(PARENT)?.streamItems
+    ).toEqual([]);
+  });
+
   it("hydrates a lane transcript from specialist messages", () => {
     useBuildSessionStore.getState().createSession(PARENT, {
       status: "active",
