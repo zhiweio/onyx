@@ -14,7 +14,6 @@ import { useTranslations } from "next-intl";
 import {
   uploadFile as uploadFileApi,
   deleteFile as deleteFileApi,
-  fetchDirectoryListing,
 } from "@/app/craft/services/apiServices";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 
@@ -211,11 +210,13 @@ function classifyError(
  * UploadFilesContext - Centralized file upload state management
  *
  * This context manages:
- * - File attachment state (current files attached to input)
- * - Active session binding (which session files are associated with)
- * - Automatic upload of pending files when session becomes available
- * - Automatic fetch of existing attachments when session changes
+ * - Draft file chips on the input bar (next message only)
+ * - Active session binding (which session uploads go to)
+ * - Automatic upload of pending files when a session becomes available
  * - File upload, removal, and clearing operations
+ *
+ * Sandbox `attachments/` is not a source of truth for the input bar. Sent
+ * files stay in the sandbox for the agent; they must not reappear as chips.
  *
  * Components should:
  * - Call `setActiveSession(sessionId)` when session changes
@@ -232,8 +233,7 @@ interface UploadFilesContextValue {
 
   /**
    * Set the active session ID. This triggers:
-   * - Fetching existing attachments from the new session (if different)
-   * - Clearing files if navigating to no session
+   * - Dropping completed draft chips when switching to a different session
    * - Auto-uploading any pending files
    *
    * Call this when:
@@ -257,10 +257,8 @@ interface UploadFilesContextValue {
 
   /**
    * Clear all attached files from the input bar.
-   * Does NOT delete from sandbox (use for form reset).
-   * @param options.suppressRefetch - When true, skips the refetch that would
-   *   normally restore session attachments (e.g. when user hits Enter to dismiss
-   *   a file from the input bar).
+   * Does NOT delete from sandbox (use for form reset after send).
+   * @param options.suppressRefetch - Unused. Kept so existing callers compile.
    */
   clearFiles: (options?: { suppressRefetch?: boolean }) => void;
 
@@ -299,12 +297,7 @@ export function UploadFilesProvider({ children }: UploadFilesProviderProps) {
   // =========================================================================
 
   const isUploadingPendingRef = useRef(false);
-  const fetchingSessionRef = useRef<string | null>(null);
   const prevSessionRef = useRef<string | null>(null);
-  // Track active deletions to prevent refetch race condition
-  const activeDeletionsRef = useRef<Set<string>>(new Set());
-  // When true, skip the refetch that runs after clearFiles (e.g. Enter to dismiss file)
-  const suppressRefetchRef = useRef(false);
 
   // =========================================================================
   // Derived state
@@ -408,92 +401,6 @@ export function UploadFilesProvider({ children }: UploadFilesProviderProps) {
     [triggerFilesRefresh, t]
   );
 
-  /**
-   * Fetch existing attachments from the backend.
-   * Internal function - called automatically by effects.
-   */
-  const fetchExistingAttachmentsInternal = useCallback(
-    async (sessionId: string, replace: boolean): Promise<void> => {
-      // Request deduplication
-      if (fetchingSessionRef.current === sessionId) return;
-
-      fetchingSessionRef.current = sessionId;
-
-      try {
-        const listing = await fetchDirectoryListing(sessionId, "attachments");
-
-        // Use deterministic IDs based on session and path for stable React keys
-        const attachments: BuildFile[] = listing.entries
-          .filter((entry) => !entry.is_directory)
-          .map((entry) => ({
-            id: `existing_${sessionId}_${entry.path}`,
-            name: entry.name,
-            status: UploadFileStatus.COMPLETED,
-            file_type: entry.mime_type || "application/octet-stream",
-            size: entry.size || 0,
-            created_at: new Date().toISOString(),
-            path: entry.path,
-          }));
-
-        if (replace) {
-          // When replacing, preserve any files that are still being processed locally
-          // (uploading, pending, or recently completed uploads that might not be in
-          // backend listing yet due to race conditions)
-          setCurrentMessageFiles((prev) => {
-            // Keep files that are still in-flight or don't have a path yet
-            const localOnlyFiles = prev.filter(
-              (f) =>
-                f.status === UploadFileStatus.UPLOADING ||
-                f.status === UploadFileStatus.PENDING ||
-                f.status === UploadFileStatus.PROCESSING ||
-                // Keep recently uploaded files (have temp ID, not fetched from backend)
-                f.id.startsWith("temp_")
-            );
-
-            // Merge: backend attachments + local-only files (avoiding duplicates by path)
-            const backendPaths = new Set(attachments.map((f) => f.path));
-            const nonDuplicateLocalFiles = localOnlyFiles.filter(
-              (f) => !f.path || !backendPaths.has(f.path)
-            );
-
-            return [...attachments, ...nonDuplicateLocalFiles];
-          });
-        } else if (attachments.length > 0) {
-          setCurrentMessageFiles((prev) => {
-            const existingPaths = new Set(prev.map((f) => f.path));
-            const newFiles = attachments.filter(
-              (f) => !existingPaths.has(f.path)
-            );
-            return [...prev, ...newFiles];
-          });
-        }
-      } catch (error) {
-        const { type } = classifyError(error, t);
-        if (type !== UploadErrorType.NOT_FOUND) {
-          console.error(
-            "[UploadFilesContext] fetchExistingAttachments error:",
-            error
-          );
-        }
-        if (replace) {
-          // On error, only clear files that aren't being processed locally
-          setCurrentMessageFiles((prev) =>
-            prev.filter(
-              (f) =>
-                f.status === UploadFileStatus.UPLOADING ||
-                f.status === UploadFileStatus.PENDING ||
-                f.status === UploadFileStatus.PROCESSING ||
-                f.id.startsWith("temp_")
-            )
-          );
-        }
-      } finally {
-        fetchingSessionRef.current = null;
-      }
-    },
-    [t]
-  );
-
   // =========================================================================
   // Effects - Automatic state machine transitions
   // =========================================================================
@@ -501,29 +408,37 @@ export function UploadFilesProvider({ children }: UploadFilesProviderProps) {
   /**
    * Effect: Handle session changes
    *
-   * When activeSessionId changes:
-   * - If changed to a DIFFERENT non-null session: fetch attachments (replace mode)
-   * - If changed to null: do nothing (don't clear - session might be temporarily null during revalidation)
+   * When activeSessionId changes to a different non-null session:
+   * - First bind (prev is null): keep local drafts so welcome-page attaches
+   *   survive pre-provision bind
+   * - Later switch: drop completed chips from the previous session
    *
-   * This prevents unnecessary fetches/clears when the focus handler temporarily
-   * resets the pre-provisioned session state.
+   * When session becomes null, do not clear files or update the ref.
+   * Pre-provisioning can reset to null on focus; drafts must survive that.
    */
   useEffect(() => {
     const prevSession = prevSessionRef.current;
     const currentSession = activeSessionId;
 
-    // Only update ref when we have a non-null session (ignore temporary nulls)
-    if (currentSession) {
-      // Session changed to a different non-null value
-      if (currentSession !== prevSession) {
-        prevSessionRef.current = currentSession;
-        fetchExistingAttachmentsInternal(currentSession, true);
-      }
+    if (!currentSession || currentSession === prevSession) {
+      return;
     }
-    // When session becomes null, don't clear files or update ref.
-    // This handles the case where pre-provisioning temporarily resets on focus.
-    // Files will be cleared when user actually navigates away or logs out.
-  }, [activeSessionId, fetchExistingAttachmentsInternal]);
+
+    prevSessionRef.current = currentSession;
+
+    if (prevSession === null) {
+      return;
+    }
+
+    setCurrentMessageFiles((prev) =>
+      prev.filter(
+        (file) =>
+          file.status === UploadFileStatus.UPLOADING ||
+          file.status === UploadFileStatus.PENDING ||
+          file.status === UploadFileStatus.PROCESSING
+      )
+    );
+  }, [activeSessionId]);
 
   /**
    * Effect: Auto-upload pending files when session becomes available
@@ -536,56 +451,12 @@ export function UploadFilesProvider({ children }: UploadFilesProviderProps) {
     }
   }, [activeSessionId, hasPendingFiles, uploadPendingFilesInternal]);
 
-  /**
-   * Effect: Refetch attachments after files are cleared
-   *
-   * When files are cleared (e.g., after sending a message) but we're still
-   * on the same session, refetch to restore any backend attachments.
-   *
-   * IMPORTANT: Skip refetch if files went to 0 due to active deletions.
-   * This prevents a race condition where refetch returns the file before
-   * backend deletion completes, causing the file pill to persist.
-   */
-  const prevFilesLengthRef = useRef(currentMessageFiles.length);
-  useEffect(() => {
-    const prevLength = prevFilesLengthRef.current;
-    const currentLength = currentMessageFiles.length;
-    prevFilesLengthRef.current = currentLength;
-
-    // Files were just cleared (went from >0 to 0)
-    const filesWereCleared = prevLength > 0 && currentLength === 0;
-
-    // Skip refetch if there are active deletions in progress
-    // This prevents the deleted file from being re-added before backend deletion completes
-    const hasActiveDeletions = activeDeletionsRef.current.size > 0;
-    // Skip refetch if caller explicitly suppressed (e.g. user hit Enter to dismiss file)
-    const shouldSuppressRefetch = suppressRefetchRef.current;
-    if (shouldSuppressRefetch) {
-      suppressRefetchRef.current = false;
-    }
-
-    // Refetch if on same session and files were cleared (not deleted)
-    if (
-      filesWereCleared &&
-      activeSessionId &&
-      prevSessionRef.current === activeSessionId &&
-      !hasActiveDeletions &&
-      !shouldSuppressRefetch
-    ) {
-      fetchExistingAttachmentsInternal(activeSessionId, false);
-    }
-  }, [
-    currentMessageFiles.length,
-    activeSessionId,
-    fetchExistingAttachmentsInternal,
-  ]);
-
   // =========================================================================
   // Public API
   // =========================================================================
 
   /**
-   * Set the active session. Triggers fetching/clearing as needed.
+   * Set the active session. Drops completed draft chips on a real session switch.
    */
   const setActiveSession = useCallback((sessionId: string | null) => {
     setActiveSessionId(sessionId);
@@ -714,75 +585,59 @@ export function UploadFilesProvider({ children }: UploadFilesProviderProps) {
    */
   const removeFile = useCallback(
     (fileId: string) => {
-      // Track this deletion to prevent refetch race condition
-      activeDeletionsRef.current.add(fileId);
-
       const currentFiles = currentMessageFilesRef.current;
       const removedIndex = currentFiles.findIndex((f) => f.id === fileId);
       if (removedIndex === -1) {
-        activeDeletionsRef.current.delete(fileId);
         return;
       }
 
       const removedFile = currentFiles[removedIndex];
       if (!removedFile) {
-        activeDeletionsRef.current.delete(fileId);
         return;
       }
 
-      // Functional update keeps concurrent same-batch changes. The ref syncs
-      // from state in its own effect.
       setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
 
-      // After state update, trigger backend deletion if needed
-      // Use setTimeout to ensure state update has completed
-      setTimeout(() => {
-        if (removedFile?.path && activeSessionId) {
-          const filePath = removedFile.path;
-          const fileToRestore = removedFile;
-          const indexToRestore = removedIndex;
+      if (!removedFile.path || !activeSessionId) {
+        return;
+      }
 
-          deleteFileApi(activeSessionId, filePath)
-            .then(() => {
-              // Deletion succeeded - remove from active deletions
-              activeDeletionsRef.current.delete(fileId);
-              // Refresh file explorer
-              triggerFilesRefresh(activeSessionId);
-            })
-            .catch((error) => {
-              console.error(
-                "[UploadFilesContext] Failed to delete file from sandbox:",
-                error
-              );
-              // Remove from active deletions
-              activeDeletionsRef.current.delete(fileId);
-              // Rollback: restore the file at its original position
-              setCurrentMessageFiles((prev) => {
-                // Check if file was already re-added (e.g., by another operation)
-                if (prev.some((f) => f.id === fileToRestore.id)) return prev;
+      const filePath = removedFile.path;
+      const sessionId = activeSessionId;
+      const fileToRestore = removedFile;
+      const indexToRestore = removedIndex;
 
-                const newFiles = [...prev];
-                const insertIndex = Math.min(indexToRestore, newFiles.length);
-                newFiles.splice(insertIndex, 0, fileToRestore);
-                return newFiles;
-              });
-            });
-        } else {
-          // No backend deletion needed - remove from active deletions immediately
-          activeDeletionsRef.current.delete(fileId);
-        }
-      }, 0);
+      void deleteFileApi(sessionId, filePath)
+        .then(() => {
+          triggerFilesRefresh(sessionId);
+        })
+        .catch((error) => {
+          const { type } = classifyError(error, t);
+          if (type === UploadErrorType.NOT_FOUND) {
+            triggerFilesRefresh(sessionId);
+            return;
+          }
+          console.error(
+            "[UploadFilesContext] Failed to delete file from sandbox:",
+            error
+          );
+          setCurrentMessageFiles((prev) => {
+            if (prev.some((f) => f.id === fileToRestore.id)) return prev;
+
+            const newFiles = [...prev];
+            const insertIndex = Math.min(indexToRestore, newFiles.length);
+            newFiles.splice(insertIndex, 0, fileToRestore);
+            return newFiles;
+          });
+        });
     },
-    [activeSessionId, triggerFilesRefresh]
+    [activeSessionId, triggerFilesRefresh, t]
   );
 
   /**
    * Clear all files from the input bar.
    */
-  const clearFiles = useCallback((options?: { suppressRefetch?: boolean }) => {
-    if (options?.suppressRefetch) {
-      suppressRefetchRef.current = true;
-    }
+  const clearFiles = useCallback((_options?: { suppressRefetch?: boolean }) => {
     setCurrentMessageFiles([]);
   }, []);
 
