@@ -243,6 +243,14 @@ def test_local_image_is_embedded_when_loader_returns_bytes() -> None:
         p.text for p in doc.paragraphs if p.style and p.style.name == "Image Caption"
     ]
     assert captions == ["timeline"]
+    picture_paras = [
+        paragraph
+        for paragraph in doc.paragraphs
+        if paragraph._p.find(f".//{qn('w:drawing')}") is not None
+    ]
+    assert picture_paras
+    for paragraph in picture_paras:
+        assert paragraph.paragraph_format.line_spacing_rule != WD_LINE_SPACING.EXACTLY
 
 
 def test_fenced_code_block_is_monospace() -> None:

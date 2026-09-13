@@ -772,6 +772,8 @@ def _embed_picture(paragraph: Paragraph, node: Node) -> bool:
         )
     except Exception:
         return False
+    # Body styles use exact leading. That clips a drawing to one text row.
+    paragraph.paragraph_format.line_spacing = 1.0
     return True
 
 
