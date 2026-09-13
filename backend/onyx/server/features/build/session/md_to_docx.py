@@ -46,22 +46,17 @@ from onyx.server.features.build.session.md_export_style import (
     BLOCK_SPACE_PT,
     BODY_EAST_ASIA,
     BODY_FONT,
-    BODY_LINE_SPACING,
     BODY_SIZE_PT,
     BODY_SPACE_AFTER_PT,
-    CELL_LINE_SPACING,
     CELL_SIZE_PT,
     CODE_BG,
-    CODE_LINE_SPACING,
     CODE_SIZE_PT,
-    COMPACT_LINE_SPACING,
     COMPACT_SPACE_PT,
     DOC_GRID_LINE_PITCH,
     FOOTER_DISTANCE_MM,
     HEADER_DISTANCE_MM,
     HEADING_EAST_ASIA,
     HEADING_FONT,
-    HEADING_LINE_SPACING,
     HEADING_SIZES_PT,
     HEADING_SPACE_AFTER_PT,
     HEADING_SPACE_BEFORE_PT,
@@ -80,7 +75,12 @@ from onyx.server.features.build.session.md_export_style import (
     TABLE_BORDER,
     TABLE_HEADER_FILL,
     WHITE,
+    WORD_BODY_LINE_PT,
+    WORD_CELL_LINE_PT,
+    WORD_CODE_LINE_PT,
+    WORD_COMPACT_LINE_PT,
     first_heading_text,
+    word_heading_line_pt,
 )
 from onyx.server.features.build.session.md_images import (
     ImageLoader,
@@ -166,6 +166,7 @@ def markdown_to_docx_bytes(
     attach_image_bytes(nodes, image_loader)
 
     document = Document()
+    _drop_template_empty_paragraph(document)
     _apply_report_styles(document)
     _apply_cjk_document_defaults(document)
     _apply_page_chrome(document, first_heading_text(nodes))
@@ -178,6 +179,8 @@ def markdown_to_docx_bytes(
         else None
     )
     _render_blocks(document, nodes, footnotes)
+    if document.element.body.find(qn("w:p")) is None:
+        _add_styled_paragraph(document, _STYLE_BODY)
 
     buffer = BytesIO()
     document.save(buffer)
@@ -211,7 +214,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
     set_east_asia(normal, BODY_FONT, BODY_EAST_ASIA)
     normal.font.size = Pt(BODY_SIZE_PT)
     normal.font.color.rgb = _rgb(INK)
-    normal.paragraph_format.line_spacing = BODY_LINE_SPACING
+    _set_exact_line_spacing(normal.paragraph_format, WORD_BODY_LINE_PT)
     normal.paragraph_format.space_before = Pt(0)
     normal.paragraph_format.space_after = _BODY_SPACE_AFTER
 
@@ -225,14 +228,14 @@ def _apply_report_styles(document: DocxDocument) -> None:
     body = cast(ParagraphStyle, styles[_STYLE_BODY])  # ships in the default template
     body.paragraph_format.space_before = Pt(0)
     body.paragraph_format.space_after = _BODY_SPACE_AFTER
-    body.paragraph_format.line_spacing = BODY_LINE_SPACING
+    _set_exact_line_spacing(body.paragraph_format, WORD_BODY_LINE_PT)
 
     ensure(_STYLE_FIRST_PARAGRAPH, _STYLE_BODY)
 
     compact = ensure(_STYLE_COMPACT, _STYLE_BODY)
     compact.paragraph_format.space_before = _COMPACT_SPACE
     compact.paragraph_format.space_after = _COMPACT_SPACE
-    compact.paragraph_format.line_spacing = COMPACT_LINE_SPACING
+    _set_exact_line_spacing(compact.paragraph_format, WORD_COMPACT_LINE_PT)
 
     block_text = ensure(_STYLE_BLOCK_TEXT, _STYLE_BODY)
     block_text.paragraph_format.space_before = _BLOCK_TEXT_SPACE
@@ -244,6 +247,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
     caption.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     caption.font.size = Pt(9)
     caption.font.color.rgb = _MUTED_COLOR
+    _set_exact_line_spacing(caption.paragraph_format, WORD_COMPACT_LINE_PT)
 
     ensure(_STYLE_FOOTNOTE_TEXT, "Normal")
     if _STYLE_FOOTNOTE_REFERENCE not in existing:
@@ -260,7 +264,9 @@ def _apply_report_styles(document: DocxDocument) -> None:
         heading.font.size = Pt(size)
         heading.font.color.rgb = _HEADING_COLOR
         heading.font.bold = True
-        heading.paragraph_format.line_spacing = HEADING_LINE_SPACING
+        _set_exact_line_spacing(
+            heading.paragraph_format, word_heading_line_pt(level)
+        )
         heading.paragraph_format.space_before = Pt(HEADING_SPACE_BEFORE_PT[level])
         heading.paragraph_format.space_after = Pt(HEADING_SPACE_AFTER_PT[level])
         heading.paragraph_format.keep_with_next = True
@@ -292,7 +298,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
         style = cast(ParagraphStyle, styles[inherited])
         set_east_asia(style, BODY_FONT, BODY_EAST_ASIA)
         if inherited in list_styles:
-            style.paragraph_format.line_spacing = COMPACT_LINE_SPACING
+            _set_exact_line_spacing(style.paragraph_format, WORD_COMPACT_LINE_PT)
             style.paragraph_format.space_before = Pt(0)
             style.paragraph_format.space_after = _COMPACT_SPACE
 
@@ -338,6 +344,30 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
         rpr.append(lang)
     lang.set(qn("w:val"), "en-US")
     lang.set(qn("w:eastAsia"), "zh-CN")
+    half_points = str(int(BODY_SIZE_PT * 2))
+    for tag in ("sz", "szCs"):
+        size_el = rpr.find(qn(f"w:{tag}"))
+        if size_el is None:
+            size_el = OxmlElement(f"w:{tag}")
+            rpr.append(size_el)
+        size_el.set(qn("w:val"), half_points)
+
+    ppr_default = doc_defaults.find(qn("w:pPrDefault"))
+    if ppr_default is None:
+        ppr_default = OxmlElement("w:pPrDefault")
+        doc_defaults.append(ppr_default)
+    ppr = ppr_default.find(qn("w:pPr"))
+    if ppr is None:
+        ppr = OxmlElement("w:pPr")
+        ppr_default.append(ppr)
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        ppr.append(spacing)
+    spacing.set(qn("w:before"), "0")
+    spacing.set(qn("w:after"), str(int(BODY_SPACE_AFTER_PT * 20)))
+    spacing.set(qn("w:line"), str(int(WORD_BODY_LINE_PT * 20)))
+    spacing.set(qn("w:lineRule"), "exact")
 
     _apply_cjk_document_grid(document)
 
@@ -566,6 +596,39 @@ def _reference_run(mark_tag: str, footnote_id: int | None) -> Any:
 # --------------------------------------------------------------------------- #
 # Block-level rendering
 # --------------------------------------------------------------------------- #
+def _set_exact_line_spacing(paragraph_format: Any, line_pt: float) -> None:
+    """Store a fixed line height. A float multiple uses Word auto metrics."""
+    paragraph_format.line_spacing = Pt(line_pt)
+
+
+def _drop_template_empty_paragraph(document: DocxDocument) -> None:
+    """Remove the empty Normal paragraph python-docx ships in a new document."""
+    body = document.element.body
+    first = body.find(qn("w:p"))
+    if first is None:
+        return
+    texts = first.findall(f".//{qn('w:t')}")
+    if any((node.text or "").strip() for node in texts):
+        return
+    body.remove(first)
+
+
+def _has_visible_inlines(children: list[Node] | None) -> bool:
+    for child in children or []:
+        kind = child.get("type")
+        if kind in ("softbreak", "linebreak", "blank_line", "newline"):
+            continue
+        if kind == "text" and not str(child.get("raw") or "").strip():
+            continue
+        if kind == "text":
+            return True
+        if child.get("children") and _has_visible_inlines(child.get("children")):
+            return True
+        if kind not in ("text",):
+            return True
+    return False
+
+
 def _set_paragraph_style(paragraph: Paragraph, style_name: str) -> None:
     """Set a paragraph's style by id, skipping python-docx's by-name lookup.
 
@@ -603,6 +666,8 @@ def _render_blocks(
             if _is_image_only(children):
                 _render_standalone_image(document, children)
                 first_para_pending = False
+            elif not _has_visible_inlines(children):
+                continue
             else:
                 style = _STYLE_FIRST_PARAGRAPH if first_para_pending else _STYLE_BODY
                 paragraph = _add_styled_paragraph(document, style)
@@ -638,7 +703,7 @@ def _render_code(document: DocxDocument, node: Node) -> None:
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_before = Pt(3)
     paragraph.paragraph_format.space_after = Pt(4)
-    paragraph.paragraph_format.line_spacing = CODE_LINE_SPACING
+    _set_exact_line_spacing(paragraph.paragraph_format, WORD_CODE_LINE_PT)
     _shade_paragraph(paragraph, CODE_BG)
     for index, line in enumerate(raw.split("\n")):
         if index:
@@ -753,6 +818,8 @@ def _render_list(
             if child_type in ("blank_line", "newline"):
                 continue
             if child_type in ("block_text", "paragraph"):
+                if not _has_visible_inlines(child.get("children")):
+                    continue
                 marker = not has_rendered_marker
                 paragraph_style = item_style if marker else continue_style
                 paragraph = _add_styled_paragraph(document, paragraph_style)
@@ -982,7 +1049,7 @@ def _fill_cell(
 ) -> None:
     paragraph = cell.paragraphs[0]
     _set_paragraph_style(paragraph, _STYLE_COMPACT)
-    paragraph.paragraph_format.line_spacing = CELL_LINE_SPACING
+    _set_exact_line_spacing(paragraph.paragraph_format, WORD_CELL_LINE_PT)
     paragraph.paragraph_format.space_before = Pt(0)
     paragraph.paragraph_format.space_after = Pt(0)
     alignment = _TABLE_CELL_ALIGN.get(str(cell_node.get("attrs", {}).get("align")))

@@ -7,15 +7,15 @@ from xml.etree import ElementTree
 
 from docx import Document
 from docx.document import Document as DocxDocument
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml.ns import qn
 from PIL import Image as PILImage
 
 from onyx.server.features.build.session.md_export_style import (
-    BODY_LINE_SPACING,
-    CELL_LINE_SPACING,
-    COMPACT_LINE_SPACING,
     DOC_GRID_LINE_PITCH,
+    WORD_BODY_LINE_PT,
+    WORD_CELL_LINE_PT,
+    WORD_COMPACT_LINE_PT,
 )
 from onyx.server.features.build.session.md_to_docx import markdown_to_docx_bytes
 
@@ -498,19 +498,44 @@ def test_page_is_a4_with_compact_margins() -> None:
     assert section.right_margin is not None and abs(section.right_margin.mm - 18) < 0.2
 
 
-def test_line_spacing_is_compact_for_cjk() -> None:
+def test_line_spacing_is_exact_for_cjk() -> None:
     doc = _render("正文。\n")
-    assert doc.styles["Normal"].paragraph_format.line_spacing == BODY_LINE_SPACING
-    assert doc.styles["Body Text"].paragraph_format.line_spacing == BODY_LINE_SPACING
-    assert doc.styles["Compact"].paragraph_format.line_spacing == COMPACT_LINE_SPACING
+    normal = doc.styles["Normal"].paragraph_format
+    body = doc.styles["Body Text"].paragraph_format
+    compact = doc.styles["Compact"].paragraph_format
+    assert normal.line_spacing_rule == WD_LINE_SPACING.EXACTLY
+    assert body.line_spacing_rule == WD_LINE_SPACING.EXACTLY
+    assert compact.line_spacing_rule == WD_LINE_SPACING.EXACTLY
+    assert normal.line_spacing is not None
+    assert body.line_spacing is not None
+    assert compact.line_spacing is not None
+    assert abs(normal.line_spacing.pt - WORD_BODY_LINE_PT) < 0.1
+    assert abs(body.line_spacing.pt - WORD_BODY_LINE_PT) < 0.1
+    assert abs(compact.line_spacing.pt - WORD_COMPACT_LINE_PT) < 0.1
 
 
-def test_table_cell_line_spacing_is_compact() -> None:
+def test_table_cell_line_spacing_is_exact() -> None:
     doc = _render("| 风险 | 说明 |\n|------|------|\n| 高 | 中文内容 |\n")
     for row in doc.tables[0].rows:
         for cell in row.cells:
             for paragraph in cell.paragraphs:
-                assert paragraph.paragraph_format.line_spacing == CELL_LINE_SPACING
+                spacing = paragraph.paragraph_format.line_spacing
+                assert spacing is not None
+                assert abs(spacing.pt - WORD_CELL_LINE_PT) < 0.1
+
+
+def test_blank_markdown_does_not_emit_empty_body_paragraphs() -> None:
+    doc = _render("# 标题\n\n第一段。\n\n\n第二段。\n")
+    assert [p.text for p in doc.paragraphs] == ["标题", "第一段。", "第二段。"]
+
+
+def test_document_defaults_use_exact_body_spacing() -> None:
+    data = markdown_to_docx_bytes("正文。\n")
+    with zipfile.ZipFile(BytesIO(data)) as archive:
+        styles_xml = archive.read("word/styles.xml").decode("utf-8")
+    assert 'w:lineRule="exact"' in styles_xml
+    assert f'w:line="{int(WORD_BODY_LINE_PT * 20)}"' in styles_xml
+    assert 'w:sz w:val="21"' in styles_xml or 'w:val="21"' in styles_xml
 
 
 def test_document_grid_does_not_snap_lines() -> None:

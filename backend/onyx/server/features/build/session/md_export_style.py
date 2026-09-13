@@ -50,10 +50,9 @@ CELL_SIZE_PT = 9.0
 CAPTION_SIZE_PT = 9.0
 CHROME_SIZE_PT = 8.0
 
-# 1.15 matches Word "1.15" / 小四报告常用行距. 1.25 plus a line-grid snap
-# padded every paragraph to two grid rows and looked sparse.
+# 1.15 is the PDF / print-HTML multiple. Word cannot use the same "auto"
+# multiple: it multiplies 微软雅黑's tall line box and reads as ~1.5–1.8.
 BODY_LINE_SPACING = 1.15
-# 1.1 stores as 264/240 in OOXML. 1.08 rounds to 259/240 and reads as 1.079.
 COMPACT_LINE_SPACING = 1.1
 CELL_LINE_SPACING = 1.1
 HEADING_LINE_SPACING = 1.15
@@ -179,6 +178,28 @@ def body_leading() -> float:
 
 def cell_leading() -> float:
     return round(CELL_SIZE_PT * CELL_LINE_SPACING, 2)
+
+
+def word_exact_line_pt(size_pt: float, multiple: float, extra_pt: float = 3.5) -> float:
+    """Fixed Word line height in points.
+
+    ``lineRule=auto`` times a CJK face is taller than ``size × multiple``.
+    Exact leading matches the PDF more closely and avoids clipping 微软雅黑.
+    """
+    return round(max(size_pt * multiple, size_pt + extra_pt), 1)
+
+
+def word_heading_line_pt(level: int) -> float:
+    size = HEADING_SIZES_PT.get(level, HEADING_SIZES_PT[3])
+    return word_exact_line_pt(size, HEADING_LINE_SPACING)
+
+
+WORD_BODY_LINE_PT = word_exact_line_pt(BODY_SIZE_PT, BODY_LINE_SPACING)
+WORD_COMPACT_LINE_PT = word_exact_line_pt(
+    BODY_SIZE_PT, COMPACT_LINE_SPACING, extra_pt=2.5
+)
+WORD_CELL_LINE_PT = word_exact_line_pt(CELL_SIZE_PT, CELL_LINE_SPACING, extra_pt=2.5)
+WORD_CODE_LINE_PT = word_exact_line_pt(CODE_SIZE_PT, CODE_LINE_SPACING, extra_pt=2.5)
 
 
 def iter_script_runs(text: str) -> list[tuple[bool, str]]:
