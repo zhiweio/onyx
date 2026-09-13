@@ -37,6 +37,7 @@ from onyx.server.features.build.sandbox.models import FilesystemEntry
 from onyx.server.features.build.session.artifact_persist import (
     archive_bytes_to_catalog,
     persist_session_workspace_files,
+    promote_session_outputs_to_project,
     promote_workspace_path_to_project,
     restore_archived_files_to_session,
 )
@@ -255,6 +256,80 @@ def test_other_user_cannot_see_project(
     with pytest.raises(OnyxError) as exc:
         require_project_for_user(db_session, project.id, other)
     assert exc.value.error_code == OnyxErrorCode.NOT_FOUND
+
+
+def test_html_charts_and_chinese_names_are_promoted(
+    db_session: Session,
+    tenant_context: None,  # noqa: ARG001
+    test_user: User,
+    build_session_with_user: Callable[..., BuildSession],
+    initialize_file_store: None,  # noqa: ARG001
+) -> None:
+    project = create_project(db_session, user=test_user, name="财报项目")
+    session = build_session_with_user()
+    session.project_id = project.id
+    db_session.commit()
+
+    stub = WorkspaceStub(
+        {
+            "outputs/君禾股份_财报解读_2026H1.html": b"<html>report</html>",
+            "outputs/charts/revenue.png": b"png-bytes",
+            "outputs/infographics/kpi.html": b"<html>kpi</html>",
+            "outputs/mcp/dump.json": b"{}",
+            "outputs/analysis/statements.json": b"[]",
+        }
+    )
+    persist_session_workspace_files(
+        db_session,
+        stub,
+        sandbox_id=uuid4(),
+        session_id=session.id,
+        user_id=test_user.id,
+        turn_index=1,
+    )
+    paths = {row.path for row in list_project_files(db_session, project.id)}
+    assert "/君禾股份_财报解读_2026H1.html" in paths
+    assert "/charts/revenue.png" in paths
+    assert "/infographics/kpi.html" in paths
+    assert "/mcp/dump.json" not in paths
+    assert "/analysis/statements.json" not in paths
+
+
+def test_late_project_bind_promotes_existing_outputs(
+    db_session: Session,
+    tenant_context: None,  # noqa: ARG001
+    test_user: User,
+    build_session_with_user: Callable[..., BuildSession],
+    initialize_file_store: None,  # noqa: ARG001
+) -> None:
+    session = build_session_with_user()
+    stub = WorkspaceStub(
+        {
+            "outputs/君禾股份_财报解读_2026H1.md": b"# report",
+            "outputs/charts/revenue.png": b"png-bytes",
+            "outputs/mcp/dump.json": b"{}",
+        }
+    )
+    persist_session_workspace_files(
+        db_session,
+        stub,
+        sandbox_id=uuid4(),
+        session_id=session.id,
+        user_id=test_user.id,
+        turn_index=1,
+    )
+    project = create_project(db_session, user=test_user, name="后绑项目")
+    assert list_project_files(db_session, project.id) == []
+
+    session.project_id = project.id
+    db_session.commit()
+    promote_session_outputs_to_project(db_session, session)
+    db_session.commit()
+
+    paths = {row.path for row in list_project_files(db_session, project.id)}
+    assert "/君禾股份_财报解读_2026H1.md" in paths
+    assert "/charts/revenue.png" in paths
+    assert "/mcp/dump.json" not in paths
 
 
 def test_research_tree_stays_session_private_until_promoted(

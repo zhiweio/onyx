@@ -41,6 +41,31 @@ describe("FilePreviewContent", () => {
     expect(fetchFileContent).not.toHaveBeenCalled();
   });
 
+  it("renders an HTML file in a sandboxed preview", async () => {
+    const html = "<html><body><h1>Report</h1></body></html>";
+    jest.mocked(fetchFileContent).mockResolvedValue({
+      content: html,
+      mimeType: "text/html",
+      isImage: false,
+    });
+
+    render(
+      <FilePreviewContent
+        sessionId="session-1"
+        filePath="outputs/君禾股份_财报解读_2026H1.html"
+      />
+    );
+
+    const iframe = await screen.findByTitle(
+      "HTML preview: 君禾股份_财报解读_2026H1.html"
+    );
+    expect(iframe).toHaveAttribute("srcDoc", html);
+    expect(fetchFileContent).toHaveBeenCalledWith(
+      "session-1",
+      "outputs/君禾股份_财报解读_2026H1.html"
+    );
+  });
+
   it("does not mistake a compound extension for a presentation", async () => {
     jest.mocked(fetchFileContent).mockResolvedValue({
       content: "plain text",

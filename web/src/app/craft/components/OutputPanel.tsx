@@ -40,11 +40,15 @@ import {
 
 // Output panel sub-components. UrlBar is the always-visible chrome and stays
 // static; the heavy tab bodies (preview iframe, file browser, artifact list,
-// and the file preview → markdown/pdf/pptx viewers) are dynamically imported
+// and the file preview → markdown/html/pdf/pptx viewers) are dynamically imported
 // so they're split out of the first-load bundle and only fetched when the
 // panel opens.
 import dynamic from "next/dynamic";
 import UrlBar from "@/app/craft/components/output-panel/UrlBar";
+import {
+  htmlDownloadExtension,
+  isHtmlFilePath,
+} from "@/app/craft/utils/filePreviewPaths";
 
 const PreviewTab = dynamic(
   () => import("@/app/craft/components/output-panel/PreviewTab"),
@@ -398,6 +402,15 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
   const isMarkdownPreview =
     isFilePreviewActive && activeFilePath && /\.md$/i.test(activeFilePath);
 
+  const isHtmlPreview =
+    isFilePreviewActive && !!activeFilePath && isHtmlFilePath(activeFilePath);
+
+  const downloadExtension = isHtmlPreview
+    ? htmlDownloadExtension(activeFilePath ?? "")
+    : isMarkdownPreview
+      ? ".md"
+      : undefined;
+
   const isPowerPointPreview =
     isFilePreviewActive && activeFilePath && /\.pptx?$/i.test(activeFilePath);
 
@@ -707,7 +720,10 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
               ? "Download PowerPoint"
               : undefined
         }
-        onDownloadFile={isMarkdownPreview ? handleRawFileDownload : undefined}
+        onDownloadFile={
+          isMarkdownPreview || isHtmlPreview ? handleRawFileDownload : undefined
+        }
+        downloadExtension={downloadExtension}
         onDownload={isMarkdownPreview ? handleDocxDownload : undefined}
         isDownloading={isExportingDocx}
         onExportPdf={isMarkdownPreview ? handlePdfDownload : undefined}

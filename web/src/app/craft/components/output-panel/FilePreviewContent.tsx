@@ -15,6 +15,8 @@ import ImagePreview from "@/app/craft/components/output-panel/ImagePreview";
 import MarkdownFilePreview, {
   type FileRendererProps,
 } from "@/app/craft/components/output-panel/MarkdownFilePreview";
+import HtmlFilePreview from "@/app/craft/components/output-panel/HtmlFilePreview";
+import { isHtmlFilePath } from "@/app/craft/utils/filePreviewPaths";
 import { DocumentPreview } from "@/sections/document-preview";
 
 // ── Preview registry ─────────────────────────────────────────────────────
@@ -85,6 +87,11 @@ const PREVIEW_REGISTRY: PreviewEntry[] = [
     type: "content",
     matches: (path) => /\.md$/i.test(path),
     component: MarkdownFilePreview,
+  },
+  {
+    type: "content",
+    matches: (path) => isHtmlFilePath(path),
+    component: HtmlFilePreview,
   },
 ];
 

@@ -12214,6 +12214,11 @@
         "inline": "Erreur : {message}",
         "title": "Erreur de chargement du fichier"
       },
+      "html": {
+        "frame": {
+          "title": "Aperçu HTML : {fileName}"
+        }
+      },
       "loading": {
         "label": "Chargement du fichier..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "Copier l'URL : {url}"
       },
       "download": {
-        "button": "Télécharger le .md"
+        "button": "Télécharger le {extension}"
       },
       "downloadFile": {
         "tooltip": "Télécharger le fichier"

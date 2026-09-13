@@ -38,6 +38,8 @@ export interface UrlBarProps {
   downloadRawTooltip?: string;
   /** Download the original file as the first action button (e.g. sandbox markdown) */
   onDownloadFile?: () => void;
+  /** Extension shown on the download button, e.g. ".md" or ".html" */
+  downloadExtension?: string;
   /** Optional download callback — shows an export button in the URL bar when provided */
   onDownload?: () => void;
   /** Whether a download/export is currently in progress */
@@ -74,6 +76,7 @@ export default function UrlBar({
   onDownloadRaw,
   downloadRawTooltip,
   onDownloadFile,
+  downloadExtension = ".md",
   onDownload,
   isDownloading = false,
   onExportPdf,
@@ -258,7 +261,7 @@ export default function UrlBar({
             icon={SvgDownload}
             onClick={onDownloadFile}
           >
-            {t("download.button")}
+            {t("download.button", { extension: downloadExtension })}
           </Button>
         )}
         {/* Export button — shown for downloadable file previews (e.g. markdown → docx) */}

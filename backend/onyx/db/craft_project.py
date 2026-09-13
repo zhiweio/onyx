@@ -32,7 +32,9 @@ from onyx.server.features.build.configs import (
     CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES,
 )
 
-_PATH_SEGMENT = re.compile(r"[^A-Za-z0-9._\- ]+")
+# Drop control characters and characters that break paths. Keep letters
+# from any script so a Chinese report name stays intact.
+_UNSAFE_IN_SEGMENT = re.compile(r'[\x00-\x1f\x7f\\/:*?"<>|]+')
 CRAFT_PROJECT_STORE_PREFIX = "craft/projects"
 IMPLICIT_UNTITLED_PROJECT_NAME = "Untitled project"
 _SESSION_WORKING_FILE_NAMES = frozenset(
@@ -60,7 +62,7 @@ def sanitize_project_path(path: str) -> str:
     """Return a /-prefixed path with traversal segments removed."""
     parts: list[str] = []
     for part in path.replace("\\", "/").split("/"):
-        cleaned = _PATH_SEGMENT.sub("", part).strip()
+        cleaned = _UNSAFE_IN_SEGMENT.sub("", part).strip()
         if not cleaned or cleaned in {".", ".."}:
             continue
         parts.append(cleaned)

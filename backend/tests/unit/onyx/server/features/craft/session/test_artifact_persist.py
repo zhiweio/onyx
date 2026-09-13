@@ -38,3 +38,13 @@ def test_working_control_files_are_not_auto_promoted() -> None:
     assert should_auto_promote_output("DONE.json") is False
     assert should_auto_promote_output("plan/PLAN.json") is False
     assert should_auto_promote_output("research/notes.md") is False
+
+
+def test_html_and_chart_deliverables_are_auto_promoted() -> None:
+    assert should_auto_promote_output("君禾股份_财报解读_2026H1.html") is True
+    assert should_auto_promote_output("charts/revenue.png") is True
+    assert should_auto_promote_output("infographics/kpi_dashboard.html") is True
+    assert should_auto_promote_output("analysis/kpi.html") is True
+    assert should_auto_promote_output("brief.pdf") is True
+    assert should_auto_promote_output("mcp/dump.json") is False
+    assert should_auto_promote_output("analysis/statements.json") is False

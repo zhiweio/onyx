@@ -12214,6 +12214,11 @@
         "inline": "エラー: {message}",
         "title": "ファイルの読み込みエラー"
       },
+      "html": {
+        "frame": {
+          "title": "HTML プレビュー: {fileName}"
+        }
+      },
       "loading": {
         "label": "ファイルを読み込んでいます..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "URL をコピー: {url}"
       },
       "download": {
-        "button": ".md をダウンロード"
+        "button": "{extension} をダウンロード"
       },
       "downloadFile": {
         "tooltip": "ファイルをダウンロード"

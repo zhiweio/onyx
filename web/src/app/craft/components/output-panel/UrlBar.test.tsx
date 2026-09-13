@@ -179,6 +179,25 @@ describe("UrlBar", () => {
     expect(onExportPdf).not.toHaveBeenCalled();
   });
 
+  test("shows an HTML download button with the file extension", async () => {
+    const user = setupUser();
+    const onDownloadFile = jest.fn();
+
+    render(
+      <UrlBar
+        displayUrl="sandbox://outputs/君禾股份_财报解读_2026H1.html"
+        onDownloadFile={onDownloadFile}
+        downloadExtension=".html"
+      />
+    );
+
+    const downloadButton = screen.getByRole("button", {
+      name: "Download .html",
+    });
+    await user.click(downloadButton);
+    expect(onDownloadFile).toHaveBeenCalledTimes(1);
+  });
+
   test.each(["no-sandbox://", "artifacts://"])(
     "does not copy internal display URL %s",
     async (internalUrl) => {

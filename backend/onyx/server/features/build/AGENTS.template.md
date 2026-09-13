@@ -96,8 +96,9 @@ Cite every source by title and URL. If results are empty or weak, say so.
 
 Write under `outputs/` when the task needs a file. Pick the format that
 answers the request: web app (`webapp` start first), slides (`pptx` skill),
-image (`image-generation`), markdown, or a direct reply. Give files
+image (`image-generation`), markdown, HTML, or a direct reply. Give files
 human-readable names. Chat holds a digest and a path, not a whole file.
+HTML files open as a live preview. The user can download them.
 
 Create paths as you write (`outputs/markdown/…`, `outputs/research/…`,
 `outputs/exceptions/…` for a hard miss). Do not inventory empty trees.

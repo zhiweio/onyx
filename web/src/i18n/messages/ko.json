@@ -12214,6 +12214,11 @@
         "inline": "오류: {message}",
         "title": "파일 불러오기 오류"
       },
+      "html": {
+        "frame": {
+          "title": "HTML 미리보기: {fileName}"
+        }
+      },
       "loading": {
         "label": "파일을 불러오는 중..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "URL 복사: {url}"
       },
       "download": {
-        "button": ".md 다운로드"
+        "button": "{extension} 다운로드"
       },
       "downloadFile": {
         "tooltip": "파일 다운로드"

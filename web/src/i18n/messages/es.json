@@ -12214,6 +12214,11 @@
         "inline": "Error: {message}",
         "title": "Error al cargar el archivo"
       },
+      "html": {
+        "frame": {
+          "title": "Vista previa HTML: {fileName}"
+        }
+      },
       "loading": {
         "label": "Cargando archivo..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "Copiar URL: {url}"
       },
       "download": {
-        "button": "Descargar .md"
+        "button": "Descargar {extension}"
       },
       "downloadFile": {
         "tooltip": "Descargar archivo"

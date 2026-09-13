@@ -12214,6 +12214,11 @@
         "inline": "خطأ: {message}",
         "title": "خطأ في تحميل الملف"
       },
+      "html": {
+        "frame": {
+          "title": "معاينة HTML: {fileName}"
+        }
+      },
       "loading": {
         "label": "جارٍ تحميل الملف..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "نسخ الرابط: {url}"
       },
       "download": {
-        "button": "تنزيل .md"
+        "button": "تنزيل {extension}"
       },
       "downloadFile": {
         "tooltip": "تنزيل الملف"

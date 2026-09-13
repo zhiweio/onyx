@@ -12214,6 +12214,11 @@
         "inline": "Fehler: {message}",
         "title": "Fehler beim Laden der Datei"
       },
+      "html": {
+        "frame": {
+          "title": "HTML-Vorschau: {fileName}"
+        }
+      },
       "loading": {
         "label": "Datei wird geladen..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "URL kopieren: {url}"
       },
       "download": {
-        "button": ".md herunterladen"
+        "button": "{extension} herunterladen"
       },
       "downloadFile": {
         "tooltip": "Datei herunterladen"

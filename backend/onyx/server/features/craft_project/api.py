@@ -1,3 +1,4 @@
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
@@ -50,6 +51,15 @@ router = APIRouter(
     prefix="/craft-projects",
     dependencies=[Depends(require_onyx_craft_enabled)],
 )
+
+
+def content_disposition(filename: str) -> str:
+    """HTTP headers are Latin-1. Use RFC 5987 when the name is not."""
+    try:
+        filename.encode("latin-1")
+    except UnicodeEncodeError:
+        return f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
+    return f'attachment; filename="{filename}"'
 
 
 def _summary(db_session: Session, project) -> CraftProjectResponse:
@@ -198,7 +208,7 @@ def download_craft_project_file(
     return Response(
         content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": content_disposition(filename)},
     )
 
 

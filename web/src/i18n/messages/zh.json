@@ -12214,6 +12214,11 @@
         "inline": "错误：{message}",
         "title": "加载文件出错"
       },
+      "html": {
+        "frame": {
+          "title": "HTML 预览：{fileName}"
+        }
+      },
       "loading": {
         "label": "正在加载文件..."
       },
@@ -13016,7 +13021,7 @@
         "ariaLabel": "复制 URL：{url}"
       },
       "download": {
-        "button": "下载 .md"
+        "button": "下载 {extension}"
       },
       "downloadFile": {
         "tooltip": "下载文件"

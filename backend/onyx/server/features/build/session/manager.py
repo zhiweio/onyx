@@ -1437,6 +1437,12 @@ class SessionManager:
             require_project_write_for_user(self._db_session, project_id, user)
         session.project_id = project_id
         update_session_activity(session_id, self._db_session)
+        if project_id is not None:
+            from onyx.server.features.build.session.artifact_persist import (
+                promote_session_outputs_to_project,
+            )
+
+            promote_session_outputs_to_project(self._db_session, session)
         self._db_session.commit()
         self._db_session.refresh(session)
         return session

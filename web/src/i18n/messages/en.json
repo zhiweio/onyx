@@ -12223,6 +12223,11 @@
       "loading": {
         "label": "Loading file..."
       },
+      "html": {
+        "frame": {
+          "title": "HTML preview: {fileName}"
+        }
+      },
       "noContent": {
         "label": "No content"
       }
@@ -13022,7 +13027,7 @@
         "ariaLabel": "Copy URL: {url}"
       },
       "download": {
-        "button": "Download .md"
+        "button": "Download {extension}"
       },
       "downloadFile": {
         "tooltip": "Download file"

@@ -50,7 +50,7 @@ ATTACHMENTS_PREFIX = "__attachments__/"
 PROJECT_PREFIX = "project/"
 _SKIP_DIR_NAMES = {"node_modules", ".git", ".next", "__pycache__", ".venv"}
 _SKIP_OUTPUT_ROOTS = {"web"}
-_AUTO_PROMOTE_ROOTS = {"markdown", "pptx", "docx", "xlsx"}
+_AUTO_PROMOTE_ROOTS = {"markdown", "pptx", "docx", "xlsx", "charts", "infographics"}
 _AUTO_PROMOTE_SUFFIXES = {
     ".md",
     ".markdown",
@@ -60,6 +60,15 @@ _AUTO_PROMOTE_SUFFIXES = {
     ".doc",
     ".xlsx",
     ".xls",
+    ".html",
+    ".htm",
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
 }
 _NEVER_PROMOTE_ROOTS = {
     "research",
@@ -226,7 +235,7 @@ def persist_session_workspace_files(
         )
         session = get_build_session(session_id, user_id, db_session)
         if session is not None and session.project_id is not None:
-            _promote_outputs_to_project(db_session, session, persisted)
+            promote_session_outputs_to_project(db_session, session)
             _sync_project_tree_edits(db_session, session, persisted)
         db_session.commit()
     except Exception:
@@ -641,6 +650,24 @@ def _archive_one(
         archive_file_id=stored_id,
     )
     return updated or artifact
+
+
+def promote_session_outputs_to_project(
+    db_session: Session,
+    session: BuildSession,
+) -> None:
+    """Promote archived session deliverables into the bound Craft Project.
+
+    Binding a finished session must reuse the catalog, not only files from
+    the latest persist pass.
+    """
+    if session.project_id is None:
+        return
+    _promote_outputs_to_project(
+        db_session,
+        session,
+        get_session_artifacts(db_session, session_id=session.id),
+    )
 
 
 def _promote_outputs_to_project(
