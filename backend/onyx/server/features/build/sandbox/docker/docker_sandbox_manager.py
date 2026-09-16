@@ -216,6 +216,11 @@ _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH = "/workspace/opencode-plugins/mcp-offload.ts"
 _OPENCODE_WEBAPP_PLUGIN_PATH = "/workspace/opencode-plugins/webapp.ts"
 _MUTABLE_SANDBOX_IMAGE_TAGS = {"latest", "beta", "edge"}
 
+# SIGTERM grace before SIGKILL when hibernating: the entrypoint gets a chance
+# for an orderly shutdown of opencode-serve, bounded so the reaper's sweep
+# stays fast.
+_HIBERNATE_STOP_TIMEOUT_SECONDS = 20
+
 # In-container opencode-history archive builder: reuses the sandbox_daemon
 # helper (sqlite-safe backup + symlink guards) and prints the temp archive path,
 # or nothing when there's no history. Exec it with OPENCODE_DATA_HOME set.
@@ -667,6 +672,7 @@ class DockerSandboxManager(SandboxManager):
     """
 
     supports_opencode_history_persistence = True
+    supports_hibernation = True
 
     def __init__(self) -> None:
         # Mirrors the K8s posture from #11604: the proxy is mandatory whenever
@@ -876,7 +882,7 @@ class DockerSandboxManager(SandboxManager):
             self._terminated_sandboxes.discard(sandbox_id)
         self._invalidate_serve_connection_info(sandbox_id)
 
-        container = self._reuse_existing_container(sandbox_id)
+        container = self._reuse_existing_container(sandbox_id, onyx_pat)
         created_fresh = False
         if container is None:
             # opencode-serve reads provider config from env at startup; must be
@@ -928,6 +934,10 @@ class DockerSandboxManager(SandboxManager):
                 raise RuntimeError(
                     f"Failed to provision sandbox container {container.name}: {e}"
                 ) from e
+        elif CRAFT_DEEP_JOB_RESOURCES:
+            # A reused (e.g. hibernated) container carries the limits it was
+            # created with; refresh them for the deep-job posture.
+            self.apply_deep_job_resources(sandbox_id)
 
         # One deadline shared by the readiness phases. Started here, after the
         # image pull: a cold pull of the sandbox image can legitimately take
@@ -956,13 +966,22 @@ class DockerSandboxManager(SandboxManager):
             last_heartbeat=None,
         )
 
-    def _reuse_existing_container(self, sandbox_id: UUID) -> Container | None:
+    def _reuse_existing_container(
+        self, sandbox_id: UUID, expected_onyx_pat: str | None
+    ) -> Container | None:
         """Returns a reusable running/exited container, else None.
 
         A ``created`` container means a prior provision died before start;
         starting it would skip the opencode-history restore, so remove it and
         let the caller re-create. The per-sandbox volume survives, so session
         workspaces are kept.
+
+        An ``exited`` container is the hibernation wake path: start it —
+        unless it drifted from current config (image replaced by an upgrade,
+        or a PAT change, the latter only outside the proxy lane). A drifted
+        container is retired (history captured, then removed); the caller
+        re-creates against current config while the volume keeps the session
+        workspaces.
         """
         existing = self._get_container(sandbox_id)
         if existing is None:
@@ -973,6 +992,9 @@ class DockerSandboxManager(SandboxManager):
             logger.info("Reusing existing running sandbox %s.", sandbox_id)
             return existing
         if status == "exited":
+            if self._stopped_container_drifted(existing, expected_onyx_pat):
+                self._retire_drifted_container(existing, sandbox_id)
+                return None
             logger.info("Starting existing stopped sandbox %s.", existing.name)
             existing.start()
             return existing
@@ -985,6 +1007,65 @@ class DockerSandboxManager(SandboxManager):
             self._remove_incomplete_container(existing)
             return None
         return None
+
+    def _stopped_container_drifted(
+        self, container: Container, expected_onyx_pat: str | None
+    ) -> bool:
+        """Whether a stopped sandbox container no longer matches what a
+        provision would create today. Only meaningful for reuse decisions —
+        drift never destroys data (see ``_retire_drifted_container``)."""
+        attrs = container.attrs or {}
+        config = attrs.get("Config") or {}
+        if config.get("Image") != self._image:
+            return True
+        # The proxy lane pins a placeholder in the container env and injects
+        # the real PAT on the wire, so it cannot drift on PAT rotation.
+        if SANDBOX_PROXY_HOST or expected_onyx_pat is None:
+            return False
+        env = config.get("Env") or []
+        pat_entry = next((e for e in env if e.startswith("ONYX_PAT=")), None)
+        return pat_entry != f"ONYX_PAT={expected_onyx_pat}"
+
+    def _retire_drifted_container(self, container: Container, sandbox_id: UUID) -> None:
+        """Remove a stopped container that no longer matches current config.
+
+        The opencode history DB lives in the container's writable layer, so it
+        must be captured before that layer is destroyed: start the container
+        briefly, take a best-effort history snapshot, then remove it. The
+        per-sandbox volume (session workspaces) is kept; the caller re-creates
+        the container and the normal restore paths rehydrate history and
+        sessions from FileStore.
+        """
+        logger.info(
+            "Sandbox %s container %s drifted from current config; retiring it.",
+            sandbox_id,
+            container.name,
+        )
+        try:
+            container.start()
+            self._wait_for_container_running(
+                container, time.monotonic() + PROVISION_DEADLINE_SECONDS
+            )
+        except Exception:
+            logger.warning(
+                "Could not start drifted container %s for history capture; "
+                "removing it without a fresh snapshot",
+                container.name,
+                exc_info=True,
+            )
+            self._remove_incomplete_container(container)
+            return
+        try:
+            tenant_id = (container.labels or {}).get(LABEL_TENANT_ID, "")
+            self.create_opencode_history_snapshot(sandbox_id, tenant_id)
+        except Exception:
+            logger.warning(
+                "History capture for drifted container %s failed; removing it "
+                "anyway (the last background snapshot remains)",
+                container.name,
+                exc_info=True,
+            )
+        self._remove_incomplete_container(container)
 
     @staticmethod
     def _remove_incomplete_container(container: Container) -> None:
@@ -1084,6 +1165,90 @@ class DockerSandboxManager(SandboxManager):
             logger.warning("Error removing sandbox volume %s: %s", volume_name, e)
 
         logger.info("Terminated Docker sandbox %s.", sandbox_id)
+
+    def hibernate(self, sandbox_id: UUID) -> None:
+        """Stop the sandbox container, keeping it and its volume for a fast
+        wake. Frees the sandbox's memory and CPU immediately; the writable
+        layer (opencode history) and the volume (session workspaces) survive,
+        so the next ``provision()`` is a plain start.
+
+        SIGTERM reaches the entrypoint, then SIGKILL after the grace period.
+        The opencode history SQLite is crash-safe, and the caller captures a
+        history snapshot before stopping, so an unclean stop loses at most
+        seconds of history.
+        """
+        self._close_all_sandbox_buses(sandbox_id)
+
+        container = self._get_container(sandbox_id)
+        if container is None:
+            # Nothing to stop; treat as hibernated so the reaper can still
+            # settle the row (a crashed-and-removed container).
+            logger.info(
+                "Hibernate: sandbox %s has no container; nothing to stop.",
+                sandbox_id,
+            )
+            return
+        try:
+            container.stop(timeout=_HIBERNATE_STOP_TIMEOUT_SECONDS)
+        except NotFound:
+            return
+        except APIError:
+            # A container that exited on its own still satisfies hibernation:
+            # memory is freed and the runtime is kept for the wake path.
+            container.reload()
+            state = (container.attrs or {}).get("State") or {}
+            if state.get("Status") == "exited":
+                logger.info(
+                    "Sandbox container %s already stopped; treating as hibernated.",
+                    container.name,
+                )
+                return
+            raise
+        logger.info("Hibernated sandbox container %s.", container.name)
+
+    def resume_stopped_runtime(self, sandbox_id: UUID) -> bool:
+        """Start the stopped sandbox container so maintenance paths can exec
+        into it (archive snapshots). False when the container is gone or
+        cannot run."""
+        container = self._get_container(sandbox_id)
+        if container is None:
+            return False
+        try:
+            container.reload()
+            state = (container.attrs or {}).get("State") or {}
+            if state.get("Status") == "running":
+                return True
+            container.start()
+            return self._wait_for_container_running(
+                container, time.monotonic() + PROVISION_DEADLINE_SECONDS
+            )
+        except (APIError, NotFound, RuntimeError):
+            logger.warning(
+                "Could not resume stopped sandbox container %s for maintenance",
+                sandbox_id,
+                exc_info=True,
+            )
+            return False
+
+    def count_active_sandboxes(self) -> int:
+        """Running sandbox containers on this host — the concurrency cap's
+        live signal. Fails open (returns 0, which never binds) when the daemon
+        cannot answer."""
+        try:
+            return len(
+                self._docker.containers.list(
+                    filters={
+                        "label": f"{LABEL_COMPONENT}={LABEL_COMPONENT_VALUE}",
+                        "status": "running",
+                    }
+                )
+            )
+        except APIError:
+            logger.warning(
+                "Could not count running sandbox containers; treating as unconstrained",
+                exc_info=True,
+            )
+            return 0
 
     def health_check(self, sandbox_id: UUID, timeout: float) -> bool:  # noqa: ARG002
         container = self._get_container(sandbox_id)

@@ -105,6 +105,11 @@ class StubSandboxManager(SandboxManager):
     - ``health_check_returns``: bool returned by ``health_check``.
     - ``session_workspace_exists_returns``: bool returned by
       ``session_workspace_exists``.
+    - ``resume_stopped_runtime_returns``: bool returned by
+      ``resume_stopped_runtime`` (the archive path's "runtime restarted"
+      signal).
+    - ``count_active_sandboxes_returns``: int returned by
+      ``count_active_sandboxes`` (the concurrency cap's live signal).
     - ``send_message_events``: iterable of sandbox events yielded by
       ``send_message``. The iterable is **snapshotted to a list on
       assignment** so the same stub can be re-driven across multiple
@@ -128,6 +133,7 @@ class StubSandboxManager(SandboxManager):
     that want them to no-op set the corresponding ``*_silent`` flag:
 
     - ``terminate_silent``
+    - ``hibernate_silent``
     - ``setup_session_workspace_silent``
     - ``cleanup_session_workspace_silent``
     - ``dispose_opencode_instance_silent``
@@ -179,6 +185,7 @@ class StubSandboxManager(SandboxManager):
 
         # Silent no-op opt-ins for methods that legitimately return None.
         self.terminate_silent: bool = False
+        self.hibernate_silent: bool = False
         self.setup_session_workspace_silent: bool = False
         self.cleanup_session_workspace_silent: bool = False
         self.dispose_opencode_instance_silent: bool = False
@@ -199,6 +206,13 @@ class StubSandboxManager(SandboxManager):
         self.provision_count: int = 0
         self.terminate_count: int = 0
         self.terminated_sandbox_ids: list[UUID] = []
+        self.hibernate_count: int = 0
+        self.hibernated_sandbox_ids: list[UUID] = []
+        self.last_hibernate_sandbox_id: UUID | None = None
+        self.resume_stopped_runtime_count: int = 0
+        self.last_resume_stopped_runtime_sandbox_id: UUID | None = None
+        self.resume_stopped_runtime_returns: bool | None = None
+        self.count_active_sandboxes_returns: int = 0
         self.setup_session_workspace_count: int = 0
         self.cleanup_session_workspace_count: int = 0
         self.regenerate_session_config_count: int = 0
@@ -312,6 +326,28 @@ class StubSandboxManager(SandboxManager):
         self.terminated_sandbox_ids.append(sandbox_id)
         if not self.terminate_silent:
             raise _not_configured("terminate")
+
+    def hibernate(self, sandbox_id: UUID) -> None:
+        self.hibernate_count += 1
+        self.last_hibernate_sandbox_id = sandbox_id
+        self.hibernated_sandbox_ids.append(sandbox_id)
+        # Hibernating frees a running slot, which is what the concurrency cap
+        # observes; mirror that so eviction tests see headroom appear.
+        self.count_active_sandboxes_returns = max(
+            0, self.count_active_sandboxes_returns - 1
+        )
+        if not self.hibernate_silent:
+            raise _not_configured("hibernate")
+
+    def resume_stopped_runtime(self, sandbox_id: UUID) -> bool:
+        self.resume_stopped_runtime_count += 1
+        self.last_resume_stopped_runtime_sandbox_id = sandbox_id
+        if self.resume_stopped_runtime_returns is None:
+            raise _not_configured("resume_stopped_runtime")
+        return self.resume_stopped_runtime_returns
+
+    def count_active_sandboxes(self) -> int:
+        return self.count_active_sandboxes_returns
 
     def setup_session_workspace(
         self,

@@ -124,6 +124,12 @@ class SandboxManager(_ServeMixin, ABC):
 
     supports_opencode_history_persistence: bool = False
 
+    # Whether the backend can stop a sandbox's runtime while keeping it
+    # (container + workspace storage) for a fast wake, instead of destroying it
+    # and restoring from snapshots. Gates the hibernation lanes of the idle
+    # reaper and the concurrency cap's evictor.
+    supports_hibernation: bool = False
+
     @abstractmethod
     def provision(
         self,
@@ -176,6 +182,33 @@ class SandboxManager(_ServeMixin, ABC):
         bus in.
         """
         ...
+
+    def hibernate(self, sandbox_id: UUID) -> None:
+        """Stop the sandbox's runtime while keeping it for a fast wake.
+
+        Frees the sandbox's memory and CPU immediately; the container's
+        writable layer and workspace storage survive, so the next
+        ``provision()`` is a plain start rather than a create + snapshot
+        restore. Only meaningful when ``supports_hibernation`` is True.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support hibernation")
+
+    def resume_stopped_runtime(self, sandbox_id: UUID) -> bool:
+        """Start a hibernated runtime without provisioning it.
+
+        Maintenance hook for paths that must exec into the sandbox (archive
+        snapshots) while the runtime is stopped. Returns False when the runtime
+        is gone or cannot start. Only meaningful when ``supports_hibernation``
+        is True.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support hibernation")
+
+    def count_active_sandboxes(self) -> int:
+        """Number of sandbox runtimes currently consuming backend resources
+        (running containers/pods). Used to enforce the concurrency cap;
+        backends without hibernation don't enforce one, so the default is a
+        value that never binds."""
+        return 0
 
     @abstractmethod
     def setup_session_workspace(

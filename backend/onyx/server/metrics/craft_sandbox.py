@@ -14,7 +14,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from enum import Enum
 
-from prometheus_client import Gauge, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,64 @@ _provisions_in_progress = Gauge(
     "onyx_craft_sandbox_provisions_in_progress",
     "Number of Craft sandbox provisions currently in flight.",
 )
+
+# Hibernation lane: seconds-scale by design (docker stop + history snapshot),
+# so a tighter bucket set than provisioning.
+_HIBERNATE_DURATION_BUCKETS = (
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    3.0,
+    5.0,
+    7.5,
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    60.0,
+    120.0,
+)
+
+_hibernate_duration = Histogram(
+    "onyx_craft_sandbox_hibernate_duration_seconds",
+    "Time to hibernate (stop) a Craft sandbox, including the pre-stop history snapshot.",
+    buckets=_HIBERNATE_DURATION_BUCKETS,
+)
+
+_evictions_total = Counter(
+    "onyx_craft_sandbox_evictions_total",
+    "Idle Craft sandboxes hibernated to enforce the concurrency cap.",
+)
+
+_hibernated_count = Gauge(
+    "onyx_craft_sandbox_hibernated_count",
+    "Craft sandboxes currently hibernated (runtime stopped, kept for a fast wake).",
+)
+
+
+def observe_sandbox_hibernation(duration_s: float) -> None:
+    """Records a completed hibernation attempt (whether or not it settled)."""
+    try:
+        _hibernate_duration.observe(duration_s)
+    except Exception:
+        logger.warning("Failed to record sandbox hibernation metric.", exc_info=True)
+
+
+def observe_sandbox_eviction() -> None:
+    """Records one idle sandbox hibernated for concurrency-cap headroom."""
+    try:
+        _evictions_total.inc()
+    except Exception:
+        logger.warning("Failed to record sandbox eviction metric.", exc_info=True)
+
+
+def set_hibernated_sandbox_count(count: int) -> None:
+    """Publishes the current hibernated-sandbox count (sweep-maintained)."""
+    try:
+        _hibernated_count.set(count)
+    except Exception:
+        logger.warning("Failed to set hibernated sandbox gauge.", exc_info=True)
 
 
 def observe_sandbox_ready(outcome: SandboxReadyOutcome, duration_s: float) -> None:

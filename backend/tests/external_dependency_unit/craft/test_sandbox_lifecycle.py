@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from onyx.db.enums import BuildSessionStatus, SandboxStatus
 from onyx.db.models import BuildSession, Sandbox, User
+from onyx.server.features.build.configs import SANDBOX_IDLE_TIMEOUT_SECONDS
 from onyx.server.features.build.db.sandbox import (
     create_snapshot__no_commit,
     get_running_sandboxes,
@@ -453,7 +454,7 @@ class TestIdleCleanupSelection:
         row.last_heartbeat = None
         row.created_at = datetime.datetime.now(
             datetime.timezone.utc
-        ) - datetime.timedelta(hours=2)
+        ) - datetime.timedelta(seconds=SANDBOX_IDLE_TIMEOUT_SECONDS * 2)
         db_session.commit()
 
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -467,12 +468,13 @@ class TestIdleCleanupSelection:
         db_session: Session,
         test_user: User,  # noqa: ARG002
     ) -> None:
-        # heartbeat 30 minutes ago + 1 hour threshold => not selected.
+        # Half the configured threshold ago => not selected. Derived from the
+        # live default so the test survives retuning the idle timeout.
         user = make_user(db_session)
         row = make_sandbox(db_session, user, status=SandboxStatus.RUNNING)
         row.last_heartbeat = datetime.datetime.now(
             datetime.timezone.utc
-        ) - datetime.timedelta(minutes=30)
+        ) - datetime.timedelta(seconds=SANDBOX_IDLE_TIMEOUT_SECONDS // 2)
         db_session.commit()
 
         now = datetime.datetime.now(datetime.timezone.utc)
