@@ -152,8 +152,13 @@ def finalize_provisioning_attempt__no_commit(
     ``PROVISIONING`` under this attempt's number. Returns False when a newer
     attempt has taken over: the caller's external work must not be recorded
     as the current runtime. ``RUNNING`` also stamps the heartbeat so the
-    fresh pod gets a proper idle-timeout baseline."""
-    values: dict[str, object] = {"status": to_status}
+    fresh pod gets a proper idle-timeout baseline. Either outcome clears the
+    hibernation claim: RUNNING means the runtime woke, FAILED leaves the
+    runtime state unknown — neither may be treated as "stopped but kept"."""
+    values: dict[str, object] = {
+        "status": to_status,
+        "hibernated_at": None,
+    }
     if to_status == SandboxStatus.RUNNING:
         values["last_heartbeat"] = datetime.datetime.now(datetime.timezone.utc)
     result = db_session.execute(
@@ -185,6 +190,53 @@ def sleep_running_sandbox__no_commit(
             Sandbox.status == SandboxStatus.RUNNING,
         )
         .values(status=SandboxStatus.SLEEPING)
+    )
+    return result.rowcount == 1  # ty: ignore[unresolved-attribute]
+
+
+def hibernate_running_sandbox__no_commit(
+    db_session: Session,
+    sandbox_id: UUID,
+    attempt_number: int,
+) -> bool:
+    """``RUNNING`` → ``SLEEPING`` + ``hibernated_at`` — the idle reaper's
+    hibernation lane (runtime stopped, not destroyed). Same CAS contract as
+    ``sleep_running_sandbox__no_commit``: returns False when the row moved on,
+    so a sandbox that went active mid-sweep stays RUNNING."""
+    result = db_session.execute(
+        update(Sandbox)
+        .where(
+            Sandbox.id == sandbox_id,
+            Sandbox.provisioning_attempt_number == attempt_number,
+            Sandbox.status == SandboxStatus.RUNNING,
+        )
+        .values(
+            status=SandboxStatus.SLEEPING,
+            hibernated_at=datetime.datetime.now(datetime.timezone.utc),
+        )
+    )
+    return result.rowcount == 1  # ty: ignore[unresolved-attribute]
+
+
+def archive_hibernated_sandbox__no_commit(
+    db_session: Session,
+    sandbox_id: UUID,
+    hibernated_at: datetime.datetime,
+) -> bool:
+    """Clear the hibernation claim once the runtime was destroyed (archive
+    sweep). Applied only while the row is still ``SLEEPING`` under the same
+    ``hibernated_at`` token — that token is stable while SLEEPING, and a
+    concurrent wake flips the row to ``PROVISIONING`` first, so its decision
+    is never clobbered. The row stays ``SLEEPING``, reverting to the legacy
+    meaning: runtime destroyed, snapshots in FileStore."""
+    result = db_session.execute(
+        update(Sandbox)
+        .where(
+            Sandbox.id == sandbox_id,
+            Sandbox.status == SandboxStatus.SLEEPING,
+            Sandbox.hibernated_at == hibernated_at,
+        )
+        .values(hibernated_at=None)
     )
     return result.rowcount == 1  # ty: ignore[unresolved-attribute]
 
@@ -257,6 +309,31 @@ def get_running_sandboxes(db_session: Session) -> list[Sandbox]:
     """Get all RUNNING sandboxes (the sweep task's working set)."""
     stmt = select(Sandbox).where(Sandbox.status == SandboxStatus.RUNNING)
     return list(db_session.execute(stmt).scalars().all())
+
+
+def get_hibernated_sandboxes_older_than(
+    db_session: Session, cutoff: datetime.datetime
+) -> list[Sandbox]:
+    """Hibernated sandboxes asleep longer than the archive threshold — the
+    archive sweep's working set (disk reclamation)."""
+    stmt = (
+        select(Sandbox)
+        .where(Sandbox.status == SandboxStatus.SLEEPING)
+        .where(Sandbox.hibernated_at.is_not(None))
+        .where(Sandbox.hibernated_at < cutoff)
+    )
+    return list(db_session.scalars(stmt).all())
+
+
+def count_hibernated_sandboxes(db_session: Session) -> int:
+    """Current hibernated-sandbox count (metrics)."""
+    stmt = (
+        select(func.count())
+        .select_from(Sandbox)
+        .where(Sandbox.status == SandboxStatus.SLEEPING)
+        .where(Sandbox.hibernated_at.is_not(None))
+    )
+    return int(db_session.execute(stmt).scalar_one())
 
 
 def user_has_stale_active_session(

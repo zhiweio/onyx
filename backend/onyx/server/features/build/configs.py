@@ -26,9 +26,30 @@ OPENCODE_DISABLED_TOOLS: list[str] = [
 ]
 
 
+# Idle grace before a RUNNING sandbox is reaped: no heartbeat for this long
+# (and no open craft job) puts it to sleep. Wake is seconds-fast, so the
+# default matches the tight end of common practice (Daytona auto-stops at
+# 15 min); keep it high only where wake latency matters more than memory.
 SANDBOX_IDLE_TIMEOUT_SECONDS = int(
-    os.environ.get("SANDBOX_IDLE_TIMEOUT_SECONDS", "3600")
+    os.environ.get("SANDBOX_IDLE_TIMEOUT_SECONDS", "900")
 )
+# A hibernated sandbox (container stopped, workspace still on local disk) is
+# archived — snapshot to FileStore, then container and volume deleted — once
+# it has been asleep longer than this. Bounds disk usage per stale user.
+SANDBOX_HIBERNATE_MAX_AGE_SECONDS = int(
+    os.environ.get("SANDBOX_HIBERNATE_MAX_AGE_SECONDS", "86400")
+)
+# Background re-snapshot cadence for non-idle sandboxes. Deliberately NOT
+# derived from the idle timeout: a short idle timeout must not multiply the
+# snapshot load on active sandboxes.
+SANDBOX_SNAPSHOT_INTERVAL_SECONDS = int(
+    os.environ.get("SANDBOX_SNAPSHOT_INTERVAL_SECONDS", "900")
+)
+# Cap on concurrently RUNNING sandboxes (0 = unlimited). When a new provision
+# would exceed the cap, idle running sandboxes are hibernated to make room
+# (Evictor pattern); with nothing evictable, provisioning fails with a
+# capacity error. Only enforced on backends that support hibernation.
+SANDBOX_MAX_CONCURRENT = int(os.environ.get("SANDBOX_MAX_CONCURRENT", "0"))
 SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS = int(
     os.environ.get("SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS", "180")
 )
@@ -281,9 +302,7 @@ CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES = (
     CRAFT_PROJECT_MAX_TOTAL_SIZE_GB * 1024 * 1024 * 1024
 )
 CRAFT_PROJECT_MAX_FILES = int(os.environ.get("CRAFT_PROJECT_MAX_FILES", "50"))
-WORKSPACE_CATALOG_MAX_FILES = int(
-    os.environ.get("WORKSPACE_CATALOG_MAX_FILES", "5000")
-)
+WORKSPACE_CATALOG_MAX_FILES = int(os.environ.get("WORKSPACE_CATALOG_MAX_FILES", "5000"))
 WORKSPACE_CATALOG_MAX_BYTES = int(
     os.environ.get(
         "WORKSPACE_CATALOG_MAX_BYTES",

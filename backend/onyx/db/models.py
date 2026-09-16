@@ -7744,6 +7744,15 @@ class Sandbox(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Non-NULL while SLEEPING means "hibernated": the backend kept the runtime
+    # (Docker container stopped, volume and writable layer intact) so wake is a
+    # cheap start instead of a full re-provision + snapshot restore. NULL under
+    # SLEEPING keeps the legacy meaning — runtime destroyed, only FileStore
+    # snapshots remain. Cleared when a provisioning attempt finalizes RUNNING.
+    hibernated_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Relationships
     user: Mapped[User] = relationship("User")
 

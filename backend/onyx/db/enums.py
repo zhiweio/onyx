@@ -549,7 +549,10 @@ class ScheduledTaskSkipReason(str, PyEnum):
 class SandboxStatus(str, PyEnum):
     PROVISIONING = "provisioning"
     RUNNING = "running"
-    SLEEPING = "sleeping"  # Pod terminated, snapshots saved to FileStore
+    # Runtime not running. When ``Sandbox.hibernated_at`` is set the runtime
+    # was stopped and kept (fast wake); otherwise it was destroyed and only
+    # FileStore snapshots remain.
+    SLEEPING = "sleeping"
     TERMINATED = "terminated"
     FAILED = "failed"
 
@@ -562,7 +565,7 @@ class SandboxStatus(str, PyEnum):
         return self in (SandboxStatus.TERMINATED, SandboxStatus.FAILED)
 
     def is_sleeping(self) -> bool:
-        """Check if sandbox is sleeping (pod terminated but can be restored)."""
+        """Check if sandbox is sleeping (stopped or terminated, restorable)."""
         return self == SandboxStatus.SLEEPING
 
 
