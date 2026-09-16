@@ -207,10 +207,18 @@ SANDBOX_DOCKER_CPU_LIMIT=1.0                    # Default: 1.0
 ### Lifecycle Settings
 
 ```bash
-# Idle timeout before cleanup (seconds)
-SANDBOX_IDLE_TIMEOUT_SECONDS=900          # Default: 900 (15 minutes)
-
+# Idle window before a sandbox is put to sleep (hibernated on Docker:
+# container stopped and kept for a fast wake).
+SANDBOX_IDLE_TIMEOUT_SECONDS=900           # Default: 900 (15 minutes)
+# Asleep window before an archived sandbox is snapshotted and destroyed.
+SANDBOX_HIBERNATE_MAX_AGE_SECONDS=86400    # Default: 86400 (24 hours)
+# How often a running sandbox's sessions are re-snapshotted.
+SANDBOX_SNAPSHOT_INTERVAL_SECONDS=900      # Default: 900 (15 minutes)
+# Ceiling on concurrently running sandboxes; 0 = unlimited. Docker only.
+SANDBOX_MAX_CONCURRENT=0                   # Default: 0
 ```
+
+See `docs/craft/sandbox/hibernation-lifecycle.md` for the full tier model.
 
 ## Testing
 
