@@ -10,8 +10,12 @@ opencode-auth + push-key env, proxy hostAliases IP).
 {{/* Shared with the image-prepull DaemonSet so the pinned ref can't drift. */}}
 {{- $image := include "onyx.sandboxImage" . }}
 {{- $pullPolicy := include "onyx.sandboxImagePullPolicy" . }}
-{{- $cpuReq := (index $cm "SANDBOX_POD_CPU_REQUEST") | default "1000m" }}
-{{- $memReq := (index $cm "SANDBOX_POD_MEMORY_REQUEST") | default "2Gi" }}
+{{/* Requests default below the limits (Burstable): most sandboxes idle well
+under 1Gi, and the scheduler packs far more pods per node when the request
+doesn't assume the worst-case burst. Raise via configMap for steady heavy
+workloads. */}}
+{{- $cpuReq := (index $cm "SANDBOX_POD_CPU_REQUEST") | default "500m" }}
+{{- $memReq := (index $cm "SANDBOX_POD_MEMORY_REQUEST") | default "1Gi" }}
 {{- $cpuLim := (index $cm "SANDBOX_POD_CPU_LIMIT") | default "2000m" }}
 {{- $memLim := (index $cm "SANDBOX_POD_MEMORY_LIMIT") | default "10Gi" }}
 {{/* Without a request, the scheduler ignores sandbox disk usage and the

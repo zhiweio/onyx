@@ -1739,6 +1739,17 @@ configMap:
   # API service (no prefix). It is required when ENABLE_CRAFT=true.
   SANDBOX_PROXY_CA_SECRET: "sandbox-proxy-ca"
   SANDBOX_PROXY_CA_CONFIGMAP: "sandbox-proxy-ca-bundle"
+  # Sandbox lifecycle. An idle sandbox (no heartbeat, no open Craft job) is put
+  # to sleep after SANDBOX_IDLE_TIMEOUT_SECONDS; a sandbox asleep longer than
+  # SANDBOX_HIBERNATE_MAX_AGE_SECONDS is archived (sessions snapshotted, pod
+  # deleted). SANDBOX_SNAPSHOT_INTERVAL_SECONDS is how often a running pod's
+  # sessions are re-snapshotted. SANDBOX_MAX_CONCURRENT caps concurrently
+  # running sandboxes (0 = unlimited); only backends that can hibernate
+  # enforce it, so it is a no-op on Kubernetes.
+  SANDBOX_IDLE_TIMEOUT_SECONDS: ""
+  SANDBOX_HIBERNATE_MAX_AGE_SECONDS: ""
+  SANDBOX_SNAPSHOT_INTERVAL_SECONDS: ""
+  SANDBOX_MAX_CONCURRENT: ""
   # Operator switch for heavier long jobs. Off by default. Raises project
   # file cap, job budgets, specialist cap, and the silent-step inactivity
   # window. Does not change the 30-minute turn hard cap.
