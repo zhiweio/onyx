@@ -207,6 +207,7 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         SeededBuiltInProvider(skill_id="listed-co-red-blue-review"),
         SeededBuiltInProvider(skill_id="listed-co-report-compose"),
         SeededBuiltInProvider(skill_id="financial-report-analysis"),
+        SeededBuiltInProvider(skill_id="finance-tax-risk-report"),
         SeededBuiltInProvider(skill_id="kyb-verification-qcc"),
         SeededBuiltInProvider(skill_id="litigation-analysis-qcc"),
         SeededBuiltInProvider(skill_id="credit-due-diligence-qcc"),
