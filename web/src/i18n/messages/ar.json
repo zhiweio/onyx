@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "أحدث نموذج توليد صور من OpenAI بأعلى دقة التزام بالمطالبات."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro هو نموذج الصور الرائد من Alibaba على Bailian، وهو مخصص لإنتاج الأصول الاحترافية."
+        },
+        "bailianQwenImage30": {
+          "description": "ينشئ Qwen Image 3.0 صورًا عالية الجودة من وصف نصي على Bailian، ويدعم إنشاء الصور من النص وتحرير الصور."
+        },
+        "bailianOther": {
+          "description": "نموذج qwen-image من مساحة عمل Bailian الخاصة بك."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "تم تعيين {title} كافتراضي"
+      },
+      "dashscope": {
+        "region": {
+          "label": "المنطقة",
+          "idle": "منطقة مساحة عمل Bailian الخاصة بك. يجب أن ينتمي مفتاح API والنموذج ونقطة النهاية إلى نفس المنطقة.",
+          "custom": {
+            "label": "نقطة نهاية مخصصة",
+            "description": "أدخل عنوان URL الكامل لنقطة النهاية بنفسك"
+          },
+          "required": "المنطقة مطلوبة"
+        },
+        "workspaceId": {
+          "label": "معرف مساحة العمل",
+          "idle": "معرّف مساحة عمل Bailian، ويظهر في صفحة تفاصيل مساحة العمل في وحدة تحكم Bailian.",
+          "required": "معرف مساحة العمل مطلوب"
+        },
+        "customBase": {
+          "label": "عنوان URL الأساسي لواجهة API",
+          "idle": "عنوان URL الكامل لنقطة النهاية، مثال: https://dashscope.aliyuncs.com",
+          "required": "عنوان URL الأساسي لواجهة API مطلوب"
+        },
+        "apiKey": {
+          "idle": "أدخل مفتاح Bailian API جديدًا أو اختر موفرًا موجودًا."
+        },
+        "models": {
+          "label": "النموذج",
+          "idle": "اختر نموذج إنشاء الصور.",
+          "required": "النموذج مطلوب",
+          "fetchError": "تعذر جلب نماذج صور Bailian",
+          "recommended": {
+            "description": "القيمة الافتراضية الموصى بها"
+          },
+          "refresh": {
+            "tooltip": "تحديث النماذج من مساحة العمل",
+            "disabledTooltip": "أدخل نقطة نهاية مساحة العمل ومفتاح API أولاً",
+            "ariaLabel": "تحديث النماذج"
+          },
+          "params": "الحجم الافتراضي {size} · النطاق المدعوم {sizeRange} · حتى {maxImages} صورة لكل طلب · حتى {referenceImages} صورة مرجعية"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "سيستخدم Onyx بيانات اعتماد Google Cloud المحيطة بالحاوية (عبر google.auth.default). تأكد من ربط ServiceAccount الخاص بـ Kubernetes بحساب خدمة GCP لديه وصول إلى Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "اتصل بمساحة عمل Alibaba Bailian (Model Studio) وقم بإعداد نماذج Qwen.",
+          "regionField": {
+            "title": "المنطقة",
+            "description": "منطقة مساحة عمل Bailian الخاصة بك. يجب أن ينتمي مفتاح API والنموذج ونقطة النهاية إلى نفس المنطقة.",
+            "custom": {
+              "label": "نقطة نهاية مخصصة",
+              "description": "أدخل عنوان URL الكامل لنقطة النهاية بنفسك"
+            }
+          },
+          "workspaceIdField": {
+            "title": "معرف مساحة العمل",
+            "description": "معرّف مساحة عمل Bailian، ويظهر في صفحة تفاصيل مساحة العمل في وحدة تحكم Bailian."
+          },
+          "customBaseField": {
+            "title": "عنوان URL الأساسي لواجهة API",
+            "description": "نقطة نهاية كاملة متوافقة مع OpenAI، مثال: https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "الصق مفتاح API من وحدة تحكم Bailian لتحميل النماذج التي يمكن لمساحة عملك الوصول إليها."
+          },
+          "validation": {
+            "workspaceIdRequired": "معرف مساحة العمل مطلوب",
+            "customBaseRequired": "عنوان URL الأساسي لواجهة API مطلوب",
+            "regionRequired": "المنطقة مطلوبة"
           }
         }
       },

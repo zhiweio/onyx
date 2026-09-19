@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "OpenAI 最新的图像生成模型，提示词还原度最高。"
+        },
+        "bailianQwenImage30Pro": {
+          "description": "通义千问图像 3.0 Pro 是百炼上的旗舰图像模型，面向专业资产创作。"
+        },
+        "bailianQwenImage30": {
+          "description": "通义千问图像 3.0 根据提示词生成高质量图片，支持文生图与图片编辑。"
+        },
+        "bailianOther": {
+          "description": "来自你百炼业务空间的 qwen-image 模型。"
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "已将 {title} 设为默认"
+      },
+      "dashscope": {
+        "region": {
+          "label": "地域",
+          "idle": "百炼业务空间所在地域。API Key、模型与端点必须属于同一地域。",
+          "custom": {
+            "label": "自定义端点",
+            "description": "自行输入完整端点 URL"
+          },
+          "required": "地域为必填项"
+        },
+        "workspaceId": {
+          "label": "业务空间 ID",
+          "idle": "百炼控制台“业务空间详情”页面中显示的业务空间 ID。",
+          "required": "业务空间 ID 为必填项"
+        },
+        "customBase": {
+          "label": "API Base",
+          "idle": "完整端点 URL，例如 https://dashscope.aliyuncs.com",
+          "required": "API Base 为必填项"
+        },
+        "apiKey": {
+          "idle": "输入新的百炼 API Key，或选择已有供应商。"
+        },
+        "models": {
+          "label": "模型",
+          "idle": "选择图像生成模型。",
+          "required": "模型为必填项",
+          "fetchError": "拉取百炼图像模型失败",
+          "recommended": {
+            "description": "推荐默认"
+          },
+          "refresh": {
+            "tooltip": "从业务空间刷新模型列表",
+            "disabledTooltip": "请先填写业务空间端点和 API Key",
+            "ariaLabel": "刷新模型"
+          },
+          "params": "默认尺寸 {size} · 支持 {sizeRange} · 每次最多 {maxImages} 张 · 最多 {referenceImages} 张参考图"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx 将使用 Pod 的环境 Google Cloud 凭据（通过 google.auth.default）。请确保 Kubernetes ServiceAccount 已绑定到有权访问 Vertex AI 的 GCP 服务账号。"
+          }
+        },
+        "dashscope": {
+          "description": "连接你的阿里云百炼业务空间，配置 Qwen 模型。",
+          "regionField": {
+            "title": "地域",
+            "description": "百炼业务空间所在地域。API Key、模型与端点必须属于同一地域。",
+            "custom": {
+              "label": "自定义端点",
+              "description": "自行输入完整端点 URL"
+            }
+          },
+          "workspaceIdField": {
+            "title": "业务空间 ID",
+            "description": "百炼控制台“业务空间详情”页面中显示的业务空间 ID。"
+          },
+          "customBaseField": {
+            "title": "API Base",
+            "description": "完整的 OpenAI 兼容端点，例如 https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "粘贴百炼控制台中的 API Key，自动加载业务空间可用模型。"
+          },
+          "validation": {
+            "workspaceIdRequired": "业务空间 ID 为必填项",
+            "customBaseRequired": "API Base 为必填项",
+            "regionRequired": "地域为必填项"
           }
         }
       },

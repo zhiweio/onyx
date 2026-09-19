@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "Dernier modèle de génération d'images d'OpenAI, avec la meilleure fidélité aux prompts."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro est le modèle d'image phare d'Alibaba sur Bailian, conçu pour la production d'assets professionnelle."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 génère des images de haute qualité à partir d'un prompt sur Bailian. Prend en charge la génération texte-image et l'édition d'images."
+        },
+        "bailianOther": {
+          "description": "Un modèle qwen-image de votre espace Bailian."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} défini par défaut"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Région",
+          "idle": "La région de votre espace Bailian. La clé API, le modèle et le point de terminaison doivent appartenir à la même région.",
+          "custom": {
+            "label": "Point de terminaison personnalisé",
+            "description": "Saisissez vous-même l'URL complète du point de terminaison"
+          },
+          "required": "La région est requise"
+        },
+        "workspaceId": {
+          "label": "ID d'espace de travail",
+          "idle": "L'ID de votre espace Bailian, visible sur la page de détails de l'espace dans la console Bailian.",
+          "required": "L'ID d'espace de travail est requis"
+        },
+        "customBase": {
+          "label": "URL de base de l'API",
+          "idle": "URL complète du point de terminaison, p. ex. https://dashscope.aliyuncs.com",
+          "required": "L'URL de base de l'API est requise"
+        },
+        "apiKey": {
+          "idle": "Saisissez une nouvelle clé API Bailian ou sélectionnez un fournisseur existant."
+        },
+        "models": {
+          "label": "Modèle",
+          "idle": "Sélectionnez un modèle de génération d'images.",
+          "required": "Le modèle est requis",
+          "fetchError": "Échec de la récupération des modèles d'images Bailian",
+          "recommended": {
+            "description": "Valeur par défaut recommandée"
+          },
+          "refresh": {
+            "tooltip": "Actualiser les modèles depuis votre espace",
+            "disabledTooltip": "Saisissez d'abord le point de terminaison et la clé API de l'espace",
+            "ariaLabel": "Actualiser les modèles"
+          },
+          "params": "Taille par défaut {size} · plage prise en charge {sizeRange} · jusqu'à {maxImages} images par requête · jusqu'à {referenceImages} images de référence"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx utilisera les identifiants Google Cloud ambiants du pod (via google.auth.default). Assurez-vous que le ServiceAccount Kubernetes est lié à un compte de service GCP qui a accès à Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "Connectez-vous à votre espace Alibaba Bailian (Model Studio) et configurez les modèles Qwen.",
+          "regionField": {
+            "title": "Région",
+            "description": "La région de votre espace Bailian. La clé API, le modèle et le point de terminaison doivent appartenir à la même région.",
+            "custom": {
+              "label": "Point de terminaison personnalisé",
+              "description": "Saisissez vous-même l'URL complète du point de terminaison"
+            }
+          },
+          "workspaceIdField": {
+            "title": "ID d'espace de travail",
+            "description": "L'ID de votre espace Bailian, visible sur la page de détails de l'espace dans la console Bailian."
+          },
+          "customBaseField": {
+            "title": "URL de base de l'API",
+            "description": "Point de terminaison complet compatible OpenAI, p. ex. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Collez votre clé API depuis la console Bailian pour charger les modèles accessibles à votre espace."
+          },
+          "validation": {
+            "workspaceIdRequired": "L'ID d'espace de travail est requis",
+            "customBaseRequired": "L'URL de base de l'API est requise",
+            "regionRequired": "La région est requise"
           }
         }
       },

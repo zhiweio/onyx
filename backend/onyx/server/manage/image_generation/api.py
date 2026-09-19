@@ -23,6 +23,8 @@ from onyx.image_gen.interfaces import ImageGenerationProviderCredentials
 from onyx.llm.model_capabilities import get_max_input_tokens
 from onyx.llm.utils import collect_credential_values, litellm_exception_to_safe_error
 from onyx.server.manage.image_generation.models import (
+    DashscopeImageModelResponse,
+    DashscopeImageModelsRequest,
     ImageGenerationConfigCreate,
     ImageGenerationConfigUpdate,
     ImageGenerationConfigView,
@@ -30,6 +32,9 @@ from onyx.server.manage.image_generation.models import (
     TestImageGenerationRequest,
 )
 from onyx.server.manage.llm.api import (
+    _get_dashscope_models_url,
+    _get_openai_compatible_models_response,
+    _resolve_api_key,
     _validate_and_normalize_vertex_auth,
     _validate_llm_provider_change,
 )
@@ -551,3 +556,69 @@ def unset_config_as_default(
         unset_default_image_generation_config(db_session, image_provider_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# Seed list for workspaces whose model listing does not include image models.
+_QWEN_IMAGE_SEED_MODELS = {
+    "qwen-image-3.0-pro": "Qwen Image 3.0 Pro",
+    "qwen-image-3.0": "Qwen Image 3.0",
+    "qwen-image-2.0-pro": "Qwen Image 2.0 Pro",
+    "qwen-image-2.0": "Qwen Image 2.0",
+    "qwen-image-edit": "Qwen Image Edit",
+    "qwen-image": "Qwen Image",
+}
+
+_DASHSCOPE_RECOMMENDED_IMAGE_MODEL = "qwen-image-3.0"
+
+
+@admin_router.post("/dashscope/available-models")
+def get_dashscope_available_image_models(
+    request: DashscopeImageModelsRequest,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> list[DashscopeImageModelResponse]:
+    """List qwen-image models available to a Bailian (DashScope) workspace,
+    including the parameters each model supports."""
+    api_key = _resolve_api_key(
+        request.api_key, request.provider_id, request.api_base, db_session
+    )
+    if not api_key:
+        raise OnyxError(
+            OnyxErrorCode.VALIDATION_ERROR,
+            "An API key is required to list Bailian image models",
+        )
+
+    response_json = _get_openai_compatible_models_response(
+        url=_get_dashscope_models_url(request.api_base),
+        source_name="DashScope",
+        api_key=api_key,
+    )
+
+    fetched_models: set[str] = set()
+    for model in response_json.get("data") or []:
+        model_id = model.get("id") if isinstance(model, dict) else None
+        if model_id and model_id.startswith("qwen-image"):
+            fetched_models.add(model_id)
+
+    # The workspace model listing does not always include image models, so the
+    # known qwen-image family is always offered as well.
+    model_names = sorted(fetched_models | set(_QWEN_IMAGE_SEED_MODELS), reverse=True)
+
+    # Parameters shared by the qwen-image family per the generation-and-editing
+    # API reference: pixel area 512x512-2048x2048 (ratio 1:8 to 8:1), 1-6
+    # images per request, up to 3 reference images.
+    return [
+        DashscopeImageModelResponse(
+            name=name,
+            display_name=_QWEN_IMAGE_SEED_MODELS.get(name, name),
+            is_recommended_default=name == _DASHSCOPE_RECOMMENDED_IMAGE_MODEL,
+            supports_reference_images=True,
+            max_reference_images=3,
+            default_size="1024x1024",
+            size_range="512x512-2048x2048",
+            max_images_per_request=6,
+            watermark=False,
+            prompt_extend=True,
+        )
+        for name in model_names
+    ]

@@ -4,6 +4,7 @@ export { default as SvgAsana } from "@opal/logos/asana";
 export { default as SvgAws } from "@opal/logos/aws";
 export { default as SvgAxero } from "@opal/logos/axero";
 export { default as SvgAzure } from "@opal/logos/azure";
+export { default as SvgBailian } from "@opal/logos/bailian";
 export { default as SvgBifrost } from "@opal/logos/bifrost";
 export { default as SvgBitbucket } from "@opal/logos/bitbucket";
 export { default as SvgBookstack } from "@opal/logos/bookstack";

@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "OpenAI's latest Image Generation model with the highest prompt fidelity."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro is Alibaba's flagship image model on Bailian, built for professional asset production."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 generates high-quality images from a prompt on Bailian. Supports text-to-image and image editing."
+        },
+        "bailianOther": {
+          "description": "A qwen-image model from your Bailian workspace."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} set as default"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Region",
+          "idle": "The region of your Bailian business space. The API key, model, and endpoint region must match.",
+          "custom": {
+            "label": "Custom endpoint",
+            "description": "Enter the full endpoint URL yourself"
+          },
+          "required": "Region is required"
+        },
+        "workspaceId": {
+          "label": "Workspace ID",
+          "idle": "Your Bailian business space ID, shown on the workspace details page in the Bailian console.",
+          "required": "Workspace ID is required"
+        },
+        "customBase": {
+          "label": "API Base",
+          "idle": "Full endpoint URL, e.g. https://dashscope.aliyuncs.com",
+          "required": "API base is required"
+        },
+        "apiKey": {
+          "idle": "Enter a new Bailian API key or select an existing provider."
+        },
+        "models": {
+          "label": "Model",
+          "idle": "Select an image generation model.",
+          "required": "Model is required",
+          "fetchError": "Failed to fetch Bailian image models",
+          "recommended": {
+            "description": "Recommended default"
+          },
+          "refresh": {
+            "tooltip": "Refresh models from your workspace",
+            "disabledTooltip": "Enter the workspace endpoint and API key first",
+            "ariaLabel": "Refresh models"
+          },
+          "params": "Default size {size} · supported {sizeRange} · up to {maxImages} images per request · up to {referenceImages} reference images"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx will use the pod's ambient Google Cloud credentials (via google.auth.default). Ensure the Kubernetes ServiceAccount is bound to a GCP Service Account with access to Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "Connect to your Alibaba Bailian (Model Studio) workspace and set up Qwen models.",
+          "regionField": {
+            "title": "Region",
+            "description": "The region of your Bailian business space. The API key, model, and endpoint region must match.",
+            "custom": {
+              "label": "Custom endpoint",
+              "description": "Enter the full endpoint URL yourself"
+            }
+          },
+          "workspaceIdField": {
+            "title": "Workspace ID",
+            "description": "Your Bailian business space ID, shown on the workspace details page in the Bailian console."
+          },
+          "customBaseField": {
+            "title": "API Base",
+            "description": "Full OpenAI-compatible endpoint, e.g. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Paste your API key from the Bailian console to load the models your workspace can access."
+          },
+          "validation": {
+            "workspaceIdRequired": "Workspace ID is required",
+            "customBaseRequired": "API base is required",
+            "regionRequired": "Region is required"
           }
         }
       },

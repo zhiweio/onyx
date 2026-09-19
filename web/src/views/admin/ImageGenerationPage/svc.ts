@@ -273,3 +273,50 @@ export async function deleteImageGenerationConfig(
     throw new Error(error.detail || "Failed to delete config");
   }
 }
+
+/** One qwen-image model with the parameters it supports (Bailian maas API). */
+export interface DashscopeImageModel {
+  name: string;
+  display_name: string;
+  supports_reference_images: boolean;
+  max_reference_images: number;
+  default_size: string;
+  size_range: string;
+  max_images_per_request: number;
+  watermark: boolean;
+  prompt_extend: boolean;
+  is_recommended_default: boolean;
+}
+
+/**
+ * Lists qwen-image models available to a Bailian (DashScope) workspace, with
+ * each model's supported parameters. On edit, a masked key plus the stored
+ * provider id resolves the real key server-side.
+ */
+export async function fetchDashscopeImageModels(
+  apiKey: string | undefined,
+  apiBase: string,
+  providerId?: number
+): Promise<DashscopeImageModel[]> {
+  const response = await fetch(
+    "/api/admin/image-generation/dashscope/available-models",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey || null,
+        api_base: apiBase,
+        provider_id: providerId ?? null,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      error.detail || error.message || "Failed to fetch Bailian image models"
+    );
+  }
+
+  return response.json();
+}

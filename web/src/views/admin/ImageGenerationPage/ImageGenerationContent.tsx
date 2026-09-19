@@ -12,6 +12,8 @@ import {
   LLMProviderView,
 } from "@/lib/languageModels/types";
 import {
+  BAILIAN_IMAGE_GROUP_NAME,
+  DASHSCOPE_PROVIDER_NAME,
   IMAGE_PROVIDER_GROUPS,
   ImageProvider,
 } from "@/views/admin/ImageGenerationPage/constants";
@@ -70,16 +72,57 @@ export default function ImageGenerationContent() {
     return new Set(configs.map((c) => c.image_provider_id));
   }, [configs]);
 
+  // Connected Bailian models that are not part of the static catalog (picked
+  // from the workspace's live model listing) still need a card so they can be
+  // edited, set as default, or disconnected.
+  const dynamicDashscopeProviders = useMemo(() => {
+    const catalogIds = new Set(
+      IMAGE_PROVIDER_GROUPS.flatMap((g) =>
+        g.providers.map((p) => p.image_provider_id)
+      )
+    );
+    const dynamic: ImageProvider[] = configs
+      .filter(
+        (c) =>
+          c.image_provider_id.startsWith("dashscope_") &&
+          !catalogIds.has(c.image_provider_id)
+      )
+      .map((c): ImageProvider => ({
+        image_provider_id: c.image_provider_id,
+        model_name: c.model_name,
+        provider_name: DASHSCOPE_PROVIDER_NAME,
+        title: c.llm_provider_name || c.model_name,
+        descriptionKey: "providers.bailianOther.description",
+      }));
+    return dynamic;
+  }, [configs]);
+
+  const allProviderGroups = useMemo(() => {
+    if (dynamicDashscopeProviders.length === 0) {
+      return IMAGE_PROVIDER_GROUPS;
+    }
+    return IMAGE_PROVIDER_GROUPS.map((group) =>
+      group.name === BAILIAN_IMAGE_GROUP_NAME
+        ? {
+            ...group,
+            providers: [...group.providers, ...dynamicDashscopeProviders],
+          }
+        : group
+    );
+  }, [dynamicDashscopeProviders]);
+
   // Deprecated models stay visible only for admins who already connected them,
   // so they can still disconnect or switch away.
   const visibleGroups = useMemo(() => {
-    return IMAGE_PROVIDER_GROUPS.map((group) => ({
-      ...group,
-      providers: group.providers.filter(
-        (p) => !p.deprecated || connectedProviderIds.has(p.image_provider_id)
-      ),
-    })).filter((g) => g.providers.length > 0);
-  }, [connectedProviderIds]);
+    return allProviderGroups
+      .map((group) => ({
+        ...group,
+        providers: group.providers.filter(
+          (p) => !p.deprecated || connectedProviderIds.has(p.image_provider_id)
+        ),
+      }))
+      .filter((g) => g.providers.length > 0);
+  }, [allProviderGroups, connectedProviderIds]);
 
   const defaultConfig = useMemo(() => {
     return configs.find((c) => c.is_default);
@@ -186,15 +229,17 @@ export default function ImageGenerationContent() {
   // Group connected replacement models by provider (excluding the model being disconnected)
   const replacementGroups = useMemo(() => {
     if (!disconnectProvider) return [];
-    return IMAGE_PROVIDER_GROUPS.map((group) => ({
-      ...group,
-      providers: group.providers.filter(
-        (p) =>
-          p.image_provider_id !== disconnectProvider.image_provider_id &&
-          connectedProviderIds.has(p.image_provider_id)
-      ),
-    })).filter((g) => g.providers.length > 0);
-  }, [disconnectProvider, connectedProviderIds]);
+    return allProviderGroups
+      .map((group) => ({
+        ...group,
+        providers: group.providers.filter(
+          (p) =>
+            p.image_provider_id !== disconnectProvider.image_provider_id &&
+            connectedProviderIds.has(p.image_provider_id)
+        ),
+      }))
+      .filter((g) => g.providers.length > 0);
+  }, [disconnectProvider, connectedProviderIds, allProviderGroups]);
 
   const needsReplacement = !!isDisconnectingDefault;
   const hasReplacements = replacementGroups.length > 0;

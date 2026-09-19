@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "O modelo de geração de imagens mais recente da OpenAI, com a maior fidelidade ao prompt."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "O Qwen Image 3.0 Pro é o modelo de imagem de topo da Alibaba no Bailian, criado para a produção profissional de assets."
+        },
+        "bailianQwenImage30": {
+          "description": "O Qwen Image 3.0 gera imagens de alta qualidade a partir de um prompt no Bailian. Suporta geração texto-imagem e edição de imagens."
+        },
+        "bailianOther": {
+          "description": "Um modelo qwen-image do seu espaço Bailian."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} definido como padrão"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Região",
+          "idle": "A região do seu espaço Bailian. A chave de API, o modelo e o endpoint devem pertencer à mesma região.",
+          "custom": {
+            "label": "Endpoint personalizado",
+            "description": "Introduza você mesmo o URL completo do endpoint"
+          },
+          "required": "A região é obrigatória"
+        },
+        "workspaceId": {
+          "label": "ID do espaço de trabalho",
+          "idle": "O ID do seu espaço Bailian, visível na página de detalhes do espaço na consola Bailian.",
+          "required": "O ID do espaço de trabalho é obrigatório"
+        },
+        "customBase": {
+          "label": "URL base da API",
+          "idle": "URL completo do endpoint, p. ex. https://dashscope.aliyuncs.com",
+          "required": "O URL base da API é obrigatório"
+        },
+        "apiKey": {
+          "idle": "Introduza uma nova chave de API do Bailian ou selecione um fornecedor existente."
+        },
+        "models": {
+          "label": "Modelo",
+          "idle": "Selecione um modelo de geração de imagens.",
+          "required": "O modelo é obrigatório",
+          "fetchError": "Falha ao obter os modelos de imagem do Bailian",
+          "recommended": {
+            "description": "Predefinição recomendada"
+          },
+          "refresh": {
+            "tooltip": "Atualizar modelos do seu espaço",
+            "disabledTooltip": "Introduza primeiro o endpoint e a chave de API do espaço",
+            "ariaLabel": "Atualizar modelos"
+          },
+          "params": "Tamanho predefinido {size} · intervalo suportado {sizeRange} · até {maxImages} imagens por pedido · até {referenceImages} imagens de referência"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "O Onyx vai usar as credenciais ambientes do Google Cloud no pod (via google.auth.default). Confirme que a ServiceAccount do Kubernetes está vinculada a uma conta de serviço do GCP com acesso ao Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "Conecte-se ao seu espaço do Alibaba Bailian (Model Studio) e configure os modelos Qwen.",
+          "regionField": {
+            "title": "Região",
+            "description": "A região do seu espaço Bailian. A chave de API, o modelo e o endpoint devem pertencer à mesma região.",
+            "custom": {
+              "label": "Endpoint personalizado",
+              "description": "Introduza você mesmo o URL completo do endpoint"
+            }
+          },
+          "workspaceIdField": {
+            "title": "ID do espaço de trabalho",
+            "description": "O ID do seu espaço Bailian, visível na página de detalhes do espaço na consola Bailian."
+          },
+          "customBaseField": {
+            "title": "URL base da API",
+            "description": "Endpoint completo compatível com OpenAI, p. ex. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Cole a sua chave de API da consola Bailian para carregar os modelos disponíveis no seu espaço."
+          },
+          "validation": {
+            "workspaceIdRequired": "O ID do espaço de trabalho é obrigatório",
+            "customBaseRequired": "O URL base da API é obrigatório",
+            "regionRequired": "A região é obrigatória"
           }
         }
       },

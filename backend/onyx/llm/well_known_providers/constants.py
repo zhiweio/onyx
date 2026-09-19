@@ -55,6 +55,29 @@ MOONSHOT_PROVIDER_NAME = "moonshot"
 
 MINIMAX_PROVIDER_NAME = "minimax"
 
+# Alibaba Bailian (Model Studio / DashScope). Chat goes through LiteLLM's
+# `dashscope` integration against the workspace's OpenAI-compatible mode.
+DASHSCOPE_PROVIDER_NAME = "dashscope"
+
+# Model families on Bailian that are not chat models: image generation
+# (qwen-image*, wanx*), video (wan2*, *-t2v, *-i2v), audio and rerankers.
+# Shared by the static model list and the live models fetch.
+DASHSCOPE_NON_CHAT_MODEL_TERMS = (
+    "embed",
+    "image",
+    "wanx",
+    "wan2",
+    "-t2v",
+    "-i2v",
+    "tts",
+    "asr",
+    "sambert",
+    "cosyvoice",
+    "paraformer",
+    "rerank",
+    "speech",
+)
+
 DEFAULT_API_BASE_FOR_PROVIDER: dict[str, str] = {
     BIGMODEL_PROVIDER_NAME: BIGMODEL_API_BASE,
 }

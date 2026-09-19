@@ -12,7 +12,10 @@ export type ImageProviderDescriptionKey =
   | "providers.azureGptImage1.description"
   | "providers.gemini25FlashImage.description"
   | "providers.gemini3ProImage.description"
-  | "providers.gemini3ProImagePreview.description";
+  | "providers.gemini3ProImagePreview.description"
+  | "providers.bailianQwenImage30Pro.description"
+  | "providers.bailianQwenImage30.description"
+  | "providers.bailianOther.description";
 
 export interface ImageProvider {
   image_provider_id: string; // Static unique key for UI-DB mapping
@@ -28,6 +31,12 @@ export interface ProviderGroup {
   name: string;
   providers: ImageProvider[];
 }
+
+export const DASHSCOPE_PROVIDER_NAME = "dashscope";
+
+// The Bailian group's name; dynamic model cards (models picked from the live
+// workspace listing rather than this catalog) are merged into this group.
+export const BAILIAN_IMAGE_GROUP_NAME = "Alibaba Bailian (阿里百炼)";
 
 export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
   {
@@ -79,6 +88,25 @@ export const IMAGE_PROVIDER_GROUPS: ProviderGroup[] = [
         provider_name: "azure",
         title: "Azure OpenAI GPT Image 1",
         descriptionKey: "providers.azureGptImage1.description",
+      },
+    ],
+  },
+  {
+    name: "Alibaba Bailian (阿里百炼)",
+    providers: [
+      {
+        image_provider_id: "dashscope_qwen_image_3_0_pro",
+        model_name: "qwen-image-3.0-pro",
+        provider_name: "dashscope",
+        title: "Qwen Image 3.0 Pro",
+        descriptionKey: "providers.bailianQwenImage30Pro.description",
+      },
+      {
+        image_provider_id: "dashscope_qwen_image_3_0",
+        model_name: "qwen-image-3.0",
+        provider_name: "dashscope",
+        title: "Qwen Image 3.0",
+        descriptionKey: "providers.bailianQwenImage30.description",
       },
     ],
   },

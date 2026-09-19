@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "Das neueste Bilderzeugungsmodell von OpenAI mit der höchsten Prompt-Treue."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro ist Alibabas führendes Bildmodell auf Bailian, gebaut für die professionelle Asset-Erstellung."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 erzeugt hochwertige Bilder aus einem Prompt auf Bailian. Unterstützt Text-zu-Bild und Bildbearbeitung."
+        },
+        "bailianOther": {
+          "description": "Ein qwen-image-Modell aus Ihrem Bailian-Arbeitsbereich."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} als Standard festgelegt"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Region",
+          "idle": "Die Region Ihres Bailian-Business-Space. API-Schlüssel, Modell und Endpunkt müssen zur selben Region gehören.",
+          "custom": {
+            "label": "Benutzerdefinierter Endpunkt",
+            "description": "Geben Sie die vollständige Endpunkt-URL selbst ein"
+          },
+          "required": "Die Region ist erforderlich"
+        },
+        "workspaceId": {
+          "label": "Arbeitsbereich-ID",
+          "idle": "Die ID Ihres Bailian-Business-Space, sichtbar auf der Detailseite im Bailian-Konsolenbereich.",
+          "required": "Die Arbeitsbereich-ID ist erforderlich"
+        },
+        "customBase": {
+          "label": "API-Basis-URL",
+          "idle": "Vollständige Endpunkt-URL, z. B. https://dashscope.aliyuncs.com",
+          "required": "Die API-Basis-URL ist erforderlich"
+        },
+        "apiKey": {
+          "idle": "Geben Sie einen neuen Bailian-API-Schlüssel ein oder wählen Sie einen bestehenden Anbieter."
+        },
+        "models": {
+          "label": "Modell",
+          "idle": "Wählen Sie ein Bildgenerierungsmodell.",
+          "required": "Modell ist erforderlich",
+          "fetchError": "Bailian-Bildmodelle konnten nicht abgerufen werden",
+          "recommended": {
+            "description": "Empfohlene Standardeinstellung"
+          },
+          "refresh": {
+            "tooltip": "Modelle aus dem Arbeitsbereich aktualisieren",
+            "disabledTooltip": "Geben Sie zuerst Endpunkt und API-Schlüssel des Arbeitsbereichs ein",
+            "ariaLabel": "Modelle aktualisieren"
+          },
+          "params": "Standardgröße {size} · unterstützt {sizeRange} · bis zu {maxImages} Bilder pro Anfrage · bis zu {referenceImages} Referenzbilder"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx verwendet die impliziten Google Cloud-Anmeldedaten des Pods (über google.auth.default). Stellen Sie sicher, dass der Kubernetes-ServiceAccount an ein GCP-Dienstkonto mit Zugriff auf Vertex AI gebunden ist."
+          }
+        },
+        "dashscope": {
+          "description": "Verbinden Sie Ihren Alibaba-Bailian-Arbeitsbereich (Model Studio) und richten Sie Qwen-Modelle ein.",
+          "regionField": {
+            "title": "Region",
+            "description": "Die Region Ihres Bailian-Business-Space. API-Schlüssel, Modell und Endpunkt müssen zur selben Region gehören.",
+            "custom": {
+              "label": "Benutzerdefinierter Endpunkt",
+              "description": "Geben Sie die vollständige Endpunkt-URL selbst ein"
+            }
+          },
+          "workspaceIdField": {
+            "title": "Arbeitsbereich-ID",
+            "description": "Die ID Ihres Bailian-Business-Space, sichtbar auf der Detailseite im Bailian-Konsolenbereich."
+          },
+          "customBaseField": {
+            "title": "API-Basis-URL",
+            "description": "Vollständiger OpenAI-kompatibler Endpunkt, z. B. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Fügen Sie Ihren API-Schlüssel aus der Bailian-Konsole ein, um die Modelle Ihres Arbeitsbereichs zu laden."
+          },
+          "validation": {
+            "workspaceIdRequired": "Die Arbeitsbereich-ID ist erforderlich",
+            "customBaseRequired": "Die API-Basis-URL ist erforderlich",
+            "regionRequired": "Die Region ist erforderlich"
           }
         }
       },

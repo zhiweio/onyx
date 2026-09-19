@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "プロンプト忠実度が最も高い、OpenAI の最新の画像生成モデルです。"
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro は、プロ向けアセット制作のための Bailian のフラッグシップ画像モデルです。"
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 はプロンプトから高品質な画像を生成します。テキストから画像への生成と画像編集に対応しています。"
+        },
+        "bailianOther": {
+          "description": "Bailian ワークスペースの qwen-image モデルです。"
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} をデフォルトに設定しました"
+      },
+      "dashscope": {
+        "region": {
+          "label": "リージョン",
+          "idle": "Bailian ビジネススペースのリージョンです。API キー、モデル、エンドポイントは同じリージョンである必要があります。",
+          "custom": {
+            "label": "カスタムエンドポイント",
+            "description": "完全なエンドポイント URL を直接入力します"
+          },
+          "required": "リージョンは必須です"
+        },
+        "workspaceId": {
+          "label": "ワークスペース ID",
+          "idle": "Bailian コンソールのワークスペース詳細ページに表示されるビジネススペース ID です。",
+          "required": "ワークスペース ID は必須です"
+        },
+        "customBase": {
+          "label": "API ベース URL",
+          "idle": "完全なエンドポイント URL。例: https://dashscope.aliyuncs.com",
+          "required": "API ベース URL は必須です"
+        },
+        "apiKey": {
+          "idle": "新しい Bailian API キーを入力するか、既存のプロバイダーを選択してください。"
+        },
+        "models": {
+          "label": "モデル",
+          "idle": "画像生成モデルを選択してください。",
+          "required": "モデルは必須です",
+          "fetchError": "Bailian の画像モデルの取得に失敗しました",
+          "recommended": {
+            "description": "推奨デフォルト"
+          },
+          "refresh": {
+            "tooltip": "ワークスペースからモデルを再取得",
+            "disabledTooltip": "先にワークスペースのエンドポイントと API キーを入力してください",
+            "ariaLabel": "モデルを再取得"
+          },
+          "params": "デフォルトサイズ {size} · サポート範囲 {sizeRange} · 1 回あたり最大 {maxImages} 枚 · 参照画像は最大 {referenceImages} 枚"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx は Pod の環境に設定された Google Cloud 認証情報を google.auth.default 経由で使用します。Kubernetes ServiceAccount が Vertex AI にアクセスできる GCP サービスアカウントにバインドされていることを確認してください。"
+          }
+        },
+        "dashscope": {
+          "description": "Alibaba Bailian（Model Studio）のワークスペースに接続し、Qwen モデルを設定します。",
+          "regionField": {
+            "title": "リージョン",
+            "description": "Bailian ビジネススペースのリージョンです。API キー、モデル、エンドポイントは同じリージョンである必要があります。",
+            "custom": {
+              "label": "カスタムエンドポイント",
+              "description": "完全なエンドポイント URL を直接入力します"
+            }
+          },
+          "workspaceIdField": {
+            "title": "ワークスペース ID",
+            "description": "Bailian コンソールのワークスペース詳細ページに表示されるビジネススペース ID です。"
+          },
+          "customBaseField": {
+            "title": "API ベース URL",
+            "description": "OpenAI 互換の完全なエンドポイント。例: https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Bailian コンソールの API キーを貼り付けると、ワークスペースで利用可能なモデルを読み込みます。"
+          },
+          "validation": {
+            "workspaceIdRequired": "ワークスペース ID は必須です",
+            "customBaseRequired": "API ベース URL は必須です",
+            "regionRequired": "リージョンは必須です"
           }
         }
       },
