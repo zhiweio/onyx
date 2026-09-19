@@ -155,10 +155,10 @@ def _render_chart(
     )
 
 
-def _render_pod_template() -> client.V1PodTemplate:
+def _render_pod_template(extra_args: list[str] | None = None) -> client.V1PodTemplate:
     """Render the sandbox-pod PodTemplate from the chart and deserialize it
     into the same model the K8s API would return."""
-    rendered = yaml.safe_load(_render_pod_template_yaml())
+    rendered = yaml.safe_load(_render_pod_template_yaml(extra_args))
 
     class _Resp:
         def __init__(self, obj: dict) -> None:
@@ -319,8 +319,8 @@ def test_craft_helm_rejects_docker_sandbox_backend_override() -> None:
     assert 'configMap.SANDBOX_BACKEND must be "kubernetes"' in result.stderr
 
 
-def _build_pod() -> client.V1Pod:
-    pod_template = _render_pod_template()
+def _build_pod(extra_args: list[str] | None = None) -> client.V1Pod:
+    pod_template = _render_pod_template(extra_args)
     mgr: KubernetesSandboxManager = object.__new__(KubernetesSandboxManager)
     mgr._namespace = "onyx-sandboxes"
     mgr._core_api = _FakeCoreApi(pod_template)  # ty: ignore[invalid-assignment]
@@ -524,6 +524,24 @@ def test_share_process_namespace_is_disabled(pod: client.V1Pod) -> None:
 
 def test_service_account_token_automount_is_disabled(pod: client.V1Pod) -> None:
     """The sandbox pod never needs the Kubernetes API token mounted."""
+    assert pod.spec.automount_service_account_token is False
+
+
+def test_runtime_class_is_absent_by_default(pod: client.V1Pod) -> None:
+    """The supported configuration runs on the cluster's default runtime.
+    An unset chart value must not emit the field at all."""
+    assert pod.spec.runtime_class_name is None
+
+
+def test_runtime_class_override_reaches_the_created_pod() -> None:
+    """Setting sandboxPod.runtimeClassName selects a VM-isolating runtime.
+    The Python overlay must pass it through untouched — it only rewrites
+    hostAliases and the secret-backed env."""
+    pod = _build_pod(["--set", "sandboxPod.runtimeClassName=kata-qemu"])
+
+    assert pod.spec.runtime_class_name == "kata-qemu"
+    # The overlay's own invariants survive the runtime swap.
+    assert {c.name for c in pod.spec.containers} == {"sandbox"}
     assert pod.spec.automount_service_account_token is False
 
 

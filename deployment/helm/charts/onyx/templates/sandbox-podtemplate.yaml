@@ -32,6 +32,10 @@ kubelet evicts sandbox pods first under node disk pressure. */}}
 {{- $caConfigMap := (index $cm "SANDBOX_PROXY_CA_CONFIGMAP") | default "sandbox-proxy-ca-bundle" }}
 {{- $serverUrl := (index $cm "ONYX_SERVER_URL") }}
 {{- $sandboxPod := .Values.sandboxPod | default dict }}
+{{/* Optional RuntimeClass for kernel-level isolation (e.g. Kata Containers).
+Empty means the cluster default runtime. See docs/craft/sandbox/runtime-decision.md
+for the prerequisites and the acceptance checks a non-default runtime needs. */}}
+{{- $runtimeClass := index $sandboxPod "runtimeClassName" | default "" }}
 {{- $caBundleFile := "/etc/ssl/sandbox/ca-bundle.crt" }}
 apiVersion: v1
 kind: PodTemplate
@@ -50,6 +54,9 @@ template:
   spec:
     serviceAccountName: {{ $saName }}
     automountServiceAccountToken: false
+    {{- if $runtimeClass }}
+    runtimeClassName: {{ $runtimeClass }}
+    {{- end }}
     restartPolicy: Never
     terminationGracePeriodSeconds: 10
     enableServiceLinks: false

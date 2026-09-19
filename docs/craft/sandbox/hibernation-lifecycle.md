@@ -18,7 +18,8 @@ restore, which pushed the idle timeout to an hour.
 
 The lifecycle now has three tiers, modelled on the mature open-source
 sandbox platforms (E2B's filesystem-only pause, Daytona's auto-stop /
-auto-archive tiers):
+auto-archive tiers). `runtime-decision.md` records why those platforms'
+*runtimes* are not used, and what would change that.
 
 | Tier | Status | Runtime | Memory/CPU | Disk | Wake cost |
 | --- | --- | --- | --- | --- | --- |

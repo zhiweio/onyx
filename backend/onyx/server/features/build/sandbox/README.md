@@ -17,6 +17,11 @@ The sandbox system provides isolated execution environments where OpenCode agent
 
 ## Architecture
 
+Both backends run containers. A microVM runtime (E2B, Firecracker, Kata) was
+evaluated and is not used by default; the K8s lane can opt into a VM-isolating
+runtime class. See
+[docs/craft/sandbox/runtime-decision.md](/docs/craft/sandbox/runtime-decision.md).
+
 ### Deployment Modes
 
 1. **Kubernetes Mode** (`SANDBOX_BACKEND=kubernetes`) — default

@@ -1817,6 +1817,18 @@ sandboxPod:
       operator: Equal
       value: sandbox
       effect: NoSchedule
+  # -- Optional RuntimeClass for the sandbox pods, for kernel-level isolation
+  # between tenants (e.g. `kata-qemu`). Empty uses the cluster default runtime,
+  # which is the supported configuration and what every current deployment runs.
+  #
+  # Only set this on a node pool that can run the chosen runtime — Kata and
+  # Firecracker both need /dev/kvm (bare metal or nested virtualization). The
+  # sandbox pod must keep a normal CNI pod IP, `exec` must work, and the guest
+  # kernel must provide iptables/conntrack (firewall-init.sh enforces egress
+  # with them and aborts provisioning if the policy does not stick).
+  # Read docs/craft/sandbox/runtime-decision.md before turning this on: it lists
+  # the required checks and the alternatives that were evaluated.
+  runtimeClassName: ""
 
 # -- Pre-pull the sandbox image onto the sandbox node pool (DaemonSet), so a
 # user's first sandbox on a node doesn't pay the image pull (~31s measured).
