@@ -537,6 +537,9 @@ class ScheduledTaskErrorClass(str, PyEnum):
     TIMEOUT = "timeout"
     STUCK = "stuck"
     AGENT_EXCEPTION = "agent_exception"
+    # The prompt references an env var / secret name that the task has no
+    # valid grant for (never granted, or the grant was revoked).
+    ENV_VAR_RESOLUTION_FAILED = "env_var_resolution_failed"
 
 
 class ScheduledTaskSkipReason(str, PyEnum):
@@ -544,6 +547,17 @@ class ScheduledTaskSkipReason(str, PyEnum):
 
     PRIOR_IN_FLIGHT = "prior_in_flight"
     OWNER_CRAFT_DISABLED = "owner_craft_disabled"
+
+
+class EnvVarScope(str, PyEnum):
+    """Scope of an ``EnvVar`` row.
+
+    USER rows are private to their creator. PROJECT rows belong to a Craft
+    project and follow the project's read/write permissions.
+    """
+
+    USER = "USER"
+    PROJECT = "PROJECT"
 
 
 class SandboxStatus(str, PyEnum):

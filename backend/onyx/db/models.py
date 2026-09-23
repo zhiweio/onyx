@@ -85,6 +85,7 @@ from onyx.db.enums import (
     DefaultAppMode,
     EmbeddingPrecision,
     EndpointPolicy,
+    EnvVarScope,
     ExternalAppType,
     GatedAppKind,
     GrantSource,
@@ -8020,6 +8021,85 @@ class ActionApproval(Base):
     gated_app: Mapped["GatedApp | None"] = relationship("GatedApp")
 
 
+class EnvVar(Base):
+    """A user- or project-scoped environment variable / secret for Craft.
+
+    ``scope`` picks the owner: USER rows are private to ``user_id``; PROJECT
+    rows belong to ``project_id`` and follow the project's read/write
+    permissions. Values are encrypted at rest regardless of ``is_secret``;
+    the flag only controls whether the API ever returns the value — secrets
+    are write-only (GitHub Actions semantics).
+    """
+
+    __tablename__ = "env_var"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    is_secret: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    scope: Mapped[EnvVarScope] = mapped_column(
+        Enum(EnvVarScope, native_enum=False, name="envvarscope"),
+        nullable=False,
+    )
+    # Row creator. For USER scope this is also the owner; for PROJECT scope
+    # it is only an audit trail of who last wrote the row.
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    value: Mapped[SensitiveValue[str]] = mapped_column(
+        EncryptedString(), nullable=False
+    )
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    project: Mapped["CraftProject | None"] = relationship(
+        "CraftProject", foreign_keys=[project_id]
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "(scope = 'USER' AND project_id IS NULL) "
+            "OR (scope = 'PROJECT' AND project_id IS NOT NULL)",
+            name="ck_env_var_scope_project",
+        ),
+        # Partial unique indexes: one name per owner scope.
+        Index(
+            "uq_env_var_user_name",
+            "user_id",
+            "name",
+            unique=True,
+            postgresql_where=text("project_id IS NULL"),
+        ),
+        Index(
+            "uq_env_var_project_name",
+            "project_id",
+            "name",
+            unique=True,
+            postgresql_where=text("project_id IS NOT NULL"),
+        ),
+        # User-scoped list query, most recently updated first.
+        Index("ix_env_var_user_updated", "user_id", desc("updated_at")),
+    )
+
+
 class ScheduledTask(Base):
     """A user-defined recurring Craft prompt + schedule.
 
@@ -8041,6 +8121,13 @@ class ScheduledTask(Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    # Optional Craft project the task belongs to. Belonging to a project is
+    # what makes that project's env vars grantable to the task's runs.
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Canonical 5-field cron expression. The three UI editor modes (interval,
     # daily/weekly, advanced) all compile to this string on save.
@@ -8087,6 +8174,17 @@ class ScheduledTask(Base):
         cascade="all, delete-orphan",
         order_by="ScheduledTaskPreApprovedTarget.id",
     )
+    env_var_grants: Mapped[list["ScheduledTaskEnvVar"]] = relationship(
+        "ScheduledTaskEnvVar",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="ScheduledTaskEnvVar.created_at",
+    )
+
+    @property
+    def env_var_ids(self) -> list[UUID]:
+        """Granted env-var ids — only these are substituted into runs."""
+        return [grant.env_var_id for grant in self.env_var_grants]
 
     @property
     def pre_approved_external_app_ids(self) -> list[int]:
@@ -8238,6 +8336,50 @@ class ScheduledTaskPreApprovedTarget(Base):
             "scheduled_task_id",
             "gated_app_id",
             name="uq_scheduled_task_pre_approved_app",
+        ),
+    )
+
+
+class ScheduledTaskEnvVar(Base):
+    """One (task, env var) usage grant: only explicitly granted rows are
+    substituted into the run's prompt — grants never follow scope access
+    implicitly. Deleting the task or the var (both CASCADE) drops the grant,
+    so removing a var revokes every task that used it. The executor
+    re-validates each grant at run time (owner + task project still match);
+    a stale row that survived a project change is inert.
+
+    The unique constraint keeps grants idempotent and its index serves the
+    per-task lookup.
+    """
+
+    __tablename__ = "scheduled_task_env_var"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scheduled_task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scheduled_task.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    env_var_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("env_var.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    task: Mapped[ScheduledTask] = relationship(
+        "ScheduledTask", back_populates="env_var_grants"
+    )
+    # selectin: task-detail serialization reads every grant's var name.
+    env_var: Mapped[EnvVar] = relationship("EnvVar", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "scheduled_task_id",
+            "env_var_id",
+            name="uq_scheduled_task_env_var",
         ),
     )
 

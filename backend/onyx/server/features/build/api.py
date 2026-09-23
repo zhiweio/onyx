@@ -7,6 +7,7 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.approvals.api import router as approvals_router
 from onyx.server.features.build.debug import router as debug_router
+from onyx.server.features.build.env_vars.api import router as env_vars_router
 from onyx.server.features.build.external_apps.api import (
     admin_router as external_apps_admin_router,
 )
@@ -72,6 +73,7 @@ router.include_router(messages_router, tags=["build"])
 router.include_router(turns_router, tags=["build"])
 router.include_router(user_library_router, tags=["build"])
 router.include_router(scheduled_tasks_router, tags=["build"])
+router.include_router(env_vars_router, tags=["build"])
 router.include_router(jobs_router, tags=["build"])
 router.include_router(external_apps_router, tags=["build"])
 router.include_router(external_apps_oauth_router, tags=["build"])

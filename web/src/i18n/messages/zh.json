@@ -12790,6 +12790,9 @@
         "menu": {
           "ariaLabel": "项目操作"
         }
+      },
+      "envVars": {
+        "label": "环境变量与密钥"
       }
     },
     "skillsStale": {
@@ -12881,6 +12884,15 @@
           },
           "schedule": {
             "label": "计划"
+          },
+          "project": {
+            "label": "所属项目",
+            "description": "归属项目的任务可以使用该项目的变量。",
+            "none": "不归属项目"
+          },
+          "envVars": {
+            "label": "环境变量与密钥",
+            "description": "只有勾选的项才会注入运行。在提示词中用 env.NAME 或 secrets.NAME 语法引用。"
           }
         },
         "saveAndRunNowButton": "保存并立即运行",
@@ -13018,6 +13030,32 @@
           "tue": "周二",
           "wed": "周三"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "个人",
+        "projectGroupTitle": "项目：{name}",
+        "staleFallbackName": "已失效的变量（{id}）",
+        "loading": {
+          "label": "正在加载变量…"
+        },
+        "errors": {
+          "loadFailed": "加载变量失败。",
+          "partialLoadFailed": "部分变量加载失败，列表可能不完整。"
+        },
+        "empty": {
+          "label": "暂无可用变量。",
+          "noProjectLabel": "选择项目后可用其变量；也可在「环境变量与密钥」中创建个人变量。"
+        },
+        "status": {
+          "secret": "密钥",
+          "variable": "变量",
+          "unavailable": "已失效 — 请移除该勾选"
+        },
+        "summary": {
+          "title": "已授权的变量",
+          "partialLoadFailed": "部分变量名称加载失败。"
+        },
+        "usageHint": "在提示词中用 env.NAME 或 secrets.NAME 占位语法引用勾选项。"
       }
     },
     "todoList": {
@@ -14351,6 +14389,84 @@
       "header": {
         "title": "MCP 操作",
         "description": "添加仅供你使用的 MCP 服务器，或浏览你可用的组织 MCP。"
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "环境变量与密钥",
+        "description": "供定时任务使用的个人与项目变量。密钥只写：保存后无法再查看原值。",
+        "createButton": "新增变量",
+        "groups": {
+          "personal": "个人",
+          "unnamedProject": "项目"
+        },
+        "badges": {
+          "secret": "密钥",
+          "variable": "变量"
+        },
+        "row": {
+          "secretSetAt": "密钥已设置 · 更新于 {date}",
+          "editLabel": "编辑 {name}",
+          "deleteLabel": "删除 {name}"
+        },
+        "empty": {
+          "title": "还没有变量",
+          "description": "先新增变量或密钥，再在定时任务中勾选使用。"
+        },
+        "error": {
+          "title": "加载失败",
+          "description": "无法加载环境变量，请重试。"
+        },
+        "toasts": {
+          "deleted": "已删除",
+          "deleteFailed": "删除失败"
+        },
+        "delete": {
+          "title": "删除 {name}？",
+          "description": "引用它的任务下次运行会失败，直到移除引用。",
+          "confirmButton": "删除"
+        }
+      },
+      "form": {
+        "createTitle": "新增变量",
+        "editTitle": "编辑变量",
+        "fields": {
+          "name": {
+            "label": "名称",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "值",
+            "placeholder": "值"
+          },
+          "secretValue": {
+            "label": "密钥值",
+            "placeholder": "密钥值",
+            "overwritePlaceholder": "输入新值以覆盖",
+            "keepHint": "已存的值不可见。留空表示保留原值。"
+          },
+          "isSecret": {
+            "label": "类型",
+            "description": "密钥 — 运行记录中会掩码，保存后不再回显。"
+          },
+          "scope": {
+            "label": "作用域",
+            "user": "个人"
+          }
+        },
+        "errors": {
+          "title": "请检查表单",
+          "nameRequired": "名称必填",
+          "valueRequired": "值必填"
+        },
+        "toasts": {
+          "created": "已创建",
+          "updated": "已更新",
+          "saveFailed": "保存失败"
+        },
+        "cancelButton": "取消",
+        "createButton": "创建",
+        "saveChangesButton": "保存更改"
       }
     }
   },

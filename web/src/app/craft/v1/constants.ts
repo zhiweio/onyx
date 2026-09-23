@@ -7,6 +7,7 @@ export const CRAFT_PROJECTS_PATH = `${CRAFT_PATH}/projects`;
 export const CRAFT_LIBRARY_PATH = `${CRAFT_PATH}/library`;
 export const CRAFT_APPS_PATH = `${CRAFT_PATH}/apps`;
 export const CRAFT_MCP_ACTIONS_PATH = `${CRAFT_PATH}/mcp-actions`;
+export const CRAFT_ENV_VARS_PATH = `${CRAFT_PATH}/env-vars`;
 export const CRAFT_OAUTH_COOKIE_NAME = "build_mode_oauth";
 
 // Backend BFF root for Craft/build endpoints (routes through the frontend

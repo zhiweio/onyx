@@ -22,6 +22,7 @@ import {
 } from "@/app/craft/v1/tasks/api";
 import RunHistoryTable from "@/app/craft/v1/tasks/components/RunHistoryTable";
 import PreApprovalSummary from "@/app/craft/v1/tasks/components/PreApprovalSummary";
+import EnvVarSummary from "@/app/craft/v1/tasks/components/EnvVarSummary";
 import { TaskStatusBadge } from "@/app/craft/v1/tasks/components/StatusBadge";
 import { TASKS_PATH, taskEditPath } from "@/app/craft/v1/tasks/constants";
 import type {
@@ -204,6 +205,10 @@ export default function ScheduledTaskDetailPage() {
                 mcpServerIds={data.pre_approved_mcp_server_ids}
               />
             )}
+            <EnvVarSummary
+              projectId={data.project_id}
+              envVarIds={data.env_var_ids}
+            />
             <RunHistoryTable taskId={data.id} />
           </div>
         )}

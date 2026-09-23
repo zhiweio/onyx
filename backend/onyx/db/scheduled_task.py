@@ -20,6 +20,7 @@ from sqlalchemy import and_, desc, literal, select
 from sqlalchemy.orm import Session, selectinload
 
 from onyx.db.enums import (
+    EnvVarScope,
     GatedAppKind,
     ScheduledTaskErrorClass,
     ScheduledTaskRunStatus,
@@ -31,6 +32,7 @@ from onyx.db.gated_app import get_or_create_gated_app_id
 from onyx.db.models import (
     GatedApp,
     ScheduledTask,
+    ScheduledTaskEnvVar,
     ScheduledTaskPreApprovedTarget,
     ScheduledTaskRun,
 )
@@ -61,6 +63,8 @@ def create_scheduled_task(
     status: ScheduledTaskStatus = ScheduledTaskStatus.ACTIVE,
     pre_approved_external_app_ids: list[int] | None = None,
     pre_approved_mcp_server_ids: list[int] | None = None,
+    project_id: UUID | None = None,
+    env_var_ids: list[UUID] | None = None,
     now: datetime | None = None,
 ) -> ScheduledTask:
     """Insert a new ``ScheduledTask``.
@@ -84,13 +88,16 @@ def create_scheduled_task(
         editor_mode=editor_mode,
         status=status,
         next_run_at=next_run_at,
+        project_id=project_id,
     )
     _replace_pre_approved_targets(
         db_session,
         task,
-        external_app_ids=pre_approved_external_app_ids or [],
-        mcp_server_ids=pre_approved_mcp_server_ids or [],
+        external_app_ids=pre_approved_external_app_ids,
+        mcp_server_ids=pre_approved_mcp_server_ids,
     )
+    if env_var_ids is not None:
+        _set_env_var_grants(task, env_var_ids)
     db_session.add(task)
     db_session.flush()
     return task
@@ -138,6 +145,33 @@ def _replace_pre_approved_targets(
     task.pre_approved_targets = [
         *replacement_grants,
         *retained_grants,
+    ]
+
+
+def _set_env_var_grants(task: ScheduledTask, env_var_ids: list[UUID]) -> None:
+    """Replace the full env-var grant set (client always sends the list)."""
+    # Reuse unchanged rows so the unique constraint cannot collide inside
+    # one flush; the orphan cascade deletes removed grants.
+    existing = {grant.env_var_id: grant for grant in task.env_var_grants}
+    task.env_var_grants = [
+        existing.get(env_var_id) or ScheduledTaskEnvVar(env_var_id=env_var_id)
+        for env_var_id in dict.fromkeys(env_var_ids)
+    ]
+
+
+def _prune_env_var_grants(task: ScheduledTask) -> None:
+    """Drop grants that no longer match the task's scope.
+
+    Called after a project change: PROJECT-scope grants of the previous
+    project are stale (the run-time resolver would skip them anyway, but
+    the editor should not keep offering them as selected).
+    """
+    task.env_var_grants = [
+        grant
+        for grant in task.env_var_grants
+        if grant.env_var is None
+        or grant.env_var.scope == EnvVarScope.USER
+        or grant.env_var.project_id == task.project_id
     ]
 
 
@@ -195,6 +229,9 @@ def update_scheduled_task(
     status: ScheduledTaskStatus | None = None,
     pre_approved_external_app_ids: list[int] | None = None,
     pre_approved_mcp_server_ids: list[int] | None = None,
+    project_id: UUID | None = None,
+    set_project_id: bool = False,
+    env_var_ids: list[UUID] | None = None,
     now: datetime | None = None,
 ) -> ScheduledTask:
     """Apply a partial update to a scheduled task.
@@ -206,6 +243,11 @@ def update_scheduled_task(
       - If ``status`` transitions to ACTIVE, ``next_run_at`` is recomputed.
       - Each pre-approved target field follows normal patch semantics: supplied
         replaces that target kind, and omitted leaves it unchanged.
+      - ``project_id`` applies only when ``set_project_id`` is True (explicit
+        null clears the link). Changing it prunes env-var grants that belong
+        to the previous project.
+      - ``env_var_ids`` supplied replaces the whole grant set; omitted leaves
+        it unchanged.
 
     Raises:
         OnyxError(NOT_FOUND): the task does not exist or is not owned by
@@ -226,6 +268,16 @@ def update_scheduled_task(
         external_app_ids=pre_approved_external_app_ids,
         mcp_server_ids=pre_approved_mcp_server_ids,
     )
+    project_changed = False
+    if set_project_id and project_id != task.project_id:
+        task.project_id = project_id
+        project_changed = True
+    if env_var_ids is not None:
+        _set_env_var_grants(task, env_var_ids)
+    if project_changed:
+        # Applies even when a fresh grant list was just set: the client may
+        # not have filtered old-project ids itself.
+        _prune_env_var_grants(task)
     if editor_mode is not None:
         task.editor_mode = editor_mode
     if cron_expression is not None and cron_expression != task.cron_expression:

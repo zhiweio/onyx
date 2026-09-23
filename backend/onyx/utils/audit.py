@@ -103,6 +103,9 @@ class AuditAction(str, Enum):
     CREDENTIAL_UPDATE = "credential.update"
     CREDENTIAL_DELETE = "credential.delete"
     CREDENTIAL_ACCESS = "credential.access"
+    ENV_VAR_CREATE = "env_var.create"
+    ENV_VAR_UPDATE = "env_var.update"
+    ENV_VAR_DELETE = "env_var.delete"
     # Fires only when a scoped write gate refuses an actor who already holds
     # partial authority, not on every 403.
     PERMISSION_DENIED = "permission.denied"
@@ -149,6 +152,9 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.CREDENTIAL_UPDATE: OCSFEventClass.API_ACTIVITY,
     AuditAction.CREDENTIAL_DELETE: OCSFEventClass.API_ACTIVITY,
     AuditAction.CREDENTIAL_ACCESS: OCSFEventClass.API_ACTIVITY,
+    AuditAction.ENV_VAR_CREATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.ENV_VAR_UPDATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.ENV_VAR_DELETE: OCSFEventClass.API_ACTIVITY,
     # OCSF has no authorization-denial class, so a refused request maps onto the
     # request surface instead.
     AuditAction.PERMISSION_DENIED: OCSFEventClass.API_ACTIVITY,

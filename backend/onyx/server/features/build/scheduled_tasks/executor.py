@@ -43,16 +43,21 @@ from uuid import UUID
 
 from onyx.configs.constants import MessageType, NotificationType
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
-from onyx.db.models import Sandbox
-from onyx.db.users import fetch_user_by_id
 from onyx.db.enums import ScheduledTaskErrorClass, ScheduledTaskRunStatus, SessionOrigin
+from onyx.db.env_var import resolve_env_vars_for_task_run
+from onyx.db.models import Sandbox
 from onyx.db.notification import create_notification
 from onyx.db.scheduled_task import get_run, mark_run_status
+from onyx.db.users import fetch_user_by_id
 from onyx.server.features.build.db.build_session import (
     create_message,
     get_session_messages,
 )
 from onyx.server.features.build.db.sandbox import update_sandbox_heartbeat
+from onyx.server.features.build.env_vars.masking import SecretMasker, mask_sandbox_event
+from onyx.server.features.build.env_vars.substitution import (
+    render_prompt_with_env_vars,
+)
 from onyx.server.features.build.sandbox.event_schema import (
     TURN_ERROR_CODE_TIMEOUT,
     Error,
@@ -219,7 +224,42 @@ def run_scheduled_task_logic(
         task_user_id = task.user_id
         task_name = task.name
         task_prompt = task.prompt
+        task_project_id = task.project_id
         task_mcp_server_ids = list(task.pre_approved_mcp_server_ids or [])
+
+        # Resolve granted env vars / secrets and render the effective prompt
+        # before touching the sandbox: a missing grant must fail fast with a
+        # clear error, never reach the agent as literal template text. The
+        # template itself is what gets persisted (turn 0); only the rendered
+        # copy is sent to the sandbox.
+        resolved_env_vars = resolve_env_vars_for_task_run(
+            db_session=db_session, task=task
+        )
+        effective_prompt, unresolved_names = render_prompt_with_env_vars(
+            task_prompt, resolved_env_vars.values
+        )
+        if unresolved_names:
+            mark_run_status(
+                db_session=db_session,
+                run_id=run_id,
+                status=ScheduledTaskRunStatus.FAILED,
+                error_class=ScheduledTaskErrorClass.ENV_VAR_RESOLUTION_FAILED,
+                error_detail=(
+                    "Prompt references env var(s) the task has no valid grant "
+                    f"for: {', '.join(unresolved_names)}"
+                ),
+            )
+            _notify(
+                db_session=db_session,
+                user_id=task_user_id,
+                task_name=task_name,
+                task_id=task_id,
+                run_id=run_id,
+                notif_type=NotificationType.SCHEDULED_TASK_FAILED,
+            )
+            db_session.commit()
+            return
+        masker = SecretMasker(resolved_env_vars.secret_values)
 
         # ensure_sandbox_running handles every state we care about:
         # creates a sandbox if none exists, waits out any concurrent
@@ -285,6 +325,9 @@ def run_scheduled_task_logic(
             task_user_id=task_user_id,
             task_name=task_name,
             task_prompt=task_prompt,
+            effective_prompt=effective_prompt,
+            masker=masker,
+            project_id=task_project_id,
             sandbox_id=sandbox_id,
             budget_seconds=budget_seconds,
             allowed_mcp_server_ids=task_mcp_server_ids,
@@ -326,6 +369,9 @@ def _drive_agent(
     task_user_id: UUID,
     task_name: str,
     task_prompt: str,
+    effective_prompt: str,
+    masker: SecretMasker,
+    project_id: UUID | None,
     sandbox_id: UUID,
     budget_seconds: int,
     allowed_mcp_server_ids: list[int] | None = None,
@@ -335,6 +381,11 @@ def _drive_agent(
     Creates the BuildSession, persists the user prompt, iterates sandbox
     events with the shared persistence consumer, and writes the terminal
     run status.
+
+    ``task_prompt`` is the template as authored (persisted as turn 0);
+    ``effective_prompt`` is the rendered copy handed to the sandbox agent.
+    Every sandbox event is masked for granted secret values before it can
+    reach streaming state or persistence.
 
     Returns:
         ``True`` if the run paused on an approval gate (run status is
@@ -349,17 +400,20 @@ def _drive_agent(
 
         with session_creation_lock(task_user_id):
             # Create the BuildSession. SCHEDULED origin keeps it out of the
-            # Craft sidebar (see `get_user_build_sessions`).
+            # Craft sidebar (see `get_user_build_sessions`); project linkage
+            # puts the run's session under the task's project.
             build_session = session_manager.create_session(
                 user_id=task_user_id,
                 origin=SessionOrigin.SCHEDULED,
                 name=f"Scheduled: {task_name}",
+                project_id=project_id,
             )
             session_id = build_session.id
 
             # Persist the user prompt as turn 0 so the transcript matches an
             # interactive run exactly (interactive flow does the same in
-            # `_stream_cli_agent_response`).
+            # `_stream_cli_agent_response`). This is the TEMPLATE — secret
+            # values never enter the persisted transcript.
             create_message(
                 session_id=session_id,
                 message_type=MessageType.USER,
@@ -448,9 +502,12 @@ def _drive_agent(
             for sandbox_event in session_manager.yield_sandbox_events(
                 sandbox_id,
                 session_id,
-                task_prompt,
+                effective_prompt,
                 turn_timeout_seconds=float(budget_seconds),
             ):
+                # Mask first: nothing downstream (streaming state, persisted
+                # messages, summaries) may see a granted secret's plaintext.
+                sandbox_event = mask_sandbox_event(sandbox_event, masker)
                 slot.extend()
                 if slot.lost:
                     session_manager.finalize_persist(session_id, state)
@@ -622,7 +679,9 @@ def _drive_agent(
             # explicitly out of scope for V1.
             db_session.rollback()
             exc_name = type(exc).__name__
-            exc_message = str(exc)
+            # Exception text can echo secret values (e.g. an HTTP error body
+            # carrying the token the agent used); mask before persisting.
+            exc_message = masker.mask(str(exc))
             # Keep the specific exception class name visible by prepending
             # it to error_detail; error_class itself stays in the closed
             # ScheduledTaskErrorClass vocabulary.

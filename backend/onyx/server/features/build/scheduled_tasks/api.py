@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from onyx.auth.permissions import require_permission
 from onyx.background.celery.versioned_apps.client import app as celery_app
 from onyx.configs.constants import OnyxCeleryPriority, OnyxCeleryQueues, OnyxCeleryTask
+from onyx.db.craft_project import require_project_for_user
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import (
     Permission,
@@ -31,6 +32,7 @@ from onyx.db.enums import (
     ScheduledTaskStatus,
     ScheduledTaskTriggerSource,
 )
+from onyx.db.env_var import validate_task_env_var_grants
 from onyx.db.external_app import get_external_apps
 from onyx.db.mcp import get_craft_enabled_mcp_servers
 from onyx.db.models import ScheduledTask, ScheduledTaskRun, User
@@ -124,6 +126,8 @@ class ScheduledTaskCreate(_Forbid):
     run_immediately: bool = False
     pre_approved_app_ids: list[int] = Field(default_factory=list)
     pre_approved_mcp_server_ids: list[int] = Field(default_factory=list)
+    project_id: UUID | None = None
+    env_var_ids: list[UUID] = Field(default_factory=list)
 
     _dispatch = model_validator(mode="before")(_dispatch_editor_payload)
 
@@ -132,7 +136,8 @@ class ScheduledTaskPatch(_Forbid):
     """Request body for ``PATCH /scheduled-tasks/{id}``.
 
     All fields are optional; ``editor_mode`` and ``editor_payload`` must be
-    supplied together (enforced below).
+    supplied together (enforced below). An explicitly supplied ``null``
+    ``project_id`` clears the project link.
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -142,6 +147,8 @@ class ScheduledTaskPatch(_Forbid):
     status: ScheduledTaskStatus | None = None
     pre_approved_app_ids: list[int] | None = None
     pre_approved_mcp_server_ids: list[int] | None = None
+    project_id: UUID | None = None
+    env_var_ids: list[UUID] | None = None
 
     _dispatch = model_validator(mode="before")(_dispatch_editor_payload)
 
@@ -214,6 +221,8 @@ class ScheduledTaskDetail(BaseModel):
     last_run: RunSummary | None
     pre_approved_app_ids: list[int]
     pre_approved_mcp_server_ids: list[int]
+    project_id: str | None
+    env_var_ids: list[str]
     created_at: datetime
     updated_at: datetime
 
@@ -303,6 +312,8 @@ def _detail(
         last_run=RunSummary.from_model(last_run) if last_run is not None else None,
         pre_approved_app_ids=task.pre_approved_external_app_ids,
         pre_approved_mcp_server_ids=task.pre_approved_mcp_server_ids,
+        project_id=str(task.project_id) if task.project_id is not None else None,
+        env_var_ids=[str(env_var_id) for env_var_id in task.env_var_ids],
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -349,6 +360,37 @@ def _validate_mcp_server_ids(
             OnyxErrorCode.INVALID_INPUT,
             f"Unknown or unavailable Craft MCP server id(s): {unavailable_ids}",
         )
+
+
+def _validate_project_id(db_session: Session, user: User, project_id: UUID | None) -> None:
+    """Reject a project the caller cannot read — belonging to the project is
+    what makes its env vars grantable, so read access is the entry ticket."""
+    if project_id is not None:
+        require_project_for_user(db_session, project_id, user)
+
+
+def _validate_env_var_ids(
+    db_session: Session,
+    user: User,
+    project_id: UUID | None,
+    env_var_ids: list[UUID],
+    already_granted_ids: frozenset[UUID] = frozenset(),
+) -> None:
+    """Reject new env-var ids unavailable to this user + task project.
+
+    Existing grants can remain after access changes (mirrors the MCP
+    pre-approval model); the run-time resolver skips them and the editor
+    shows them as stale.
+    """
+    if not env_var_ids:
+        return
+    validate_task_env_var_grants(
+        db_session=db_session,
+        user=user,
+        project_id=project_id,
+        env_var_ids=env_var_ids,
+        already_granted_ids=already_granted_ids,
+    )
 
 
 def _enqueue_executor(run_id: UUID) -> None:
@@ -423,6 +465,10 @@ def create_task(
     cron_expression = compile_to_cron(request.editor_payload)
     _validate_app_ids(db_session, request.pre_approved_app_ids)
     _validate_mcp_server_ids(db_session, user, request.pre_approved_mcp_server_ids)
+    _validate_project_id(db_session, user, request.project_id)
+    _validate_env_var_ids(
+        db_session, user, request.project_id, request.env_var_ids
+    )
 
     task = create_scheduled_task(
         db_session=db_session,
@@ -434,6 +480,8 @@ def create_task(
         status=request.status,
         pre_approved_external_app_ids=request.pre_approved_app_ids,
         pre_approved_mcp_server_ids=request.pre_approved_mcp_server_ids,
+        project_id=request.project_id,
+        env_var_ids=request.env_var_ids,
     )
 
     if request.run_immediately:
@@ -485,20 +533,36 @@ def patch_task(
         # whenever editor_payload is — no runtime check needed here.
         cron_expression = compile_to_cron(request.editor_payload)
 
+    set_project_id = "project_id" in request.model_fields_set
+
+    existing_task = get_scheduled_task(
+        db_session=db_session,
+        task_id=task_id,
+        user_id=user.id,
+    )
+
     if request.pre_approved_app_ids is not None:
         _validate_app_ids(db_session, request.pre_approved_app_ids)
 
     if request.pre_approved_mcp_server_ids is not None:
-        existing_task = get_scheduled_task(
-            db_session=db_session,
-            task_id=task_id,
-            user_id=user.id,
-        )
         _validate_mcp_server_ids(
             db_session,
             user,
             request.pre_approved_mcp_server_ids,
             already_approved_server_ids=set(existing_task.pre_approved_mcp_server_ids),
+        )
+
+    effective_project_id = (
+        request.project_id if set_project_id else existing_task.project_id
+    )
+    _validate_project_id(db_session, user, effective_project_id)
+    if request.env_var_ids is not None:
+        _validate_env_var_ids(
+            db_session,
+            user,
+            effective_project_id,
+            request.env_var_ids,
+            already_granted_ids=frozenset(existing_task.env_var_ids),
         )
 
     task = update_scheduled_task(
@@ -512,6 +576,9 @@ def patch_task(
         status=request.status,
         pre_approved_external_app_ids=request.pre_approved_app_ids,
         pre_approved_mcp_server_ids=request.pre_approved_mcp_server_ids,
+        project_id=request.project_id,
+        set_project_id=set_project_id,
+        env_var_ids=request.env_var_ids,
     )
     db_session.commit()
     db_session.refresh(task)
