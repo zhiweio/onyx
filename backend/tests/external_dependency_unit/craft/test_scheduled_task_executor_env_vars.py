@@ -116,6 +116,8 @@ def _prepare_stub(stub_sandbox_manager: StubSandboxManager) -> None:
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
 
 
 def _bypass_skill_payload(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -353,6 +353,8 @@ def test_timeout_error_event_marks_run_failed_with_timeout_class(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = [
         Error.model_validate(
             {"code": TURN_ERROR_CODE_TIMEOUT, "message": "Timeout waiting for response"}
@@ -390,6 +392,8 @@ def test_prompt_response_marks_run_succeeded(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = [
         PromptResponse.model_validate({"stopReason": "end_turn"}),
     ]
@@ -428,6 +432,8 @@ def test_scheduled_run_threads_budget_as_turn_timeout(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = [
         PromptResponse.model_validate({"stopReason": "end_turn"}),
     ]
@@ -470,6 +476,8 @@ def test_cancelled_prompt_response_marks_run_failed(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = [
         PromptResponse.model_validate({"stopReason": "cancelled"}),
     ]
@@ -505,6 +513,8 @@ def test_transport_error_event_marks_run_failed_with_agent_exception_class(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = [
         Error.model_validate(
             {"code": TURN_ERROR_CODE_TRANSPORT, "message": "event bus closed"}
@@ -542,6 +552,8 @@ def test_stream_without_prompt_response_marks_run_failed(
     stub_sandbox_manager.setup_session_workspace_silent = True
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
+    stub_sandbox_manager.regenerate_session_config_silent = True
+    stub_sandbox_manager.dispose_opencode_instance_silent = True
     stub_sandbox_manager.send_message_events = []
 
     run_scheduled_task_logic(run.id)
