@@ -34,7 +34,7 @@ from onyx.external_apps.matching.engine import (
     AllMatchedActions,
     actions_requiring_approval,
 )
-from onyx.sandbox_proxy import approval_cache
+from onyx.sandbox_proxy import approval_cache, content_screen
 from onyx.sandbox_proxy.credential_injection import (
     CredentialInjectionDispatcher,
     InjectionContext,
@@ -441,11 +441,66 @@ class GateAddon:
         Streams the response body to the sandbox instead of buffering it whole.
 
         Must run here, not in `response`: by then the body is already buffered.
+        Screenable text bodies stay buffered so the `response` hook can inspect
+        (and, in enforce mode, replace) them.
         """
         if not self._stream_responses:
             return
-        if flow.response is not None:
+        if flow.response is None:
+            return
+        content_type = flow.response.headers.get("content-type")
+        if content_screen.content_type_screenable(content_type):
+            return
+        if flow.response.stream is not True:
             flow.response.stream = True
+
+    def response(self, flow: http.HTTPFlow) -> None:
+        """Inbound content screening on screenable responses.
+
+        Shadow mode (the default) only logs the verdict so the hit rate can be
+        reviewed before enforcement. Enforce mode replaces a suspicious body
+        with a quarantine notice. Screening never breaks egress: any error
+        leaves the body untouched.
+        """
+        mode = content_screen.CRAFT_CONTENT_SCREENING_MODE
+        if mode == "off" or flow.response is None:
+            return
+        response = flow.response
+        if not content_screen.content_type_screenable(
+            response.headers.get("content-type")
+        ):
+            return
+        try:
+            raw = (
+                response.raw_content
+                if response.raw_content is not None
+                else response.content
+            )
+            if raw is None or len(raw) > content_screen.CRAFT_CONTENT_SCREEN_MAX_BYTES:
+                return
+            verdict = content_screen.screen_text(raw.decode("utf-8", errors="replace"))
+        except Exception:
+            logger.warning(
+                "content_screening_unscreened host=%s", flow.request.host, exc_info=True
+            )
+            return
+        if verdict is content_screen.ScreeningVerdict.CLEAN:
+            return
+        logger.info(
+            "content_screening verdict=%s mode=%s host=%s status=%s bytes=%s",
+            verdict.value,
+            mode,
+            flow.request.host,
+            response.status_code,
+            len(raw),
+        )
+        if mode == "enforce" and verdict is content_screen.ScreeningVerdict.SUSPICIOUS:
+            response.status_code = 200
+            response.headers["content-type"] = "text/plain"
+            response.content = content_screen.quarantine_notice(
+                "prompt-injection heuristics matched"
+            ).encode()
+            logger.info("content_screening_quarantined host=%s", flow.request.host)
 
     async def request(self, flow: http.HTTPFlow) -> None:
         task = asyncio.current_task()
