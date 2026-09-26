@@ -221,6 +221,9 @@ class ScheduledTaskDetail(BaseModel):
     last_run: RunSummary | None
     pre_approved_app_ids: list[int]
     pre_approved_mcp_server_ids: list[int]
+    # A pre-approved target's recorded policy version no longer matches the
+    # target's current policy — the grants cover nothing until re-saved.
+    policy_stale: bool = False
     project_id: str | None
     env_var_ids: list[str]
     created_at: datetime
@@ -312,10 +315,21 @@ def _detail(
         last_run=RunSummary.from_model(last_run) if last_run is not None else None,
         pre_approved_app_ids=task.pre_approved_external_app_ids,
         pre_approved_mcp_server_ids=task.pre_approved_mcp_server_ids,
+        policy_stale=_pre_approval_policy_stale(task),
         project_id=str(task.project_id) if task.project_id is not None else None,
         env_var_ids=[str(env_var_id) for env_var_id in task.env_var_ids],
         created_at=task.created_at,
         updated_at=task.updated_at,
+    )
+
+
+def _pre_approval_policy_stale(task: ScheduledTask) -> bool:
+    """True when a pre-approved target's recorded policy version no longer
+    matches the target's current one: the grant covers nothing until the
+    editor re-saves the task (re-stamping fresh versions)."""
+    return any(
+        grant.policy_version != grant.gated_app.policy_version
+        for grant in task.pre_approved_targets
     )
 
 

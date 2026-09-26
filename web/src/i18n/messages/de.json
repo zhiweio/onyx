@@ -12860,6 +12860,7 @@
         "fallbackTitle": "Geplante Aufgabe bearbeiten",
         "loadFailed": "Geplante Aufgabe konnte nicht geladen werden.",
         "missingTaskId": "Aufgaben-ID fehlt.",
+        "policyStale": "Bei einigen vorab genehmigten Apps wurden die Aktionsrichtlinien nach der Genehmigung geändert. Die Genehmigungen sind inaktiv, bis Sie diese Aufgabe neu speichern.",
         "title": "„{name}“ bearbeiten"
       },
       "form": {

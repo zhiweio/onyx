@@ -18,7 +18,7 @@ from onyx.db.enums import (
     GatedAppKind,
 )
 from onyx.db.gated_app import get_or_create_gated_app_id
-from onyx.db.models import ActionApproval, BuildSession
+from onyx.db.models import ActionApproval, BuildSession, GatedApp
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -56,12 +56,17 @@ def insert_action_approval(
     gated_app_id = (
         get_or_create_gated_app_id(db_session, *target) if target is not None else None
     )
+    policy_version: int | None = None
+    if gated_app_id is not None:
+        gated_app = db_session.get(GatedApp, gated_app_id)
+        policy_version = gated_app.policy_version if gated_app is not None else None
     row = ActionApproval(
         session_id=session_id,
         actions=sorted_actions,
         app_name=app_name,
         payload=payload,
         gated_app_id=gated_app_id,
+        policy_version=policy_version,
         decision=decision,
         decided_at=datetime.now(timezone.utc) if decision is not None else None,
         decided_via=decided_via,
@@ -161,13 +166,19 @@ def list_session_grant_action_approvals(
     gated_app_id: int | None,
 ) -> list[ActionApproval]:
     """Approved rows covered by a durable session-scope grant for one gated app.
-    ``None`` means the target was never gated — no identity row, so no grants."""
+    ``None`` means the target was never gated — no identity row, so no grants.
+
+    Only grants stamped with the target's *current* policy version count: a
+    policy edit reverts earlier session grants to ASK (ship-gate invariant).
+    """
     if gated_app_id is None:
         return []
     stmt = (
         select(ActionApproval)
+        .join(GatedApp, GatedApp.id == ActionApproval.gated_app_id)
         .where(ActionApproval.session_id == session_id)
         .where(ActionApproval.gated_app_id == gated_app_id)
+        .where(ActionApproval.policy_version == GatedApp.policy_version)
         .where(ActionApproval.decision == ApprovalDecision.APPROVED)
         .where(ActionApproval.decided_via == ApprovalDecidedVia.SESSION_GRANT)
         .order_by(ActionApproval.decided_at.desc())

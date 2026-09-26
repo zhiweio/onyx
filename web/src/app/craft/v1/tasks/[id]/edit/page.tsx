@@ -76,12 +76,23 @@ export default function EditScheduledTaskPage() {
   }
 
   return (
-    <ScheduleTaskForm
-      initial={toFormInitial(data)}
-      isEdit
-      title={t("title", { name: data.name })}
-      onBack={handleBack}
-    />
+    <div className="flex flex-col">
+      {data.policy_stale && (
+        <Text
+          font="secondary-body"
+          color="text-status-warning-05"
+          className="px-1 pb-2"
+        >
+          {t("policyStale")}
+        </Text>
+      )}
+      <ScheduleTaskForm
+        initial={toFormInitial(data)}
+        isEdit
+        title={t("title", { name: data.name })}
+        onBack={handleBack}
+      />
+    </div>
   );
 }
 

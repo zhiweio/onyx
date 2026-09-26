@@ -12860,6 +12860,7 @@
         "fallbackTitle": "Editar tarea programada",
         "loadFailed": "No se pudo cargar la tarea programada.",
         "missingTaskId": "Falta el id de la tarea.",
+        "policyStale": "Algunas apps preautorizadas cambiaron sus políticas de acciones después de otorgarse. Sus preautorizaciones están inactivas hasta que vuelvas a guardar esta tarea.",
         "title": "Editar «{name}»"
       },
       "form": {

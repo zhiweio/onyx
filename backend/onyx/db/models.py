@@ -8030,6 +8030,9 @@ class ActionApproval(Base):
         nullable=True,
     )
     gated_app: Mapped["GatedApp | None"] = relationship("GatedApp")
+    # The gated app's ``policy_version`` when this row was inserted. A grant
+    # decided under a stale version never covers a request again.
+    policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class EnvVar(Base):
@@ -8331,6 +8334,12 @@ class ScheduledTaskPreApprovedTarget(Base):
         ForeignKey("gated_app.id", ondelete="CASCADE"),
         nullable=False,
     )
+    # The gated app's ``policy_version`` when the grant was made. A policy
+    # edit bumps the version, so stale grants stop covering runs until the
+    # task is re-approved against the new policy.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -8347,6 +8356,55 @@ class ScheduledTaskPreApprovedTarget(Base):
             "scheduled_task_id",
             "gated_app_id",
             name="uq_scheduled_task_pre_approved_app",
+        ),
+    )
+
+
+class ScheduledTaskGraduation(Base):
+    """Supervised-approval progress toward auto-approving one (task, target).
+
+    The QM ship-gate graduation: a task run that parks on an ASK-gated action
+    and gets a human approval counts one supervised pass here. After
+    ``CRAFT_ACTION_GRADUATION_THRESHOLD`` consecutive passes a
+    ``ScheduledTaskPreApprovedTarget`` row is created automatically (bound to
+    the current policy version) — that row IS the graduated "auto" state. A
+    rejection resets the count; a policy-version mismatch voids both the
+    count and the graduated grant.
+    """
+
+    __tablename__ = "scheduled_task_graduation"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scheduled_task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scheduled_task.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    gated_app_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("gated_app.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    consecutive_passes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Version the count was accumulated under; a mismatch voids it.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "scheduled_task_id",
+            "gated_app_id",
+            name="uq_scheduled_task_graduation",
         ),
     )
 
@@ -8801,6 +8859,13 @@ class GatedApp(Base):
         Integer,
         ForeignKey("mcp_server.id", ondelete="CASCADE"),
         nullable=True,
+    )
+    # The QM ship-gate invariant: every grant records the policy version it
+    # was made under, and any policy edit bumps this counter — which silently
+    # reverts all grants (session grants, task pre-approvals, graduation
+    # progress) to ASK until re-approved.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
     )
 
     # Constraints are named to match the live schema created by the migration.

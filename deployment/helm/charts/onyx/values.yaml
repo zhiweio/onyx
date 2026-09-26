@@ -1776,6 +1776,8 @@ configMap:
   # for prompt-injection patterns: shadow (default) logs only, enforce
   # replaces suspicious bodies with a quarantine notice, off disables it.
   CRAFT_JOB_LEASE_TTL_SECONDS: ""
+  CRAFT_ACTION_AUTO_GRADUATION_ENABLED: ""
+  CRAFT_ACTION_GRADUATION_THRESHOLD: ""
   SANDBOX_IMAGE_PULL_POLICY: ""
   OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS: ""
   # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the

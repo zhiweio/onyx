@@ -12860,6 +12860,7 @@
         "fallbackTitle": "Editar tarefa agendada",
         "loadFailed": "Falha ao carregar a tarefa agendada.",
         "missingTaskId": "Faltando o id da tarefa.",
+        "policyStale": "Alguns apps pré-aprovados alteraram suas políticas de ação após a concessão. As pré-aprovações ficam inativas até você salvar esta tarefa novamente.",
         "title": "Editar \"{name}\""
       },
       "form": {

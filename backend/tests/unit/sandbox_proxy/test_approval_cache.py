@@ -90,12 +90,14 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
     approval_id = uuid4()
     kind = GatedAppKind.EXTERNAL_APP
     target_id = 42
+    policy_version = 1
 
     assert not cached_session_grants_cover(
         session_id=session_id,
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post"],
+        policy_version=policy_version,
         cache=cache,
     )
 
@@ -105,6 +107,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         target_id=target_id,
         action_types=["slack.chat.post"],
         source_approval_id=approval_id,
+        policy_version=policy_version,
         cache=cache,
     )
 
@@ -113,6 +116,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post"],
+        policy_version=policy_version,
         cache=cache,
     )
     assert not cached_session_grants_cover(
@@ -120,6 +124,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post", "slack.files.upload"],
+        policy_version=policy_version,
         cache=cache,
     )
     assert not cached_session_grants_cover(
@@ -127,6 +132,16 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id + 1,
         action_types=["slack.chat.post"],
+        policy_version=policy_version,
+        cache=cache,
+    )
+    # A policy edit bumps the version; the grant must not cover across it.
+    assert not cached_session_grants_cover(
+        session_id=session_id,
+        kind=kind,
+        target_id=target_id,
+        action_types=["slack.chat.post"],
+        policy_version=policy_version + 1,
         cache=cache,
     )
     assert cache.expirations

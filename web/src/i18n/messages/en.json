@@ -12866,6 +12866,7 @@
         "fallbackTitle": "Edit scheduled task",
         "loadFailed": "Failed to load scheduled task.",
         "missingTaskId": "Missing task id.",
+        "policyStale": "Some pre-approved apps changed their action policies since they were granted. Their pre-approvals are inactive until you re-save this task.",
         "title": "Edit \"{name}\""
       },
       "form": {

@@ -27,7 +27,7 @@ from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheBackend
 from onyx.configs.constants import NotificationType
 from onyx.db.engine.sql_engine import get_session_with_tenant
 from onyx.db.enums import ApprovalDecidedVia, ApprovalDecision, EndpointPolicy
-from onyx.db.gated_app import get_gated_app_id
+from onyx.db.gated_app import get_gated_app_row
 from onyx.db.notification import create_notification
 from onyx.db.scheduled_task import ScheduledRunGrants, get_live_scheduled_run_grants
 from onyx.external_apps.matching.engine import (
@@ -866,11 +866,20 @@ class GateAddon:
     def _session_grant(
         self, db: Session, ctx: SessionContext, matched_actions: AllMatchedActions
     ) -> _ApprovalGrant | None:
-        """The user approved this app/action for the session."""
+        """The user approved this app/action for the session.
+
+        Grants only cover while their recorded policy version matches the
+        target's current one — a policy edit reverts session grants to ASK.
+        """
         action_types = actions_requiring_approval(matched_actions.actions)
         if not action_types:
             return None
         target = matched_actions.target
+
+        gated_app = get_gated_app_row(db, target.kind, target.id)
+        if gated_app is None:
+            return None
+        policy_version = gated_app.policy_version
         cache: CacheBackend | None = None
         try:
             cache = self._cache_factory(ctx.tenant_id)
@@ -879,6 +888,7 @@ class GateAddon:
                 kind=target.kind,
                 target_id=target.id,
                 action_types=action_types,
+                policy_version=policy_version,
                 cache=cache,
             ):
                 return _ApprovalGrant(decided_via=ApprovalDecidedVia.SESSION_GRANT)
@@ -897,13 +907,14 @@ class GateAddon:
         grant_source_rows = action_approval.list_session_grant_action_approvals(
             db,
             session_id=ctx.session_id,
-            gated_app_id=get_gated_app_id(db, target.kind, target.id),
+            gated_app_id=gated_app.id,
         )
         granted_action_types = approval_cache.hydrate_session_grants(
             session_id=ctx.session_id,
             kind=target.kind,
             target_id=target.id,
             rows=grant_source_rows,
+            policy_version=policy_version,
             cache=cache,
         )
         if not set(action_types).issubset(granted_action_types):

@@ -62,7 +62,21 @@ SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS = int(
 )
 SANDBOX_HEARTBEAT_REFRESH_INTERVAL_SECONDS = 60
 
+# Craft job lease: short TTL renewed by a per-turn heartbeat (every TTL/3), so
+# an expired lease means the owning turn is really gone rather than long-running.
 CRAFT_JOB_LEASE_TTL_SECONDS = int(os.environ.get("CRAFT_JOB_LEASE_TTL_SECONDS", "90"))
+
+# Ship-gate graduation (QM): after this many consecutive human approvals of a
+# scheduled task's parked ASK-gated request for one target, the task's
+# pre-approval for that target is created automatically (bound to the current
+# policy version). A rejection resets the count; a policy edit voids both.
+CRAFT_ACTION_AUTO_GRADUATION_ENABLED = (
+    os.environ.get("CRAFT_ACTION_AUTO_GRADUATION_ENABLED", "true").lower() == "true"
+)
+CRAFT_ACTION_GRADUATION_THRESHOLD = int(
+    os.environ.get("CRAFT_ACTION_GRADUATION_THRESHOLD", "3")
+)
+
 SANDBOX_NEXTJS_PORT_START = int(os.environ.get("SANDBOX_NEXTJS_PORT_START", "3010"))
 SANDBOX_NEXTJS_PORT_END = int(os.environ.get("SANDBOX_NEXTJS_PORT_END", "3100"))
 

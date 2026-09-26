@@ -8,7 +8,7 @@ columns.
 
 from __future__ import annotations
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
@@ -62,6 +62,14 @@ def get_or_create_gated_app_id(
     return created
 
 
+def get_gated_app_row(
+    db_session: Session, kind: GatedAppKind, target_id: int
+) -> GatedApp | None:
+    """The ``gated_app`` row for ``(kind, target_id)``, or ``None`` when the
+    target has no identity row yet."""
+    return db_session.scalar(select(GatedApp).where(_target_column(kind) == target_id))
+
+
 def get_action_policies(
     db_session: Session, kind: GatedAppKind, target_id: int
 ) -> dict[str, EndpointPolicy]:
@@ -82,11 +90,14 @@ def replace_action_policies__no_commit(
     gated_app_id: int,
     policies: dict[str, EndpointPolicy],
 ) -> None:
-    """Replace ``gated_app_id``'s per-action policy rows with exactly ``policies``.
+    """Replace ``gated_app_id``'s per-action policy rows with exactly ``policies``
+    and bump the target's ``policy_version``.
 
     DELETE then one bulk INSERT, emitted in order so a re-set action can't
-    collide with its old row on ``uq_gated_action_policy``. No commit — runs
-    inside the caller's transaction.
+    collide with its old row on ``uq_gated_action_policy``. The version bump is
+    the ship-gate invariant: every grant recorded under the old version stops
+    covering requests, so a policy edit reverts approvals to ASK. No commit —
+    runs inside the caller's transaction.
     """
     db_session.execute(
         delete(GatedActionPolicy).where(GatedActionPolicy.gated_app_id == gated_app_id)
@@ -99,3 +110,8 @@ def replace_action_policies__no_commit(
                 for action_id, policy in policies.items()
             ],
         )
+    db_session.execute(
+        update(GatedApp)
+        .where(GatedApp.id == gated_app_id)
+        .values(policy_version=GatedApp.policy_version + 1)
+    )

@@ -129,14 +129,27 @@ def _replace_pre_approved_targets(
     existing_by_target = {
         grant.gated_app.target_key: grant for grant in task.pre_approved_targets
     }
-    replacement_grants = [
-        existing_by_target.get((kind, target_id))
-        or ScheduledTaskPreApprovedTarget(
-            gated_app_id=get_or_create_gated_app_id(db_session, kind, target_id)
-        )
-        for kind, target_ids in replacements.items()
-        for target_id in set(target_ids)
-    ]
+    replacement_grants = []
+    for kind, target_ids in replacements.items():
+        for target_id in set(target_ids):
+            existing = existing_by_target.get((kind, target_id))
+            if existing is not None:
+                # Reuse unchanged rows to avoid deleting and inserting the
+                # same unique key in one flush.
+                replacement_grants.append(existing)
+                continue
+            gated_app_id = get_or_create_gated_app_id(db_session, kind, target_id)
+            gated_app = db_session.get(GatedApp, gated_app_id)
+            replacement_grants.append(
+                ScheduledTaskPreApprovedTarget(
+                    gated_app_id=gated_app_id,
+                    # Stamp the version the grant is made under so a later
+                    # policy edit voids it.
+                    policy_version=(
+                        gated_app.policy_version if gated_app is not None else 1
+                    ),
+                )
+            )
     retained_grants = [
         grant
         for grant in task.pre_approved_targets
@@ -621,6 +634,9 @@ def get_live_scheduled_run_grants(
             ScheduledTaskPreApprovedTarget.gated_app_id == GatedApp.id,
         )
         .where(ScheduledTaskPreApprovedTarget.scheduled_task_id == task_id)
+        # A grant made under a stale policy version covers nothing: the
+        # policy changed since it was recorded, so it reverts to ASK.
+        .where(ScheduledTaskPreApprovedTarget.policy_version == GatedApp.policy_version)
     ).all()
     granted: set[GrantedTarget] = {target.target_key for target in gated_targets}
     return run_id, granted

@@ -80,6 +80,9 @@ export interface ScheduledTaskDetail {
   last_run: ScheduledRunSummary | null;
   pre_approved_app_ids: number[];
   pre_approved_mcp_server_ids: number[];
+  // A pre-approved target's recorded policy version no longer matches the
+  // target's current policy; the grants cover nothing until re-saved.
+  policy_stale: boolean;
   project_id: string | null;
   env_var_ids: string[];
   created_at: string;

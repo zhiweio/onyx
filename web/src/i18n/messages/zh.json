@@ -12860,6 +12860,7 @@
         "fallbackTitle": "编辑计划任务",
         "loadFailed": "无法加载计划任务。",
         "missingTaskId": "缺少任务 ID。",
+        "policyStale": "部分预授权应用的管理策略在授权后发生了变化，其预授权已失效，重新保存本任务即可恢复。",
         "title": "编辑“{name}”"
       },
       "form": {

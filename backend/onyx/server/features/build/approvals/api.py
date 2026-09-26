@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from onyx.auth.permissions import require_permission
 from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheBackend
-from onyx.db.engine.sql_engine import get_session
+from onyx.db.engine.sql_engine import get_session, get_session_with_current_tenant
 from onyx.db.enums import ApprovalDecidedVia, ApprovalDecision, GatedAppKind, Permission
 from onyx.db.models import ActionApproval, User
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -195,6 +195,22 @@ def submit_decision(
 
     _send_wake_best_effort(approval_id, body.decision)
 
+    # Ship-gate graduation: supervised approvals/rejections move the task's
+    # pre-approval progress. Committed above — a failure here must not fail
+    # the decision itself.
+    try:
+        from onyx.server.features.build.approvals.graduation import (
+            record_decision_outcome,
+        )
+
+        with get_session_with_current_tenant() as graduation_session:
+            record_decision_outcome(graduation_session, decided=decided)
+            graduation_session.commit()
+    except Exception:
+        logger.exception(
+            "approval.graduation_update_failed approval_id=%s", approval_id
+        )
+
     return ApprovalView.model_validate(decided)
 
 
@@ -286,6 +302,9 @@ def submit_session_grant(
         kind=target_kind,
         target_id=target_id,
         rows=grant_source_rows,
+        policy_version=(
+            current.gated_app.policy_version if current.gated_app is not None else 1
+        ),
         cache=cache,
     )
 
