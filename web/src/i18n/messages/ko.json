@@ -8741,7 +8741,14 @@
           "placeholder": "기억하세요, 응답은 항상 번호가 매겨진 목록 형식으로 작성해 주세요.",
           "title": "리마인더"
         },
-        "title": "고급 옵션"
+        "title": "고급 옵션",
+        "agentBudget": {
+          "title": "에이전트 예산",
+          "description": "이 에이전트의 도구 루프 예산을 재정의합니다. 비워 두면 배포 기본값을 상속합니다.",
+          "maxLlmCycles": "최대 도구 사이클",
+          "maxExtensionCycles": "최대 확장 사이클",
+          "turnTokenBudget": "턴 토큰 예산"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "결정을 제출하지 못했습니다"
+      },
+      "quarantine": {
+        "title": "콘텐츠가 격리되었습니다",
+        "body": "{host}{path}에서 가져온 콘텐츠가 프롬프트 인젝션 휴리스틱에 일치하여 에이전트에 전달되기 전에 차단했습니다.",
+        "patterns": "일치한 규칙: {patterns}",
+        "approve": "허용 ({scope})",
+        "deny": "차단 유지",
+        "settled": "릴리스 결정이 기록되었습니다.",
+        "scope": {
+          "once": "이번 가져오기",
+          "session": "이 세션",
+          "host": "모든 세션 (30일)"
+        }
       }
     },
     "apps": {

@@ -4400,6 +4400,10 @@ class Persona(Base):
         String(length=PROMPT_LENGTH), nullable=True
     )
     datetime_aware: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Per-assistant agent loop budget overrides (see onyx.chat.agent_budget).
+    # None or missing fields inherit the deployment-wide env defaults; the
+    # payload is validated by AgentBudget before anything reads it.
+    agent_budget: Mapped[dict | None] = mapped_column(PGJSONB, nullable=True)
 
     uploaded_image_id: Mapped[str | None] = mapped_column(String, nullable=True)
     icon_name: Mapped[str | None] = mapped_column(String, nullable=True)

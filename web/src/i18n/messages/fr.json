@@ -8741,7 +8741,14 @@
           "placeholder": "N'oubliez pas, je veux que vous formatiez toujours votre réponse sous forme de liste numérotée.",
           "title": "Rappels"
         },
-        "title": "Options avancées"
+        "title": "Options avancées",
+        "agentBudget": {
+          "title": "Budget de l'agent",
+          "description": "Remplace les budgets de boucle d'outils de cet agent. Laissez vide pour hériter des valeurs par défaut.",
+          "maxLlmCycles": "Cycles d'outils max.",
+          "maxExtensionCycles": "Cycles d'extension max.",
+          "turnTokenBudget": "Budget de tokens par tour"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Échec de l'envoi de la décision"
+      },
+      "quarantine": {
+        "title": "Contenu mis en quarantaine",
+        "body": "Le contenu récupéré depuis {host}{path} a déclenché les heuristiques d'injection de prompt et a été bloqué avant d'atteindre l'agent.",
+        "patterns": "Heuristiques déclenchées : {patterns}",
+        "approve": "Autoriser ({scope})",
+        "deny": "Maintenir le blocage",
+        "settled": "Décision de diffusion enregistrée.",
+        "scope": {
+          "once": "cette récupération",
+          "session": "cette session",
+          "host": "toutes les sessions (30 jours)"
+        }
       }
     },
     "apps": {
@@ -12861,7 +12881,7 @@
         "fallbackTitle": "Modifier la tâche planifiée",
         "loadFailed": "Échec du chargement de la tâche planifiée.",
         "missingTaskId": "Id de tâche manquant.",
-        "policyStale": "Certaines applications préautorisées ont modifié leurs stratégies d\u2019action après l\u2019octroi. Leurs préautorisations sont inactives jusqu\u2019à ce que vous réenregistriez cette tâche.",
+        "policyStale": "Certaines applications préautorisées ont modifié leurs stratégies d’action après l’octroi. Leurs préautorisations sont inactives jusqu’à ce que vous réenregistriez cette tâche.",
         "title": "Modifier « {name} »"
       },
       "form": {

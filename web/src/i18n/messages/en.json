@@ -8732,6 +8732,13 @@
       },
       "advanced": {
         "description": "Fine-tune agent prompts and knowledge.",
+        "agentBudget": {
+    "title": "Agent Budget",
+    "description": "Override this agent's tool-loop budgets. Leave empty to inherit the deployment defaults.",
+    "maxLlmCycles": "Max tool cycles",
+    "maxExtensionCycles": "Max extension cycles",
+    "turnTokenBudget": "Turn token budget"
+  },
         "overwritePrompt": {
           "suffix": "(Not Recommended)",
           "title": "Overwrite System Prompt"

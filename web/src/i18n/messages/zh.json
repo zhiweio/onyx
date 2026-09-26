@@ -8732,6 +8732,13 @@
       },
       "advanced": {
         "description": "微调智能体的提示词和知识。",
+        "agentBudget": {
+    "title": "Agent 预算",
+    "description": "覆盖该助手工具循环的预算。留空则继承部署默认值。",
+    "maxLlmCycles": "最大工具轮数",
+    "maxExtensionCycles": "最大扩展轮数",
+    "turnTokenBudget": "Turn token 预算"
+  },
         "overwritePrompt": {
           "suffix": "（不推荐）",
           "title": "覆盖系统提示词"

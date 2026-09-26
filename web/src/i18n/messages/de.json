@@ -8741,7 +8741,14 @@
           "placeholder": "Denken Sie daran, ich möchte, dass Sie Ihre Antwort immer als nummerierte Liste formatieren.",
           "title": "Erinnerungen"
         },
-        "title": "Erweiterte Optionen"
+        "title": "Erweiterte Optionen",
+        "agentBudget": {
+          "title": "Agent-Budget",
+          "description": "Überschreibt die Tool-Loop-Budgets dieses Agents. Leer lassen, um die deploymentweiten Standards zu erben.",
+          "maxLlmCycles": "Max. Tool-Zyklen",
+          "maxExtensionCycles": "Max. Erweiterungszyklen",
+          "turnTokenBudget": "Turn-Token-Budget"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Entscheidung konnte nicht übermittelt werden"
+      },
+      "quarantine": {
+        "title": "Inhalt wurde isoliert",
+        "body": "Der von {host}{path} abgerufene Inhalt traf auf Prompt-Injection-Heuristiken und wurde blockiert, bevor er den Agenten erreichte.",
+        "patterns": "Getroffene Heuristiken: {patterns}",
+        "approve": "Zulassen ({scope})",
+        "deny": "Blockiert lassen",
+        "settled": "Freigabeentscheidung aufgezeichnet.",
+        "scope": {
+          "once": "diesen Abruf",
+          "session": "diese Sitzung",
+          "host": "alle Sitzungen (30 Tage)"
+        }
       }
     },
     "apps": {

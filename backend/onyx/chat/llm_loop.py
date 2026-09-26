@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 from typing import Any, Literal
 
+from onyx.chat.agent_budget import resolve_budget
 from onyx.chat.chat_state import ChatStateContainer
 from onyx.chat.chat_utils import (
     build_python_chat_files_from_search_docs,
@@ -35,12 +36,7 @@ from onyx.chat.prompt_utils import (
     process_prompt_template,
 )
 from onyx.configs.app_configs import INTEGRATION_TESTS_MODE
-from onyx.configs.chat_configs import (
-    CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED,
-    CHAT_AGENT_MAX_EXTENSION_CYCLES,
-    CHAT_AGENT_TURN_TOKEN_BUDGET,
-    MAX_LLM_CYCLES,
-)
+from onyx.configs.chat_configs import CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED
 from onyx.configs.constants import DocumentSource, MessageType
 from onyx.configs.model_configs import GEN_AI_INPUT_TOKEN_SAFETY_MARGIN
 from onyx.context.search.models import SearchDoc, SearchDocsResponse
@@ -939,23 +935,26 @@ def run_llm_loop(
         llm_cycle_count = 0
         extension_cycles_used = 0
         history_folded = False
+        # Per-persona budget overrides resolved once per request; malformed
+        # payloads degrade to the global defaults (see onyx.chat.agent_budget).
+        budget = resolve_budget(persona.agent_budget if persona is not None else None)
         # Runaway guard: bounded even if a provider ignores tool_choice=NONE.
-        hard_cycle_ceiling = MAX_LLM_CYCLES + CHAT_AGENT_MAX_EXTENSION_CYCLES + 2
+        hard_cycle_ceiling = budget.max_llm_cycles + budget.max_extension_cycles + 2
         while llm_cycle_count < hard_cycle_ceiling:
             # Handling tool calls based on cycle count and past cycle conditions.
             # Budget governance (QM/Codex discipline): at the base cap a turn
             # that still wants tools is not stripped mid-work — older tool
             # results fold into stubs and the loop continues for up to
-            # CHAT_AGENT_MAX_EXTENSION_CYCLES more cycles.
-            in_extension = llm_cycle_count >= MAX_LLM_CYCLES - 1
+            # budget.max_extension_cycles more cycles.
+            in_extension = llm_cycle_count >= budget.max_llm_cycles - 1
             extension_allowed = (
                 CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED
                 and not ran_image_gen
-                and extension_cycles_used < CHAT_AGENT_MAX_EXTENSION_CYCLES
+                and extension_cycles_used < budget.max_extension_cycles
                 and (
-                    CHAT_AGENT_TURN_TOKEN_BUDGET <= 0
+                    budget.turn_token_budget <= 0
                     or sum(msg.token_count for msg in simple_chat_history)
-                    <= CHAT_AGENT_TURN_TOKEN_BUDGET
+                    <= budget.turn_token_budget
                 )
             )
             if in_extension and extension_allowed:
@@ -997,7 +996,7 @@ def run_llm_loop(
                 extension_cycles_used += 1
                 out_of_cycles = False
             else:
-                out_of_cycles = llm_cycle_count >= MAX_LLM_CYCLES - 1
+                out_of_cycles = llm_cycle_count >= budget.max_llm_cycles - 1
             llm_cycle_count += 1
             if forced_tool_id:
                 # Needs to be just the single one because the "required" currently doesn't have a specified tool, just a binary

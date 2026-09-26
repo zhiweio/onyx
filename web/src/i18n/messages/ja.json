@@ -8741,7 +8741,14 @@
           "placeholder": "忘れないでください。回答は常に番号付きリストの形式にしてください。",
           "title": "リマインダー"
         },
-        "title": "詳細オプション"
+        "title": "詳細オプション",
+        "agentBudget": {
+          "title": "エージェント予算",
+          "description": "このエージェントのツールループ予算を上書きします。空欄の場合はデプロイ既定値を継承します。",
+          "maxLlmCycles": "最大ツールサイクル数",
+          "maxExtensionCycles": "最大拡張サイクル数",
+          "turnTokenBudget": "ターントークン予算"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "決定を送信できませんでした"
+      },
+      "quarantine": {
+        "title": "コンテンツを隔離しました",
+        "body": "{host}{path} から取得したコンテンツがプロンプトインジェクションのヒューリスティックに一致したため、エージェントに渡る前にブロックしました。",
+        "patterns": "検出したルール: {patterns}",
+        "approve": "許可（{scope}）",
+        "deny": "ブロックを維持",
+        "settled": "リリース判断を記録しました。",
+        "scope": {
+          "once": "今回のみ",
+          "session": "このセッション",
+          "host": "すべてのセッション（30日）"
+        }
       }
     },
     "apps": {

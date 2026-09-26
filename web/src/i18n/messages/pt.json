@@ -8741,7 +8741,14 @@
           "placeholder": "Lembre-se, quero que você sempre formate sua resposta como uma lista numerada.",
           "title": "Lembretes"
         },
-        "title": "Opções avançadas"
+        "title": "Opções avançadas",
+        "agentBudget": {
+          "title": "Orçamento do agente",
+          "description": "Substitui os orçamentos de loop de ferramentas deste agente. Deixe vazio para herdar os padrões.",
+          "maxLlmCycles": "Ciclos máx. de ferramentas",
+          "maxExtensionCycles": "Ciclos máx. de extensão",
+          "turnTokenBudget": "Orçamento de tokens por turno"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Falha ao enviar a decisão"
+      },
+      "quarantine": {
+        "title": "Conteúdo colocado em quarentena",
+        "body": "O conteúdo obtido de {host}{path} correspondeu a heurísticas de injeção de prompt e foi bloqueado antes de chegar ao agente.",
+        "patterns": "Heurísticas correspondentes: {patterns}",
+        "approve": "Permitir ({scope})",
+        "deny": "Manter bloqueado",
+        "settled": "Decisão de liberação registrada.",
+        "scope": {
+          "once": "esta busca",
+          "session": "esta sessão",
+          "host": "todas as sessões (30 dias)"
+        }
       }
     },
     "apps": {

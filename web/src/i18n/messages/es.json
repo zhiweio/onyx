@@ -8741,7 +8741,14 @@
           "placeholder": "Recuerda, quiero que siempre des formato de lista numerada a tu respuesta.",
           "title": "Recordatorios"
         },
-        "title": "Opciones avanzadas"
+        "title": "Opciones avanzadas",
+        "agentBudget": {
+          "title": "Presupuesto del agente",
+          "description": "Invalida los presupuestos del bucle de herramientas de este agente. Deje vacío para heredar los valores predeterminados.",
+          "maxLlmCycles": "Ciclos máx. de herramientas",
+          "maxExtensionCycles": "Ciclos máx. de extensión",
+          "turnTokenBudget": "Presupuesto de tokens por turno"
+        }
       },
       "avatar": {
         "edit": {
@@ -11884,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "No se pudo enviar la decisión"
+      },
+      "quarantine": {
+        "title": "Contenido puesto en cuarentena",
+        "body": "El contenido obtenido de {host}{path} coincidió con heurísticas de inyección de prompts y fue bloqueado antes de llegar al agente.",
+        "patterns": "Heurísticas coincidentes: {patterns}",
+        "approve": "Permitir ({scope})",
+        "deny": "Mantener bloqueado",
+        "settled": "Decisión de liberación registrada.",
+        "scope": {
+          "once": "esta descarga",
+          "session": "esta sesión",
+          "host": "todas las sesiones (30 días)"
+        }
       }
     },
     "apps": {
