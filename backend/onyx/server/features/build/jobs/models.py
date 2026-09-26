@@ -30,6 +30,9 @@ class CraftJobPhaseResponse(BaseModel):
     name: str
     kind: str
     status: str
+    # Gate retries this phase has burned; the banner derives a degraded
+    # health signal from it (two or more means one retry from the limit).
+    gate_retries: int = 0
 
 
 class CraftJobSpecialistResponse(BaseModel):
@@ -109,6 +112,7 @@ class CraftJobResponse(BaseModel):
                 name=str(phase.get("name") or phase.get("id") or ""),
                 kind=str(phase.get("kind") or ""),
                 status=str(phase.get("status") or "pending"),
+                gate_retries=int(phase.get("gate_retries") or 0),
             )
             for phase in job.phases or []
         ]

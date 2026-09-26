@@ -12612,6 +12612,7 @@
         "running": "الآن: {phase}",
         "waitingSpecialists": "في انتظار جلسات المتخصصين",
         "waitingLanes": "مسارات متوازية قيد التشغيل",
+        "degraded": "إعادة المحاولة",
         "interrupted": "في انتظار اختيار",
         "succeeded": "انتهى",
         "failed": "فشل",

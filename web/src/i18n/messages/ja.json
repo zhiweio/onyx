@@ -12612,6 +12612,7 @@
         "running": "現在：{phase}",
         "waitingSpecialists": "専門セッションを待機中",
         "waitingLanes": "並列レーン実行中",
+        "degraded": "再試行中",
         "interrupted": "選択待ち",
         "succeeded": "完了",
         "failed": "失敗",

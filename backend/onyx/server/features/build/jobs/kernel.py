@@ -187,7 +187,10 @@ def after_worker_turn(
     node = _current_node(graph, state)
     if node is None:
         mark_job_finished(
-            job, status=CraftJobStatus.FAILED, error_detail="Job has no current node"
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail="Job has no current node",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -474,6 +477,7 @@ def after_lane_turn(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="A specialist session failed",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -702,6 +706,7 @@ def _fail_or_retry(
             job,
             status=CraftJobStatus.FAILED,
             error_detail=gate_retry_limit_detail(gate, node.id),
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -945,6 +950,7 @@ def _spawn_lanes(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="Too many research lanes for this job",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -1220,6 +1226,7 @@ def _retry_lane_or_fail(
             job,
             status=CraftJobStatus.FAILED,
             error_detail=retry_limit_error_detail(node.id, *reasons),
+            db_session=db_session,
         )
         return state
     if specialist is not None:
@@ -1505,15 +1512,20 @@ def _visible_tools(
 def _lane_inactive_seconds(
     db_session: Session, specialist: Any, now: datetime
 ) -> float | None:
-    stamp = getattr(specialist, "created_at", None)
+    # specialist rows arrive duck-typed from callers; access is best-effort.
+    stamp = getattr(specialist, "created_at", None)  # ods: ignore[getattr]
     last_activity = None
-    session_id = getattr(specialist, "session_id", None)
+    session_id = getattr(specialist, "session_id", None)  # ods: ignore[getattr]
     if session_id is not None:
         try:
             from onyx.db.models import BuildSession
 
             row = db_session.get(BuildSession, session_id)
-            last_activity = getattr(row, "last_activity_at", None) if row else None
+            last_activity = (
+                getattr(row, "last_activity_at", None)  # ods: ignore[getattr]
+                if row
+                else None
+            )
         except Exception:
             last_activity = None
     ref = last_activity or stamp

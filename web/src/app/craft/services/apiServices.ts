@@ -932,6 +932,7 @@ export interface CraftJobPhaseResponse {
   name: string;
   kind: string;
   status: string;
+  gate_retries?: number;
 }
 
 export interface CraftJobSpecialistResponse {

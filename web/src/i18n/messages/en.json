@@ -12618,6 +12618,7 @@
         "running": "Now: {phase}",
         "waitingSpecialists": "Waiting for specialist sessions",
         "waitingLanes": "Parallel lanes running",
+        "degraded": "Retrying",
         "interrupted": "Waiting for a choice",
         "succeeded": "Finished",
         "failed": "Failed",

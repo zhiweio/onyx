@@ -12612,6 +12612,7 @@
         "running": "En cours : {phase}",
         "waitingSpecialists": "En attente des sessions spécialisées",
         "waitingLanes": "Voies parallèles en cours",
+        "degraded": "Nouvelle tentative",
         "interrupted": "En attente d'un choix",
         "succeeded": "Terminé",
         "failed": "Échec",

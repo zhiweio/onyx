@@ -12612,6 +12612,7 @@
         "running": "当前：{phase}",
         "waitingSpecialists": "等待专家会话",
         "waitingLanes": "分路执行中",
+        "degraded": "重试中",
         "interrupted": "等待选择",
         "succeeded": "已完成",
         "failed": "失败",

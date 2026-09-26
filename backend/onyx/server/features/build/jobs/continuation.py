@@ -95,6 +95,7 @@ def maybe_continue_craft_job(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="Phase turn failed",
+            db_session=db_session,
         )
         db_session.commit()
         return
@@ -103,6 +104,7 @@ def maybe_continue_craft_job(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="Job total budget exhausted",
+            db_session=db_session,
         )
         db_session.commit()
         return
@@ -161,6 +163,7 @@ def _retry_or_fail_phase(
             error_detail=retry_limit_error_detail(
                 *(missing or [str(phase.get("id") or "")])
             ),
+            db_session=db_session,
         )
         db_session.commit()
         return
@@ -249,6 +252,7 @@ def _finish_specialist_turn(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="Job total budget exhausted",
+            db_session=db_session,
         )
         db_session.commit()
         return
