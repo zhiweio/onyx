@@ -50,27 +50,42 @@ _NON_SCREENABLE_CONTENT_TYPES = ("text/event-stream",)
 
 # Heuristic injection patterns, tuned for research pages. Each is an
 # instruction-style imperative aimed at the model rather than the reader.
-_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
-        r"ignore (all |any |the )?(previous|prior|above) (instructions|prompts|rules)",
-        r"disregard (all |the )?(previous|prior|above) (instructions|prompts|rules)",
-        r"forget (everything|all) (you|above|from earlier)",
-        r"(new|updated) (system )?(instructions|prompt):",
-        r"you are now (a|an|the) ",
-        r"(system|assistant|developer)\s*(prompt|message)\s*[:=]",
-        r"end (of )?(the )?(system|developer) (prompt|message)",
-        r"<\|(im_start|im_end|system|endoftext)\|>",
-        r"reveal (your|the) (system )?(prompt|instructions)",
-        r"(print|repeat|output) (your|the) (system )?(prompt|instructions)",
-        r"do not (tell|inform|reveal) (the user|anyone)",
+# Names surface in quarantine rows/cards so a reviewer knows what fired.
+_INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (name, re.compile(pattern, re.IGNORECASE))
+    for name, pattern in (
+        (
+            "ignore_previous_instructions",
+            r"ignore (all |any |the )?(previous|prior|above) (instructions|prompts|rules)",
+        ),
+        (
+            "disregard_instructions",
+            r"disregard (all |the )?(previous|prior|above) (instructions|prompts|rules)",
+        ),
+        ("forget_everything", r"forget (everything|all) (you|above|from earlier)"),
+        ("new_system_instructions", r"(new|updated) (system )?(instructions|prompt):"),
+        ("you_are_now", r"you are now (a|an|the) "),
+        (
+            "system_prompt_assignment",
+            r"(system|assistant|developer)\s*(prompt|message)\s*[:=]",
+        ),
+        (
+            "end_of_system_prompt",
+            r"end (of )?(the )?(system|developer) (prompt|message)",
+        ),
+        ("special_token_markers", r"<\|(im_start|im_end|system|endoftext)\|>"),
+        ("reveal_system_prompt", r"reveal (your|the) (system )?(prompt|instructions)"),
+        (
+            "print_system_prompt",
+            r"(print|repeat|output) (your|the) (system )?(prompt|instructions)",
+        ),
+        ("conceal_from_user", r"do not (tell|inform|reveal) (the user|anyone)"),
     )
 )
 
 # Signals a page is aggressively trying to steer agent behaviour; one match
 # flags the body. Kept deliberately cheap and readable — the shadow mode's
 # job is to measure this list's hit rate before anything is enforced.
-_MATCH_THRESHOLD = 1
 
 
 def content_type_screenable(content_type: str | None) -> bool:
@@ -83,19 +98,24 @@ def content_type_screenable(content_type: str | None) -> bool:
     return any(lowered.startswith(prefix) for prefix in _SCREENABLE_CONTENT_TYPES)
 
 
-def screen_text(text: str) -> ScreeningVerdict:
-    """Classify a response body. Pure, synchronous, and fail-open: any error
-    yields ``unscreened``."""
+def matched_pattern_names(text: str) -> list[str]:
+    """Names of the heuristics the body tripped. Fail-open: errors → []."""
     if not text:
-        return ScreeningVerdict.CLEAN
+        return []
     try:
-        matches = sum(1 for pattern in _INJECTION_PATTERNS if pattern.search(text))
-        if matches >= _MATCH_THRESHOLD:
-            return ScreeningVerdict.SUSPICIOUS
-        return ScreeningVerdict.CLEAN
+        return [name for name, pattern in _INJECTION_PATTERNS if pattern.search(text)]
     except Exception:
-        logger.warning("content_screening_error", exc_info=True)
-        return ScreeningVerdict.UNSCREENED
+        logger.warning("content_screening_pattern_match_error", exc_info=True)
+        return []
+
+
+def screen_text(text: str) -> ScreeningVerdict:
+    """Classify a response body. Pure and synchronous; never raises."""
+    return (
+        ScreeningVerdict.SUSPICIOUS
+        if matched_pattern_names(text)
+        else ScreeningVerdict.CLEAN
+    )
 
 
 def quarantine_notice(reason: str) -> str:

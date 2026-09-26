@@ -338,6 +338,7 @@ class NotificationType(str, Enum):
     SCHEDULED_TASK_PRE_APPROVED_ACTION = "scheduled_task_pre_approved_action"
     APPROVAL_REQUESTED = "approval_requested"
     CRAFT_JOB_FAILED = "craft_job_failed"
+    CRAFT_CONTENT_QUARANTINED = "craft_content_quarantined"
 
 
 class BlobType(str, Enum):

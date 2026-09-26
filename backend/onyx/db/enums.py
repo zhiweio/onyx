@@ -484,6 +484,22 @@ class ApprovalDecision(str, PyEnum):
     EXPIRED = "EXPIRED"
 
 
+class ContentQuarantineDecision(str, PyEnum):
+    """Human decision on quarantined inbound content; PENDING awaits it."""
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+
+
+class ContentReleaseScope(str, PyEnum):
+    """How far an approved content release extends."""
+
+    ONCE = "ONCE"  # next fetch of the same URL only
+    SESSION = "SESSION"  # rest of the craft session
+    HOST = "HOST"  # 30 days for the whole host
+
+
 class ApprovalDecidedVia(str, PyEnum):
     # NULL on legacy rows and proxy-written EXPIRED claims.
     USER = "USER"

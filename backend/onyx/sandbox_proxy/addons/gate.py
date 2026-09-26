@@ -14,6 +14,7 @@ import socket
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Protocol
 from urllib.parse import urlparse
 from uuid import UUID
@@ -34,7 +35,7 @@ from onyx.external_apps.matching.engine import (
     AllMatchedActions,
     actions_requiring_approval,
 )
-from onyx.sandbox_proxy import approval_cache, content_screen
+from onyx.sandbox_proxy import approval_cache, content_release, content_screen
 from onyx.sandbox_proxy.credential_injection import (
     CredentialInjectionDispatcher,
     InjectionContext,
@@ -69,6 +70,7 @@ from onyx.server.features.build.configs import (
     SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS,
 )
 from onyx.server.features.build.db import action_approval
+from onyx.server.features.build.db import content_quarantine as content_quarantine_db
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -454,12 +456,14 @@ class GateAddon:
         if flow.response.stream is not True:
             flow.response.stream = True
 
-    def response(self, flow: http.HTTPFlow) -> None:
+    async def response(self, flow: http.HTTPFlow) -> None:
         """Inbound content screening on screenable responses.
 
         Shadow mode (the default) only logs the verdict so the hit rate can be
         reviewed before enforcement. Enforce mode replaces a suspicious body
-        with a quarantine notice. Screening never breaks egress: any error
+        with a quarantine notice, records a ``content_quarantine`` row, and
+        announces it to the session's chat stream + notification center for a
+        human release decision. Screening never breaks egress: any error
         leaves the body untouched.
         """
         mode = content_screen.CRAFT_CONTENT_SCREENING_MODE
@@ -478,12 +482,29 @@ class GateAddon:
             )
             if raw is None or len(raw) > content_screen.CRAFT_CONTENT_SCREEN_MAX_BYTES:
                 return
-            verdict = content_screen.screen_text(raw.decode("utf-8", errors="replace"))
+            body_text = raw.decode("utf-8", errors="replace")
         except Exception:
             logger.warning(
                 "content_screening_unscreened host=%s", flow.request.host, exc_info=True
             )
             return
+
+        url_hash = content_release.url_hash_of(flow.request.url)
+        identity = None
+        if mode == "enforce":
+            # Identity + session are only needed on the enforce path (release
+            # check + quarantine record); shadow never touches the DB here.
+            identity = await self._quarantine_identity(flow)
+
+        # An approved release serves the stashed original before screening.
+        if mode == "enforce":
+            served = await self._maybe_serve_released(
+                flow, url_hash, identity, response
+            )
+            if served:
+                return
+
+        verdict = content_screen.screen_text(body_text)
         if verdict is content_screen.ScreeningVerdict.CLEAN:
             return
         logger.info(
@@ -494,13 +515,157 @@ class GateAddon:
             response.status_code,
             len(raw),
         )
-        if mode == "enforce" and verdict is content_screen.ScreeningVerdict.SUSPICIOUS:
+        if (
+            mode == "enforce"
+            and verdict is content_screen.ScreeningVerdict.SUSPICIOUS
+            and identity is not None
+        ):
+            patterns = content_screen.matched_pattern_names(body_text)
+            quarantine_id = await asyncio.to_thread(
+                self._record_content_quarantine,
+                identity,
+                flow.request.host,
+                flow.request.path,
+                url_hash,
+                patterns,
+                body_text,
+                raw,
+            )
+            notice_reason = "prompt-injection heuristics matched"
+            if quarantine_id is not None:
+                notice_reason += f"; quarantine ref {quarantine_id}"
             response.status_code = 200
             response.headers["content-type"] = "text/plain"
-            response.content = content_screen.quarantine_notice(
-                "prompt-injection heuristics matched"
-            ).encode()
-            logger.info("content_screening_quarantined host=%s", flow.request.host)
+            response.content = content_screen.quarantine_notice(notice_reason).encode()
+            logger.info(
+                "content_screening_quarantined host=%s quarantine=%s",
+                flow.request.host,
+                quarantine_id or "-",
+            )
+
+    async def _quarantine_identity(self, flow: http.HTTPFlow):
+        """Best-effort identity + session for the quarantine record. Returns
+        None when the sandbox can't be identified — the body is still screened
+        against the mode, just without a row/card."""
+        try:
+            src_ip = self._extract_src_ip(flow)
+            if src_ip is None:
+                return None
+            sandbox = await asyncio.to_thread(self._identity.resolve_sandbox, src_ip)
+            if sandbox is None:
+                return None
+            session_id = await asyncio.to_thread(
+                self._resolve_gated_session, flow, sandbox
+            )
+            if session_id is None:
+                return None
+            return SimpleNamespace(
+                tenant_id=sandbox.tenant_id,
+                user_id=sandbox.user_id,
+                session_id=session_id,
+            )
+        except Exception:
+            logger.warning(
+                "content_screening_identity_failed host=%s",
+                flow.request.host,
+                exc_info=True,
+            )
+            return None
+
+    async def _maybe_serve_released(
+        self,
+        flow: http.HTTPFlow,
+        url_hash: str,
+        identity,
+        response: http.Response,
+    ) -> bool:
+        """Serve the stashed original body when a release grant covers this
+        fetch. ``once`` grants are consumed here."""
+        if identity is None:
+            return False
+        try:
+            cache = self._cache_factory(identity.tenant_id)
+            covered = await asyncio.to_thread(
+                content_release.consume_release, url_hash, identity.session_id, cache
+            )
+            if not covered:
+                return False
+            stashed = await asyncio.to_thread(
+                content_release.load_stash, url_hash, cache
+            )
+            if stashed is None:
+                # Stash expired; let the upstream body through this once rather
+                # than quarantining approved content forever.
+                return True
+            response.status_code = 200
+            response.content = stashed
+            logger.info(
+                "content_release_served host=%s url_hash=%s",
+                flow.request.host,
+                url_hash,
+            )
+            return True
+        except Exception:
+            logger.warning(
+                "content_release_check_failed host=%s",
+                flow.request.host,
+                exc_info=True,
+            )
+            return False
+
+    def _record_content_quarantine(
+        self,
+        identity,
+        url_host: str,
+        url_path: str,
+        url_hash: str,
+        patterns: list[str],
+        body_text: str,
+        raw: bytes,
+    ) -> UUID | None:
+        """Persist the quarantine row, stash the original body, and announce
+        it. Best-effort: a failure here must not break the response."""
+        try:
+            cache = self._cache_factory(identity.tenant_id)
+            content_release.stash_body(url_hash, raw, cache)
+            with get_session_with_tenant(tenant_id=identity.tenant_id) as db:
+                row, created = content_quarantine_db.upsert_pending_content_quarantine(
+                    db,
+                    session_id=identity.session_id,
+                    url_host=url_host,
+                    url_path=url_path,
+                    url_hash=url_hash,
+                    verdict="suspicious",
+                    patterns_matched=patterns,
+                    evidence_excerpt=body_text,
+                )
+                if created:
+                    create_notification(
+                        user_id=identity.user_id,
+                        notif_type=NotificationType.CRAFT_CONTENT_QUARANTINED,
+                        db_session=db,
+                        title=(
+                            f"Content from {url_host} was quarantined "
+                            "(prompt-injection heuristics matched)"
+                        ),
+                        additional_data={
+                            "quarantine_id": str(row.id),
+                            "session_id": str(identity.session_id),
+                        },
+                        autocommit=False,
+                    )
+                db.commit()
+            if not created:
+                return row.id
+            approval_cache.announce_approval(row.id, identity.session_id, cache)
+            return row.id
+        except Exception:
+            logger.warning(
+                "content_quarantine_record_failed host=%s",
+                url_host,
+                exc_info=True,
+            )
+            return None
 
     async def request(self, flow: http.HTTPFlow) -> None:
         task = asyncio.current_task()

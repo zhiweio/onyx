@@ -80,6 +80,8 @@ from onyx.db.enums import (
     ChatSessionSharedStatus,
     ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
+    ContentQuarantineDecision,
+    ContentReleaseScope,
     CraftJobSpecialistStatus,
     CraftJobStatus,
     CraftProjectFileSource,
@@ -8037,6 +8039,68 @@ class ActionApproval(Base):
     # The gated app's ``policy_version`` when this row was inserted. A grant
     # decided under a stale version never covers a request again.
     policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class ContentQuarantine(Base):
+    """One inbound-content quarantine and its human release decision.
+
+    Written by the sandbox-proxy's enforce-mode content screener when a
+    response body is replaced by a quarantine notice. The stashed original
+    body lives in Redis (TTL 1h); an approved release serves the stash
+    without re-fetching. The writer dedupes PENDING rows per
+    (session, url_hash), so repeated fetches of the same page never spam
+    cards or notifications.
+    """
+
+    __tablename__ = "content_quarantine"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    url_host: Mapped[str] = mapped_column(String, nullable=False)
+    url_path: Mapped[str] = mapped_column(String, nullable=False, default="")
+    # SHA256 of the full request URL; release grants and the original-body
+    # stash key off this, so a decided row never leaks into another URL.
+    url_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    verdict: Mapped[str] = mapped_column(String(32), nullable=False)
+    patterns_matched: Mapped[list[str]] = mapped_column(PGJSONB, nullable=False)
+    evidence_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    decision: Mapped[ContentQuarantineDecision] = mapped_column(
+        Enum(ContentQuarantineDecision, native_enum=False),
+        nullable=False,
+        default=ContentQuarantineDecision.PENDING,
+    )
+    scope: Mapped[ContentReleaseScope | None] = mapped_column(
+        Enum(ContentReleaseScope, native_enum=False),
+        nullable=True,
+    )
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Host-scope releases expire; session/once grants live in Redis only.
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    session: Mapped[BuildSession] = relationship("BuildSession")
+
+    __table_args__ = (
+        Index("ix_content_quarantine_session", "session_id"),
+        Index("ix_content_quarantine_session_hash", "session_id", "url_hash"),
+    )
 
 
 class EnvVar(Base):
