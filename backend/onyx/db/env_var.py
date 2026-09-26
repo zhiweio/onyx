@@ -129,7 +129,9 @@ def create_env_var(
     else:
         project_id = None
 
-    existing = _fetch_same_name(db_session, user_id=user.id, project_id=project_id, name=name)
+    existing = _fetch_same_name(
+        db_session, user_id=user.id, project_id=project_id, name=name
+    )
     if existing is not None:
         raise OnyxError(
             OnyxErrorCode.INVALID_INPUT,
@@ -155,9 +157,7 @@ def _fetch_same_name(
     """Fetch the row occupying ``name`` in one scope (user or project)."""
     stmt = select(EnvVar).where(EnvVar.name == name)
     if project_id is None:
-        stmt = stmt.where(
-            EnvVar.scope == EnvVarScope.USER, EnvVar.user_id == user_id
-        )
+        stmt = stmt.where(EnvVar.scope == EnvVarScope.USER, EnvVar.user_id == user_id)
     else:
         stmt = stmt.where(
             EnvVar.scope == EnvVarScope.PROJECT, EnvVar.project_id == project_id
@@ -216,7 +216,9 @@ def update_env_var(
 
     if value is not None:
         validate_env_var_value(value, is_secret=row.is_secret)
-        row.value = value
+        # The EncryptedString attribute event wraps the raw str into a
+        # SensitiveValue, so the plain-str assignment is correct at runtime.
+        row.value = value  # ty: ignore[invalid-assignment]
 
     db_session.flush()
     return row
@@ -257,9 +259,7 @@ def list_env_vars_for_project(
     return list(
         db_session.scalars(
             select(EnvVar)
-            .where(
-                EnvVar.scope == EnvVarScope.PROJECT, EnvVar.project_id == project_id
-            )
+            .where(EnvVar.scope == EnvVarScope.PROJECT, EnvVar.project_id == project_id)
             .order_by(desc(EnvVar.updated_at))
         )
     )
@@ -315,11 +315,11 @@ def list_grantable_env_vars_across_projects(
         )
         .order_by(desc(EnvVar.updated_at))
     ).all()
-    results.extend(
-        (row, project_by_id[row.project_id])
-        for row in project_rows
-        if row.project_id in project_by_id
-    )
+    for row in project_rows:
+        project_id = row.project_id
+        if project_id is None or project_id not in project_by_id:
+            continue
+        results.append((row, project_by_id[project_id]))
     return results
 
 

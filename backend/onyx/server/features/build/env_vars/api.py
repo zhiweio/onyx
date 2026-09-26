@@ -87,9 +87,7 @@ def list_env_vars_endpoint(
     page). Secret values are always omitted.
     """
     if all_projects:
-        rows = list_grantable_env_vars_across_projects(
-            db_session=db_session, user=user
-        )
+        rows = list_grantable_env_vars_across_projects(db_session=db_session, user=user)
     else:
         rows = list_grantable_env_vars(
             db_session=db_session, user=user, project_id=project_id

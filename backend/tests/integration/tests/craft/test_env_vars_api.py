@@ -62,9 +62,7 @@ def _cleanup(_db_access: None) -> Generator[None, None, None]:
             if task is not None:
                 task.deleted = True
                 task.next_run_at = None
-        db_session.execute(
-            delete(EnvVar).where(EnvVar.id.in_(_CREATED_ENV_VAR_IDS))
-        )
+        db_session.execute(delete(EnvVar).where(EnvVar.id.in_(_CREATED_ENV_VAR_IDS)))
         db_session.execute(
             delete(CraftProject).where(CraftProject.id.in_(_CREATED_PROJECT_IDS))
         )
@@ -158,7 +156,10 @@ def _create_task(
 
 def test_user_scope_crud_and_secret_write_only(admin_user: DATestUser) -> None:
     created = _create_env_var(
-        admin_user, name=f"API_TOKEN_{uuid4().hex[:6]}", value="sk-1234567890", is_secret=True
+        admin_user,
+        name=f"API_TOKEN_{uuid4().hex[:6]}",
+        value="sk-1234567890",
+        is_secret=True,
     )
     created.raise_for_status()
     body = created.json()
@@ -175,9 +176,7 @@ def test_user_scope_crud_and_secret_write_only(admin_user: DATestUser) -> None:
         cookies=admin_user.cookies,
     )
     listed.raise_for_status()
-    row = next(
-        item for item in listed.json()["items"] if item["id"] == env_var_id
-    )
+    row = next(item for item in listed.json()["items"] if item["id"] == env_var_id)
     assert row["value"] is None
 
     # Overwrite the secret; the new value still never comes back.
@@ -207,7 +206,9 @@ def test_plain_variable_value_is_readable(admin_user: DATestUser) -> None:
     assert created.json()["is_secret"] is False
 
 
-def test_name_rules_reject_reserved_prefix_and_duplicates(admin_user: DATestUser) -> None:
+def test_name_rules_reject_reserved_prefix_and_duplicates(
+    admin_user: DATestUser,
+) -> None:
     reserved = _create_env_var(admin_user, name="ONYX_TOKEN", value="abcdefgh")
     assert reserved.status_code == 400
 
@@ -232,7 +233,10 @@ def test_user_isolation_other_user_cannot_manage_or_see(
     other = UserManager.create(name=f"envvar_other_{uuid4().hex[:6]}")
 
     created = _create_env_var(
-        admin_user, name=f"PRIV_{uuid4().hex[:6]}", value="sk-1234567890", is_secret=True
+        admin_user,
+        name=f"PRIV_{uuid4().hex[:6]}",
+        value="sk-1234567890",
+        is_secret=True,
     )
     created.raise_for_status()
     env_var_id = created.json()["id"]

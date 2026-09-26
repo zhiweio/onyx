@@ -53,7 +53,9 @@ def upgrade() -> None:
             name="ck_env_var_scope_project",
         ),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["project_id"], ["craft_project.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["craft_project.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(

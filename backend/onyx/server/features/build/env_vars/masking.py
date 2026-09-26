@@ -70,7 +70,9 @@ def _mask_value(value: Any, masker: SecretMasker) -> Any:
     if isinstance(value, BaseModel):
         updates: dict[str, Any] = {}
         for field_name in type(value).model_fields:
-            field_value = getattr(value, field_name)
+            # Field names come from model_fields, so access is inherently
+            # dynamic — no statically known name exists to use instead.
+            field_value = getattr(value, field_name)  # ods: ignore[getattr]
             masked = _mask_value(field_value, masker)
             if masked is not field_value:
                 updates[field_name] = masked
@@ -78,12 +80,13 @@ def _mask_value(value: Any, masker: SecretMasker) -> Any:
             return value
         return value.model_copy(update=updates)
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        changes = {
-            field.name: masked
-            for field in dataclasses.fields(value)
-            if (masked := _mask_value(getattr(value, field.name), masker))
-            is not getattr(value, field.name)
-        }
+        changes = {}
+        for field in dataclasses.fields(value):
+            # Same as the pydantic branch: the field name is runtime data.
+            field_value = getattr(value, field.name)  # ods: ignore[getattr]
+            masked = _mask_value(field_value, masker)
+            if masked is not field_value:
+                changes[field.name] = masked
         if not changes:
             return value
         return dataclasses.replace(value, **changes)

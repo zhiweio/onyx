@@ -79,9 +79,12 @@ def test_mask_sandbox_event_masks_nested_text() -> None:
         }
     )
     masked = mask_sandbox_event(chunk, masker)
-    assert getattr(masked.content, "text", None) == f"token is {MASKED_SECRET}"
+    # The acp content block is a union, so `.text` is not statically known.
+    masked_text = getattr(masked.content, "text", None)  # ods: ignore[getattr]
+    assert masked_text == f"token is {MASKED_SECRET}"
     # The original event is not mutated in place.
-    assert getattr(chunk.content, "text", None) == "token is sk-super-secret-value"
+    original_text = getattr(chunk.content, "text", None)  # ods: ignore[getattr]
+    assert original_text == "token is sk-super-secret-value"
 
 
 def test_mask_sandbox_event_masks_tool_call_strings() -> None:

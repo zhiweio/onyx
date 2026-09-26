@@ -362,7 +362,9 @@ def _validate_mcp_server_ids(
         )
 
 
-def _validate_project_id(db_session: Session, user: User, project_id: UUID | None) -> None:
+def _validate_project_id(
+    db_session: Session, user: User, project_id: UUID | None
+) -> None:
     """Reject a project the caller cannot read — belonging to the project is
     what makes its env vars grantable, so read access is the entry ticket."""
     if project_id is not None:
@@ -466,9 +468,7 @@ def create_task(
     _validate_app_ids(db_session, request.pre_approved_app_ids)
     _validate_mcp_server_ids(db_session, user, request.pre_approved_mcp_server_ids)
     _validate_project_id(db_session, user, request.project_id)
-    _validate_env_var_ids(
-        db_session, user, request.project_id, request.env_var_ids
-    )
+    _validate_env_var_ids(db_session, user, request.project_id, request.env_var_ids)
 
     task = create_scheduled_task(
         db_session=db_session,
