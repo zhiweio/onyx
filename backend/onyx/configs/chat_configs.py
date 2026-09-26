@@ -11,6 +11,24 @@ MAX_CHUNKS_FED_TO_CHAT = int(os.environ.get("MAX_CHUNKS_FED_TO_CHAT") or 25)
 # tool-heavy MCPs that legitimately need more turns.
 MAX_LLM_CYCLES: int = int(os.environ.get("MAX_LLM_CYCLES") or 6)
 
+# Budget governance for the tool loop (QM/Codex discipline: the cap should be
+# "budget exhausted", not "cycle N"). When enabled, a turn that reaches
+# MAX_LLM_CYCLES and still wants tools is NOT stripped mid-work: older tool
+# results are folded into compact stubs and the loop continues for up to
+# CHAT_AGENT_MAX_EXTENSION_CYCLES more cycles. Set to false to restore the
+# legacy hard truncation.
+CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED: bool = (
+    os.environ.get("CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED", "true").lower() == "true"
+)
+CHAT_AGENT_MAX_EXTENSION_CYCLES: int = int(
+    os.environ.get("CHAT_AGENT_MAX_EXTENSION_CYCLES") or 6
+)
+# Total-history token ceiling for extension cycles; 0 disables the explicit
+# ceiling (extension is then bounded by cycles alone).
+CHAT_AGENT_TURN_TOKEN_BUDGET: int = int(
+    os.environ.get("CHAT_AGENT_TURN_TOKEN_BUDGET") or 0
+)
+
 # 1 / (1 + DOC_TIME_DECAY * doc-age-in-years), set to 0 to have no decay
 # Capped in Vespa at 0.5
 DOC_TIME_DECAY = float(

@@ -1776,6 +1776,9 @@ configMap:
   # for prompt-injection patterns: shadow (default) logs only, enforce
   # replaces suspicious bodies with a quarantine notice, off disables it.
   CRAFT_JOB_LEASE_TTL_SECONDS: ""
+  CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED: ""
+  CHAT_AGENT_MAX_EXTENSION_CYCLES: ""
+  CHAT_AGENT_TURN_TOKEN_BUDGET: ""
   CRAFT_ACTION_AUTO_GRADUATION_ENABLED: ""
   CRAFT_ACTION_GRADUATION_THRESHOLD: ""
   SANDBOX_IMAGE_PULL_POLICY: ""
