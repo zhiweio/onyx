@@ -220,7 +220,6 @@ export function sessionListLabel(name: string | null): {
 const OPEN_JOB_STATUSES = new Set([
   "pending",
   "running",
-  "waiting_specialists",
   "waiting_lanes",
   "interrupted",
 ]);
@@ -278,7 +277,9 @@ export function projectSessionNeedsRefresh(
   return status === "active" || status === "initializing";
 }
 
-export type CraftProjectSandboxStatusKey = CraftProjectSandboxStatus | "missing";
+export type CraftProjectSandboxStatusKey =
+  | CraftProjectSandboxStatus
+  | "missing";
 
 export function projectSandboxStatus(
   sandbox: CraftProjectSandbox | null | undefined
@@ -286,7 +287,9 @@ export function projectSandboxStatus(
   return sandbox?.status ?? "missing";
 }
 
-export function projectNeedsRefresh(project: CraftProject | undefined): boolean {
+export function projectNeedsRefresh(
+  project: CraftProject | undefined
+): boolean {
   if (!project) {
     return false;
   }

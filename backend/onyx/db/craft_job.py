@@ -17,10 +17,10 @@ from onyx.db.models import (
     CraftJobSpecialist,
 )
 
+
 OPEN_JOB_STATUSES = (
     CraftJobStatus.PENDING,
     CraftJobStatus.RUNNING,
-    CraftJobStatus.WAITING_SPECIALISTS,
     CraftJobStatus.WAITING_LANES,
     CraftJobStatus.INTERRUPTED,
 )
@@ -185,10 +185,6 @@ def mark_job_running(job: CraftJob) -> None:
     if job.started_at is None:
         job.started_at = now
     _set_phase_status(job, job.current_phase_index, "running")
-
-
-def mark_job_waiting_specialists(job: CraftJob) -> None:
-    job.status = CraftJobStatus.WAITING_SPECIALISTS
 
 
 def job_is_terminal(job: CraftJob) -> bool:

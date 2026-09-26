@@ -28,7 +28,6 @@ import { isKnownSessionRole } from "@/lib/craft-projects/display";
 const IN_FLIGHT = new Set([
   "pending",
   "running",
-  "waiting_specialists",
   "waiting_lanes",
   "interrupted",
 ]);
@@ -83,10 +82,7 @@ function statusLabel(
   currentLabel: string,
   t: ReturnType<typeof useTranslations>
 ): string {
-  if (
-    data.status === "waiting_specialists" ||
-    data.status === "waiting_lanes"
-  ) {
+  if (data.status === "waiting_lanes") {
     return t("status.waitingLanes");
   }
   if (data.status === "interrupted") return t("status.interrupted");

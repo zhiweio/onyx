@@ -921,7 +921,6 @@ export async function exportPdf(
 export type CraftJobStatus =
   | "pending"
   | "running"
-  | "waiting_specialists"
   | "waiting_lanes"
   | "interrupted"
   | "succeeded"

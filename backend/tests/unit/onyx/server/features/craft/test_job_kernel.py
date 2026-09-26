@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -422,6 +422,7 @@ def test_lease_expired_redispaches_same_node(monkeypatch) -> None:
 
 
 def test_replay_deltas_rebuilds_from_rows(monkeypatch) -> None:
+    from onyx.server.features.build.jobs.channels import apply_writes
     from onyx.server.features.build.jobs.checkpoint import replay_deltas
 
     rows = [
@@ -435,6 +436,11 @@ def test_replay_deltas_rebuilds_from_rows(monkeypatch) -> None:
     state = replay_deltas(cast(Session, SimpleNamespace()), job_id=uuid4())
     assert state.goal == "g"
     assert "plan" in state.completed_nodes
+    # Replay must land on the same state a live fold of the same writes builds.
+    folded = empty_state()
+    for row in rows:
+        folded = apply_writes(folded, row.writes)
+    assert state == folded
 
 
 def test_work_node_retries_until_done_json(monkeypatch) -> None:
@@ -614,8 +620,8 @@ def test_continue_persists_empty_visible_text(monkeypatch) -> None:
         user_id=uuid4(),
         prompt="HOST BRIEF MUST STAY OFF TRANSCRIPT",
     )
-    metadata = captured["message_metadata"]
-    assert isinstance(metadata, dict)
+    metadata = cast(dict[str, Any], captured["message_metadata"])
+    assert isinstance(metadata["content"], dict)
     assert metadata["content"]["text"] == ""
     assert metadata["craft_job_continue"] is True
     assert "HOST BRIEF" not in str(metadata)
@@ -627,8 +633,8 @@ def test_continue_persists_empty_visible_text(monkeypatch) -> None:
         prompt="HOST BRIEF MUST STAY OFF TRANSCRIPT",
         visible_user_text="Write the GLP-1 report",
     )
-    metadata = captured["message_metadata"]
-    assert isinstance(metadata, dict)
+    metadata = cast(dict[str, Any], captured["message_metadata"])
+    assert isinstance(metadata["content"], dict)
     assert metadata["content"]["text"] == "Write the GLP-1 report"
     assert metadata["craft_job_continue"] is False
 
@@ -960,7 +966,7 @@ def test_reap_inactive_lanes_finishes_stale_specialist(monkeypatch) -> None:
     job.specialists = [stale]
     finished: list[str] = []
 
-    def _mark(specialist, *, status, error_detail=None, output_artifact_ids=None):
+    def _mark(specialist, *, status, error_detail=None, output_artifact_ids=None):  # noqa: ARG001
         specialist.status = status
         specialist.error_detail = error_detail
         specialist.finished_at = datetime.now(timezone.utc)
@@ -978,3 +984,102 @@ def test_reap_inactive_lanes_finishes_stale_specialist(monkeypatch) -> None:
     assert reaped is True
     assert stale.status == CraftJobSpecialistStatus.FAILED
     assert finished == ["Lane inactive"]
+
+
+def _lane_job(monkeypatch, files: dict[str, bytes], role: str = "literature"):
+    from onyx.server.features.build.jobs.plan import parse_plan
+
+    plan = parse_plan({"goal": "GLP-1", "lanes": [{"role": role}]})
+    graph = compile_graph("biomed", plan)
+    job = _job("biomed")
+    job.status = CraftJobStatus.WAITING_LANES
+    state = load_state(job)
+    state.graph = graph.to_snapshot()
+    persist_state(job, state)
+    specialist = SimpleNamespace(
+        status=CraftJobSpecialistStatus.SUCCEEDED,
+        node_id=f"lane:{role}",
+        session_id=uuid4(),
+        role=role,
+        output_artifact_ids=[],
+        finished_at=None,
+    )
+    job.specialists = [specialist]
+    manager = _FakeManager(files)
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=manager: _fake)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel._sandbox_id_for_session",
+        lambda *_a, **_k: uuid4(),
+    )
+    enqueued: list[str] = []
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.enqueue_job_phase_turn",
+        lambda *_a, **kwargs: enqueued.append(str(kwargs.get("prompt") or "")),
+    )
+    return job, specialist, enqueued
+
+
+def test_lane_gate_failure_retries_then_fails_at_limit(monkeypatch) -> None:
+    from onyx.server.features.build.jobs.phase_gate import DEFAULT_PHASE_RETRY_LIMIT
+
+    job, specialist, enqueued = _lane_job(monkeypatch, files={})
+    after_lane_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        specialist_ok=True,
+        node_id="lane:literature",
+    )
+    assert len(enqueued) == 1
+    assert "not done" in enqueued[0]
+    assert specialist.status == CraftJobSpecialistStatus.RUNNING
+    assert load_state(job).node_attempts["lane:literature"] == 1
+    assert job.status == CraftJobStatus.WAITING_LANES
+
+    state = load_state(job)
+    state.node_attempts["lane:literature"] = DEFAULT_PHASE_RETRY_LIMIT - 1
+    specialist.status = CraftJobSpecialistStatus.SUCCEEDED
+    persist_state(job, state)
+    after_lane_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        specialist_ok=True,
+        node_id="lane:literature",
+    )
+    assert len(enqueued) == 1
+    assert job.status == CraftJobStatus.FAILED
+    assert job.error_detail is not None
+    assert "retry limit" in job.error_detail
+
+
+def test_lane_verification_failure_retries_instead_of_committing(monkeypatch) -> None:
+    notes = "outputs/lanes/literature/NOTES.md"
+    job, specialist, enqueued = _lane_job(
+        monkeypatch, files={notes: b"See https://example.com [1]\n"}
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel._verify_lane_artifacts",
+        lambda **_k: [notes],
+    )
+    after_lane_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        specialist_ok=True,
+        node_id="lane:literature",
+    )
+    assert len(enqueued) == 1
+    assert "shared outputs" in enqueued[0]
+    assert specialist.status == CraftJobSpecialistStatus.RUNNING
+    state = load_state(job)
+    assert "lane:literature" not in state.completed_nodes
+    assert state.node_attempts["lane:literature"] == 1
+
+

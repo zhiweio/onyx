@@ -80,7 +80,6 @@ def maybe_continue_craft_job(
         db_session.commit()
         return
     if job.status in {
-        CraftJobStatus.WAITING_SPECIALISTS,
         CraftJobStatus.WAITING_LANES,
         CraftJobStatus.INTERRUPTED,
     }:

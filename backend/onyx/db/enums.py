@@ -457,7 +457,6 @@ class CraftJobStatus(str, PyEnum):
 
     PENDING = "pending"
     RUNNING = "running"
-    WAITING_SPECIALISTS = "waiting_specialists"
     WAITING_LANES = "waiting_lanes"
     INTERRUPTED = "interrupted"
     SUCCEEDED = "succeeded"

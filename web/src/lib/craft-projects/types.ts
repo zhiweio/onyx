@@ -15,7 +15,6 @@ export type CraftProjectSessionOrigin =
 export type CraftProjectJobStatus =
   | "pending"
   | "running"
-  | "waiting_specialists"
   | "waiting_lanes"
   | "interrupted"
   | "succeeded"

@@ -45,7 +45,6 @@ const SETTLED_TOOL_STATUSES: ReadonlySet<ToolCallState["status"]> = new Set([
 const LIVE_JOB_STATUSES: ReadonlySet<string> = new Set([
   "pending",
   "running",
-  "waiting_specialists",
   "waiting_lanes",
   "interrupted",
 ]);

@@ -21,7 +21,7 @@ from onyx.db.craft_job import (
     specialists_any_failed,
 )
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus, SessionOrigin
-from onyx.db.models import CraftJob
+from onyx.db.models import CraftJob, CraftJobSpecialist
 from onyx.server.features.build.jobs.assembler import assemble_brief
 from onyx.server.features.build.jobs.blackboard import (
     merge_node_outputs,
@@ -46,6 +46,7 @@ from onyx.server.features.build.jobs.gates import (
     gate_retry_limit_detail,
     named_search_required,
     retry_brief,
+    retry_limit_error_detail,
 )
 from onyx.server.features.build.jobs.graph import (
     GraphNode,
@@ -343,22 +344,16 @@ def after_lane_turn(
                     persist_state(job, state)
                     _safe_commit(db_session)
                     return
-                if specialist is not None:
-                    specialist.status = CraftJobSpecialistStatus.RUNNING
-                    specialist.finished_at = None
-                from onyx.server.features.build.jobs.continuation import (
-                    enqueue_job_phase_turn,
-                )
-
-                enqueue_job_phase_turn(
+                state = _retry_lane_or_fail(
                     db_session,
-                    session_id=lane_session,
+                    job=job,
+                    state=state,
+                    node=node,
+                    missing=gate.missing_paths(),
+                    reasons=[item.reason for item in gate.missing],
+                    specialist=specialist,
+                    lane_session=lane_session,
                     user_id=user_id,
-                    prompt=retry_brief(
-                        node.id,
-                        gate.missing_paths(),
-                        reasons=[item.reason for item in gate.missing],
-                    ),
                 )
                 persist_state(job, state)
                 _safe_commit(db_session)
@@ -369,20 +364,28 @@ def after_lane_turn(
                 paths=node.required_paths,
             )
             if missing_on_parent:
-                emit(
-                    db_session,
-                    job_id=job.id,
-                    event_type=GATE_FAIL,
-                    payload={
-                        "node_id": node.id,
-                        "missing": missing_on_parent,
-                    },
-                )
                 logger.error(
                     "Lane %s artifacts missing on shared outputs: %s",
                     node.id,
                     missing_on_parent,
                 )
+                state = _retry_lane_or_fail(
+                    db_session,
+                    job=job,
+                    state=state,
+                    node=node,
+                    missing=missing_on_parent,
+                    reasons=[
+                        f"lane artifact missing on shared outputs: {path}"
+                        for path in missing_on_parent
+                    ],
+                    specialist=specialist,
+                    lane_session=lane_session,
+                    user_id=user_id,
+                )
+                persist_state(job, state)
+                _safe_commit(db_session)
+                return
             produced = scan_artifacts(
                 sandbox_id=sandbox_id,
                 session_id=job.session_id,
@@ -1150,6 +1153,62 @@ def _safe_commit(db_session: Session) -> None:
         return
 
 
+def _retry_lane_or_fail(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode,
+    missing: list[str],
+    reasons: list[str],
+    specialist: CraftJobSpecialist | None,
+    lane_session: UUID,
+    user_id: UUID,
+) -> JobState:
+    """Retry a failed lane turn, failing the job once attempts hit the limit.
+
+    Mirrors ``_fail_or_retry`` for the worker path: attempts accumulate in
+    ``node_attempts`` so a lane cannot retry forever.
+    """
+    attempts = int(state.node_attempts.get(node.id) or 0) + 1
+    state = apply_writes(
+        state,
+        {
+            "node_attempts": {node.id: attempts},
+            "budget": {"node_attempts": 1},
+        },
+    )
+    emit(
+        db_session,
+        job_id=job.id,
+        event_type=GATE_FAIL,
+        payload={
+            "node_id": node.id,
+            "missing": missing,
+            "attempts": attempts,
+        },
+    )
+    if attempts >= DEFAULT_PHASE_RETRY_LIMIT:
+        mark_job_finished(
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail=retry_limit_error_detail(node.id, *reasons),
+        )
+        return state
+    if specialist is not None:
+        specialist.status = CraftJobSpecialistStatus.RUNNING
+        specialist.finished_at = None
+    from onyx.server.features.build.jobs.continuation import enqueue_job_phase_turn
+
+    enqueue_job_phase_turn(
+        db_session,
+        session_id=lane_session,
+        user_id=user_id,
+        prompt=retry_brief(node.id, missing, reasons=reasons),
+    )
+    return state
+
+
 def _verify_lane_artifacts(
     *,
     sandbox_id: UUID,
@@ -1440,10 +1499,7 @@ def _lane_inactive_seconds(
 
 def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) -> bool:
     """Fail RUNNING specialists that sat past the phase budget with no activity."""
-    if job.status not in {
-        CraftJobStatus.WAITING_LANES,
-        CraftJobStatus.WAITING_SPECIALISTS,
-    }:
+    if job.status not in {CraftJobStatus.WAITING_LANES}:
         return False
     budget = max(int(job.phase_budget_seconds or 0), 1)
     now = datetime.now(timezone.utc)

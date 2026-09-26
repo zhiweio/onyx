@@ -69,8 +69,13 @@ class BudgetState(BaseModel):
     node_attempts: int = 0
 
 
+# Single source of truth for the kinds a job interrupt can carry. Node-declared
+# HITL (graph.HitlKind) covers the first two; `clarify` is host-initiated only.
+InterruptKind = Literal["approve_plan", "approve_delivery", "clarify"]
+
+
 class InterruptPayload(BaseModel):
-    kind: Literal["approve_plan", "approve_delivery", "clarify"]
+    kind: InterruptKind
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
