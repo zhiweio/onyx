@@ -165,9 +165,18 @@ def after_worker_turn(
     sandbox_id: UUID,
     session_id: UUID,
     deadline_exceeded: bool,
+    lease_owner: str | None = None,
 ) -> None:
     """Run one superstep after an OpenCode turn on the parent session."""
     if job_is_terminal(job):
+        return
+    if lease_owner is not None and not lease_owned_by(job, lease_owner):
+        logger.warning(
+            "Job %s lease held by %s; losing turn %s skips its superstep",
+            job.id,
+            job.lease_owner,
+            lease_owner,
+        )
         return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
@@ -302,8 +311,17 @@ def after_lane_turn(
     user_id: UUID,
     specialist_ok: bool,
     node_id: str | None,
+    lease_owner: str | None = None,
 ) -> None:
     if job_is_terminal(job):
+        return
+    if lease_owner is not None and not lease_owned_by(job, lease_owner):
+        logger.warning(
+            "Job %s lease held by %s; losing lane turn %s skips its superstep",
+            job.id,
+            job.lease_owner,
+            lease_owner,
+        )
         return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
@@ -513,6 +531,15 @@ def lease_expired(job: CraftJob) -> bool:
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     return datetime.now(timezone.utc) > expires
+
+
+def lease_owned_by(job: CraftJob, owner: str) -> bool:
+    """Fence for turn-driven supersteps: only the lease holder may advance
+    the job. Host-driven paths (resume, cancel) pass no owner and skip this."""
+    try:
+        return job.lease_owner == owner
+    except AttributeError:
+        return True
 
 
 def _current_node(graph: JobGraph, state: JobState) -> GraphNode | None:

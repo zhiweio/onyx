@@ -1762,6 +1762,20 @@ configMap:
   CRAFT_PROJECT_MAX_FILES: ""
   CRAFT_PROJECT_MAX_FILE_SIZE_MB: ""
   CRAFT_PROJECT_MAX_TOTAL_SIZE_GB: ""
+  # Craft reliability & governance knobs. CRAFT_JOB_LEASE_TTL_SECONDS is the
+  # craft job lease window; a per-turn heartbeat renews it every TTL/3, so an
+  # expired lease means the owning turn really died. Chat loop governance: a
+  # turn reaching MAX_LLM_CYCLES still wanting tools folds older tool results
+  # and continues for up to CHAT_AGENT_MAX_EXTENSION_CYCLES more cycles
+  # (CHAT_AGENT_TURN_TOKEN_BUDGET caps extension history tokens, 0 = off;
+  # CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED=false restores the hard cutoff).
+  # Scheduled-task approvals are bound to the action-policy version; after
+  # CRAFT_ACTION_GRADUATION_THRESHOLD consecutive human approvals of one
+  # target its pre-approval is granted automatically (the enabled flag turns
+  # that off). CRAFT_CONTENT_SCREENING_MODE screens egress response bodies
+  # for prompt-injection patterns: shadow (default) logs only, enforce
+  # replaces suspicious bodies with a quarantine notice, off disables it.
+  CRAFT_JOB_LEASE_TTL_SECONDS: ""
   SANDBOX_IMAGE_PULL_POLICY: ""
   OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS: ""
   # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the

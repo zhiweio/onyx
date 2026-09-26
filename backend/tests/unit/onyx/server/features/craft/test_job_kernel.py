@@ -1083,3 +1083,62 @@ def test_lane_verification_failure_retries_instead_of_committing(monkeypatch) ->
     assert state.node_attempts["lane:literature"] == 1
 
 
+def test_worker_turn_fenced_by_lease_owner(monkeypatch) -> None:
+    job = _job()
+    job.lease_owner = "turn-successor"
+    enqueued: list[str] = []
+    empty = _FakeManager({})
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=empty: _fake)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation._enqueue_or_remember",
+        lambda *_a, **kwargs: enqueued.append(kwargs["prompt"]) or uuid4(),
+    )
+    after_worker_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        sandbox_id=uuid4(),
+        session_id=job.session_id,
+        deadline_exceeded=False,
+        lease_owner="turn-zombie",
+    )
+    state = load_state(job)
+    assert enqueued == []
+    assert "plan" not in state.completed_nodes
+    assert state.drain_reason is None
+    assert job.status == CraftJobStatus.RUNNING
+
+
+def test_worker_turn_runs_with_matching_lease_owner(monkeypatch) -> None:
+    job = _job()
+    job.lease_owner = "turn-current"
+    enqueued: list[str] = []
+    empty = _FakeManager({})
+    for target in (
+        "onyx.server.features.build.jobs.gates.get_sandbox_manager",
+        "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
+        "onyx.server.features.build.jobs.kernel.get_sandbox_manager",
+        "onyx.server.features.build.jobs.phase_gate.get_sandbox_manager",
+    ):
+        monkeypatch.setattr(target, lambda _fake=empty: _fake)
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation._enqueue_or_remember",
+        lambda *_a, **kwargs: enqueued.append(kwargs["prompt"]) or uuid4(),
+    )
+    after_worker_turn(
+        _db(),
+        job=job,
+        user_id=uuid4(),
+        sandbox_id=uuid4(),
+        session_id=job.session_id,
+        deadline_exceeded=False,
+        lease_owner="turn-current",
+    )
+    assert enqueued
+    assert "not done" in enqueued[0]

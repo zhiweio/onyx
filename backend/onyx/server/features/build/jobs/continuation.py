@@ -60,6 +60,7 @@ def maybe_continue_craft_job(
     turn_succeeded: bool,
     deadline_exceeded: bool,
     cancelled: bool,
+    lease_owner: str | None = None,
 ) -> None:
     specialist = get_specialist_for_session(db_session, session_id)
     if specialist is not None:
@@ -69,6 +70,7 @@ def maybe_continue_craft_job(
             user_id=user_id,
             turn_succeeded=turn_succeeded,
             cancelled=cancelled,
+            lease_owner=lease_owner,
         )
         return
 
@@ -114,6 +116,7 @@ def maybe_continue_craft_job(
         sandbox_id=sandbox_id,
         session_id=session_id,
         deadline_exceeded=deadline_exceeded,
+        lease_owner=lease_owner,
     )
 
 
@@ -217,6 +220,7 @@ def _finish_specialist_turn(
     user_id: UUID,
     turn_succeeded: bool,
     cancelled: bool,
+    lease_owner: str | None = None,
 ) -> None:
     specialist = get_specialist_for_session(db_session, specialist_session_id)
     if specialist is None:
@@ -259,6 +263,7 @@ def _finish_specialist_turn(
         and not cancelled
         and not specialists_any_failed(job),
         node_id=specialist.node_id,
+        lease_owner=lease_owner,
     )
 
 
