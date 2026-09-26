@@ -14404,8 +14404,22 @@
           "secret": "Secret",
           "variable": "Variable"
         },
+        "table": {
+          "columns": {
+            "name": "Name",
+            "value": "Value",
+            "type": "Type",
+            "scope": "Scope",
+            "updated": "Updated"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "Search variables..."
+          },
+          "noMatches": "No variables match your search."
+        },
         "row": {
-          "secretSetAt": "Secret set · updated {date}",
           "editLabel": "Edit {name}",
           "deleteLabel": "Delete {name}"
         },

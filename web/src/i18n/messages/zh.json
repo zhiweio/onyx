@@ -14404,8 +14404,22 @@
           "secret": "密钥",
           "variable": "变量"
         },
+        "table": {
+          "columns": {
+            "name": "名称",
+            "value": "值",
+            "type": "类型",
+            "scope": "范围",
+            "updated": "更新时间"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "搜索变量..."
+          },
+          "noMatches": "没有符合搜索条件的变量。"
+        },
         "row": {
-          "secretSetAt": "密钥已设置 · 更新于 {date}",
           "editLabel": "编辑 {name}",
           "deleteLabel": "删除 {name}"
         },

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  BasicModalFooter,
   Button,
   Checkbox,
   InputTypeIn,
@@ -12,9 +13,14 @@ import {
   Text,
 } from "@opal/components";
 import { InputVertical, toast } from "@opal/layouts";
+import { SvgKey } from "@opal/icons";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import { createEnvVar, updateEnvVar } from "@/app/craft/v1/env-vars/api";
-import type { EnvVarItem } from "@/app/craft/v1/env-vars/interfaces";
+import type {
+  EnvVarCreateBody,
+  EnvVarItem,
+  EnvVarPatchBody,
+} from "@/app/craft/v1/env-vars/interfaces";
 import type { CraftProject } from "@/lib/craft-projects/types";
 
 interface EnvVarFormModalProps {
@@ -49,6 +55,8 @@ export default function EnvVarFormModal({
   // "user" or a project id.
   const [scopeSelection, setScopeSelection] = useState<string>("user");
   const [saving, setSaving] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Re-seed each open so a prior attempt doesn't leak in.
   useEffect(() => {
@@ -57,6 +65,8 @@ export default function EnvVarFormModal({
     setValue("");
     setIsSecret(initial?.is_secret ?? false);
     setScopeSelection(initial?.project_id ?? "user");
+    setSubmitAttempted(false);
+    nameInputRef.current?.focus();
   }, [open, initial]);
 
   const trimmedName = name.trim();
@@ -66,25 +76,26 @@ export default function EnvVarFormModal({
   const canSave = !nameError && !valueError && !saving;
 
   async function handleSave() {
+    setSubmitAttempted(true);
     if (!canSave) return;
     setSaving(true);
     try {
       if (isEdit && initial) {
-        await updateEnvVar(initial.id, {
-          name: trimmedName,
-          // Blank value on edit = keep the stored one (secrets are
-          // write-only, so there is nothing to echo back).
-          ...(trimmedValue ? { value: trimmedValue } : {}),
-        });
+        const body: EnvVarPatchBody = { name: trimmedName };
+        // Blank value on edit = keep the stored one (secrets are
+        // write-only, so there is nothing to echo back).
+        if (trimmedValue) body.value = trimmedValue;
+        await updateEnvVar(initial.id, body);
         toast.success(t("toasts.updated"));
       } else {
-        await createEnvVar({
+        const body: EnvVarCreateBody = {
           name: trimmedName,
           value: trimmedValue,
           is_secret: isSecret,
           scope: scopeSelection === "user" ? "USER" : "PROJECT",
-          ...(scopeSelection !== "user" ? { project_id: scopeSelection } : {}),
-        });
+        };
+        if (scopeSelection !== "user") body.project_id = scopeSelection;
+        await createEnvVar(body);
         toast.success(t("toasts.created"));
       }
       onClose();
@@ -97,118 +108,146 @@ export default function EnvVarFormModal({
   }
 
   return (
-    <Modal open={open} onClose={saving ? undefined : onClose}>
-      <div className="flex w-full flex-col gap-4 p-6">
-        <Text font="main-ui-heading">
-          {isEdit ? t("editTitle") : t("createTitle")}
-        </Text>
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !saving) onClose();
+      }}
+    >
+      <Modal.Content width="sm">
+        <Modal.Header
+          icon={SvgKey}
+          title={isEdit ? t("editTitle") : t("createTitle")}
+          onClose={() => {
+            if (!saving) onClose();
+          }}
+        />
+        <Modal.Body>
+          <form
+            id="env-var-form"
+            className="flex w-full flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSave();
+            }}
+          >
+            <InputVertical withLabel title={t("fields.name.label")}>
+              <InputTypeIn
+                ref={nameInputRef}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("fields.name.placeholder")}
+                data-testid="env-var-name-input"
+              />
+            </InputVertical>
 
-        <InputVertical withLabel title={t("fields.name.label")}>
-          <InputTypeIn
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("fields.name.placeholder")}
-            data-testid="env-var-name-input"
-          />
-        </InputVertical>
-
-        <InputVertical
-          withLabel
-          title={
-            isSecret ? t("fields.secretValue.label") : t("fields.value.label")
-          }
-          description={
-            isEdit && isSecret ? t("fields.secretValue.keepHint") : undefined
-          }
-        >
-          {isSecret ? (
-            <PasswordInputTypeIn
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={
-                isEdit
-                  ? t("fields.secretValue.overwritePlaceholder")
-                  : t("fields.secretValue.placeholder")
+            <InputVertical
+              withLabel
+              title={
+                isSecret
+                  ? t("fields.secretValue.label")
+                  : t("fields.value.label")
               }
-              data-testid="env-var-value-input"
-            />
-          ) : (
-            <InputTypeIn
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={t("fields.value.placeholder")}
-              data-testid="env-var-value-input"
-            />
-          )}
-        </InputVertical>
-
-        {!isEdit && (
-          <>
-            <InputVertical withLabel title={t("fields.isSecret.label")}>
-              <label
-                className="flex cursor-pointer items-center gap-2"
-                htmlFor="env-var-is-secret"
-              >
-                <Checkbox
-                  id="env-var-is-secret"
-                  checked={isSecret}
-                  onCheckedChange={() => setIsSecret((prev) => !prev)}
+              description={
+                isEdit && isSecret
+                  ? t("fields.secretValue.keepHint")
+                  : undefined
+              }
+            >
+              {isSecret ? (
+                <PasswordInputTypeIn
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder={
+                    isEdit
+                      ? t("fields.secretValue.overwritePlaceholder")
+                      : t("fields.secretValue.placeholder")
+                  }
+                  data-testid="env-var-value-input"
                 />
-                <Text font="secondary-body">
-                  {t("fields.isSecret.description")}
-                </Text>
-              </label>
+              ) : (
+                <InputTypeIn
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder={t("fields.value.placeholder")}
+                  data-testid="env-var-value-input"
+                />
+              )}
             </InputVertical>
 
-            <InputVertical withLabel title={t("fields.scope.label")}>
-              <InputSelect
-                value={scopeSelection}
-                onValueChange={setScopeSelection}
+            {!isEdit && (
+              <>
+                <InputVertical withLabel title={t("fields.isSecret.label")}>
+                  <label
+                    className="flex cursor-pointer items-center gap-2"
+                    htmlFor="env-var-is-secret"
+                  >
+                    <Checkbox
+                      id="env-var-is-secret"
+                      checked={isSecret}
+                      onCheckedChange={() => setIsSecret((prev) => !prev)}
+                    />
+                    <Text font="secondary-body">
+                      {t("fields.isSecret.description")}
+                    </Text>
+                  </label>
+                </InputVertical>
+
+                <InputVertical withLabel title={t("fields.scope.label")}>
+                  <InputSelect
+                    value={scopeSelection}
+                    onValueChange={setScopeSelection}
+                  >
+                    <InputSelect.Trigger />
+                    <InputSelect.Content>
+                      <InputSelect.Item value="user">
+                        {t("fields.scope.user")}
+                      </InputSelect.Item>
+                      {projects.map((project) => (
+                        <InputSelect.Item key={project.id} value={project.id}>
+                          {project.name}
+                        </InputSelect.Item>
+                      ))}
+                    </InputSelect.Content>
+                  </InputSelect>
+                </InputVertical>
+              </>
+            )}
+
+            {submitAttempted && (nameError || valueError) && (
+              <MessageCard
+                variant="error"
+                title={t("errors.title")}
+                description={nameError ?? valueError ?? ""}
+              />
+            )}
+          </form>
+        </Modal.Body>
+        <Modal.Footer>
+          <BasicModalFooter
+            cancel={
+              <Button
+                prominence="secondary"
+                type="button"
+                disabled={saving}
+                onClick={onClose}
               >
-                <InputSelect.Trigger />
-                <InputSelect.Content>
-                  <InputSelect.Item value="user">
-                    {t("fields.scope.user")}
-                  </InputSelect.Item>
-                  {projects.map((project) => (
-                    <InputSelect.Item key={project.id} value={project.id}>
-                      {project.name}
-                    </InputSelect.Item>
-                  ))}
-                </InputSelect.Content>
-              </InputSelect>
-            </InputVertical>
-          </>
-        )}
-
-        {(nameError || valueError) && (
-          <MessageCard
-            variant="error"
-            title={t("errors.title")}
-            description={nameError ?? valueError ?? ""}
+                {t("cancelButton")}
+              </Button>
+            }
+            submit={
+              <Button
+                type="submit"
+                form="env-var-form"
+                disabled={!canSave}
+                data-testid="env-var-save"
+              >
+                {isEdit ? t("saveChangesButton") : t("createButton")}
+              </Button>
+            }
           />
-        )}
-
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="default"
-            prominence="secondary"
-            disabled={saving}
-            onClick={onClose}
-          >
-            {t("cancelButton")}
-          </Button>
-          <Button
-            variant="default"
-            prominence="primary"
-            disabled={!canSave}
-            onClick={() => void handleSave()}
-            data-testid="env-var-save"
-          >
-            {isEdit ? t("saveChangesButton") : t("createButton")}
-          </Button>
-        </div>
-      </div>
+        </Modal.Footer>
+      </Modal.Content>
     </Modal>
   );
 }
