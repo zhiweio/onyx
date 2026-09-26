@@ -8,6 +8,7 @@ from redis.lock import Lock as RedisLock
 from sqlalchemy.orm import Session as DBSession
 
 from onyx.background.celery.apps.app_base import task_logger
+from onyx.cache.factory import get_cache_backend
 from onyx.configs.constants import OnyxCeleryTask, OnyxRedisLocks
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.db.models import Sandbox
@@ -25,6 +26,7 @@ from onyx.server.features.build.db.sandbox import (
     get_running_sandboxes,
     user_has_stale_active_session,
 )
+from onyx.server.features.build.interactive_turns.state import get_active_turn
 from onyx.server.features.build.sandbox.base import SandboxManager
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.session.locks import get_session_creation_lock
@@ -207,6 +209,24 @@ def _sweep_running_sandboxes(
             snapshots_created = 0
             for session_id in session_ids:
                 try:
+                    # Never snapshot mid-command: a session with a live turn is
+                    # skipped here, and the turn's own teardown snapshot covers
+                    # it (the fresh-snapshot check below suppresses the next
+                    # sweep pass for that session).
+                    if (
+                        get_active_turn(
+                            cache=get_cache_backend(tenant_id=tenant_id),
+                            session_id=session_id,
+                            user_id=sandbox.user_id,
+                        )
+                        is not None
+                    ):
+                        task_logger.info(
+                            "Skipping snapshot for session %s with an active turn",
+                            session_id,
+                        )
+                        continue
+
                     latest = get_latest_snapshot_for_session(db_session, session_id)
                     if latest and latest.created_at > snapshot_cutoff:
                         continue

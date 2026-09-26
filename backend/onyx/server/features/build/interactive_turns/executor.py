@@ -294,6 +294,61 @@ def _hold_job_lease(
         CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
 
 
+def _snapshot_session_workspace_after_turn(
+    *,
+    sandbox_id: UUID,
+    session_id: UUID,
+    user_id: UUID,
+    tenant_id: str | None,
+) -> threading.Thread:
+    """Snapshot the session workspace right after a turn used it.
+
+    Teardown capture (the QM discipline): the snapshot lands while the
+    workspace is quiet instead of mid-command. Skipped when the session
+    already has a successor turn — including the job continuation this turn
+    just enqueued — because the interval sweep snapshots it once idle, and
+    the sweep skips fresh snapshots. Failures are log-only; the sweep remains
+    the fallback.
+    """
+    from onyx.server.features.build.session.sandbox_lifecycle import (
+        create_session_snapshot_keep_latest,
+    )
+
+    def _run() -> None:
+        token = CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
+        try:
+            cache = get_cache_backend()
+            if (
+                get_active_turn(cache=cache, session_id=session_id, user_id=user_id)
+                is not None
+            ):
+                return
+            with get_session_with_current_tenant() as db_session:
+                create_session_snapshot_keep_latest(
+                    get_sandbox_manager(),
+                    db_session,
+                    sandbox_id,
+                    session_id,
+                    str(tenant_id) if tenant_id is not None else "",
+                )
+            logger.info("Teardown snapshot completed for session %s", session_id)
+        except Exception:
+            logger.warning(
+                "Teardown snapshot failed for session %s", session_id, exc_info=True
+            )
+        finally:
+            CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+
+    thread = threading.Thread(
+        target=_run,
+        name=f"craft-teardown-snapshot-{session_id}",
+        daemon=True,
+    )
+    thread.start()
+    # Returned so tests can join; callers ignore it.
+    return thread
+
+
 def _drive_interactive_turn(
     *,
     turn_id: UUID,
@@ -841,3 +896,12 @@ def _drive_interactive_turn(
                     )
             except Exception:
                 logger.exception("Failed to continue Craft job after turn %s", turn_id)
+        if sandbox_id is not None:
+            # After the continue decision: an enqueued successor turn makes the
+            # active-turn check inside skip this, so a snapshot never races it.
+            _snapshot_session_workspace_after_turn(
+                sandbox_id=sandbox_id,
+                session_id=session_id,
+                user_id=user_id,
+                tenant_id=get_current_tenant_id(),
+            )

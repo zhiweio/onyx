@@ -30,6 +30,7 @@ from sqlalchemy import (
     UniqueConstraint,
     desc,
     event,
+    false,
     func,
     inspect,
     text,
@@ -7423,6 +7424,16 @@ class BuildSession(Base):
         PGUUID(as_uuid=True),
         ForeignKey("craft_project.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    # Durable "restore in progress" marker (QM-style hydrationPending): set
+    # before a workspace restore/setup starts, cleared after it completes. A
+    # crash leaves it set, so no later turn mistakes a half-written workspace
+    # for a restored one; the next ensure_session_ready rebuilds instead.
+    workspace_hydration_pending: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
     )
 
     # Relationships
