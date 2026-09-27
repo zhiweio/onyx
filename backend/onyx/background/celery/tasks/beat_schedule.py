@@ -249,6 +249,19 @@ beat_task_templates: list[dict] = [
             "work_gated": True,
         },
     },
+    # Auto-review guardian: review parked ASK approvals on guardian-mode
+    # scheduled-task runs. Ticks are cheap (one indexed query when nothing
+    # is pending); reviews are idempotent via the payload marker.
+    {
+        "name": "guardian-review-drain",
+        "task": OnyxCeleryTask.GUARDIAN_REVIEW_DRAIN,
+        "schedule": timedelta(seconds=15),
+        "options": {
+            "priority": OnyxCeleryPriority.MEDIUM,
+            "expires": 30,
+            "queue": OnyxCeleryQueues.SCHEDULED_TASKS,
+        },
+    },
     {
         "name": "check-mcp-gateway-scheduled-refresh",
         "task": OnyxCeleryTask.CHECK_MCP_GATEWAY_SCHEDULED_REFRESH,

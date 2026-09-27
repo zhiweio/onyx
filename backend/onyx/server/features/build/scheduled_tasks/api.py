@@ -123,6 +123,9 @@ class ScheduledTaskCreate(_Forbid):
     editor_mode: EditorMode
     editor_payload: EditorPayload
     status: ScheduledTaskStatus = ScheduledTaskStatus.ACTIVE
+    # Auto-review guardian mode: user (default) | auto_review_shadow |
+    # auto_review. Validated against the allowed set.
+    reviewer_mode: str = "user"
     run_immediately: bool = False
     pre_approved_app_ids: list[int] = Field(default_factory=list)
     pre_approved_mcp_server_ids: list[int] = Field(default_factory=list)
@@ -145,6 +148,7 @@ class ScheduledTaskPatch(_Forbid):
     editor_mode: EditorMode | None = None
     editor_payload: EditorPayload | None = None
     status: ScheduledTaskStatus | None = None
+    reviewer_mode: str | None = None
     pre_approved_app_ids: list[int] | None = None
     pre_approved_mcp_server_ids: list[int] | None = None
     project_id: UUID | None = None
@@ -224,6 +228,7 @@ class ScheduledTaskDetail(BaseModel):
     # A pre-approved target's recorded policy version no longer matches the
     # target's current policy — the grants cover nothing until re-saved.
     policy_stale: bool = False
+    reviewer_mode: str = "user"
     project_id: str | None
     env_var_ids: list[str]
     created_at: datetime
@@ -316,6 +321,7 @@ def _detail(
         pre_approved_app_ids=task.pre_approved_external_app_ids,
         pre_approved_mcp_server_ids=task.pre_approved_mcp_server_ids,
         policy_stale=_pre_approval_policy_stale(task),
+        reviewer_mode=task.reviewer_mode,
         project_id=str(task.project_id) if task.project_id is not None else None,
         env_var_ids=[str(env_var_id) for env_var_id in task.env_var_ids],
         created_at=task.created_at,
@@ -447,6 +453,18 @@ def _parse_cursor(cursor: str | None) -> datetime | None:
     return datetime_to_utc(parsed)
 
 
+_REVIEWER_MODES = ("user", "auto_review_shadow", "auto_review")
+
+
+def _validate_reviewer_mode(mode: str) -> str:
+    if mode not in _REVIEWER_MODES:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            f"Invalid reviewer_mode {mode!r}; expected one of {list(_REVIEWER_MODES)}",
+        )
+    return mode
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -496,6 +514,7 @@ def create_task(
         pre_approved_mcp_server_ids=request.pre_approved_mcp_server_ids,
         project_id=request.project_id,
         env_var_ids=request.env_var_ids,
+        reviewer_mode=_validate_reviewer_mode(request.reviewer_mode),
     )
 
     if request.run_immediately:
@@ -593,6 +612,11 @@ def patch_task(
         project_id=request.project_id,
         set_project_id=set_project_id,
         env_var_ids=request.env_var_ids,
+        reviewer_mode=(
+            _validate_reviewer_mode(request.reviewer_mode)
+            if request.reviewer_mode is not None
+            else None
+        ),
     )
     db_session.commit()
     db_session.refresh(task)

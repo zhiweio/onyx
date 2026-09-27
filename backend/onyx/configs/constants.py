@@ -737,6 +737,7 @@ class OnyxCeleryTask:
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"
     SCHEDULED_TASKS_RUN = "scheduled_tasks_run"
+    GUARDIAN_REVIEW_DRAIN = "guardian_review_drain"
     SCHEDULED_TASKS_CLEANUP_STUCK = "scheduled_tasks_cleanup_stuck"
 
     CHECK_FOR_DOCUMENTS_FOR_OPENSEARCH_MIGRATION_TASK = (

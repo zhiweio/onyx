@@ -117,6 +117,31 @@ def cleanup_idle_sandboxes_task(self: Task, *, tenant_id: str) -> None:  # noqa:
     task_logger.info("cleanup_idle_sandboxes_task completed")
 
 
+@shared_task(  # ty: ignore[invalid-argument-type]
+    name=OnyxCeleryTask.GUARDIAN_REVIEW_DRAIN,
+    soft_time_limit=300,
+    bind=True,
+    ignore_result=True,
+)
+def guardian_review_drain_task(self: Task, *, tenant_id: str) -> None:  # noqa: ARG001
+    """Drain pending auto-review guardian decisions for one tenant.
+
+    Ticks are cheap: a single indexed query when nothing is pending. Reviews
+    are idempotent via the payload["guardian"] marker (see
+    approvals.guardian), so an overlapping tick cannot double-decide.
+    """
+    from onyx.server.features.build.approvals.guardian import (
+        drain_guardian_reviews,
+    )
+
+    with get_session_with_current_tenant() as db_session:
+        reviewed = drain_guardian_reviews(db_session)
+    if reviewed:
+        task_logger.info(
+            "guardian_review_drain reviewed=%s tenant=%s", reviewed, tenant_id
+        )
+
+
 def _sweep_running_sandboxes(
     db_session: DBSession,
     sandbox_manager: SandboxManager,

@@ -77,6 +77,26 @@ CRAFT_ACTION_GRADUATION_THRESHOLD = int(
     os.environ.get("CRAFT_ACTION_GRADUATION_THRESHOLD", "3")
 )
 
+# Auto-review guardian: an LLM that reviews ASK-gated requests parked by
+# scheduled-task runs when the task's reviewer_mode enables it. Shadow mode
+# records verdicts without deciding; enforce mode decides with guardrails
+# (DENY-policy actions and quarantined-content sessions always escalate to a
+# human, and a rejection circuit breaker prevents review loops).
+CRAFT_GUARDIAN_ENABLED = (
+    os.environ.get("CRAFT_GUARDIAN_ENABLED", "false").lower() == "true"
+)
+CRAFT_GUARDIAN_TIMEOUT_SECONDS = int(
+    os.environ.get("CRAFT_GUARDIAN_TIMEOUT_SECONDS", "60")
+)
+CRAFT_GUARDIAN_REJECT_CIRCUIT_BREAKER = int(
+    os.environ.get("CRAFT_GUARDIAN_REJECT_CIRCUIT_BREAKER", "2")
+)
+# Quarantine recency window that forces guardian escalation (a session with
+# recent suspicious content is treated as having untrusted evidence).
+CRAFT_GUARDIAN_QUARANTINE_ESCALATION_HOURS = int(
+    os.environ.get("CRAFT_GUARDIAN_QUARANTINE_ESCALATION_HOURS", "1")
+)
+
 SANDBOX_NEXTJS_PORT_START = int(os.environ.get("SANDBOX_NEXTJS_PORT_START", "3010"))
 SANDBOX_NEXTJS_PORT_END = int(os.environ.get("SANDBOX_NEXTJS_PORT_END", "3100"))
 

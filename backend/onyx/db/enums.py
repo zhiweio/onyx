@@ -506,6 +506,7 @@ class ApprovalDecidedVia(str, PyEnum):
     PRE_APPROVAL = "PRE_APPROVAL"
     SESSION_GRANT = "SESSION_GRANT"
     CRAFT_JOB_GRANT = "CRAFT_JOB_GRANT"
+    AUTO_REVIEW = "AUTO_REVIEW"
 
 
 class ScheduledTaskStatus(str, PyEnum):

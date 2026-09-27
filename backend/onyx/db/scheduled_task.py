@@ -65,6 +65,7 @@ def create_scheduled_task(
     pre_approved_mcp_server_ids: list[int] | None = None,
     project_id: UUID | None = None,
     env_var_ids: list[UUID] | None = None,
+    reviewer_mode: str = "user",
     now: datetime | None = None,
 ) -> ScheduledTask:
     """Insert a new ``ScheduledTask``.
@@ -89,6 +90,7 @@ def create_scheduled_task(
         status=status,
         next_run_at=next_run_at,
         project_id=project_id,
+        reviewer_mode=reviewer_mode,
     )
     _replace_pre_approved_targets(
         db_session,
@@ -245,6 +247,7 @@ def update_scheduled_task(
     project_id: UUID | None = None,
     set_project_id: bool = False,
     env_var_ids: list[UUID] | None = None,
+    reviewer_mode: str | None = None,
     now: datetime | None = None,
 ) -> ScheduledTask:
     """Apply a partial update to a scheduled task.
@@ -293,6 +296,8 @@ def update_scheduled_task(
         _prune_env_var_grants(task)
     if editor_mode is not None:
         task.editor_mode = editor_mode
+    if reviewer_mode is not None:
+        task.reviewer_mode = reviewer_mode
     if cron_expression is not None and cron_expression != task.cron_expression:
         task.cron_expression = cron_expression
         schedule_changed = True

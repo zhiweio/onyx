@@ -8229,6 +8229,13 @@ class ScheduledTask(Base):
     next_run_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Who reviews ASK-gated requests on this task's runs: `user` (default —
+    # park and wait for a human), `auto_review_shadow` (the guardian records
+    # a verdict for evaluation only), `auto_review` (the guardian decides,
+    # with guardrails). See onyx.server.features.build.approvals.guardian.
+    reviewer_mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="user", server_default="user"
+    )
     deleted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
