@@ -214,6 +214,7 @@ _OPENCODE_TURN_BUDGET_PLUGIN_PATH = "/workspace/opencode-plugins/turn-budget.ts"
 _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH = "/workspace/opencode-plugins/mcp-offload.ts"
 # Surfaces the `webapp` tool (start/status/logs/restart); always on.
 _OPENCODE_WEBAPP_PLUGIN_PATH = "/workspace/opencode-plugins/webapp.ts"
+_OPENCODE_BACKGROUND_PLUGIN_PATH = "/workspace/opencode-plugins/background.ts"
 _MUTABLE_SANDBOX_IMAGE_TAGS = {"latest", "beta", "edge"}
 
 # SIGTERM grace before SIGKILL when hibernating: the entrypoint gets a chance
@@ -808,6 +809,60 @@ class DockerSandboxManager(SandboxManager):
         )
         return volume_name
 
+    def _process_client(self, sandbox_id: UUID):
+        """Signed HTTP client bound to the container's daemon address."""
+        container = self._get_container(sandbox_id)
+        if container is None:
+            raise RuntimeError(f"container not found for {sandbox_id}")
+        networks = (container.attrs or {}).get("NetworkSettings") or {}
+        nets = networks.get("Networks") or {}
+        ip = None
+        for net in nets.values():
+            ip = net.get("IPAddress")
+            if ip:
+                break
+        if not ip:
+            raise RuntimeError(f"no IP for sandbox {sandbox_id}")
+        from onyx.server.features.build.sandbox.process_client import ProcessClient
+
+        return ProcessClient(host=lambda _sid: ip)
+
+    def start_process(
+        self,
+        sandbox_id: UUID,
+        *,
+        session_id: UUID,  # noqa: ARG002 - reserved for per-session tracking
+        command: str,
+        kind: str = "background",
+    ) -> dict:
+        return self._process_client(sandbox_id).start(
+            sandbox_id, command=command, kind=kind
+        )
+
+    def poll_process(
+        self, sandbox_id: UUID, process_id: str, *, cursor: int = 0
+    ) -> dict:
+        return self._process_client(sandbox_id).poll(
+            sandbox_id, process_id, cursor=cursor, max_bytes=64 * 1024
+        )
+
+    def write_process_input(
+        self, sandbox_id: UUID, process_id: str, data: str
+    ) -> None:
+        return self._process_client(sandbox_id).write_input(
+            sandbox_id, process_id, data
+        )
+
+    def stop_process(
+        self, sandbox_id: UUID, process_id: str, *, signal_name: str = "TERM"
+    ) -> dict:
+        return self._process_client(sandbox_id).stop(
+            sandbox_id, process_id, signal_name=signal_name
+        )
+
+    def list_processes(self, sandbox_id: UUID) -> list[dict]:
+        return self._process_client(sandbox_id).list_processes(sandbox_id)
+
     def apply_deep_job_resources(self, sandbox_id: UUID) -> None:
         container = self._get_container(sandbox_id)
         if container is None:
@@ -896,6 +951,7 @@ class DockerSandboxManager(SandboxManager):
                 _OPENCODE_TURN_BUDGET_PLUGIN_PATH,
                 _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH,
                 _OPENCODE_WEBAPP_PLUGIN_PATH,
+                _OPENCODE_BACKGROUND_PLUGIN_PATH,
             ]
             if SANDBOX_PROXY_HOST:
                 plugins.append(_OPENCODE_SESSION_TAG_PLUGIN_PATH)

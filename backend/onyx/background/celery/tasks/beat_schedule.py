@@ -262,6 +262,18 @@ beat_task_templates: list[dict] = [
             "queue": OnyxCeleryQueues.SCHEDULED_TASKS,
         },
     },
+    # Background-process watch lane: poll watches, wake sessions on
+    # pattern match / exit, reap expired processes.
+    {
+        "name": "process-watch-poll",
+        "task": OnyxCeleryTask.PROCESS_WATCH_POLL,
+        "schedule": timedelta(seconds=60),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": 45,
+            "queue": OnyxCeleryQueues.SANDBOX,
+        },
+    },
     {
         "name": "check-mcp-gateway-scheduled-refresh",
         "task": OnyxCeleryTask.CHECK_MCP_GATEWAY_SCHEDULED_REFRESH,

@@ -8103,6 +8103,83 @@ class ContentQuarantine(Base):
     )
 
 
+class SandboxProcess(Base):
+    """One background process started inside a sandbox (daemon data plane).
+
+    The daemon owns the live handle and the output log; this row is the
+    host-side registry the agent's `background` tool and the watch lane
+    read. The daemon's hex process id is the primary key here too.
+    """
+
+    __tablename__ = "sandbox_process"
+
+    process_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    sandbox_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("sandbox.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    command_redacted: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="background")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="running", server_default="running"
+    )
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class ProcessWatch(Base):
+    """A watch on one background process's output: when new output matches
+    the literal pattern (or the process exits), the owning session wakes
+    with a turn carrying the event. fireKey = watch id + cursor makes the
+    wake idempotent."""
+
+    __tablename__ = "process_watch"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    process_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("sandbox_process.process_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pattern: Mapped[str] = mapped_column(String(256), nullable=False)
+    cursor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_fired_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index("ix_process_watch_process", "process_id"),
+    )
+
+
 class EnvVar(Base):
     """A user- or project-scoped environment variable / secret for Craft.
 

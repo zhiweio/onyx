@@ -186,6 +186,9 @@ _OPENCODE_TURN_BUDGET_PLUGIN_PATH = "/workspace/opencode-plugins/turn-budget.ts"
 _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH = "/workspace/opencode-plugins/mcp-offload.ts"
 # Surfaces the `webapp` tool (start/status/logs/restart); always on.
 _OPENCODE_WEBAPP_PLUGIN_PATH = "/workspace/opencode-plugins/webapp.ts"
+# Surfaces the `background` tool (start/poll/send_input/stop/list); talks to
+# the in-pod sandbox daemon's /processes endpoints on loopback.
+_OPENCODE_BACKGROUND_PLUGIN_PATH = "/workspace/opencode-plugins/background.ts"
 
 
 _PROXY_RESOLVE_RETRY_ATTEMPTS = 5
@@ -1120,6 +1123,7 @@ class KubernetesSandboxManager(SandboxManager):
                         _OPENCODE_MCP_OFFLOAD_PLUGIN_PATH,
                         _OPENCODE_WEBAPP_PLUGIN_PATH,
                         _OPENCODE_SESSION_TAG_PLUGIN_PATH,
+                        _OPENCODE_BACKGROUND_PLUGIN_PATH,
                     ],
                 )
                 opencode_config_json = json.dumps(opencode_config)
@@ -1985,6 +1989,42 @@ fi
             tty=False,
         )
         logger.info("Session configuration files regenerated")
+
+    def start_process(
+        self,
+        sandbox_id: UUID,
+        *,
+        session_id: UUID,  # noqa: ARG002 - reserved for per-session tracking
+        command: str,
+        kind: str = "background",
+    ) -> dict:
+        return self._sidecar_client.start_process(
+            sandbox_id=sandbox_id, command=command, kind=kind
+        )
+
+    def poll_process(
+        self, sandbox_id: UUID, process_id: str, *, cursor: int = 0
+    ) -> dict:
+        return self._sidecar_client.poll_process(
+            sandbox_id=sandbox_id, process_id=process_id, cursor=cursor
+        )
+
+    def write_process_input(
+        self, sandbox_id: UUID, process_id: str, data: str
+    ) -> None:
+        return self._sidecar_client.write_process_input(
+            sandbox_id=sandbox_id, process_id=process_id, data=data
+        )
+
+    def stop_process(
+        self, sandbox_id: UUID, process_id: str, *, signal_name: str = "TERM"
+    ) -> dict:
+        return self._sidecar_client.stop_process(
+            sandbox_id=sandbox_id, process_id=process_id, signal_name=signal_name
+        )
+
+    def list_processes(self, sandbox_id: UUID) -> list[dict]:
+        return self._sidecar_client.list_processes(sandbox_id=sandbox_id)
 
     def health_check(self, sandbox_id: UUID, timeout: float) -> bool:
         """Check whether the agent container and sidecar are both healthy."""

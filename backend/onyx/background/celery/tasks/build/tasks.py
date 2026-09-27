@@ -142,6 +142,112 @@ def guardian_review_drain_task(self: Task, *, tenant_id: str) -> None:  # noqa: 
         )
 
 
+@shared_task(  # ty: ignore[invalid-argument-type]
+    name=OnyxCeleryTask.PROCESS_WATCH_POLL,
+    soft_time_limit=120,
+    bind=True,
+    ignore_result=True,
+)
+def poll_process_watches_task(self: Task, *, tenant_id: str) -> None:  # noqa: ARG001
+    """Watch lane: poll running background processes whose session has a
+    watch, fire wake turns on literal-pattern match or process exit, and
+    reap expired processes. The cursor advances on every poll, so a match
+    never re-fires; the 60s throttle bounds wake storms."""
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.db.models import BuildSession
+    from onyx.db.sandbox_process import (
+        is_wake_throttled,
+        list_active_watches,
+        new_watch_event_envelope,
+        process_event_fire_key,
+    )
+    from onyx.server.features.build.db.build_session import count_user_messages
+    from onyx.server.features.build.interactive_turns.executor import (
+        start_interactive_turn_runner,
+    )
+    from onyx.server.features.build.interactive_turns.state import (
+        create_interactive_turn,
+    )
+    from onyx.server.features.build.sandbox.factory import get_sandbox_manager
+
+    with get_session_with_current_tenant() as db_session:
+        watches = list_active_watches(db_session)
+        if not watches:
+            return
+        sandbox_manager = get_sandbox_manager()
+        for watch in watches:
+            process_id = watch.process_id
+            try:
+                output = sandbox_manager.poll_process(
+                    watch.sandbox_id,
+                    process_id,
+                    cursor=watch.cursor,
+                    max_bytes=64 * 1024,
+                )
+            except Exception:
+                task_logger.exception(
+                    "process_watch_poll_failed process=%s", process_id
+                )
+                continue
+            new_cursor = output.get("new_cursor", watch.cursor)
+            chunk = output.get("chunk") or ""
+            status = output.get("status")
+            event = None
+            if status != "running":
+                event = f"process exited (code {output.get('exit_code')})"
+            else:
+                for needle in (watch.pattern or "").split("|"):
+                    needle = needle.strip()
+                    if needle and needle in chunk:
+                        event = f"pattern {needle!r} matched"
+                        break
+            if event is None:
+                watch.cursor = new_cursor
+                db_session.commit()
+                continue
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if is_wake_throttled(watch):
+                watch.cursor = new_cursor
+                db_session.commit()
+                continue
+            watch.cursor = new_cursor
+            watch.last_fired_at = now
+
+            session = db_session.get(BuildSession, watch.session_id)
+            if session is None or session.user_id is None:
+                db_session.commit()
+                continue
+            envelope = new_watch_event_envelope(
+                watch_id=watch.id,
+                process_id=process_id,
+                event=event,
+                matched_line=_first_matching_line(chunk, watch.pattern),
+            )
+            turn_index = count_user_messages(watch.session_id, db_session)
+            turn = create_interactive_turn(
+                cache=get_cache_backend(tenant_id=tenant_id),
+                session_id=watch.session_id,
+                user_id=session.user_id,
+                client_request_id=process_event_fire_key(watch.id, watch.cursor),
+                prompt=envelope,
+                turn_index=turn_index,
+            )
+            db_session.commit()
+            start_interactive_turn_runner(turn.turn_id)
+
+
+def _first_matching_line(chunk: str, pattern: str) -> str:
+    for needle in (pattern or "").split("|"):
+        needle = needle.strip()
+        if not needle:
+            continue
+        for line in chunk.splitlines():
+            if needle in line:
+                return line
+    return ""
+
+
+
 def _sweep_running_sandboxes(
     db_session: DBSession,
     sandbox_manager: SandboxManager,

@@ -734,7 +734,37 @@ class SandboxManager(_ServeMixin, ABC):
         """Run a command in a session workspace. Raise if unsupported."""
         raise NotImplementedError
 
-    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:
+    def start_process(
+        self,
+        sandbox_id: UUID,
+        *,
+        session_id: UUID,
+        command: str,
+        kind: str = "background",
+    ) -> dict:
+        """Start a background process; returns the daemon's registry entry."""
+        raise NotImplementedError
+
+    def poll_process(
+        self, sandbox_id: UUID, process_id: str, *, cursor: int = 0
+    ) -> dict:
+        """Incremental output read; raises if the process is unknown."""
+        raise NotImplementedError
+
+    def write_process_input(
+        self, sandbox_id: UUID, process_id: str, data: str
+    ) -> None:
+        raise NotImplementedError
+
+    def stop_process(
+        self, sandbox_id: UUID, process_id: str, *, signal_name: str = "TERM"
+    ) -> dict:
+        raise NotImplementedError
+
+    def list_processes(self, sandbox_id: UUID) -> list[dict]:
+        raise NotImplementedError
+
+    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:  # noqa: ARG002
         """Raise CPU/memory for a running long job. Default is a no-op."""
         return None
 

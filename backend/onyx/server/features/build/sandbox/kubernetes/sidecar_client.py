@@ -21,6 +21,12 @@ from onyx.server.features.build.sandbox.image.sandbox_daemon.contract import (
     SIDECAR_FILESYSTEM_LIST_PATH,
     SIDECAR_HEALTH_PATH,
     SIDECAR_OUTPUTS_MANIFEST_PATH,
+    SIDECAR_PROCESS_INPUT_SUFFIX,
+    SIDECAR_PROCESS_ITEM_PREFIX,
+    SIDECAR_PROCESS_LIST_PATH,
+    SIDECAR_PROCESS_POLL_SUFFIX,
+    SIDECAR_PROCESS_START_PATH,
+    SIDECAR_PROCESS_STOP_SUFFIX,
     SIDECAR_PUSH_PATH,
     FilesystemListRequest,
     FilesystemListResponse,
@@ -383,6 +389,126 @@ class SidecarClient:
         raise SidecarRequestError(
             f"{operation_label} request failed: {last_exc or 'sandbox pod unreachable'}"
         )
+
+    def start_process(
+        self, *, sandbox_id: UUID, command: str, kind: str = "background"
+    ) -> dict:
+        return self._post_json(
+            sandbox_id=sandbox_id,
+            endpoint_path=SIDECAR_PROCESS_START_PATH,
+            signing_path=SIDECAR_PROCESS_START_PATH,
+            body={"command": command, "kind": kind, "ttl_seconds": 3600},
+            operation_label="process start",
+        )
+
+    def poll_process(
+        self,
+        *,
+        sandbox_id: UUID,
+        process_id: str,
+        cursor: int,
+        max_bytes: int = 64 * 1024,
+    ) -> dict:
+        item = SIDECAR_PROCESS_ITEM_PREFIX.format(process_id=process_id)
+        return self._post_json(
+            sandbox_id=sandbox_id,
+            endpoint_path=item + SIDECAR_PROCESS_POLL_SUFFIX,
+            signing_path=item + SIDECAR_PROCESS_POLL_SUFFIX,
+            body={"cursor": cursor, "max_bytes": max_bytes},
+            operation_label="process poll",
+        )
+
+    def write_process_input(
+        self, *, sandbox_id: UUID, process_id: str, data: str
+    ) -> None:
+        item = SIDECAR_PROCESS_ITEM_PREFIX.format(process_id=process_id)
+        self._post_json(
+            sandbox_id=sandbox_id,
+            endpoint_path=item + SIDECAR_PROCESS_INPUT_SUFFIX,
+            signing_path=item + SIDECAR_PROCESS_INPUT_SUFFIX,
+            body={"data": data},
+            operation_label="process input",
+        )
+
+    def stop_process(
+        self, *, sandbox_id: UUID, process_id: str, signal_name: str = "TERM"
+    ) -> dict:
+        item = SIDECAR_PROCESS_ITEM_PREFIX.format(process_id=process_id)
+        return self._post_json(
+            sandbox_id=sandbox_id,
+            endpoint_path=item + SIDECAR_PROCESS_STOP_SUFFIX,
+            signing_path=item + SIDECAR_PROCESS_STOP_SUFFIX,
+            body={"signal": signal_name},
+            operation_label="process stop",
+        )
+
+    def list_processes(self, *, sandbox_id: UUID) -> list:
+        return self._get_json(
+            sandbox_id=sandbox_id,
+            endpoint_path=SIDECAR_PROCESS_LIST_PATH,
+            signing_path=SIDECAR_PROCESS_LIST_PATH,
+            operation_label="process list",
+        )
+
+    def _post_json(
+        self,
+        *,
+        sandbox_id: UUID,
+        endpoint_path: str,
+        signing_path: str,
+        body: dict,
+        operation_label: str,
+    ) -> dict:
+        import json as _json
+
+        host = self._host(sandbox_id)
+        payload = _json.dumps(body).encode("utf-8")
+        sha = hashlib.sha256(payload).hexdigest()
+        sig, ts = self._sign_sidecar_request(signing_path, sha)
+        url = f"http://{host}:{PUSH_DAEMON_PORT}{endpoint_path}"
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                url,
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Push-Signature": sig,
+                    "X-Push-Timestamp": ts,
+                },
+            )
+        if resp.status_code >= 400:
+            raise RuntimeError(
+                f"{operation_label} failed: {resp.status_code} {resp.text[:200]}"
+            )
+        return resp.json()
+
+    def _get_json(
+        self,
+        *,
+        sandbox_id: UUID,
+        endpoint_path: str,
+        signing_path: str,
+        operation_label: str,
+    ) -> list:
+        import hashlib as _hashlib
+
+        host = self._host(sandbox_id)
+        sha = _hashlib.sha256(b"").hexdigest()
+        sig, ts = self._sign_sidecar_request(signing_path, sha)
+        url = f"http://{host}:{PUSH_DAEMON_PORT}{endpoint_path}"
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.get(
+                url,
+                headers={
+                    "X-Push-Signature": sig,
+                    "X-Push-Timestamp": ts,
+                },
+            )
+        if resp.status_code >= 400:
+            raise RuntimeError(
+                f"{operation_label} failed: {resp.status_code} {resp.text[:200]}"
+            )
+        return resp.json()
 
     @staticmethod
     def _timeout_for_post(remaining_seconds: float) -> httpx.Timeout:
