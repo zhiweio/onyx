@@ -8733,12 +8733,12 @@
       "advanced": {
         "description": "Fine-tune agent prompts and knowledge.",
         "agentBudget": {
-    "title": "Agent Budget",
-    "description": "Override this agent's tool-loop budgets. Leave empty to inherit the deployment defaults.",
-    "maxLlmCycles": "Max tool cycles",
-    "maxExtensionCycles": "Max extension cycles",
-    "turnTokenBudget": "Turn token budget"
-  },
+          "title": "Agent Budget",
+          "description": "Override this agent's tool-loop budgets. Leave empty to inherit the deployment defaults.",
+          "maxLlmCycles": "Max tool cycles",
+          "maxExtensionCycles": "Max extension cycles",
+          "turnTokenBudget": "Turn token budget"
+        },
         "overwritePrompt": {
           "suffix": "(Not Recommended)",
           "title": "Overwrite System Prompt"
@@ -11891,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Failed to submit decision"
+      },
+      "quarantine": {
+        "title": "Content quarantined",
+        "body": "Content fetched from {host}{path} matched prompt-injection heuristics and was blocked before it reached the agent.",
+        "patterns": "Heuristics matched: {patterns}",
+        "approve": "Allow ({scope})",
+        "deny": "Keep blocked",
+        "settled": "Release decision recorded.",
+        "scope": {
+          "once": "this fetch",
+          "session": "this session",
+          "host": "all sessions (30 days)"
+        }
       }
     },
     "mcpActions": {

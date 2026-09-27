@@ -14,6 +14,7 @@ export enum NotificationType {
   SCHEDULED_TASK_FAILED = "scheduled_task_failed",
   SCHEDULED_TASK_AWAITING_APPROVAL = "scheduled_task_awaiting_approval",
   CRAFT_JOB_FAILED = "craft_job_failed",
+  CRAFT_CONTENT_QUARANTINED = "craft_content_quarantined",
 
   // SvgBullhorn
   RELEASE_NOTES = "release_notes",

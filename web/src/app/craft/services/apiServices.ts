@@ -19,6 +19,7 @@ import {
   ApprovalListResponse,
   ApprovalSubmitDecision,
   ApprovalView,
+  ContentQuarantineView,
 } from "@/app/craft/types/approvals";
 import {
   RATE_LIMITED_ERROR_CODE,
@@ -1209,6 +1210,29 @@ export async function postApprovalSessionGrant(
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to approve for session: ${res.status}`
+    );
+  }
+  return res.json();
+}
+
+export async function postContentQuarantineDecision(
+  quarantineId: string,
+  decision: "APPROVED" | "DENIED",
+  scope: "ONCE" | "SESSION" | "HOST" | null
+): Promise<ContentQuarantineView> {
+  const res = await fetch(
+    `${BUILD_API_BASE}/approvals/content-quarantines/${quarantineId}/decision`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, scope }),
+    }
+  );
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || `Failed to decide content release: ${res.status}`
     );
   }
   return res.json();

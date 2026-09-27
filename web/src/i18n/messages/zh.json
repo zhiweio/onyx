@@ -8733,12 +8733,12 @@
       "advanced": {
         "description": "微调智能体的提示词和知识。",
         "agentBudget": {
-    "title": "Agent 预算",
-    "description": "覆盖该助手工具循环的预算。留空则继承部署默认值。",
-    "maxLlmCycles": "最大工具轮数",
-    "maxExtensionCycles": "最大扩展轮数",
-    "turnTokenBudget": "Turn token 预算"
-  },
+          "title": "Agent 预算",
+          "description": "覆盖该助手工具循环的预算。留空则继承部署默认值。",
+          "maxLlmCycles": "最大工具轮数",
+          "maxExtensionCycles": "最大扩展轮数",
+          "turnTokenBudget": "Turn token 预算"
+        },
         "overwritePrompt": {
           "suffix": "（不推荐）",
           "title": "覆盖系统提示词"
@@ -11891,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "提交决定失败"
+      },
+      "quarantine": {
+        "title": "内容已被隔离",
+        "body": "从 {host}{path} 抓取的内容命中提示注入启发式，已在到达智能体前拦截。",
+        "patterns": "命中规则：{patterns}",
+        "approve": "放行（{scope}）",
+        "deny": "保持拦截",
+        "settled": "放行决定已记录。",
+        "scope": {
+          "once": "仅本次抓取",
+          "session": "本会话",
+          "host": "全部会话（30 天）"
+        }
       }
     },
     "apps": {
