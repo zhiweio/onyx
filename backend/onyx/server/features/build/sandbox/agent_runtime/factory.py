@@ -17,21 +17,44 @@ from onyx.server.features.build.sandbox.agent_runtime.base import (
 
 _AGENT_RUNTIME_ENV = "SANDBOX_AGENT_RUNTIME"
 
-# Capability profiles per runtime. OpenCode is the only one today; add
-# entries here when a second runtime lands.
+# Capability profiles per runtime. OpenCode is the only one implemented;
+# codex and pi are declared for the H1/H2 milestones.
 _PROFILES: dict[str, AgentRuntimeProfile] = {
     "opencode": AgentRuntimeProfile(
         runtime_id="opencode",
-        capabilities=frozenset({
-            RuntimeCapability.STEER,
-            RuntimeCapability.COMPACT,
-            RuntimeCapability.SUBAGENTS,
-            RuntimeCapability.QUESTION_ASKS,
-            RuntimeCapability.QUESTION_TIMEOUT_EVENTS,
-            RuntimeCapability.TURN_BUDGET_STAMP,
-            RuntimeCapability.MCP,
-            RuntimeCapability.HISTORY_SNAPSHOT,
-        }),
+        capabilities=frozenset(
+            {
+                RuntimeCapability.STEER,
+                RuntimeCapability.COMPACT,
+                RuntimeCapability.SUBAGENTS,
+                RuntimeCapability.QUESTION_ASKS,
+                RuntimeCapability.QUESTION_TIMEOUT_EVENTS,
+                RuntimeCapability.TURN_BUDGET_STAMP,
+                RuntimeCapability.MCP,
+                RuntimeCapability.HISTORY_SNAPSHOT,
+            }
+        ),
+    ),
+    "codex": AgentRuntimeProfile(
+        runtime_id="codex",
+        capabilities=frozenset(
+            {
+                RuntimeCapability.STEER,
+                RuntimeCapability.COMPACT,
+                RuntimeCapability.MCP,
+                RuntimeCapability.HISTORY_SNAPSHOT,
+            }
+        ),
+    ),
+    "pi": AgentRuntimeProfile(
+        runtime_id="pi",
+        capabilities=frozenset(
+            {
+                RuntimeCapability.STEER,
+                RuntimeCapability.SUBAGENTS,
+                RuntimeCapability.MCP,
+            }
+        ),
     ),
 }
 
@@ -46,3 +69,8 @@ def get_runtime_profile() -> AgentRuntimeProfile:
             f"expected one of {sorted(_PROFILES)}"
         )
     return profile
+
+
+def get_runtime_capabilities() -> frozenset[RuntimeCapability]:
+    """Return just the capability set for the configured runtime."""
+    return get_runtime_profile().capabilities

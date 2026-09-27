@@ -12,6 +12,7 @@ from onyx.server.features.build.sandbox.agent_runtime.base import (
     RuntimeCapability,
 )
 from onyx.server.features.build.sandbox.agent_runtime.factory import (
+    get_runtime_capabilities,
     get_runtime_profile,
 )
 
@@ -20,4 +21,5 @@ __all__ = [
     "AgentRuntimeProfile",
     "RuntimeCapability",
     "get_runtime_profile",
+    "get_runtime_capabilities",
 ]
