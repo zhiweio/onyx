@@ -22,6 +22,44 @@ SIDECAR_SNAPSHOT_RESTORE_ROUTE = f"{SIDECAR_SNAPSHOT_RESTORE_PREFIX}/{{session_i
 SIDECAR_OPENCODE_HISTORY_CREATE_PATH = "/opencode-history/create"
 SIDECAR_OPENCODE_HISTORY_RESTORE_PATH = "/opencode-history/restore"
 SIDECAR_OPENCODE_HISTORY_MARK_RESTORED_PATH = "/opencode-history/mark-restored"
+SIDECAR_PROCESS_START_PATH = "/processes"
+SIDECAR_PROCESS_ITEM_PREFIX = "/processes/{process_id}"
+SIDECAR_PROCESS_POLL_SUFFIX = "/poll"
+SIDECAR_PROCESS_INPUT_SUFFIX = "/input"
+SIDECAR_PROCESS_STOP_SUFFIX = "/stop"
+SIDECAR_PROCESS_LIST_PATH = "/processes-list"
+SIDECAR_PROCESS_TOKEN_ENV_VAR = "ONYX_SANDBOX_PROCESS_TOKEN"
+PROCESS_ROOT = "/var/lib/onyx-processes"
+PROCESS_TTL_SECONDS = 3600
+PROCESS_MAX_CONCURRENT = 8
+
+
+class ProcessStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    command: str
+    kind: str = "background"  # build | dev-server | background
+
+
+class ProcessPollRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cursor: int = 0
+    max_bytes: int = 64 * 1024
+
+
+class ProcessInputRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    data: str
+
+
+class ProcessStopRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signal: str = "TERM"
+
+
 SIDECAR_PUSH_PUBLIC_KEY_ENV_VAR = "ONYX_SANDBOX_PUSH_PUBLIC_KEY"
 
 
