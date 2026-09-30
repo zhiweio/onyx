@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,9 +20,9 @@ from onyx.db.enums import Permission
 from onyx.db.models import (
     StandardAnswer,
     StandardAnswerCategory,
-    StandardAnswer__StandardAnswerCategory,
     User,
 )
+from onyx.db.standard_answers import count_standard_answers, list_standard_answers
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 
@@ -69,11 +69,24 @@ def _serialize_category(row: StandardAnswerCategory) -> dict[str, Any]:
 
 @router.get("")
 def list_answers(
+    q: str | None = None,
+    category_id: int | None = None,
+    page_num: int = Query(default=0, ge=0),
+    page_size: int = Query(default=20, ge=1, le=200),
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
-) -> list[dict[str, Any]]:
-    rows = db_session.scalars(select(StandardAnswer)).all()
-    return [_serialize(row) for row in rows]
+) -> dict[str, Any]:
+    rows = list_standard_answers(
+        db_session,
+        q=q,
+        category_id=category_id,
+        limit=page_size,
+        offset=page_num * page_size,
+    )
+    return {
+        "items": [_serialize(row) for row in rows],
+        "total_items": count_standard_answers(db_session, q=q, category_id=category_id),
+    }
 
 
 @router.get("/categories")
@@ -138,7 +151,9 @@ def update_answer(
 ) -> dict[str, Any]:
     row = db_session.get(StandardAnswer, answer_id)
     if row is None:
-        raise OnyxError(OnyxErrorCode.NOT_FOUND, f"standard answer {answer_id} not found")
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND, f"standard answer {answer_id} not found"
+        )
     if request.keyword is not None:
         row.keyword = request.keyword.strip()
     if request.answer is not None:
@@ -163,7 +178,9 @@ def delete_answer(
 ) -> dict[str, Any]:
     row = db_session.get(StandardAnswer, answer_id)
     if row is None:
-        raise OnyxError(OnyxErrorCode.NOT_FOUND, f"standard answer {answer_id} not found")
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND, f"standard answer {answer_id} not found"
+        )
     db_session.delete(row)
     db_session.commit()
     return {"success": True}
@@ -173,13 +190,11 @@ def _set_categories(
     db_session: Session, row: StandardAnswer, category_ids: list[int]
 ) -> None:
     if category_ids:
-        categories = (
-            db_session.scalars(
-                select(StandardAnswerCategory).where(
-                    StandardAnswerCategory.id.in_(category_ids)
-                )
-            ).all()
-        )
+        categories = db_session.scalars(
+            select(StandardAnswerCategory).where(
+                StandardAnswerCategory.id.in_(category_ids)
+            )
+        ).all()
         found = {cat.id for cat in categories}
         missing = set(category_ids) - found
         if missing:

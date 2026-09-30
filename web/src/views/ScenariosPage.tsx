@@ -14,6 +14,7 @@ import {
 import SvgNoResult from "@opal/illustrations/no-result";
 import { SvgPlus, SvgShare, SvgSimpleLoader, SvgTrash } from "@opal/icons";
 import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
 import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
 import { useGalleryScenarios } from "@/lib/system-catalog/hooks";
@@ -37,6 +38,7 @@ import ShareScenarioModal from "@/sections/modals/scenarios/ShareScenarioModal";
 import { CRAFT_PATH, CRAFT_SCENARIOS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
+import { clampPage, slicePage } from "@/lib/browse/page";
 
 export default function ScenariosPage() {
   const t = useTranslations("craft.scenarios");
@@ -45,11 +47,12 @@ export default function ScenariosPage() {
   const { data: scenarios, error, isLoading, refresh } = useScenarios();
   const { data: skillsData } = useUserSkills();
   const refreshSessionHistory = useBuildSessionStore(
-    (state) => state.refreshSessionHistory,
+    (state) => state.refreshSessionHistory
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<CatalogViewMode>("cards");
   const [domainFilter, setDomainFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
   const [shareTarget, setShareTarget] = useState<Scenario | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
@@ -87,7 +90,7 @@ export default function ScenariosPage() {
   const domainFilters = useMemo(() => {
     const customs = collectCustomScenarioDomains(scenarios);
     const hasUncategorized = scenarios.some((scenario) =>
-      isUncategorizedDomain(scenarioDomain(scenario)),
+      isUncategorizedDomain(scenarioDomain(scenario))
     );
     return [
       "all",
@@ -117,9 +120,12 @@ export default function ScenariosPage() {
     });
   }, [domainFilter, scenarios, searchQuery, skillNameById]);
 
+  const safePage = clampPage(page, visibleScenarios.length);
+  const pageScenarios = slicePage(visibleScenarios, safePage);
+
   function skillNamesFor(scenario: Scenario): string[] {
     return scenario.skill_ids.map(
-      (id) => skillNameById.get(id) ?? id.slice(0, 8),
+      (id) => skillNameById.get(id) ?? id.slice(0, 8)
     );
   }
 
@@ -139,7 +145,7 @@ export default function ScenariosPage() {
       toast.error(
         customizeError instanceof Error
           ? customizeError.message
-          : t("toasts.duplicateFailed.message"),
+          : t("toasts.duplicateFailed.message")
       );
     } finally {
       setCustomizingId(null);
@@ -152,7 +158,7 @@ export default function ScenariosPage() {
       const sessionId = await startScenarioRun(scenario);
       await refreshSessionHistory();
       router.push(
-        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route,
+        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route
       );
     } catch (startError) {
       console.error(startError);
@@ -175,7 +181,7 @@ export default function ScenariosPage() {
       toast.error(
         deleteError instanceof Error
           ? deleteError.message
-          : t("toasts.shareFailed.message"),
+          : t("toasts.shareFailed.message")
       );
     } finally {
       setDeleting(false);
@@ -218,7 +224,10 @@ export default function ScenariosPage() {
           ref={searchInputRef}
           placeholder={t("page.search.placeholder")}
           value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1);
+          }}
           searchIcon
         />
         {gallery.tab === "mine" && (
@@ -228,7 +237,10 @@ export default function ScenariosPage() {
                 key={domain}
                 prominence={domainFilter === domain ? "primary" : "secondary"}
                 size="sm"
-                onClick={() => setDomainFilter(domain)}
+                onClick={() => {
+                  setDomainFilter(domain);
+                  setPage(1);
+                }}
               >
                 {domain === "all" ||
                 isBuiltinScenarioDomain(domain) ||
@@ -284,28 +296,36 @@ export default function ScenariosPage() {
                     }
                   />
                 ) : (
-                  <BrowseItemGrid
-                    items={visibleScenarios}
-                    resetKey={`${searchQuery}:${domainFilter}:${view}`}
-                    view={view}
-                    onViewChange={setView}
-                    getKey={(scenario) => scenario.id}
-                    renderItem={(scenario, itemView) => (
-                      <ScenarioCard
-                        scenario={scenario}
-                        layout={itemView}
-                        skillNames={skillNamesFor(scenario)}
-                        startPending={startingId === scenario.id}
-                        customizePending={customizingId === scenario.id}
-                        onClick={openEditor}
-                        onEdit={openEditor}
-                        onCustomize={(item) => void handleCustomize(item)}
-                        onShare={setShareTarget}
-                        onDelete={setDeleteTarget}
-                        onStart={(item) => void handleStart(item)}
-                      />
-                    )}
-                  />
+                  <>
+                    <BrowseItemGrid
+                      items={pageScenarios}
+                      resetKey={`${searchQuery}:${domainFilter}:${view}:${safePage}`}
+                      view={view}
+                      onViewChange={setView}
+                      getKey={(scenario) => scenario.id}
+                      renderItem={(scenario, itemView) => (
+                        <ScenarioCard
+                          scenario={scenario}
+                          layout={itemView}
+                          skillNames={skillNamesFor(scenario)}
+                          startPending={startingId === scenario.id}
+                          customizePending={customizingId === scenario.id}
+                          onClick={openEditor}
+                          onEdit={openEditor}
+                          onCustomize={(item) => void handleCustomize(item)}
+                          onShare={setShareTarget}
+                          onDelete={setDeleteTarget}
+                          onStart={(item) => void handleStart(item)}
+                        />
+                      )}
+                    />
+                    <BrowsePagination
+                      page={safePage}
+                      totalItems={visibleScenarios.length}
+                      onPageChange={setPage}
+                      units={tGallery("pagination.units")}
+                    />
+                  </>
                 )}
               </>
             )}

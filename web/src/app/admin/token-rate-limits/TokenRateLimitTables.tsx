@@ -1,28 +1,39 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { deleteTokenRateLimit, updateTokenRateLimit } from "./lib";
-import { ContentAction, PageLoader, Section, toast } from "@opal/layouts";
+import { IllustrationContent, PageLoader, toast } from "@opal/layouts";
 import { TokenRateLimitDisplay } from "./types";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import useSWR, { mutate } from "swr";
-import { Button, Switch, Text } from "@opal/components";
-import { SvgTrash, SvgUsers, SvgWallet } from "@opal/icons";
+import {
+  Button,
+  InputTypeIn,
+  Switch,
+  Table,
+  Tag,
+  Text,
+  createTableColumns,
+} from "@opal/components";
+import SvgNoResult from "@opal/illustrations/no-result";
+import { SvgTrash } from "@opal/icons";
 import { formatCurrencyFromCents, formatTokenCount } from "@/lib/format";
 
 const HOURS_PER_DAY = 24;
+const PAGE_SIZE = 10;
 
-interface LimitRowProps {
-  limit: TokenRateLimitDisplay;
-  isAdmin: boolean;
-  onToggle: (id: number) => void;
-  onDelete: (id: number) => void;
+interface TokenRateLimitRow extends TokenRateLimitDisplay {
+  budget_label: string;
+  cadence_label: string;
+  row_label: string;
 }
 
-function LimitRow({ limit, isAdmin, onToggle, onDelete }: LimitRowProps) {
-  const t = useTranslations("admin.tokenRateLimits");
-  const locale = useLocale();
-
+function buildRow(
+  limit: TokenRateLimitDisplay,
+  t: ReturnType<typeof useTranslations<"admin.tokenRateLimits">>,
+  locale: string
+): TokenRateLimitRow {
   const cost =
     limit.cost_budget_cents != null
       ? formatCurrencyFromCents(limit.cost_budget_cents, locale)
@@ -45,51 +56,12 @@ function LimitRow({ limit, isAdmin, onToggle, onDelete }: LimitRowProps) {
   });
   const limitLabel = t("limits.row.label", { budget, cadence });
 
-  return (
-    <div className="rounded-12 border border-border-01 bg-background-neutral-00">
-      <ContentAction
-        sizePreset="main-ui"
-        variant="section"
-        icon={limit.group_name !== undefined ? SvgUsers : SvgWallet}
-        title={budget}
-        description={cadence}
-        tag={
-          limit.group_name !== undefined
-            ? { title: limit.group_name }
-            : undefined
-        }
-        padding={1}
-        center
-        rightChildren={
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={limit.enabled}
-              disabled={!isAdmin}
-              onCheckedChange={() => onToggle(limit.token_id)}
-              aria-label={
-                limit.enabled
-                  ? t("limits.row.disable.ariaLabel", { label: limitLabel })
-                  : t("limits.row.enable.ariaLabel", { label: limitLabel })
-              }
-            />
-            {isAdmin && (
-              <Button
-                variant="danger"
-                prominence="tertiary"
-                icon={SvgTrash}
-                size="sm"
-                tooltip={t("limits.row.delete.tooltip")}
-                aria-label={t("limits.row.delete.ariaLabel", {
-                  label: limitLabel,
-                })}
-                onClick={() => onDelete(limit.token_id)}
-              />
-            )}
-          </div>
-        }
-      />
-    </div>
-  );
+  return {
+    ...limit,
+    budget_label: budget,
+    cadence_label: cadence,
+    row_label: limitLabel,
+  };
 }
 
 type TokenRateLimitTableArgs = {
@@ -100,6 +72,8 @@ type TokenRateLimitTableArgs = {
   isAdmin: boolean;
 };
 
+const tc = createTableColumns<TokenRateLimitRow>();
+
 export const TokenRateLimitTable = ({
   tokenRateLimits,
   description,
@@ -108,6 +82,13 @@ export const TokenRateLimitTable = ({
   isAdmin,
 }: TokenRateLimitTableArgs) => {
   const t = useTranslations("admin.tokenRateLimits");
+  const locale = useLocale();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const rows = useMemo(
+    () => tokenRateLimits.map((limit) => buildRow(limit, t, locale)),
+    [tokenRateLimits, t, locale]
+  );
 
   const handleEnabledChange = async (id: number) => {
     const tokenRateLimit = tokenRateLimits.find(
@@ -144,31 +125,107 @@ export const TokenRateLimitTable = ({
     }
   };
 
+  const columns = useMemo(
+    () => [
+      tc.column("budget_label", {
+        header: t("limits.col.budget"),
+        weight: 30,
+        enableSorting: false,
+        cell: (value) => (
+          <Text font="main-ui-body" color="text-04" nowrap>
+            {value}
+          </Text>
+        ),
+      }),
+      tc.column("cadence_label", {
+        header: t("limits.col.cadence"),
+        weight: 26,
+        enableSorting: false,
+        cell: (value) => (
+          <Text font="secondary-body" color="text-03">
+            {value}
+          </Text>
+        ),
+      }),
+      tc.column("group_name", {
+        header: t("limits.col.target"),
+        weight: 18,
+        enableSorting: false,
+        cell: (value) => (value ? <Tag title={value} truncate /> : null),
+      }),
+      tc.column("enabled", {
+        header: t("limits.col.enabled"),
+        weight: 10,
+        enableSorting: false,
+        cell: (value, row) => (
+          <Switch
+            checked={value}
+            disabled={!isAdmin}
+            onCheckedChange={() => handleEnabledChange(row.token_id)}
+            aria-label={
+              row.enabled
+                ? t("limits.row.disable.ariaLabel", { label: row.row_label })
+                : t("limits.row.enable.ariaLabel", { label: row.row_label })
+            }
+          />
+        ),
+      }),
+      tc.actions({
+        showColumnVisibility: false,
+        showSorting: false,
+        cell: (row) =>
+          isAdmin ? (
+            <Button
+              variant="danger"
+              prominence="tertiary"
+              icon={SvgTrash}
+              size="sm"
+              tooltip={t("limits.row.delete.tooltip")}
+              aria-label={t("limits.row.delete.ariaLabel", {
+                label: row.row_label,
+              })}
+              onClick={() => handleDelete(row.token_id)}
+            />
+          ) : null,
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, isAdmin, tokenRateLimits, fetchUrl]
+  );
+
   return (
-    <Section alignItems="stretch" height="auto" gap={2}>
+    <div className="flex flex-col gap-3">
       {!hideHeading && description && (
         <Text font="secondary-body" color="text-03" as="p">
           {description}
         </Text>
       )}
-      {tokenRateLimits.length === 0 ? (
-        <div className="rounded-12 border border-dashed border-border-02 p-4">
-          <Text font="secondary-body" color="text-03" as="p">
-            {t("limits.empty.message")}
-          </Text>
-        </div>
-      ) : (
-        tokenRateLimits.map((tokenRateLimit) => (
-          <LimitRow
-            key={tokenRateLimit.token_id}
-            limit={tokenRateLimit}
-            isAdmin={isAdmin}
-            onToggle={handleEnabledChange}
-            onDelete={handleDelete}
+      <div className="max-w-sm">
+        <InputTypeIn
+          searchIcon
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder={t("limits.searchPlaceholder")}
+          aria-label={t("limits.searchPlaceholder")}
+          data-testid="token-rate-limits-search"
+        />
+      </div>
+      <Table
+        data={rows}
+        columns={columns}
+        getRowId={(row) => String(row.token_id)}
+        pageSize={PAGE_SIZE}
+        variant="cards"
+        searchTerm={searchTerm}
+        footer={{ units: t("limits.footerUnits") }}
+        emptyState={
+          <IllustrationContent
+            illustration={SvgNoResult}
+            title={t("limits.empty.message")}
           />
-        ))
-      )}
-    </Section>
+        }
+      />
+    </div>
   );
 };
 

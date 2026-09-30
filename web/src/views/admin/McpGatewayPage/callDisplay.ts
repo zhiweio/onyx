@@ -117,40 +117,5 @@ export function parseArgumentsPreview(
   return pairsFromLooseText(text);
 }
 
-function parseJsonContainer(text: string): JsonValue | undefined {
-  const trimmed = text.trim();
-  if (trimmed.length < 2) return undefined;
-  const first = trimmed[0];
-  const last = trimmed[trimmed.length - 1];
-  if (!((first === "{" && last === "}") || (first === "[" && last === "]"))) {
-    return undefined;
-  }
-  return parseJsonText(trimmed);
-}
-
-function reviveJsonStrings(value: JsonValue, depth = 0): JsonValue {
-  if (depth > 6) return value;
-  if (typeof value === "string") {
-    const nested = parseJsonContainer(value);
-    return nested === undefined ? value : reviveJsonStrings(nested, depth + 1);
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => reviveJsonStrings(item, depth + 1));
-  }
-  if (isJsonObject(value)) {
-    const next: JsonObject = {};
-    for (const [key, item] of Object.entries(value)) {
-      next[key] = reviveJsonStrings(item, depth + 1);
-    }
-    return next;
-  }
-  return value;
-}
-
 /** Pretty-print a call argument or payload, unfolding nested JSON strings. */
-export function formatJsonValue(
-  value: Record<string, unknown> | null | undefined
-): string {
-  const json = asJsonValue(value ?? null) ?? null;
-  return JSON.stringify(reviveJsonStrings(json), null, 2);
-}
+export { formatJsonValue } from "@/lib/jsonDisplay";

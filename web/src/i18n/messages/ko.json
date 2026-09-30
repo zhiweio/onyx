@@ -7135,12 +7135,62 @@
       }
     },
     "standardAnswers": {
-      "categoryBubble": {
-        "remove": {
-          "ariaLabel": "Remove category {name}"
+      "subtitle": "Short-circuit exact answers for known questions across chat and bots.",
+      "searchPlaceholder": "Search keyword or answer...",
+      "empty": "Create standard answers to short-circuit common questions.",
+      "emptyTable": "No standard answers match",
+      "addAnswer": "New Answer",
+      "allCategories": "All",
+      "footerUnits": "answers",
+      "loading": "Loading...",
+      "loadFailed": "Failed to load standard answers",
+      "categories": "Categories",
+      "newCategory": "New category",
+      "addCategory": "Add",
+      "categoryCreated": "Category created",
+      "created": "Answer created",
+      "updated": "Answer updated",
+      "deleted": "Answer deleted",
+      "active": "Active",
+      "inactive": "Inactive",
+      "enable": "Enable",
+      "disable": "Disable",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "confirmEnableTitle": "Enable answer",
+      "confirmEnableBody": "Enable the answer for \"{keyword}\"?",
+      "confirmDisableTitle": "Disable answer",
+      "confirmDisableBody": "Disable the answer for \"{keyword}\"?",
+      "confirmDeleteTitle": "Delete answer",
+      "confirmDeleteBody": "Delete the answer for \"{keyword}\"? This cannot be undone.",
+      "col": {
+        "keyword": "Keyword",
+        "answer": "Answer",
+        "categories": "Categories",
+        "status": "Status"
+      },
+      "form": {
+        "createTitle": "New standard answer",
+        "editTitle": "Edit standard answer",
+        "description": "When a user message matches the keyword, the answer is returned directly.",
+        "keyword": "Keyword",
+        "keywordPlaceholder": "e.g. company wifi password",
+        "answer": "Answer",
+        "answerPlaceholder": "The exact reply to return...",
+        "category": "Category",
+        "noCategory": "No category",
+        "matchRegex": {
+          "label": "Match mode",
+          "description": "Treat the keyword as a regular expression"
         },
-        "removeButton": {
-          "ariaLabel": "Remove category"
+        "cancel": "Cancel",
+        "submitCreate": "Create answer",
+        "submitEdit": "Save changes",
+        "errors": {
+          "title": "Please fix the following",
+          "keywordRequired": "Keyword is required",
+          "answerRequired": "Answer is required"
         }
       },
       "categoryDropdown": {
@@ -7153,141 +7203,6 @@
         },
         "search": {
           "placeholder": "Search categories..."
-        }
-      },
-      "editPage": {
-        "title": "Edit Standard Answer"
-      },
-      "errors": {
-        "fetchAnswersFailed": {
-          "message": "Failed to fetch standard answers"
-        },
-        "fetchCategoriesFailed": {
-          "message": "Failed to fetch standard answer categories"
-        },
-        "genericTitle": {
-          "title": "Something went wrong :("
-        },
-        "loadAnswersFailed": {
-          "title": "Error loading standard answers"
-        },
-        "loadCategoriesFailed": {
-          "title": "Error loading standard answer categories"
-        },
-        "notFound": {
-          "message": "Did not find standard answer with ID: {id}"
-        }
-      },
-      "filter": {
-        "allCategories": {
-          "label": "All Categories"
-        }
-      },
-      "form": {
-        "allKeywords": {
-          "label": "All of these keywords, in any order, separated by spaces",
-          "placeholder": "it ticket"
-        },
-        "answer": {
-          "label": "Answer",
-          "placeholder": "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
-        },
-        "anyKeywords": {
-          "label": "Any of these keywords, separated by spaces",
-          "placeholder": "ticket problem issue"
-        },
-        "categories": {
-          "label": "Categories:",
-          "placeholder": "Type a category and press Enter…"
-        },
-        "createButton": {
-          "label": "Create!"
-        },
-        "keywords": {
-          "tooltip": "A question must match these keywords in order to trigger the answer."
-        },
-        "matchRegex": {
-          "description": "Match a regex pattern instead of an exact keyword",
-          "label": "Match regex"
-        },
-        "regexPattern": {
-          "label": "Regex pattern",
-          "tooltip": "Triggers if the question matches this regex pattern (using Python `re.search()`)"
-        },
-        "strategy": {
-          "all": {
-            "label": "All keywords"
-          },
-          "any": {
-            "label": "Any keywords"
-          },
-          "description": "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
-          "label": "Keyword detection strategy"
-        },
-        "toasts": {
-          "categoryCreateFailed": {
-            "message": "Error creating category \"{name}\" - {error}"
-          },
-          "createFailed": {
-            "message": "Error creating Standard Answer - {error}"
-          },
-          "updateFailed": {
-            "message": "Error updating Standard Answer - {error}"
-          }
-        },
-        "updateButton": {
-          "label": "Update!"
-        },
-        "validation": {
-          "answerRequired": "Answer is required",
-          "categoryRequired": "At least one category is required",
-          "keywordRequired": "Keywords or pattern is required"
-        }
-      },
-      "intro": {
-        "addFirst": {
-          "message": "Add your first standard answer below!"
-        },
-        "description": "Manage the standard answers for pre-defined questions.\nNote: Currently, only questions asked from Slack can receive standard answers."
-      },
-      "newStandardAnswer": {
-        "label": "New Standard Answer"
-      },
-      "search": {
-        "placeholder": "Find standard answers by keyword/phrase..."
-      },
-      "table": {
-        "answer": {
-          "header": "Answer"
-        },
-        "categories": {
-          "header": "Categories"
-        },
-        "empty": {
-          "message": "No matching standard answers found..."
-        },
-        "keywords": {
-          "header": "Keywords/Pattern"
-        },
-        "matchRegex": {
-          "header": "Match regex?"
-        },
-        "matchRegexNo": {
-          "label": "No"
-        },
-        "matchRegexYes": {
-          "label": "Yes"
-        },
-        "slackNote": {
-          "message": "Ensure that you have added the category to the relevant [Slack Bot](/admin/bots)."
-        }
-      },
-      "toasts": {
-        "deleteFailed": {
-          "message": "Failed to delete standard answer - {error}"
-        },
-        "deleted": {
-          "message": "Standard answer {id} deleted"
         }
       }
     },
@@ -7494,6 +7409,14 @@
         },
         "updateFailed": {
           "error": "token 사용 한도를 업데이트하지 못했습니다"
+        },
+        "searchPlaceholder": "Search budget or group...",
+        "footerUnits": "limits",
+        "col": {
+          "budget": "Budget",
+          "cadence": "Resets",
+          "target": "Group",
+          "enabled": "Enabled"
         }
       },
       "modal": {
@@ -8679,35 +8602,62 @@
     },
     "agentModels": {
       "title": "Agent Models",
-      "subtitle": "The model catalog available to agent runtimes plus admin-defined overlays. Verify issues one real provider probe.",
-      "catalog": "Catalog",
-      "overlays": "Custom models (overlays)",
-      "noOverlays": "No custom models yet. Add one below (e.g. a GLM clone on a private endpoint).",
-      "default": "default",
-      "refresh": "Refresh",
-      "created": "Custom model created",
-      "deleted": "Custom model deleted",
-      "verified": "Probe succeeded",
-      "verifyFailed": "Probe failed",
-      "verifyError": "Last failure",
+      "subtitle": "Register model overlays that point catalog templates at custom endpoints.",
+      "addOverlay": "Add Overlay",
+      "searchPlaceholder": "Search model or provider...",
+      "footerUnits": "models",
+      "loading": "Loading...",
+      "loadFailed": "Failed to load models",
+      "empty": "No models registered",
+      "sourceCatalog": "Catalog",
+      "sourceOverlay": "Overlay",
+      "verified": "Verified",
       "notVerified": "Not verified",
-      "verifiedAt": "Verified at {time}",
+      "verifyError": "Verify error",
       "verify": "Verify",
       "delete": "Delete",
-      "add": "Add model",
+      "cancel": "Cancel",
+      "deleteTitle": "Delete overlay",
+      "deleteBody": "Delete the overlay for {name}? The catalog model stays available.",
+      "created": "Overlay created",
+      "verifyFailed": "Verification failed",
+      "deleted": "Overlay deleted",
       "col": {
         "model": "Model",
         "provider": "Provider",
         "context": "Context window",
-        "runtimes": "Runtimes"
+        "runtimes": "Runtimes",
+        "source": "Source"
       },
+      "default": "Default",
       "form": {
-        "name": "Name (e.g. Private GLM)",
-        "provider": "Provider (e.g. bigmodel)",
-        "template": "Template (catalog model id, e.g. glm-4.7)",
-        "baseUrl": "Base URL (optional, private endpoint)",
-        "context": "Context window (optional override)",
-        "maxOutput": "Max output (optional override)"
+        "title": "Add model overlay",
+        "description": "Override a catalog model with a custom deployment.",
+        "name": "Display name",
+        "namePlaceholder": "e.g. Internal Qwen",
+        "provider": "Provider",
+        "providerPlaceholder": "e.g. dashscope",
+        "template": "Template model",
+        "templateDescription": "The catalog model this overlay derives from.",
+        "templatePlaceholder": "Select a template model",
+        "modelId": "Model ID",
+        "modelIdDescription": "Leave blank to reuse the template model ID.",
+        "modelIdPlaceholder": "e.g. qwen-max-v2",
+        "baseUrl": "Base URL",
+        "baseUrlPlaceholder": "https://...",
+        "context": "Context window",
+        "contextPlaceholder": "e.g. 131072",
+        "maxOutput": "Max output tokens",
+        "maxOutputPlaceholder": "e.g. 8192",
+        "cancel": "Cancel",
+        "submit": "Create overlay",
+        "hint": "Verification sends a minimal request to the configured endpoint.",
+        "errors": {
+          "title": "Please fix the following",
+          "nameRequired": "Name is required",
+          "providerRequired": "Provider is required",
+          "templateRequired": "Template model is required"
+        }
       }
     },
     "audit": {
@@ -8734,6 +8684,64 @@
         "queries": "Search queries",
         "users": "Active users",
         "toolCalls": "Tool calls"
+      },
+      "loadFailed": "Failed to load audit data",
+      "filter": {
+        "time": "Time range"
+      },
+      "table": {
+        "footerUnits": "records",
+        "loading": "Loading..."
+      },
+      "tools": {
+        "searchPlaceholder": "Search user, tool, or result...",
+        "empty": "No tool calls in this range",
+        "detailTitle": "Tool call detail",
+        "notAvailable": "N/A",
+        "latencyMs": "{ms} ms",
+        "result": "Result excerpt",
+        "arguments": "Arguments",
+        "ok": "OK",
+        "fail": "FAIL",
+        "col": {
+          "time": "Time",
+          "user": "User",
+          "tool": "Tool",
+          "status": "Status",
+          "duration": "Duration",
+          "result": "Result"
+        }
+      },
+      "approvals": {
+        "searchPlaceholder": "Search app or decision...",
+        "empty": "No approvals in this range",
+        "col": {
+          "time": "Time",
+          "app": "App",
+          "session": "Session",
+          "decision": "Decision",
+          "decidedAt": "Decided at"
+        }
+      },
+      "quarantines": {
+        "searchPlaceholder": "Search URL hash or verdict...",
+        "empty": "No quarantines in this range",
+        "col": {
+          "time": "Time",
+          "urlHash": "URL hash",
+          "verdict": "Verdict",
+          "decision": "Decision",
+          "session": "Session"
+        }
+      },
+      "history": {
+        "searchPlaceholder": "Search query or user...",
+        "empty": "No search queries in this range",
+        "col": {
+          "time": "Time",
+          "user": "User",
+          "query": "Query"
+        }
       }
     }
   },

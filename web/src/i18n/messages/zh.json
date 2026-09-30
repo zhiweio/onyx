@@ -7135,12 +7135,62 @@
       }
     },
     "standardAnswers": {
-      "categoryBubble": {
-        "remove": {
-          "ariaLabel": "移除类别 {name}"
+      "subtitle": "为常见问题配置标准答案，在聊天与机器人中直接命中返回。",
+      "searchPlaceholder": "搜索关键词或答案...",
+      "empty": "创建标准答案，直接回复常见问题。",
+      "emptyTable": "没有匹配的标准问答",
+      "addAnswer": "新建问答",
+      "allCategories": "全部",
+      "footerUnits": "条问答",
+      "loading": "加载中...",
+      "loadFailed": "标准问答加载失败",
+      "categories": "分类",
+      "newCategory": "新分类",
+      "addCategory": "添加",
+      "categoryCreated": "分类已创建",
+      "created": "问答已创建",
+      "updated": "问答已更新",
+      "deleted": "问答已删除",
+      "active": "启用",
+      "inactive": "停用",
+      "enable": "启用",
+      "disable": "停用",
+      "edit": "编辑",
+      "delete": "删除",
+      "cancel": "取消",
+      "confirmEnableTitle": "启用问答",
+      "confirmEnableBody": "启用“{keyword}”的答案？",
+      "confirmDisableTitle": "停用问答",
+      "confirmDisableBody": "停用“{keyword}”的答案？",
+      "confirmDeleteTitle": "删除问答",
+      "confirmDeleteBody": "删除“{keyword}”的答案？此操作不可恢复。",
+      "col": {
+        "keyword": "关键词",
+        "answer": "答案",
+        "categories": "分类",
+        "status": "状态"
+      },
+      "form": {
+        "createTitle": "新建标准问答",
+        "editTitle": "编辑标准问答",
+        "description": "用户消息命中关键词时，直接返回该答案。",
+        "keyword": "关键词",
+        "keywordPlaceholder": "例如：公司 WiFi 密码",
+        "answer": "答案",
+        "answerPlaceholder": "要直接返回的回复内容...",
+        "category": "分类",
+        "noCategory": "无分类",
+        "matchRegex": {
+          "label": "匹配方式",
+          "description": "将关键词作为正则表达式匹配"
         },
-        "removeButton": {
-          "ariaLabel": "移除类别"
+        "cancel": "取消",
+        "submitCreate": "创建问答",
+        "submitEdit": "保存修改",
+        "errors": {
+          "title": "请修正以下问题",
+          "keywordRequired": "请填写关键词",
+          "answerRequired": "请填写答案"
         }
       },
       "categoryDropdown": {
@@ -7153,141 +7203,6 @@
         },
         "search": {
           "placeholder": "搜索类别..."
-        }
-      },
-      "editPage": {
-        "title": "编辑标准答案"
-      },
-      "errors": {
-        "fetchAnswersFailed": {
-          "message": "获取标准答案失败"
-        },
-        "fetchCategoriesFailed": {
-          "message": "获取标准答案类别失败"
-        },
-        "genericTitle": {
-          "title": "出错了 :("
-        },
-        "loadAnswersFailed": {
-          "title": "加载标准答案时出错"
-        },
-        "loadCategoriesFailed": {
-          "title": "加载标准答案类别时出错"
-        },
-        "notFound": {
-          "message": "未找到 ID 为 {id} 的标准答案"
-        }
-      },
-      "filter": {
-        "allCategories": {
-          "label": "所有类别"
-        }
-      },
-      "form": {
-        "allKeywords": {
-          "label": "所有这些关键词,顺序不限,以空格分隔",
-          "placeholder": "IT 工单"
-        },
-        "answer": {
-          "label": "答案",
-          "placeholder": "使用 Markdown 编写的答案。示例:如需 IT 团队的帮助,请发送邮件至 internalsupport@company.com"
-        },
-        "anyKeywords": {
-          "label": "这些关键词中的任意一个,以空格分隔",
-          "placeholder": "工单 问题 故障"
-        },
-        "categories": {
-          "label": "类别:",
-          "placeholder": "输入类别并按 Enter…"
-        },
-        "createButton": {
-          "label": "创建!"
-        },
-        "keywords": {
-          "tooltip": "问题必须匹配这些关键词才能触发该答案。"
-        },
-        "matchRegex": {
-          "description": "使用正则表达式模式匹配,而不是精确关键词",
-          "label": "匹配正则表达式"
-        },
-        "regexPattern": {
-          "label": "正则表达式模式",
-          "tooltip": "当问题匹配此正则表达式模式时触发(使用 Python 的 `re.search()`)"
-        },
-        "strategy": {
-          "all": {
-            "label": "所有关键词"
-          },
-          "any": {
-            "label": "任意关键词"
-          },
-          "description": "选择用户的问题需要包含上述关键词中的任意一个还是全部,才会显示此答案。",
-          "label": "关键词检测策略"
-        },
-        "toasts": {
-          "categoryCreateFailed": {
-            "message": "创建类别\"{name}\"时出错 - {error}"
-          },
-          "createFailed": {
-            "message": "创建标准答案时出错 - {error}"
-          },
-          "updateFailed": {
-            "message": "更新标准答案时出错 - {error}"
-          }
-        },
-        "updateButton": {
-          "label": "更新!"
-        },
-        "validation": {
-          "answerRequired": "必须填写答案",
-          "categoryRequired": "至少需要一个类别",
-          "keywordRequired": "必须填写关键词或模式"
-        }
-      },
-      "intro": {
-        "addFirst": {
-          "message": "在下方添加您的第一个标准答案!"
-        },
-        "description": "管理预定义问题的标准答案。\n注意:目前只有通过 Slack 提出的问题才能收到标准答案。"
-      },
-      "newStandardAnswer": {
-        "label": "新建标准答案"
-      },
-      "search": {
-        "placeholder": "按关键词/短语查找标准答案..."
-      },
-      "table": {
-        "answer": {
-          "header": "答案"
-        },
-        "categories": {
-          "header": "类别"
-        },
-        "empty": {
-          "message": "未找到匹配的标准答案..."
-        },
-        "keywords": {
-          "header": "关键词/模式"
-        },
-        "matchRegex": {
-          "header": "正则匹配?"
-        },
-        "matchRegexNo": {
-          "label": "否"
-        },
-        "matchRegexYes": {
-          "label": "是"
-        },
-        "slackNote": {
-          "message": "请确保已将该类别添加到相应的 [Slack 机器人](/admin/bots)。"
-        }
-      },
-      "toasts": {
-        "deleteFailed": {
-          "message": "删除标准答案失败 - {error}"
-        },
-        "deleted": {
-          "message": "已删除标准答案 {id}"
         }
       }
     },
@@ -7494,6 +7409,14 @@
         },
         "updateFailed": {
           "error": "更新 token 速率限制失败"
+        },
+        "searchPlaceholder": "搜索预算或用户组...",
+        "footerUnits": "条限额",
+        "col": {
+          "budget": "预算",
+          "cadence": "重置周期",
+          "target": "用户组",
+          "enabled": "启用"
         }
       },
       "modal": {
@@ -8696,36 +8619,63 @@
       }
     },
     "agentModels": {
-      "title": "Agent 模型",
-      "subtitle": "Agent 运行时可用的模型目录与自定义模型（overlay）。验证会向供应商发起一次真实探测。",
-      "catalog": "模型目录",
-      "overlays": "自定义模型",
-      "noOverlays": "暂无自定义模型。在下方表单添加（例如客户私有端点克隆的 GLM 模型）。",
-      "default": "默认",
-      "refresh": "刷新",
-      "created": "自定义模型已创建",
-      "deleted": "自定义模型已删除",
-      "verified": "探测成功",
-      "verifyFailed": "探测失败",
-      "verifyError": "上次失败原因",
+      "title": "智能体模型",
+      "subtitle": "注册模型 Overlay，将目录模板指向自定义服务端点。",
+      "addOverlay": "新增 Overlay",
+      "searchPlaceholder": "搜索模型或提供商...",
+      "footerUnits": "个模型",
+      "loading": "加载中...",
+      "loadFailed": "模型加载失败",
+      "empty": "尚未注册任何模型",
+      "sourceCatalog": "目录",
+      "sourceOverlay": "Overlay",
+      "verified": "已验证",
       "notVerified": "未验证",
-      "verifiedAt": "已验证于 {time}",
+      "verifyError": "验证失败",
       "verify": "验证",
       "delete": "删除",
-      "add": "添加模型",
+      "cancel": "取消",
+      "deleteTitle": "删除 Overlay",
+      "deleteBody": "确定删除 {name} 的 Overlay？目录中的原模型仍可用。",
+      "created": "Overlay 已创建",
+      "verifyFailed": "验证失败",
+      "deleted": "Overlay 已删除",
       "col": {
         "model": "模型",
-        "provider": "供应商",
+        "provider": "提供商",
         "context": "上下文窗口",
-        "runtimes": "可用运行时"
+        "runtimes": "运行时",
+        "source": "来源"
       },
+      "default": "默认",
       "form": {
-        "name": "名称（如 客户私有GLM）",
-        "provider": "供应商（如 bigmodel）",
-        "template": "克隆模板（目录中的模型 id，如 glm-4.7）",
-        "baseUrl": "Base URL（可选，私有端点）",
-        "context": "上下文窗口（可选，覆盖模板）",
-        "maxOutput": "最大输出（可选，覆盖模板）"
+        "title": "新增模型 Overlay",
+        "description": "用自定义部署覆盖目录中的模型。",
+        "name": "显示名称",
+        "namePlaceholder": "例如：内部 Qwen",
+        "provider": "提供商",
+        "providerPlaceholder": "例如：dashscope",
+        "template": "模板模型",
+        "templateDescription": "该 Overlay 继承的目录模型。",
+        "templatePlaceholder": "选择模板模型",
+        "modelId": "模型 ID",
+        "modelIdDescription": "留空则沿用模板模型的 ID。",
+        "modelIdPlaceholder": "例如：qwen-max-v2",
+        "baseUrl": "Base URL",
+        "baseUrlPlaceholder": "https://...",
+        "context": "上下文窗口",
+        "contextPlaceholder": "例如：131072",
+        "maxOutput": "最大输出 Token",
+        "maxOutputPlaceholder": "例如：8192",
+        "cancel": "取消",
+        "submit": "创建 Overlay",
+        "hint": "验证会向配置的端点发送一个最小请求。",
+        "errors": {
+          "title": "请修正以下问题",
+          "nameRequired": "请填写名称",
+          "providerRequired": "请填写提供商",
+          "templateRequired": "请选择模板模型"
+        }
       }
     },
     "audit": {
@@ -8752,6 +8702,64 @@
         "queries": "搜索查询",
         "users": "活跃用户",
         "toolCalls": "工具调用"
+      },
+      "loadFailed": "审计数据加载失败",
+      "filter": {
+        "time": "时间范围"
+      },
+      "table": {
+        "footerUnits": "条记录",
+        "loading": "加载中..."
+      },
+      "tools": {
+        "searchPlaceholder": "搜索用户、工具或结果...",
+        "empty": "该时间范围内没有工具调用",
+        "detailTitle": "工具调用详情",
+        "notAvailable": "暂无",
+        "latencyMs": "{ms} 毫秒",
+        "result": "结果摘录",
+        "arguments": "调用参数",
+        "ok": "成功",
+        "fail": "失败",
+        "col": {
+          "time": "时间",
+          "user": "用户",
+          "tool": "工具",
+          "status": "状态",
+          "duration": "耗时",
+          "result": "结果"
+        }
+      },
+      "approvals": {
+        "searchPlaceholder": "搜索应用或决策...",
+        "empty": "该时间范围内没有审批记录",
+        "col": {
+          "time": "时间",
+          "app": "应用",
+          "session": "会话",
+          "decision": "决策",
+          "decidedAt": "决策时间"
+        }
+      },
+      "quarantines": {
+        "searchPlaceholder": "搜索 URL 哈希或判定...",
+        "empty": "该时间范围内没有隔离记录",
+        "col": {
+          "time": "时间",
+          "urlHash": "URL 哈希",
+          "verdict": "判定",
+          "decision": "决策",
+          "session": "会话"
+        }
+      },
+      "history": {
+        "searchPlaceholder": "搜索查询内容或用户...",
+        "empty": "该时间范围内没有搜索记录",
+        "col": {
+          "time": "时间",
+          "user": "用户",
+          "query": "查询"
+        }
       }
     }
   },

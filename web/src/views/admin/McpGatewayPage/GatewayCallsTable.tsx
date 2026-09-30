@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import {
   Card,
-  CopyButton,
   InputTypeIn,
   MessageCard,
   Modal,
@@ -22,9 +21,12 @@ import type {
   McpGatewayCallDetail,
   McpGatewayCallItem,
 } from "@/lib/mcp-catalog/types";
+import { DetailField } from "@/components/admin/DetailField";
+import { JsonBlock } from "@/components/admin/JsonBlock";
+import { useServerPaginatedTable } from "@/hooks/useServerPaginatedTable";
 import type { DateRange } from "@/refresh-components/DateRangePicker";
-import { formatJsonValue, parseArgumentsPreview } from "./callDisplay";
-import { isoWindowForInclusiveDateRange } from "./dateWindow";
+import { parseArgumentsPreview } from "./callDisplay";
+import { isoWindowForInclusiveDateRange } from "@/lib/dateWindow";
 import { errorMessage, formatBytes, formatLatency, PAGE_SIZE } from "./format";
 import {
   BilledTag,
@@ -36,7 +38,6 @@ import {
   outcomeColor,
   outcomeLabel,
 } from "./GatewayTableCells";
-import { useDebouncedValue } from "./useDebouncedValue";
 
 const tc = createTableColumns<McpGatewayCallItem>();
 const MAX_VISIBLE_ARGUMENT_TAGS = 2;
@@ -97,68 +98,6 @@ function ArgumentsPreviewCell({
         ) : null}
       </div>
     </Tooltip>
-  );
-}
-
-interface DetailFieldProps {
-  label: string;
-  value: string | null | undefined;
-  empty: string;
-  copyable?: boolean;
-}
-
-function DetailField({
-  label,
-  value,
-  empty,
-  copyable = false,
-}: DetailFieldProps) {
-  const display = value || empty;
-  const canCopy = copyable && Boolean(value);
-
-  return (
-    <Card padding={2} rounding={3} background="heavy">
-      <div className="flex min-w-0 flex-col gap-1">
-        <Text as="p" font="secondary-body" color="text-03">
-          {label}
-        </Text>
-        <div className="flex min-w-0 items-start gap-1">
-          <Text
-            as="p"
-            font="secondary-mono"
-            color={value ? "text-05" : "text-03"}
-            wordWrap="break-all"
-          >
-            {display}
-          </Text>
-          {canCopy ? (
-            <CopyButton size="xs" getCopyText={() => value ?? ""} />
-          ) : null}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-interface JsonBlockProps {
-  value: Record<string, unknown> | null;
-  testId?: string;
-}
-
-function JsonBlock({ value, testId }: JsonBlockProps) {
-  const text = formatJsonValue(value);
-  return (
-    <div
-      className="relative rounded-12 border border-border-01 bg-background-tint-00"
-      data-testid={testId}
-    >
-      <div className="absolute end-2 top-2 z-1">
-        <CopyButton size="xs" getCopyText={() => text} />
-      </div>
-      <pre className="max-h-72 overflow-auto whitespace-pre break-normal p-3 pe-10 font-secondary-mono text-text-03">
-        {text}
-      </pre>
-    </div>
   );
 }
 
@@ -348,60 +287,41 @@ export default function GatewayCallsTable({
   tool,
 }: GatewayCallsTableProps) {
   const t = useTranslations("admin.mcpGateway");
-  const [searchInput, setSearchInput] = useState("");
-  const searchTerm = useDebouncedValue(searchInput);
   const isoWindow =
     dateRange?.from && dateRange.to
       ? isoWindowForInclusiveDateRange(dateRange)
       : undefined;
   const fromIso = isoWindow?.from;
   const toIso = isoWindow?.to;
-  const filterKey = `${fromIso}\0${toIso}\0${catalogSlug}\0${tool}\0${searchTerm}`;
-  const [filterSnapshot, setFilterSnapshot] = useState(filterKey);
-  const [pageIndex, setPageIndex] = useState(0);
-  const nextPageIndex = filterSnapshot !== filterKey ? 0 : pageIndex;
-  if (filterSnapshot !== filterKey) {
-    setFilterSnapshot(filterKey);
-    setPageIndex(0);
-  }
-  const [rows, setRows] = useState<McpGatewayCallItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { searchInputProps, searchTerm, rows, isLoading, error, serverSide } =
+    useServerPaginatedTable<McpGatewayCallItem>({
+      requestKey: `${fromIso}\0${toIso}\0${catalogSlug}\0${tool}`,
+      pageSize: PAGE_SIZE,
+      enabled: Boolean(fromIso && toIso),
+      loader: ({ offset, limit, q }) =>
+        listMcpGatewayCalls({
+          from: fromIso ?? "",
+          to: toIso ?? "",
+          catalog_slug: catalogSlug || undefined,
+          tool: tool || undefined,
+          q: q || undefined,
+          offset,
+          limit,
+        }),
+    });
+
+  useEffect(() => {
+    if (error) {
+      toast.error(errorMessage(error, t("toasts.loadFailed")));
+    }
+  }, [error, t]);
+
   const [selectedRow, setSelectedRow] = useState<McpGatewayCallItem | null>(
     null
   );
   const [detail, setDetail] = useState<McpGatewayCallDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const requestId = useRef(0);
-
-  const load = useCallback(async () => {
-    if (!fromIso || !toIso) return;
-    const id = ++requestId.current;
-    setIsLoading(true);
-    try {
-      const result = await listMcpGatewayCalls({
-        from: fromIso,
-        to: toIso,
-        catalog_slug: catalogSlug || undefined,
-        tool: tool || undefined,
-        q: searchTerm || undefined,
-        offset: nextPageIndex * PAGE_SIZE,
-        limit: PAGE_SIZE,
-      });
-      if (id !== requestId.current) return;
-      setRows(result.items);
-      setTotal(result.total);
-    } catch (error) {
-      if (id !== requestId.current) return;
-      toast.error(errorMessage(error, t("toasts.loadFailed")));
-    } finally {
-      if (id === requestId.current) setIsLoading(false);
-    }
-  }, [fromIso, toIso, catalogSlug, tool, searchTerm, nextPageIndex, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const columns = useMemo(
     () => [
@@ -474,11 +394,10 @@ export default function GatewayCallsTable({
     >
       <InputTypeIn
         searchIcon
-        value={searchInput}
-        onChange={(event) => setSearchInput(event.target.value)}
         placeholder={t("calls.searchPlaceholder")}
         aria-label={t("calls.searchPlaceholder")}
         data-testid="mcp-gateway-calls-search"
+        {...searchInputProps}
       />
       <Table
         key={`${fromIso}|${toIso}|${catalogSlug}|${tool}`}
@@ -506,13 +425,7 @@ export default function GatewayCallsTable({
             title={isLoading ? t("table.loading") : t("calls.empty")}
           />
         }
-        serverSide={{
-          totalItems: total,
-          isLoading,
-          onSortingChange: () => undefined,
-          onPaginationChange: (nextPage) => setPageIndex(nextPage),
-          onSearchTermChange: () => undefined,
-        }}
+        serverSide={serverSide}
       />
       {selectedRow ? (
         <CallDetailModal

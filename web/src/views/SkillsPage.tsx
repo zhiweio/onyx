@@ -29,6 +29,7 @@ import {
 } from "@opal/icons";
 import { SvgGithub } from "@opal/logos";
 import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
 import GalleryPreviewModal from "@/sections/modals/gallery/GalleryPreviewModal";
 import { useGallerySkills } from "@/lib/system-catalog/hooks";
@@ -46,6 +47,7 @@ import type { BuiltinSkill, CustomSkill } from "@/lib/skills/types";
 import { stageSkillCreationDraft } from "@/lib/skills/creationDraft";
 import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
 import type { CatalogViewMode } from "@/lib/system-catalog/types";
+import { clampPage, slicePage } from "@/lib/browse/page";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -74,14 +76,15 @@ export default function SkillsPage() {
   } = useGallerySkills(gallery.tab === "gallery");
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<CatalogViewMode>("cards");
+  const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [githubImportOpen, setGitHubImportOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<SkillCardItem | null>(
-    null,
+    null
   );
   const [pendingSkillIds, setPendingSkillIds] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [optimisticEnabledById, setOptimisticEnabledById] = useState<
     Map<string, boolean>
@@ -101,7 +104,7 @@ export default function SkillsPage() {
   async function updateSkillEnabled(
     item: SkillCardItem,
     enabled: boolean,
-    replaceConflict = false,
+    replaceConflict = false
   ) {
     if (
       enabled &&
@@ -110,7 +113,7 @@ export default function SkillsPage() {
         (candidate) =>
           candidate.id !== item.id &&
           candidate.name === item.name &&
-          candidate.enabled,
+          candidate.enabled
       )
     ) {
       setPendingSwitchTarget(item);
@@ -122,7 +125,7 @@ export default function SkillsPage() {
         ? items.filter(
             (candidate) =>
               candidate.id === item.id ||
-              (candidate.name === item.name && candidate.enabled),
+              (candidate.name === item.name && candidate.enabled)
           )
         : [item];
     const affectedIds = new Set(affectedItems.map(({ id }) => id));
@@ -135,7 +138,7 @@ export default function SkillsPage() {
       const next = new Map(current);
       if (enabled) {
         affectedItems.forEach((candidate) =>
-          next.set(candidate.id, candidate.id === item.id),
+          next.set(candidate.id, candidate.id === item.id)
         );
       } else {
         next.set(item.id, false);
@@ -146,7 +149,7 @@ export default function SkillsPage() {
       const updatedSkill = await setSkillEnabled(
         item.id,
         enabled,
-        replaceConflict,
+        replaceConflict
       );
       if (replaceConflict) setPendingSwitchTarget(null);
       await refresh(
@@ -180,7 +183,7 @@ export default function SkillsPage() {
             }),
           };
         },
-        { revalidate: false },
+        { revalidate: false }
       );
       void refresh().catch(() => {
         toast.error(t("page.toasts.refreshFailed", { name: item.name }));
@@ -197,8 +200,8 @@ export default function SkillsPage() {
               enabled
                 ? "page.toasts.enableFailed"
                 : "page.toasts.disableFailed",
-              { name: item.name },
-            ),
+              { name: item.name }
+            )
       );
     } finally {
       setOptimisticEnabledById((current) => {
@@ -219,7 +222,7 @@ export default function SkillsPage() {
     const builtinItems: SkillCardItem[] = data.builtins
       .filter(
         (b): b is BuiltinSkill =>
-          b.source === "builtin" && b.is_available !== null,
+          b.source === "builtin" && b.is_available !== null
       )
       .map((b) => ({
         id: b.id,
@@ -258,7 +261,7 @@ export default function SkillsPage() {
     return [...builtinItems, ...customItems].sort(
       (a, b) =>
         groupRank(a) - groupRank(b) ||
-        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
   }, [data, optimisticEnabledById]);
 
@@ -277,9 +280,9 @@ export default function SkillsPage() {
       new Map(
         items
           .filter((item) => item.enabled)
-          .map((item) => [item.name, item] as const),
+          .map((item) => [item.name, item] as const)
       ),
-    [items],
+    [items]
   );
 
   const visibleItems = useMemo(() => {
@@ -290,9 +293,12 @@ export default function SkillsPage() {
           item.external_app?.external_app_id === focusedExternalAppId) &&
         (!q ||
           item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q)),
+          item.description.toLowerCase().includes(q))
     );
   }, [focusedAppName, focusedExternalAppId, items, searchQuery]);
+
+  const safePage = clampPage(page, visibleItems.length);
+  const pageItems = slicePage(visibleItems, safePage);
 
   const switchPending =
     pendingSwitchTarget !== null && pendingSkillIds.has(pendingSwitchTarget.id);
@@ -374,7 +380,10 @@ export default function SkillsPage() {
           ref={searchInputRef}
           placeholder={t("page.search.placeholder")}
           value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1);
+          }}
           searchIcon
         />
       </SettingsLayouts.Header>
@@ -437,28 +446,36 @@ export default function SkillsPage() {
                     }
                   />
                 ) : (
-                  <BrowseItemGrid
-                    items={visibleItems}
-                    resetKey={`${searchQuery}:${focusedExternalAppId ?? ""}:${view}`}
-                    view={view}
-                    onViewChange={setView}
-                    getKey={(item) => item.id}
-                    renderItem={(item, itemView) => (
-                      <SkillCard
-                        item={item}
-                        layout={itemView}
-                        hasEnabledNameConflict={
-                          !item.enabled && enabledItemByName.has(item.name)
-                        }
-                        onEdit={handleEdit}
-                        onClick={setPreviewTarget}
-                        onEnabledChange={(skill, enabled) =>
-                          void updateSkillEnabled(skill, enabled)
-                        }
-                        enablementPending={pendingSkillIds.has(item.id)}
-                      />
-                    )}
-                  />
+                  <>
+                    <BrowseItemGrid
+                      items={pageItems}
+                      resetKey={`${searchQuery}:${focusedExternalAppId ?? ""}:${view}:${safePage}`}
+                      view={view}
+                      onViewChange={setView}
+                      getKey={(item) => item.id}
+                      renderItem={(item, itemView) => (
+                        <SkillCard
+                          item={item}
+                          layout={itemView}
+                          hasEnabledNameConflict={
+                            !item.enabled && enabledItemByName.has(item.name)
+                          }
+                          onEdit={handleEdit}
+                          onClick={setPreviewTarget}
+                          onEnabledChange={(skill, enabled) =>
+                            void updateSkillEnabled(skill, enabled)
+                          }
+                          enablementPending={pendingSkillIds.has(item.id)}
+                        />
+                      )}
+                    />
+                    <BrowsePagination
+                      page={safePage}
+                      totalItems={visibleItems.length}
+                      onPageChange={setPage}
+                      units={tGallery("pagination.units")}
+                    />
+                  </>
                 )}
               </>
             )}
@@ -495,7 +512,7 @@ export default function SkillsPage() {
             void refresh().catch((refreshError: unknown) => {
               console.error(
                 "Failed to refresh skills after GitHub import",
-                refreshError,
+                refreshError
               );
             });
           }}

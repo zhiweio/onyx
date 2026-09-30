@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from onyx.db.models import PlatformToolLog, User
@@ -44,6 +44,35 @@ def log_tool_call(
         db_session.rollback()
 
 
+def _tool_call_conditions(
+    *,
+    start: datetime | None,
+    end: datetime | None,
+    user_id: UUID | None,
+    tool: str | None,
+    q: str | None,
+) -> list[Any]:
+    conditions: list[Any] = []
+    if start is not None:
+        conditions.append(PlatformToolLog.created_at >= start)
+    if end is not None:
+        conditions.append(PlatformToolLog.created_at < end)
+    if user_id is not None:
+        conditions.append(PlatformToolLog.user_id == user_id)
+    if tool is not None:
+        conditions.append(PlatformToolLog.tool == tool)
+    if q:
+        pattern = f"%{q}%"
+        conditions.append(
+            or_(
+                PlatformToolLog.tool.ilike(pattern),
+                User.email.ilike(pattern),
+                PlatformToolLog.result_excerpt.ilike(pattern),
+            )
+        )
+    return conditions
+
+
 def list_tool_calls(
     db_session: Session,
     *,
@@ -51,20 +80,16 @@ def list_tool_calls(
     end: datetime | None = None,
     user_id: UUID | None = None,
     tool: str | None = None,
+    q: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
     stmt = select(PlatformToolLog, User.email).join(
         User, PlatformToolLog.user_id == User.id
     )
-    if start is not None:
-        stmt = stmt.where(PlatformToolLog.created_at >= start)
-    if end is not None:
-        stmt = stmt.where(PlatformToolLog.created_at < end)
-    if user_id is not None:
-        stmt = stmt.where(PlatformToolLog.user_id == user_id)
-    if tool is not None:
-        stmt = stmt.where(PlatformToolLog.tool == tool)
+    stmt = stmt.where(
+        *_tool_call_conditions(start=start, end=end, user_id=user_id, tool=tool, q=q)
+    )
     stmt = stmt.order_by(PlatformToolLog.created_at.desc()).limit(limit).offset(offset)
     rows = db_session.execute(stmt).all()
     return [
@@ -83,6 +108,26 @@ def list_tool_calls(
     ]
 
 
+def count_tool_calls(
+    db_session: Session,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    user_id: UUID | None = None,
+    tool: str | None = None,
+    q: str | None = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(PlatformToolLog)
+        .join(User, PlatformToolLog.user_id == User.id)
+    )
+    stmt = stmt.where(
+        *_tool_call_conditions(start=start, end=end, user_id=user_id, tool=tool, q=q)
+    )
+    return int(db_session.execute(stmt).scalar_one())
+
+
 def tool_call_stats(
     db_session: Session,
     *,
@@ -95,7 +140,8 @@ def tool_call_stats(
         func.sum(
             func.coalesce(
                 # count ok=False without a bool-sum portability headache
-                func.cast(~PlatformToolLog.ok, func.Integer()), 0
+                func.cast(~PlatformToolLog.ok, func.Integer()),
+                0,
             )
         ).label("failures"),
         func.avg(PlatformToolLog.duration_ms).label("avg_ms"),

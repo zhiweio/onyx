@@ -31,9 +31,9 @@ import GatewayFilters from "./GatewayFilters";
 import GatewayOverview from "./GatewayOverview";
 import GatewayCacheTable from "./GatewayCacheTable";
 import GatewayCallsTable from "./GatewayCallsTable";
-import { isoWindowForInclusiveDateRange } from "./dateWindow";
+import { isoWindowForInclusiveDateRange } from "@/lib/dateWindow";
 import { errorMessage } from "./format";
-import { useDebouncedValue } from "./useDebouncedValue";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const route = ADMIN_ROUTES.MCP_GATEWAY;
 

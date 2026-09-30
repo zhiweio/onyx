@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   Button,
@@ -16,6 +16,7 @@ import {
   refreshMcpGatewayCache,
 } from "@/lib/mcp-catalog/api";
 import type { McpGatewayCacheEntry } from "@/lib/mcp-catalog/types";
+import { useServerPaginatedTable } from "@/hooks/useServerPaginatedTable";
 import { errorMessage, formatBytes, PAGE_SIZE } from "./format";
 import {
   DateTimeCell,
@@ -24,7 +25,6 @@ import {
   ServerTagCell,
   TruncatedTextCell,
 } from "./GatewayTableCells";
-import { useDebouncedValue } from "./useDebouncedValue";
 
 const tc = createTableColumns<McpGatewayCacheEntry>();
 
@@ -38,46 +38,32 @@ export default function GatewayCacheTable({
   tool,
 }: GatewayCacheTableProps) {
   const t = useTranslations("admin.mcpGateway");
-  const [searchInput, setSearchInput] = useState("");
-  const searchTerm = useDebouncedValue(searchInput);
-  const filterKey = `${catalogSlug}\0${tool}\0${searchTerm}`;
-  const [filterSnapshot, setFilterSnapshot] = useState(filterKey);
-  const [pageIndex, setPageIndex] = useState(0);
-  const nextPageIndex = filterSnapshot !== filterKey ? 0 : pageIndex;
-  if (filterSnapshot !== filterKey) {
-    setFilterSnapshot(filterKey);
-    setPageIndex(0);
-  }
-  const [rows, setRows] = useState<McpGatewayCacheEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const requestId = useRef(0);
-
-  const load = useCallback(async () => {
-    const id = ++requestId.current;
-    setIsLoading(true);
-    try {
-      const result = await listMcpGatewayCache({
+  const {
+    searchInputProps,
+    searchTerm,
+    rows,
+    isLoading,
+    error,
+    reload,
+    serverSide,
+  } = useServerPaginatedTable<McpGatewayCacheEntry>({
+    requestKey: `${catalogSlug}\0${tool}`,
+    pageSize: PAGE_SIZE,
+    loader: ({ offset, limit, q }) =>
+      listMcpGatewayCache({
         catalog_slug: catalogSlug || undefined,
         tool: tool || undefined,
-        q: searchTerm || undefined,
-        offset: nextPageIndex * PAGE_SIZE,
-        limit: PAGE_SIZE,
-      });
-      if (id !== requestId.current) return;
-      setRows(result.items);
-      setTotal(result.total);
-    } catch (error) {
-      if (id !== requestId.current) return;
-      toast.error(errorMessage(error, t("toasts.loadFailed")));
-    } finally {
-      if (id === requestId.current) setIsLoading(false);
-    }
-  }, [catalogSlug, tool, searchTerm, nextPageIndex, t]);
+        q: q || undefined,
+        offset,
+        limit,
+      }),
+  });
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (error) {
+      toast.error(errorMessage(error, t("toasts.loadFailed")));
+    }
+  }, [error, t]);
 
   const columns = useMemo(
     () => [
@@ -134,7 +120,7 @@ export default function GatewayCacheTable({
                 void invalidateMcpGatewayCache({ cache_key: row.cache_key })
                   .then(() => {
                     toast.success(t("toasts.invalidated"));
-                    return load();
+                    return reload();
                   })
                   .catch((error) =>
                     toast.error(errorMessage(error, t("toasts.loadFailed")))
@@ -159,7 +145,7 @@ export default function GatewayCacheTable({
         ),
       }),
     ],
-    [load, t]
+    [reload, t]
   );
 
   return (
@@ -169,11 +155,10 @@ export default function GatewayCacheTable({
     >
       <InputTypeIn
         searchIcon
-        value={searchInput}
-        onChange={(event) => setSearchInput(event.target.value)}
         placeholder={t("cache.searchPlaceholder")}
         aria-label={t("cache.searchPlaceholder")}
         data-testid="mcp-gateway-cache-search"
+        {...searchInputProps}
       />
       <Table
         key={`${catalogSlug}|${tool}`}
@@ -190,13 +175,7 @@ export default function GatewayCacheTable({
             title={isLoading ? t("table.loading") : t("cache.empty")}
           />
         }
-        serverSide={{
-          totalItems: total,
-          isLoading,
-          onSortingChange: () => undefined,
-          onPaginationChange: (nextPage) => setPageIndex(nextPage),
-          onSearchTermChange: () => undefined,
-        }}
+        serverSide={serverSide}
       />
     </div>
   );

@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
@@ -25,7 +24,11 @@ from onyx.db.models import (
     User,
     UserUsage,
 )
-from onyx.db.platform_tool_log import list_tool_calls, tool_call_stats
+from onyx.db.platform_tool_log import (
+    count_tool_calls,
+    list_tool_calls,
+    tool_call_stats,
+)
 
 router = APIRouter(prefix="/admin/audit")
 
@@ -45,23 +48,26 @@ def audit_tool_calls(
     start: str | None = None,
     end: str | None = None,
     tool: str | None = None,
+    q: str | None = None,
     limit: int = Query(default=100, le=500),
     offset: int = 0,
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     start_at = _parse_when(start, days_default=7)
-    end_at = (
-        _parse_when(end, days_default=36500) if end else None
-    )
+    end_at = _parse_when(end, days_default=36500) if end else None
     return {
-        "calls": list_tool_calls(
+        "items": list_tool_calls(
             db_session,
             start=start_at,
             end=end_at,
             tool=tool,
+            q=q,
             limit=limit,
             offset=offset,
+        ),
+        "total_items": count_tool_calls(
+            db_session, start=start_at, end=end_at, tool=tool, q=q
         ),
         "stats": tool_call_stats(db_session, start=start_at, end=end_at),
     }
@@ -70,57 +76,87 @@ def audit_tool_calls(
 @router.get("/approvals")
 def audit_approvals(
     start: str | None = None,
+    q: str | None = None,
     limit: int = Query(default=100, le=500),
+    offset: int = 0,
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     start_at = _parse_when(start, days_default=30)
+    conditions = [ActionApproval.created_at >= start_at]
+    if q:
+        conditions.append(ActionApproval.app_name.ilike(f"%{q}%"))
     stmt = (
         select(ActionApproval)
-        .where(ActionApproval.created_at >= start_at)
+        .where(*conditions)
         .order_by(ActionApproval.created_at.desc())
         .limit(limit)
+        .offset(offset)
+    )
+    total = db_session.scalar(
+        select(func.count()).select_from(ActionApproval).where(*conditions)
     )
     rows = db_session.scalars(stmt).all()
-    return [
-        {
-            "id": str(row.approval_id),
-            "session_id": str(row.session_id),
-            "app_name": row.app_name,
-            "decision": row.decision.value if row.decision else None,
-            "decided_at": row.decided_at.isoformat() if row.decided_at else None,
-            "created_at": row.created_at.isoformat(),
-        }
-        for row in rows
-    ]
+    return {
+        "items": [
+            {
+                "id": str(row.approval_id),
+                "session_id": str(row.session_id),
+                "app_name": row.app_name,
+                "decision": row.decision.value if row.decision else None,
+                "decided_at": row.decided_at.isoformat() if row.decided_at else None,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in rows
+        ],
+        "total_items": int(total or 0),
+    }
 
 
 @router.get("/quarantines")
 def audit_quarantines(
     start: str | None = None,
+    q: str | None = None,
     limit: int = Query(default=100, le=500),
+    offset: int = 0,
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     start_at = _parse_when(start, days_default=30)
+    conditions = [ContentQuarantine.created_at >= start_at]
+    if q:
+        pattern = f"%{q}%"
+        conditions.append(
+            or_(
+                ContentQuarantine.url_hash.ilike(pattern),
+                ContentQuarantine.verdict.ilike(pattern),
+            )
+        )
     stmt = (
         select(ContentQuarantine)
-        .where(ContentQuarantine.created_at >= start_at)
+        .where(*conditions)
         .order_by(ContentQuarantine.created_at.desc())
         .limit(limit)
+        .offset(offset)
+    )
+    total = db_session.scalar(
+        select(func.count()).select_from(ContentQuarantine).where(*conditions)
     )
     rows = db_session.scalars(stmt).all()
-    return [
-        {
-            "id": str(row.id),
-            "session_id": str(row.session_id) if row.session_id else None,
-            "url_hash": row.url_hash,
-            "verdict": row.verdict,
-            "decision": row.decision.value if row.decision else None,
-            "created_at": row.created_at.isoformat(),
-        }
-        for row in rows
-    ]
+    return {
+        "items": [
+            {
+                "id": str(row.id),
+                "session_id": str(row.session_id) if row.session_id else None,
+                "url_hash": row.url_hash,
+                "verdict": row.verdict,
+                "decision": row.decision.value if row.decision else None,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in rows
+        ],
+        "total_items": int(total or 0),
+    }
 
 
 @router.get("/usage")
@@ -131,9 +167,9 @@ def audit_usage(
 ) -> dict[str, Any]:
     start_at = datetime.now(timezone.utc) - timedelta(days=days)
     queries = db_session.scalar(
-        select(func.count()).select_from(SearchQuery).where(
-            SearchQuery.created_at >= start_at
-        )
+        select(func.count())
+        .select_from(SearchQuery)
+        .where(SearchQuery.created_at >= start_at)
     )
     users = db_session.scalar(
         select(func.count(func.distinct(UserUsage.user_id))).where(
@@ -143,9 +179,9 @@ def audit_usage(
     from onyx.db.models import PlatformToolLog
 
     tool_calls = db_session.scalar(
-        select(func.count()).select_from(PlatformToolLog).where(
-            PlatformToolLog.created_at >= start_at
-        )
+        select(func.count())
+        .select_from(PlatformToolLog)
+        .where(PlatformToolLog.created_at >= start_at)
     )
     return {
         "days": days,
@@ -160,9 +196,10 @@ def audit_query_history(
     start: str | None = None,
     end: str | None = None,
     user_email: str | None = None,
+    q: str | None = None,
     limit: int = Query(default=100, le=500),
     offset: int = 0,
-    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     """Search query history (EE query-history replacement).
@@ -173,11 +210,11 @@ def audit_query_history(
     start_at = _parse_when(start, days_default=30)
     end_at = _parse_when(end, days_default=36500) if end else None
 
-    stmt = select(SearchQuery, User.email).join(
-        User, SearchQuery.user_id == User.id
-    )
-    count_stmt = select(func.count()).select_from(SearchQuery).join(
-        User, SearchQuery.user_id == User.id
+    stmt = select(SearchQuery, User.email).join(User, SearchQuery.user_id == User.id)
+    count_stmt = (
+        select(func.count())
+        .select_from(SearchQuery)
+        .join(User, SearchQuery.user_id == User.id)
     )
     if end_at:
         stmt = stmt.where(SearchQuery.created_at < end_at)
@@ -188,14 +225,22 @@ def audit_query_history(
     if user_email:
         stmt = stmt.where(User.email == user_email)
         count_stmt = count_stmt.where(User.email == user_email)
+    if q:
+        pattern = f"%{q}%"
+        fuzzy = or_(
+            SearchQuery.query.ilike(pattern),
+            User.email.ilike(pattern),
+        )
+        stmt = stmt.where(fuzzy)
+        count_stmt = count_stmt.where(fuzzy)
 
     total = db_session.scalar(count_stmt) or 0
     rows = db_session.execute(
         stmt.order_by(SearchQuery.created_at.desc()).limit(limit).offset(offset)
     ).all()
     return {
-        "total": int(total),
-        "queries": [
+        "total_items": int(total),
+        "items": [
             {
                 "user": email,
                 "query": row.query,

@@ -14,7 +14,7 @@ import AreaChart from "@/refresh-components/AreaChart";
 import BarChart from "@/refresh-components/BarChart";
 import { formatCalendarDay } from "@/lib/dateUtils";
 import type { DateRange } from "@/refresh-components/DateRangePicker";
-import { isoWindowForInclusiveDateRange } from "./dateWindow";
+import { isoWindowForInclusiveDateRange } from "@/lib/dateWindow";
 import { formatBytes, formatPercent } from "./format";
 
 const SERIES_COLORS = [

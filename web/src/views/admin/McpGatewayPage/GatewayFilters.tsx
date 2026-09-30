@@ -39,7 +39,10 @@ function FilterField({
   testId?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)} data-testid={testId}>
+    <div
+      className={cn("flex flex-col gap-1.5", className)}
+      data-testid={testId}
+    >
       <Text as="p" secondaryBody text03>
         {label}
       </Text>

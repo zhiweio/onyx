@@ -127,6 +127,10 @@ export const SWR_KEYS = {
   // ── API Keys ──────────────────────────────────────────────────────────────
   adminApiKeys: "/api/admin/api-key",
 
+  // ── Agent models / standard answers ───────────────────────────────────────
+  adminAgentModels: "/api/admin/agent-models",
+  adminStandardAnswerCategories: "/api/admin/standard-answers/categories",
+
   // ── Groups ────────────────────────────────────────────────────────────────
   adminUserGroups: "/api/manage/admin/user-group",
   adminUserGroupsWithDefault:
