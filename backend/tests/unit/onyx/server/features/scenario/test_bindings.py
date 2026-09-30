@@ -90,3 +90,26 @@ def test_playbook_roundtrip_keeps_bindings() -> None:
     dumped = playbook_as_dict(playbook)
     assert dumped["runtime"]["model"] == "glm-4.7"
     assert dumped["phases"][3]["bindings"]["gate"] == "approve_delivery"
+
+
+def test_biopharma_scenario_compiles_through_the_same_chain() -> None:
+    from onyx.server.features.scenario.samples import BIOPHARMA_REGULATORY_RULES
+
+    policy = parse_scenario_policy(BIOPHARMA_REGULATORY_RULES)
+    assert policy.model == "qwen3-max"
+    merged = resolve_phase_bindings(BIOPHARMA_REGULATORY_RULES)
+    assert merged["collect"].document_sets == ["注册资料", "临床方案"]
+    assert merged["report"].gate == PhaseGate.APPROVE_DELIVERY
+
+    plan = compile_scenario_plan(BIOPHARMA_REGULATORY_RULES, goal="跟踪XX受理号")
+    assert [p.id for p in plan.phases] == ["collect", "analyze", "report"]
+    assert plan.ask_delivery is True
+
+    from onyx.server.features.build.sandbox.agent_runtime.router import (
+        build_router_from_env,
+    )
+
+    request = scenario_runtime_request(BIOPHARMA_REGULATORY_RULES)
+    choice = build_router_from_env().resolve(request)
+    assert choice.origin == "scenario"
+    assert choice.model_id == "qwen3-max"

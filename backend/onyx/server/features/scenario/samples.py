@@ -72,3 +72,56 @@ FINANCE_TAX_RISK_RULES: dict[str, Any] = {
         "delivery_actions": ["save_artifacts"],
     },
 }
+
+# ── 生物医药：药审进度与合规检索 ───────────────────────────────────────────
+
+BIOPHARMA_REGULATORY_SLUG = "biopharma-regulatory-watch"
+
+BIOPHARMA_REGULATORY_RULES: dict[str, Any] = {
+    "domain": "biopharma-regulatory",
+    "objective": (
+        "跟踪目标管线的药审进度与合规状态：检索 NMPA/CDE 公开审评信息、"
+        "文献动态与企业内部注册文档，汇总风险与下一步动作。"
+    ),
+    "required_inputs": ["药品名称或受理号", "目标市场（默认：中国）"],
+    "phases": [
+        {
+            "id": "collect",
+            "done_when": "药审公开信息、文献与内部注册文档已检索并落盘",
+            "bindings": {
+                "document_sets": ["注册资料", "临床方案"],
+                "web_search": True,
+                "mcp_server_ids": [],
+            },
+        },
+        {
+            "id": "analyze",
+            "done_when": "审评进度时间线与发补/缺陷清单已整理",
+            "bindings": {
+                "document_sets": ["注册资料"],
+                "web_search": True,
+            },
+        },
+        {
+            "id": "report",
+            "done_when": "合规监测报告已生成到 outputs/",
+            "bindings": {
+                "gate": "approve_delivery",
+                "web_search": False,
+            },
+        },
+    ],
+    "deliverables": ["outputs/药审进度报告.docx"],
+    "quality_gates": ["每条结论注明来源（CDE 公示/文献/内部文档）"],
+    "refusal_rules": ["不得推测未公示的审评结论", "内部临床数据不得写入外部交付物"],
+    "runtime": {
+        "runtime": "opencode",
+        "model": "qwen3-max",
+        "bindings": {
+            "document_sets": ["注册资料", "临床方案"],
+            "web_search": True,
+            "gate": "approve_delivery",
+        },
+        "delivery_actions": ["save_artifacts"],
+    },
+}
