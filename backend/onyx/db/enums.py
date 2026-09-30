@@ -594,6 +594,51 @@ class SandboxStatus(str, PyEnum):
         """Check if sandbox is in a terminal state."""
         return self in (SandboxStatus.TERMINATED, SandboxStatus.FAILED)
 
+
+class CraftLoopState(str, PyEnum):
+    ENABLED = "enabled"
+    PAUSED = "paused"
+    QUARANTINED = "quarantined"
+    ARCHIVED = "archived"
+
+    def is_runnable(self) -> bool:
+        return self == CraftLoopState.ENABLED
+
+
+class CraftLoopHealth(str, PyEnum):
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    FAILING = "failing"
+    QUARANTINED = "quarantined"
+
+
+class CraftLoopItemStatus(str, PyEnum):
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    READY = "ready"
+    SHIPPED = "shipped"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+    def is_terminal(self) -> bool:
+        return self in (
+            CraftLoopItemStatus.SHIPPED,
+            CraftLoopItemStatus.SKIPPED,
+        )
+
+
+class CraftLoopOutputState(str, PyEnum):
+    STAGED = "staged"
+    READY = "ready"
+    SHIPPING = "shipping"
+    SHIPPED = "shipped"
+    RETURNED = "returned"
+
+
+class ShipGate(str, PyEnum):
+    HOLD = "hold"
+    AUTO = "auto"
+
     def is_sleeping(self) -> bool:
         """Check if sandbox is sleeping (stopped or terminated, restorable)."""
         return self == SandboxStatus.SLEEPING

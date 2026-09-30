@@ -127,6 +127,11 @@ from onyx.db.enums import (
     ScheduledTaskRunStatus,
     ScheduledTaskStatus,
     ScheduledTaskTriggerSource,
+    ShipGate,
+    CraftLoopState,
+    CraftLoopHealth,
+    CraftLoopItemStatus,
+    CraftLoopOutputState,
     SessionOrigin,
     SharingScope,
     SkillSharePermission,
@@ -9139,3 +9144,224 @@ class SSOProvider(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class CraftLoop(Base):
+    """Supervised recurring task loop (QM loop port).
+
+    ``policy_version`` invalidates every standing ship grant whenever the
+    playbook or ship actions change — the graduation safety net.
+    """
+
+    __tablename__ = "craft_loop"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Playbook + phase bindings; same shape as Scenario.rules.
+    playbook: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    # [{action: str, gate: "hold"|"auto"}]
+    ship_actions: Mapped[list[dict[str, Any]]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=list
+    )
+    success_condition: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # {max_items_per_fire, max_item_attempts, max_consecutive_failed_fires}
+    caps: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    state: Mapped[CraftLoopState] = mapped_column(
+        Enum(CraftLoopState, native_enum=False, name="craftloopstate"),
+        nullable=False,
+        default=CraftLoopState.ENABLED,
+        server_default="enabled",
+    )
+    health: Mapped[CraftLoopHealth] = mapped_column(
+        Enum(CraftLoopHealth, native_enum=False, name="craftloophealth"),
+        nullable=False,
+        default=CraftLoopHealth.HEALTHY,
+        server_default="healthy",
+    )
+    consecutive_failed_fires: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    trigger_cron: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    scenario_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("scenario.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User")
+    items: Mapped[list["CraftLoopItem"]] = relationship(
+        "CraftLoopItem", back_populates="loop", cascade="all, delete-orphan"
+    )
+    grants: Mapped[list["CraftLoopGrant"]] = relationship(
+        "CraftLoopGrant", back_populates="loop", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_craft_loop_user", "user_id"),
+        Index("ix_craft_loop_state", "state"),
+    )
+
+
+class CraftLoopItem(Base):
+    """One ledger entry: an external fact that entered the loop and its
+    lifecycle through work, review and ship. Claim and decision leases
+    serialize concurrent workers against the same item."""
+
+    __tablename__ = "craft_loop_item"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    loop_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_loop.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[CraftLoopItemStatus] = mapped_column(
+        Enum(CraftLoopItemStatus, native_enum=False, name="craftloopitemstatus"),
+        nullable=False,
+        default=CraftLoopItemStatus.QUEUED,
+        server_default="queued",
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Reviewer note fed to the next work attempt after a return-to-work.
+    guidance: Mapped[str | None] = mapped_column(Text, nullable=True)
+    proposal: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claim_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    decision_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    loop: Mapped[CraftLoop] = relationship("CraftLoop", back_populates="items")
+    outputs: Mapped[list["CraftLoopOutput"]] = relationship(
+        "CraftLoopOutput", back_populates="item", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("loop_id", "source_key", name="uq_craft_loop_item_source"),
+        Index("ix_craft_loop_item_status", "loop_id", "status"),
+    )
+
+
+class CraftLoopOutput(Base):
+    """A held artifact awaiting the ship decision (QM loop output port)."""
+
+    __tablename__ = "craft_loop_output"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    loop_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_loop.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    item_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_loop_item.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ship_action: Mapped[str] = mapped_column(String(128), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    state: Mapped[CraftLoopOutputState] = mapped_column(
+        Enum(CraftLoopOutputState, native_enum=False, name="craftloopoutputstate"),
+        nullable=False,
+        default=CraftLoopOutputState.STAGED,
+        server_default="staged",
+    )
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    external_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    loop: Mapped[CraftLoop] = relationship("CraftLoop")
+    item: Mapped[CraftLoopItem] = relationship(
+        "CraftLoopItem", back_populates="outputs"
+    )
+
+    __table_args__ = (Index("ix_craft_loop_output_state", "loop_id", "state"),)
+
+
+class CraftLoopGrant(Base):
+    """A standing human grant for one ship action at one policy version.
+
+    Editing the playbook or ship actions bumps ``policy_version`` and
+    silently invalidates every existing grant."""
+
+    __tablename__ = "craft_loop_grant"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    loop_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_loop.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ship_action: Mapped[str] = mapped_column(String(128), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    revoked_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    loop: Mapped[CraftLoop] = relationship("CraftLoop", back_populates="grants")
+
+    __table_args__ = (Index("ix_craft_loop_grant_loop", "loop_id", "ship_action"),)
