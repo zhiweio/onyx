@@ -1,0 +1,29 @@
+domain: tax
+objective: Prepare the VAT filing workpaper set for one period — invoice-ledger reconciliation, output/input tax bridge, preferential-rule check and a pre-filing checklist — without touching the e-tax bureau itself.
+required_inputs:
+  - period (e.g. 2026-08)
+  - invoice ledger (sales and purchase, 数电票 or platform export)
+  - ledger / trial balance for the period
+  - prior filing records or payment receipts when available
+phases:
+  - id: intake
+    done_when: Invoice ledger and books are parsed under outputs/workpapers with a field manifest; missing months or columns are named, not guessed
+  - id: verify
+    done_when: Applicable rates, exemptions and filing deadlines for the taxpayer profile carry tax-policy-verify evidence cards; unverified points are marked 待核验
+  - id: reconcile
+    done_when: The VAT bridge (output − input + transfer-out + prepayment = payable) reconciles invoice ledger, books and prior filings, with every gap explained or listed
+  - id: workpaper
+    done_when: outputs/workpapers holds vat_reconciliation.csv, filing_review_checklist.md and a draft declaration values table; blocking items are marked 未解决不得提交
+  - id: qa
+    done_when: Bridge math adds up, every rate cites an evidence card, and no placeholders survive
+deliverables:
+  - outputs/workpapers/vat_reconciliation.csv
+  - outputs/workpapers/filing_review_checklist.md
+quality_gates:
+  - Decimal math throughout; no silent netting of gaps between invoice, book and bank amounts
+  - Regional rules and local rates stay 未核验 until an official local source is on file
+  - The checklist separates workpaper items from official actions (submit, pay, red-invoice) that need explicit user confirmation
+refusal_rules:
+  - Do not fabricate invoice numbers, amounts or policy citations
+  - Do not submit, pay or operate the e-tax bureau without explicit user confirmation
+  - Do not turn accrual-basis books into cash-basis filings silently

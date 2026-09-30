@@ -4,7 +4,8 @@ description: >-
   撰写五年期上市公司财税与经营风险分析报告：老板 KPI 看板、三表五年透视、税负与现金流
   专项、TX/OP 风险识别与评分矩阵、四维改进建议、30/90 日整改清单与闭环式结论，产出带
   目录、表格与图表的正式 Word 报告。以年报 PDF 为第一证据；用同花顺取财务与行业对标，
-  企查查核验工商股权司法，智慧芽补专利研发；用 chart-gen、data-viz-gen 出图。
+  企查查核验工商股权司法，智慧芽补专利研发；优先用 vivid-figures-skill 出图，
+  chart-gen 备选。
   触发词：财税风险分析报告、经营风险识别、财税风险、风险矩阵、风险评级、五年财务分析、
   财税合规建议。
 optional-mcp:
@@ -134,8 +135,10 @@ OP-01～OP-08。每条写成三段式：数据证据 → 成因分析 → 潜在
 
 ### 5. 图表
 
-趋势、结构、对比用 `chart-gen`；KPI 快照看板用 `data-viz-gen`；利润桥接、同业雷达
-等特殊图用 matplotlib。不要 `npm install`。标准图表清单见
+数据图表优先用 `vivid-figures-skill`：按数据与表达目的在 `catalog/` 选配方，
+再保真复用配方源码出图；不适合时退回 `chart-gen`。利润桥接、同业雷达等特殊图
+用 matplotlib。报告是 Word 与 Markdown，图表一律输出 PNG，不用 HTML 图。
+不要 `npm install`。标准图表清单见
 `references/report-template.md`，至少产出：营收利润趋势、盈利能力、利润与现金流
 对比、费用结构、风险矩阵热力图。图放 `outputs/charts/`。
 

@@ -14,7 +14,8 @@ disclaimer: "本报告为分析框架，不构成投资建议或税务申报意�
 2. 章号由 build_report_docx.py 自动连续编号（一、二、… / N.M / （一）），写作时
    不要手工加章号。
 3. `> [!风险] 标题` 与 `> [!洞察] 标题` 引用块渲染为底纹提示框；`![图题](路径)`
-   嵌入图表（图先由 chart-gen / data-viz-gen 产出到 outputs/charts/）。
+   嵌入图表（图先由 vivid-figures-skill（优先）或 chart-gen / matplotlib 产出到
+   outputs/charts/，一律 PNG）。
 4. 表格保留表头，行按公司数据增删；空值写「未获取」，不要留 {{占位符}}。
 -->
 

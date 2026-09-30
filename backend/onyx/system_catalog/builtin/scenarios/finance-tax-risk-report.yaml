@@ -18,7 +18,7 @@ phases:
   - id: risks
     done_when: TX-01~TX-10 and OP-01~OP-08 entries are written in evidence-cause-impact form
   - id: charts
-    done_when: The standard chart list has at least five charts under outputs/charts
+    done_when: The standard chart list has at least five charts under outputs/charts, drawn with vivid-figures-skill first
   - id: report
     done_when: outputs/report.docx is filled with a real TOC field and continuous chapter numbers
   - id: review

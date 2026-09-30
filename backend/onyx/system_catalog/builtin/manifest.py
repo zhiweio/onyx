@@ -103,6 +103,30 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         built_in_skill_id="pptx",
     ),
     BuiltInSkillEntry(
+        slug="slideblocks",
+        name="Slidev 演示文稿",
+        description=(
+            "从需求与散装材料（财报、政策文件、PDF、网页、表格）自主产出"
+            "设计完整的 Slidev 演示文稿与离线 offline.html，适合汇报、宣讲与路演；"
+            "交付格式为 Slidev 源码与网页演示，不生成 .pptx 文件。"
+        ),
+        category=SystemCatalogCategory.DOCUMENT,
+        tags=("slidev", "ppt", "演示文稿"),
+        built_in_skill_id="slideblocks",
+    ),
+    BuiltInSkillEntry(
+        slug="vivid-figures-skill",
+        name="生动数据图",
+        description=(
+            "140 个完整配方的科研级绘图技能：按数据与表达目的检索候选模板、"
+            "看实图选型、保真复用配方源码，覆盖数据图、统计与机器学习图、"
+            "技术图与组合图；数据类图表优先使用本技能。"
+        ),
+        category=SystemCatalogCategory.GRAPHIC,
+        tags=("图表", "画图", "科研绘图"),
+        built_in_skill_id="vivid-figures-skill",
+    ),
+    BuiltInSkillEntry(
         slug="docx",
         name="Word 文档",
         description="创建和编辑 .docx 文档，支持模板占位符填充、批注与修订读取。",
@@ -511,6 +535,42 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         tags=("finance", "tax", "risk", "report"),
         built_in_skill_id="finance-tax-risk-report",
     ),
+    BuiltInSkillEntry(
+        slug="tax-policy-verify",
+        name="政策核验",
+        description=(
+            "中国大陆财税政策核验模块：官方来源阶梯、所属期适用规则、地区口径"
+            "核验、证据卡与时效检查，附中国政府网与税务总局站内检索脚本，供政策"
+            "问答、申报底稿与合规体检复用。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "policy", "verify"),
+        built_in_skill_id="tax-policy-verify",
+    ),
+    BuiltInSkillEntry(
+        slug="caishui-skill",
+        name="财税申报与报表",
+        description=(
+            "中国大陆申报与财务报表工作流：纳税人画像、账单发票银行流水归档"
+            "勾稽、试算平衡、资产负债表与利润表底稿、增值税/所得税等申报底稿"
+            "与提交前检查清单；政策核验遵循 tax-policy-verify。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "filing", "statements", "workflow"),
+        built_in_skill_id="caishui-skill",
+    ),
+    BuiltInSkillEntry(
+        slug="tax-tax-audit",
+        name="税务审计指引",
+        description=(
+            "企业财税合规审计与税务审计：审计准则1142号落地、税务内控测试与"
+            "穿行测试、涉税舞弊红旗识别、关键审计事项税务披露、监管风险提示"
+            "税务维度，按六步闭环组织工作，支持税务合规体检。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "audit", "compliance"),
+        built_in_skill_id="tax-tax-audit",
+    ),
     *(
         BuiltInSkillEntry(
             slug=skill.slug,
@@ -613,11 +673,117 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
             "qichacha",
             "zhihuiya",
             "listed-co-industry-context",
+            "vivid-figures-skill",
             "chart-gen",
-            "data-viz-gen",
             "docx",
         ),
         report_template_slug="finance_tax_risk_report",
         playbook_file="finance-tax-risk-report.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-monthly-review-deck",
+        name="月度经营财税汇报",
+        description=(
+            "以月度三表与费用明细为证据，归因异动、看税负与现金流，"
+            "产出管理层月度汇报演示文稿（Slidev + offline.html）。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "finance", "monthly", "deck"),
+        skill_slugs=(
+            "document-ingest",
+            "xlsx",
+            "vivid-figures-skill",
+            "slideblocks",
+        ),
+        playbook_file="tax-monthly-review-deck.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-policy-briefing-deck",
+        name="财税新政解读宣讲",
+        description=(
+            "以官方公告原文为证据，梳理变化要点、前后对照、影响对象与应对时限，"
+            "产出面向业务团队或客户的政策解读宣讲演示。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "policy", "briefing", "deck"),
+        skill_slugs=(
+            "document-ingest",
+            "vivid-figures-skill",
+            "slideblocks",
+        ),
+        playbook_file="tax-policy-briefing-deck.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-risk-review-deck",
+        name="税务风险健康检查汇报",
+        description=(
+            "复用 TX/OP 风险框架体检企业财税与经营风险，"
+            "产出带风险矩阵与整改路线的管理层汇报演示（Word 报告版的姊妹场景）。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "risk", "review", "deck"),
+        skill_slugs=(
+            "listed-co-entity-resolve",
+            "finance-tax-risk-report",
+            "hithink-finance",
+            "qichacha",
+            "vivid-figures-skill",
+            "slideblocks",
+        ),
+        playbook_file="tax-risk-review-deck.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-annual-settlement-deck",
+        name="汇算清缴专项汇报",
+        description=(
+            "梳理纳税调整事项与政策依据，测算应纳税所得额与补退税，"
+            "产出带申报前检查清单的汇算清缴专项汇报演示。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "settlement", "annual", "deck"),
+        skill_slugs=(
+            "document-ingest",
+            "xlsx",
+            "vivid-figures-skill",
+            "slideblocks",
+        ),
+        playbook_file="tax-annual-settlement-deck.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-compliance-check",
+        name="税务合规体检",
+        description=(
+            "按审计视角体检企业税务合规：申报一致性、税负合理性、内控有效性、"
+            "舞弊红旗与优惠备案五块评级，产出带整改清单的 Word 体检报告。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "audit", "compliance", "report"),
+        skill_slugs=(
+            "tax-tax-audit",
+            "tax-policy-verify",
+            "qichacha",
+            "hithink-finance",
+            "vivid-figures-skill",
+            "chart-gen",
+            "docx",
+        ),
+        playbook_file="tax-compliance-check.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="tax-vat-filing-workpaper",
+        name="增值税申报底稿",
+        description=(
+            "以发票台账与账簿为证据做进销项勾稽与税额桥接，核验适用税率与"
+            "优惠口径，产出申报底稿、填报值草稿与提交前检查清单，不代操作"
+            "电子税务局。"
+        ),
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "vat", "filing", "workpaper"),
+        skill_slugs=(
+            "caishui-skill",
+            "tax-policy-verify",
+            "xlsx",
+        ),
+        playbook_file="tax-vat-filing-workpaper.yaml",
     ),
 )

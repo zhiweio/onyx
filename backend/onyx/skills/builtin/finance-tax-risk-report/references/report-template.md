@@ -125,22 +125,22 @@
 | 核查程序表 | 第十一章 | 风险领域 / 等级 / 核心问题 / 建议程序 | 审计导向核查动作 |
 | 期后事项表 | 期后章节 | 事项 / 公开信息 / 分析影响 | 最新季报、公告、变动 |
 
-## 标准图表清单（用 chart-gen / data-viz-gen / matplotlib）
+## 标准图表清单（优先 vivid-figures-skill，备选 chart-gen / matplotlib，一律 PNG）
 
 | 图 | 类型 | 数据 | 工具 |
 | --- | --- | --- | --- |
-| 营业收入与归母净利润五年趋势 | 双系列折线 | revenue、attributable | chart-gen |
-| 归母 vs 扣非归母净利润 | 分组柱状 | attributable、非经常性损益 | chart-gen |
-| 毛利率 / 净利率 / ROE 走势 | 多系列折线 | 三个比率 | chart-gen |
-| 费用率结构（销售/管理/研发/财务） | 堆叠柱状 | 四项费用率 | chart-gen |
-| 实际所得税率 vs 法定税率 | 折线 + 基准线 | 实际税率、25% 基准 | chart-gen |
-| 整体税负率走势 | 折线 | 税费 / 营收 | chart-gen |
+| 营业收入与归母净利润五年趋势 | 双系列折线 | revenue、attributable | vivid-figures-skill |
+| 归母 vs 扣非归母净利润 | 分组柱状 | attributable、非经常性损益 | vivid-figures-skill |
+| 毛利率 / 净利率 / ROE 走势 | 多系列折线 | 三个比率 | vivid-figures-skill |
+| 费用率结构（销售/管理/研发/财务） | 堆叠柱状 | 四项费用率 | vivid-figures-skill |
+| 实际所得税率 vs 法定税率 | 折线 + 基准线 | 实际税率、25% 基准 | vivid-figures-skill |
+| 整体税负率走势 | 折线 | 税费 / 营收 | vivid-figures-skill |
 | 净利润 vs 经营现金流 vs 自由现金流 | 柱线组合 | 三个金额 | matplotlib |
-| 收现比 / 净现比走势 | 多系列折线 | 两个比率 | chart-gen |
-| 应收与存货周转天数 | 折线 | 周转天数 | chart-gen |
-| 资本开支与简化自由现金流 | 柱状 | capex、FCF | chart-gen |
-| 前五大客户占比 | 环形图 | 客户占比 | chart-gen |
-| 风险矩阵热力图 | 热力图 | 等级 × 发生概率 | chart-gen |
+| 收现比 / 净现比走势 | 多系列折线 | 两个比率 | vivid-figures-skill |
+| 应收与存货周转天数 | 折线 | 周转天数 | vivid-figures-skill |
+| 资本开支与简化自由现金流 | 柱状 | capex、FCF | vivid-figures-skill |
+| 前五大客户占比 | 环形图 | 客户占比 | vivid-figures-skill |
+| 风险矩阵热力图 | 热力图 | 等级 × 发生概率 | vivid-figures-skill |
 | 同业对标雷达 / 柱状 | 雷达或分组柱状 | 公司 vs 同业 4～6 指标 | matplotlib |
 
 图放 `outputs/charts/`，命名 `NN_英文名.png`，正文用 `![图题](outputs/charts/xx.png)`

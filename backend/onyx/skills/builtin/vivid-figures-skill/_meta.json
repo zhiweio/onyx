@@ -1,0 +1,5 @@
+{
+  "source": "https://github.com/yjz211/vivid-figures-skill",
+  "license": "Personal Non-Commercial 1.0 (see LICENSE)",
+  "trim": "vendored without catalog/sources, catalog/thumbnails, catalog/index.html, catalog/screenshot-*, docs/, examples/, tests/"
+}

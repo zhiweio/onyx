@@ -113,3 +113,42 @@ def test_biopharma_scenario_compiles_through_the_same_chain() -> None:
     choice = build_router_from_env().resolve(request)
     assert choice.origin == "scenario"
     assert choice.model_id == "qwen3-max"
+
+
+def test_tax_deck_scenarios_compile_through_the_same_chain() -> None:
+    from onyx.system_catalog.builtin.manifest import (
+        BUILT_IN_SCENARIO_ENTRIES,
+        BUILT_IN_SKILL_ENTRIES,
+    )
+
+    tax_scenarios = [
+        entry for entry in BUILT_IN_SCENARIO_ENTRIES if entry.slug.startswith("tax-")
+    ]
+    assert len(tax_scenarios) == 6
+
+    skill_slugs = {entry.slug for entry in BUILT_IN_SKILL_ENTRIES}
+    for entry in tax_scenarios:
+        rules = entry.read_rules()
+        playbook = ScenarioPlaybook.model_validate(rules)
+        assert playbook.domain == "tax"
+        assert set(entry.skill_slugs) <= skill_slugs, entry.slug
+
+        plan = compile_scenario_plan(rules, goal=f"运行{entry.name}")
+        assert [p.id for p in plan.phases] == [phase.id for phase in playbook.phases]
+        for deliverable in rules["deliverables"]:
+            assert deliverable in plan.done_when, (entry.slug, deliverable)
+
+        graph = compile_graph(entry.slug, plan=plan)
+        assert graph.nodes
+
+    deck_slugs = {entry.slug for entry in tax_scenarios if entry.slug.endswith("-deck")}
+    assert deck_slugs == {
+        "tax-monthly-review-deck",
+        "tax-policy-briefing-deck",
+        "tax-risk-review-deck",
+        "tax-annual-settlement-deck",
+    }
+    by_slug = {entry.slug: entry for entry in tax_scenarios}
+    for slug in deck_slugs:
+        assert "slideblocks" in by_slug[slug].skill_slugs
+        assert "vivid-figures-skill" in by_slug[slug].skill_slugs

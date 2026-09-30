@@ -99,6 +99,7 @@ import { deleteTokenBeforeCursor, getTextContent } from "@/lib/contentEditable";
 export interface AppInputBarHandle {
   reset: () => void;
   focus: () => void;
+  setMessage: (message: string) => void;
 }
 
 export interface AppInputBarProps {
@@ -441,6 +442,10 @@ const AppInputBar = React.memo(
       focus: () => {
         inputRef.current?.focus();
         setCursorToEnd();
+      },
+      setMessage: (message: string) => {
+        setMessage(message);
+        inputRef.current?.focus();
       },
     }));
 

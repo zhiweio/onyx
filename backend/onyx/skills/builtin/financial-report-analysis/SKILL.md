@@ -3,7 +3,8 @@ name: financial-report-analysis
 description: >-
   解读最新季报或年报：融合三表同比环比与 10 项异常检测，再建近 8 季单季趋势、经营 KPI
   与业绩指引。支持用户上传 PDF / Excel / 图片，或用同花顺、企查查、智慧芽查询财务、
-  工商与舆情，并用 chart-gen、data-viz-gen 出图。触发词：财报解读、三表、同比、
+  工商与舆情，优先用 vivid-figures-skill 出图，chart-gen 备选。
+  触发词：财报解读、三表、同比、
   环比、异常检测、业绩说明会、单车均价、市占率、读生意。
 optional-mcp:
   - hithink-meta
@@ -169,7 +170,9 @@ python .opencode/skills/financial-report-analysis/scripts/operating_kpi.py \
 
 Sandbox 已预装 Vega 与 infographic 脚本。不要再 `npm install`。
 
-趋势、同比、结构用 `chart-gen`：
+趋势、同比、结构优先用 `vivid-figures-skill`：按数据与目的在 `catalog/` 选配方，
+保真复用配方源码出图（折线、柱状、面积、热力图等均有完整配方）。
+快速简单图退回 `chart-gen`：
 
 ```
 node .opencode/skills/chart-gen/scripts/chart.mjs \
@@ -179,12 +182,8 @@ node .opencode/skills/chart-gen/scripts/chart.mjs \
   --output outputs/charts/revenue_q.png
 ```
 
-KPI 快照或对比看板用 `data-viz-gen`：
-
-```
-python .opencode/skills/data-viz-gen/scripts/build_infographic.py \
-  outputs/analysis/kpi_dashboard.json
-```
+KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页），
+不要用 HTML 信息图——报告里嵌不进。
 
 至少产出：营收/净利趋势、毛利率或收现比、一张经营 KPI 图。
 图放 `outputs/charts/`，并嵌进 HTML 报告。

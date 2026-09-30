@@ -1,0 +1,30 @@
+domain: tax
+objective: Prepare the annual CIT settlement (汇算清缴) debrief as a deck — adjustment items with basis, preferential-policy applicability, tax payable versus prepaid reconciliation, outstanding issues and a pre-filing checklist — delivered as a Slidev deck with a self-contained offline.html.
+required_inputs:
+  - fiscal year
+  - annual financial statements and trial balance
+  - adjustment item list (纳税调整事项) or the underlying ledgers
+  - preferential policy materials being applied (for example R&D super-deduction 备查资料)
+phases:
+  - id: intake
+    done_when: Statements and the adjustment list are parsed under outputs/analysis with a per-item manifest
+  - id: adjust
+    done_when: Every adjustment item is classified 调增 / 调减 / 优惠 with the policy clause it rests on, under outputs/analysis/adjustments.json
+  - id: compute
+    done_when: outputs/analysis/settlement.json reconciles accounting profit to taxable income to tax payable versus prepaid, with each bridge step shown
+  - id: deck
+    done_when: outputs/slides holds the settlement debrief with a verified self-contained offline.html, including a timeline and the pre-filing checklist
+  - id: qa
+    done_when: Bridge math in settlement.json adds up, every adjustment cites a clause, and no placeholders survive
+deliverables:
+  - outputs/slides/offline.html
+  - outputs/slides/slides.md
+  - outputs/analysis/settlement.json
+quality_gates:
+  - Accounting treatment is never silently equated to tax treatment; each difference is an explicit bridge line
+  - Preferential deductions list their 备查资料 status
+  - Charts drawn with vivid-figures-skill use settlement.json numbers only
+refusal_rules:
+  - Do not invent an adjustment basis — no clause, no line
+  - Do not recommend aggressive arrangements; flag them as risk instead
+  - Do not state a filing-ready conclusion while 期后 data is still unaudited

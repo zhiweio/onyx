@@ -1,0 +1,30 @@
+domain: tax
+objective: Turn a newly issued tax or finance policy document into an audience-ready briefing deck — what changed, before and after, who is affected, what to do and by when — delivered as a Slidev deck with a self-contained offline.html.
+required_inputs:
+  - policy document (official 公告 / 通知, PDF or URL)
+  - target audience (business teams, clients or management; default business teams)
+phases:
+  - id: intake
+    done_when: The official full text and the issuing-authority page are captured under outputs/sources with access dates; second-hand rewrites are labeled as such
+  - id: interpret
+    done_when: outputs/analysis/policy_points.json lists every change point with clause citation, effective date and before/after comparison
+  - id: impact
+    done_when: Affected parties, action items with deadlines, and open questions needing tax-authority confirmation are written under outputs/analysis
+  - id: charts
+    done_when: At most two or three simple charts (rate before/after, timeline) are drawn with vivid-figures-skill where they clarify; no decorative charts
+  - id: deck
+    done_when: outputs/slides holds the briefing deck with a verified self-contained offline.html
+  - id: qa
+    done_when: Every quoted rate, deadline and clause number matches the official text, and no placeholders survive
+deliverables:
+  - outputs/slides/offline.html
+  - outputs/slides/slides.md
+  - outputs/analysis/policy_points.json
+quality_gates:
+  - Every change point cites the original clause (文号 + 条款)
+  - Ambiguity is marked 以官方解释为准 instead of guessed
+  - Deck stays within 8-12 content slides for a 15-20 minute briefing
+refusal_rules:
+  - Do not guess an execution rule the official text does not state
+  - Do not present media summaries as the official text
+  - Do not give tax-avoidance advice; frame actions as compliance steps

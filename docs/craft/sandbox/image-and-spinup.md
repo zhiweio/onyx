@@ -83,6 +83,11 @@ We keep only:
   `pydantic`, `cryptography`.
 - **Skill-specific runtime**: `google-genai` (image-generation skill),
   `onyx-cli`.
+- **vivid-figures-skill recipes**: `adjustText`, `networkx`, `sympy`,
+  `pdf2image`. PDF preview goes through poppler `pdftoppm` and SVG
+  rendering falls back to the shared Chromium, so `PyMuPDF` and
+  `CairoSVG` stay out; the geopandas map stack is not pre-installed
+  (those recipes degrade).
 - **Kimi official skill scripts**: `statsmodels` (regression-insight),
   `markdown` / `playwright` / `xhs` / `python-dotenv` / `pyyaml`
   (xhs-note-creator), `psycopg2-binary` (database-inspector). Pin
@@ -115,6 +120,11 @@ cache at `/opt/ms-playwright`. `/node_modules` is a symlink to
 are pushed by the API server at session setup, but their **runtime tools**
 must be in the image already (the in-pod `soffice` / `pdftoppm` /
 `pptxgenjs` / `playwright` / `vega` calls from shipped skill scripts).
+
+The slideblocks skill needs only Node.js and the shared Chromium already
+in the image. Its client reaches `api.inteliway.tech` through the egress
+proxy; when that host is blocked it falls back to the bundled Registry
+snapshot and says so.
 
 - Prod / default: `ENABLE_SKILLS=true` — full image, all skills work.
 - Dev kind clusters / CI: `ENABLE_SKILLS=false` — ~700 MB smaller, but

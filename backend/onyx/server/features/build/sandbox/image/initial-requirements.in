@@ -1,3 +1,4 @@
+adjustText
 beautifulsoup4
 duckdb
 cryptography
@@ -9,10 +10,12 @@ markdown
 markitdown
 matplotlib
 matplotlib-inline
+networkx
 numpy
 onyx-cli
 openpyxl
 pandas
+pdf2image
 pdfplumber
 pillow
 playwright==1.58.0
@@ -28,6 +31,7 @@ requests
 scipy
 seaborn
 statsmodels
+sympy
 tabulate
 uvicorn[standard]
 xhs

@@ -4,6 +4,7 @@ import {
   SvgBullhorn,
   SvgCode,
   SvgLightbulbSimple,
+  SvgPieChart,
 } from "@opal/icons";
 
 export interface BuildPrompt {
@@ -22,6 +23,37 @@ export interface UseCaseDomain {
 }
 
 export const useCaseDomains: UseCaseDomain[] = [
+  {
+    id: "financeTax",
+    label: "Finance & Tax",
+    icon: SvgPieChart,
+    prompts: [
+      {
+        id: "finance-monthly-review-deck",
+        summary: "把本月三大报表做成管理层汇报演示",
+        fullText:
+          "根据我上传的本月利润表、资产负债表和费用明细，做一份月度经营财税汇报演示：收入利润概览、费用异动归因、税负与现金流、风险提示和行动项。",
+      },
+      {
+        id: "finance-policy-briefing-deck",
+        summary: "解读最新财税新政，产出宣讲演示",
+        fullText:
+          "解读这份最新财税政策文件，做一份面向业务团队的宣讲演示：政策要点、前后对照、对我们的影响、应对动作和时间表。",
+      },
+      {
+        id: "finance-compliance-check",
+        summary: "给公司做一次税务合规体检",
+        fullText:
+          "为我们公司做一次税务合规体检：申报一致性、税负合理性、内控有效性、舞弊红旗、税收优惠备案五块逐项检查，出具体检报告和整改清单。",
+      },
+      {
+        id: "finance-vat-workpaper",
+        summary: "准备增值税申报底稿和检查清单",
+        fullText:
+          "根据发票台账和本月账簿，准备增值税申报底稿：进销项勾稽、税额计算、适用税率核验，并生成提交前检查清单。",
+      },
+    ],
+  },
   {
     id: "engineering",
     label: "Engineering",

@@ -1,0 +1,33 @@
+domain: tax
+objective: Turn one month's books into a management finance-tax review deck — KPI overview, variance attribution, tax burden, cash flow, risks and actions — delivered as a Slidev deck with a self-contained offline.html.
+required_inputs:
+  - month
+  - income statement / balance sheet / cash flow statement (Excel or PDF)
+  - expense detail or trial balance (科目余额表)
+  - prior-period comparatives (same month last year and last month; name the gap when absent)
+phases:
+  - id: intake
+    done_when: Statements and expense detail are parsed under outputs/analysis with a field manifest; missing comparatives are named, not guessed
+  - id: normalize
+    done_when: outputs/analysis/monthly.json holds the month aligned with YoY and MoM deltas; gaps stay null
+  - id: analyze
+    done_when: KPI set (revenue, gross margin, expense ratios, tax burden, cash flow) and top variance drivers are written in evidence-cause-impact form under outputs/analysis
+  - id: charts
+    done_when: outputs/charts holds charts for KPI trend, expense structure, tax burden and one risk view, drawn with vivid-figures-skill first
+  - id: deck
+    done_when: outputs/slides holds a Slidev project with slides.md and a verified self-contained offline.html
+  - id: qa
+    done_when: Every number on a slide traces to outputs/analysis data, no placeholders survive, and offline.html opens from file:// with no network
+deliverables:
+  - outputs/slides/offline.html
+  - outputs/slides/slides.md
+  - outputs/analysis/monthly.json
+quality_gates:
+  - Every slide number names its source file under outputs/analysis
+  - Audience-facing slides stay free of internal paths, tool names and skill names
+  - Each chart embeds real data and carries its period and accounting-basis note
+  - Deck length stays within 10-15 content slides unless the user asked for more
+refusal_rules:
+  - Do not invent a number when a statement field is missing — mark it 未获取
+  - Do not present an accrual-basis view as cash-basis or vice versa
+  - Do not state a tax filing position without naming its policy basis

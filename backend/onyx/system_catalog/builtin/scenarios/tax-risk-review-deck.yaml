@@ -1,0 +1,30 @@
+domain: tax
+objective: Present a tax-risk health check as a management deck — TX/OP risk matrix, top findings with evidence, scores and a remediation plan — delivered as a Slidev deck with a self-contained offline.html; the Word report twin is the finance-tax-risk-report scenario.
+required_inputs:
+  - entity
+  - annual reports or financial statements for the review period
+phases:
+  - id: resolve
+    done_when: outputs/entity.json names one official entity with ticker or 统一社会信用代码
+  - id: collect
+    done_when: Annual reports plus public tax and administrative penalties (企查查 / 同花顺 captures or web) are stored under outputs/analysis with per-source manifests
+  - id: risks
+    done_when: TX-01~TX-10 and OP-01~OP-08 entries are scored in evidence-cause-impact form under outputs/analysis/risk_matrix.json
+  - id: charts
+    done_when: outputs/charts holds the risk-matrix heatmap and at least two supporting trend or structure charts, drawn with vivid-figures-skill first
+  - id: deck
+    done_when: outputs/slides holds the management deck (top risks, matrix, remediation timeline) with a verified self-contained offline.html
+  - id: qa
+    done_when: Every risk score traces to evidence rows and no placeholders survive
+deliverables:
+  - outputs/slides/offline.html
+  - outputs/slides/slides.md
+  - outputs/analysis/risk_matrix.json
+quality_gates:
+  - Each risk names its evidence (report page, penalty number, or URL with access date)
+  - Audience-facing slides stay free of tool names and internal paths
+  - Remediation actions carry owner-by-role, deadline and priority
+refusal_rules:
+  - Do not invent a ticker, 统一社会信用代码 or 案号
+  - Do not present unaudited data as audited
+  - Do not score risks outside the TX/OP framework mapping

@@ -95,7 +95,8 @@ Cite every source by title and URL. If results are empty or weak, say so.
 ## Outputs
 
 Write under `outputs/` when the task needs a file. Pick the format that
-answers the request: web app (`webapp` start first), slides (`pptx` skill),
+answers the request: web app (`webapp` start first), slides (web deck:
+`slideblocks` skill; .pptx file: `pptx` skill),
 image (`image-generation`), markdown, HTML, or a direct reply. Give files
 human-readable names. Chat holds a digest and a path, not a whole file.
 HTML files open as a live preview. The user can download them.

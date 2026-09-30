@@ -1,0 +1,5 @@
+{
+  "source": "https://github.com/Zevo/caishui-skill (design reference)",
+  "license": "MIT (see LICENSE)",
+  "note": "SKILL.md rewritten for Onyx; references, scripts and templates adapted from upstream; policy verification split into tax-policy-verify"
+}

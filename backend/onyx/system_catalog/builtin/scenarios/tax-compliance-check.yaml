@@ -1,0 +1,33 @@
+domain: tax
+objective: Run a tax compliance health check on one entity — declaration consistency, tax-burden reasonableness, internal-control effectiveness, fraud red flags and preferential-policy readiness — and deliver a Word report with ratings and a remediation list.
+required_inputs:
+  - entity (company name; ticker or 统一社会信用代码 when available)
+  - review period
+  - financial statements or trial balance for the period (uploads or MCP capture)
+phases:
+  - id: scope
+    done_when: outputs/analysis/scope.json fixes the entity, period, tax types in play, and evidence boundaries
+  - id: collect
+    done_when: Statements plus public penalties, litigation and industry context (企查查 / 同花顺 captures or web with access dates) sit under outputs/analysis with per-source manifests
+  - id: test
+    done_when: The five self-check blocks from regulatory-alerts.md each carry a 健康/关注/预警 rating with evidence rows
+  - id: redflags
+    done_when: fraud-red-flags.md items are scanned item by item; every hit lists evidence and the management explanation or an open question
+  - id: charts
+    done_when: outputs/charts holds at least three charts (tax-burden vs peers, declaration-vs-book gaps, rating summary), drawn with vivid-figures-skill first
+  - id: report
+    done_when: outputs/report.docx contains the ratings table, findings with evidence, remediation list with owners and deadlines, and the disclaimer
+  - id: qa
+    done_when: Every rating names its evidence, every cited policy or penalty has a document number, and no placeholders survive
+deliverables:
+  - outputs/report.docx
+  - outputs/analysis/selfcheck.json
+quality_gates:
+  - Ratings cite evidence rows, never gut feeling; insufficient evidence marks 待核验
+  - Audience-facing report stays free of tool names, skill names and internal paths
+  - Charts use selfcheck.json numbers only, one period and accounting basis noted per chart
+  - The disclaimer and "not an audit opinion" boundary survive in the delivered report
+refusal_rules:
+  - Do not invent a penalty record, case number or policy citation
+  - Do not present the health check as an audit opinion or tax filing position
+  - Do not recommend arrangements that conceal violations; flag them as risk instead

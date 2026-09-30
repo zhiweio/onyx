@@ -78,6 +78,7 @@ import useScreenSize from "@/hooks/useScreenSize";
 import { useSidebarState } from "@opal/layouts";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import WelcomeMessage from "@/app/app/components/WelcomeMessage";
+import ChatExamplePrompts from "@/app/app/components/ChatExamplePrompts";
 import ChatUI from "@/sections/chat/ChatUI";
 import { useFullWidthChat } from "@/providers/FullWidthChatProvider";
 import { motion, AnimatePresence } from "motion/react";
@@ -1046,6 +1047,15 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                               OnboardingStep.Complete)
                         }
                       />
+                      {(appPosition.isNewSession() || appPosition.isAgent()) &&
+                        !hasAgentStarterMessages &&
+                        !onboardingVisible && (
+                          <ChatExamplePrompts
+                            onPromptClick={(promptText) =>
+                              chatInputBarRef.current?.setMessage(promptText)
+                            }
+                          />
+                        )}
                       <div
                         className={cn(
                           "transition-all duration-150 ease-in-out overflow-hidden",

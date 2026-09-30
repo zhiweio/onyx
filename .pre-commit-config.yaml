@@ -185,6 +185,9 @@ repos:
       - id: check-added-large-files
         name: Check for added large files
         args: ["--maxkb=1500"]
+        # Vendored built-in skill bundles (fonts, preview images) ship as
+        # reviewed units; per-file size is not a useful signal there.
+        exclude: ^backend/onyx/skills/builtin/
       - id: check-yaml
         name: Check YAML
         # --unsafe relaxes check-yaml to syntax-only, so it accepts the

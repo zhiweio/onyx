@@ -23,6 +23,8 @@ export default function SuggestedPrompts({
 
   function domainLabel(domainId: string): string {
     switch (domainId) {
+      case "financeTax":
+        return t("financeTax.label");
       case "engineering":
         return t("engineering.label");
       case "sales":

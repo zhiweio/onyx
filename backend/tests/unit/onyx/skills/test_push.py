@@ -231,6 +231,7 @@ def test_user_payload_returns_hydrated_files_and_connectable_apps(
     )
     monkeypatch.setattr(push, "get_connectable_apps_for_user", lambda *_args: [])
     monkeypatch.setattr(push, "build_connectable_apps_list", lambda _apps: "apps")
+    monkeypatch.setattr(push, "build_team_skills_for_user", lambda *_args: {})
 
     apps_section, files = push.build_user_skills_payload(user, db_session)
 
