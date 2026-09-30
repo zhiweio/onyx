@@ -971,6 +971,13 @@ class SSOProviderType(str, PyEnum):
     GOOGLE_OAUTH = "GOOGLE_OAUTH"
     OIDC = "OIDC"
     SAML = "SAML"
+    # China workplace platforms: WeCom scan, DingTalk scan, Feishu auth code,
+    # WPS365 OAuth2. All four provision through the standard OAuth callback
+    # path; their token exchanges are protocol-specific (see server/china_sso).
+    WECOM = "WECOM"
+    DINGTALK = "DINGTALK"
+    FEISHU = "FEISHU"
+    WPS365 = "WPS365"
 
 
 class IncognitoRecordMode(str, PyEnum):

@@ -74,11 +74,48 @@ class SAMLProviderConfig(_ProviderConfig):
     email_attribute: str | None = None
 
 
+class _ChinaProviderConfig(_ProviderConfig):
+    """Common shape for the China workplace platforms.
+
+    ``email_domain`` builds a deterministic email when the platform does not
+    return one (DingTalk and WeCom often do not): ``{account_id}@{domain}``.
+    """
+
+    email_domain: str
+
+
+class WeComProviderConfig(_ChinaProviderConfig):
+    corp_id: str
+    corp_secret: str = Field(json_schema_extra={"secret": True})
+    agent_id: str
+
+
+class DingTalkProviderConfig(_ChinaProviderConfig):
+    client_id: str
+    client_secret: str = Field(json_schema_extra={"secret": True})
+
+
+class FeishuProviderConfig(_ChinaProviderConfig):
+    app_id: str
+    app_secret: str = Field(json_schema_extra={"secret": True})
+
+
+class WPS365ProviderConfig(_ChinaProviderConfig):
+    client_id: str
+    client_secret: str = Field(json_schema_extra={"secret": True})
+    # WPS account endpoints differ per region (account.wps.cn / .com).
+    base_url: str = "https://account.wps.cn"
+
+
 # provider_type selects the config shape. A new auth method adds a model here.
 _CONFIG_MODEL_BY_TYPE: dict[SSOProviderType, type[_ProviderConfig]] = {
     SSOProviderType.GOOGLE_OAUTH: GoogleProviderConfig,
     SSOProviderType.OIDC: OIDCProviderConfig,
     SSOProviderType.SAML: SAMLProviderConfig,
+    SSOProviderType.WECOM: WeComProviderConfig,
+    SSOProviderType.DINGTALK: DingTalkProviderConfig,
+    SSOProviderType.FEISHU: FeishuProviderConfig,
+    SSOProviderType.WPS365: WPS365ProviderConfig,
 }
 
 
