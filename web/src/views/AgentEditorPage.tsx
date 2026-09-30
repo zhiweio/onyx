@@ -20,7 +20,7 @@ import {
 import { Hoverable, Disabled } from "@opal/core";
 import { FullAgent, PersonaSharingStatus } from "@/lib/agents/types";
 import { buildAgentAvatarUrl } from "@/lib/agents/utils";
-import { Formik, Form, FieldArray } from "formik";
+import { Formik, Form, FieldArray, useField } from "formik";
 import * as Yup from "yup";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import InputTextAreaField from "@/refresh-components/form/InputTextAreaField";
@@ -116,6 +116,29 @@ import { useDraft, draftKey } from "@/hooks/useDraft";
 // Length of the translated starterExamples array, which is local to
 // AgentStarterMessages, shared here so the editor can size against it.
 const STARTER_MESSAGES_COUNT = 4;
+
+// Numeric Formik field for the per-agent loop budget overrides. Empty input
+// maps to undefined = "inherit the deployment default".
+function BudgetNumberField({ name, label }: { name: string; label: string }) {
+  const [field, , helpers] = useField<number | undefined>(name);
+  return (
+    <label className="flex items-center justify-between gap-2">
+      <Text font="secondary-body" color="text-03">
+        {label}
+      </Text>
+      <input
+        type="number"
+        min={0}
+        className="w-32 rounded-08 border border-border-01 bg-background-transparent px-2 py-1.5 text-sm"
+        value={field.value ?? ""}
+        onChange={(e) => {
+          const raw = e.target.value;
+          helpers.setValue(raw === "" ? undefined : Number(raw));
+        }}
+      />
+    </label>
+  );
+}
 
 interface AgentIconEditorProps {
   existingAgent?: FullAgent | null;
@@ -763,6 +786,13 @@ export default function AgentEditorPage({
     knowledge_cutoff_date: existingAgent?.search_start_date
       ? new Date(existingAgent.search_start_date)
       : null,
+    // Agent loop budget overrides; empty = inherit deployment defaults
+    agent_budget_max_llm_cycles:
+      existingAgent?.agent_budget?.max_llm_cycles ?? undefined,
+    agent_budget_max_extension_cycles:
+      existingAgent?.agent_budget?.max_extension_cycles ?? undefined,
+    agent_budget_turn_token_budget:
+      existingAgent?.agent_budget?.turn_token_budget ?? undefined,
     replace_base_system_prompt:
       existingAgent?.replace_base_system_prompt ?? false,
     reminders: existingAgent?.task_prompt ?? "",
@@ -882,6 +912,23 @@ export default function AgentEditorPage({
 
     // Advanced
     default_model_configuration_id: Yup.number().nullable().optional(),
+    agent_budget_max_llm_cycles: Yup.number()
+      .min(1)
+      .max(40)
+      .integer()
+      .nullable()
+      .optional(),
+    agent_budget_max_extension_cycles: Yup.number()
+      .min(1)
+      .max(24)
+      .integer()
+      .nullable()
+      .optional(),
+    agent_budget_turn_token_budget: Yup.number()
+      .min(0)
+      .integer()
+      .nullable()
+      .optional(),
     knowledge_cutoff_date: Yup.date()
       .nullable()
       .optional()
@@ -998,6 +1045,19 @@ export default function AgentEditorPage({
             }),
         default_model_configuration_id:
           (values as any).default_model_configuration_id ?? null,
+        // Agent loop budget overrides: all-empty clears to inherit defaults
+        agent_budget:
+          values.agent_budget_max_llm_cycles != null ||
+          values.agent_budget_max_extension_cycles != null ||
+          values.agent_budget_turn_token_budget != null
+            ? {
+                max_llm_cycles: values.agent_budget_max_llm_cycles ?? null,
+                max_extension_cycles:
+                  values.agent_budget_max_extension_cycles ?? null,
+                turn_token_budget:
+                  values.agent_budget_turn_token_budget ?? null,
+              }
+            : null,
         starter_messages: finalAgentStarterMessages,
         tool_ids: toolIds,
         // uploaded_image: null, // Already uploaded separately
@@ -1859,6 +1919,35 @@ export default function AgentEditorPage({
                                     name="knowledge_cutoff_date"
                                     maxDate={new Date()}
                                   />
+                                </InputHorizontal>
+                                <InputHorizontal
+                                  withLabel="agent_budget"
+                                  title={t("editor.advanced.agentBudget.title")}
+                                  suffix={t("editor.suffix.optional")}
+                                  description={t(
+                                    "editor.advanced.agentBudget.description"
+                                  )}
+                                >
+                                  <div className="flex flex-col gap-2">
+                                    <BudgetNumberField
+                                      name="agent_budget_max_llm_cycles"
+                                      label={t(
+                                        "editor.advanced.agentBudget.maxLlmCycles"
+                                      )}
+                                    />
+                                    <BudgetNumberField
+                                      name="agent_budget_max_extension_cycles"
+                                      label={t(
+                                        "editor.advanced.agentBudget.maxExtensionCycles"
+                                      )}
+                                    />
+                                    <BudgetNumberField
+                                      name="agent_budget_turn_token_budget"
+                                      label={t(
+                                        "editor.advanced.agentBudget.turnTokenBudget"
+                                      )}
+                                    />
+                                  </div>
                                 </InputHorizontal>
                                 <InputHorizontal
                                   withLabel="replace_base_system_prompt"

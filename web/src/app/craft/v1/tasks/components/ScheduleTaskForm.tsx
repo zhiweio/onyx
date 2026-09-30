@@ -17,6 +17,9 @@ import * as GeneralLayouts from "@/layouts/general-layouts";
 import { SvgClock } from "@opal/icons";
 import ScheduleEditor from "@/app/craft/v1/tasks/components/ScheduleEditor";
 import PreApprovalPicker from "@/app/craft/v1/tasks/components/PreApprovalPicker";
+import EnvVarPicker from "@/app/craft/v1/tasks/components/EnvVarPicker";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
+import { useCraftProjects } from "@/lib/craft-projects/hooks";
 import {
   compileLocalPayloadToUtcCron,
   localPayloadToUtcPayload,
@@ -24,6 +27,7 @@ import {
 import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
+import { useEnvVars } from "@/hooks/useEnvVars";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import {
   detectSlashTrigger,
@@ -55,6 +59,9 @@ export interface ScheduleTaskFormInitial {
   payload: EditorPayload;
   preApprovedAppIds: number[];
   preApprovedMcpServerIds: number[];
+  /** Task's Craft project; ``null`` = unaffiliated (personal vars only). */
+  projectId: string | null;
+  envVarIds: string[];
 }
 
 interface ScheduleTaskFormProps {
@@ -89,6 +96,26 @@ export default function ScheduleTaskForm({
   const [preApprovedMcpServerIds, setPreApprovedMcpServerIds] = useState<
     number[]
   >(initial.preApprovedMcpServerIds);
+  const [projectId, setProjectId] = useState<string | null>(initial.projectId);
+  const [envVarIds, setEnvVarIds] = useState<string[]>(initial.envVarIds);
+  const { data: projects } = useCraftProjects();
+  const { data: grantableEnvVars } = useEnvVars(projectId);
+
+  const handleProjectChange = useCallback(
+    (next: string) => {
+      const nextProjectId = next === "none" ? null : next;
+      setProjectId(nextProjectId);
+      // Project-scope grants do not survive a project change; keep only
+      // personal selections. The backend prunes on its side as well.
+      const personalIds = new Set(
+        grantableEnvVars
+          .filter((item) => item.scope === "USER")
+          .map((item) => item.id)
+      );
+      setEnvVarIds((prev) => prev.filter((id) => personalIds.has(id)));
+    },
+    [grantableEnvVars]
+  );
   const [saving, setSaving] = useState(false);
   const [nameTouched, setNameTouched] = useState(false);
   const [promptTouched, setPromptTouched] = useState(false);
@@ -217,6 +244,8 @@ export default function ScheduleTaskForm({
             editor_payload: storagePayload,
             pre_approved_app_ids: preApprovedAppIds,
             pre_approved_mcp_server_ids: preApprovedMcpServerIds,
+            project_id: projectId,
+            env_var_ids: envVarIds,
           };
           const updated: ScheduledTaskDetail = await updateScheduledTask(
             initial.taskId,
@@ -237,6 +266,8 @@ export default function ScheduleTaskForm({
             run_immediately: runImmediately,
             pre_approved_app_ids: preApprovedAppIds,
             pre_approved_mcp_server_ids: preApprovedMcpServerIds,
+            project_id: projectId,
+            env_var_ids: envVarIds,
           };
           await createScheduledTask(body);
           await mutate(SWR_KEYS.scheduledTasks);
@@ -255,6 +286,7 @@ export default function ScheduleTaskForm({
     },
     [
       compiled,
+      envVarIds,
       isEdit,
       initial.taskId,
       mode,
@@ -262,6 +294,7 @@ export default function ScheduleTaskForm({
       payload,
       preApprovedAppIds,
       preApprovedMcpServerIds,
+      projectId,
       router,
       trimmedName,
       trimmedPrompt,
@@ -408,6 +441,45 @@ export default function ScheduleTaskForm({
             />
           </InputVertical>
         </GeneralLayouts.Section>
+
+        <Divider paddingParallel={0} paddingPerpendicular={0} />
+
+        <GeneralLayouts.Section>
+          <InputVertical
+            title={t("fields.project.label")}
+            description={t("fields.project.description")}
+          >
+            <div className="max-w-md">
+              <InputSelect
+                value={projectId ?? "none"}
+                onValueChange={handleProjectChange}
+              >
+                <InputSelect.Trigger />
+                <InputSelect.Content>
+                  <InputSelect.Item value="none">
+                    {t("fields.project.none")}
+                  </InputSelect.Item>
+                  {projects.map((project) => (
+                    <InputSelect.Item key={project.id} value={project.id}>
+                      {project.name}
+                    </InputSelect.Item>
+                  ))}
+                </InputSelect.Content>
+              </InputSelect>
+            </div>
+          </InputVertical>
+
+          <InputVertical
+            title={t("fields.envVars.label")}
+            description={t("fields.envVars.description")}
+          >
+            <EnvVarPicker
+              projectId={projectId}
+              selectedEnvVarIds={envVarIds}
+              onChange={setEnvVarIds}
+            />
+          </InputVertical>
+        </GeneralLayouts.Section>
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );
@@ -422,5 +494,7 @@ export function defaultFormInitial(): ScheduleTaskFormInitial {
     payload: { unit: "hours", every: 1 },
     preApprovedAppIds: [],
     preApprovedMcpServerIds: [],
+    projectId: null,
+    envVarIds: [],
   };
 }

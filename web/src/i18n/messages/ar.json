@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "أحدث نموذج توليد صور من OpenAI بأعلى دقة التزام بالمطالبات."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro هو نموذج الصور الرائد من Alibaba على Bailian، وهو مخصص لإنتاج الأصول الاحترافية."
+        },
+        "bailianQwenImage30": {
+          "description": "ينشئ Qwen Image 3.0 صورًا عالية الجودة من وصف نصي على Bailian، ويدعم إنشاء الصور من النص وتحرير الصور."
+        },
+        "bailianOther": {
+          "description": "نموذج qwen-image من مساحة عمل Bailian الخاصة بك."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "تم تعيين {title} كافتراضي"
+      },
+      "dashscope": {
+        "region": {
+          "label": "المنطقة",
+          "idle": "منطقة مساحة عمل Bailian الخاصة بك. يجب أن ينتمي مفتاح API والنموذج ونقطة النهاية إلى نفس المنطقة.",
+          "custom": {
+            "label": "نقطة نهاية مخصصة",
+            "description": "أدخل عنوان URL الكامل لنقطة النهاية بنفسك"
+          },
+          "required": "المنطقة مطلوبة"
+        },
+        "workspaceId": {
+          "label": "معرف مساحة العمل",
+          "idle": "معرّف مساحة عمل Bailian، ويظهر في صفحة تفاصيل مساحة العمل في وحدة تحكم Bailian.",
+          "required": "معرف مساحة العمل مطلوب"
+        },
+        "customBase": {
+          "label": "عنوان URL الأساسي لواجهة API",
+          "idle": "عنوان URL الكامل لنقطة النهاية، مثال: https://dashscope.aliyuncs.com",
+          "required": "عنوان URL الأساسي لواجهة API مطلوب"
+        },
+        "apiKey": {
+          "idle": "أدخل مفتاح Bailian API جديدًا أو اختر موفرًا موجودًا."
+        },
+        "models": {
+          "label": "النموذج",
+          "idle": "اختر نموذج إنشاء الصور.",
+          "required": "النموذج مطلوب",
+          "fetchError": "تعذر جلب نماذج صور Bailian",
+          "recommended": {
+            "description": "القيمة الافتراضية الموصى بها"
+          },
+          "refresh": {
+            "tooltip": "تحديث النماذج من مساحة العمل",
+            "disabledTooltip": "أدخل نقطة نهاية مساحة العمل ومفتاح API أولاً",
+            "ariaLabel": "تحديث النماذج"
+          },
+          "params": "الحجم الافتراضي {size} · النطاق المدعوم {sizeRange} · حتى {maxImages} صورة لكل طلب · حتى {referenceImages} صورة مرجعية"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "سيستخدم Onyx بيانات اعتماد Google Cloud المحيطة بالحاوية (عبر google.auth.default). تأكد من ربط ServiceAccount الخاص بـ Kubernetes بحساب خدمة GCP لديه وصول إلى Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "اتصل بمساحة عمل Alibaba Bailian (Model Studio) وقم بإعداد نماذج Qwen.",
+          "regionField": {
+            "title": "المنطقة",
+            "description": "منطقة مساحة عمل Bailian الخاصة بك. يجب أن ينتمي مفتاح API والنموذج ونقطة النهاية إلى نفس المنطقة.",
+            "custom": {
+              "label": "نقطة نهاية مخصصة",
+              "description": "أدخل عنوان URL الكامل لنقطة النهاية بنفسك"
+            }
+          },
+          "workspaceIdField": {
+            "title": "معرف مساحة العمل",
+            "description": "معرّف مساحة عمل Bailian، ويظهر في صفحة تفاصيل مساحة العمل في وحدة تحكم Bailian."
+          },
+          "customBaseField": {
+            "title": "عنوان URL الأساسي لواجهة API",
+            "description": "نقطة نهاية كاملة متوافقة مع OpenAI، مثال: https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "الصق مفتاح API من وحدة تحكم Bailian لتحميل النماذج التي يمكن لمساحة عملك الوصول إليها."
+          },
+          "validation": {
+            "workspaceIdRequired": "معرف مساحة العمل مطلوب",
+            "customBaseRequired": "عنوان URL الأساسي لواجهة API مطلوب",
+            "regionRequired": "المنطقة مطلوبة"
           }
         }
       },
@@ -8666,7 +8741,14 @@
           "placeholder": "تذكر، أريد منك دائمًا تنسيق ردك كقائمة مرقمة.",
           "title": "التذكيرات"
         },
-        "title": "خيارات متقدمة"
+        "title": "خيارات متقدمة",
+        "agentBudget": {
+          "title": "ميزانية الوكيل",
+          "description": "تجاوز ميزانيات حلقة الأدوات لهذا الوكيل. اتركها فارغة لتوريد القيم الافتراضية.",
+          "maxLlmCycles": "أقصى دورات الأدوات",
+          "maxExtensionCycles": "أقصى دورات التوسعة",
+          "turnTokenBudget": "ميزانية رموز الدور"
+        }
       },
       "avatar": {
         "edit": {
@@ -11809,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "فشل إرسال القرار"
+      },
+      "quarantine": {
+        "title": "تم عزل المحتوى",
+        "body": "المحتوى المُجلوب من {host}{path} طابق أساليب كشف حقن الأوامر وتم حجبه قبل وصوله إلى الوكيل.",
+        "patterns": "الأساليب المطابقة: {patterns}",
+        "approve": "السماح ({scope})",
+        "deny": "إبقاء الحجب",
+        "settled": "تم تسجيل قرار الإفراج.",
+        "scope": {
+          "once": "هذه الجلبات",
+          "session": "هذه الجلسة",
+          "host": "كل الجلسات (30 يوماً)"
+        }
       }
     },
     "apps": {
@@ -12537,6 +12632,7 @@
         "running": "الآن: {phase}",
         "waitingSpecialists": "في انتظار جلسات المتخصصين",
         "waitingLanes": "مسارات متوازية قيد التشغيل",
+        "degraded": "إعادة المحاولة",
         "interrupted": "في انتظار اختيار",
         "succeeded": "انتهى",
         "failed": "فشل",
@@ -12715,6 +12811,9 @@
         "menu": {
           "ariaLabel": "إجراءات المشروع"
         }
+      },
+      "envVars": {
+        "label": "Env vars & secrets"
       }
     },
     "skillsStale": {
@@ -12782,6 +12881,7 @@
         "fallbackTitle": "تعديل المهمة المجدولة",
         "loadFailed": "فشل تحميل المهمة المجدولة.",
         "missingTaskId": "معرّف المهمة مفقود.",
+        "policyStale": "غيّرت بعض التطبيقات المُصرَّح لها مسبقًا سياسات إجراءاتها بعد المنح. تظل التصاريح المسبقة غير مفعّلة حتى تحفظ هذه المهمة مجددًا.",
         "title": "تعديل «{name}»"
       },
       "form": {
@@ -12806,6 +12906,15 @@
           },
           "schedule": {
             "label": "الجدولة"
+          },
+          "project": {
+            "label": "Project",
+            "description": "Tasks in a project can also use that project's variables.",
+            "none": "No project"
+          },
+          "envVars": {
+            "label": "Environment variables & secrets",
+            "description": "Only checked items are substituted into runs. Reference them in the prompt with the env.NAME or secrets.NAME syntax."
           }
         },
         "saveAndRunNowButton": "الحفظ والتشغيل الآن",
@@ -12943,6 +13052,32 @@
           "tue": "الثلاثاء",
           "wed": "الأربعاء"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "Personal",
+        "projectGroupTitle": "Project: {name}",
+        "staleFallbackName": "Unavailable variable ({id})",
+        "loading": {
+          "label": "Loading variables…"
+        },
+        "errors": {
+          "loadFailed": "Failed to load variables.",
+          "partialLoadFailed": "Some variables failed to load; the list may be incomplete."
+        },
+        "empty": {
+          "label": "No variables available yet.",
+          "noProjectLabel": "Select a project to use its variables, or create personal ones in Env vars & secrets."
+        },
+        "status": {
+          "secret": "Secret",
+          "variable": "Variable",
+          "unavailable": "Unavailable — remove this grant"
+        },
+        "summary": {
+          "title": "Granted variables",
+          "partialLoadFailed": "Some variable names failed to load."
+        },
+        "usageHint": "Reference checked items in the prompt with the env.NAME or secrets.NAME placeholder syntax."
       }
     },
     "todoList": {
@@ -14276,6 +14411,98 @@
       "header": {
         "title": "MCP Actions",
         "description": "أضف خوادم MCP شخصية، أو تصفح خوادم المؤسسة المتاحة لك."
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "Env vars & secrets",
+        "description": "Personal and project variables for scheduled tasks. Secrets are write-only: after saving, the value cannot be viewed again.",
+        "createButton": "Add variable",
+        "groups": {
+          "personal": "Personal",
+          "unnamedProject": "Project"
+        },
+        "badges": {
+          "secret": "Secret",
+          "variable": "Variable"
+        },
+        "table": {
+          "columns": {
+            "name": "Name",
+            "value": "Value",
+            "type": "Type",
+            "scope": "Scope",
+            "updated": "Updated"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "Search variables..."
+          },
+          "noMatches": "No variables match your search."
+        },
+        "row": {
+          "editLabel": "Edit {name}",
+          "deleteLabel": "Delete {name}"
+        },
+        "empty": {
+          "title": "No variables yet",
+          "description": "Add a variable or secret, then grant it to a scheduled task."
+        },
+        "error": {
+          "title": "Failed to load",
+          "description": "Could not load env vars. Try again."
+        },
+        "toasts": {
+          "deleted": "Deleted",
+          "deleteFailed": "Delete failed"
+        },
+        "delete": {
+          "title": "Delete {name}?",
+          "description": "Tasks using it will fail on the next run until the reference is removed.",
+          "confirmButton": "Delete"
+        }
+      },
+      "form": {
+        "createTitle": "Add variable",
+        "editTitle": "Edit variable",
+        "fields": {
+          "name": {
+            "label": "Name",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "Value",
+            "placeholder": "Value"
+          },
+          "secretValue": {
+            "label": "Secret value",
+            "placeholder": "Secret value",
+            "overwritePlaceholder": "Enter a new value to overwrite",
+            "keepHint": "The stored value is hidden. Leave this blank to keep it."
+          },
+          "isSecret": {
+            "label": "Type",
+            "description": "Secret — masked in run transcripts and never shown again after saving."
+          },
+          "scope": {
+            "label": "Scope",
+            "user": "Personal"
+          }
+        },
+        "errors": {
+          "title": "Check the form",
+          "nameRequired": "Name is required",
+          "valueRequired": "Value is required"
+        },
+        "toasts": {
+          "created": "Created",
+          "updated": "Updated",
+          "saveFailed": "Save failed"
+        },
+        "cancelButton": "Cancel",
+        "createButton": "Create",
+        "saveChangesButton": "Save changes"
       }
     }
   },

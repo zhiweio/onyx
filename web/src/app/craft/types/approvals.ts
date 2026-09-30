@@ -30,6 +30,27 @@ export interface ApprovalView {
   is_live: boolean;
 }
 
+// Mirrors backend `ContentQuarantineDecision` (client can only submit yes/no).
+export type ContentQuarantineSubmitDecision = "APPROVED" | "DENIED";
+
+// Mirrors backend `ContentReleaseScope`.
+export type ContentReleaseScope = "ONCE" | "SESSION" | "HOST";
+
+export interface ContentQuarantineView {
+  quarantine_id: string;
+  session_id: string;
+  url_host: string;
+  url_path: string;
+  patterns_matched: string[];
+  evidence_excerpt: string;
+  created_at: string;
+}
+
+export interface ContentQuarantineListResponse {
+  items: ContentQuarantineView[];
+}
+
 export interface ApprovalListResponse {
   items: ApprovalView[];
+  content_quarantines: ContentQuarantineView[];
 }

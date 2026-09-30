@@ -76,12 +76,23 @@ export default function EditScheduledTaskPage() {
   }
 
   return (
-    <ScheduleTaskForm
-      initial={toFormInitial(data)}
-      isEdit
-      title={t("title", { name: data.name })}
-      onBack={handleBack}
-    />
+    <div className="flex flex-col">
+      {data.policy_stale && (
+        <Text
+          font="secondary-body"
+          color="text-status-warning-05"
+          className="px-1 pb-2"
+        >
+          {t("policyStale")}
+        </Text>
+      )}
+      <ScheduleTaskForm
+        initial={toFormInitial(data)}
+        isEdit
+        title={t("title", { name: data.name })}
+        onBack={handleBack}
+      />
+    </div>
   );
 }
 
@@ -103,5 +114,7 @@ function toFormInitial(detail: ScheduledTaskDetail): ScheduleTaskFormInitial {
     payload,
     preApprovedAppIds: detail.pre_approved_app_ids,
     preApprovedMcpServerIds: detail.pre_approved_mcp_server_ids,
+    projectId: detail.project_id,
+    envVarIds: detail.env_var_ids,
   };
 }

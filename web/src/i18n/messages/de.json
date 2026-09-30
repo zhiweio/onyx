@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "Das neueste Bilderzeugungsmodell von OpenAI mit der höchsten Prompt-Treue."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro ist Alibabas führendes Bildmodell auf Bailian, gebaut für die professionelle Asset-Erstellung."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 erzeugt hochwertige Bilder aus einem Prompt auf Bailian. Unterstützt Text-zu-Bild und Bildbearbeitung."
+        },
+        "bailianOther": {
+          "description": "Ein qwen-image-Modell aus Ihrem Bailian-Arbeitsbereich."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} als Standard festgelegt"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Region",
+          "idle": "Die Region Ihres Bailian-Business-Space. API-Schlüssel, Modell und Endpunkt müssen zur selben Region gehören.",
+          "custom": {
+            "label": "Benutzerdefinierter Endpunkt",
+            "description": "Geben Sie die vollständige Endpunkt-URL selbst ein"
+          },
+          "required": "Die Region ist erforderlich"
+        },
+        "workspaceId": {
+          "label": "Arbeitsbereich-ID",
+          "idle": "Die ID Ihres Bailian-Business-Space, sichtbar auf der Detailseite im Bailian-Konsolenbereich.",
+          "required": "Die Arbeitsbereich-ID ist erforderlich"
+        },
+        "customBase": {
+          "label": "API-Basis-URL",
+          "idle": "Vollständige Endpunkt-URL, z. B. https://dashscope.aliyuncs.com",
+          "required": "Die API-Basis-URL ist erforderlich"
+        },
+        "apiKey": {
+          "idle": "Geben Sie einen neuen Bailian-API-Schlüssel ein oder wählen Sie einen bestehenden Anbieter."
+        },
+        "models": {
+          "label": "Modell",
+          "idle": "Wählen Sie ein Bildgenerierungsmodell.",
+          "required": "Modell ist erforderlich",
+          "fetchError": "Bailian-Bildmodelle konnten nicht abgerufen werden",
+          "recommended": {
+            "description": "Empfohlene Standardeinstellung"
+          },
+          "refresh": {
+            "tooltip": "Modelle aus dem Arbeitsbereich aktualisieren",
+            "disabledTooltip": "Geben Sie zuerst Endpunkt und API-Schlüssel des Arbeitsbereichs ein",
+            "ariaLabel": "Modelle aktualisieren"
+          },
+          "params": "Standardgröße {size} · unterstützt {sizeRange} · bis zu {maxImages} Bilder pro Anfrage · bis zu {referenceImages} Referenzbilder"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx verwendet die impliziten Google Cloud-Anmeldedaten des Pods (über google.auth.default). Stellen Sie sicher, dass der Kubernetes-ServiceAccount an ein GCP-Dienstkonto mit Zugriff auf Vertex AI gebunden ist."
+          }
+        },
+        "dashscope": {
+          "description": "Verbinden Sie Ihren Alibaba-Bailian-Arbeitsbereich (Model Studio) und richten Sie Qwen-Modelle ein.",
+          "regionField": {
+            "title": "Region",
+            "description": "Die Region Ihres Bailian-Business-Space. API-Schlüssel, Modell und Endpunkt müssen zur selben Region gehören.",
+            "custom": {
+              "label": "Benutzerdefinierter Endpunkt",
+              "description": "Geben Sie die vollständige Endpunkt-URL selbst ein"
+            }
+          },
+          "workspaceIdField": {
+            "title": "Arbeitsbereich-ID",
+            "description": "Die ID Ihres Bailian-Business-Space, sichtbar auf der Detailseite im Bailian-Konsolenbereich."
+          },
+          "customBaseField": {
+            "title": "API-Basis-URL",
+            "description": "Vollständiger OpenAI-kompatibler Endpunkt, z. B. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Fügen Sie Ihren API-Schlüssel aus der Bailian-Konsole ein, um die Modelle Ihres Arbeitsbereichs zu laden."
+          },
+          "validation": {
+            "workspaceIdRequired": "Die Arbeitsbereich-ID ist erforderlich",
+            "customBaseRequired": "Die API-Basis-URL ist erforderlich",
+            "regionRequired": "Die Region ist erforderlich"
           }
         }
       },
@@ -8666,7 +8741,14 @@
           "placeholder": "Denken Sie daran, ich möchte, dass Sie Ihre Antwort immer als nummerierte Liste formatieren.",
           "title": "Erinnerungen"
         },
-        "title": "Erweiterte Optionen"
+        "title": "Erweiterte Optionen",
+        "agentBudget": {
+          "title": "Agent-Budget",
+          "description": "Überschreibt die Tool-Loop-Budgets dieses Agents. Leer lassen, um die deploymentweiten Standards zu erben.",
+          "maxLlmCycles": "Max. Tool-Zyklen",
+          "maxExtensionCycles": "Max. Erweiterungszyklen",
+          "turnTokenBudget": "Turn-Token-Budget"
+        }
       },
       "avatar": {
         "edit": {
@@ -11809,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Entscheidung konnte nicht übermittelt werden"
+      },
+      "quarantine": {
+        "title": "Inhalt wurde isoliert",
+        "body": "Der von {host}{path} abgerufene Inhalt traf auf Prompt-Injection-Heuristiken und wurde blockiert, bevor er den Agenten erreichte.",
+        "patterns": "Getroffene Heuristiken: {patterns}",
+        "approve": "Zulassen ({scope})",
+        "deny": "Blockiert lassen",
+        "settled": "Freigabeentscheidung aufgezeichnet.",
+        "scope": {
+          "once": "diesen Abruf",
+          "session": "diese Sitzung",
+          "host": "alle Sitzungen (30 Tage)"
+        }
       }
     },
     "apps": {
@@ -12537,6 +12632,7 @@
         "running": "Jetzt: {phase}",
         "waitingSpecialists": "Warten auf Spezialsitzungen",
         "waitingLanes": "Parallele Bahnen aktiv",
+        "degraded": "Wird wiederholt",
         "interrupted": "Warten auf eine Wahl",
         "succeeded": "Fertig",
         "failed": "Fehlgeschlagen",
@@ -12715,6 +12811,9 @@
         "menu": {
           "ariaLabel": "Projektaktionen"
         }
+      },
+      "envVars": {
+        "label": "Env vars & secrets"
       }
     },
     "skillsStale": {
@@ -12782,6 +12881,7 @@
         "fallbackTitle": "Geplante Aufgabe bearbeiten",
         "loadFailed": "Geplante Aufgabe konnte nicht geladen werden.",
         "missingTaskId": "Aufgaben-ID fehlt.",
+        "policyStale": "Bei einigen vorab genehmigten Apps wurden die Aktionsrichtlinien nach der Genehmigung geändert. Die Genehmigungen sind inaktiv, bis Sie diese Aufgabe neu speichern.",
         "title": "„{name}“ bearbeiten"
       },
       "form": {
@@ -12806,6 +12906,15 @@
           },
           "schedule": {
             "label": "Zeitplan"
+          },
+          "project": {
+            "label": "Project",
+            "description": "Tasks in a project can also use that project's variables.",
+            "none": "No project"
+          },
+          "envVars": {
+            "label": "Environment variables & secrets",
+            "description": "Only checked items are substituted into runs. Reference them in the prompt with the env.NAME or secrets.NAME syntax."
           }
         },
         "saveAndRunNowButton": "Speichern und jetzt ausführen",
@@ -12943,6 +13052,32 @@
           "tue": "Di",
           "wed": "Mi"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "Personal",
+        "projectGroupTitle": "Project: {name}",
+        "staleFallbackName": "Unavailable variable ({id})",
+        "loading": {
+          "label": "Loading variables…"
+        },
+        "errors": {
+          "loadFailed": "Failed to load variables.",
+          "partialLoadFailed": "Some variables failed to load; the list may be incomplete."
+        },
+        "empty": {
+          "label": "No variables available yet.",
+          "noProjectLabel": "Select a project to use its variables, or create personal ones in Env vars & secrets."
+        },
+        "status": {
+          "secret": "Secret",
+          "variable": "Variable",
+          "unavailable": "Unavailable — remove this grant"
+        },
+        "summary": {
+          "title": "Granted variables",
+          "partialLoadFailed": "Some variable names failed to load."
+        },
+        "usageHint": "Reference checked items in the prompt with the env.NAME or secrets.NAME placeholder syntax."
       }
     },
     "todoList": {
@@ -14276,6 +14411,98 @@
       "header": {
         "title": "MCP Actions",
         "description": "Fügen Sie persönliche MCP-Server hinzu oder durchsuchen Sie verfügbare Organisationsserver."
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "Env vars & secrets",
+        "description": "Personal and project variables for scheduled tasks. Secrets are write-only: after saving, the value cannot be viewed again.",
+        "createButton": "Add variable",
+        "groups": {
+          "personal": "Personal",
+          "unnamedProject": "Project"
+        },
+        "badges": {
+          "secret": "Secret",
+          "variable": "Variable"
+        },
+        "table": {
+          "columns": {
+            "name": "Name",
+            "value": "Value",
+            "type": "Type",
+            "scope": "Scope",
+            "updated": "Updated"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "Search variables..."
+          },
+          "noMatches": "No variables match your search."
+        },
+        "row": {
+          "editLabel": "Edit {name}",
+          "deleteLabel": "Delete {name}"
+        },
+        "empty": {
+          "title": "No variables yet",
+          "description": "Add a variable or secret, then grant it to a scheduled task."
+        },
+        "error": {
+          "title": "Failed to load",
+          "description": "Could not load env vars. Try again."
+        },
+        "toasts": {
+          "deleted": "Deleted",
+          "deleteFailed": "Delete failed"
+        },
+        "delete": {
+          "title": "Delete {name}?",
+          "description": "Tasks using it will fail on the next run until the reference is removed.",
+          "confirmButton": "Delete"
+        }
+      },
+      "form": {
+        "createTitle": "Add variable",
+        "editTitle": "Edit variable",
+        "fields": {
+          "name": {
+            "label": "Name",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "Value",
+            "placeholder": "Value"
+          },
+          "secretValue": {
+            "label": "Secret value",
+            "placeholder": "Secret value",
+            "overwritePlaceholder": "Enter a new value to overwrite",
+            "keepHint": "The stored value is hidden. Leave this blank to keep it."
+          },
+          "isSecret": {
+            "label": "Type",
+            "description": "Secret — masked in run transcripts and never shown again after saving."
+          },
+          "scope": {
+            "label": "Scope",
+            "user": "Personal"
+          }
+        },
+        "errors": {
+          "title": "Check the form",
+          "nameRequired": "Name is required",
+          "valueRequired": "Value is required"
+        },
+        "toasts": {
+          "created": "Created",
+          "updated": "Updated",
+          "saveFailed": "Save failed"
+        },
+        "cancelButton": "Cancel",
+        "createButton": "Create",
+        "saveChangesButton": "Save changes"
       }
     }
   },

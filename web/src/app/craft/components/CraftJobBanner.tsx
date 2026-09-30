@@ -28,7 +28,6 @@ import { isKnownSessionRole } from "@/lib/craft-projects/display";
 const IN_FLIGHT = new Set([
   "pending",
   "running",
-  "waiting_specialists",
   "waiting_lanes",
   "interrupted",
 ]);
@@ -83,10 +82,7 @@ function statusLabel(
   currentLabel: string,
   t: ReturnType<typeof useTranslations>
 ): string {
-  if (
-    data.status === "waiting_specialists" ||
-    data.status === "waiting_lanes"
-  ) {
+  if (data.status === "waiting_lanes") {
     return t("status.waitingLanes");
   }
   if (data.status === "interrupted") return t("status.interrupted");
@@ -136,6 +132,10 @@ export function CraftJobBannerView({
   const currentText = current ? timelineLabel(current, t) : "";
   const failed = data.status === "failed";
   const label = statusLabel(data, currentText, t);
+  // Degraded: a phase has burned two or more gate retries — one retry away
+  // from the limit. Surfaced early so a human can look before the job fails.
+  const degraded =
+    !failed && data.phases.some((phase) => (phase.gate_retries ?? 0) >= 2);
   const errorText = jobErrorDisplay(data.error_detail, t("errorFallback"));
   const specialists = data.specialists ?? [];
   const [open, setOpen] = useState(false);
@@ -171,6 +171,9 @@ export function CraftJobBannerView({
               color={jobStatusTagColor(data.status)}
               size="sm"
             />
+            {degraded ? (
+              <Tag title={t("status.degraded")} color="amber" size="sm" />
+            ) : null}
             <SvgChevronDown className="h-4 w-4 shrink-0 stroke-text-03" />
           </button>
         </Popover.Trigger>

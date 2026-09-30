@@ -48,6 +48,7 @@ import {
   SvgFolder,
   SvgFolderOpen,
   SvgFileText,
+  SvgKey,
 } from "@opal/icons";
 import TypewriterText from "@/app/craft/components/TypewriterText";
 import OpencodeDebugLogsButton from "@/app/craft/components/OpencodeDebugLogs";
@@ -61,6 +62,7 @@ import {
   CRAFT_APPS_PATH,
   CRAFT_MCP_ACTIONS_PATH,
   CRAFT_TASKS_PATH,
+  CRAFT_ENV_VARS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
 import { useCraftProjects } from "@/lib/craft-projects/hooks";
@@ -388,14 +390,17 @@ function BuildSessionButton({
     ]
   );
 
-  const { picking, menuItems, modal: projectModal } =
-    useCraftSessionProjectControls({
-      sessionId: historyItem.id,
-      projectId: historyItem.projectId,
-      sessionTitle: historyItem.title,
-      projects,
-      onProjectsChanged,
-    });
+  const {
+    picking,
+    menuItems,
+    modal: projectModal,
+  } = useCraftSessionProjectControls({
+    sessionId: historyItem.id,
+    projectId: historyItem.projectId,
+    sessionTitle: historyItem.title,
+    projects,
+    onProjectsChanged,
+  });
 
   const lane = sessionListLabel(historyItem.title);
   const listTitle = sidebarListTitle(historyItem.title);
@@ -612,6 +617,7 @@ const MemoizedBuildSidebarInner = memo(() => {
           !pathname.startsWith(CRAFT_LIBRARY_PATH) &&
           !pathname.startsWith(CRAFT_APPS_PATH) &&
           !pathname.startsWith(CRAFT_MCP_ACTIONS_PATH) &&
+          !pathname.startsWith(CRAFT_ENV_VARS_PATH) &&
           session?.id === historyItem.id
         }
         onLoad={() => handleLoadSession(historyItem.id)}
@@ -696,6 +702,13 @@ const MemoizedBuildSidebarInner = memo(() => {
             selected={pathname.startsWith(CRAFT_APPS_PATH)}
           >
             {t("apps.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgKey}
+            onClick={() => navigate(CRAFT_ENV_VARS_PATH)}
+            selected={pathname.startsWith(CRAFT_ENV_VARS_PATH)}
+          >
+            {t("envVars.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgBlocks}

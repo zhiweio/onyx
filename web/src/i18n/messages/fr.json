@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "Dernier modèle de génération d'images d'OpenAI, avec la meilleure fidélité aux prompts."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro est le modèle d'image phare d'Alibaba sur Bailian, conçu pour la production d'assets professionnelle."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0 génère des images de haute qualité à partir d'un prompt sur Bailian. Prend en charge la génération texte-image et l'édition d'images."
+        },
+        "bailianOther": {
+          "description": "Un modèle qwen-image de votre espace Bailian."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title} défini par défaut"
+      },
+      "dashscope": {
+        "region": {
+          "label": "Région",
+          "idle": "La région de votre espace Bailian. La clé API, le modèle et le point de terminaison doivent appartenir à la même région.",
+          "custom": {
+            "label": "Point de terminaison personnalisé",
+            "description": "Saisissez vous-même l'URL complète du point de terminaison"
+          },
+          "required": "La région est requise"
+        },
+        "workspaceId": {
+          "label": "ID d'espace de travail",
+          "idle": "L'ID de votre espace Bailian, visible sur la page de détails de l'espace dans la console Bailian.",
+          "required": "L'ID d'espace de travail est requis"
+        },
+        "customBase": {
+          "label": "URL de base de l'API",
+          "idle": "URL complète du point de terminaison, p. ex. https://dashscope.aliyuncs.com",
+          "required": "L'URL de base de l'API est requise"
+        },
+        "apiKey": {
+          "idle": "Saisissez une nouvelle clé API Bailian ou sélectionnez un fournisseur existant."
+        },
+        "models": {
+          "label": "Modèle",
+          "idle": "Sélectionnez un modèle de génération d'images.",
+          "required": "Le modèle est requis",
+          "fetchError": "Échec de la récupération des modèles d'images Bailian",
+          "recommended": {
+            "description": "Valeur par défaut recommandée"
+          },
+          "refresh": {
+            "tooltip": "Actualiser les modèles depuis votre espace",
+            "disabledTooltip": "Saisissez d'abord le point de terminaison et la clé API de l'espace",
+            "ariaLabel": "Actualiser les modèles"
+          },
+          "params": "Taille par défaut {size} · plage prise en charge {sizeRange} · jusqu'à {maxImages} images par requête · jusqu'à {referenceImages} images de référence"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx utilisera les identifiants Google Cloud ambiants du pod (via google.auth.default). Assurez-vous que le ServiceAccount Kubernetes est lié à un compte de service GCP qui a accès à Vertex AI."
+          }
+        },
+        "dashscope": {
+          "description": "Connectez-vous à votre espace Alibaba Bailian (Model Studio) et configurez les modèles Qwen.",
+          "regionField": {
+            "title": "Région",
+            "description": "La région de votre espace Bailian. La clé API, le modèle et le point de terminaison doivent appartenir à la même région.",
+            "custom": {
+              "label": "Point de terminaison personnalisé",
+              "description": "Saisissez vous-même l'URL complète du point de terminaison"
+            }
+          },
+          "workspaceIdField": {
+            "title": "ID d'espace de travail",
+            "description": "L'ID de votre espace Bailian, visible sur la page de détails de l'espace dans la console Bailian."
+          },
+          "customBaseField": {
+            "title": "URL de base de l'API",
+            "description": "Point de terminaison complet compatible OpenAI, p. ex. https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Collez votre clé API depuis la console Bailian pour charger les modèles accessibles à votre espace."
+          },
+          "validation": {
+            "workspaceIdRequired": "L'ID d'espace de travail est requis",
+            "customBaseRequired": "L'URL de base de l'API est requise",
+            "regionRequired": "La région est requise"
           }
         }
       },
@@ -8666,7 +8741,14 @@
           "placeholder": "N'oubliez pas, je veux que vous formatiez toujours votre réponse sous forme de liste numérotée.",
           "title": "Rappels"
         },
-        "title": "Options avancées"
+        "title": "Options avancées",
+        "agentBudget": {
+          "title": "Budget de l'agent",
+          "description": "Remplace les budgets de boucle d'outils de cet agent. Laissez vide pour hériter des valeurs par défaut.",
+          "maxLlmCycles": "Cycles d'outils max.",
+          "maxExtensionCycles": "Cycles d'extension max.",
+          "turnTokenBudget": "Budget de tokens par tour"
+        }
       },
       "avatar": {
         "edit": {
@@ -11809,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "Échec de l'envoi de la décision"
+      },
+      "quarantine": {
+        "title": "Contenu mis en quarantaine",
+        "body": "Le contenu récupéré depuis {host}{path} a déclenché les heuristiques d'injection de prompt et a été bloqué avant d'atteindre l'agent.",
+        "patterns": "Heuristiques déclenchées : {patterns}",
+        "approve": "Autoriser ({scope})",
+        "deny": "Maintenir le blocage",
+        "settled": "Décision de diffusion enregistrée.",
+        "scope": {
+          "once": "cette récupération",
+          "session": "cette session",
+          "host": "toutes les sessions (30 jours)"
+        }
       }
     },
     "apps": {
@@ -12537,6 +12632,7 @@
         "running": "En cours : {phase}",
         "waitingSpecialists": "En attente des sessions spécialisées",
         "waitingLanes": "Voies parallèles en cours",
+        "degraded": "Nouvelle tentative",
         "interrupted": "En attente d'un choix",
         "succeeded": "Terminé",
         "failed": "Échec",
@@ -12715,6 +12811,9 @@
         "menu": {
           "ariaLabel": "Actions du projet"
         }
+      },
+      "envVars": {
+        "label": "Env vars & secrets"
       }
     },
     "skillsStale": {
@@ -12782,6 +12881,7 @@
         "fallbackTitle": "Modifier la tâche planifiée",
         "loadFailed": "Échec du chargement de la tâche planifiée.",
         "missingTaskId": "Id de tâche manquant.",
+        "policyStale": "Certaines applications préautorisées ont modifié leurs stratégies d’action après l’octroi. Leurs préautorisations sont inactives jusqu’à ce que vous réenregistriez cette tâche.",
         "title": "Modifier « {name} »"
       },
       "form": {
@@ -12806,6 +12906,15 @@
           },
           "schedule": {
             "label": "Planification"
+          },
+          "project": {
+            "label": "Project",
+            "description": "Tasks in a project can also use that project's variables.",
+            "none": "No project"
+          },
+          "envVars": {
+            "label": "Environment variables & secrets",
+            "description": "Only checked items are substituted into runs. Reference them in the prompt with the env.NAME or secrets.NAME syntax."
           }
         },
         "saveAndRunNowButton": "Enregistrer et exécuter maintenant",
@@ -12943,6 +13052,32 @@
           "tue": "Mar",
           "wed": "Mer"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "Personal",
+        "projectGroupTitle": "Project: {name}",
+        "staleFallbackName": "Unavailable variable ({id})",
+        "loading": {
+          "label": "Loading variables…"
+        },
+        "errors": {
+          "loadFailed": "Failed to load variables.",
+          "partialLoadFailed": "Some variables failed to load; the list may be incomplete."
+        },
+        "empty": {
+          "label": "No variables available yet.",
+          "noProjectLabel": "Select a project to use its variables, or create personal ones in Env vars & secrets."
+        },
+        "status": {
+          "secret": "Secret",
+          "variable": "Variable",
+          "unavailable": "Unavailable — remove this grant"
+        },
+        "summary": {
+          "title": "Granted variables",
+          "partialLoadFailed": "Some variable names failed to load."
+        },
+        "usageHint": "Reference checked items in the prompt with the env.NAME or secrets.NAME placeholder syntax."
       }
     },
     "todoList": {
@@ -14276,6 +14411,98 @@
       "header": {
         "title": "MCP Actions",
         "description": "Ajoutez des serveurs MCP personnels, ou parcourez les serveurs d'organisation auxquels vous avez accès."
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "Env vars & secrets",
+        "description": "Personal and project variables for scheduled tasks. Secrets are write-only: after saving, the value cannot be viewed again.",
+        "createButton": "Add variable",
+        "groups": {
+          "personal": "Personal",
+          "unnamedProject": "Project"
+        },
+        "badges": {
+          "secret": "Secret",
+          "variable": "Variable"
+        },
+        "table": {
+          "columns": {
+            "name": "Name",
+            "value": "Value",
+            "type": "Type",
+            "scope": "Scope",
+            "updated": "Updated"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "Search variables..."
+          },
+          "noMatches": "No variables match your search."
+        },
+        "row": {
+          "editLabel": "Edit {name}",
+          "deleteLabel": "Delete {name}"
+        },
+        "empty": {
+          "title": "No variables yet",
+          "description": "Add a variable or secret, then grant it to a scheduled task."
+        },
+        "error": {
+          "title": "Failed to load",
+          "description": "Could not load env vars. Try again."
+        },
+        "toasts": {
+          "deleted": "Deleted",
+          "deleteFailed": "Delete failed"
+        },
+        "delete": {
+          "title": "Delete {name}?",
+          "description": "Tasks using it will fail on the next run until the reference is removed.",
+          "confirmButton": "Delete"
+        }
+      },
+      "form": {
+        "createTitle": "Add variable",
+        "editTitle": "Edit variable",
+        "fields": {
+          "name": {
+            "label": "Name",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "Value",
+            "placeholder": "Value"
+          },
+          "secretValue": {
+            "label": "Secret value",
+            "placeholder": "Secret value",
+            "overwritePlaceholder": "Enter a new value to overwrite",
+            "keepHint": "The stored value is hidden. Leave this blank to keep it."
+          },
+          "isSecret": {
+            "label": "Type",
+            "description": "Secret — masked in run transcripts and never shown again after saving."
+          },
+          "scope": {
+            "label": "Scope",
+            "user": "Personal"
+          }
+        },
+        "errors": {
+          "title": "Check the form",
+          "nameRequired": "Name is required",
+          "valueRequired": "Value is required"
+        },
+        "toasts": {
+          "created": "Created",
+          "updated": "Updated",
+          "saveFailed": "Save failed"
+        },
+        "cancelButton": "Cancel",
+        "createButton": "Create",
+        "saveChangesButton": "Save changes"
       }
     }
   },

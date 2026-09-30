@@ -297,4 +297,11 @@ export const SWR_KEYS = {
     `/api/build/sessions/${sessionId}/scheduled-run-context`,
   craftJob: (sessionId: string) =>
     `/api/build/jobs?session_id=${encodeURIComponent(sessionId)}`,
+
+  // ── Env Vars / Secrets (Craft) ────────────────────────────────────────────
+  // Task-form picker mode (user scope + one project); management-page mode
+  // (user scope + every readable project).
+  envVarsForProject: (projectId: string) =>
+    `/api/build/env-vars?project_id=${encodeURIComponent(projectId)}`,
+  envVarsAllProjects: "/api/build/env-vars?all_projects=true",
 } as const;

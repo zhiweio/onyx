@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "프롬프트 재현도가 가장 높은 OpenAI의 최신 이미지 생성 모델입니다."
+        },
+        "bailianQwenImage30Pro": {
+          "description": "Qwen Image 3.0 Pro는 전문 자산 제작을 위한 Bailian의 플래그십 이미지 모델입니다."
+        },
+        "bailianQwenImage30": {
+          "description": "Qwen Image 3.0은 프롬프트에서 고품질 이미지를 생성합니다. 텍스트-이미지 생성 및 이미지 편집을 지원합니다."
+        },
+        "bailianOther": {
+          "description": "Bailian 워크스페이스의 qwen-image 모델입니다."
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "{title}을(를) 기본값으로 설정했습니다"
+      },
+      "dashscope": {
+        "region": {
+          "label": "리전",
+          "idle": "Bailian 비즈니스 스페이스의 리전입니다. API 키, 모델, 엔드포인트는 같은 리전이어야 합니다.",
+          "custom": {
+            "label": "사용자 지정 엔드포인트",
+            "description": "전체 엔드포인트 URL을 직접 입력합니다"
+          },
+          "required": "리전은 필수입니다"
+        },
+        "workspaceId": {
+          "label": "워크스페이스 ID",
+          "idle": "Bailian 콘솔의 워크스페이스 상세 페이지에 표시되는 비즈니스 스페이스 ID입니다.",
+          "required": "워크스페이스 ID는 필수입니다"
+        },
+        "customBase": {
+          "label": "API 베이스 URL",
+          "idle": "전체 엔드포인트 URL. 예: https://dashscope.aliyuncs.com",
+          "required": "API 베이스 URL은 필수입니다"
+        },
+        "apiKey": {
+          "idle": "새 Bailian API 키를 입력하거나 기존 공급자를 선택하세요."
+        },
+        "models": {
+          "label": "모델",
+          "idle": "이미지 생성 모델을 선택하세요.",
+          "required": "모델은 필수입니다",
+          "fetchError": "Bailian 이미지 모델을 가져오지 못했습니다",
+          "recommended": {
+            "description": "권장 기본값"
+          },
+          "refresh": {
+            "tooltip": "워크스페이스에서 모델 새로고침",
+            "disabledTooltip": "먼저 워크스페이스 엔드포인트와 API 키를 입력하세요",
+            "ariaLabel": "모델 새로고침"
+          },
+          "params": "기본 크기 {size} · 지원 범위 {sizeRange} · 요청당 최대 {maxImages}장 · 참조 이미지 최대 {referenceImages}장"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx는 파드의 기본 Google Cloud 자격 증명을 google.auth.default로 사용합니다. Kubernetes ServiceAccount가 Vertex AI에 액세스할 수 있는 GCP 서비스 계정에 바인딩되어 있는지 확인하세요."
+          }
+        },
+        "dashscope": {
+          "description": "Alibaba Bailian(Model Studio) 워크스페이스에 연결하여 Qwen 모델을 설정합니다.",
+          "regionField": {
+            "title": "리전",
+            "description": "Bailian 비즈니스 스페이스의 리전입니다. API 키, 모델, 엔드포인트는 같은 리전이어야 합니다.",
+            "custom": {
+              "label": "사용자 지정 엔드포인트",
+              "description": "전체 엔드포인트 URL을 직접 입력합니다"
+            }
+          },
+          "workspaceIdField": {
+            "title": "워크스페이스 ID",
+            "description": "Bailian 콘솔의 워크스페이스 상세 페이지에 표시되는 비즈니스 스페이스 ID입니다."
+          },
+          "customBaseField": {
+            "title": "API 베이스 URL",
+            "description": "OpenAI 호환 전체 엔드포인트. 예: https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "Bailian 콘솔의 API 키를 붙여넣으면 워크스페이스에서 사용 가능한 모델을 불러옵니다."
+          },
+          "validation": {
+            "workspaceIdRequired": "워크스페이스 ID는 필수입니다",
+            "customBaseRequired": "API 베이스 URL은 필수입니다",
+            "regionRequired": "리전은 필수입니다"
           }
         }
       },
@@ -8666,7 +8741,14 @@
           "placeholder": "기억하세요, 응답은 항상 번호가 매겨진 목록 형식으로 작성해 주세요.",
           "title": "리마인더"
         },
-        "title": "고급 옵션"
+        "title": "고급 옵션",
+        "agentBudget": {
+          "title": "에이전트 예산",
+          "description": "이 에이전트의 도구 루프 예산을 재정의합니다. 비워 두면 배포 기본값을 상속합니다.",
+          "maxLlmCycles": "최대 도구 사이클",
+          "maxExtensionCycles": "최대 확장 사이클",
+          "turnTokenBudget": "턴 토큰 예산"
+        }
       },
       "avatar": {
         "edit": {
@@ -11809,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "결정을 제출하지 못했습니다"
+      },
+      "quarantine": {
+        "title": "콘텐츠가 격리되었습니다",
+        "body": "{host}{path}에서 가져온 콘텐츠가 프롬프트 인젝션 휴리스틱에 일치하여 에이전트에 전달되기 전에 차단했습니다.",
+        "patterns": "일치한 규칙: {patterns}",
+        "approve": "허용 ({scope})",
+        "deny": "차단 유지",
+        "settled": "릴리스 결정이 기록되었습니다.",
+        "scope": {
+          "once": "이번 가져오기",
+          "session": "이 세션",
+          "host": "모든 세션 (30일)"
+        }
       }
     },
     "apps": {
@@ -12537,6 +12632,7 @@
         "running": "현재: {phase}",
         "waitingSpecialists": "전문 세션 대기 중",
         "waitingLanes": "병렬 레인 진행 중",
+        "degraded": "재시도 중",
         "interrupted": "선택 대기",
         "succeeded": "완료",
         "failed": "실패",
@@ -12715,6 +12811,9 @@
         "menu": {
           "ariaLabel": "프로젝트 작업"
         }
+      },
+      "envVars": {
+        "label": "Env vars & secrets"
       }
     },
     "skillsStale": {
@@ -12782,6 +12881,7 @@
         "fallbackTitle": "예약된 작업 편집",
         "loadFailed": "예약된 작업을 불러오지 못했습니다.",
         "missingTaskId": "작업 ID가 없습니다.",
+        "policyStale": "사전 승인된 일부 앱은 승인 후 작업 정책이 변경되었습니다. 이 작업을 다시 저장하기 전까지 해당 사전 승인은 비활성화됩니다.",
         "title": "\"{name}\" 편집"
       },
       "form": {
@@ -12806,6 +12906,15 @@
           },
           "schedule": {
             "label": "예약"
+          },
+          "project": {
+            "label": "Project",
+            "description": "Tasks in a project can also use that project's variables.",
+            "none": "No project"
+          },
+          "envVars": {
+            "label": "Environment variables & secrets",
+            "description": "Only checked items are substituted into runs. Reference them in the prompt with the env.NAME or secrets.NAME syntax."
           }
         },
         "saveAndRunNowButton": "저장하고 지금 실행",
@@ -12943,6 +13052,32 @@
           "tue": "화",
           "wed": "수"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "Personal",
+        "projectGroupTitle": "Project: {name}",
+        "staleFallbackName": "Unavailable variable ({id})",
+        "loading": {
+          "label": "Loading variables…"
+        },
+        "errors": {
+          "loadFailed": "Failed to load variables.",
+          "partialLoadFailed": "Some variables failed to load; the list may be incomplete."
+        },
+        "empty": {
+          "label": "No variables available yet.",
+          "noProjectLabel": "Select a project to use its variables, or create personal ones in Env vars & secrets."
+        },
+        "status": {
+          "secret": "Secret",
+          "variable": "Variable",
+          "unavailable": "Unavailable — remove this grant"
+        },
+        "summary": {
+          "title": "Granted variables",
+          "partialLoadFailed": "Some variable names failed to load."
+        },
+        "usageHint": "Reference checked items in the prompt with the env.NAME or secrets.NAME placeholder syntax."
       }
     },
     "todoList": {
@@ -14276,6 +14411,98 @@
       "header": {
         "title": "MCP Actions",
         "description": "개인 MCP 서버를 추가하거나, 사용할 수 있는 조직 MCP를 살펴보세요."
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "Env vars & secrets",
+        "description": "Personal and project variables for scheduled tasks. Secrets are write-only: after saving, the value cannot be viewed again.",
+        "createButton": "Add variable",
+        "groups": {
+          "personal": "Personal",
+          "unnamedProject": "Project"
+        },
+        "badges": {
+          "secret": "Secret",
+          "variable": "Variable"
+        },
+        "table": {
+          "columns": {
+            "name": "Name",
+            "value": "Value",
+            "type": "Type",
+            "scope": "Scope",
+            "updated": "Updated"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "Search variables..."
+          },
+          "noMatches": "No variables match your search."
+        },
+        "row": {
+          "editLabel": "Edit {name}",
+          "deleteLabel": "Delete {name}"
+        },
+        "empty": {
+          "title": "No variables yet",
+          "description": "Add a variable or secret, then grant it to a scheduled task."
+        },
+        "error": {
+          "title": "Failed to load",
+          "description": "Could not load env vars. Try again."
+        },
+        "toasts": {
+          "deleted": "Deleted",
+          "deleteFailed": "Delete failed"
+        },
+        "delete": {
+          "title": "Delete {name}?",
+          "description": "Tasks using it will fail on the next run until the reference is removed.",
+          "confirmButton": "Delete"
+        }
+      },
+      "form": {
+        "createTitle": "Add variable",
+        "editTitle": "Edit variable",
+        "fields": {
+          "name": {
+            "label": "Name",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "Value",
+            "placeholder": "Value"
+          },
+          "secretValue": {
+            "label": "Secret value",
+            "placeholder": "Secret value",
+            "overwritePlaceholder": "Enter a new value to overwrite",
+            "keepHint": "The stored value is hidden. Leave this blank to keep it."
+          },
+          "isSecret": {
+            "label": "Type",
+            "description": "Secret — masked in run transcripts and never shown again after saving."
+          },
+          "scope": {
+            "label": "Scope",
+            "user": "Personal"
+          }
+        },
+        "errors": {
+          "title": "Check the form",
+          "nameRequired": "Name is required",
+          "valueRequired": "Value is required"
+        },
+        "toasts": {
+          "created": "Created",
+          "updated": "Updated",
+          "saveFailed": "Save failed"
+        },
+        "cancelButton": "Cancel",
+        "createButton": "Create",
+        "saveChangesButton": "Save changes"
       }
     }
   },

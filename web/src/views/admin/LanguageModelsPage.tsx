@@ -376,6 +376,7 @@ export default function LanguageModelsPage() {
           LLMProviderName.BIGMODEL,
           LLMProviderName.MOONSHOT,
           LLMProviderName.MINIMAX,
+          LLMProviderName.DASHSCOPE,
           LLMProviderName.VERTEX_AI,
           LLMProviderName.BEDROCK,
           LLMProviderName.AZURE,

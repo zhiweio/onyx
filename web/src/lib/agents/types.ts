@@ -93,6 +93,14 @@ export interface Agent extends MinimalAgent {
   replace_base_system_prompt: boolean;
   task_prompt: string | null;
   datetime_aware: boolean;
+  // Per-assistant agent loop budget overrides; null = inherit global defaults
+  agent_budget: AgentBudget | null;
+}
+
+export interface AgentBudget {
+  max_llm_cycles?: number | null;
+  max_extension_cycles?: number | null;
+  turn_token_budget?: number | null;
 }
 
 export interface FullAgent extends Agent {
@@ -134,6 +142,7 @@ export interface AgentUpsertParameters {
   user_file_ids: string[];
   hierarchy_node_ids?: number[];
   document_ids?: string[];
+  agent_budget: AgentBudget | null;
 }
 
 export interface AgentUpsertRequest {
@@ -160,6 +169,7 @@ export interface AgentUpsertRequest {
   replace_base_system_prompt: boolean;
   hierarchy_node_ids: number[];
   document_ids: string[];
+  agent_budget: AgentBudget | null;
 }
 
 export interface PaginatedAgentsResponse {

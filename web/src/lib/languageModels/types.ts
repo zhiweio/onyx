@@ -66,6 +66,7 @@ export enum LLMProviderName {
   BIGMODEL = "bigmodel",
   MOONSHOT = "moonshot",
   MINIMAX = "minimax",
+  DASHSCOPE = "dashscope",
   OLLAMA_CHAT = "ollama_chat",
   LM_STUDIO = "lm_studio",
   AZURE = "azure",
@@ -281,6 +282,21 @@ export interface PortkeyFetchParams {
 }
 
 export interface PortkeyModelResponse {
+  name: string;
+  display_name: string;
+  max_input_tokens: number | null;
+  supports_image_input: boolean;
+  supports_reasoning: boolean;
+}
+
+export interface DashscopeFetchParams {
+  api_base?: string;
+  api_key?: string;
+  provider_id?: number;
+  signal?: AbortSignal;
+}
+
+export interface DashscopeModelResponse {
   name: string;
   display_name: string;
   max_input_tokens: number | null;

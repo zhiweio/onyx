@@ -4654,6 +4654,15 @@
         },
         "openaiGptImage2": {
           "description": "OpenAI 最新的图像生成模型，提示词还原度最高。"
+        },
+        "bailianQwenImage30Pro": {
+          "description": "通义千问图像 3.0 Pro 是百炼上的旗舰图像模型，面向专业资产创作。"
+        },
+        "bailianQwenImage30": {
+          "description": "通义千问图像 3.0 根据提示词生成高质量图片，支持文生图与图片编辑。"
+        },
+        "bailianOther": {
+          "description": "来自你百炼业务空间的 qwen-image 模型。"
         }
       },
       "setDefaultError": {
@@ -4661,6 +4670,45 @@
       },
       "setDefaultSuccess": {
         "message": "已将 {title} 设为默认"
+      },
+      "dashscope": {
+        "region": {
+          "label": "地域",
+          "idle": "百炼业务空间所在地域。API Key、模型与端点必须属于同一地域。",
+          "custom": {
+            "label": "自定义端点",
+            "description": "自行输入完整端点 URL"
+          },
+          "required": "地域为必填项"
+        },
+        "workspaceId": {
+          "label": "业务空间 ID",
+          "idle": "百炼控制台“业务空间详情”页面中显示的业务空间 ID。",
+          "required": "业务空间 ID 为必填项"
+        },
+        "customBase": {
+          "label": "API Base",
+          "idle": "完整端点 URL，例如 https://dashscope.aliyuncs.com",
+          "required": "API Base 为必填项"
+        },
+        "apiKey": {
+          "idle": "输入新的百炼 API Key，或选择已有供应商。"
+        },
+        "models": {
+          "label": "模型",
+          "idle": "选择图像生成模型。",
+          "required": "模型为必填项",
+          "fetchError": "拉取百炼图像模型失败",
+          "recommended": {
+            "description": "推荐默认"
+          },
+          "refresh": {
+            "tooltip": "从业务空间刷新模型列表",
+            "disabledTooltip": "请先填写业务空间端点和 API Key",
+            "ariaLabel": "刷新模型"
+          },
+          "params": "默认尺寸 {size} · 支持 {sizeRange} · 每次最多 {maxImages} 张 · 最多 {referenceImages} 张参考图"
+        }
       }
     },
     "indexSettings": {
@@ -5719,6 +5767,33 @@
           },
           "workloadIdentityNotice": {
             "title": "Onyx 将使用 Pod 的环境 Google Cloud 凭据（通过 google.auth.default）。请确保 Kubernetes ServiceAccount 已绑定到有权访问 Vertex AI 的 GCP 服务账号。"
+          }
+        },
+        "dashscope": {
+          "description": "连接你的阿里云百炼业务空间，配置 Qwen 模型。",
+          "regionField": {
+            "title": "地域",
+            "description": "百炼业务空间所在地域。API Key、模型与端点必须属于同一地域。",
+            "custom": {
+              "label": "自定义端点",
+              "description": "自行输入完整端点 URL"
+            }
+          },
+          "workspaceIdField": {
+            "title": "业务空间 ID",
+            "description": "百炼控制台“业务空间详情”页面中显示的业务空间 ID。"
+          },
+          "customBaseField": {
+            "title": "API Base",
+            "description": "完整的 OpenAI 兼容端点，例如 https://dashscope.aliyuncs.com/compatible-mode/v1"
+          },
+          "apiKeyField": {
+            "description": "粘贴百炼控制台中的 API Key，自动加载业务空间可用模型。"
+          },
+          "validation": {
+            "workspaceIdRequired": "业务空间 ID 为必填项",
+            "customBaseRequired": "API Base 为必填项",
+            "regionRequired": "地域为必填项"
           }
         }
       },
@@ -8657,6 +8732,13 @@
       },
       "advanced": {
         "description": "微调智能体的提示词和知识。",
+        "agentBudget": {
+          "title": "Agent 预算",
+          "description": "覆盖该助手工具循环的预算。留空则继承部署默认值。",
+          "maxLlmCycles": "最大工具轮数",
+          "maxExtensionCycles": "最大扩展轮数",
+          "turnTokenBudget": "Turn token 预算"
+        },
         "overwritePrompt": {
           "suffix": "（不推荐）",
           "title": "覆盖系统提示词"
@@ -11809,6 +11891,19 @@
       },
       "submit": {
         "errorFallback": "提交决定失败"
+      },
+      "quarantine": {
+        "title": "内容已被隔离",
+        "body": "从 {host}{path} 抓取的内容命中提示注入启发式，已在到达智能体前拦截。",
+        "patterns": "命中规则：{patterns}",
+        "approve": "放行（{scope}）",
+        "deny": "保持拦截",
+        "settled": "放行决定已记录。",
+        "scope": {
+          "once": "仅本次抓取",
+          "session": "本会话",
+          "host": "全部会话（30 天）"
+        }
       }
     },
     "apps": {
@@ -12537,6 +12632,7 @@
         "running": "当前：{phase}",
         "waitingSpecialists": "等待专家会话",
         "waitingLanes": "分路执行中",
+        "degraded": "重试中",
         "interrupted": "等待选择",
         "succeeded": "已完成",
         "failed": "失败",
@@ -12715,6 +12811,9 @@
         "menu": {
           "ariaLabel": "项目操作"
         }
+      },
+      "envVars": {
+        "label": "环境变量与密钥"
       }
     },
     "skillsStale": {
@@ -12782,6 +12881,7 @@
         "fallbackTitle": "编辑计划任务",
         "loadFailed": "无法加载计划任务。",
         "missingTaskId": "缺少任务 ID。",
+        "policyStale": "部分预授权应用的管理策略在授权后发生了变化，其预授权已失效，重新保存本任务即可恢复。",
         "title": "编辑“{name}”"
       },
       "form": {
@@ -12806,6 +12906,15 @@
           },
           "schedule": {
             "label": "计划"
+          },
+          "project": {
+            "label": "所属项目",
+            "description": "归属项目的任务可以使用该项目的变量。",
+            "none": "不归属项目"
+          },
+          "envVars": {
+            "label": "环境变量与密钥",
+            "description": "只有勾选的项才会注入运行。在提示词中用 env.NAME 或 secrets.NAME 语法引用。"
           }
         },
         "saveAndRunNowButton": "保存并立即运行",
@@ -12943,6 +13052,32 @@
           "tue": "周二",
           "wed": "周三"
         }
+      },
+      "envVarPicker": {
+        "personalGroupTitle": "个人",
+        "projectGroupTitle": "项目：{name}",
+        "staleFallbackName": "已失效的变量（{id}）",
+        "loading": {
+          "label": "正在加载变量…"
+        },
+        "errors": {
+          "loadFailed": "加载变量失败。",
+          "partialLoadFailed": "部分变量加载失败，列表可能不完整。"
+        },
+        "empty": {
+          "label": "暂无可用变量。",
+          "noProjectLabel": "选择项目后可用其变量；也可在「环境变量与密钥」中创建个人变量。"
+        },
+        "status": {
+          "secret": "密钥",
+          "variable": "变量",
+          "unavailable": "已失效 — 请移除该勾选"
+        },
+        "summary": {
+          "title": "已授权的变量",
+          "partialLoadFailed": "部分变量名称加载失败。"
+        },
+        "usageHint": "在提示词中用 env.NAME 或 secrets.NAME 占位语法引用勾选项。"
       }
     },
     "todoList": {
@@ -14276,6 +14411,98 @@
       "header": {
         "title": "MCP 操作",
         "description": "添加仅供你使用的 MCP 服务器，或浏览你可用的组织 MCP。"
+      }
+    },
+    "envVars": {
+      "page": {
+        "title": "环境变量与密钥",
+        "description": "供定时任务使用的个人与项目变量。密钥只写：保存后无法再查看原值。",
+        "createButton": "新增变量",
+        "groups": {
+          "personal": "个人",
+          "unnamedProject": "项目"
+        },
+        "badges": {
+          "secret": "密钥",
+          "variable": "变量"
+        },
+        "table": {
+          "columns": {
+            "name": "名称",
+            "value": "值",
+            "type": "类型",
+            "scope": "范围",
+            "updated": "更新时间"
+          }
+        },
+        "list": {
+          "search": {
+            "placeholder": "搜索变量..."
+          },
+          "noMatches": "没有符合搜索条件的变量。"
+        },
+        "row": {
+          "editLabel": "编辑 {name}",
+          "deleteLabel": "删除 {name}"
+        },
+        "empty": {
+          "title": "还没有变量",
+          "description": "先新增变量或密钥，再在定时任务中勾选使用。"
+        },
+        "error": {
+          "title": "加载失败",
+          "description": "无法加载环境变量，请重试。"
+        },
+        "toasts": {
+          "deleted": "已删除",
+          "deleteFailed": "删除失败"
+        },
+        "delete": {
+          "title": "删除 {name}？",
+          "description": "引用它的任务下次运行会失败，直到移除引用。",
+          "confirmButton": "删除"
+        }
+      },
+      "form": {
+        "createTitle": "新增变量",
+        "editTitle": "编辑变量",
+        "fields": {
+          "name": {
+            "label": "名称",
+            "placeholder": "API_KEY"
+          },
+          "value": {
+            "label": "值",
+            "placeholder": "值"
+          },
+          "secretValue": {
+            "label": "密钥值",
+            "placeholder": "密钥值",
+            "overwritePlaceholder": "输入新值以覆盖",
+            "keepHint": "已存的值不可见。留空表示保留原值。"
+          },
+          "isSecret": {
+            "label": "类型",
+            "description": "密钥 — 运行记录中会掩码，保存后不再回显。"
+          },
+          "scope": {
+            "label": "作用域",
+            "user": "个人"
+          }
+        },
+        "errors": {
+          "title": "请检查表单",
+          "nameRequired": "名称必填",
+          "valueRequired": "值必填"
+        },
+        "toasts": {
+          "created": "已创建",
+          "updated": "已更新",
+          "saveFailed": "保存失败"
+        },
+        "cancelButton": "取消",
+        "createButton": "创建",
+        "saveChangesButton": "保存更改"
       }
     }
   },

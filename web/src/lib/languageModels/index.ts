@@ -1,6 +1,7 @@
 import type { IconFunctionComponent } from "@opal/types";
 import { SvgCpu, SvgPlug, SvgServer } from "@opal/icons";
 import {
+  SvgBailian,
   SvgBifrost,
   SvgOpenai,
   SvgClaude,
@@ -34,6 +35,7 @@ import GlmModal from "@/sections/modals/languageModels/GlmModal";
 import BigModelModal from "@/sections/modals/languageModels/BigModelModal";
 import KimiModal from "@/sections/modals/languageModels/KimiModal";
 import MiniMaxModal from "@/sections/modals/languageModels/MiniMaxModal";
+import DashscopeModal from "@/sections/modals/languageModels/DashscopeModal";
 import OllamaModal from "@/sections/modals/languageModels/OllamaModal";
 import AzureModal from "@/sections/modals/languageModels/AzureModal";
 import BedrockModal from "@/sections/modals/languageModels/BedrockModal";
@@ -98,6 +100,12 @@ const PROVIDERS: Record<string, ProviderEntry> = {
     productName: "MiniMax",
     companyName: "MiniMax",
     Modal: MiniMaxModal,
+  },
+  [LLMProviderName.DASHSCOPE]: {
+    icon: SvgBailian,
+    productName: "Qwen",
+    companyName: "Alibaba Bailian (阿里百炼)",
+    Modal: DashscopeModal,
   },
   [LLMProviderName.VERTEX_AI]: {
     icon: SvgGemini,
@@ -196,6 +204,7 @@ const CUSTOM_CONFIG_OVERRIDES = new Set<string>([
   LLMProviderName.BIGMODEL,
   LLMProviderName.MOONSHOT,
   LLMProviderName.MINIMAX,
+  LLMProviderName.DASHSCOPE,
   LLMProviderName.AZURE,
   LLMProviderName.OPENROUTER,
 ]);
@@ -252,6 +261,7 @@ const MODEL_ICON_MAP: Record<string, IconFunctionComponent> = {
   [LLMProviderName.BIGMODEL]: ZAIIcon,
   [LLMProviderName.MOONSHOT]: SvgKimi,
   [LLMProviderName.MINIMAX]: SvgMinimax,
+  [LLMProviderName.DASHSCOPE]: SvgBailian,
   [LLMProviderName.OLLAMA_CHAT]: SvgOllama,
   [LLMProviderName.LM_STUDIO]: SvgLmStudio,
   [LLMProviderName.OPENROUTER]: SvgOpenrouter,
