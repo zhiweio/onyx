@@ -58,6 +58,9 @@ node_modules
 # MCP configs
 .playwright-mcp
 
+# codegraph index
+.codegraph/
+
 # plans (include symlinked plans dir too)
 plans
 
