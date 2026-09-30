@@ -3,6 +3,7 @@ import base64
 import binascii
 import hashlib
 import os
+import secrets
 import tarfile
 import tempfile
 import time
@@ -15,7 +16,9 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
-from sandbox_daemon.contract import (
+from sandbox_daemon import processes
+from sandbox_daemon.contract import (  # ty: ignore[unresolved-import]
+    PROCESS_ROOT,
     PUSH_DAEMON_PORT,
     SIDECAR_FILESYSTEM_LIST_PATH,
     SIDECAR_HEALTH_PATH,
@@ -23,6 +26,12 @@ from sandbox_daemon.contract import (
     SIDECAR_OPENCODE_HISTORY_MARK_RESTORED_PATH,
     SIDECAR_OPENCODE_HISTORY_RESTORE_PATH,
     SIDECAR_OUTPUTS_MANIFEST_PATH,
+    SIDECAR_PROCESS_INPUT_SUFFIX,
+    SIDECAR_PROCESS_ITEM_PREFIX,
+    SIDECAR_PROCESS_LIST_PATH,
+    SIDECAR_PROCESS_POLL_SUFFIX,
+    SIDECAR_PROCESS_START_PATH,
+    SIDECAR_PROCESS_STOP_SUFFIX,
     SIDECAR_PUSH_PATH,
     SIDECAR_PUSH_PUBLIC_KEY_ENV_VAR,
     SIDECAR_READY_PATH,
@@ -30,6 +39,10 @@ from sandbox_daemon.contract import (
     SIDECAR_SNAPSHOT_RESTORE_ROUTE,
     FilesystemListRequest,
     OutputsManifestRequest,
+    ProcessInputRequest,
+    ProcessPollRequest,
+    ProcessStartRequest,
+    ProcessStopRequest,
     SnapshotCreateRequest,
     sidecar_snapshot_restore_path,
 )
@@ -137,6 +150,148 @@ async def _spool_verified_archive(
         if archive_path is not None:
             archive_path.unlink(missing_ok=True)
         raise
+
+
+def _process_token() -> str:
+    """Lazily generate the in-pod shared token for process management. The
+    opencode plugin reads the same file (same container filesystem)."""
+    token_path = PROCESS_ROOT / "token"
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    if not token_path.exists():
+        token_path.write_text(secrets.token_urlsafe(32), encoding="utf-8")
+        token_path.chmod(0o600)
+    return token_path.read_text(encoding="utf-8").strip()
+
+
+def _verify_process_auth(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> None:
+    """Bearer token (in-pod agent) OR Ed25519 signature (host watcher)."""
+    auth = request.headers.get("Authorization", "")
+    try:
+        if auth.startswith("Bearer ") and auth[7:] == _process_token():
+            return
+    except OSError:
+        pass
+    if x_push_signature and x_push_timestamp:
+        body_hash = hashlib.sha256(b"").hexdigest()
+        try:
+            _verify_signature(
+                request.scope["path"], body_hash, x_push_signature, x_push_timestamp
+            )
+            return
+        except InvalidSignature:
+            pass
+        except HTTPException:
+            pass
+    raise HTTPException(status_code=401, detail="process endpoint auth failed")
+
+
+@app.post(SIDECAR_PROCESS_START_PATH)
+async def process_start(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, object]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    body = await request.body()
+    try:
+        payload = ProcessStartRequest.model_validate_json(body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
+
+    def _start() -> dict:
+        return processes.start_process(
+            PROCESS_ROOT, command=payload.command, kind=payload.kind
+        )
+
+    try:
+        meta = await asyncio.to_thread(_start)
+    except processes.ProcessError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"process_id": meta["process_id"], "pid": meta["pid"]}
+
+
+@app.post(SIDECAR_PROCESS_ITEM_PREFIX + SIDECAR_PROCESS_POLL_SUFFIX)
+async def process_poll(
+    process_id: str,
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, object]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    body = await request.body()
+    try:
+        payload = ProcessPollRequest.model_validate_json(body or b"{}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
+    try:
+        return await asyncio.to_thread(
+            processes.read_output,
+            PROCESS_ROOT,
+            process_id,
+            cursor=payload.cursor,
+            max_bytes=payload.max_bytes,
+        )
+    except processes.ProcessError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post(SIDECAR_PROCESS_ITEM_PREFIX + SIDECAR_PROCESS_INPUT_SUFFIX)
+async def process_input(
+    process_id: str,
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, str]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    body = await request.body()
+    try:
+        payload = ProcessInputRequest.model_validate_json(body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
+    try:
+        await asyncio.to_thread(
+            processes.write_input, PROCESS_ROOT, process_id, payload.data
+        )
+    except processes.ProcessGoneError as e:
+        raise HTTPException(status_code=410, detail=str(e))
+    except processes.ProcessError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"status": "written"}
+
+
+@app.post(SIDECAR_PROCESS_ITEM_PREFIX + SIDECAR_PROCESS_STOP_SUFFIX)
+async def process_stop(
+    process_id: str,
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, object]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    body = await request.body()
+    try:
+        payload = ProcessStopRequest.model_validate_json(body or b"{}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
+    try:
+        return await asyncio.to_thread(
+            processes.stop_process, PROCESS_ROOT, process_id, signal_name=payload.signal
+        )
+    except processes.ProcessError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(SIDECAR_PROCESS_LIST_PATH)
+async def process_list(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> list[dict[str, object]]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    return await asyncio.to_thread(processes.list_processes, PROCESS_ROOT)
 
 
 @app.get(SIDECAR_HEALTH_PATH)

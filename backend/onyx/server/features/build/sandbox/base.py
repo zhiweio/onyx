@@ -124,6 +124,12 @@ class SandboxManager(_ServeMixin, ABC):
 
     supports_opencode_history_persistence: bool = False
 
+    # Whether the backend can stop a sandbox's runtime while keeping it
+    # (container + workspace storage) for a fast wake, instead of destroying it
+    # and restoring from snapshots. Gates the hibernation lanes of the idle
+    # reaper and the concurrency cap's evictor.
+    supports_hibernation: bool = False
+
     @abstractmethod
     def provision(
         self,
@@ -176,6 +182,33 @@ class SandboxManager(_ServeMixin, ABC):
         bus in.
         """
         ...
+
+    def hibernate(self, sandbox_id: UUID) -> None:
+        """Stop the sandbox's runtime while keeping it for a fast wake.
+
+        Frees the sandbox's memory and CPU immediately; the container's
+        writable layer and workspace storage survive, so the next
+        ``provision()`` is a plain start rather than a create + snapshot
+        restore. Only meaningful when ``supports_hibernation`` is True.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support hibernation")
+
+    def resume_stopped_runtime(self, sandbox_id: UUID) -> bool:
+        """Start a hibernated runtime without provisioning it.
+
+        Maintenance hook for paths that must exec into the sandbox (archive
+        snapshots) while the runtime is stopped. Returns False when the runtime
+        is gone or cannot start. Only meaningful when ``supports_hibernation``
+        is True.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support hibernation")
+
+    def count_active_sandboxes(self) -> int:
+        """Number of sandbox runtimes currently consuming backend resources
+        (running containers/pods). Used to enforce the concurrency cap;
+        backends without hibernation don't enforce one, so the default is a
+        value that never binds."""
+        return 0
 
     @abstractmethod
     def setup_session_workspace(
@@ -701,7 +734,37 @@ class SandboxManager(_ServeMixin, ABC):
         """Run a command in a session workspace. Raise if unsupported."""
         raise NotImplementedError
 
-    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:
+    def start_process(
+        self,
+        sandbox_id: UUID,
+        *,
+        session_id: UUID,
+        command: str,
+        kind: str = "background",
+    ) -> dict:
+        """Start a background process; returns the daemon's registry entry."""
+        raise NotImplementedError
+
+    def poll_process(
+        self, sandbox_id: UUID, process_id: str, *, cursor: int = 0
+    ) -> dict:
+        """Incremental output read; raises if the process is unknown."""
+        raise NotImplementedError
+
+    def write_process_input(
+        self, sandbox_id: UUID, process_id: str, data: str
+    ) -> None:
+        raise NotImplementedError
+
+    def stop_process(
+        self, sandbox_id: UUID, process_id: str, *, signal_name: str = "TERM"
+    ) -> dict:
+        raise NotImplementedError
+
+    def list_processes(self, sandbox_id: UUID) -> list[dict]:
+        raise NotImplementedError
+
+    def apply_deep_job_resources(self, sandbox_id: UUID) -> None:  # noqa: ARG002
         """Raise CPU/memory for a running long job. Default is a no-op."""
         return None
 
