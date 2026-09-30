@@ -7,8 +7,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 3
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:actions"
   - package-ecosystem: "uv"
@@ -18,8 +16,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 3
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:python"
     ignore:
@@ -31,8 +27,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 3
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:javascript"
   - package-ecosystem: "bun"
@@ -42,8 +36,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 3
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:javascript"
   - package-ecosystem: "bun"
@@ -53,8 +45,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 3
-    assignees:
-      - "wenxi-onyx"
     labels:
       - "dependabot:javascript"
       - "dependabot:sandbox"
@@ -64,9 +54,7 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
-    assignees:
-      - "wenxi-onyx"
+    open-pull-requests-limit: 1
     labels:
       - "dependabot:docker"
       - "dependabot:sandbox"
@@ -77,8 +65,6 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 1
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:docker"
   - package-ecosystem: "docker"
@@ -88,7 +74,5 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 1
-    assignees:
-      - "jmelahman"
     labels:
       - "dependabot:docker"

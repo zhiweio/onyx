@@ -37,13 +37,9 @@ runs:
     # The key is scoped by arch + set_id so a job only warm-starts from a cache
     # built for the same architecture and the same set of requirement files.
     # Otherwise a small (e.g. default+dev) job restores and then re-saves a
-    # larger job's full cache, and an arm64 job could restore x86_64 wheels.
-    # We deliberately do NOT run `uv cache prune` here: uv installs by
-    # hardlinking from the unzipped wheels in ~/.cache/uv/archive-v0, and it
-    # does not retain the zipped wheels separately, so pruning archive-v0 guts
-    # the cache and forces a full re-download from PyPI on the next run.
+    # larger job's full cache.
     - name: Cache uv cache directory
-      uses: runs-on/cache@a5f51d6f3fece787d03b7b4e981c82538a0654ed
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
       with:
         path: ~/.cache/uv
         key: ${{ runner.os }}-${{ runner.arch }}-uv-${{ steps.req-hash.outputs.set_id }}-${{ steps.req-hash.outputs.hash }}
