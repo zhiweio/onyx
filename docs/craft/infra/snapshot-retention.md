@@ -2,11 +2,21 @@
 
 ## What a snapshot is
 
-When a Craft sandbox goes idle, the cleanup task snapshots each session's
-workspace (`outputs/`, `attachments/`, `.opencode-data/`) into a `tar.gz` and
-persists it through the Onyx FileStore, then terminates the pod. On wake, the
-latest snapshot is restored. Snapshots are internal sleep/wake plumbing — they
-are not a user-facing version history.
+A snapshot is one session's workspace (`outputs/`, `attachments/`,
+`.opencode-data/`) packed into a `tar.gz` and persisted through the Onyx
+FileStore. Snapshots are internal sleep/wake plumbing — they are not a
+user-facing version history.
+
+Where snapshots come from depends on the backend's sleep lane (see
+`docs/craft/sandbox/hibernation-lifecycle.md`):
+
+- **Hibernation-capable (Docker):** a slept sandbox keeps its workspace on
+  disk, so sleep writes no snapshot. Snapshots come from the background
+  cadence while the sandbox runs, plus the archive pass that reclaims a
+  long-asleep sandbox's disk. Wake normally restores nothing — the workspace
+  is still there.
+- **Kubernetes:** sleep snapshots each session and destroys the pod. Wake
+  restores the latest snapshot.
 
 ## Retention policy: keep exactly one per session (prune-on-write)
 

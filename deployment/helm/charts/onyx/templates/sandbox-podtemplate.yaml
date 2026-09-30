@@ -10,8 +10,12 @@ opencode-auth + push-key env, proxy hostAliases IP).
 {{/* Shared with the image-prepull DaemonSet so the pinned ref can't drift. */}}
 {{- $image := include "onyx.sandboxImage" . }}
 {{- $pullPolicy := include "onyx.sandboxImagePullPolicy" . }}
-{{- $cpuReq := (index $cm "SANDBOX_POD_CPU_REQUEST") | default "1000m" }}
-{{- $memReq := (index $cm "SANDBOX_POD_MEMORY_REQUEST") | default "2Gi" }}
+{{/* Requests default below the limits (Burstable): most sandboxes idle well
+under 1Gi, and the scheduler packs far more pods per node when the request
+doesn't assume the worst-case burst. Raise via configMap for steady heavy
+workloads. */}}
+{{- $cpuReq := (index $cm "SANDBOX_POD_CPU_REQUEST") | default "500m" }}
+{{- $memReq := (index $cm "SANDBOX_POD_MEMORY_REQUEST") | default "1Gi" }}
 {{- $cpuLim := (index $cm "SANDBOX_POD_CPU_LIMIT") | default "2000m" }}
 {{- $memLim := (index $cm "SANDBOX_POD_MEMORY_LIMIT") | default "10Gi" }}
 {{/* Without a request, the scheduler ignores sandbox disk usage and the
@@ -28,6 +32,10 @@ kubelet evicts sandbox pods first under node disk pressure. */}}
 {{- $caConfigMap := (index $cm "SANDBOX_PROXY_CA_CONFIGMAP") | default "sandbox-proxy-ca-bundle" }}
 {{- $serverUrl := (index $cm "ONYX_SERVER_URL") }}
 {{- $sandboxPod := .Values.sandboxPod | default dict }}
+{{/* Optional RuntimeClass for kernel-level isolation (e.g. Kata Containers).
+Empty means the cluster default runtime. See docs/craft/sandbox/runtime-decision.md
+for the prerequisites and the acceptance checks a non-default runtime needs. */}}
+{{- $runtimeClass := index $sandboxPod "runtimeClassName" | default "" }}
 {{- $caBundleFile := "/etc/ssl/sandbox/ca-bundle.crt" }}
 apiVersion: v1
 kind: PodTemplate
@@ -46,6 +54,9 @@ template:
   spec:
     serviceAccountName: {{ $saName }}
     automountServiceAccountToken: false
+    {{- if $runtimeClass }}
+    runtimeClassName: {{ $runtimeClass }}
+    {{- end }}
     restartPolicy: Never
     terminationGracePeriodSeconds: 10
     enableServiceLinks: false

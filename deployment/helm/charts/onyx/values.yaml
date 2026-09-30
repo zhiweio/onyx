@@ -1739,6 +1739,17 @@ configMap:
   # API service (no prefix). It is required when ENABLE_CRAFT=true.
   SANDBOX_PROXY_CA_SECRET: "sandbox-proxy-ca"
   SANDBOX_PROXY_CA_CONFIGMAP: "sandbox-proxy-ca-bundle"
+  # Sandbox lifecycle. An idle sandbox (no heartbeat, no open Craft job) is put
+  # to sleep after SANDBOX_IDLE_TIMEOUT_SECONDS; a sandbox asleep longer than
+  # SANDBOX_HIBERNATE_MAX_AGE_SECONDS is archived (sessions snapshotted, pod
+  # deleted). SANDBOX_SNAPSHOT_INTERVAL_SECONDS is how often a running pod's
+  # sessions are re-snapshotted. SANDBOX_MAX_CONCURRENT caps concurrently
+  # running sandboxes (0 = unlimited); only backends that can hibernate
+  # enforce it, so it is a no-op on Kubernetes.
+  SANDBOX_IDLE_TIMEOUT_SECONDS: ""
+  SANDBOX_HIBERNATE_MAX_AGE_SECONDS: ""
+  SANDBOX_SNAPSHOT_INTERVAL_SECONDS: ""
+  SANDBOX_MAX_CONCURRENT: ""
   # Operator switch for heavier long jobs. Off by default. Raises project
   # file cap, job budgets, specialist cap, and the silent-step inactivity
   # window. Does not change the 30-minute turn hard cap.
@@ -1751,6 +1762,30 @@ configMap:
   CRAFT_PROJECT_MAX_FILES: ""
   CRAFT_PROJECT_MAX_FILE_SIZE_MB: ""
   CRAFT_PROJECT_MAX_TOTAL_SIZE_GB: ""
+  # Craft reliability & governance knobs. CRAFT_JOB_LEASE_TTL_SECONDS is the
+  # craft job lease window; a per-turn heartbeat renews it every TTL/3, so an
+  # expired lease means the owning turn really died. Chat loop governance: a
+  # turn reaching MAX_LLM_CYCLES still wanting tools folds older tool results
+  # and continues for up to CHAT_AGENT_MAX_EXTENSION_CYCLES more cycles
+  # (CHAT_AGENT_TURN_TOKEN_BUDGET caps extension history tokens, 0 = off;
+  # CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED=false restores the hard cutoff).
+  # Scheduled-task approvals are bound to the action-policy version; after
+  # CRAFT_ACTION_GRADUATION_THRESHOLD consecutive human approvals of one
+  # target its pre-approval is granted automatically (the enabled flag turns
+  # that off). CRAFT_CONTENT_SCREENING_MODE screens egress response bodies
+  # for prompt-injection patterns: shadow (default) logs only, enforce
+  # replaces suspicious bodies with a quarantine notice, off disables it.
+  CRAFT_JOB_LEASE_TTL_SECONDS: ""
+  CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED: ""
+  CHAT_AGENT_MAX_EXTENSION_CYCLES: ""
+  CHAT_AGENT_TURN_TOKEN_BUDGET: ""
+  CRAFT_ACTION_AUTO_GRADUATION_ENABLED: ""
+  CRAFT_ACTION_GRADUATION_THRESHOLD: ""
+  CRAFT_CONTENT_SCREENING_MODE: ""
+  CRAFT_GUARDIAN_ENABLED: ""
+  CRAFT_GUARDIAN_TIMEOUT_SECONDS: ""
+  CRAFT_GUARDIAN_REJECT_CIRCUIT_BREAKER: ""
+  CRAFT_GUARDIAN_QUARANTINE_ESCALATION_HOURS: ""
   SANDBOX_IMAGE_PULL_POLICY: ""
   OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS: ""
   # MCP Gateway — set mcpGateway.enabled=true to run the process, then turn the
@@ -1806,6 +1841,18 @@ sandboxPod:
       operator: Equal
       value: sandbox
       effect: NoSchedule
+  # -- Optional RuntimeClass for the sandbox pods, for kernel-level isolation
+  # between tenants (e.g. `kata-qemu`). Empty uses the cluster default runtime,
+  # which is the supported configuration and what every current deployment runs.
+  #
+  # Only set this on a node pool that can run the chosen runtime — Kata and
+  # Firecracker both need /dev/kvm (bare metal or nested virtualization). The
+  # sandbox pod must keep a normal CNI pod IP, `exec` must work, and the guest
+  # kernel must provide iptables/conntrack (firewall-init.sh enforces egress
+  # with them and aborts provisioning if the policy does not stick).
+  # Read docs/craft/sandbox/runtime-decision.md before turning this on: it lists
+  # the required checks and the alternatives that were evaluated.
+  runtimeClassName: ""
 
 # -- Pre-pull the sandbox image onto the sandbox node pool (DaemonSet), so a
 # user's first sandbox on a node doesn't pay the image pull (~31s measured).
