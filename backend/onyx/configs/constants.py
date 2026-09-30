@@ -311,6 +311,12 @@ class DocumentSource(str, Enum):
     # Raw files for Craft sandbox access (xlsx, pptx, docx, etc.)
     # Uses RAW_BINARY processing mode - no text extraction
     CRAFT_FILE = "craft_file"
+    # China workplace platforms + enterprise systems
+    FEISHU = "feishu"
+    WECOM = "wecom"
+    DINGTALK = "dingtalk"
+    WPS365 = "wps365"
+    SAP_ODATA = "sap_odata"
 
 
 class FederatedConnectorSource(str, Enum):
@@ -836,4 +842,9 @@ DocumentSourceDescription: dict[DocumentSource, str] = {
     DocumentSource.TESTRAIL: "Test cases and QA management",
     DocumentSource.BRAINTRUST: "LLM eval experiments, datasets, and prompts",
     DocumentSource.LUMAPPS: "Intranet pages, news, and content",
+    DocumentSource.FEISHU: "飞书知识库与云文档 (Feishu wiki and docs)",
+    DocumentSource.WECOM: "企业微信微盘文件 (WeCom wedrive files)",
+    DocumentSource.DINGTALK: "钉钉知识库 (DingTalk knowledge base)",
+    DocumentSource.WPS365: "WPS365 云文档 (WPS365 cloud files)",
+    DocumentSource.SAP_ODATA: "SAP 业务数据 (SAP OData entity sets)",
 }

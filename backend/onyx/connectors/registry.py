@@ -233,4 +233,25 @@ CONNECTOR_CLASS_MAP = {
         module_path="onyx.connectors.mock_connector.connector",
         class_name="MockConnector",
     ),
+    # China workplace platforms + enterprise systems
+    DocumentSource.FEISHU: ConnectorMapping(
+        module_path="onyx.connectors.feishu.connector",
+        class_name="FeishuConnector",
+    ),
+    DocumentSource.WECOM: ConnectorMapping(
+        module_path="onyx.connectors.wecom.connector",
+        class_name="WeComConnector",
+    ),
+    DocumentSource.DINGTALK: ConnectorMapping(
+        module_path="onyx.connectors.dingtalk.connector",
+        class_name="DingTalkConnector",
+    ),
+    DocumentSource.WPS365: ConnectorMapping(
+        module_path="onyx.connectors.wps365.connector",
+        class_name="WPS365Connector",
+    ),
+    DocumentSource.SAP_ODATA: ConnectorMapping(
+        module_path="onyx.connectors.sap_odata.connector",
+        class_name="SapODataConnector",
+    ),
 }
