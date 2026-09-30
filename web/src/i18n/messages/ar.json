@@ -7137,157 +7137,157 @@
     "standardAnswers": {
       "categoryBubble": {
         "remove": {
-          "ariaLabel": "إزالة الفئة {name}"
+          "ariaLabel": "Remove category {name}"
         },
         "removeButton": {
-          "ariaLabel": "إزالة الفئة"
+          "ariaLabel": "Remove category"
         }
       },
       "categoryDropdown": {
         "categories": {
-          "label": "فئات الإجابات القياسية"
+          "label": "Standard Answer Categories"
         },
         "fetchError": {
-          "message": "فشل جلب فئات الإجابات القياسية - {message}",
-          "title": "حدث خطأ ما :("
+          "message": "Failed to fetch standard answer categories - {message}",
+          "title": "Something went wrong :("
         },
         "search": {
-          "placeholder": "البحث في الفئات..."
+          "placeholder": "Search categories..."
         }
       },
       "editPage": {
-        "title": "تعديل الإجابة القياسية"
+        "title": "Edit Standard Answer"
       },
       "errors": {
         "fetchAnswersFailed": {
-          "message": "فشل جلب الإجابات القياسية"
+          "message": "Failed to fetch standard answers"
         },
         "fetchCategoriesFailed": {
-          "message": "فشل جلب فئات الإجابات القياسية"
+          "message": "Failed to fetch standard answer categories"
         },
         "genericTitle": {
-          "title": "حدث خطأ ما :("
+          "title": "Something went wrong :("
         },
         "loadAnswersFailed": {
-          "title": "خطأ في تحميل الإجابات القياسية"
+          "title": "Error loading standard answers"
         },
         "loadCategoriesFailed": {
-          "title": "خطأ في تحميل فئات الإجابات القياسية"
+          "title": "Error loading standard answer categories"
         },
         "notFound": {
-          "message": "لم يتم العثور على إجابة قياسية بالمعرف: {id}"
+          "message": "Did not find standard answer with ID: {id}"
         }
       },
       "filter": {
         "allCategories": {
-          "label": "جميع الفئات"
+          "label": "All Categories"
         }
       },
       "form": {
         "allKeywords": {
-          "label": "كل هذه الكلمات المفتاحية، بأي ترتيب، مفصولة بمسافات",
-          "placeholder": "تذكرة تقنية"
+          "label": "All of these keywords, in any order, separated by spaces",
+          "placeholder": "it ticket"
         },
         "answer": {
-          "label": "الإجابة",
-          "placeholder": "الإجابة بصيغة Markdown. مثال: إذا احتجت إلى مساعدة من فريق تقنية المعلومات، فيرجى مراسلة internalsupport@company.com"
+          "label": "Answer",
+          "placeholder": "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
         },
         "anyKeywords": {
-          "label": "أي من هذه الكلمات المفتاحية، مفصولة بمسافات",
-          "placeholder": "تذكرة مشكلة عطل"
+          "label": "Any of these keywords, separated by spaces",
+          "placeholder": "ticket problem issue"
         },
         "categories": {
-          "label": "الفئات:",
-          "placeholder": "اكتب فئة واضغط Enter…"
+          "label": "Categories:",
+          "placeholder": "Type a category and press Enter…"
         },
         "createButton": {
-          "label": "إنشاء!"
+          "label": "Create!"
         },
         "keywords": {
-          "tooltip": "يجب أن يتطابق السؤال مع هذه الكلمات المفتاحية لتفعيل الإجابة."
+          "tooltip": "A question must match these keywords in order to trigger the answer."
         },
         "matchRegex": {
-          "description": "طابق نمط regex بدلاً من كلمة مفتاحية محددة",
-          "label": "مطابقة regex"
+          "description": "Match a regex pattern instead of an exact keyword",
+          "label": "Match regex"
         },
         "regexPattern": {
-          "label": "نمط regex",
-          "tooltip": "يتم التفعيل إذا تطابق السؤال مع نمط regex هذا (باستخدام `re.search()` في Python)"
+          "label": "Regex pattern",
+          "tooltip": "Triggers if the question matches this regex pattern (using Python `re.search()`)"
         },
         "strategy": {
           "all": {
-            "label": "كل الكلمات المفتاحية"
+            "label": "All keywords"
           },
           "any": {
-            "label": "أي كلمات مفتاحية"
+            "label": "Any keywords"
           },
-          "description": "اختر ما إذا كان يجب أن يحتوي سؤال المستخدم على أيٍّ من الكلمات المفتاحية أعلاه أو كلها لعرض هذه الإجابة.",
-          "label": "استراتيجية اكتشاف الكلمات المفتاحية"
+          "description": "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
+          "label": "Keyword detection strategy"
         },
         "toasts": {
           "categoryCreateFailed": {
-            "message": "خطأ في إنشاء الفئة \"{name}\" - {error}"
+            "message": "Error creating category \"{name}\" - {error}"
           },
           "createFailed": {
-            "message": "خطأ في إنشاء الإجابة القياسية - {error}"
+            "message": "Error creating Standard Answer - {error}"
           },
           "updateFailed": {
-            "message": "خطأ في تحديث الإجابة القياسية - {error}"
+            "message": "Error updating Standard Answer - {error}"
           }
         },
         "updateButton": {
-          "label": "تحديث!"
+          "label": "Update!"
         },
         "validation": {
-          "answerRequired": "الإجابة مطلوبة",
-          "categoryRequired": "مطلوب فئة واحدة على الأقل",
-          "keywordRequired": "الكلمات المفتاحية أو النمط مطلوب"
+          "answerRequired": "Answer is required",
+          "categoryRequired": "At least one category is required",
+          "keywordRequired": "Keywords or pattern is required"
         }
       },
       "intro": {
         "addFirst": {
-          "message": "أضف أول إجابة قياسية لك أدناه!"
+          "message": "Add your first standard answer below!"
         },
-        "description": "أدر الإجابات القياسية للأسئلة المحددة مسبقًا.\nملاحظة: حاليًا، الأسئلة المطروحة من Slack فقط يمكن أن تتلقى إجابات قياسية."
+        "description": "Manage the standard answers for pre-defined questions.\nNote: Currently, only questions asked from Slack can receive standard answers."
       },
       "newStandardAnswer": {
-        "label": "إجابة قياسية جديدة"
+        "label": "New Standard Answer"
       },
       "search": {
-        "placeholder": "ابحث عن الإجابات القياسية بكلمة مفتاحية أو عبارة..."
+        "placeholder": "Find standard answers by keyword/phrase..."
       },
       "table": {
         "answer": {
-          "header": "الإجابة"
+          "header": "Answer"
         },
         "categories": {
-          "header": "الفئات"
+          "header": "Categories"
         },
         "empty": {
-          "message": "لم يتم العثور على إجابات قياسية مطابقة..."
+          "message": "No matching standard answers found..."
         },
         "keywords": {
-          "header": "الكلمات المفتاحية/النمط"
+          "header": "Keywords/Pattern"
         },
         "matchRegex": {
-          "header": "مطابقة regex؟"
+          "header": "Match regex?"
         },
         "matchRegexNo": {
-          "label": "لا"
+          "label": "No"
         },
         "matchRegexYes": {
-          "label": "نعم"
+          "label": "Yes"
         },
         "slackNote": {
-          "message": "تأكد من أنك أضفت الفئة إلى [بوت Slack](/admin/bots) المعني."
+          "message": "Ensure that you have added the category to the relevant [Slack Bot](/admin/bots)."
         }
       },
       "toasts": {
         "deleteFailed": {
-          "message": "فشل حذف الإجابة القياسية - {error}"
+          "message": "Failed to delete standard answer - {error}"
         },
         "deleted": {
-          "message": "تم حذف الإجابة القياسية {id}"
+          "message": "Standard answer {id} deleted"
         }
       }
     },
@@ -8675,6 +8675,65 @@
         "download": {
           "label": "تنزيل"
         }
+      }
+    },
+    "agentModels": {
+      "title": "Agent Models",
+      "subtitle": "The model catalog available to agent runtimes plus admin-defined overlays. Verify issues one real provider probe.",
+      "catalog": "Catalog",
+      "overlays": "Custom models (overlays)",
+      "noOverlays": "No custom models yet. Add one below (e.g. a GLM clone on a private endpoint).",
+      "default": "default",
+      "refresh": "Refresh",
+      "created": "Custom model created",
+      "deleted": "Custom model deleted",
+      "verified": "Probe succeeded",
+      "verifyFailed": "Probe failed",
+      "verifyError": "Last failure",
+      "notVerified": "Not verified",
+      "verifiedAt": "Verified at {time}",
+      "verify": "Verify",
+      "delete": "Delete",
+      "add": "Add model",
+      "col": {
+        "model": "Model",
+        "provider": "Provider",
+        "context": "Context window",
+        "runtimes": "Runtimes"
+      },
+      "form": {
+        "name": "Name (e.g. Private GLM)",
+        "provider": "Provider (e.g. bigmodel)",
+        "template": "Template (catalog model id, e.g. glm-4.7)",
+        "baseUrl": "Base URL (optional, private endpoint)",
+        "context": "Context window (optional override)",
+        "maxOutput": "Max output (optional override)"
+      }
+    },
+    "audit": {
+      "title": "Audit Report",
+      "tabs": {
+        "tools": "Tool calls",
+        "approvals": "Approvals",
+        "quarantines": "Quarantines",
+        "usage": "Usage",
+        "history": "Query history"
+      },
+      "refresh": "Refresh",
+      "export": "Export CSV",
+      "stats": "By tool",
+      "calls": "Calls",
+      "pending": "pending",
+      "col": {
+        "tool": "Tool",
+        "calls": "Calls",
+        "failures": "Failures",
+        "avgMs": "Avg (ms)"
+      },
+      "usage": {
+        "queries": "Search queries",
+        "users": "Active users",
+        "toolCalls": "Tool calls"
       }
     }
   },
@@ -15377,6 +15436,12 @@
         },
         "craftCatalog": {
           "label": "Gallery"
+        },
+        "tokenRateLimits": {
+          "label": "Token Rate Limits"
+        },
+        "standardAnswers": {
+          "label": "Standard Answers"
         }
       },
       "sections": {

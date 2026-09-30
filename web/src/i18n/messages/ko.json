@@ -7137,157 +7137,157 @@
     "standardAnswers": {
       "categoryBubble": {
         "remove": {
-          "ariaLabel": "카테고리 {name} 제거"
+          "ariaLabel": "Remove category {name}"
         },
         "removeButton": {
-          "ariaLabel": "카테고리 제거"
+          "ariaLabel": "Remove category"
         }
       },
       "categoryDropdown": {
         "categories": {
-          "label": "표준 답변 카테고리"
+          "label": "Standard Answer Categories"
         },
         "fetchError": {
-          "message": "표준 답변 카테고리를 가져오지 못했습니다 - {message}",
-          "title": "문제가 발생했습니다 :("
+          "message": "Failed to fetch standard answer categories - {message}",
+          "title": "Something went wrong :("
         },
         "search": {
-          "placeholder": "카테고리 검색..."
+          "placeholder": "Search categories..."
         }
       },
       "editPage": {
-        "title": "표준 답변 편집"
+        "title": "Edit Standard Answer"
       },
       "errors": {
         "fetchAnswersFailed": {
-          "message": "표준 답변을 가져오지 못했습니다"
+          "message": "Failed to fetch standard answers"
         },
         "fetchCategoriesFailed": {
-          "message": "표준 답변 카테고리를 가져오지 못했습니다"
+          "message": "Failed to fetch standard answer categories"
         },
         "genericTitle": {
-          "title": "문제가 발생했습니다 :("
+          "title": "Something went wrong :("
         },
         "loadAnswersFailed": {
-          "title": "표준 답변을 불러오는 중 오류가 발생했습니다"
+          "title": "Error loading standard answers"
         },
         "loadCategoriesFailed": {
-          "title": "표준 답변 카테고리를 불러오는 중 오류가 발생했습니다"
+          "title": "Error loading standard answer categories"
         },
         "notFound": {
-          "message": "ID가 {id}인 표준 답변을 찾을 수 없습니다"
+          "message": "Did not find standard answer with ID: {id}"
         }
       },
       "filter": {
         "allCategories": {
-          "label": "모든 카테고리"
+          "label": "All Categories"
         }
       },
       "form": {
         "allKeywords": {
-          "label": "다음 키워드 모두(순서 무관, 공백으로 구분)",
-          "placeholder": "IT 티켓"
+          "label": "All of these keywords, in any order, separated by spaces",
+          "placeholder": "it ticket"
         },
         "answer": {
-          "label": "답변",
-          "placeholder": "Markdown 형식의 답변입니다. 예: IT 팀의 도움이 필요하면 internalsupport@company.com 으로 이메일을 보내주세요"
+          "label": "Answer",
+          "placeholder": "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
         },
         "anyKeywords": {
-          "label": "다음 키워드 중 하나(공백으로 구분)",
-          "placeholder": "티켓 문제 이슈"
+          "label": "Any of these keywords, separated by spaces",
+          "placeholder": "ticket problem issue"
         },
         "categories": {
-          "label": "카테고리:",
-          "placeholder": "카테고리를 입력하고 Enter 키를 누르세요…"
+          "label": "Categories:",
+          "placeholder": "Type a category and press Enter…"
         },
         "createButton": {
-          "label": "생성!"
+          "label": "Create!"
         },
         "keywords": {
-          "tooltip": "질문이 이 키워드와 일치해야 답변이 트리거됩니다."
+          "tooltip": "A question must match these keywords in order to trigger the answer."
         },
         "matchRegex": {
-          "description": "정확한 키워드 대신 정규식 패턴으로 일치시킵니다",
-          "label": "정규식 일치"
+          "description": "Match a regex pattern instead of an exact keyword",
+          "label": "Match regex"
         },
         "regexPattern": {
-          "label": "정규식 패턴",
-          "tooltip": "질문이 이 정규식 패턴과 일치하면 트리거됩니다(Python의 `re.search()` 사용)"
+          "label": "Regex pattern",
+          "tooltip": "Triggers if the question matches this regex pattern (using Python `re.search()`)"
         },
         "strategy": {
           "all": {
-            "label": "모든 키워드"
+            "label": "All keywords"
           },
           "any": {
-            "label": "아무 키워드"
+            "label": "Any keywords"
           },
-          "description": "이 답변을 표시하려면 사용자의 질문에 위 키워드 중 일부 또는 전부가 포함되어야 하는지 선택하세요.",
-          "label": "키워드 감지 전략"
+          "description": "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
+          "label": "Keyword detection strategy"
         },
         "toasts": {
           "categoryCreateFailed": {
-            "message": "카테고리 \"{name}\" 생성 중 오류 발생 - {error}"
+            "message": "Error creating category \"{name}\" - {error}"
           },
           "createFailed": {
-            "message": "표준 답변 생성 중 오류 발생 - {error}"
+            "message": "Error creating Standard Answer - {error}"
           },
           "updateFailed": {
-            "message": "표준 답변 업데이트 중 오류 발생 - {error}"
+            "message": "Error updating Standard Answer - {error}"
           }
         },
         "updateButton": {
-          "label": "업데이트!"
+          "label": "Update!"
         },
         "validation": {
-          "answerRequired": "답변은 필수입니다",
-          "categoryRequired": "최소 한 개의 카테고리가 필요합니다",
-          "keywordRequired": "키워드 또는 패턴은 필수입니다"
+          "answerRequired": "Answer is required",
+          "categoryRequired": "At least one category is required",
+          "keywordRequired": "Keywords or pattern is required"
         }
       },
       "intro": {
         "addFirst": {
-          "message": "아래에서 첫 번째 표준 답변을 추가하세요!"
+          "message": "Add your first standard answer below!"
         },
-        "description": "미리 정의된 질문에 대한 표준 답변을 관리하세요.\n참고: 현재 Slack에서 한 질문만 표준 답변을 받을 수 있습니다."
+        "description": "Manage the standard answers for pre-defined questions.\nNote: Currently, only questions asked from Slack can receive standard answers."
       },
       "newStandardAnswer": {
-        "label": "새 표준 답변"
+        "label": "New Standard Answer"
       },
       "search": {
-        "placeholder": "키워드/문구로 표준 답변 찾기..."
+        "placeholder": "Find standard answers by keyword/phrase..."
       },
       "table": {
         "answer": {
-          "header": "답변"
+          "header": "Answer"
         },
         "categories": {
-          "header": "카테고리"
+          "header": "Categories"
         },
         "empty": {
-          "message": "일치하는 표준 답변이 없습니다..."
+          "message": "No matching standard answers found..."
         },
         "keywords": {
-          "header": "키워드/패턴"
+          "header": "Keywords/Pattern"
         },
         "matchRegex": {
-          "header": "정규식 일치?"
+          "header": "Match regex?"
         },
         "matchRegexNo": {
-          "label": "아니요"
+          "label": "No"
         },
         "matchRegexYes": {
-          "label": "예"
+          "label": "Yes"
         },
         "slackNote": {
-          "message": "해당 [Slack 봇](/admin/bots)에 카테고리를 추가했는지 확인하세요."
+          "message": "Ensure that you have added the category to the relevant [Slack Bot](/admin/bots)."
         }
       },
       "toasts": {
         "deleteFailed": {
-          "message": "표준 답변 삭제 실패 - {error}"
+          "message": "Failed to delete standard answer - {error}"
         },
         "deleted": {
-          "message": "표준 답변 {id}이(가) 삭제되었습니다"
+          "message": "Standard answer {id} deleted"
         }
       }
     },
@@ -8675,6 +8675,65 @@
         "download": {
           "label": "다운로드"
         }
+      }
+    },
+    "agentModels": {
+      "title": "Agent Models",
+      "subtitle": "The model catalog available to agent runtimes plus admin-defined overlays. Verify issues one real provider probe.",
+      "catalog": "Catalog",
+      "overlays": "Custom models (overlays)",
+      "noOverlays": "No custom models yet. Add one below (e.g. a GLM clone on a private endpoint).",
+      "default": "default",
+      "refresh": "Refresh",
+      "created": "Custom model created",
+      "deleted": "Custom model deleted",
+      "verified": "Probe succeeded",
+      "verifyFailed": "Probe failed",
+      "verifyError": "Last failure",
+      "notVerified": "Not verified",
+      "verifiedAt": "Verified at {time}",
+      "verify": "Verify",
+      "delete": "Delete",
+      "add": "Add model",
+      "col": {
+        "model": "Model",
+        "provider": "Provider",
+        "context": "Context window",
+        "runtimes": "Runtimes"
+      },
+      "form": {
+        "name": "Name (e.g. Private GLM)",
+        "provider": "Provider (e.g. bigmodel)",
+        "template": "Template (catalog model id, e.g. glm-4.7)",
+        "baseUrl": "Base URL (optional, private endpoint)",
+        "context": "Context window (optional override)",
+        "maxOutput": "Max output (optional override)"
+      }
+    },
+    "audit": {
+      "title": "Audit Report",
+      "tabs": {
+        "tools": "Tool calls",
+        "approvals": "Approvals",
+        "quarantines": "Quarantines",
+        "usage": "Usage",
+        "history": "Query history"
+      },
+      "refresh": "Refresh",
+      "export": "Export CSV",
+      "stats": "By tool",
+      "calls": "Calls",
+      "pending": "pending",
+      "col": {
+        "tool": "Tool",
+        "calls": "Calls",
+        "failures": "Failures",
+        "avgMs": "Avg (ms)"
+      },
+      "usage": {
+        "queries": "Search queries",
+        "users": "Active users",
+        "toolCalls": "Tool calls"
       }
     }
   },
@@ -15377,6 +15436,12 @@
         },
         "craftCatalog": {
           "label": "Gallery"
+        },
+        "tokenRateLimits": {
+          "label": "Token Rate Limits"
+        },
+        "standardAnswers": {
+          "label": "Standard Answers"
         }
       },
       "sections": {

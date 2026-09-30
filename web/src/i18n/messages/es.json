@@ -7137,157 +7137,157 @@
     "standardAnswers": {
       "categoryBubble": {
         "remove": {
-          "ariaLabel": "Eliminar la categoría {name}"
+          "ariaLabel": "Remove category {name}"
         },
         "removeButton": {
-          "ariaLabel": "Eliminar categoría"
+          "ariaLabel": "Remove category"
         }
       },
       "categoryDropdown": {
         "categories": {
-          "label": "Categorías de respuestas estándar"
+          "label": "Standard Answer Categories"
         },
         "fetchError": {
-          "message": "No se pudieron obtener las categorías de respuestas estándar - {message}",
-          "title": "Algo salió mal :("
+          "message": "Failed to fetch standard answer categories - {message}",
+          "title": "Something went wrong :("
         },
         "search": {
-          "placeholder": "Buscar categorías..."
+          "placeholder": "Search categories..."
         }
       },
       "editPage": {
-        "title": "Editar respuesta estándar"
+        "title": "Edit Standard Answer"
       },
       "errors": {
         "fetchAnswersFailed": {
-          "message": "No se pudieron obtener las respuestas estándar"
+          "message": "Failed to fetch standard answers"
         },
         "fetchCategoriesFailed": {
-          "message": "No se pudieron obtener las categorías de respuestas estándar"
+          "message": "Failed to fetch standard answer categories"
         },
         "genericTitle": {
-          "title": "Algo salió mal :("
+          "title": "Something went wrong :("
         },
         "loadAnswersFailed": {
-          "title": "Error al cargar las respuestas estándar"
+          "title": "Error loading standard answers"
         },
         "loadCategoriesFailed": {
-          "title": "Error al cargar las categorías de respuestas estándar"
+          "title": "Error loading standard answer categories"
         },
         "notFound": {
-          "message": "No se encontró una respuesta estándar con ID: {id}"
+          "message": "Did not find standard answer with ID: {id}"
         }
       },
       "filter": {
         "allCategories": {
-          "label": "Todas las categorías"
+          "label": "All Categories"
         }
       },
       "form": {
         "allKeywords": {
-          "label": "Todas estas palabras clave, en cualquier orden, separadas por espacios",
-          "placeholder": "ticket TI"
+          "label": "All of these keywords, in any order, separated by spaces",
+          "placeholder": "it ticket"
         },
         "answer": {
-          "label": "Respuesta",
-          "placeholder": "La respuesta en Markdown. Ejemplo: si necesitas ayuda del equipo de TI, escribe a internalsupport@company.com"
+          "label": "Answer",
+          "placeholder": "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
         },
         "anyKeywords": {
-          "label": "Cualquiera de estas palabras clave, separadas por espacios",
-          "placeholder": "ticket problema incidencia"
+          "label": "Any of these keywords, separated by spaces",
+          "placeholder": "ticket problem issue"
         },
         "categories": {
-          "label": "Categorías:",
-          "placeholder": "Escribe una categoría y presiona Enter…"
+          "label": "Categories:",
+          "placeholder": "Type a category and press Enter…"
         },
         "createButton": {
-          "label": "¡Crear!"
+          "label": "Create!"
         },
         "keywords": {
-          "tooltip": "Una pregunta debe coincidir con estas palabras clave para activar la respuesta."
+          "tooltip": "A question must match these keywords in order to trigger the answer."
         },
         "matchRegex": {
-          "description": "Coincide con un patrón regex en lugar de una palabra clave exacta",
-          "label": "Coincidir con regex"
+          "description": "Match a regex pattern instead of an exact keyword",
+          "label": "Match regex"
         },
         "regexPattern": {
-          "label": "Patrón regex",
-          "tooltip": "Se activa si la pregunta coincide con este patrón regex (usando `re.search()` de Python)"
+          "label": "Regex pattern",
+          "tooltip": "Triggers if the question matches this regex pattern (using Python `re.search()`)"
         },
         "strategy": {
           "all": {
-            "label": "Todas las palabras clave"
+            "label": "All keywords"
           },
           "any": {
-            "label": "Cualquier palabra clave"
+            "label": "Any keywords"
           },
-          "description": "Elige si la pregunta del usuario debe contener alguna o todas las palabras clave anteriores para mostrar esta respuesta.",
-          "label": "Estrategia de detección de palabras clave"
+          "description": "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
+          "label": "Keyword detection strategy"
         },
         "toasts": {
           "categoryCreateFailed": {
-            "message": "Error al crear la categoría \"{name}\" - {error}"
+            "message": "Error creating category \"{name}\" - {error}"
           },
           "createFailed": {
-            "message": "Error al crear la respuesta estándar - {error}"
+            "message": "Error creating Standard Answer - {error}"
           },
           "updateFailed": {
-            "message": "Error al actualizar la respuesta estándar - {error}"
+            "message": "Error updating Standard Answer - {error}"
           }
         },
         "updateButton": {
-          "label": "¡Actualizar!"
+          "label": "Update!"
         },
         "validation": {
-          "answerRequired": "La respuesta es obligatoria",
-          "categoryRequired": "Se requiere al menos una categoría",
-          "keywordRequired": "Se requieren palabras clave o un patrón"
+          "answerRequired": "Answer is required",
+          "categoryRequired": "At least one category is required",
+          "keywordRequired": "Keywords or pattern is required"
         }
       },
       "intro": {
         "addFirst": {
-          "message": "¡Agrega tu primera respuesta estándar abajo!"
+          "message": "Add your first standard answer below!"
         },
-        "description": "Administra las respuestas estándar para preguntas predefinidas.\nNota: actualmente solo las preguntas hechas desde Slack pueden recibir respuestas estándar."
+        "description": "Manage the standard answers for pre-defined questions.\nNote: Currently, only questions asked from Slack can receive standard answers."
       },
       "newStandardAnswer": {
-        "label": "Nueva respuesta estándar"
+        "label": "New Standard Answer"
       },
       "search": {
-        "placeholder": "Busca respuestas estándar por palabra clave o frase..."
+        "placeholder": "Find standard answers by keyword/phrase..."
       },
       "table": {
         "answer": {
-          "header": "Respuesta"
+          "header": "Answer"
         },
         "categories": {
-          "header": "Categorías"
+          "header": "Categories"
         },
         "empty": {
-          "message": "No se encontraron respuestas estándar coincidentes..."
+          "message": "No matching standard answers found..."
         },
         "keywords": {
-          "header": "Palabras clave/patrón"
+          "header": "Keywords/Pattern"
         },
         "matchRegex": {
-          "header": "¿Coincidencia regex?"
+          "header": "Match regex?"
         },
         "matchRegexNo": {
           "label": "No"
         },
         "matchRegexYes": {
-          "label": "Sí"
+          "label": "Yes"
         },
         "slackNote": {
-          "message": "Asegúrate de haber agregado la categoría al [bot de Slack](/admin/bots) correspondiente."
+          "message": "Ensure that you have added the category to the relevant [Slack Bot](/admin/bots)."
         }
       },
       "toasts": {
         "deleteFailed": {
-          "message": "No se pudo eliminar la respuesta estándar - {error}"
+          "message": "Failed to delete standard answer - {error}"
         },
         "deleted": {
-          "message": "Respuesta estándar {id} eliminada"
+          "message": "Standard answer {id} deleted"
         }
       }
     },
@@ -8675,6 +8675,65 @@
         "download": {
           "label": "Descargar"
         }
+      }
+    },
+    "agentModels": {
+      "title": "Agent Models",
+      "subtitle": "The model catalog available to agent runtimes plus admin-defined overlays. Verify issues one real provider probe.",
+      "catalog": "Catalog",
+      "overlays": "Custom models (overlays)",
+      "noOverlays": "No custom models yet. Add one below (e.g. a GLM clone on a private endpoint).",
+      "default": "default",
+      "refresh": "Refresh",
+      "created": "Custom model created",
+      "deleted": "Custom model deleted",
+      "verified": "Probe succeeded",
+      "verifyFailed": "Probe failed",
+      "verifyError": "Last failure",
+      "notVerified": "Not verified",
+      "verifiedAt": "Verified at {time}",
+      "verify": "Verify",
+      "delete": "Delete",
+      "add": "Add model",
+      "col": {
+        "model": "Model",
+        "provider": "Provider",
+        "context": "Context window",
+        "runtimes": "Runtimes"
+      },
+      "form": {
+        "name": "Name (e.g. Private GLM)",
+        "provider": "Provider (e.g. bigmodel)",
+        "template": "Template (catalog model id, e.g. glm-4.7)",
+        "baseUrl": "Base URL (optional, private endpoint)",
+        "context": "Context window (optional override)",
+        "maxOutput": "Max output (optional override)"
+      }
+    },
+    "audit": {
+      "title": "Audit Report",
+      "tabs": {
+        "tools": "Tool calls",
+        "approvals": "Approvals",
+        "quarantines": "Quarantines",
+        "usage": "Usage",
+        "history": "Query history"
+      },
+      "refresh": "Refresh",
+      "export": "Export CSV",
+      "stats": "By tool",
+      "calls": "Calls",
+      "pending": "pending",
+      "col": {
+        "tool": "Tool",
+        "calls": "Calls",
+        "failures": "Failures",
+        "avgMs": "Avg (ms)"
+      },
+      "usage": {
+        "queries": "Search queries",
+        "users": "Active users",
+        "toolCalls": "Tool calls"
       }
     }
   },
@@ -15377,6 +15436,12 @@
         },
         "craftCatalog": {
           "label": "Gallery"
+        },
+        "tokenRateLimits": {
+          "label": "Token Rate Limits"
+        },
+        "standardAnswers": {
+          "label": "Standard Answers"
         }
       },
       "sections": {

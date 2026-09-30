@@ -8676,6 +8676,83 @@
           "label": "下载"
         }
       }
+    },
+    "sidebar": {
+      "adminNav": {
+        "items": {
+          "agentModels": {
+            "label": "Agent 模型"
+          },
+          "auditReport": {
+            "label": "审计报表"
+          },
+          "tokenRateLimits": {
+            "label": "Token 限额"
+          },
+          "standardAnswers": {
+            "label": "标准答案"
+          }
+        }
+      }
+    },
+    "agentModels": {
+      "title": "Agent 模型",
+      "subtitle": "Agent 运行时可用的模型目录与自定义模型（overlay）。验证会向供应商发起一次真实探测。",
+      "catalog": "模型目录",
+      "overlays": "自定义模型",
+      "noOverlays": "暂无自定义模型。在下方表单添加（例如客户私有端点克隆的 GLM 模型）。",
+      "default": "默认",
+      "refresh": "刷新",
+      "created": "自定义模型已创建",
+      "deleted": "自定义模型已删除",
+      "verified": "探测成功",
+      "verifyFailed": "探测失败",
+      "verifyError": "上次失败原因",
+      "notVerified": "未验证",
+      "verifiedAt": "已验证于 {time}",
+      "verify": "验证",
+      "delete": "删除",
+      "add": "添加模型",
+      "col": {
+        "model": "模型",
+        "provider": "供应商",
+        "context": "上下文窗口",
+        "runtimes": "可用运行时"
+      },
+      "form": {
+        "name": "名称（如 客户私有GLM）",
+        "provider": "供应商（如 bigmodel）",
+        "template": "克隆模板（目录中的模型 id，如 glm-4.7）",
+        "baseUrl": "Base URL（可选，私有端点）",
+        "context": "上下文窗口（可选，覆盖模板）",
+        "maxOutput": "最大输出（可选，覆盖模板）"
+      }
+    },
+    "audit": {
+      "title": "审计报表",
+      "tabs": {
+        "tools": "工具调用",
+        "approvals": "审批",
+        "quarantines": "内容隔离",
+        "usage": "用量",
+        "history": "查询历史"
+      },
+      "refresh": "刷新",
+      "export": "导出 CSV",
+      "stats": "按工具汇总",
+      "calls": "调用明细",
+      "pending": "待决策",
+      "col": {
+        "tool": "工具",
+        "calls": "调用数",
+        "failures": "失败",
+        "avgMs": "平均耗时(ms)"
+      },
+      "usage": {
+        "queries": "搜索查询",
+        "users": "活跃用户",
+        "toolCalls": "工具调用"
+      }
     }
   },
   "agents": {

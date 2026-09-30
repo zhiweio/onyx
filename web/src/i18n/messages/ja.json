@@ -7137,157 +7137,157 @@
     "standardAnswers": {
       "categoryBubble": {
         "remove": {
-          "ariaLabel": "カテゴリ {name} を削除"
+          "ariaLabel": "Remove category {name}"
         },
         "removeButton": {
-          "ariaLabel": "カテゴリを削除"
+          "ariaLabel": "Remove category"
         }
       },
       "categoryDropdown": {
         "categories": {
-          "label": "定型回答カテゴリ"
+          "label": "Standard Answer Categories"
         },
         "fetchError": {
-          "message": "定型回答カテゴリの取得に失敗しました - {message}",
-          "title": "問題が発生しました :("
+          "message": "Failed to fetch standard answer categories - {message}",
+          "title": "Something went wrong :("
         },
         "search": {
-          "placeholder": "カテゴリを検索..."
+          "placeholder": "Search categories..."
         }
       },
       "editPage": {
-        "title": "標準回答を編集"
+        "title": "Edit Standard Answer"
       },
       "errors": {
         "fetchAnswersFailed": {
-          "message": "標準回答の取得に失敗しました"
+          "message": "Failed to fetch standard answers"
         },
         "fetchCategoriesFailed": {
-          "message": "標準回答カテゴリの取得に失敗しました"
+          "message": "Failed to fetch standard answer categories"
         },
         "genericTitle": {
-          "title": "問題が発生しました :("
+          "title": "Something went wrong :("
         },
         "loadAnswersFailed": {
-          "title": "標準回答の読み込み中にエラーが発生しました"
+          "title": "Error loading standard answers"
         },
         "loadCategoriesFailed": {
-          "title": "標準回答カテゴリの読み込み中にエラーが発生しました"
+          "title": "Error loading standard answer categories"
         },
         "notFound": {
-          "message": "ID: {id} の標準回答が見つかりませんでした"
+          "message": "Did not find standard answer with ID: {id}"
         }
       },
       "filter": {
         "allCategories": {
-          "label": "すべてのカテゴリ"
+          "label": "All Categories"
         }
       },
       "form": {
         "allKeywords": {
-          "label": "これらのキーワードのすべて(順不同、スペース区切り)",
-          "placeholder": "IT チケット"
+          "label": "All of these keywords, in any order, separated by spaces",
+          "placeholder": "it ticket"
         },
         "answer": {
-          "label": "回答",
-          "placeholder": "Markdown形式の回答。例: ITチームのサポートが必要な場合は、internalsupport@company.com までメールでご連絡ください"
+          "label": "Answer",
+          "placeholder": "The answer in Markdown. Example: If you need any help from the IT team, please email internalsupport@company.com"
         },
         "anyKeywords": {
-          "label": "これらのキーワードのいずれか(スペース区切り)",
-          "placeholder": "チケット 問題 障害"
+          "label": "Any of these keywords, separated by spaces",
+          "placeholder": "ticket problem issue"
         },
         "categories": {
-          "label": "カテゴリ:",
-          "placeholder": "カテゴリを入力してEnterキーを押してください…"
+          "label": "Categories:",
+          "placeholder": "Type a category and press Enter…"
         },
         "createButton": {
-          "label": "作成!"
+          "label": "Create!"
         },
         "keywords": {
-          "tooltip": "回答をトリガーするには、質問がこれらのキーワードに一致する必要があります。"
+          "tooltip": "A question must match these keywords in order to trigger the answer."
         },
         "matchRegex": {
-          "description": "正確なキーワードの代わりに正規表現パターンで一致させます",
-          "label": "正規表現で一致"
+          "description": "Match a regex pattern instead of an exact keyword",
+          "label": "Match regex"
         },
         "regexPattern": {
-          "label": "正規表現パターン",
-          "tooltip": "質問がこの正規表現パターンに一致した場合にトリガーされます(Pythonの`re.search()`を使用)"
+          "label": "Regex pattern",
+          "tooltip": "Triggers if the question matches this regex pattern (using Python `re.search()`)"
         },
         "strategy": {
           "all": {
-            "label": "すべてのキーワード"
+            "label": "All keywords"
           },
           "any": {
-            "label": "いずれかのキーワード"
+            "label": "Any keywords"
           },
-          "description": "この回答を表示するために、ユーザーの質問に上記のキーワードのいずれか、またはすべてが含まれる必要があるかを選択します。",
-          "label": "キーワード検出戦略"
+          "description": "Choose whether to require the user's question to contain any or all of the keywords above to show this answer.",
+          "label": "Keyword detection strategy"
         },
         "toasts": {
           "categoryCreateFailed": {
-            "message": "カテゴリ「{name}」の作成中にエラーが発生しました - {error}"
+            "message": "Error creating category \"{name}\" - {error}"
           },
           "createFailed": {
-            "message": "標準回答の作成中にエラーが発生しました - {error}"
+            "message": "Error creating Standard Answer - {error}"
           },
           "updateFailed": {
-            "message": "標準回答の更新中にエラーが発生しました - {error}"
+            "message": "Error updating Standard Answer - {error}"
           }
         },
         "updateButton": {
-          "label": "更新!"
+          "label": "Update!"
         },
         "validation": {
-          "answerRequired": "回答は必須です",
-          "categoryRequired": "少なくとも1つのカテゴリが必要です",
-          "keywordRequired": "キーワードまたはパターンは必須です"
+          "answerRequired": "Answer is required",
+          "categoryRequired": "At least one category is required",
+          "keywordRequired": "Keywords or pattern is required"
         }
       },
       "intro": {
         "addFirst": {
-          "message": "以下から最初の標準回答を追加しましょう!"
+          "message": "Add your first standard answer below!"
         },
-        "description": "事前定義された質問に対する標準回答を管理します。\n注: 現在、Slackからの質問のみが標準回答を受け取れます。"
+        "description": "Manage the standard answers for pre-defined questions.\nNote: Currently, only questions asked from Slack can receive standard answers."
       },
       "newStandardAnswer": {
-        "label": "新しい標準回答"
+        "label": "New Standard Answer"
       },
       "search": {
-        "placeholder": "キーワードやフレーズで標準回答を検索..."
+        "placeholder": "Find standard answers by keyword/phrase..."
       },
       "table": {
         "answer": {
-          "header": "回答"
+          "header": "Answer"
         },
         "categories": {
-          "header": "カテゴリ"
+          "header": "Categories"
         },
         "empty": {
-          "message": "一致する標準回答が見つかりません..."
+          "message": "No matching standard answers found..."
         },
         "keywords": {
-          "header": "キーワード/パターン"
+          "header": "Keywords/Pattern"
         },
         "matchRegex": {
-          "header": "正規表現で一致?"
+          "header": "Match regex?"
         },
         "matchRegexNo": {
-          "label": "いいえ"
+          "label": "No"
         },
         "matchRegexYes": {
-          "label": "はい"
+          "label": "Yes"
         },
         "slackNote": {
-          "message": "該当する[Slackボット](/admin/bots)にカテゴリを追加したことを確認してください。"
+          "message": "Ensure that you have added the category to the relevant [Slack Bot](/admin/bots)."
         }
       },
       "toasts": {
         "deleteFailed": {
-          "message": "標準回答の削除に失敗しました - {error}"
+          "message": "Failed to delete standard answer - {error}"
         },
         "deleted": {
-          "message": "標準回答 {id} を削除しました"
+          "message": "Standard answer {id} deleted"
         }
       }
     },
@@ -8675,6 +8675,65 @@
         "download": {
           "label": "ダウンロード"
         }
+      }
+    },
+    "agentModels": {
+      "title": "Agent Models",
+      "subtitle": "The model catalog available to agent runtimes plus admin-defined overlays. Verify issues one real provider probe.",
+      "catalog": "Catalog",
+      "overlays": "Custom models (overlays)",
+      "noOverlays": "No custom models yet. Add one below (e.g. a GLM clone on a private endpoint).",
+      "default": "default",
+      "refresh": "Refresh",
+      "created": "Custom model created",
+      "deleted": "Custom model deleted",
+      "verified": "Probe succeeded",
+      "verifyFailed": "Probe failed",
+      "verifyError": "Last failure",
+      "notVerified": "Not verified",
+      "verifiedAt": "Verified at {time}",
+      "verify": "Verify",
+      "delete": "Delete",
+      "add": "Add model",
+      "col": {
+        "model": "Model",
+        "provider": "Provider",
+        "context": "Context window",
+        "runtimes": "Runtimes"
+      },
+      "form": {
+        "name": "Name (e.g. Private GLM)",
+        "provider": "Provider (e.g. bigmodel)",
+        "template": "Template (catalog model id, e.g. glm-4.7)",
+        "baseUrl": "Base URL (optional, private endpoint)",
+        "context": "Context window (optional override)",
+        "maxOutput": "Max output (optional override)"
+      }
+    },
+    "audit": {
+      "title": "Audit Report",
+      "tabs": {
+        "tools": "Tool calls",
+        "approvals": "Approvals",
+        "quarantines": "Quarantines",
+        "usage": "Usage",
+        "history": "Query history"
+      },
+      "refresh": "Refresh",
+      "export": "Export CSV",
+      "stats": "By tool",
+      "calls": "Calls",
+      "pending": "pending",
+      "col": {
+        "tool": "Tool",
+        "calls": "Calls",
+        "failures": "Failures",
+        "avgMs": "Avg (ms)"
+      },
+      "usage": {
+        "queries": "Search queries",
+        "users": "Active users",
+        "toolCalls": "Tool calls"
       }
     }
   },
@@ -15377,6 +15436,12 @@
         },
         "craftCatalog": {
           "label": "Gallery"
+        },
+        "tokenRateLimits": {
+          "label": "Token Rate Limits"
+        },
+        "standardAnswers": {
+          "label": "Standard Answers"
         }
       },
       "sections": {
