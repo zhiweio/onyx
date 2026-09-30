@@ -146,7 +146,19 @@ from onyx.server.manage.opensearch_migration.api import (
 )
 from onyx.server.manage.search_settings import router as search_settings_router
 from onyx.server.manage.slack_bot import router as slack_bot_management_router
+from onyx.server.features.build.sandbox.agent_runtime.registry_api import (
+    router as agent_models_admin_router,
+)
+from onyx.server.manage.audit_report.api import (
+    router as audit_report_admin_router,
+)
 from onyx.server.manage.sso.api import admin_router as sso_admin_router
+from onyx.server.manage.standard_answers.api import (
+    router as standard_answers_admin_router,
+)
+from onyx.server.manage.token_rate_limits.api import (
+    router as token_rate_limits_admin_router,
+)
 from onyx.server.manage.user_group.api import (
     router as user_group_admin_router,
 )
@@ -620,6 +632,10 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, settings_admin_router)
     include_router_with_global_prefix_prepended(application, security_admin_router)
     include_router_with_global_prefix_prepended(application, sso_admin_router)
+    include_router_with_global_prefix_prepended(application, agent_models_admin_router)
+    include_router_with_global_prefix_prepended(application, audit_report_admin_router)
+    include_router_with_global_prefix_prepended(application, token_rate_limits_admin_router)
+    include_router_with_global_prefix_prepended(application, standard_answers_admin_router)
     include_router_with_global_prefix_prepended(application, user_group_admin_router)
     include_router_with_global_prefix_prepended(application, llm_admin_router)
     include_router_with_global_prefix_prepended(application, kg_admin_router)

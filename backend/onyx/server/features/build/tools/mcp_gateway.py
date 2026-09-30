@@ -190,7 +190,7 @@ def _render_result(result: Any) -> str:
     return "\n".join(parts) if parts else "(no content)"
 
 
-def default_gateway_servers() -> McpGatewayService:
+def default_gateway_servers(audit: AuditFn | None = None) -> McpGatewayService:
     """The deployment gateway from env config. Calls fail with a clear
     'unknown server' message when nothing is configured."""
-    return McpGatewayService(load_gateway_servers())
+    return McpGatewayService(load_gateway_servers(), audit=audit)
