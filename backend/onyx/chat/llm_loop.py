@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 from typing import Any, Literal
 
+from onyx.chat.agent_budget import resolve_budget
 from onyx.chat.chat_state import ChatStateContainer
 from onyx.chat.chat_utils import (
     build_python_chat_files_from_search_docs,
@@ -35,7 +36,7 @@ from onyx.chat.prompt_utils import (
     process_prompt_template,
 )
 from onyx.configs.app_configs import INTEGRATION_TESTS_MODE
-from onyx.configs.chat_configs import MAX_LLM_CYCLES
+from onyx.configs.chat_configs import CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED
 from onyx.configs.constants import DocumentSource, MessageType
 from onyx.configs.model_configs import GEN_AI_INPUT_TOKEN_SAFETY_MARGIN
 from onyx.context.search.models import SearchDoc, SearchDocsResponse
@@ -59,6 +60,9 @@ from onyx.server.query_and_chat.placement import Placement
 from onyx.server.query_and_chat.streaming_models import (
     OverallStop,
     Packet,
+    ReasoningDelta,
+    ReasoningDone,
+    ReasoningStart,
     ToolCallDebug,
     TopLevelBranching,
 )
@@ -312,6 +316,53 @@ def _try_fallback_tool_extraction(
 # Cycle 6: No more tools available, forced to answer
 # Override via the MAX_LLM_CYCLES env var when running with tool-heavy MCPs
 # that legitimately need more turns. Imported from chat_configs.
+
+# Keeps the OpenAI parallel tool-calling format intact while freeing context:
+# every assistant tool_calls message keeps its matching TOOL_CALL_RESPONSE
+# messages, so older responses are truncated in place instead of deleted.
+_FOLD_KEEP_RECENT_TOOL_RESPONSES = 4
+_FOLD_STUB_CHARS = 200
+_FOLD_STUB_MARKER = "[Earlier tool result folded to fit the context window."
+
+
+def _fold_tool_history(
+    simple_chat_history: list[ChatMessageSimple],
+    *,
+    token_counter: Callable[[str], int],
+) -> int:
+    """Fold older tool results in place once the turn enters extension cycles.
+
+    Returns the number of tool responses folded. The most recent
+    ``_FOLD_KEEP_RECENT_TOOL_RESPONSES`` responses stay verbatim; older ones
+    become a short stub that names the tool call and keeps the head of the
+    result, so the model can still see what it did and re-run a tool when the
+    details actually matter. Already-folded responses are left alone, so the
+    fold is idempotent.
+    """
+    response_indices = [
+        idx
+        for idx, msg in enumerate(simple_chat_history)
+        if msg.message_type == MessageType.TOOL_CALL_RESPONSE
+    ]
+    if len(response_indices) <= _FOLD_KEEP_RECENT_TOOL_RESPONSES:
+        return 0
+    fold_target_indices = set(response_indices[:-_FOLD_KEEP_RECENT_TOOL_RESPONSES])
+    folded = 0
+    for idx in fold_target_indices:
+        msg = simple_chat_history[idx]
+        if msg.message_type != MessageType.TOOL_CALL_RESPONSE:
+            continue
+        if msg.message.startswith(_FOLD_STUB_MARKER):
+            continue
+        head = msg.message[:_FOLD_STUB_CHARS].strip()
+        msg.message = (
+            f"{_FOLD_STUB_MARKER} "
+            f"Tool call id {msg.tool_call_id}. Head of the result: {head} …] "
+            "Re-run the tool if you need the full output again."
+        )
+        msg.token_count = token_counter(msg.message)
+        folded += 1
+    return folded
 
 
 def _build_context_file_citation_mapping(
@@ -881,9 +932,72 @@ def run_llm_loop(
         )
 
         reasoning_cycles = 0
-        for llm_cycle_count in range(MAX_LLM_CYCLES):
-            # Handling tool calls based on cycle count and past cycle conditions
-            out_of_cycles = llm_cycle_count == MAX_LLM_CYCLES - 1
+        llm_cycle_count = 0
+        extension_cycles_used = 0
+        history_folded = False
+        # Per-persona budget overrides resolved once per request; malformed
+        # payloads degrade to the global defaults (see onyx.chat.agent_budget).
+        budget = resolve_budget(persona.agent_budget if persona is not None else None)
+        # Runaway guard: bounded even if a provider ignores tool_choice=NONE.
+        hard_cycle_ceiling = budget.max_llm_cycles + budget.max_extension_cycles + 2
+        while llm_cycle_count < hard_cycle_ceiling:
+            # Handling tool calls based on cycle count and past cycle conditions.
+            # Budget governance (QM/Codex discipline): at the base cap a turn
+            # that still wants tools is not stripped mid-work — older tool
+            # results fold into stubs and the loop continues for up to
+            # budget.max_extension_cycles more cycles.
+            in_extension = llm_cycle_count >= budget.max_llm_cycles - 1
+            extension_allowed = (
+                CHAT_AGENT_CYCLE_GOVERNANCE_ENABLED
+                and not ran_image_gen
+                and extension_cycles_used < budget.max_extension_cycles
+                and (
+                    budget.turn_token_budget <= 0
+                    or sum(msg.token_count for msg in simple_chat_history)
+                    <= budget.turn_token_budget
+                )
+            )
+            if in_extension and extension_allowed:
+                if not history_folded:
+                    folded = _fold_tool_history(
+                        simple_chat_history, token_counter=token_counter
+                    )
+                    history_folded = True
+                    if folded > 0:
+                        emitter.emit(
+                            Packet(
+                                placement=Placement(
+                                    turn_index=llm_cycle_count + reasoning_cycles
+                                ),
+                                obj=ReasoningStart(),
+                            )
+                        )
+                        emitter.emit(
+                            Packet(
+                                placement=Placement(
+                                    turn_index=llm_cycle_count + reasoning_cycles
+                                ),
+                                obj=ReasoningDelta(
+                                    reasoning=(
+                                        "Context compacted — earlier tool results "
+                                        "were folded and the work continues."
+                                    )
+                                ),
+                            )
+                        )
+                        emitter.emit(
+                            Packet(
+                                placement=Placement(
+                                    turn_index=llm_cycle_count + reasoning_cycles
+                                ),
+                                obj=ReasoningDone(),
+                            )
+                        )
+                extension_cycles_used += 1
+                out_of_cycles = False
+            else:
+                out_of_cycles = llm_cycle_count >= budget.max_llm_cycles - 1
+            llm_cycle_count += 1
             if forced_tool_id:
                 # Needs to be just the single one because the "required" currently doesn't have a specified tool, just a binary
                 final_tools = [tool for tool in tools if tool.id == forced_tool_id]
@@ -1452,10 +1566,7 @@ def run_llm_loop(
 
         emitter.emit(
             Packet(
-                placement=Placement(
-                    turn_index=llm_cycle_count  # ty: ignore[possibly-unresolved-reference]
-                    + reasoning_cycles
-                ),
+                placement=Placement(turn_index=llm_cycle_count + reasoning_cycles),
                 obj=OverallStop(type="stop"),
             )
         )

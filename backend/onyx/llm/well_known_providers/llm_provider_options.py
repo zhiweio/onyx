@@ -21,12 +21,16 @@ from onyx.llm.well_known_providers.auto_update_service import (
 from onyx.llm.well_known_providers.constants import (
     ANTHROPIC_PROVIDER_NAME,
     AZURE_PROVIDER_NAME,
-    BIGMODEL_PROVIDER_NAME,
-    DEEPSEEK_PROVIDER_NAME,
     BEDROCK_PROVIDER_NAME,
     BIFROST_PROVIDER_NAME,
+    BIGMODEL_PROVIDER_NAME,
+    DASHSCOPE_NON_CHAT_MODEL_TERMS,
+    DASHSCOPE_PROVIDER_NAME,
+    DEEPSEEK_PROVIDER_NAME,
     LITELLM_PROXY_PROVIDER_NAME,
     LM_STUDIO_PROVIDER_NAME,
+    MINIMAX_PROVIDER_NAME,
+    MOONSHOT_PROVIDER_NAME,
     NEBIUS_TOKENFACTORY_PROVIDER_NAME,
     OLLAMA_PROVIDER_NAME,
     OPENAI_COMPATIBLE_PROVIDER_NAME,
@@ -34,8 +38,6 @@ from onyx.llm.well_known_providers.constants import (
     OPENROUTER_PROVIDER_NAME,
     PORTKEY_PROVIDER_NAME,
     VERTEXAI_PROVIDER_NAME,
-    MINIMAX_PROVIDER_NAME,
-    MOONSHOT_PROVIDER_NAME,
     ZAI_PROVIDER_NAME,
 )
 from onyx.llm.well_known_providers.models import (
@@ -82,6 +84,7 @@ def _get_provider_to_models_map() -> dict[str, list[str]]:
         BIGMODEL_PROVIDER_NAME: get_zai_model_names(),
         MOONSHOT_PROVIDER_NAME: get_moonshot_model_names(),
         MINIMAX_PROVIDER_NAME: get_minimax_model_names(),
+        DASHSCOPE_PROVIDER_NAME: get_dashscope_model_names(),
         VERTEXAI_PROVIDER_NAME: get_vertexai_model_names(),
         OLLAMA_PROVIDER_NAME: [],  # Dynamic - fetched from Ollama API
         LM_STUDIO_PROVIDER_NAME: [],  # Dynamic - fetched from LM Studio API
@@ -317,6 +320,29 @@ def get_minimax_model_names() -> list[str]:
     ]
 
 
+def get_dashscope_model_names() -> list[str]:
+    """Get Bailian chat model names from LiteLLM's DashScope provider.
+
+    LiteLLM's static list trails the Bailian catalog, so live model fetching
+    (``/admin/llm/dashscope/available-models``) is the primary source; this
+    list only seeds the picker before an API key is entered.
+    """
+    import litellm
+
+    return [
+        name
+        for name in _unprefixed_litellm_models(
+            list(litellm.dashscope_models), "dashscope"
+        )
+        if not _is_dashscope_non_chat_model(name)
+    ]
+
+
+def _is_dashscope_non_chat_model(model_name: str) -> bool:
+    model_lower = model_name.lower()
+    return any(term in model_lower for term in DASHSCOPE_NON_CHAT_MODEL_TERMS)
+
+
 def get_vertexai_model_names() -> list[str]:
     """Get Vertex AI model names dynamically from litellm model_cost."""
     import litellm
@@ -511,6 +537,7 @@ def get_provider_display_name(provider_name: str) -> str:
         BIGMODEL_PROVIDER_NAME: "GLM (BigModel)",
         MOONSHOT_PROVIDER_NAME: "Kimi",
         MINIMAX_PROVIDER_NAME: "MiniMax",
+        DASHSCOPE_PROVIDER_NAME: "Qwen (Alibaba Bailian)",
         AZURE_PROVIDER_NAME: "Azure OpenAI",
         BEDROCK_PROVIDER_NAME: "Amazon Bedrock",
         VERTEXAI_PROVIDER_NAME: "Google Vertex AI",

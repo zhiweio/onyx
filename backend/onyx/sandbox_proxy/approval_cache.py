@@ -44,9 +44,18 @@ def _wake_key(approval_id: UUID) -> str:
 
 
 def _session_grant_key(
-    session_id: UUID, kind: GatedAppKind, target_id: int, action_type: str
+    session_id: UUID,
+    kind: GatedAppKind,
+    target_id: int,
+    action_type: str,
+    policy_version: int,
 ) -> str:
-    return f"approval:session-grant:{session_id}:{kind.value}:{target_id}:{action_type}"
+    # The key carries the app's policy version so a policy edit orphans the
+    # old entries instead of auto-approving under the new policy.
+    return (
+        f"approval:session-grant:{session_id}:{kind.value}:{target_id}"
+        f":{action_type}:v{policy_version}"
+    )
 
 
 def announce_approval(approval_id: UUID, session_id: UUID, cache: CacheBackend) -> None:
@@ -61,6 +70,7 @@ def cache_session_grant_actions(
     target_id: int,
     action_types: Iterable[str],
     source_approval_id: UUID,
+    policy_version: int,
     cache: CacheBackend,
 ) -> None:
     """Cache the same target/action types for this BuildSession.
@@ -71,7 +81,9 @@ def cache_session_grant_actions(
     """
     for action_type in set(action_types):
         cache.set(
-            _session_grant_key(session_id, kind, target_id, action_type),
+            _session_grant_key(
+                session_id, kind, target_id, action_type, policy_version
+            ),
             str(source_approval_id),
             ex=SESSION_GRANT_TTL_S,
         )
@@ -83,10 +95,15 @@ def hydrate_session_grants(
     kind: GatedAppKind,
     target_id: int,
     rows: Iterable["ActionApproval"],
+    policy_version: int,
     cache: CacheBackend | None,
 ) -> set[str]:
     """Union of ASK action types across persisted grant ``rows``, hydrating each
     row's per-action grant keys as a side effect.
+
+    ``policy_version`` is the target's current version: callers pass it so keys
+    land in the version-scoped namespace, and stale-version rows must already
+    have been filtered out of ``rows`` by the DB query.
 
     Hydration is best-effort: skipped when ``cache`` is ``None`` and
     warned-and-continued on transient cache errors, so callers always get the
@@ -107,6 +124,7 @@ def hydrate_session_grants(
                     target_id=target_id,
                     action_types=action_types,
                     source_approval_id=source_approval_id,
+                    policy_version=policy_version,
                     cache=cache,
                 )
         except CACHE_TRANSIENT_ERRORS as e:
@@ -127,6 +145,7 @@ def cached_session_grants_cover(
     kind: GatedAppKind,
     target_id: int,
     action_types: Iterable[str],
+    policy_version: int,
     cache: CacheBackend,
 ) -> bool:
     """Return true iff every action type has an active cached session grant.
@@ -138,7 +157,7 @@ def cached_session_grants_cover(
     if not unique_action_types:
         return False
     keys = [
-        _session_grant_key(session_id, kind, target_id, action_type)
+        _session_grant_key(session_id, kind, target_id, action_type, policy_version)
         for action_type in unique_action_types
     ]
     for key in keys:

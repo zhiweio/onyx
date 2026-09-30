@@ -20,6 +20,7 @@ class LlmProviderNames(str, Enum):
     BIGMODEL = "bigmodel"
     MOONSHOT = "moonshot"
     MINIMAX = "minimax"
+    DASHSCOPE = "dashscope"
     GOOGLE = "google"
     BEDROCK = "bedrock"
     BEDROCK_CONVERSE = "bedrock_converse"
@@ -51,6 +52,7 @@ WELL_KNOWN_PROVIDER_NAMES = [
     LlmProviderNames.BIGMODEL,
     LlmProviderNames.MOONSHOT,
     LlmProviderNames.MINIMAX,
+    LlmProviderNames.DASHSCOPE,
     LlmProviderNames.VERTEX_AI,
     LlmProviderNames.BEDROCK,
     LlmProviderNames.OPENROUTER,
@@ -85,6 +87,7 @@ PROVIDER_DISPLAY_NAMES: dict[str, str] = {
     LlmProviderNames.BIGMODEL: "GLM",
     LlmProviderNames.MOONSHOT: "Kimi",
     LlmProviderNames.MINIMAX: "MiniMax",
+    LlmProviderNames.DASHSCOPE: "Alibaba Bailian",
     LlmProviderNames.GOOGLE: "Google",
     LlmProviderNames.BEDROCK: "Bedrock",
     LlmProviderNames.BEDROCK_CONVERSE: "Bedrock",

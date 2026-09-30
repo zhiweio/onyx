@@ -112,6 +112,31 @@
         }
       ]
     },
+    "dashscope": {
+      "default_model": "qwen3.8-max",
+      "additional_visible_models": [
+        {
+          "name": "qwen3.8-max",
+          "display_name": "Qwen3.8 Max"
+        },
+        {
+          "name": "qwen3.8-flash",
+          "display_name": "Qwen3.8 Flash"
+        },
+        {
+          "name": "qwen3.7-plus",
+          "display_name": "Qwen3.7 Plus"
+        },
+        {
+          "name": "qwen3-vl-plus",
+          "display_name": "Qwen3 VL Plus"
+        },
+        {
+          "name": "qwen-plus",
+          "display_name": "Qwen Plus"
+        }
+      ]
+    },
     "anthropic": {
       "default_model": "claude-opus-5",
       "additional_visible_models": [

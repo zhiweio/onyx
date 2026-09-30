@@ -500,6 +500,17 @@ BUILT_IN_SKILL_ENTRIES: Final[tuple[BuiltInSkillEntry, ...]] = (
         tags=("finance", "earnings", "report"),
         built_in_skill_id="financial-report-analysis",
     ),
+    BuiltInSkillEntry(
+        slug="finance-tax-risk-report",
+        name="财税与经营风险分析报告",
+        description=(
+            "撰写五年期财税与经营风险分析报告：KPI看板、三表五年透视、税负与现金流"
+            "专项、TX/OP 风险矩阵与评分、四维建议与整改清单，产出正式 Word 报告。"
+        ),
+        category=SystemCatalogCategory.REPORT,
+        tags=("finance", "tax", "risk", "report"),
+        built_in_skill_id="finance-tax-risk-report",
+    ),
     *(
         BuiltInSkillEntry(
             slug=skill.slug,
@@ -530,6 +541,14 @@ BUILT_IN_REPORT_TEMPLATE_ENTRIES: Final[tuple[BuiltInReportTemplateEntry, ...]] 
         category=SystemCatalogCategory.GENERAL,
         tags=("listed", "audit"),
         body_file="listed_company_audit.md",
+    ),
+    BuiltInReportTemplateEntry(
+        slug="finance_tax_risk_report",
+        name="财税与经营风险分析报告",
+        description="五年期财税与经营风险诊断的正式报告骨架，含看板、透视与风险矩阵。",
+        category=SystemCatalogCategory.REPORT,
+        tags=("finance", "tax", "risk"),
+        body_file="finance_tax_risk_report.md",
     ),
 )
 
@@ -578,5 +597,27 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         ),
         report_template_slug="listed_company_audit",
         playbook_file="listed-company-financial-audit.yaml",
+    ),
+    BuiltInScenarioEntry(
+        slug="finance-tax-risk-report",
+        name="财税与经营风险分析",
+        description=(
+            "以五年年报为证据，建数、识险、评分成矩阵，并成稿带图表的正式风险报告。"
+        ),
+        category=SystemCatalogCategory.GENERAL,
+        tags=("listed", "finance", "tax", "risk"),
+        skill_slugs=(
+            "listed-co-entity-resolve",
+            "finance-tax-risk-report",
+            "hithink-finance",
+            "qichacha",
+            "zhihuiya",
+            "listed-co-industry-context",
+            "chart-gen",
+            "data-viz-gen",
+            "docx",
+        ),
+        report_template_slug="finance_tax_risk_report",
+        playbook_file="finance-tax-risk-report.yaml",
     ),
 )
