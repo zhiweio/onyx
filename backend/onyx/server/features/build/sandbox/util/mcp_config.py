@@ -16,6 +16,7 @@ from onyx.db.mcp import (
     get_user_connection_configs,
 )
 from onyx.db.models import MCPServer, User
+from onyx.server.features.build.configs import ONYX_SERVER_URL
 from onyx.server.features.build.sandbox.models import CraftMCPServerConfig
 from onyx.server.features.mcp.credentials import user_can_authenticate
 from onyx.utils.logger import setup_logger
@@ -23,6 +24,28 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 _NON_IDENTIFIER = re.compile(r"[^a-z0-9]+")
+
+# The platform-owned tool catalog is exposed as a pseudo MCP server routed
+# through the standard PAT-injected onyx API path; agent runtimes list and
+# call platform tools (rag_search, question, background, ...) over it.
+PLATFORM_TOOLS_SERVER_KEY = "onyx-platform-tools"
+_PLATFORM_SERVER_ID = -1  # pseudo-entry: not a DB MCPServer row
+
+
+def platform_tools_server() -> CraftMCPServerConfig | None:
+    """The platform tool catalog as an opencode remote MCP entry.
+
+    None when the deployment has not configured ``ONYX_SERVER_URL`` (the
+    sandbox would have no way to reach the bridge).
+    """
+    if not ONYX_SERVER_URL:
+        return None
+    return CraftMCPServerConfig(
+        key=PLATFORM_TOOLS_SERVER_KEY,
+        url=f"{ONYX_SERVER_URL.rstrip('/')}/api/build/agent-tools/mcp",
+        disabled_tools=(),
+        server_id=_PLATFORM_SERVER_ID,
+    )
 
 
 def _server_key(server: MCPServer) -> str:
@@ -51,7 +74,10 @@ def resolve_craft_mcp_servers(
     admin restamp fan-out (``refresh_mcp_config_hashes_for_users``), which for a
     public server covers every user with a running sandbox."""
     if allowed_server_ids is not None and not allowed_server_ids:
-        return []
+        # No external servers granted this turn; the platform catalog is
+        # platform-owned and always present.
+        platform = platform_tools_server()
+        return [platform] if platform else []
     accessible = get_craft_enabled_mcp_servers(db_session, user)
     if allowed_server_ids is not None:
         allowed = set(allowed_server_ids)
@@ -75,7 +101,7 @@ def resolve_craft_mcp_servers(
     for tool in get_mcp_tools_for_servers([s.id for s in servers], db_session):
         if tool.mcp_server_id is not None and not tool.enabled:
             disabled_by_server[tool.mcp_server_id].append(tool.name)
-    return [
+    external = [
         CraftMCPServerConfig(
             key=_server_key(server),
             url=server.server_url,
@@ -84,6 +110,13 @@ def resolve_craft_mcp_servers(
         )
         for server in servers
     ]
+    # The platform catalog is appended regardless of the turn allowlist:
+    # external servers are granted per task, platform tools are the agent's
+    # baseline interface to the deployment.
+    platform = platform_tools_server()
+    if platform is not None:
+        external.append(platform)
+    return external
 
 
 def opencode_mcp_tool_id(server_key: str, tool_name: str) -> str:
