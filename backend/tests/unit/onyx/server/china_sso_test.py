@@ -217,7 +217,7 @@ def test_config_models_reject_unknown_keys_and_hide_secrets() -> None:
         for name, field in WeComProviderConfig.model_fields.items()
         if (field.json_schema_extra or {}).get("secret")
     }
-    assert secret_fields == {"corp_secret"}
+    assert secret_fields == {"corp_secret", "bot_encoding_aes_key"}
     # email_domain is required (identity stability)
     with pytest.raises(Exception):
         DingTalkProviderConfig.model_validate({"client_id": "a", "client_secret": "b"})
