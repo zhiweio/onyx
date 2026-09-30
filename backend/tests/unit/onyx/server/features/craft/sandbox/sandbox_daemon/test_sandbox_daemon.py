@@ -74,6 +74,7 @@ def _load_sandbox_daemon_modules() -> tuple[ModuleType, ModuleType]:
     for name in (
         "contract",
         "extract",
+        "processes",
         "snapshot",
         "opencode_history",
         "filesystem",

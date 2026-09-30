@@ -23,7 +23,8 @@ from onyx.server.features.build.session.session_ready import session_runtime_int
 
 
 def _session(status: BuildSessionStatus = BuildSessionStatus.ACTIVE) -> Any:
-    return SimpleNamespace(id=uuid4(), status=status)
+    # workspace_hydration_pending: the restore marker from ensure_session_ready.
+    return SimpleNamespace(id=uuid4(), status=status, workspace_hydration_pending=False)
 
 
 def _sandbox(status: SandboxStatus = SandboxStatus.RUNNING) -> Any:

@@ -2,14 +2,18 @@ from datetime import datetime, timezone
 
 import pytest
 
+from onyx.llm.constants import (
+    WELL_KNOWN_PROVIDER_NAMES,
+    LlmProviderNames,
+    litellm_provider_name,
+)
+from onyx.llm.model_capabilities import (
+    get_max_input_tokens,
+    litellm_thinks_model_supports_image_input,
+)
 from onyx.llm.well_known_providers.auto_update_models import (
     LLMProviderRecommendation,
     LLMRecommendations,
-)
-from onyx.llm.constants import (
-    LlmProviderNames,
-    WELL_KNOWN_PROVIDER_NAMES,
-    litellm_provider_name,
 )
 from onyx.llm.well_known_providers.constants import (
     BIGMODEL_API_BASE,
@@ -17,12 +21,10 @@ from onyx.llm.well_known_providers.constants import (
     OPENAI_PROVIDER_NAME,
     VERTEXAI_PROVIDER_NAME,
 )
-from onyx.llm.model_capabilities import (
-    get_max_input_tokens,
-    litellm_thinks_model_supports_image_input,
-)
 from onyx.llm.well_known_providers.llm_provider_options import (
+    _load_bundled_recommendations,
     _merge_missing_provider_recommendations,
+    get_dashscope_model_names,
     get_deepseek_model_names,
     get_minimax_model_names,
     get_moonshot_model_names,
@@ -228,10 +230,12 @@ def test_merge_fills_providers_missing_from_github() -> None:
 
     merged = _merge_missing_provider_recommendations(remote, bundled)
 
-    assert merged.get_default_model("openai") is not None
-    assert merged.get_default_model("openai").name == "gpt-5.6-sol"
-    assert merged.get_default_model("deepseek") is not None
-    assert merged.get_default_model("deepseek").name == "deepseek-v4-pro"
+    openai_default = merged.get_default_model("openai")
+    assert openai_default is not None
+    assert openai_default.name == "gpt-5.6-sol"
+    deepseek_default = merged.get_default_model("deepseek")
+    assert deepseek_default is not None
+    assert deepseek_default.name == "deepseek-v4-pro"
     assert _merge_missing_provider_recommendations(None, bundled) is bundled
 
 
@@ -269,9 +273,7 @@ def test_get_deepseek_model_names_strips_prefix(
     ]
     assert not is_obsolete_model("deepseek-flash", LlmProviderNames.DEEPSEEK)
     assert is_obsolete_model("deepseek-v4-flash", LlmProviderNames.DEEPSEEK)
-    assert is_obsolete_model(
-        "deepseek-v4-flash-vision-exp", LlmProviderNames.DEEPSEEK
-    )
+    assert is_obsolete_model("deepseek-v4-flash-vision-exp", LlmProviderNames.DEEPSEEK)
     assert get_max_input_tokens("deepseek-flash", LlmProviderNames.DEEPSEEK) > 900_000
     assert litellm_thinks_model_supports_image_input(
         "deepseek-flash", LlmProviderNames.DEEPSEEK
@@ -344,3 +346,44 @@ def test_get_minimax_model_names_drops_speech(
     )
 
     assert get_minimax_model_names() == ["MiniMax-M3", "MiniMax-M2.5"]
+
+
+def test_dashscope_is_well_known() -> None:
+    assert LlmProviderNames.DASHSCOPE in WELL_KNOWN_PROVIDER_NAMES
+    # DashScope is LiteLLM's own slug, so no alias mapping is needed.
+    assert (
+        litellm_provider_name(LlmProviderNames.DASHSCOPE) == LlmProviderNames.DASHSCOPE
+    )
+    # The bundled recommendations pin the default model for the admin picker.
+    bundled = _load_bundled_recommendations()
+    dashscope_default = bundled.get_default_model("dashscope")
+    assert dashscope_default is not None
+    assert dashscope_default.name == "qwen3.8-max"
+
+
+def test_get_dashscope_model_names_drops_non_chat_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import litellm
+
+    monkeypatch.setattr(
+        litellm,
+        "dashscope_models",
+        [
+            "dashscope/qwen3.8-max",
+            "qwen-plus",
+            "dashscope/qwen-image-3.0",
+            "dashscope/text-embedding-v4",
+            "dashscope/wan2.2-t2v-turbo",
+        ],
+    )
+
+    assert get_dashscope_model_names() == ["qwen3.8-max", "qwen-plus"]
+
+
+def test_dashscope_model_metadata_from_litellm_cost_map() -> None:
+    assert get_max_input_tokens("qwen3.8-max", LlmProviderNames.DASHSCOPE) > 900_000
+    assert litellm_thinks_model_supports_image_input(
+        "qwen3.8-max", LlmProviderNames.DASHSCOPE
+    )
+    assert is_well_known_provider_model("dashscope", "qwen3.8-max")

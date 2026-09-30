@@ -17,6 +17,7 @@ import json
 import logging
 from contextlib import nullcontext
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import AbstractSet, Any
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
@@ -139,8 +140,11 @@ def _patch_gate_session(monkeypatch: pytest.MonkeyPatch) -> None:
         "get_session_with_tenant",
         lambda **_kwargs: nullcontext(MagicMock(spec=Session)),
     )
-    # The stub sessions can't answer the target → gated_app_id lookup.
-    monkeypatch.setattr(gate, "get_gated_app_id", lambda _db, _kind, _target_id: 1)
+    # The stub sessions can't answer the target → gated_app row lookup.
+    _fake_gated_app = SimpleNamespace(id=1, policy_version=1)
+    monkeypatch.setattr(
+        gate, "get_gated_app_row", lambda _db, _kind, _target_id: _fake_gated_app
+    )
     monkeypatch.setattr(
         gate.action_approval,
         "list_session_grant_action_approvals",

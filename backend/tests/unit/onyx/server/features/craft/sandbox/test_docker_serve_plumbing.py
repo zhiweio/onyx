@@ -57,6 +57,9 @@ def _bare_manager() -> DockerSandboxManager:
     )
     mgr._image_checked = True
     mgr._image_check_lock = dsm.threading.Lock()
+    # The reuse path compares a stopped container's image against this to spot
+    # drift; __init__ normally fills it from SANDBOX_CONTAINER_IMAGE.
+    mgr._image = "onyxdotapp/sandbox:test"
     mgr._init_serve_state()
     return mgr
 
@@ -492,31 +495,113 @@ def test_reuse_existing_container_removes_created_state() -> None:
     stranded.attrs = {"State": {"Status": "created"}}
     mgr._docker.containers.get.return_value = stranded
 
-    result = mgr._reuse_existing_container(_SBX)
+    result = mgr._reuse_existing_container(_SBX, None)
 
     assert result is None, "A 'created' container must not be reused."
     stranded.remove.assert_called_once_with(force=True)
     stranded.start.assert_not_called()
 
 
+def _stopped_container(mgr: DockerSandboxManager) -> MagicMock:
+    """A hibernated-looking (exited, current-config) container.
+
+    ``start()`` flips the mocked state to running, which is what the retire
+    path waits for before it captures history.
+    """
+    container = MagicMock()
+    container.name = "sandbox-12345678"
+    container.labels = {dsm.LABEL_TENANT_ID: "tenant-test"}
+    container.attrs = {
+        "State": {"Status": "exited"},
+        "Config": {"Image": mgr._image, "Env": []},
+    }
+    container.start.side_effect = lambda: container.attrs["State"].__setitem__(
+        "Status", "running"
+    )
+    return container
+
+
 def test_reuse_existing_container_starts_exited() -> None:
     """
     An 'exited' container ran before, so its writable-layer data home is
-    populated; reuse should start it rather than discard it.
+    populated; reuse should start it rather than discard it. This is the
+    hibernation wake path.
     """
     mgr = _bare_manager()
     mgr._docker = MagicMock()
 
-    exited = MagicMock()
-    exited.name = "sandbox-12345678"
-    exited.attrs = {"State": {"Status": "exited"}}
+    exited = _stopped_container(mgr)
     mgr._docker.containers.get.return_value = exited
 
-    result = mgr._reuse_existing_container(_SBX)
+    result = mgr._reuse_existing_container(_SBX, None)
 
     assert result is exited
     exited.start.assert_called_once()
     exited.remove.assert_not_called()
+
+
+def test_reuse_existing_container_retires_image_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A stopped container pinned to a replaced image must not be started: waking
+    it would run the previous release. It is retired after capturing history
+    (the writable layer dies with it), and the caller re-creates from the
+    current image.
+    """
+    mgr = _bare_manager()
+    mgr._docker = MagicMock()
+
+    drifted = _stopped_container(mgr)
+    drifted.attrs["Config"]["Image"] = "onyxdotapp/sandbox:previous-release"
+    mgr._docker.containers.get.return_value = drifted
+
+    captured: list[tuple[UUID, str]] = []
+    monkeypatch.setattr(
+        mgr,
+        "create_opencode_history_snapshot",
+        lambda sandbox_id, tenant_id, **_: captured.append((sandbox_id, tenant_id)),
+    )
+
+    result = mgr._reuse_existing_container(_SBX, None)
+
+    assert result is None, "A drifted container must not be reused."
+    assert captured == [(_SBX, "tenant-test")]
+    drifted.remove.assert_called_once_with(force=True)
+
+
+def test_reuse_existing_container_retires_pat_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Outside the proxy lane the PAT is baked into the container env, so a
+    re-minted PAT must not be served by a stale container. With the proxy on,
+    credentials are injected on the wire and the env placeholder cannot drift.
+    """
+    mgr = _bare_manager()
+    mgr._docker = MagicMock()
+
+    stale = _stopped_container(mgr)
+    stale.attrs["Config"]["Env"] = ["ONYX_PAT=old-token"]
+    mgr._docker.containers.get.return_value = stale
+
+    monkeypatch.setattr(dsm, "SANDBOX_PROXY_HOST", "")
+    monkeypatch.setattr(
+        mgr, "create_opencode_history_snapshot", lambda *_args, **_kwargs: None
+    )
+
+    assert mgr._reuse_existing_container(_SBX, "new-token") is None
+    stale.remove.assert_called_once_with(force=True)
+
+    # Same container with the proxy on: no drift, it is reused.
+    mgr._docker.reset_mock()
+    proxy_container = _stopped_container(mgr)
+    proxy_container.attrs["Config"]["Env"] = ["ONYX_PAT=replaced_by_egress_proxy"]
+    mgr._docker.containers.get.return_value = proxy_container
+    monkeypatch.setattr(dsm, "SANDBOX_PROXY_HOST", "sandbox-proxy")
+
+    assert mgr._reuse_existing_container(_SBX, "new-token") is proxy_container
+    proxy_container.remove.assert_not_called()
 
 
 def test_provision_removes_container_when_history_restore_fails(
