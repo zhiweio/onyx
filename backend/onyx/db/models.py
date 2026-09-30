@@ -9411,3 +9411,79 @@ class ChinaIMBinding(Base):
         ),
         Index("ix_china_im_binding_user", "user_id"),
     )
+
+
+class AgentModelOverlay(Base):
+    """Admin-defined model cloning a catalog template (QM overlay port).
+
+    The stored ``fingerprint`` binds the attestation to the spec and
+    credential revision; a mismatch on verify forces re-probing.
+    """
+
+    __tablename__ = "agent_model_overlay"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    template_model_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    context_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verify_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("model_id", name="uq_agent_model_overlay_model_id"),
+        Index("ix_agent_model_overlay_enabled", "enabled"),
+    )
+
+
+class PlatformToolLog(Base):
+    """Append-only journal of platform tool calls from agent runtimes.
+
+    One row per rag_search / mcp_call / web_search / crawl / question /
+    background invocation through the tool bridge (plus MCP gateway
+    calls and model probes), for the audit report page.
+    """
+
+    __tablename__ = "platform_tool_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("build_session.id", ondelete="SET NULL"), nullable=True
+    )
+    tool: Mapped[str] = mapped_column(String(128), nullable=False)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    result_excerpt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_platform_tool_log_user_time", "user_id", "created_at"),
+        Index("ix_platform_tool_log_session_time", "session_id", "created_at"),
+    )

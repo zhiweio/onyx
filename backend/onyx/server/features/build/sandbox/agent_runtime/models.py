@@ -49,8 +49,7 @@ class AgentModelSpec:
     tags: frozenset[str] = field(default_factory=frozenset)
 
 
-_CATALOG: tuple[AgentModelSpec, ...] = (
-    # ── Zhipu GLM (bigmodel) ─────────────────────────────────────────────
+_CATALOG: tuple[AgentModelSpec, ...] = (    # ── Zhipu GLM (bigmodel) ─────────────────────────────────────────────
     AgentModelSpec(
         model_id="glm-4.7",
         provider="bigmodel",
@@ -131,6 +130,19 @@ _CATALOG: tuple[AgentModelSpec, ...] = (
 
 _CATALOG_INDEX: dict[str, AgentModelSpec] = {spec.model_id: spec for spec in _CATALOG}
 
+# Admin overlays applied at runtime (app start + after overlay CRUD).
+# Kept as a flat index so every lookup (router support matrix, default
+# resolution, fingerprinting) is overlay-aware without threading state.
+_OVERLAY_INDEX: dict[str, AgentModelSpec] = {}
+
+
+def apply_overlay_cache(rows: Any) -> None:
+    """Refresh the overlay index from DB overlay rows (idempotent)."""
+    global _OVERLAY_INDEX
+    _OVERLAY_INDEX = {
+        spec.model_id: spec for spec in merge_overlays(rows) if not spec.is_default
+    }
+
 
 def iter_models() -> tuple[AgentModelSpec, ...]:
     """The full static catalog, in declaration order."""
@@ -138,13 +150,13 @@ def iter_models() -> tuple[AgentModelSpec, ...]:
 
 
 def get_model_spec(model_id: str) -> AgentModelSpec | None:
-    """Look up one model; None when unknown."""
-    return _CATALOG_INDEX.get(model_id)
+    """Look up one model (catalog or overlay); None when unknown."""
+    return _CATALOG_INDEX.get(model_id) or _OVERLAY_INDEX.get(model_id)
 
 
 def model_supported_by(model_id: str, runtime_id: str) -> bool:
-    """Whether ``runtime_id`` can drive ``model_id``."""
-    spec = _CATALOG_INDEX.get(model_id)
+    """Whether ``runtime_id`` can drive ``model_id`` (catalog or overlay)."""
+    spec = get_model_spec(model_id)
     return spec is not None and runtime_id in spec.runtimes
 
 
@@ -271,3 +283,75 @@ def probe_model(
     if not text.strip():
         return False, PROBE_FAILURE_PROVIDER
     return True, None
+
+
+# ── overlays (admin-defined clones over catalog templates) ────────────────
+
+
+def overlay_spec(
+    overlay_row: Any,
+    *,
+    template: AgentModelSpec | None = None,
+) -> AgentModelSpec | None:
+    """Merge a DB overlay row over its catalog template.
+
+    Inherits context window / max output / runtimes from the template;
+    explicit overlay values replace. Unknown templates are rejected
+    (None) — an overlay cannot invent a provider the catalog lacks.
+    """
+    spec = template if template is not None else get_model_spec(overlay_row.template_model_id)
+    if spec is None:
+        return None
+    return AgentModelSpec(
+        model_id=overlay_row.model_id,
+        provider=overlay_row.provider or spec.provider,
+        display_name=overlay_row.name or spec.display_name,
+        context_window=(
+            overlay_row.context_window
+            if overlay_row.context_window is not None
+            else spec.context_window
+        ),
+        max_output_tokens=(
+            overlay_row.max_output_tokens
+            if overlay_row.max_output_tokens is not None
+            else spec.max_output_tokens
+        ),
+        runtimes=spec.runtimes,
+        is_default=False,
+        notes=f"overlay of {spec.model_id}" + (
+            f"; base_url={overlay_row.base_url}" if overlay_row.base_url else ""
+        ),
+        tags=spec.tags,
+    )
+
+
+def merge_overlays(
+    overlay_rows: Any,
+) -> list[AgentModelSpec]:
+    """Effective catalog: static entries plus enabled overlays.
+
+    An overlay whose model_id collides with a static entry wins (admins
+    override defaults); overlays of unknown templates are skipped with
+    a log line.
+    """
+    merged: dict[str, AgentModelSpec] = dict(_CATALOG_INDEX)
+    defaults = {spec.model_id for spec in _CATALOG if spec.is_default}
+    for row in overlay_rows:
+        if not getattr(row, "enabled", True):
+            continue
+        spec = overlay_spec(row)
+        if spec is None:
+            logger.warning(
+                "agent model overlay %s has unknown template %s",
+                row.model_id,
+                row.template_model_id,
+            )
+            continue
+        if spec.model_id in defaults:
+            logger.warning(
+                "overlay %s collides with a default catalog model; skipped",
+                spec.model_id,
+            )
+            continue
+        merged[spec.model_id] = spec
+    return list(merged.values())
