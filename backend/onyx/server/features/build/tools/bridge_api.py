@@ -73,14 +73,56 @@ def _request_registry(user: User) -> PlatformToolRegistry:
 
     rag_search runs with the requesting user's ACL; a sandbox's craft PAT
     resolves to its owning user, so retrieval sees exactly that user's
-    documents.
+    documents. Realtime tools bind the deployment-configured MCP gateway,
+    search provider and crawler (each degrades to an ``unavailable``
+    message when unconfigured).
     """
+    from onyx.server.features.build.tools.crawler import build_crawler_client
+    from onyx.server.features.build.tools.mcp_gateway import (
+        default_gateway_servers,
+    )
     from onyx.server.features.build.tools.service_bindings import (
         make_user_scoped_search_fn,
     )
+    from onyx.server.features.build.tools.web_search_providers import (
+        build_search_provider,
+        format_hits,
+    )
+
+    search_provider = build_search_provider()
+
+    def _web_search(query: str, max_results: int) -> str:
+        if search_provider is None:
+            raise RuntimeError("no provider")
+        return format_hits(query, search_provider.search(query, max_results))
+
+    crawler = build_crawler_client()
+
+    def _crawl(url: str, wait: bool) -> str:
+        if crawler is None:
+            raise RuntimeError("no crawler")
+        result = crawler.crawl_sync(url) if wait else crawler.poll(crawler.submit(url))
+        if result.error:
+            return f"[crawl] {url}: {result.error}"
+        return f"[crawl] {url}\n\n{result.content}"
+
+    gateway = default_gateway_servers()
+
+    def _mcp_call(server: str, tool: str, arguments: dict[str, Any]) -> str:
+        return gateway.call_tool_sync(
+            server=server,
+            tool=tool,
+            arguments=arguments,
+            user_id=str(user.id),
+        )
 
     return PlatformToolRegistry.build(
-        ToolBindings(search_fn=make_user_scoped_search_fn(user))
+        ToolBindings(
+            search_fn=make_user_scoped_search_fn(user),
+            mcp_call_fn=_mcp_call,
+            web_search_fn=_web_search if search_provider is not None else None,
+            crawl_fn=_crawl if crawler is not None else None,
+        )
     )
 
 

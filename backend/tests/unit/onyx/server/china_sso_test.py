@@ -4,6 +4,11 @@ config models, and the identity email fallback."""
 import httpx
 import pytest
 
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
 from onyx.db.enums import SSOProviderType
 from onyx.db.sso_provider import (
     DingTalkProviderConfig,

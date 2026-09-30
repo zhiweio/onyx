@@ -26,6 +26,7 @@ dependencies = [
     # Pin here so backend + ee hashed exports share one version. pyiceberg[s3fs]
     # pulls 2026.7.0; an older ee pin makes the Docker dual-file install fail.
     "fsspec==2026.7.0",
+    "mcp>=1.12",
 ]
 
 [dependency-groups]

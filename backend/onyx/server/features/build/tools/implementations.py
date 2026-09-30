@@ -208,6 +208,131 @@ class BackgroundTool:
         return self._hook(invocation, request, ctx)
 
 
+# ── mcp_call (enterprise MCP gateway) ─────────────────────────────────────
+
+
+McpCallFn = Callable[[str, str, dict[str, Any]], str]
+
+
+class McpCallTool:
+    name = "mcp_call"
+    description = (
+        "Call an external MCP tool through the enterprise MCP gateway "
+        "(invoices, business registry, pharma databases). Only servers "
+        "granted for the current task are reachable."
+    )
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "server": {"type": "string", "description": "Gateway server name."},
+            "tool": {"type": "string", "description": "Tool name on that server."},
+            "arguments": {
+                "type": "object",
+                "description": "Tool arguments.",
+            },
+        },
+        "required": ["server", "tool"],
+    }
+
+    def __init__(self, call_fn: McpCallFn | None = None) -> None:
+        self._call_fn = call_fn
+
+    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+        server = str(invocation.arguments.get("server", "")).strip()
+        tool = str(invocation.arguments.get("tool", "")).strip()
+        if not server or not tool:
+            return text_result("[mcp_call] 'server' and 'tool' are required")
+        arguments = invocation.arguments.get("arguments") or {}
+        if not isinstance(arguments, dict):
+            return text_result("[mcp_call] 'arguments' must be an object")
+        if self._call_fn is None:
+            return unavailable(self.name, "no MCP gateway configured")
+        try:
+            reply = self._call_fn(server, tool, arguments)
+        except Exception as exc:
+            return text_result(f"[mcp_call] gateway error: {exc}")
+        return text_result(reply)
+
+
+# ── web_search (pluggable providers) ──────────────────────────────────────
+
+
+WebSearchFn = Callable[[str, int], str]
+
+
+class WebSearchTool:
+    name = "web_search"
+    description = (
+        "Search the public web through the configured provider "
+        "(Bocha/Baidu/SearXNG). Returns titled results with URLs and "
+        "snippets."
+    )
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "max_results": {"type": "integer"},
+        },
+        "required": ["query"],
+    }
+
+    def __init__(self, search_fn: WebSearchFn | None = None) -> None:
+        self._search_fn = search_fn
+
+    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+        query = str(invocation.arguments.get("query", "")).strip()
+        if not query:
+            return text_result("[web_search] argument 'query' is required")
+        max_results = invocation.arguments.get("max_results", 8)
+        try:
+            max_results = max(1, min(int(max_results), 20))
+        except (TypeError, ValueError):
+            max_results = 8
+        if self._search_fn is None:
+            return unavailable(self.name, "no search provider configured")
+        try:
+            return text_result(self._search_fn(query, max_results))
+        except Exception as exc:
+            return text_result(f"[web_search] search failed: {exc}")
+
+
+# ── crawl (crawler platform) ──────────────────────────────────────────────
+
+
+CrawlFn = Callable[[str, bool], str]
+
+
+class CrawlTool:
+    name = "crawl"
+    description = (
+        "Crawl a URL through the crawler platform and return its extracted "
+        "text. wait=true blocks until extraction finishes (bounded)."
+    )
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string"},
+            "wait": {"type": "boolean", "description": "Wait for content."},
+        },
+        "required": ["url"],
+    }
+
+    def __init__(self, crawl_fn: CrawlFn | None = None) -> None:
+        self._crawl_fn = crawl_fn
+
+    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+        url = str(invocation.arguments.get("url", "")).strip()
+        if not url:
+            return text_result("[crawl] argument 'url' is required")
+        wait = bool(invocation.arguments.get("wait", True))
+        if self._crawl_fn is None:
+            return unavailable(self.name, "no crawler platform configured")
+        try:
+            return text_result(self._crawl_fn(url, wait))
+        except Exception as exc:
+            return text_result(f"[crawl] crawl failed: {exc}")
+
+
 # ── declared-for-later milestones ─────────────────────────────────────────
 
 
@@ -224,56 +349,16 @@ class _DeferredTool:
         return unavailable(self.name, f"lands with milestone {self._milestone}")
 
 
-def mcp_call_tool() -> _DeferredTool:
-    return _DeferredTool(
-        name="mcp_call",
-        description=(
-            "Call an external MCP tool through the enterprise MCP gateway "
-            "(invoices, business registry, pharma databases)."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "server": {"type": "string"},
-                "tool": {"type": "string"},
-                "arguments": {"type": "object"},
-            },
-            "required": ["server", "tool"],
-        },
-        milestone="M6 (MCP gateway)",
-    )
+def mcp_call_tool(call_fn: McpCallFn | None = None) -> McpCallTool:
+    return McpCallTool(call_fn)
 
 
-def web_search_tool() -> _DeferredTool:
-    return _DeferredTool(
-        name="web_search",
-        description="Search the public web for fresh information with citations.",
-        parameters={
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
-        milestone="M6 (search providers)",
-    )
+def web_search_tool(search_fn: WebSearchFn | None = None) -> WebSearchTool:
+    return WebSearchTool(search_fn)
 
 
-def crawl_tool() -> _DeferredTool:
-    return _DeferredTool(
-        name="crawl",
-        description=(
-            "Submit a URL or site to the crawler platform and fetch its "
-            "extracted content (async: submit then poll)."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "url": {"type": "string"},
-                "wait": {"type": "boolean"},
-            },
-            "required": ["url"],
-        },
-        milestone="M6 (crawler platform)",
-    )
+def crawl_tool(crawl_fn: CrawlFn | None = None) -> CrawlTool:
+    return CrawlTool(crawl_fn)
 
 
 def connector_query_tool() -> _DeferredTool:
