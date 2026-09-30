@@ -24,7 +24,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=true
+      - ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=false
       - MULTI_TENANT=true
       - LOG_LEVEL=DEBUG
       - AUTH_TYPE=cloud
@@ -170,7 +170,7 @@ services:
       - indexing_model_server
     restart: unless-stopped
     environment:
-      - ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=true
+      - ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=false
       - MULTI_TENANT=true
       - LOG_LEVEL=DEBUG
       - AUTH_TYPE=cloud
