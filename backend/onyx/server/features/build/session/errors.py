@@ -23,3 +23,8 @@ class SandboxProvisioningInProgressError(SandboxProvisioningError):
 class StaleProvisioningAttemptError(SandboxProvisioningError):
     """This attempt was superseded before it could finalize;
     its external work must not be recorded as the current runtime."""
+
+
+class SandboxCapacityError(SandboxProvisioningError):
+    """The sandbox concurrency cap is full and no idle sandbox could be
+    evicted to make room; the caller should surface a capacity message."""

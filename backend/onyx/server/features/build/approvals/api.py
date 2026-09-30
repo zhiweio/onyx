@@ -17,16 +17,28 @@ from sqlalchemy.orm import Session
 from onyx.auth.permissions import require_permission
 from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheBackend
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.enums import ApprovalDecidedVia, ApprovalDecision, GatedAppKind, Permission
+from onyx.db.engine.sql_engine import get_session, get_session_with_current_tenant
+from onyx.db.enums import (
+    ApprovalDecidedVia,
+    ApprovalDecision,
+    ContentQuarantineDecision,
+    ContentReleaseScope,
+    GatedAppKind,
+    Permission,
+)
 from onyx.db.models import ActionApproval, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.external_apps.matching.engine import MatchedAction, actions_requiring_approval
 from onyx.external_apps.presentation.decode import decode_payload
-from onyx.sandbox_proxy import approval_cache
+from onyx.sandbox_proxy import approval_cache, content_release
 from onyx.server.features.build.configs import SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS
-from onyx.server.features.build.db import action_approval
+from onyx.server.features.build.db import (
+    action_approval,
+)
+from onyx.server.features.build.db import (
+    content_quarantine as content_quarantine_db,
+)
 from onyx.server.features.build.db.build_session import get_build_session
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import get_current_tenant_id
@@ -77,6 +89,34 @@ class ApprovalView(BaseModel):
 
 class ApprovalListResponse(BaseModel):
     items: list[ApprovalView]
+    # Undecided inbound-content quarantines for the same session. The FE
+    # renders one release card per row next to the approval cards.
+    content_quarantines: list["ContentQuarantineView"] = []
+
+
+class ContentQuarantineView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    quarantine_id: UUID
+    session_id: UUID
+    url_host: str
+    url_path: str
+    patterns_matched: list[str]
+    evidence_excerpt: str
+    created_at: datetime
+
+
+class ContentQuarantineDecisionBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["APPROVED", "DENIED"]
+    # Required when approving: how far the release extends. DENIED leaves it
+    # unset — the row is the audit record either way.
+    scope: Literal["ONCE", "SESSION", "HOST"] | None = None
+
+
+class ContentQuarantineListResponse(BaseModel):
+    items: list[ContentQuarantineView]
 
 
 def _row_target(row: ActionApproval) -> tuple[GatedAppKind, int] | None:
@@ -123,9 +163,12 @@ def list_live_approvals(
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> ApprovalListResponse:
-    """Pending approvals created within the proxy's wait window.
+    """Pending approvals created within the proxy's wait window, plus the
+    session's undecided inbound-content quarantines.
 
-    Older undecided rows are treated as orphaned (proxy gone) and excluded.
+    Older undecided approval rows are treated as orphaned (proxy gone) and
+    excluded; quarantines have no wait window — they stay pending until a
+    human decides.
     """
     if get_build_session(session_id, user.id, db_session) is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "session not found")
@@ -136,9 +179,78 @@ def list_live_approvals(
     pending_rows = action_approval.list_session_pending_action_approvals(
         db_session, session_id, created_after=cutoff
     )
-    return ApprovalListResponse(
-        items=[ApprovalView.model_validate(row) for row in pending_rows]
+    quarantines = content_quarantine_db.list_pending_content_quarantines(
+        db_session, session_id
     )
+    return ApprovalListResponse(
+        items=[ApprovalView.model_validate(row) for row in pending_rows],
+        content_quarantines=[
+            ContentQuarantineView.model_validate(quarantine)
+            for quarantine in quarantines
+        ],
+    )
+
+
+@router.post("/content-quarantines/{quarantine_id}/decision")
+def submit_content_quarantine_decision(
+    quarantine_id: UUID,
+    body: ContentQuarantineDecisionBody,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> ContentQuarantineView:
+    """Release (or keep blocking) quarantined inbound content.
+
+    An approved release grants a Redis key keyed by the URL hash — ``once``
+    is consumed by the agent's next fetch of that URL, ``session``/``host``
+    cover repeated fetches for their lifetime.
+    """
+    quarantine = content_quarantine_db.get_content_quarantine_for_user(
+        db_session, quarantine_id, user.id
+    )
+    if quarantine is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "quarantine record not found")
+
+    decision = ContentQuarantineDecision(body.decision)
+    scope = ContentReleaseScope(body.scope) if body.scope is not None else None
+    if decision is ContentQuarantineDecision.APPROVED and scope is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "an approved release requires a scope"
+        )
+
+    decided = content_quarantine_db.record_content_quarantine_decision(
+        db_session,
+        quarantine=quarantine,
+        decision=decision,
+        scope=scope,
+        decided_by=user.id,
+    )
+    if decided is None:
+        raise OnyxError(OnyxErrorCode.CONFLICT, "quarantine already decided")
+    db_session.commit()
+
+    if decision is ContentQuarantineDecision.APPROVED and scope is not None:
+        try:
+            cache = get_cache_backend(tenant_id=get_current_tenant_id())
+            content_release.grant_release(
+                quarantine.url_hash, scope, quarantine.session_id, cache
+            )
+        except Exception:
+            # The durable row already says APPROVED; a grant-write failure is
+            # retriable via the editor without re-quarantining.
+            logger.exception(
+                "content_quarantine_grant_failed quarantine_id=%s", quarantine_id
+            )
+
+    logger.info(
+        "content_quarantine.decision_recorded quarantine_id=%s "
+        "session_id=%s user_id=%s decision=%s scope=%s",
+        quarantine_id,
+        quarantine.session_id,
+        user.id,
+        decision.value,
+        scope.value if scope is not None else "-",
+    )
+    return ContentQuarantineView.model_validate(quarantine)
 
 
 @router.post("/{approval_id}/decision")
@@ -194,6 +306,22 @@ def submit_decision(
     )
 
     _send_wake_best_effort(approval_id, body.decision)
+
+    # Ship-gate graduation: supervised approvals/rejections move the task's
+    # pre-approval progress. Committed above — a failure here must not fail
+    # the decision itself.
+    try:
+        from onyx.server.features.build.approvals.graduation import (
+            record_decision_outcome,
+        )
+
+        with get_session_with_current_tenant() as graduation_session:
+            record_decision_outcome(graduation_session, decided=decided)
+            graduation_session.commit()
+    except Exception:
+        logger.exception(
+            "approval.graduation_update_failed approval_id=%s", approval_id
+        )
 
     return ApprovalView.model_validate(decided)
 
@@ -286,6 +414,9 @@ def submit_session_grant(
         kind=target_kind,
         target_id=target_id,
         rows=grant_source_rows,
+        policy_version=(
+            current.gated_app.policy_version if current.gated_app is not None else 1
+        ),
         cache=cache,
     )
 

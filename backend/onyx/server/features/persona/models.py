@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from onyx.chat.agent_budget import AgentBudget
 from onyx.configs.constants import DocumentSource
 from onyx.db.enums import (
     HierarchyNodeType,
@@ -189,6 +190,10 @@ class PersonaUpsertRequest(BaseModel):
     hierarchy_node_ids: list[int] | None = None
     # Individual documents attached for scoped search; same None semantics
     document_ids: list[str] | None = None
+    # Per-assistant agent loop budget overrides; None clears the override so
+    # the assistant inherits the deployment-wide env defaults. Validated by
+    # onyx.chat.agent_budget.AgentBudget (caps included).
+    agent_budget: AgentBudget | None = None
 
     # prompt fields
     system_prompt: str
@@ -354,6 +359,9 @@ class PersonaSnapshot(BaseModel):
     replace_base_system_prompt: bool = False
     task_prompt: str | None = None
     datetime_aware: bool = True
+    # Per-assistant agent loop budget overrides (None/absent = inherit the
+    # deployment-wide env defaults). Validated by onyx.chat.agent_budget.
+    agent_budget: dict | None = None
 
     @classmethod
     def from_model(cls, persona: Persona) -> "PersonaSnapshot":
@@ -408,6 +416,7 @@ class PersonaSnapshot(BaseModel):
             replace_base_system_prompt=persona.replace_base_system_prompt,
             task_prompt=persona.task_prompt,
             datetime_aware=persona.datetime_aware,
+            agent_budget=persona.agent_budget,
         )
 
 
@@ -483,6 +492,7 @@ class FullPersonaSnapshot(PersonaSnapshot):
             replace_base_system_prompt=persona.replace_base_system_prompt,
             task_prompt=persona.task_prompt,
             datetime_aware=persona.datetime_aware,
+            agent_budget=persona.agent_budget,
         )
 
 

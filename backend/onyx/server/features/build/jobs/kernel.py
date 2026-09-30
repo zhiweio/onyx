@@ -21,7 +21,7 @@ from onyx.db.craft_job import (
     specialists_any_failed,
 )
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus, SessionOrigin
-from onyx.db.models import CraftJob
+from onyx.db.models import CraftJob, CraftJobSpecialist
 from onyx.server.features.build.jobs.assembler import assemble_brief
 from onyx.server.features.build.jobs.blackboard import (
     merge_node_outputs,
@@ -46,6 +46,7 @@ from onyx.server.features.build.jobs.gates import (
     gate_retry_limit_detail,
     named_search_required,
     retry_brief,
+    retry_limit_error_detail,
 )
 from onyx.server.features.build.jobs.graph import (
     GraphNode,
@@ -164,9 +165,18 @@ def after_worker_turn(
     sandbox_id: UUID,
     session_id: UUID,
     deadline_exceeded: bool,
+    lease_owner: str | None = None,
 ) -> None:
     """Run one superstep after an OpenCode turn on the parent session."""
     if job_is_terminal(job):
+        return
+    if lease_owner is not None and not lease_owned_by(job, lease_owner):
+        logger.warning(
+            "Job %s lease held by %s; losing turn %s skips its superstep",
+            job.id,
+            job.lease_owner,
+            lease_owner,
+        )
         return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
@@ -177,7 +187,10 @@ def after_worker_turn(
     node = _current_node(graph, state)
     if node is None:
         mark_job_finished(
-            job, status=CraftJobStatus.FAILED, error_detail="Job has no current node"
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail="Job has no current node",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -301,8 +314,17 @@ def after_lane_turn(
     user_id: UUID,
     specialist_ok: bool,
     node_id: str | None,
+    lease_owner: str | None = None,
 ) -> None:
     if job_is_terminal(job):
+        return
+    if lease_owner is not None and not lease_owned_by(job, lease_owner):
+        logger.warning(
+            "Job %s lease held by %s; losing lane turn %s skips its superstep",
+            job.id,
+            job.lease_owner,
+            lease_owner,
+        )
         return
     state = load_state(job)
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
@@ -343,22 +365,16 @@ def after_lane_turn(
                     persist_state(job, state)
                     _safe_commit(db_session)
                     return
-                if specialist is not None:
-                    specialist.status = CraftJobSpecialistStatus.RUNNING
-                    specialist.finished_at = None
-                from onyx.server.features.build.jobs.continuation import (
-                    enqueue_job_phase_turn,
-                )
-
-                enqueue_job_phase_turn(
+                state = _retry_lane_or_fail(
                     db_session,
-                    session_id=lane_session,
+                    job=job,
+                    state=state,
+                    node=node,
+                    missing=gate.missing_paths(),
+                    reasons=[item.reason for item in gate.missing],
+                    specialist=specialist,
+                    lane_session=lane_session,
                     user_id=user_id,
-                    prompt=retry_brief(
-                        node.id,
-                        gate.missing_paths(),
-                        reasons=[item.reason for item in gate.missing],
-                    ),
                 )
                 persist_state(job, state)
                 _safe_commit(db_session)
@@ -369,20 +385,28 @@ def after_lane_turn(
                 paths=node.required_paths,
             )
             if missing_on_parent:
-                emit(
-                    db_session,
-                    job_id=job.id,
-                    event_type=GATE_FAIL,
-                    payload={
-                        "node_id": node.id,
-                        "missing": missing_on_parent,
-                    },
-                )
                 logger.error(
                     "Lane %s artifacts missing on shared outputs: %s",
                     node.id,
                     missing_on_parent,
                 )
+                state = _retry_lane_or_fail(
+                    db_session,
+                    job=job,
+                    state=state,
+                    node=node,
+                    missing=missing_on_parent,
+                    reasons=[
+                        f"lane artifact missing on shared outputs: {path}"
+                        for path in missing_on_parent
+                    ],
+                    specialist=specialist,
+                    lane_session=lane_session,
+                    user_id=user_id,
+                )
+                persist_state(job, state)
+                _safe_commit(db_session)
+                return
             produced = scan_artifacts(
                 sandbox_id=sandbox_id,
                 session_id=job.session_id,
@@ -453,6 +477,7 @@ def after_lane_turn(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="A specialist session failed",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -510,6 +535,15 @@ def lease_expired(job: CraftJob) -> bool:
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     return datetime.now(timezone.utc) > expires
+
+
+def lease_owned_by(job: CraftJob, owner: str) -> bool:
+    """Fence for turn-driven supersteps: only the lease holder may advance
+    the job. Host-driven paths (resume, cancel) pass no owner and skip this."""
+    try:
+        return job.lease_owner == owner
+    except AttributeError:
+        return True
 
 
 def _current_node(graph: JobGraph, state: JobState) -> GraphNode | None:
@@ -672,6 +706,7 @@ def _fail_or_retry(
             job,
             status=CraftJobStatus.FAILED,
             error_detail=gate_retry_limit_detail(gate, node.id),
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -915,6 +950,7 @@ def _spawn_lanes(
             job,
             status=CraftJobStatus.FAILED,
             error_detail="Too many research lanes for this job",
+            db_session=db_session,
         )
         _safe_commit(db_session)
         return
@@ -1148,6 +1184,63 @@ def _safe_commit(db_session: Session) -> None:
         db_session.commit()
     except AttributeError:
         return
+
+
+def _retry_lane_or_fail(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode,
+    missing: list[str],
+    reasons: list[str],
+    specialist: CraftJobSpecialist | None,
+    lane_session: UUID,
+    user_id: UUID,
+) -> JobState:
+    """Retry a failed lane turn, failing the job once attempts hit the limit.
+
+    Mirrors ``_fail_or_retry`` for the worker path: attempts accumulate in
+    ``node_attempts`` so a lane cannot retry forever.
+    """
+    attempts = int(state.node_attempts.get(node.id) or 0) + 1
+    state = apply_writes(
+        state,
+        {
+            "node_attempts": {node.id: attempts},
+            "budget": {"node_attempts": 1},
+        },
+    )
+    emit(
+        db_session,
+        job_id=job.id,
+        event_type=GATE_FAIL,
+        payload={
+            "node_id": node.id,
+            "missing": missing,
+            "attempts": attempts,
+        },
+    )
+    if attempts >= DEFAULT_PHASE_RETRY_LIMIT:
+        mark_job_finished(
+            job,
+            status=CraftJobStatus.FAILED,
+            error_detail=retry_limit_error_detail(node.id, *reasons),
+            db_session=db_session,
+        )
+        return state
+    if specialist is not None:
+        specialist.status = CraftJobSpecialistStatus.RUNNING
+        specialist.finished_at = None
+    from onyx.server.features.build.jobs.continuation import enqueue_job_phase_turn
+
+    enqueue_job_phase_turn(
+        db_session,
+        session_id=lane_session,
+        user_id=user_id,
+        prompt=retry_brief(node.id, missing, reasons=reasons),
+    )
+    return state
 
 
 def _verify_lane_artifacts(
@@ -1419,15 +1512,20 @@ def _visible_tools(
 def _lane_inactive_seconds(
     db_session: Session, specialist: Any, now: datetime
 ) -> float | None:
-    stamp = getattr(specialist, "created_at", None)
+    # specialist rows arrive duck-typed from callers; access is best-effort.
+    stamp = getattr(specialist, "created_at", None)  # ods: ignore[getattr]
     last_activity = None
-    session_id = getattr(specialist, "session_id", None)
+    session_id = getattr(specialist, "session_id", None)  # ods: ignore[getattr]
     if session_id is not None:
         try:
             from onyx.db.models import BuildSession
 
             row = db_session.get(BuildSession, session_id)
-            last_activity = getattr(row, "last_activity_at", None) if row else None
+            last_activity = (
+                getattr(row, "last_activity_at", None)  # ods: ignore[getattr]
+                if row
+                else None
+            )
         except Exception:
             last_activity = None
     ref = last_activity or stamp
@@ -1440,10 +1538,7 @@ def _lane_inactive_seconds(
 
 def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) -> bool:
     """Fail RUNNING specialists that sat past the phase budget with no activity."""
-    if job.status not in {
-        CraftJobStatus.WAITING_LANES,
-        CraftJobStatus.WAITING_SPECIALISTS,
-    }:
+    if job.status not in {CraftJobStatus.WAITING_LANES}:
         return False
     budget = max(int(job.phase_budget_seconds or 0), 1)
     now = datetime.now(timezone.utc)

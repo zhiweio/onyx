@@ -10,6 +10,13 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.llm.api_surfaces import resolve_api_surface
 from onyx.llm.constants import DYNAMIC_LLM_PROVIDERS
+from onyx.llm.modalities import (
+    INPUT_MODALITIES,
+    OUTPUT_MODALITIES,
+    infer_input_modalities,
+    infer_output_modalities,
+    normalize_modalities,
+)
 from onyx.llm.model_capabilities import (
     anthropic_supports_thinking,
     get_max_input_tokens,
@@ -19,13 +26,6 @@ from onyx.llm.model_capabilities import (
 )
 from onyx.llm.model_capabilities import (
     model_identity_names as resolve_model_identity_names,
-)
-from onyx.llm.modalities import (
-    INPUT_MODALITIES,
-    OUTPUT_MODALITIES,
-    infer_input_modalities,
-    infer_output_modalities,
-    normalize_modalities,
 )
 from onyx.llm.models import (
     ReasoningEffort,
@@ -908,6 +908,24 @@ class PortkeyModelsRequest(BaseModel):
 class PortkeyFinalModelResponse(BaseModel):
     name: str  # Model ID (e.g. "gpt-4o", "claude-sonnet-5")
     display_name: str  # Human-readable name from API
+    max_input_tokens: int | None
+    supports_image_input: bool
+    supports_reasoning: bool
+
+
+# DashScope (Alibaba Bailian) dynamic models fetch
+class DashscopeModelsRequest(BaseModel):
+    # Base of the workspace's OpenAI-compatible mode, e.g.
+    # https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+    api_base: str
+    api_key: str | None = None
+    # Existing provider id; resolves the stored key and syncs fetched models on edit
+    provider_id: int | None = None
+
+
+class DashscopeFinalModelResponse(BaseModel):
+    name: str  # Model ID (e.g. "qwen3-max")
+    display_name: str  # Human-readable name
     max_input_tokens: int | None
     supports_image_input: bool
     supports_reasoning: bool

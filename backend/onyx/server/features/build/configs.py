@@ -26,9 +26,30 @@ OPENCODE_DISABLED_TOOLS: list[str] = [
 ]
 
 
+# Idle grace before a RUNNING sandbox is reaped: no heartbeat for this long
+# (and no open craft job) puts it to sleep. Wake is seconds-fast, so the
+# default matches the tight end of common practice (Daytona auto-stops at
+# 15 min); keep it high only where wake latency matters more than memory.
 SANDBOX_IDLE_TIMEOUT_SECONDS = int(
-    os.environ.get("SANDBOX_IDLE_TIMEOUT_SECONDS", "3600")
+    os.environ.get("SANDBOX_IDLE_TIMEOUT_SECONDS", "900")
 )
+# A hibernated sandbox (container stopped, workspace still on local disk) is
+# archived — snapshot to FileStore, then container and volume deleted — once
+# it has been asleep longer than this. Bounds disk usage per stale user.
+SANDBOX_HIBERNATE_MAX_AGE_SECONDS = int(
+    os.environ.get("SANDBOX_HIBERNATE_MAX_AGE_SECONDS", "86400")
+)
+# Background re-snapshot cadence for non-idle sandboxes. Deliberately NOT
+# derived from the idle timeout: a short idle timeout must not multiply the
+# snapshot load on active sandboxes.
+SANDBOX_SNAPSHOT_INTERVAL_SECONDS = int(
+    os.environ.get("SANDBOX_SNAPSHOT_INTERVAL_SECONDS", "900")
+)
+# Cap on concurrently RUNNING sandboxes (0 = unlimited). When a new provision
+# would exceed the cap, idle running sandboxes are hibernated to make room
+# (Evictor pattern); with nothing evictable, provisioning fails with a
+# capacity error. Only enforced on backends that support hibernation.
+SANDBOX_MAX_CONCURRENT = int(os.environ.get("SANDBOX_MAX_CONCURRENT", "0"))
 SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS = int(
     os.environ.get("SANDBOX_APPROVAL_WAIT_TIMEOUT_SECONDS", "180")
 )
@@ -40,6 +61,41 @@ SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS = int(
     os.environ.get("SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS", "60")
 )
 SANDBOX_HEARTBEAT_REFRESH_INTERVAL_SECONDS = 60
+
+# Craft job lease: short TTL renewed by a per-turn heartbeat (every TTL/3), so
+# an expired lease means the owning turn is really gone rather than long-running.
+CRAFT_JOB_LEASE_TTL_SECONDS = int(os.environ.get("CRAFT_JOB_LEASE_TTL_SECONDS", "90"))
+
+# Ship-gate graduation (QM): after this many consecutive human approvals of a
+# scheduled task's parked ASK-gated request for one target, the task's
+# pre-approval for that target is created automatically (bound to the current
+# policy version). A rejection resets the count; a policy edit voids both.
+CRAFT_ACTION_AUTO_GRADUATION_ENABLED = (
+    os.environ.get("CRAFT_ACTION_AUTO_GRADUATION_ENABLED", "true").lower() == "true"
+)
+CRAFT_ACTION_GRADUATION_THRESHOLD = int(
+    os.environ.get("CRAFT_ACTION_GRADUATION_THRESHOLD", "3")
+)
+
+# Auto-review guardian: an LLM that reviews ASK-gated requests parked by
+# scheduled-task runs when the task's reviewer_mode enables it. Shadow mode
+# records verdicts without deciding; enforce mode decides with guardrails
+# (DENY-policy actions and quarantined-content sessions always escalate to a
+# human, and a rejection circuit breaker prevents review loops).
+CRAFT_GUARDIAN_ENABLED = (
+    os.environ.get("CRAFT_GUARDIAN_ENABLED", "false").lower() == "true"
+)
+CRAFT_GUARDIAN_TIMEOUT_SECONDS = int(
+    os.environ.get("CRAFT_GUARDIAN_TIMEOUT_SECONDS", "60")
+)
+CRAFT_GUARDIAN_REJECT_CIRCUIT_BREAKER = int(
+    os.environ.get("CRAFT_GUARDIAN_REJECT_CIRCUIT_BREAKER", "2")
+)
+# Quarantine recency window that forces guardian escalation (a session with
+# recent suspicious content is treated as having untrusted evidence).
+CRAFT_GUARDIAN_QUARANTINE_ESCALATION_HOURS = int(
+    os.environ.get("CRAFT_GUARDIAN_QUARANTINE_ESCALATION_HOURS", "1")
+)
 
 SANDBOX_NEXTJS_PORT_START = int(os.environ.get("SANDBOX_NEXTJS_PORT_START", "3010"))
 SANDBOX_NEXTJS_PORT_END = int(os.environ.get("SANDBOX_NEXTJS_PORT_END", "3100"))
@@ -281,9 +337,7 @@ CRAFT_PROJECT_MAX_TOTAL_SIZE_BYTES = (
     CRAFT_PROJECT_MAX_TOTAL_SIZE_GB * 1024 * 1024 * 1024
 )
 CRAFT_PROJECT_MAX_FILES = int(os.environ.get("CRAFT_PROJECT_MAX_FILES", "50"))
-WORKSPACE_CATALOG_MAX_FILES = int(
-    os.environ.get("WORKSPACE_CATALOG_MAX_FILES", "5000")
-)
+WORKSPACE_CATALOG_MAX_FILES = int(os.environ.get("WORKSPACE_CATALOG_MAX_FILES", "5000"))
 WORKSPACE_CATALOG_MAX_BYTES = int(
     os.environ.get(
         "WORKSPACE_CATALOG_MAX_BYTES",

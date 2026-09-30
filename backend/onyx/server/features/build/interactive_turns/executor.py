@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheBackend
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
-from onyx.db.models import Sandbox
+from onyx.db.models import CraftJob, Sandbox
 from onyx.db.users import fetch_user_by_id
 from onyx.server.features.build.configs import (
+    CRAFT_JOB_LEASE_TTL_SECONDS,
     OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS,
 )
 from onyx.server.features.build.db.build_session import get_build_session
@@ -72,6 +73,10 @@ from shared_configs.contextvars import (
 logger = setup_logger()
 
 MAX_TIMEOUT_CONTINUATIONS = 2
+
+# A turn must re-prove ownership this many beats in a row before it accepts
+# that its job lease is gone and stops streaming.
+CRAFT_JOB_LEASE_MAX_MISSED_BEATS = 3
 _TOOL_TIMEOUT_CONTINUATION_PROMPT = (
     "Your last step was cancelled — it exceeded the "
     f"{int(OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS)}s activity limit with no "
@@ -241,6 +246,109 @@ def _ready_session_runtime(
         return ensure_session_ready(db_session, get_sandbox_manager(), session, user)
 
 
+def _hold_job_lease(
+    job_id: UUID,
+    owner: str,
+    stop: threading.Event,
+    lease_lost: threading.Event,
+    tenant_id: str | None,
+) -> None:
+    """Renew the craft job lease for the duration of one turn.
+
+    The lease starts short and every beat extends it by one more TTL, so a
+    beat only has to land once per TTL while the turn streams. After
+    ``CRAFT_JOB_LEASE_MAX_MISSED_BEATS`` consecutive failed beats the turn is
+    declared lost: it cancels itself instead of writing job state it no longer
+    owns, and the lease/fence path takes the job from there.
+    """
+    token = CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
+    try:
+        from onyx.db.craft_job import job_is_terminal
+        from onyx.server.features.build.jobs.kernel import renew_lease
+
+        interval = max(CRAFT_JOB_LEASE_TTL_SECONDS / 3, 1)
+        missed = 0
+        while not stop.wait(interval):
+            try:
+                with get_session_with_current_tenant() as db_session:
+                    job = db_session.get(CraftJob, job_id)
+                    if job is None or job_is_terminal(job):
+                        return
+                    renew_lease(job, owner=owner, seconds=CRAFT_JOB_LEASE_TTL_SECONDS)
+                    db_session.commit()
+                missed = 0
+            except Exception:
+                missed += 1
+                logger.warning(
+                    "Job lease beat %s/%s failed for job %s (owner %s)",
+                    missed,
+                    CRAFT_JOB_LEASE_MAX_MISSED_BEATS,
+                    job_id,
+                    owner,
+                    exc_info=True,
+                )
+                if missed >= CRAFT_JOB_LEASE_MAX_MISSED_BEATS:
+                    lease_lost.set()
+                    return
+    finally:
+        CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+
+
+def _snapshot_session_workspace_after_turn(
+    *,
+    sandbox_id: UUID,
+    session_id: UUID,
+    user_id: UUID,
+    tenant_id: str | None,
+) -> threading.Thread:
+    """Snapshot the session workspace right after a turn used it.
+
+    Teardown capture (the QM discipline): the snapshot lands while the
+    workspace is quiet instead of mid-command. Skipped when the session
+    already has a successor turn — including the job continuation this turn
+    just enqueued — because the interval sweep snapshots it once idle, and
+    the sweep skips fresh snapshots. Failures are log-only; the sweep remains
+    the fallback.
+    """
+    from onyx.server.features.build.session.sandbox_lifecycle import (
+        create_session_snapshot_keep_latest,
+    )
+
+    def _run() -> None:
+        token = CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
+        try:
+            cache = get_cache_backend()
+            if (
+                get_active_turn(cache=cache, session_id=session_id, user_id=user_id)
+                is not None
+            ):
+                return
+            with get_session_with_current_tenant() as db_session:
+                create_session_snapshot_keep_latest(
+                    get_sandbox_manager(),
+                    db_session,
+                    sandbox_id,
+                    session_id,
+                    str(tenant_id) if tenant_id is not None else "",
+                )
+            logger.info("Teardown snapshot completed for session %s", session_id)
+        except Exception:
+            logger.warning(
+                "Teardown snapshot failed for session %s", session_id, exc_info=True
+            )
+        finally:
+            CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+
+    thread = threading.Thread(
+        target=_run,
+        name=f"craft-teardown-snapshot-{session_id}",
+        daemon=True,
+    )
+    thread.start()
+    # Returned so tests can join; callers ignore it.
+    return thread
+
+
 def _drive_interactive_turn(
     *,
     turn_id: UUID,
@@ -261,6 +369,9 @@ def _drive_interactive_turn(
     sandbox_id: UUID | None = None
     skip_job_continue = kind == "compact"
     ownership_lost_for_continue = False
+    job_id: UUID | None = None
+    lease_stop = threading.Event()
+    lease_lost = threading.Event()
     try:
         with get_session_with_current_tenant() as db_session:
             session_manager = SessionManager(db_session)
@@ -283,8 +394,29 @@ def _drive_interactive_turn(
             if job is not None:
                 from onyx.server.features.build.jobs.kernel import renew_lease
 
-                renew_lease(job, owner=str(turn_id), seconds=budget_seconds)
-                db_session.commit()
+                job_id = getattr(  # ods: ignore[getattr] — duck-typed job rows
+                    job, "id", None
+                )
+                if job_id is not None:
+                    # Short lease held alive by a heartbeat thread: an expired
+                    # lease now means the owning turn is really gone, not
+                    # long-running.
+                    renew_lease(
+                        job, owner=str(turn_id), seconds=CRAFT_JOB_LEASE_TTL_SECONDS
+                    )
+                    db_session.commit()
+                    threading.Thread(
+                        target=_hold_job_lease,
+                        args=(
+                            job_id,
+                            str(turn_id),
+                            lease_stop,
+                            lease_lost,
+                            get_current_tenant_id(),
+                        ),
+                        name=f"craft-lease-{turn_id}",
+                        daemon=True,
+                    ).start()
 
             if not touch_turn(cache=cache, turn_id=turn_id, runner_id=runner_id):
                 logger.info("Interactive turn %s runner ownership lost", turn_id)
@@ -420,6 +552,17 @@ def _drive_interactive_turn(
                     hard_cap_seconds=budget_seconds,
                 )
 
+                if lease_lost.is_set():
+                    ownership_lost_for_continue = True
+                    finish_turn(
+                        cache=cache,
+                        turn_id=turn_id,
+                        status=TURN_STATUS_FAILED,
+                        error_detail="Job lease lost mid-turn.",
+                        runner_id=runner_id,
+                    )
+                    return
+
                 if interrupt_requested():
                     cancelled = not deadline_exceeded
                     session_manager.finalize_persist(session_id, state)
@@ -494,6 +637,25 @@ def _drive_interactive_turn(
                                 turn_id=turn_id,
                                 status=TURN_STATUS_FAILED,
                                 error_detail="Prompt slot lease lost mid-turn.",
+                                runner_id=runner_id,
+                            )
+                            return _PromptResult(_PromptOutcome.TERMINATED)
+                        if lease_lost.is_set():
+                            # The job lease is gone: this turn no longer owns the
+                            # job's state, so stop without continuing the job.
+                            ownership_lost = True
+                            ownership_lost_for_continue = True
+                            session_manager.finalize_persist(session_id, state)
+                            db_session.commit()
+                            persist_turn_error(
+                                "The job lease was lost mid-turn, so this step "
+                                "was stopped. Send a follow-up message to continue."
+                            )
+                            finish_turn(
+                                cache=cache,
+                                turn_id=turn_id,
+                                status=TURN_STATUS_FAILED,
+                                error_detail="Job lease lost mid-turn.",
                                 runner_id=runner_id,
                             )
                             return _PromptResult(_PromptOutcome.TERMINATED)
@@ -714,6 +876,7 @@ def _drive_interactive_turn(
                     session_manager.clear_turn_deadline(sandbox.id, session_id)
                 prompt_slot_cm.__exit__(None, None, None)
     finally:
+        lease_stop.set()
         if sandbox_id is not None and not skip_job_continue:
             try:
                 from onyx.server.features.build.jobs.continuation import (
@@ -729,6 +892,16 @@ def _drive_interactive_turn(
                         turn_succeeded=turn_succeeded,
                         deadline_exceeded=deadline_exceeded,
                         cancelled=cancelled,
+                        lease_owner=str(turn_id) if job_id is not None else None,
                     )
             except Exception:
                 logger.exception("Failed to continue Craft job after turn %s", turn_id)
+        if sandbox_id is not None:
+            # After the continue decision: an enqueued successor turn makes the
+            # active-turn check inside skip this, so a snapshot never races it.
+            _snapshot_session_workspace_after_turn(
+                sandbox_id=sandbox_id,
+                session_id=session_id,
+                user_id=user_id,
+                tenant_id=get_current_tenant_id(),
+            )

@@ -38,7 +38,11 @@ from onyx.db.enums import SandboxStatus
 from onyx.db.models import BuildSession, Sandbox, User
 from onyx.db.users import fetch_user_by_id
 from onyx.file_store.file_store import get_default_file_store
-from onyx.server.features.build.configs import SANDBOX_IDLE_TIMEOUT_SECONDS
+from onyx.redis.redis_pool import get_redis_client
+from onyx.server.features.build.configs import (
+    SANDBOX_IDLE_TIMEOUT_SECONDS,
+    SANDBOX_MAX_CONCURRENT,
+)
 from onyx.server.features.build.db.build_session import (
     clear_nextjs_ports_for_user,
     get_orphan_build_session_ids,
@@ -46,6 +50,7 @@ from onyx.server.features.build.db.build_session import (
     mark_user_sessions_idle__no_commit,
 )
 from onyx.server.features.build.db.sandbox import (
+    archive_hibernated_sandbox__no_commit,
     begin_provisioning_attempt__no_commit,
     begin_recovery_attempt__no_commit,
     create_sandbox__no_commit,
@@ -55,10 +60,12 @@ from onyx.server.features.build.db.sandbox import (
     ensure_sandbox_pat,
     finalize_provisioning_attempt__no_commit,
     get_latest_snapshot_for_session,
+    get_running_sandboxes,
     get_sandbox_by_id,
     get_sandbox_by_user_id,
     get_sandbox_user_map,
     get_snapshots_for_session,
+    hibernate_running_sandbox__no_commit,
     set_sandbox_mcp_config_hashes__no_commit,
     set_sandbox_skills_hashes__no_commit,
     sleep_running_sandbox__no_commit,
@@ -79,10 +86,12 @@ from onyx.server.features.build.sandbox.util.mcp_config import (
     resolve_craft_mcp_servers,
 )
 from onyx.server.features.build.session.errors import (
+    SandboxCapacityError,
     SandboxProvisioningError,
     SandboxProvisioningInProgressError,
     StaleProvisioningAttemptError,
 )
+from onyx.server.features.build.session.locks import get_session_creation_lock
 from onyx.server.features.build.timeouts import (
     ATTEMPT_DEADLINE_SECONDS,
     POLL_INTERVAL_SECONDS,
@@ -92,6 +101,8 @@ from onyx.server.features.build.timeouts import (
 from onyx.server.metrics.craft_sandbox import (
     SandboxProvisionPhase,
     SandboxReadyOutcome,
+    observe_sandbox_eviction,
+    observe_sandbox_hibernation,
     observe_sandbox_ready,
     time_provision_phase,
     track_sandbox_provision_in_progress,
@@ -613,6 +624,14 @@ def reconcile_sandbox(
 
     # External provisioning against the committed identity. provision()
     # returns only once the sandbox is RUNNING; anything else raises.
+    # The concurrency cap gates every provision — including wakes, which add
+    # a running runtime just like a fresh create does.
+    enforce_sandbox_concurrency(
+        db_session,
+        sandbox_manager,
+        tenant_id,
+        excluding_user_id=user.id,
+    )
     try:
         _check_attempt_deadline(attempt_deadline, sandbox_id, attempt_number)
         with track_sandbox_provision_in_progress():
@@ -1036,6 +1055,345 @@ def sleep_sandbox(
             session_creation_lock.release()
 
 
+def hibernate_sandbox(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    sandbox: Sandbox,
+    tenant_id: str,
+    session_creation_lock: RedisLock,
+) -> bool:
+    """Stop an idle ``RUNNING`` sandbox's runtime, keeping it for a fast
+    wake, and mark it ``SLEEPING`` + ``hibernated_at``. Commits on success.
+
+    The hibernation lane of the idle reaper (and the concurrency cap's
+    evictor) on backends that support it. Unlike ``sleep_sandbox`` this is
+    fail-open: the workspace and opencode history survive in the stopped
+    container, so a failed history snapshot never blocks the stop — only a
+    stop that itself fails keeps the sandbox ``RUNNING`` for retry.
+
+    Returns whether the sandbox was hibernated; False when it went active
+    mid-sweep or a session was being created for the user.
+    """
+    sandbox_id = sandbox.id
+    started_at = time.monotonic()
+    try:
+        # Chat history lives in the container's writable layer; capture it so
+        # an unclean stop loses at most seconds. Best-effort — the layer
+        # survives the stop, so failure does not block hibernation.
+        if sandbox_manager.supports_opencode_history_persistence:
+            try:
+                sandbox_manager.create_opencode_history_snapshot(sandbox_id, tenant_id)
+            except Exception:
+                logger.warning(
+                    "opencode history snapshot failed before hibernating "
+                    "sandbox %s; continuing (the writable layer survives)",
+                    sandbox_id,
+                    exc_info=True,
+                )
+
+        if not session_creation_lock.acquire(blocking=False):
+            logger.info(
+                "Skipping hibernate of sandbox %s while a session is being created",
+                sandbox_id,
+            )
+            return False
+        try:
+            # The history snapshot above can take a moment; re-check idleness
+            # right before the stop and capture the attempt number the
+            # hibernate write must still match.
+            db_session.refresh(sandbox)
+            if sandbox.status != SandboxStatus.RUNNING or not should_sleep_sandbox(
+                db_session, sandbox, datetime.now(timezone.utc)
+            ):
+                logger.info(
+                    "Sandbox %s went active mid-sweep; skipping hibernate",
+                    sandbox_id,
+                )
+                return False
+            hibernate_attempt_number = sandbox.provisioning_attempt_number
+
+            # Stop the runtime (container and volume are kept).
+            sandbox_manager.hibernate(sandbox_id)
+
+            if not hibernate_running_sandbox__no_commit(
+                db_session, sandbox_id, hibernate_attempt_number
+            ):
+                db_session.rollback()
+                logger.warning(
+                    "Sandbox %s started a newer attempt during hibernate; aborting",
+                    sandbox_id,
+                )
+                return False
+
+            cleared = clear_nextjs_ports_for_user(db_session, sandbox.user_id)
+            logger.debug(
+                "Cleared %s nextjs_port allocations for user %s",
+                cleared,
+                sandbox.user_id,
+            )
+            idled = mark_user_sessions_idle__no_commit(db_session, sandbox.user_id)
+            logger.debug(
+                "Marked %s sessions as IDLE for user %s", idled, sandbox.user_id
+            )
+
+            db_session.commit()
+            logger.info("Sandbox %s is now hibernated", sandbox_id)
+            return True
+        finally:
+            if session_creation_lock.owned():
+                session_creation_lock.release()
+    finally:
+        observe_sandbox_hibernation(time.monotonic() - started_at)
+
+
+def archive_sandbox(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    sandbox: Sandbox,
+    tenant_id: str,
+    session_creation_lock: RedisLock,
+) -> None:
+    """Archive a long-hibernated sandbox: snapshot it, destroy the retained
+    runtime, and clear the hibernation claim. The row stays ``SLEEPING`` with
+    the legacy meaning — runtime destroyed, snapshots in FileStore.
+
+    Reclaims the disk a hibernated sandbox holds. The retained container is
+    stopped, so it is started briefly for the snapshot execs. Fail-closed like
+    ``sleep_sandbox``: a snapshot failure on a startable runtime aborts the
+    archive so the next sweep retries; a runtime that cannot even start has
+    an unrecoverable workspace and is terminated regardless. Every abort
+    re-stops the runtime, so an aborted archive holds no memory while it waits
+    for the retry.
+    """
+    sandbox_id = sandbox.id
+    hibernated_at = sandbox.hibernated_at
+    if hibernated_at is None:
+        return
+
+    def _re_hibernate() -> None:
+        """Stop the runtime an aborted archive started; the next sweep retries."""
+        try:
+            sandbox_manager.hibernate(sandbox_id)
+        except Exception:
+            logger.warning(
+                "Failed to re-hibernate sandbox %s after an aborted archive",
+                sandbox_id,
+                exc_info=True,
+            )
+
+    runtime_reachable = sandbox_manager.resume_stopped_runtime(sandbox_id)
+    if not runtime_reachable:
+        logger.warning(
+            "Sandbox %s runtime cannot start for archival; terminating with "
+            "whatever snapshots exist",
+            sandbox_id,
+        )
+
+    # Chat history lives outside session workspaces; capture it before the
+    # runtime dies.
+    if sandbox_manager.supports_opencode_history_persistence:
+        try:
+            sandbox_manager.create_opencode_history_snapshot(sandbox_id, tenant_id)
+        except Exception as e:
+            if runtime_reachable and sandbox_manager.health_check(
+                sandbox_id, timeout=HEALTH_PROBE_TIMEOUT_SECONDS
+            ):
+                logger.error(
+                    "opencode history snapshot failed for sandbox %s; leaving "
+                    "it hibernated: %s",
+                    sandbox_id,
+                    e,
+                )
+                _re_hibernate()
+                return
+            logger.warning(
+                "Sandbox %s runtime unreachable; archiving without a fresh "
+                "opencode history snapshot: %s",
+                sandbox_id,
+                e,
+            )
+
+    if not session_creation_lock.acquire(blocking=False):
+        logger.info(
+            "Sandbox %s has a session creation in progress; skipping archive",
+            sandbox_id,
+        )
+        _re_hibernate()
+        return
+    try:
+        session_ids = (
+            list_snapshotable_session_workspaces(
+                db_session,
+                sandbox_manager,
+                sandbox,
+                session_creation_lock,
+            )
+            if runtime_reachable
+            else []
+        )
+
+        snapshot_failed = False
+        for session_id in session_ids:
+            try:
+                from onyx.server.features.build.session.artifact_persist import (
+                    persist_session_workspace_files,
+                )
+
+                persist_session_workspace_files(
+                    db_session,
+                    sandbox_manager,
+                    sandbox_id=sandbox_id,
+                    session_id=session_id,
+                    user_id=sandbox.user_id,
+                )
+            except Exception:
+                logger.warning(
+                    "File catalog persist failed for session %s before archive",
+                    session_id,
+                    exc_info=True,
+                )
+            try:
+                snapshot_result = create_session_snapshot_keep_latest(
+                    sandbox_manager=sandbox_manager,
+                    db_session=db_session,
+                    sandbox_id=sandbox_id,
+                    session_id=session_id,
+                    tenant_id=tenant_id,
+                )
+                if snapshot_result:
+                    logger.info(
+                        "Archive snapshot created for session %s: %.1f MiB",
+                        session_id,
+                        snapshot_result.size_bytes / 1_048_576,
+                    )
+            except Exception as e:
+                snapshot_failed = True
+                logger.warning(
+                    "Failed to archive snapshot for session %s: %s", session_id, e
+                )
+                db_session.rollback()
+
+        # Fail-closed: terminating with an unsnapshotted workspace loses it.
+        # Keep the sandbox hibernated to retry next sweep — unless the runtime
+        # cannot start, where snapshots can never succeed and the workspace
+        # is already unrecoverable.
+        if snapshot_failed:
+            if runtime_reachable and sandbox_manager.health_check(
+                sandbox_id, timeout=HEALTH_PROBE_TIMEOUT_SECONDS
+            ):
+                logger.error(
+                    "Snapshot failed for sandbox %s; leaving it hibernated to "
+                    "retry next cycle",
+                    sandbox_id,
+                )
+                _re_hibernate()
+                return
+            logger.warning(
+                "Sandbox %s runtime is unreachable; terminating despite "
+                "snapshot failure",
+                sandbox_id,
+            )
+
+        # Re-check the claim under the lock: a wake that started since flips
+        # the row to PROVISIONING and owns the runtime now.
+        db_session.refresh(sandbox)
+        if (
+            sandbox.status != SandboxStatus.SLEEPING
+            or sandbox.hibernated_at != hibernated_at
+        ):
+            db_session.rollback()
+            logger.info("Sandbox %s was woken mid-archive; aborting", sandbox_id)
+            return
+
+        sandbox_manager.terminate(sandbox_id)
+
+        if not archive_hibernated_sandbox__no_commit(
+            db_session, sandbox_id, hibernated_at
+        ):
+            db_session.rollback()
+            logger.warning(
+                "Sandbox %s changed state during archive; aborting claim clear",
+                sandbox_id,
+            )
+            return
+
+        db_session.commit()
+        logger.info("Sandbox %s archived (runtime destroyed)", sandbox_id)
+    finally:
+        if session_creation_lock.owned():
+            session_creation_lock.release()
+
+
+def _list_eviction_candidates(
+    db_session: DBSession, excluding_user_id: UUID
+) -> list[Sandbox]:
+    """Idle RUNNING sandboxes eligible for eviction, least-recently-active
+    first. The user whose provision triggered the cap is never a candidate —
+    their sandbox is not RUNNING yet."""
+    now = datetime.now(timezone.utc)
+    candidates = [
+        sandbox
+        for sandbox in get_running_sandboxes(db_session)
+        if sandbox.user_id != excluding_user_id
+        and should_sleep_sandbox(db_session, sandbox, now)
+    ]
+    candidates.sort(key=lambda sandbox: sandbox.last_heartbeat or sandbox.created_at)
+    return candidates
+
+
+def enforce_sandbox_concurrency(
+    db_session: DBSession,
+    sandbox_manager: SandboxManager,
+    tenant_id: str,
+    *,
+    excluding_user_id: UUID,
+) -> None:
+    """Make room for one new provision under ``SANDBOX_MAX_CONCURRENT``.
+
+    When the cap has no headroom, hibernate idle running sandboxes
+    (least-recently-active first) until it does. Raises
+    ``SandboxCapacityError`` when the cap is still full with nothing
+    evictable — every running sandbox is active or belongs to a session
+    being created. No-op on backends without hibernation (their scheduler
+    owns capacity) and when the cap is unset.
+    """
+    if SANDBOX_MAX_CONCURRENT <= 0 or not sandbox_manager.supports_hibernation:
+        return
+    if sandbox_manager.count_active_sandboxes() < SANDBOX_MAX_CONCURRENT:
+        return
+
+    redis_client = get_redis_client(tenant_id=tenant_id)
+    for victim in _list_eviction_candidates(db_session, excluding_user_id):
+        if sandbox_manager.count_active_sandboxes() < SANDBOX_MAX_CONCURRENT:
+            return
+        session_creation_lock = get_session_creation_lock(redis_client, victim.user_id)
+        try:
+            hibernated = hibernate_sandbox(
+                db_session,
+                sandbox_manager,
+                victim,
+                tenant_id,
+                session_creation_lock,
+            )
+        except Exception:
+            logger.warning("Eviction of sandbox %s failed", victim.id, exc_info=True)
+            db_session.rollback()
+            continue
+        if hibernated:
+            observe_sandbox_eviction()
+            logger.info(
+                "Evicted idle sandbox %s (user %s) for concurrency cap headroom",
+                victim.id,
+                victim.user_id,
+            )
+
+    if sandbox_manager.count_active_sandboxes() >= SANDBOX_MAX_CONCURRENT:
+        raise SandboxCapacityError(
+            f"Sandbox concurrency cap ({SANDBOX_MAX_CONCURRENT}) reached and "
+            "no idle sandbox could be evicted; try again later"
+        )
+
+
 def refresh_mcp_config_hashes_for_users(
     user_ids: set[UUID], db_session: DBSession
 ) -> None:
@@ -1273,7 +1631,8 @@ def reset_user_sandbox(
                 _capture_opencode_history(sandbox_manager, old_id, tenant_id)
                 if migrate_outputs:
                     session_ids = [
-                        row.id for row in list_all_sessions_for_user(user.id, db_session)
+                        row.id
+                        for row in list_all_sessions_for_user(user.id, db_session)
                     ]
                     db_session.commit()
                     _snapshot_sessions_best_effort(

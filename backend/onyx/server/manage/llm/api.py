@@ -56,6 +56,7 @@ from onyx.llm.factory import (
 )
 from onyx.llm.model_capabilities import (
     get_bedrock_token_limit,
+    get_max_input_tokens,
     litellm_thinks_model_supports_image_input,
     model_is_reasoning_model,
 )
@@ -68,6 +69,7 @@ from onyx.llm.well_known_providers.auto_update_service import (
     fetch_llm_recommendations_from_github,
 )
 from onyx.llm.well_known_providers.constants import (
+    DASHSCOPE_NON_CHAT_MODEL_TERMS,
     LM_STUDIO_API_KEY_CONFIG_KEY,
     VERTEX_AUTH_METHOD_KWARG,
     VERTEX_AUTH_METHOD_SERVICE_ACCOUNT,
@@ -85,6 +87,8 @@ from onyx.server.manage.llm.models import (
     BifrostFinalModelResponse,
     BifrostModelsRequest,
     CustomProviderOption,
+    DashscopeFinalModelResponse,
+    DashscopeModelsRequest,
     DefaultModel,
     LitellmFinalModelResponse,
     LitellmModelDetails,
@@ -945,9 +949,7 @@ def list_llm_provider_basics(
     # - Excludes providers with persona restrictions (requires specific persona)
     # - Excludes non-public providers with no restrictions (admin-only)
     accessible_providers = [
-        LLMProviderDescriptor.from_model(
-            provider, workspace_default=workspace_default
-        )
+        LLMProviderDescriptor.from_model(provider, workspace_default=workspace_default)
         for provider in all_providers
         if can_user_access_llm_provider(
             provider, user_group_ids, persona=None, can_manage_llms=can_manage_llms
@@ -2378,6 +2380,118 @@ def get_portkey_available_models(
                 for r in sorted_results
             ],
             source_label="Portkey",
+        )
+
+    return sorted_results
+
+
+def _get_dashscope_models_url(api_base: str) -> str:
+    """Build the models list URL for a Bailian workspace.
+
+    Accepts either the bare workspace domain (``https://{WorkspaceId}.{region}
+    .maas.aliyuncs.com``) or the full OpenAI-compatible base (``.../compatible
+    -mode/v1``) and always lands on ``.../compatible-mode/v1/models``.
+    """
+    cleaned_api_base = api_base.strip().rstrip("/")
+    if cleaned_api_base.endswith("/compatible-mode/v1"):
+        return f"{cleaned_api_base}/models"
+    if cleaned_api_base.endswith("/compatible-mode"):
+        return f"{cleaned_api_base}/v1/models"
+    return f"{cleaned_api_base}/compatible-mode/v1/models"
+
+
+# Model families that are not chat models on Bailian, shared with the static
+# model list in llm_provider_options.
+def _is_dashscope_chat_model(model_id: str) -> bool:
+    model_lower = model_id.lower()
+    return not any(term in model_lower for term in DASHSCOPE_NON_CHAT_MODEL_TERMS)
+
+
+@admin_router.post("/dashscope/available-models")
+def get_dashscope_available_models(
+    request: DashscopeModelsRequest,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> list[DashscopeFinalModelResponse]:
+    """Fetch chat models from an Alibaba Bailian (DashScope) workspace.
+
+    Models are read live from the workspace's OpenAI-compatible ``/models``
+    endpoint; per-model metadata comes from the LiteLLM cost map.
+    """
+    api_key = _resolve_api_key(
+        request.api_key, request.provider_id, request.api_base, db_session
+    )
+
+    response_json = _get_openai_compatible_models_response(
+        url=_get_dashscope_models_url(request.api_base),
+        source_name="DashScope",
+        api_key=api_key,
+    )
+
+    models = response_json.get("data", [])
+    if not isinstance(models, list) or len(models) == 0:
+        raise OnyxError(
+            OnyxErrorCode.VALIDATION_ERROR,
+            "No models found from your Bailian workspace",
+        )
+
+    results: list[DashscopeFinalModelResponse] = []
+    for model in models:
+        try:
+            model_id = model.get("id", "")
+            if not model_id:
+                continue
+            if is_embedding_model(model_id) or not _is_dashscope_chat_model(model_id):
+                continue
+
+            display_name = model.get("name") or model_id
+
+            results.append(
+                DashscopeFinalModelResponse(
+                    name=model_id,
+                    display_name=display_name,
+                    max_input_tokens=get_max_input_tokens(
+                        model_id, LlmProviderNames.DASHSCOPE
+                    ),
+                    supports_image_input=litellm_thinks_model_supports_image_input(
+                        model_id, LlmProviderNames.DASHSCOPE
+                    ),
+                    supports_reasoning=model_is_reasoning_model(
+                        model_id, LlmProviderNames.DASHSCOPE
+                    )
+                    or is_reasoning_model(model_id, display_name),
+                )
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to parse DashScope model entry",
+                extra={"error": str(e), "item": str(model)[:1000]},
+            )
+
+    if not results:
+        raise OnyxError(
+            OnyxErrorCode.VALIDATION_ERROR,
+            "No chat models found from your Bailian workspace",
+        )
+
+    sorted_results = sorted(results, key=lambda m: m.name.lower())
+
+    # Sync new models to DB if provider_id is specified
+    if request.provider_id is not None:
+        _sync_fetched_models(
+            db_session=db_session,
+            provider_id=request.provider_id,
+            models=[
+                SyncModelEntry(
+                    name=r.name,
+                    display_name=r.display_name,
+                    max_input_tokens=r.max_input_tokens,
+                    supports_image_input=r.supports_image_input,
+                    supports_reasoning=r.supports_reasoning,
+                )
+                for r in sorted_results
+            ],
+            source_label="DashScope",
         )
 
     return sorted_results

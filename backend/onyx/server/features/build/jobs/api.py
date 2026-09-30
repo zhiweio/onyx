@@ -200,7 +200,6 @@ def get_job_for_session(
     if job.status in {
         CraftJobStatus.PENDING,
         CraftJobStatus.RUNNING,
-        CraftJobStatus.WAITING_SPECIALISTS,
         CraftJobStatus.WAITING_LANES,
     }:
         flush_pending_job_enqueue(db_session, job=job, user_id=user.id)
@@ -280,7 +279,6 @@ def get_job(
     if job.status in {
         CraftJobStatus.PENDING,
         CraftJobStatus.RUNNING,
-        CraftJobStatus.WAITING_SPECIALISTS,
         CraftJobStatus.WAITING_LANES,
     }:
         flush_pending_job_enqueue(db_session, job=job, user_id=user.id)
@@ -364,20 +362,6 @@ def resume_interrupted_job(
     if refreshed is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
     return CraftJobResponse.from_model(refreshed)
-
-
-@router.post("/{job_id}/specialists")
-def spawn_specialists(
-    job_id: UUID,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
-    db_session: Session = Depends(get_session),
-) -> CraftJobResponse:
-    if get_craft_job_for_user(db_session, job_id, user.id) is None:
-        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
-    raise OnyxError(
-        OnyxErrorCode.NOT_IMPLEMENTED,
-        "Research lanes start from the job graph. This endpoint is retired.",
-    )
 
 
 def _start_visible_tools(

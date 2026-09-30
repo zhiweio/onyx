@@ -54,13 +54,16 @@ def session_runtime_intact(
     """Whether the recorded state says this session can be prompted right now.
 
     Database-only: this is the per-turn fast path, and confirming a workspace
-    costs an exec into the pod.
+    costs an exec into the pod. A pending hydration marker means a previous
+    restore died mid-write — the runtime may hold a half-written workspace,
+    which must never be prompted.
     """
     return (
         session is not None
         and sandbox is not None
         and session.status == BuildSessionStatus.ACTIVE
         and sandbox.status.is_active()
+        and not session.workspace_hydration_pending
     )
 
 
@@ -98,6 +101,25 @@ def ensure_session_ready(
         policy=ProvisioningPolicy.FAIL,
     )
 
+    if session.workspace_hydration_pending:
+        # A previous restore/setup died mid-write (process crash, OOM kill).
+        # The runtime may still claim the workspace; treat it as torn and
+        # fall through to a clean rebuild.
+        logger.warning(
+            "Session %s carries a pending hydration marker; discarding any "
+            "partial workspace and rebuilding",
+            session_id,
+        )
+        try:
+            sandbox_manager.cleanup_session_workspace(sandbox.id, session_id)
+        except Exception:
+            logger.warning(
+                "Could not clean partial workspace for session %s; the "
+                "rebuild below will surface the failure",
+                session_id,
+                exc_info=True,
+            )
+
     if sandbox_manager.session_workspace_exists(sandbox.id, session_id):
         session.status = BuildSessionStatus.ACTIVE
         if session_runtime_stale(session, sandbox):
@@ -133,6 +155,12 @@ def ensure_session_ready(
     # short-circuit without disposing; claim the dispose up front instead
     # (a no-op on a freshly provisioned pod).
     mark_opencode_dispose_pending(session_id)
+
+    # Durable hydration marker: set before any workspace-writing external
+    # work and cleared only after it all completes. A crash in between leaves
+    # it set, so the next caller rebuilds instead of trusting the workspace.
+    session.workspace_hydration_pending = True
+    db_session.commit()
 
     try:
         if snapshot:
@@ -196,11 +224,14 @@ def ensure_session_ready(
             session.nextjs_port = None
             db_session.commit()
         _discard_partial_workspace(db_session, sandbox_manager, user.id, session_id)
+        session.workspace_hydration_pending = False
+        db_session.commit()
         raise
 
     session.status = BuildSessionStatus.ACTIVE
     session.skills_hash = sandbox_skills_hash
     session.mcp_config_hash = sandbox_mcp_config_hash
+    session.workspace_hydration_pending = False
     db_session.commit()
     return sandbox
 

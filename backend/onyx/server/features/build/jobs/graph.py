@@ -29,6 +29,8 @@ NodeKind = Literal[
 ]
 WorkerKind = Literal["opencode_turn", "host_pure"]
 IsolationKind = Literal["parent_session", "child_session"]
+# Kinds a node may declare. The first three members of channels.InterruptKind
+# minus the host-only `clarify`; see that type for the full interrupt surface.
 HitlKind = Literal["none", "approve_plan", "approve_delivery"]
 
 LANE_KINDS: Final[frozenset[str]] = frozenset({"lane", "research_lane"})
@@ -187,7 +189,7 @@ def _as_node_kind(kind: str) -> NodeKind:
     if cleaned in LANE_KINDS:
         return "lane"
     if cleaned in _KNOWN_KINDS:
-        return cleaned  # type: ignore[return-value]
+        return cleaned  # ty: ignore[invalid-return-type]
     return "work"
 
 
@@ -259,9 +261,7 @@ def _work_node(predecessor: str, *, required: list[str]) -> GraphNode:
         output_channels=["artifacts"],
         required_paths=list(required),
         product_name="Job work",
-        success_criteria=(
-            "Meet the user goal. Write DONE.json when the goal is met."
-        ),
+        success_criteria=("Meet the user goal. Write DONE.json when the goal is met."),
         forbid=["Do not start later nodes"],
     )
 

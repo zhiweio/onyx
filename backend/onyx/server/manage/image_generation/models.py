@@ -151,6 +151,34 @@ class ImageGenerationCredentials(BaseModel):
         )
 
 
+class DashscopeImageModelsRequest(BaseModel):
+    """Request model for listing image generation models available to a
+    Bailian (DashScope) workspace."""
+
+    # Direct API key, or a masked key plus provider_id to resolve the stored one
+    api_key: str | None = None
+    # Bare workspace domain or the OpenAI-compatible base, e.g.
+    # https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com
+    api_base: str
+    # Existing image-gen LLM provider id; resolves the stored key on edit
+    provider_id: int | None = None
+
+
+class DashscopeImageModelResponse(BaseModel):
+    """One image generation model plus its supported parameters."""
+
+    name: str  # e.g. "qwen-image-3.0"
+    display_name: str
+    supports_reference_images: bool
+    max_reference_images: int
+    default_size: str  # e.g. "1024x1024"
+    size_range: str  # e.g. "512x512-2048x2048"
+    max_images_per_request: int
+    watermark: bool  # Default watermark setting
+    prompt_extend: bool  # Default prompt extension setting
+    is_recommended_default: bool
+
+
 class DefaultImageGenerationConfig(BaseModel):
     """Contains all info needed for image generation tool."""
 
