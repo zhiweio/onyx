@@ -16,11 +16,13 @@ from onyx.db.models import (
     CraftJobEvent,
     CraftJobSpecialist,
 )
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
 
 OPEN_JOB_STATUSES = (
     CraftJobStatus.PENDING,
     CraftJobStatus.RUNNING,
-    CraftJobStatus.WAITING_SPECIALISTS,
     CraftJobStatus.WAITING_LANES,
     CraftJobStatus.INTERRUPTED,
 )
@@ -187,10 +189,6 @@ def mark_job_running(job: CraftJob) -> None:
     _set_phase_status(job, job.current_phase_index, "running")
 
 
-def mark_job_waiting_specialists(job: CraftJob) -> None:
-    job.status = CraftJobStatus.WAITING_SPECIALISTS
-
-
 def job_is_terminal(job: CraftJob) -> bool:
     return job.status in TERMINAL_JOB_STATUSES
 
@@ -215,12 +213,47 @@ def mark_job_finished(
     *,
     status: CraftJobStatus,
     error_detail: str | None = None,
+    db_session: Session | None = None,
 ) -> None:
     job.status = status
     job.error_detail = error_detail
     job.finished_at = datetime.now(timezone.utc)
     if status == CraftJobStatus.SUCCEEDED:
         _set_phase_status(job, job.current_phase_index, "succeeded")
+    elif status == CraftJobStatus.FAILED and db_session is not None:
+        _notify_job_failed(db_session, job=job)
+
+
+def _notify_job_failed(db_session: Session, *, job: CraftJob) -> None:
+    """Best-effort per-user notification when a long job fails — the governor's
+    escalate-to-human step. Never masks the status write itself."""
+    user_id = getattr(  # ods: ignore[getattr] — best-effort on duck-typed rows
+        job, "user_id", None
+    )
+    if user_id is None:
+        return
+    try:
+        from onyx.configs.constants import NotificationType
+        from onyx.db.enums import NotificationSeverity
+        from onyx.db.notification import create_notification
+
+        create_notification(
+            user_id=job.user_id,
+            notif_type=NotificationType.CRAFT_JOB_FAILED,
+            db_session=db_session,
+            title=f'Craft job "{job.name}" failed',
+            description=(job.error_detail or "")[:500] or None,
+            additional_data={
+                "job_id": str(job.id),
+                "session_id": str(job.session_id),
+            },
+            autocommit=False,
+            severity=NotificationSeverity.ERROR,
+        )
+    except Exception:
+        logger.warning(
+            "craft_job_failed_notification_failed job_id=%s", job.id, exc_info=True
+        )
 
 
 def advance_job_phase(job: CraftJob, next_index: int) -> None:

@@ -457,7 +457,6 @@ class CraftJobStatus(str, PyEnum):
 
     PENDING = "pending"
     RUNNING = "running"
-    WAITING_SPECIALISTS = "waiting_specialists"
     WAITING_LANES = "waiting_lanes"
     INTERRUPTED = "interrupted"
     SUCCEEDED = "succeeded"
@@ -485,12 +484,29 @@ class ApprovalDecision(str, PyEnum):
     EXPIRED = "EXPIRED"
 
 
+class ContentQuarantineDecision(str, PyEnum):
+    """Human decision on quarantined inbound content; PENDING awaits it."""
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+
+
+class ContentReleaseScope(str, PyEnum):
+    """How far an approved content release extends."""
+
+    ONCE = "ONCE"  # next fetch of the same URL only
+    SESSION = "SESSION"  # rest of the craft session
+    HOST = "HOST"  # 30 days for the whole host
+
+
 class ApprovalDecidedVia(str, PyEnum):
     # NULL on legacy rows and proxy-written EXPIRED claims.
     USER = "USER"
     PRE_APPROVAL = "PRE_APPROVAL"
     SESSION_GRANT = "SESSION_GRANT"
     CRAFT_JOB_GRANT = "CRAFT_JOB_GRANT"
+    AUTO_REVIEW = "AUTO_REVIEW"
 
 
 class ScheduledTaskStatus(str, PyEnum):
@@ -537,6 +553,9 @@ class ScheduledTaskErrorClass(str, PyEnum):
     TIMEOUT = "timeout"
     STUCK = "stuck"
     AGENT_EXCEPTION = "agent_exception"
+    # The prompt references an env var / secret name that the task has no
+    # valid grant for (never granted, or the grant was revoked).
+    ENV_VAR_RESOLUTION_FAILED = "env_var_resolution_failed"
 
 
 class ScheduledTaskSkipReason(str, PyEnum):
@@ -546,10 +565,24 @@ class ScheduledTaskSkipReason(str, PyEnum):
     OWNER_CRAFT_DISABLED = "owner_craft_disabled"
 
 
+class EnvVarScope(str, PyEnum):
+    """Scope of an ``EnvVar`` row.
+
+    USER rows are private to their creator. PROJECT rows belong to a Craft
+    project and follow the project's read/write permissions.
+    """
+
+    USER = "USER"
+    PROJECT = "PROJECT"
+
+
 class SandboxStatus(str, PyEnum):
     PROVISIONING = "provisioning"
     RUNNING = "running"
-    SLEEPING = "sleeping"  # Pod terminated, snapshots saved to FileStore
+    # Runtime not running. When ``Sandbox.hibernated_at`` is set the runtime
+    # was stopped and kept (fast wake); otherwise it was destroyed and only
+    # FileStore snapshots remain.
+    SLEEPING = "sleeping"
     TERMINATED = "terminated"
     FAILED = "failed"
 
@@ -562,7 +595,7 @@ class SandboxStatus(str, PyEnum):
         return self in (SandboxStatus.TERMINATED, SandboxStatus.FAILED)
 
     def is_sleeping(self) -> bool:
-        """Check if sandbox is sleeping (pod terminated but can be restored)."""
+        """Check if sandbox is sleeping (stopped or terminated, restorable)."""
         return self == SandboxStatus.SLEEPING
 
 

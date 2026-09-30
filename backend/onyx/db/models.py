@@ -30,6 +30,7 @@ from sqlalchemy import (
     UniqueConstraint,
     desc,
     event,
+    false,
     func,
     inspect,
     text,
@@ -79,12 +80,15 @@ from onyx.db.enums import (
     ChatSessionSharedStatus,
     ChatSessionSharePermission,
     ConnectorCredentialPairStatus,
+    ContentQuarantineDecision,
+    ContentReleaseScope,
     CraftJobSpecialistStatus,
     CraftJobStatus,
     CraftProjectFileSource,
     DefaultAppMode,
     EmbeddingPrecision,
     EndpointPolicy,
+    EnvVarScope,
     ExternalAppType,
     GatedAppKind,
     GrantSource,
@@ -4398,6 +4402,10 @@ class Persona(Base):
         String(length=PROMPT_LENGTH), nullable=True
     )
     datetime_aware: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Per-assistant agent loop budget overrides (see onyx.chat.agent_budget).
+    # None or missing fields inherit the deployment-wide env defaults; the
+    # payload is validated by AgentBudget before anything reads it.
+    agent_budget: Mapped[dict | None] = mapped_column(PGJSONB, nullable=True)
 
     uploaded_image_id: Mapped[str | None] = mapped_column(String, nullable=True)
     icon_name: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -7423,6 +7431,16 @@ class BuildSession(Base):
         ForeignKey("craft_project.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Durable "restore in progress" marker (QM-style hydrationPending): set
+    # before a workspace restore/setup starts, cleared after it completes. A
+    # crash leaves it set, so no later turn mistakes a half-written workspace
+    # for a restored one; the next ensure_session_ready rebuilds instead.
+    workspace_hydration_pending: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
+    )
 
     # Relationships
     user: Mapped[User | None] = relationship("User", foreign_keys=[user_id])
@@ -7744,6 +7762,15 @@ class Sandbox(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Non-NULL while SLEEPING means "hibernated": the backend kept the runtime
+    # (Docker container stopped, volume and writable layer intact) so wake is a
+    # cheap start instead of a full re-provision + snapshot restore. NULL under
+    # SLEEPING keeps the legacy meaning — runtime destroyed, only FileStore
+    # snapshots remain. Cleared when a provisioning attempt finalizes RUNNING.
+    hibernated_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Relationships
     user: Mapped[User] = relationship("User")
 
@@ -8009,6 +8036,227 @@ class ActionApproval(Base):
         nullable=True,
     )
     gated_app: Mapped["GatedApp | None"] = relationship("GatedApp")
+    # The gated app's ``policy_version`` when this row was inserted. A grant
+    # decided under a stale version never covers a request again.
+    policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class ContentQuarantine(Base):
+    """One inbound-content quarantine and its human release decision.
+
+    Written by the sandbox-proxy's enforce-mode content screener when a
+    response body is replaced by a quarantine notice. The stashed original
+    body lives in Redis (TTL 1h); an approved release serves the stash
+    without re-fetching. The writer dedupes PENDING rows per
+    (session, url_hash), so repeated fetches of the same page never spam
+    cards or notifications.
+    """
+
+    __tablename__ = "content_quarantine"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    url_host: Mapped[str] = mapped_column(String, nullable=False)
+    url_path: Mapped[str] = mapped_column(String, nullable=False, default="")
+    # SHA256 of the full request URL; release grants and the original-body
+    # stash key off this, so a decided row never leaks into another URL.
+    url_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    verdict: Mapped[str] = mapped_column(String(32), nullable=False)
+    patterns_matched: Mapped[list[str]] = mapped_column(PGJSONB, nullable=False)
+    evidence_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    decision: Mapped[ContentQuarantineDecision] = mapped_column(
+        Enum(ContentQuarantineDecision, native_enum=False),
+        nullable=False,
+        default=ContentQuarantineDecision.PENDING,
+    )
+    scope: Mapped[ContentReleaseScope | None] = mapped_column(
+        Enum(ContentReleaseScope, native_enum=False),
+        nullable=True,
+    )
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Host-scope releases expire; session/once grants live in Redis only.
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    session: Mapped[BuildSession] = relationship("BuildSession")
+
+    __table_args__ = (
+        Index("ix_content_quarantine_session", "session_id"),
+        Index("ix_content_quarantine_session_hash", "session_id", "url_hash"),
+    )
+
+
+class SandboxProcess(Base):
+    """One background process started inside a sandbox (daemon data plane).
+
+    The daemon owns the live handle and the output log; this row is the
+    host-side registry the agent's `background` tool and the watch lane
+    read. The daemon's hex process id is the primary key here too.
+    """
+
+    __tablename__ = "sandbox_process"
+
+    process_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    sandbox_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("sandbox.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    command_redacted: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="background")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="running", server_default="running"
+    )
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class ProcessWatch(Base):
+    """A watch on one background process's output: when new output matches
+    the literal pattern (or the process exits), the owning session wakes
+    with a turn carrying the event. fireKey = watch id + cursor makes the
+    wake idempotent."""
+
+    __tablename__ = "process_watch"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    process_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("sandbox_process.process_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pattern: Mapped[str] = mapped_column(String(256), nullable=False)
+    cursor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_fired_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index("ix_process_watch_process", "process_id"),
+    )
+
+
+class EnvVar(Base):
+    """A user- or project-scoped environment variable / secret for Craft.
+
+    ``scope`` picks the owner: USER rows are private to ``user_id``; PROJECT
+    rows belong to ``project_id`` and follow the project's read/write
+    permissions. Values are encrypted at rest regardless of ``is_secret``;
+    the flag only controls whether the API ever returns the value — secrets
+    are write-only (GitHub Actions semantics).
+    """
+
+    __tablename__ = "env_var"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    is_secret: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    scope: Mapped[EnvVarScope] = mapped_column(
+        Enum(EnvVarScope, native_enum=False, name="envvarscope"),
+        nullable=False,
+    )
+    # Row creator. For USER scope this is also the owner; for PROJECT scope
+    # it is only an audit trail of who last wrote the row.
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    value: Mapped[SensitiveValue[str]] = mapped_column(
+        EncryptedString(), nullable=False
+    )
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    project: Mapped["CraftProject | None"] = relationship(
+        "CraftProject", foreign_keys=[project_id]
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "(scope = 'USER' AND project_id IS NULL) "
+            "OR (scope = 'PROJECT' AND project_id IS NOT NULL)",
+            name="ck_env_var_scope_project",
+        ),
+        # Partial unique indexes: one name per owner scope.
+        Index(
+            "uq_env_var_user_name",
+            "user_id",
+            "name",
+            unique=True,
+            postgresql_where=text("project_id IS NULL"),
+        ),
+        Index(
+            "uq_env_var_project_name",
+            "project_id",
+            "name",
+            unique=True,
+            postgresql_where=text("project_id IS NOT NULL"),
+        ),
+        # User-scoped list query, most recently updated first.
+        Index("ix_env_var_user_updated", "user_id", desc("updated_at")),
+    )
 
 
 class ScheduledTask(Base):
@@ -8032,6 +8280,13 @@ class ScheduledTask(Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    # Optional Craft project the task belongs to. Belonging to a project is
+    # what makes that project's env vars grantable to the task's runs.
+    project_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_project.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Canonical 5-field cron expression. The three UI editor modes (interval,
     # daily/weekly, advanced) all compile to this string on save.
@@ -8050,6 +8305,13 @@ class ScheduledTask(Base):
     # every fire and every schedule edit. Stored UTC.
     next_run_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # Who reviews ASK-gated requests on this task's runs: `user` (default —
+    # park and wait for a human), `auto_review_shadow` (the guardian records
+    # a verdict for evaluation only), `auto_review` (the guardian decides,
+    # with guardrails). See onyx.server.features.build.approvals.guardian.
+    reviewer_mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="user", server_default="user"
     )
     deleted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
@@ -8078,6 +8340,17 @@ class ScheduledTask(Base):
         cascade="all, delete-orphan",
         order_by="ScheduledTaskPreApprovedTarget.id",
     )
+    env_var_grants: Mapped[list["ScheduledTaskEnvVar"]] = relationship(
+        "ScheduledTaskEnvVar",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="ScheduledTaskEnvVar.created_at",
+    )
+
+    @property
+    def env_var_ids(self) -> list[UUID]:
+        """Granted env-var ids — only these are substituted into runs."""
+        return [grant.env_var_id for grant in self.env_var_grants]
 
     @property
     def pre_approved_external_app_ids(self) -> list[int]:
@@ -8213,6 +8486,12 @@ class ScheduledTaskPreApprovedTarget(Base):
         ForeignKey("gated_app.id", ondelete="CASCADE"),
         nullable=False,
     )
+    # The gated app's ``policy_version`` when the grant was made. A policy
+    # edit bumps the version, so stale grants stop covering runs until the
+    # task is re-approved against the new policy.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -8229,6 +8508,99 @@ class ScheduledTaskPreApprovedTarget(Base):
             "scheduled_task_id",
             "gated_app_id",
             name="uq_scheduled_task_pre_approved_app",
+        ),
+    )
+
+
+class ScheduledTaskGraduation(Base):
+    """Supervised-approval progress toward auto-approving one (task, target).
+
+    The QM ship-gate graduation: a task run that parks on an ASK-gated action
+    and gets a human approval counts one supervised pass here. After
+    ``CRAFT_ACTION_GRADUATION_THRESHOLD`` consecutive passes a
+    ``ScheduledTaskPreApprovedTarget`` row is created automatically (bound to
+    the current policy version) — that row IS the graduated "auto" state. A
+    rejection resets the count; a policy-version mismatch voids both the
+    count and the graduated grant.
+    """
+
+    __tablename__ = "scheduled_task_graduation"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scheduled_task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scheduled_task.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    gated_app_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("gated_app.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    consecutive_passes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Version the count was accumulated under; a mismatch voids it.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "scheduled_task_id",
+            "gated_app_id",
+            name="uq_scheduled_task_graduation",
+        ),
+    )
+
+
+class ScheduledTaskEnvVar(Base):
+    """One (task, env var) usage grant: only explicitly granted rows are
+    substituted into the run's prompt — grants never follow scope access
+    implicitly. Deleting the task or the var (both CASCADE) drops the grant,
+    so removing a var revokes every task that used it. The executor
+    re-validates each grant at run time (owner + task project still match);
+    a stale row that survived a project change is inert.
+
+    The unique constraint keeps grants idempotent and its index serves the
+    per-task lookup.
+    """
+
+    __tablename__ = "scheduled_task_env_var"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scheduled_task_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("scheduled_task.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    env_var_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("env_var.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    task: Mapped[ScheduledTask] = relationship(
+        "ScheduledTask", back_populates="env_var_grants"
+    )
+    # selectin: task-detail serialization reads every grant's var name.
+    env_var: Mapped[EnvVar] = relationship("EnvVar", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "scheduled_task_id",
+            "env_var_id",
+            name="uq_scheduled_task_env_var",
         ),
     )
 
@@ -8639,6 +9011,13 @@ class GatedApp(Base):
         Integer,
         ForeignKey("mcp_server.id", ondelete="CASCADE"),
         nullable=True,
+    )
+    # The QM ship-gate invariant: every grant records the policy version it
+    # was made under, and any policy edit bumps this counter — which silently
+    # reverts all grants (session grants, task pre-approvals, graduation
+    # progress) to ASK until re-approved.
+    policy_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
     )
 
     # Constraints are named to match the live schema created by the migration.

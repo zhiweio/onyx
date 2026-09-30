@@ -337,6 +337,8 @@ class NotificationType(str, Enum):
     SCHEDULED_TASK_AWAITING_APPROVAL = "scheduled_task_awaiting_approval"
     SCHEDULED_TASK_PRE_APPROVED_ACTION = "scheduled_task_pre_approved_action"
     APPROVAL_REQUESTED = "approval_requested"
+    CRAFT_JOB_FAILED = "craft_job_failed"
+    CRAFT_CONTENT_QUARANTINED = "craft_content_quarantined"
 
 
 class BlobType(str, Enum):
@@ -735,6 +737,8 @@ class OnyxCeleryTask:
     # Scheduled tasks (Craft)
     SCHEDULED_TASKS_DISPATCH_DUE = "scheduled_tasks_dispatch_due"
     SCHEDULED_TASKS_RUN = "scheduled_tasks_run"
+    GUARDIAN_REVIEW_DRAIN = "guardian_review_drain"
+    PROCESS_WATCH_POLL = "process_watch_poll"
     SCHEDULED_TASKS_CLEANUP_STUCK = "scheduled_tasks_cleanup_stuck"
 
     CHECK_FOR_DOCUMENTS_FOR_OPENSEARCH_MIGRATION_TASK = (

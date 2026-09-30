@@ -673,6 +673,11 @@ def create_update_persona(
             commit=False,
             hierarchy_node_ids=create_persona_request.hierarchy_node_ids,
             document_ids=create_persona_request.document_ids,
+            agent_budget=(
+                create_persona_request.agent_budget.model_dump()
+                if create_persona_request.agent_budget is not None
+                else None
+            ),
         )
 
         versioned_update_persona_access = fetch_versioned_implementation(
@@ -1580,6 +1585,7 @@ def upsert_persona(
     hierarchy_node_ids: list[int] | None = None,
     document_ids: list[str] | None = None,
     replace_base_system_prompt: bool = False,
+    agent_budget: dict | None = None,
 ) -> Persona:
     """
     NOTE: This operation cannot update persona configuration options that
@@ -1811,6 +1817,9 @@ def upsert_persona(
         if datetime_aware is not None:
             existing_persona.datetime_aware = datetime_aware
         existing_persona.replace_base_system_prompt = replace_base_system_prompt
+        # Agent budget: None explicitly clears the override (the editor always
+        # sends the full form, so "not sent" and "cleared" are the same thing).
+        existing_persona.agent_budget = agent_budget
 
         # Do not delete any associations manually added unless
         # a new updated list is provided
@@ -1859,6 +1868,7 @@ def upsert_persona(
             task_prompt=task_prompt or "",
             datetime_aware=(datetime_aware if datetime_aware is not None else True),
             replace_base_system_prompt=replace_base_system_prompt,
+            agent_budget=agent_budget,
             document_sets=document_sets or [],
             default_model_configuration_id=default_model_configuration_id,
             starter_messages=starter_messages,
