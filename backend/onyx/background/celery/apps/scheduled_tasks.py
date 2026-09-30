@@ -135,6 +135,9 @@ celery_app.autodiscover_tasks(
             # fires don't compete for slots with `heavy` queue work
             # (pruning, perms sync, csv export).
             "onyx.background.celery.tasks.scheduled_tasks",
+            # Craft loop item executor — same long-running shape as the
+            # scheduled-task executor above (the sweep stays on primary).
+            "onyx.background.celery.tasks.loops",
         ]
     )
 )

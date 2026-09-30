@@ -9195,6 +9195,11 @@ class CraftLoop(Base):
         Integer, nullable=False, default=0, server_default="0"
     )
     trigger_cron: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Precomputed from trigger_cron; NULL while paused/quarantined/archived
+    # or when the loop is event-driven only. The sweep claims on this.
+    next_fire_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     scenario_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("scenario.id", ondelete="SET NULL"), nullable=True
     )
@@ -9219,6 +9224,7 @@ class CraftLoop(Base):
     __table_args__ = (
         Index("ix_craft_loop_user", "user_id"),
         Index("ix_craft_loop_state", "state"),
+        Index("ix_craft_loop_next_fire", "next_fire_at"),
     )
 
 

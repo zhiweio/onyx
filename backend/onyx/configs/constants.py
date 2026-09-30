@@ -345,6 +345,8 @@ class NotificationType(str, Enum):
     APPROVAL_REQUESTED = "approval_requested"
     CRAFT_JOB_FAILED = "craft_job_failed"
     CRAFT_CONTENT_QUARANTINED = "craft_content_quarantined"
+    LOOP_OUTPUT_HELD = "loop_output_held"
+    LOOP_ITEM_FAILED = "loop_item_failed"
 
 
 class BlobType(str, Enum):
@@ -746,6 +748,8 @@ class OnyxCeleryTask:
     GUARDIAN_REVIEW_DRAIN = "guardian_review_drain"
     PROCESS_WATCH_POLL = "process_watch_poll"
     SCHEDULED_TASKS_CLEANUP_STUCK = "scheduled_tasks_cleanup_stuck"
+    LOOPS_FIRE_SWEEP = "loops_fire_sweep"
+    LOOPS_FIRE_ITEM = "loops_fire_item"
 
     CHECK_FOR_DOCUMENTS_FOR_OPENSEARCH_MIGRATION_TASK = (
         "check_for_documents_for_opensearch_migration_task"

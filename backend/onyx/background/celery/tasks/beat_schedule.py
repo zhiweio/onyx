@@ -233,6 +233,19 @@ beat_task_templates: list[dict] = [
             "queue": OnyxCeleryQueues.PRIMARY,
         },
     },
+    # Supervised craft loops: sweep due loops, reclaim expired item claim
+    # leases, and dispatch per-item executor tasks. Same DB-only
+    # coordination shape as the scheduled-task dispatcher above.
+    {
+        "name": "loops-fire-sweep",
+        "task": OnyxCeleryTask.LOOPS_FIRE_SWEEP,
+        "schedule": timedelta(seconds=30),
+        "options": {
+            "priority": OnyxCeleryPriority.MEDIUM,
+            "expires": 60,
+            "queue": OnyxCeleryQueues.PRIMARY,
+        },
+    },
     # Sandbox sweep: background-snapshot changed sessions, sleep idle sandboxes.
     {
         "name": "cleanup-idle-sandboxes",

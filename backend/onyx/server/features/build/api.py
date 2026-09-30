@@ -17,6 +17,7 @@ from onyx.server.features.build.external_apps.oauth import (
 )
 from onyx.server.features.build.interactive_turns.api import router as turns_router
 from onyx.server.features.build.jobs.api import router as jobs_router
+from onyx.server.features.build.loops.api import router as loops_router
 from onyx.server.features.build.models import BaseInstructionsResponse
 from onyx.server.features.build.sandbox.util.agent_instructions import (
     AGENT_INSTRUCTIONS_TEMPLATE_PATH,
@@ -76,6 +77,7 @@ router.include_router(user_library_router, tags=["build"])
 router.include_router(scheduled_tasks_router, tags=["build"])
 router.include_router(env_vars_router, tags=["build"])
 router.include_router(jobs_router, tags=["build"])
+router.include_router(loops_router, tags=["build"])
 router.include_router(external_apps_router, tags=["build"])
 router.include_router(external_apps_oauth_router, tags=["build"])
 router.include_router(agent_tools_router, tags=["build-agent-tools"])
