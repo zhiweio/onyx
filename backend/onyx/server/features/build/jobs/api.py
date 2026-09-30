@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -62,6 +63,13 @@ from shared_configs.contextvars import get_current_tenant_id
 router = APIRouter(prefix="/jobs")
 
 
+def _phases_from_plan(domain: str, plan: object) -> list[dict[str, Any]]:
+    """Snapshot a compiled scenario plan into the job's phase list."""
+    from onyx.server.features.build.jobs.graph import compile_graph
+
+    return compile_graph(domain, plan=plan).to_phase_list()  # type: ignore[arg-type]
+
+
 @router.post("")
 def create_job(
     request: CraftJobCreateRequest,
@@ -96,6 +104,20 @@ def create_job(
         domain = "general"
 
     name = (request.name or "").strip() or (request.prompt or "Long job")[:80]
+    # Scenario jobs compile their phase graph from the playbook instead of
+    # the domain default, so the scenario's declared phases drive execution.
+    scenario_plan = None
+    goal = (request.prompt or name).strip()
+    if scenario_rules is not None:
+        from onyx.server.features.scenario.bindings import compile_scenario_plan
+
+        try:
+            scenario_plan = compile_scenario_plan(scenario_rules, goal=goal)
+        except Exception:
+            logger.exception(
+                "Scenario %s plan compilation failed; using domain default", scenario_id
+            )
+            scenario_plan = None
     job = create_craft_job(
         db_session,
         user_id=user.id,
@@ -110,7 +132,11 @@ def create_job(
         ),
         project_id=project_id,
         scenario_id=scenario_id,
-        phases=default_phases_for_domain(domain),
+        phases=(
+            default_phases_for_domain(domain)
+            if scenario_plan is None
+            else _phases_from_plan(domain, scenario_plan)
+        ),
     )
     if request.provider_id is not None and request.model:
         from onyx.server.features.build.session.llm_config import GatewaySelection
@@ -122,12 +148,12 @@ def create_job(
         session.agent_provider = request.provider
         session.agent_model = request.model
 
-    goal = (request.prompt or name).strip()
     initialize_job_state(
         job,
         goal=goal,
         selected_skill_ids=request.selected_skill_ids,
         selected_mcp_server_ids=request.selected_mcp_server_ids,
+        plan=scenario_plan,
     )
     mark_job_running(job)
     start_run_journal(db_session, job)
@@ -142,7 +168,7 @@ def create_job(
         from onyx.server.features.build.jobs.graph import compile_graph
         from onyx.server.features.build.jobs.kernel import load_state
 
-        graph = compile_graph(domain)
+        graph = compile_graph(domain, plan=scenario_plan)
         plan_node = graph.get("plan")
         state = load_state(job)
         sandbox = get_sandbox_by_user_id(db_session, user.id)

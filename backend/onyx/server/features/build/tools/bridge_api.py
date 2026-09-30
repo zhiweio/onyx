@@ -55,9 +55,7 @@ _registry_singleton: PlatformToolRegistry | None = None
 
 
 def get_platform_tool_registry() -> PlatformToolRegistry:
-    """The deployment catalog. Bindings that need per-session executor
-    state are attached via ``set_tool_registry``; the default catalog is
-    deployment-static."""
+    """The deployment catalog (static definitions + unbound services)."""
     global _registry_singleton
     if _registry_singleton is None:
         _registry_singleton = PlatformToolRegistry.build(ToolBindings())
@@ -68,6 +66,22 @@ def set_tool_registry(registry: PlatformToolRegistry) -> None:
     """Executor/tests replace the catalog (per-session hooks, fakes)."""
     global _registry_singleton
     _registry_singleton = registry
+
+
+def _request_registry(user: User) -> PlatformToolRegistry:
+    """Per-request registry with user-scoped service bindings.
+
+    rag_search runs with the requesting user's ACL; a sandbox's craft PAT
+    resolves to its owning user, so retrieval sees exactly that user's
+    documents.
+    """
+    from onyx.server.features.build.tools.service_bindings import (
+        make_user_scoped_search_fn,
+    )
+
+    return PlatformToolRegistry.build(
+        ToolBindings(search_fn=make_user_scoped_search_fn(user))
+    )
 
 
 def _bridge_ctx(user: User) -> ToolContext:
@@ -85,7 +99,7 @@ def call_tool(
     request: ToolCallRequest,
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
 ) -> dict[str, Any]:
-    registry = get_platform_tool_registry()
+    registry = _request_registry(user)
     invocation = ToolInvocation(
         tool=request.tool,
         arguments=request.arguments,
@@ -106,7 +120,7 @@ async def mcp_endpoint(
             return error_response_parse()
     except Exception:
         return error_response_parse()
-    registry = get_platform_tool_registry()
+    registry = _request_registry(user)
     session_id = request.headers.get(MCP_SESSION_TAG_HEADER) or None
     response = handle_mcp_jsonrpc(body, registry, _bridge_ctx(user), session_id)
     return response if response is not None else {}

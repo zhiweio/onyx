@@ -75,7 +75,7 @@ from onyx.server.features.build.jobs.phase_gate import (
     DEFAULT_PHASE_RETRY_LIMIT,
     increment_gate_retries,
 )
-from onyx.server.features.build.jobs.plan import parse_plan_bytes
+from onyx.server.features.build.jobs.plan import JobPlan, parse_plan_bytes
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.utils.logger import setup_logger
 
@@ -142,8 +142,9 @@ def initialize_job_state(
     goal: str,
     selected_skill_ids: Sequence[str] | None = None,
     selected_mcp_server_ids: Sequence[int] | None = None,
+    plan: JobPlan | None = None,
 ) -> JobState:
-    graph = compile_graph(str(job.domain))
+    graph = compile_graph(str(job.domain), plan=plan)
     state = empty_state()
     state.goal = goal
     state.cursor = ["plan"]

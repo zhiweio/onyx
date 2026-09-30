@@ -18,6 +18,9 @@ class ScenarioPlaybookPhase(BaseModel):
 
     id: str = ""
     done_when: str | None = None
+    # Phase resource allowlist (see scenario/bindings.py). Kept as a raw
+    # dict here so the playbook round-trips unknown future keys.
+    bindings: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -75,6 +78,9 @@ class ScenarioPlaybook(BaseModel):
     refusal_rules: list[str] = Field(default_factory=list)
     always_skill_ids: list[str] = Field(default_factory=list)
     conditional: list[ScenarioConditionalRule] = Field(default_factory=list)
+    # Scenario-level runtime policy (see scenario/bindings.py). Raw dict for
+    # the same round-trip reason as phase bindings.
+    runtime: dict[str, Any] | None = None
 
 
 def playbook_as_dict(playbook: ScenarioPlaybook) -> dict[str, Any]:
