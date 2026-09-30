@@ -80,11 +80,14 @@ import { useQueryController } from "@/providers/QueryControllerProvider";
 import WelcomeMessage from "@/app/app/components/WelcomeMessage";
 import ChatUI from "@/sections/chat/ChatUI";
 import { useFullWidthChat } from "@/providers/FullWidthChatProvider";
-import { paidTierGated } from "@/ce";
-import EESearchUI from "@/ee/sections/SearchUI";
-const SearchUI = paidTierGated(EESearchUI);
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
+
+// CE placeholder for the Enterprise search surface. Renders nothing; chat
+// remains the only query mode until the CE search surface is rebuilt.
+function SearchUI(_props: { onDocumentClick?: (doc: never) => void }) {
+  return null;
+}
 
 interface FadeProps {
   show: boolean;

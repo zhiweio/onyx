@@ -44,14 +44,16 @@ import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import DocumentsSidebar from "@/sections/document-sidebar/DocumentsSidebar";
 import PreviewModal from "@/sections/modals/PreviewModal";
 import { useQueryController } from "@/providers/QueryControllerProvider";
-import { paidTierGated } from "@/ce";
-import EESearchUI from "@/ee/sections/SearchUI";
 import useMultiModelChat from "@/hooks/useMultiModelChat";
 import MultiModelSelector from "@/sections/model-selector/MultiModelSelector";
 import { Section } from "@/layouts/general-layouts";
 import { useTranslations } from "next-intl";
 
-const SearchUI = paidTierGated(EESearchUI);
+// CE placeholder for the Enterprise search surface. Renders nothing; chat
+// remains the only query mode until the CE search surface is rebuilt.
+function SearchUI(_props: { onDocumentClick?: (doc: never) => void }) {
+  return null;
+}
 
 interface NRFPageProps {
   isSidePanel?: boolean;

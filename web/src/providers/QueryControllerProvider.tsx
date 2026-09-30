@@ -1,8 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { paidTierGated } from "@/ce";
-import { QueryControllerProvider as EEQueryControllerProvider } from "@/ee/providers/QueryControllerProvider";
+import { ReactNode, createContext, useContext } from "react";
 import { SearchDocWithContent, BaseFilters } from "@/lib/search/interfaces";
 
 export type AppMode = "auto" | "search" | "chat";
@@ -54,4 +52,11 @@ export function useQueryController(): QueryControllerValue {
   return useContext(QueryControllerContext);
 }
 
-export const QueryControllerProvider = paidTierGated(EEQueryControllerProvider);
+/**
+ * Community Edition provider: a passthrough. Downstream hooks consume the
+ * context defaults above, whose `submit` routes every query to chat. The
+ * search-driven controller returns with the rebuilt CE search surface.
+ */
+export function QueryControllerProvider({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}

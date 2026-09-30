@@ -14,18 +14,11 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from ee.onyx.db.scim import ScimDAL
 from onyx.db.models import ScimToken, ScimUserMapping, User, UserGroup
 from tests.external_dependency_unit.conftest import create_test_user
 from tests.external_dependency_unit.db.shard_test_utils import temporary_database
 
 ScimUserFactory = Callable[[str | None], tuple[User, ScimUserMapping]]
-
-
-@pytest.fixture
-def scim_dal(db_session: Session) -> ScimDAL:
-    """A ScimDAL backed by the real test database session."""
-    return ScimDAL(db_session)
 
 
 @pytest.fixture

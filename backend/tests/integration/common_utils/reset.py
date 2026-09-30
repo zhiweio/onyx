@@ -302,30 +302,19 @@ def reset_postgres(
             check_and_perform_index_swap(db_session)
 
 
-_PEM_BEGIN = "-----BEGIN ONYX LICENSE-----"
-_PEM_END = "-----END ONYX LICENSE-----"
-
-
 def _seed_dev_license_if_set(db_session: Session) -> None:
     """Seed the ONYX_DEV_LICENSE blob into the License table.
 
-    Called after every Postgres reset so EE-gated routes don't return 402
-    after the License row is wiped by alembic downgrade. No-ops when the
-    env var is unset.
+    This build ships Community Edition only; the license machinery belongs
+    to the Enterprise Edition and is not present. No-op in all cases.
     """
     blob = os.environ.get("ONYX_DEV_LICENSE", "").strip()
     if not blob:
         return
-
-    if blob.startswith(_PEM_BEGIN) and blob.endswith(_PEM_END):
-        blob = "\n".join(blob.split("\n")[1:-1]).strip()
-
-    from ee.onyx.db.license import upsert_license
-    from ee.onyx.utils.license import verify_license_signature
-
-    verify_license_signature(blob)
-    upsert_license(db_session, blob)
-    logger.info("Dev license seeded after Postgres reset")
+    logger.warning(
+        "ONYX_DEV_LICENSE is set but this build has no Enterprise Edition; "
+        "dev license seeding is skipped."
+    )
 
 
 def reset_postgres_multitenant() -> None:

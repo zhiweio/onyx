@@ -22,7 +22,7 @@ import type {
 } from "@/lib/hierarchy/interfaces";
 import type { ProjectFile } from "@/lib/projects/types";
 import type { DocumentSetSummary, ValidSources } from "@/lib/types";
-import { searchDocuments } from "@/ee/lib/search/svc";
+import type { SearchDocWithContent } from "@/lib/search/interfaces";
 import { Disabled } from "@opal/core";
 import { Card, Switch } from "@opal/components";
 import { Content, InputHorizontal, Section } from "@opal/layouts";
@@ -40,6 +40,15 @@ import type {
   KnowledgeSearchResults,
   KnowledgeView,
 } from "@/sections/knowledge/agent-knowledge/interfaces";
+
+// CE stub for the Enterprise search service. Returns no documents until the
+// CE search surface is rebuilt; hierarchy search keeps working.
+async function searchDocuments(
+  _query: string,
+  _options: { filters?: { source_type?: ValidSources[] }; numHits?: number }
+): Promise<{ search_docs: SearchDocWithContent[] }> {
+  return { search_docs: [] };
+}
 
 interface AgentKnowledgePaneProps {
   enableKnowledge: boolean;

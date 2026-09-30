@@ -2,11 +2,31 @@ import time
 from uuid import uuid4
 
 import httpx
+from pydantic import BaseModel, Field
 
-from ee.onyx.server.user_group.models import UserGroup
 from tests.integration.common_utils.constants import API_SERVER_URL, MAX_DELAY
 from tests.integration.common_utils.http_client import client
 from tests.integration.common_utils.test_models import DATestUser, DATestUserGroup
+
+
+class _UserGroupUser(BaseModel):
+    id: str
+
+
+class _UserGroupCCPair(BaseModel):
+    id: int
+
+
+class UserGroup(BaseModel):
+    """Local mirror of the user-group API response shape."""
+
+    id: int
+    name: str
+    users: list[_UserGroupUser] = Field(default_factory=list)
+    cc_pairs: list[_UserGroupCCPair] = Field(default_factory=list)
+    is_default: bool = False
+    is_up_to_date: bool = True
+    manager_ids: list[int] = Field(default_factory=list)
 
 
 class UserGroupManager:
