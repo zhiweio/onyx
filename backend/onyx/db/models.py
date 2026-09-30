@@ -9371,3 +9371,43 @@ class CraftLoopGrant(Base):
     loop: Mapped[CraftLoop] = relationship("CraftLoop", back_populates="grants")
 
     __table_args__ = (Index("ix_craft_loop_grant_loop", "loop_id", "ship_action"),)
+
+
+class ChinaIMBinding(Base):
+    """Platform IM identity bound to an Onyx user.
+
+    Recorded on the first inbound bot message (deterministic SSO email
+    convention maps the same person); push notifications (approval
+    cards, loop-held outputs) DM through the newest binding.
+    """
+
+    __tablename__ = "china_im_binding"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)
+    platform_user_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    chat_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "platform", "platform_user_id", name="uq_china_im_binding_platform_user"
+        ),
+        Index("ix_china_im_binding_user", "user_id"),
+    )

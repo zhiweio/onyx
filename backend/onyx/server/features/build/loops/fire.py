@@ -434,6 +434,14 @@ def _notify(
             additional_data=additional_data,
             autocommit=False,
         )
+        # Best-effort IM push (approval cards / held outputs) to users
+        # with a China IM binding; in-app notification above is the
+        # durable channel, this is the reach channel.
+        from onyx.onyxbot.china.framework import dispatch_im_notification
+
+        dispatch_im_notification(
+            user_id=user_id, title=title, description=description
+        )
     except Exception:
         logger.exception("loop notification failed")
 

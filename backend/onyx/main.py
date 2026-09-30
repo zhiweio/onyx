@@ -169,6 +169,7 @@ from onyx.server.middleware.rate_limiting import (
     setup_auth_limiter,
 )
 from onyx.server.china_sso import router as china_sso_router
+from onyx.server.onyxbot_china_api import router as onyxbot_china_router
 from onyx.server.oidc_multi import router as oidc_multi_router
 from onyx.server.onyx_api.ingestion import router as onyx_api_router
 from onyx.server.pat.api import router as pat_router
@@ -766,6 +767,15 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_auth_router_with_prefix(
         application,
         china_sso_router,
+    )
+
+    # China IM bot callbacks (WeCom/DingTalk/Feishu). No session auth:
+    # per-platform signature verification is the authentication. Mounted
+    # without the /api prefix so platform consoles can point at the
+    # exact URL nginx exposes.
+    include_auth_router_with_prefix(
+        application,
+        onyxbot_china_router,
     )
 
     # Resolves which workspace's providers to offer before any of the above can

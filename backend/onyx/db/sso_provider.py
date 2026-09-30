@@ -77,8 +77,11 @@ class SAMLProviderConfig(_ProviderConfig):
 class _ChinaProviderConfig(_ProviderConfig):
     """Common shape for the China workplace platforms.
 
-    ``email_domain`` builds a deterministic email when the platform does not
-    return one (DingTalk and WeCom often do not): ``{account_id}@{domain}``.
+    ``email_domain`` builds a deterministic email when the platform does
+    not return one (DingTalk and WeCom often do not): ``{account_id}@{domain}``.
+    The ``bot_*`` fields enable that platform's IM bot: presence of the
+    bot verification material means the callback endpoint will accept
+    events for this provider row.
     """
 
     email_domain: str
@@ -88,16 +91,31 @@ class WeComProviderConfig(_ChinaProviderConfig):
     corp_id: str
     corp_secret: str = Field(json_schema_extra={"secret": True})
     agent_id: str
+    # IM bot callback verification (WeCom callback mode)
+    bot_token: str | None = None
+    bot_encoding_aes_key: str | None = Field(
+        default=None, json_schema_extra={"secret": True}
+    )
 
 
 class DingTalkProviderConfig(_ChinaProviderConfig):
     client_id: str
     client_secret: str = Field(json_schema_extra={"secret": True})
+    # IM bot (enterprise internal robot) callback + replies
+    robot_code: str | None = None
+    bot_aes_key: str | None = Field(
+        default=None, json_schema_extra={"secret": True}
+    )
 
 
 class FeishuProviderConfig(_ChinaProviderConfig):
     app_id: str
     app_secret: str = Field(json_schema_extra={"secret": True})
+    # IM bot event subscription verification
+    bot_verification_token: str | None = None
+    bot_encrypt_key: str | None = Field(
+        default=None, json_schema_extra={"secret": True}
+    )
 
 
 class WPS365ProviderConfig(_ChinaProviderConfig):
