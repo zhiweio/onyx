@@ -10,14 +10,10 @@ import { SvgSlack } from "@opal/logos";
 import { useDocumentSets } from "@/app/admin/documents/sets/hooks";
 import { useAgents } from "@/lib/agents/hooks";
 import { useStandardAnswerCategories } from "@/hooks/useStandardAnswerCategories";
-import { useTierAtLeast } from "@/hooks/useTierAtLeast";
-import { Tier } from "@/lib/settings/types";
-import type { StandardAnswerCategoryResponse } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
 import { useRouter } from "next/navigation";
 
 function NewChannelConfigContent({ slackBotId }: { slackBotId: number }) {
   const t = useTranslations("admin.slackBots");
-  const enterpriseTier = useTierAtLeast(Tier.ENTERPRISE);
 
   const {
     data: documentSets,
@@ -34,13 +30,12 @@ function NewChannelConfigContent({ slackBotId }: { slackBotId: number }) {
   const {
     data: standardAnswerCategories,
     isLoading: isStdAnswerLoading,
-    error: stdAnswerError,
   } = useStandardAnswerCategories();
 
   if (
     isDocSetsLoading ||
     isAgentsLoading ||
-    (enterpriseTier && isStdAnswerLoading)
+    isStdAnswerLoading
   ) {
     return <SvgSimpleLoader />;
   }
@@ -67,23 +62,13 @@ function NewChannelConfigContent({ slackBotId }: { slackBotId: number }) {
     );
   }
 
-  const standardAnswerCategoryResponse: StandardAnswerCategoryResponse =
-    enterpriseTier
-      ? {
-          paidEnterpriseFeaturesEnabled: true,
-          categories: standardAnswerCategories ?? [],
-          ...(stdAnswerError
-            ? { error: { message: String(stdAnswerError) } }
-            : {}),
-        }
-      : { paidEnterpriseFeaturesEnabled: false };
 
   return (
     <SlackChannelConfigCreationForm
       slack_bot_id={slackBotId}
       documentSets={documentSets}
       personas={agents}
-      standardAnswerCategoryResponse={standardAnswerCategoryResponse}
+      allCategories={standardAnswerCategories}
     />
   );
 }

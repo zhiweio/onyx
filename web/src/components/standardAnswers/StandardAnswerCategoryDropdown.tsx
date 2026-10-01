@@ -1,44 +1,26 @@
 import { FC } from "react";
 import { useTranslations } from "next-intl";
-import { StandardAnswerCategoryResponse } from "./getStandardAnswerCategoriesIfEE";
 import { Label } from "@/components/Field";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox/InputComboBox";
 import Chip from "@/refresh-components/Chip";
 import { StandardAnswerCategory } from "@/lib/types";
-import { ErrorCallout } from "../ErrorCallout";
 import { LoadingAnimation } from "../Loading";
 
 interface StandardAnswerCategoryDropdownFieldProps {
-  standardAnswerCategoryResponse: StandardAnswerCategoryResponse;
+  allCategories: StandardAnswerCategory[] | null;
   categories: StandardAnswerCategory[];
   setCategories: (categories: StandardAnswerCategory[]) => void;
 }
 
 export const StandardAnswerCategoryDropdownField: FC<
   StandardAnswerCategoryDropdownFieldProps
-> = ({ standardAnswerCategoryResponse, categories, setCategories }) => {
+> = ({ allCategories, categories, setCategories }) => {
   const t = useTranslations("admin.standardAnswers.categoryDropdown");
 
-  if (!standardAnswerCategoryResponse.paidEnterpriseFeaturesEnabled) {
-    return null;
-  }
-
-  if (standardAnswerCategoryResponse.error != null) {
-    return (
-      <ErrorCallout
-        errorTitle={t("fetchError.title")}
-        errorMsg={t("fetchError.message", {
-          message: standardAnswerCategoryResponse.error.message,
-        })}
-      />
-    );
-  }
-
-  if (standardAnswerCategoryResponse.categories == null) {
+  if (allCategories == null) {
     return <LoadingAnimation />;
   }
 
-  const allCategories = standardAnswerCategoryResponse.categories;
   const selectedIds = new Set(categories.map((category) => category.id));
 
   return (

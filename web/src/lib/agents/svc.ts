@@ -117,35 +117,28 @@ export async function uploadFile(file: File): Promise<string | null> {
 
 /**
  * Updates the agent's sharing settings (users, groups, public flag, labels).
- * Group sharing is EE-only — groupIds are silently dropped when enterprise
- * features are disabled. Returns an error string on failure, null on success.
+ * Returns an error string on failure, null on success.
  */
 export async function updateAgentSharedStatus(
   agentId: number,
   userIds: string[],
   groupIds: number[],
   isPublic: boolean | undefined,
-  isPaidEnterpriseFeaturesEnabled: boolean,
   labelIds?: number[]
 ): Promise<string | null> {
-  const groupSharesDiscarded =
-    !isPaidEnterpriseFeaturesEnabled && groupIds.length > 0;
-
   try {
     const res = await fetch(`/api/persona/${agentId}/share`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_ids: userIds,
-        group_ids: isPaidEnterpriseFeaturesEnabled ? groupIds : undefined,
+        group_ids: groupIds,
         is_public: isPublic,
         label_ids: labelIds,
       }),
     });
     if (res.ok) {
-      return groupSharesDiscarded
-        ? "Group sharing is an enterprise-only feature; groups were not added."
-        : null;
+      return null;
     }
     return (
       ((await res.json()) as { detail?: string }).detail ?? "Unknown error"
@@ -171,31 +164,18 @@ export interface AgentShareUpdatePayload {
 
 export async function updateAgentShares(
   agentId: number,
-  payload: AgentShareUpdatePayload,
-  isPaidEnterpriseFeaturesEnabled: boolean
+  payload: AgentShareUpdatePayload
 ): Promise<string | null> {
-  const groupSharesDiscarded =
-    !isPaidEnterpriseFeaturesEnabled &&
-    !!payload.group_shares &&
-    payload.group_shares.length > 0;
-
   try {
     const res = await fetch(`/api/persona/${agentId}/share`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...payload,
-        group_shares: isPaidEnterpriseFeaturesEnabled
-          ? payload.group_shares
-          : undefined,
-      }),
+      body: JSON.stringify(payload),
       credentials: "include",
     });
 
     if (res.ok) {
-      return groupSharesDiscarded
-        ? "Group sharing is an enterprise-only feature; group shares were not applied."
-        : null;
+      return null;
     }
 
     return await parseErrorDetail(res, "Failed to update agent shares");

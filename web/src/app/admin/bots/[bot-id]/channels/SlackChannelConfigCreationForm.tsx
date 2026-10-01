@@ -18,7 +18,6 @@ import {
 import CardSection from "@/components/admin/CardSection";
 import { useRouter } from "next/navigation";
 import { MinimalAgent } from "@/lib/agents/types";
-import { StandardAnswerCategoryResponse } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
 import { SEARCH_TOOL_ID } from "@/lib/tools/constants";
 import { SlackChannelConfigFormFields } from "./SlackChannelConfigFormFields";
 
@@ -26,13 +25,13 @@ export const SlackChannelConfigCreationForm = ({
   slack_bot_id,
   documentSets,
   personas,
-  standardAnswerCategoryResponse,
+  allCategories,
   existingSlackChannelConfig,
 }: {
   slack_bot_id: number;
   documentSets: DocumentSetSummary[];
   personas: MinimalAgent[];
-  standardAnswerCategoryResponse: StandardAnswerCategoryResponse;
+  allCategories: StandardAnswerCategory[] | null;
   existingSlackChannelConfig?: SlackChannelConfig;
 }) => {
   const t = useTranslations("admin.slackBots");
@@ -235,7 +234,7 @@ export const SlackChannelConfigCreationForm = ({
                 documentSets={documentSets}
                 searchEnabledAgents={searchEnabledAgents}
                 nonSearchAgents={nonSearchAgents}
-                standardAnswerCategoryResponse={standardAnswerCategoryResponse}
+                allCategories={allCategories}
                 slack_bot_id={slack_bot_id}
                 formikProps={formikProps}
               />

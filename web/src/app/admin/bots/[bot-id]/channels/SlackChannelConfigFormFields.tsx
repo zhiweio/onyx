@@ -16,7 +16,6 @@ import { Button, Divider } from "@opal/components";
 import { MinimalAgent } from "@/lib/agents/types";
 import DocumentSetCard from "@/sections/cards/DocumentSetCard";
 import CollapsibleSection from "@/app/admin/agents/CollapsibleSection";
-import { StandardAnswerCategoryResponse } from "@/components/standardAnswers/getStandardAnswerCategoriesIfEE";
 import { StandardAnswerCategoryDropdownField } from "@/components/standardAnswers/StandardAnswerCategoryDropdown";
 import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import { RadioGroup } from "@/components/ui/radio-group";
@@ -43,7 +42,7 @@ export interface SlackChannelConfigFormFieldsProps {
   documentSets: DocumentSetSummary[];
   searchEnabledAgents: MinimalAgent[];
   nonSearchAgents: MinimalAgent[];
-  standardAnswerCategoryResponse: StandardAnswerCategoryResponse;
+  allCategories: StandardAnswerCategory[] | null;
   slack_bot_id: number;
   formikProps: any;
 }
@@ -54,7 +53,7 @@ export function SlackChannelConfigFormFields({
   documentSets,
   searchEnabledAgents,
   nonSearchAgents,
-  standardAnswerCategoryResponse,
+  allCategories,
   slack_bot_id,
   formikProps,
 }: SlackChannelConfigFormFieldsProps) {
@@ -544,7 +543,7 @@ export function SlackChannelConfigFormFields({
               />
 
               <StandardAnswerCategoryDropdownField
-                standardAnswerCategoryResponse={standardAnswerCategoryResponse}
+                allCategories={allCategories}
                 categories={values.standard_answer_categories}
                 setCategories={(categories: any) =>
                   setFieldValue("standard_answer_categories", categories)

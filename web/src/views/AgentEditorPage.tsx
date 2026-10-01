@@ -616,7 +616,6 @@ export default function AgentEditorPage({
     ? can(existingAgent, "feature")
     : hasPermission(permissions, Permission.MANAGE_AGENTS);
   const { vectorDbEnabled } = useSettings();
-  const businessTier = useTierAtLeast(Tier.BUSINESS);
 
   const agentDraftStorageKey = draftKey("agent-editor", "new");
   const clearAgentDraftRef = useRef<(() => void) | null>(null);
@@ -1132,7 +1131,6 @@ export default function AgentEditorPage({
             is_public: draft.isPublic,
             public_permission: draft.publicPermission,
           },
-          businessTier
         );
         if (shareError) {
           toast.error(t("editor.toasts.sharingFailed", { error: shareError }));

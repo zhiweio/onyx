@@ -5,8 +5,6 @@ import { Button, Tabs, Text } from "@opal/components";
 import { toast } from "@opal/layouts";
 import { useState } from "react";
 import { mutate } from "swr";
-import { useTierAtLeast } from "@/hooks/useTierAtLeast";
-import { Tier } from "@/lib/settings/types";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { Section } from "@/layouts/general-layouts";
 import { SvgPlusCircle } from "@opal/icons";
@@ -60,7 +58,6 @@ export default function TokenRateLimitsPanel({
   const t = useTranslations("admin.tokenRateLimits");
   const [tab, setTab] = useState<PanelTab>("global");
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const enterpriseTier = useTierAtLeast(Tier.ENTERPRISE);
 
   function updateTable(targetScope: Scope) {
     if (targetScope === Scope.GLOBAL) {
@@ -117,16 +114,12 @@ export default function TokenRateLimitsPanel({
             <li>
               <Text as="p">{t("panel.intro.workspaceLimit")}</Text>
             </li>
-            {enterpriseTier && (
-              <>
-                <li>
-                  <Text as="p">{t("panel.intro.userLimit")}</Text>
-                </li>
-                <li>
-                  <Text as="p">{t("panel.intro.groupLimit")}</Text>
-                </li>
-              </>
-            )}
+            <li>
+              <Text as="p">{t("panel.intro.userLimit")}</Text>
+            </li>
+            <li>
+              <Text as="p">{t("panel.intro.groupLimit")}</Text>
+            </li>
             <li>
               <Text as="p">{t("panel.intro.toggleLimit")}</Text>
             </li>
@@ -142,8 +135,7 @@ export default function TokenRateLimitsPanel({
         {t("panel.create.label")}
       </Button>
 
-      {enterpriseTier ? (
-        <Tabs value={tab} onValueChange={(value) => setTab(value as PanelTab)}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as PanelTab)}>
           <Tabs.List>
             <Tabs.Trigger value="global">
               {t("panel.tabs.global.name")}
@@ -182,18 +174,11 @@ export default function TokenRateLimitsPanel({
             />
           </Tabs.Content>
         </Tabs>
-      ) : (
-        <GenericTokenRateLimitTable
-          fetchUrl={GLOBAL_TOKEN_FETCH_URL}
-          description={t("panel.global.description")}
-        />
-      )}
 
       <CreateRateLimitModal
         isOpen={modalIsOpen}
         setIsOpen={() => setModalIsOpen(false)}
         onSubmit={handleSubmit}
-        forSpecificScope={enterpriseTier ? undefined : Scope.GLOBAL}
       />
     </Section>
   );

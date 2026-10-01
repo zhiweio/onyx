@@ -910,35 +910,12 @@ export const useUserGroups = (): {
   error: string;
   refreshUserGroups: () => void;
 } => {
-  const settings = useSettings();
-  const isLoading = settings.isLoading;
-  const isPaidEnterpriseFeaturesEnabled =
-    !isLoading && settings.enterprise !== null;
-
   const swrResponse = useSWR<UserGroup[]>(
-    isPaidEnterpriseFeaturesEnabled ? SWR_KEYS.adminUserGroups : null,
+    SWR_KEYS.adminUserGroups,
     errorHandlingFetcher
   );
 
   const refreshUserGroups = () => mutate(SWR_KEYS.adminUserGroups);
-
-  if (isLoading) {
-    return {
-      data: undefined,
-      isLoading: true,
-      error: "",
-      refreshUserGroups,
-    };
-  }
-
-  if (!isPaidEnterpriseFeaturesEnabled) {
-    return {
-      data: [],
-      isLoading: false,
-      error: "",
-      refreshUserGroups,
-    };
-  }
 
   return {
     ...swrResponse,

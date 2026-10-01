@@ -34,8 +34,6 @@ import { AccountType } from "@/lib/types";
 import type { SecuritySettings, UserGroup } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
 import { useSettings } from "@/lib/settings/hooks";
-import { Tier } from "@/lib/settings/types";
-import { tierAtLeast } from "@/lib/tiers";
 import type { MemberRow, TokenRateLimitDisplay } from "./interfaces";
 import {
   makeBaseColumns,
@@ -80,7 +78,6 @@ function EditGroupPage({ groupId }: EditGroupPageProps) {
   const settings = useSettings();
   const { user } = useUser();
   const currentUserId = user?.id;
-  const isEnterpriseTier = tierAtLeast(settings.tier, Tier.ENTERPRISE);
   const tokenLimitsDisabledTooltip = markdown(t("tokenLimits.disabledTooltip"));
 
   // Fetch the group data — poll every 5s while syncing so the UI updates
@@ -508,7 +505,7 @@ function EditGroupPage({ groupId }: EditGroupPageProps) {
 
       // Group-scoped create/update/delete routes admit a group admin, so their full save
       // (including PUT/DELETE of existing limits) is authorized.
-      if (isEnterpriseTier && canEditTokenLimits) {
+      if (canEditTokenLimits) {
         await saveTokenLimits(groupId, tokenLimits, tokenRateLimits ?? []);
       }
 
@@ -763,7 +760,7 @@ function EditGroupPage({ groupId }: EditGroupPageProps) {
                   <TokenLimitSection
                     limits={tokenLimits}
                     onLimitsChange={setTokenLimits}
-                    disabled={!isEnterpriseTier || !canEditTokenLimits}
+                    disabled={!canEditTokenLimits}
                     disabledTooltip={tokenLimitsDisabledTooltip}
                   />
                 </>
