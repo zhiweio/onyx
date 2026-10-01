@@ -320,18 +320,72 @@ def resolve_desired_user_shares(
     }
 
 
+def resolve_desired_group_shares(
+    persona_id: int,
+    group_ids: list[int] | None,
+    group_shares: dict[int, PersonaSharePermission] | None,
+    db_session: Session,
+) -> dict[int, PersonaSharePermission] | None:
+    """Merge the legacy id-list and leveled-share inputs into one desired map
+    (mirrors ``resolve_desired_user_shares`` for groups)."""
+    if group_shares is not None:
+        return dict(group_shares)
+    if group_ids is None:
+        return None
+    existing = {
+        row.user_group_id: row.permission
+        for row in db_session.query(Persona__UserGroup)
+        .filter(Persona__UserGroup.persona_id == persona_id)
+        .all()
+    }
+    return {
+        group_id: existing.get(group_id, PersonaSharePermission.VIEWER)
+        for group_id in set(group_ids)
+    }
+
+
+def apply_persona_group_share_diff(
+    persona_id: int,
+    desired_shares: dict[int, PersonaSharePermission],
+    db_session: Session,
+) -> None:
+    """Reconcile persona__user_group rows to ``desired_shares``: delete missing,
+    update changed levels in place, insert new."""
+    existing_rows = (
+        db_session.query(Persona__UserGroup)
+        .filter(Persona__UserGroup.persona_id == persona_id)
+        .all()
+    )
+    existing_by_group = {row.user_group_id: row for row in existing_rows}
+
+    for group_id, row in existing_by_group.items():
+        if group_id not in desired_shares:
+            db_session.delete(row)
+        elif row.permission != desired_shares[group_id]:
+            row.permission = desired_shares[group_id]
+
+    for group_id, permission in desired_shares.items():
+        if group_id in existing_by_group:
+            continue
+        db_session.add(
+            Persona__UserGroup(
+                persona_id=persona_id, user_group_id=group_id, permission=permission
+            )
+        )
+
+
 def update_persona_access(
     persona_id: int,
     creator_user_id: UUID | None,
     db_session: Session,
-    acting_user: User,  # noqa: ARG001  (lockstep with EE; MIT has no group sharing)
+    acting_user: User,  # noqa: ARG001  (reserved for scoped-manager gating upstream)
     is_public: bool | None = None,
     user_ids: list[UUID] | None = None,
     group_ids: list[int] | None = None,
     user_shares: dict[UUID, PersonaSharePermission] | None = None,
     group_shares: dict[int, PersonaSharePermission] | None = None,
     public_permission: PersonaSharePermission | None = None,
-    original_is_public: bool | None = None,  # noqa: ARG001  (lockstep with EE)
+    original_is_public: bool | None = None,  # noqa: ARG001
 ) -> None:
     """Updates the access settings for a persona including public status and user shares.
 
@@ -358,16 +412,14 @@ def update_persona_access(
             persona_id, desired_user_shares, creator_user_id, db_session
         )
 
-    # MIT doesn't support group-based sharing, so we allow clearing (no-op since
-    # there shouldn't be any) but raise an error if trying to add actual groups.
-    if group_ids is not None or group_shares is not None:
+    # Group sharing is a CE feature in this build; same desired-state semantics
+    # as user shares (None = leave, empty = clear, non-empty = replace).
+    desired_group_shares = resolve_desired_group_shares(
+        persona_id, group_ids, group_shares, db_session
+    )
+    if desired_group_shares is not None:
         needs_sync = True
-        db_session.query(Persona__UserGroup).filter(
-            Persona__UserGroup.persona_id == persona_id
-        ).delete(synchronize_session="fetch")
-
-        if group_ids or group_shares:
-            raise NotImplementedError("Onyx MIT does not support group-based sharing")
+        apply_persona_group_share_diff(persona_id, desired_group_shares, db_session)
 
     # When sharing changes, user file ACLs need to be updated in the vector DB
     if needs_sync:
@@ -961,10 +1013,12 @@ def transfer_persona_ownership(
     new_owner_user_id: UUID | None = None,
     new_owner_group_id: int | None = None,
 ) -> None:
-    """Move ownership to a single user. Group targets are EE-only (versioned
-    override in ee.onyx.db.persona)."""
+    """Move ownership to a single user. Group targets are not supported in
+    this build."""
     if new_owner_group_id is not None:
-        raise NotImplementedError("Onyx MIT does not support group ownership")
+        raise NotImplementedError(
+            "Group ownership transfer is not supported in this build"
+        )
     _transfer_persona_ownership(
         persona_id=persona_id,
         user=user,
