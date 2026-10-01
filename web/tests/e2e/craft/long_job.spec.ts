@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
   await suppressCraftIntro(page);
 });
 
-test("welcome long-job toggle posts start true", async ({ page }) => {
+test("welcome message launches a long job by default", async ({ page }) => {
   const welcome = new CraftWelcomePage(page);
   const posted: { start?: boolean; prompt?: string } = {};
   await page.route("**/api/build/jobs", async (route) => {
@@ -71,14 +71,15 @@ test("welcome long-job toggle posts start true", async ({ page }) => {
 
   await welcome.goto();
   await welcome.startNewSession();
-  await welcome.enableLongJob();
   await welcome.submitMessage("start a long job fixture");
 
   await expect.poll(() => posted.start).toBe(true);
   expect(posted.prompt).toContain("long job fixture");
+  // Long job is the only run mode: the toggle is gone for good.
+  await expect(page.getByTestId("craft-long-job-toggle")).toHaveCount(0);
 });
 
-test("session long-job toggle sits next to plus menu", async ({ page }) => {
+test("session composer shows no long-job toggle", async ({ page }) => {
   const welcome = new CraftWelcomePage(page);
   await page.route("**/api/build/jobs", async (route) => {
     if (route.request().method() !== "POST") {
@@ -127,12 +128,9 @@ test("session long-job toggle sits next to plus menu", async ({ page }) => {
   await welcome.goto();
   await welcome.startNewSession();
   const welcomeToggle = page.getByTestId("craft-long-job-toggle");
-  await expect(welcomeToggle).toBeVisible({ timeout: 15000 });
-  await welcomeToggle.click();
+  await expect(welcomeToggle).toHaveCount(0);
   await welcome.submitMessage("start a session long job");
-  await expect(page.getByTestId("craft-long-job-toggle")).toBeVisible({
-    timeout: 15000,
-  });
+  await expect(page.getByTestId("craft-long-job-toggle")).toHaveCount(0);
 });
 
 test("job banner shows research timeline and plan approval", async ({
@@ -245,7 +243,6 @@ test("job banner shows research timeline and plan approval", async ({
 
   await welcome.goto();
   await welcome.startNewSession();
-  await welcome.enableLongJob();
   await welcome.submitMessage("撰写一份 GLP-1 创新药立项深度研究报告");
   await expect(welcome.jobBanner).toBeVisible({ timeout: 15000 });
   await expect(welcome.jobAskBar).toBeVisible();
@@ -470,9 +467,7 @@ test("continue transcript hides host brief and shows ask reject", async ({
       });
       return;
     }
-    const sessionRoot = url.match(
-      /\/sessions\/[0-9a-f-]+(?:\?|$)/i
-    );
+    const sessionRoot = url.match(/\/sessions\/[0-9a-f-]+(?:\?|$)/i);
     if (method === "GET" && sessionRoot) {
       await route.fulfill({
         status: 200,
@@ -491,7 +486,8 @@ test("continue transcript hides host brief and shows ask reject", async ({
         contentType: "application/json",
         body: JSON.stringify({
           request_id: "q-search",
-          prompt: "Search is not available. Retry, use existing tools, or cancel.",
+          prompt:
+            "Search is not available. Retry, use existing tools, or cancel.",
           options: ["Retry search", "Use existing tools", "Cancel"],
         }),
       });
@@ -635,8 +631,7 @@ test("cancel settles leftover researcher rows", async ({ page }) => {
                           kind: "task",
                           toolName: "task",
                           title: "Researcher",
-                          description:
-                            "Researcher — outputs/normalized/epi.md",
+                          description: "Researcher — outputs/normalized/epi.md",
                           command: "",
                           status: "in_progress",
                           rawOutput: "outputs/normalized/epi.md",
@@ -724,9 +719,9 @@ test("cancel settles leftover researcher rows", async ({ page }) => {
   });
 
   await page.goto(`/craft/v1?sessionId=${sessionId}`);
-  await expect(
-    page.getByText(/Running task|正在运行任务/)
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Running task|正在运行任务/)).toBeVisible({
+    timeout: 15000,
+  });
   await page.getByTestId("craft-job-cancel").click();
   await expect(page.getByText(/Cancelled task|已取消任务/)).toBeVisible({
     timeout: 15000,

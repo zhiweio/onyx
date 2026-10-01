@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BuildFile } from "@/app/craft/contexts/UploadFilesContext";
 import { useVideoBackgroundToggleClick } from "@/app/craft/components/video-background/useVideoBackgroundToggleClick";
@@ -17,7 +17,16 @@ import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
 import CraftLlmLockedState from "@/app/craft/onboarding/components/CraftLlmLockedState";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
 import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
-import type { SlashSelection } from "@/lib/skills/picker";
+import {
+  pickerEntriesFromSelection,
+  toPickerSections,
+  type SlashSelection,
+} from "@/lib/skills/picker";
+import { resolveToolHints } from "@/lib/skills/toolHints";
+import useUserSkills from "@/hooks/useUserSkills";
+import useUserExternalApps from "@/hooks/useUserExternalApps";
+import { useCraftMcpServers } from "@/lib/tools/hooks";
+import type { ExamplePromptSelection } from "@/app/craft/constants/exampleBuildPrompts";
 
 interface BuildWelcomeProps {
   onSubmit: (
@@ -29,8 +38,6 @@ interface BuildWelcomeProps {
   isRunning: boolean;
   /** When true, shows spinner on send button with "Initializing sandbox..." tooltip */
   sandboxInitializing?: boolean;
-  longJobEnabled: boolean;
-  onLongJobEnabledChange: (enabled: boolean) => void;
   thoughtLevel?: CraftInputBarProps["thoughtLevel"];
 }
 
@@ -43,8 +50,6 @@ export default function BuildWelcome({
   onSubmit,
   isRunning,
   sandboxInitializing = false,
-  longJobEnabled,
-  onLongJobEnabledChange,
   thoughtLevel,
 }: BuildWelcomeProps) {
   const t = useTranslations("craft.welcome");
@@ -55,13 +60,33 @@ export default function BuildWelcome({
   const handleWordmarkClick = useVideoBackgroundToggleClick();
   const { isAdmin, hasAnyProvider, isLoading } = useOnboarding();
 
+  const { data: skillsData } = useUserSkills();
+  const { data: appsData } = useUserExternalApps();
+  const { data: craftMcpData } = useCraftMcpServers();
+  const pickerSections = useMemo(
+    () => toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
+    [skillsData, appsData, craftMcpData]
+  );
+
   // Craft can't build without a supported provider: inputs stay gated until
   // one exists (undefined while loading counts as none), and once provider
   // state loads, setup (admins) or the locked notice replaces the prompts.
   const setupPending = !isLoading && !hasAnyProvider;
 
-  const handlePromptClick = (promptText: string) => {
-    inputBarRef.current?.setMessage(promptText);
+  const handlePromptClick = (prompt: ExamplePromptSelection) => {
+    inputBarRef.current?.setMessage(prompt.fullText);
+    const resolved = resolveToolHints(
+      prompt.toolHints,
+      pickerSections.skills,
+      pickerSections.mcpServers
+    );
+    const entries = pickerEntriesFromSelection(pickerSections, {
+      skillIds: resolved.skillIds,
+      mcpServerIds: resolved.mcpServerIds,
+    });
+    if (entries.length > 0) {
+      inputBarRef.current?.setEntries(entries);
+    }
   };
 
   return (
@@ -120,8 +145,6 @@ export default function BuildWelcome({
             placeholder={t("input.placeholder")}
             sandboxInitializing={sandboxInitializing}
             disabled={!hasAnyProvider}
-            longJobEnabled={longJobEnabled}
-            onLongJobEnabledChange={onLongJobEnabledChange}
             thoughtLevel={thoughtLevel}
           />
         </div>

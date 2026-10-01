@@ -100,6 +100,7 @@ export interface AppInputBarHandle {
   reset: () => void;
   focus: () => void;
   setMessage: (message: string) => void;
+  setEntries: (entries: PickerEntry[]) => void;
 }
 
 export interface AppInputBarProps {
@@ -446,6 +447,9 @@ const AppInputBar = React.memo(
       setMessage: (message: string) => {
         setMessage(message);
         inputRef.current?.focus();
+      },
+      setEntries: (entries: PickerEntry[]) => {
+        setActiveEntries(entries);
       },
     }));
 

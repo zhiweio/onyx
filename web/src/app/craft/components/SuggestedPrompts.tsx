@@ -8,11 +8,12 @@ import { Text } from "@opal/components";
 import { SvgX } from "@opal/icons";
 import {
   useCaseDomains,
-  UseCaseDomain,
+  type ExamplePromptSelection,
+  type UseCaseDomain,
 } from "@/app/craft/constants/exampleBuildPrompts";
 
 interface SuggestedPromptsProps {
-  onPromptClick: (promptText: string) => void;
+  onPromptClick: (prompt: ExamplePromptSelection) => void;
 }
 
 export default function SuggestedPrompts({
@@ -21,22 +22,6 @@ export default function SuggestedPrompts({
   const t = useTranslations("craft.suggestedPrompts");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  function domainLabel(domainId: string): string {
-    switch (domainId) {
-      case "financeTax":
-        return t("financeTax.label");
-      case "engineering":
-        return t("engineering.label");
-      case "sales":
-        return t("sales.label");
-      case "marketing":
-        return t("marketing.label");
-      case "product":
-        return t("product.label");
-      default:
-        return domainId;
-    }
-  }
   const containerRef = useRef<HTMLDivElement>(null);
 
   const expandedDomain: UseCaseDomain | undefined = useCaseDomains.find(
@@ -62,8 +47,18 @@ export default function SuggestedPrompts({
     setExpandedId((current) => (current === domainId ? null : domainId));
   }
 
-  function handlePromptClick(fullText: string) {
-    onPromptClick(fullText);
+  function handlePromptClick(
+    domain: UseCaseDomain,
+    promptId: string,
+    fullText: string
+  ) {
+    const prompt = domain.prompts.find((p) => p.id === promptId);
+    onPromptClick({
+      domainId: domain.id,
+      promptId,
+      fullText,
+      toolHints: prompt?.toolHints,
+    });
     setExpandedId(null);
   }
 
@@ -88,7 +83,7 @@ export default function SuggestedPrompts({
           >
             <domain.icon className="w-4 h-4" />
             <Text font="main-ui-body" color="inherit">
-              {domainLabel(domain.id)}
+              {t(`${domain.id}.label`)}
             </Text>
           </button>
         ))}
@@ -108,7 +103,7 @@ export default function SuggestedPrompts({
               <div className="flex items-center gap-2">
                 <expandedDomain.icon className="w-3.5 h-3.5 text-text-02" />
                 <Text font="figure-small-label" color="text-02">
-                  {domainLabel(expandedDomain.id)}
+                  {t(`${expandedDomain.id}.label`)}
                 </Text>
               </div>
               <button
@@ -126,7 +121,13 @@ export default function SuggestedPrompts({
                 <button
                   key={prompt.id}
                   type="button"
-                  onClick={() => handlePromptClick(prompt.fullText)}
+                  onClick={() =>
+                    handlePromptClick(
+                      expandedDomain,
+                      prompt.id,
+                      t(`${expandedDomain.id}.prompts.${prompt.id}.fullText`)
+                    )
+                  }
                   className={cn(
                     "w-full rounded-12 px-3 py-2.5 text-start",
                     "hover:bg-background-tint-02",
@@ -135,7 +136,7 @@ export default function SuggestedPrompts({
                   )}
                 >
                   <Text font="main-content-body" color="text-04">
-                    {prompt.summary}
+                    {t(`${expandedDomain.id}.prompts.${prompt.id}.summary`)}
                   </Text>
                 </button>
               ))}

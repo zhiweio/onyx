@@ -16,7 +16,6 @@ export class CraftWelcomePage {
   readonly lockedState: Locator;
   readonly messageInput: Locator;
   readonly providerModal: Locator;
-  readonly longJobToggle: Locator;
   readonly jobBanner: Locator;
   readonly jobAskBar: Locator;
   readonly jobAskApprove: Locator;
@@ -34,7 +33,6 @@ export class CraftWelcomePage {
     this.lockedState = page.locator('[aria-label="craft-llm-locked"]');
     this.messageInput = page.getByRole("textbox");
     this.providerModal = page.getByRole("dialog");
-    this.longJobToggle = page.getByTestId("craft-long-job-toggle");
     this.jobBanner = page.getByTestId("craft-job-banner");
     this.jobAskBar = page.getByTestId("craft-ask-bar");
     this.jobAskApprove = page.getByTestId("craft-ask-approve");
@@ -96,11 +94,6 @@ export class CraftWelcomePage {
   async expectInputEnabled(): Promise<void> {
     await expect(this.messageInput).toBeVisible({ timeout: 15000 });
     await expect(this.messageInput).toHaveAttribute("aria-disabled", "false");
-  }
-
-  async enableLongJob(): Promise<void> {
-    await expect(this.longJobToggle).toBeVisible({ timeout: 15000 });
-    await this.longJobToggle.click();
   }
 
   async submitMessage(text: string): Promise<void> {

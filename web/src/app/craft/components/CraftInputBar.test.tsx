@@ -163,21 +163,4 @@ describe("CraftInputBar queued attachments", () => {
     );
     expect(mockClearFiles).toHaveBeenCalledWith({ suppressRefetch: true });
   });
-
-  it("places the long-job toggle next to the plus menu", () => {
-    const onLongJobEnabledChange = jest.fn();
-    render(
-      <CraftInputBar
-        onSubmit={jest.fn()}
-        isRunning={false}
-        longJobEnabled={false}
-        onLongJobEnabledChange={onLongJobEnabledChange}
-      />
-    );
-    const toggle = screen.getByTestId("craft-long-job-toggle");
-    const button = toggle.querySelector("button");
-    expect(button).not.toBeNull();
-    fireEvent.click(button!);
-    expect(onLongJobEnabledChange).toHaveBeenCalledWith(true);
-  });
 });

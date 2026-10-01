@@ -23,8 +23,6 @@ import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
-import { SelectButton } from "@opal/components";
-import { SvgHourglass } from "@opal/icons";
 import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
 import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
 import useSlashPicker from "@/hooks/useSlashPicker";
@@ -55,6 +53,7 @@ export interface CraftInputBarHandle {
   reset: () => void;
   focus: () => void;
   setMessage: (message: string) => void;
+  setEntries: (entries: PickerEntry[]) => void;
 }
 
 export interface CraftInputBarProps {
@@ -95,9 +94,6 @@ export interface CraftInputBarProps {
   persistedSelection?: SlashSelection;
   compactAvailable?: boolean;
   onCompact?: () => void;
-  longJobEnabled?: boolean;
-  onLongJobEnabledChange?: (enabled: boolean) => void;
-  longJobLocked?: boolean;
 }
 
 function withEntryPrefixes(message: string, entries: PickerEntry[]): string {
@@ -126,14 +122,10 @@ const CraftInputBar = memo(
         persistedSelection,
         compactAvailable = false,
         onCompact,
-        longJobEnabled = false,
-        onLongJobEnabledChange,
-        longJobLocked = false,
       },
       ref
     ) => {
       const t = useTranslations("craft.inputBar");
-      const longJobT = useTranslations("craft.longJob");
       const entryMenuT = useTranslations("craft.entryMenu");
       const baseRef = useRef<BaseInputBarHandle>(null);
       const fileInputRef = useRef<HTMLInputElement>(null);
@@ -255,6 +247,7 @@ const CraftInputBar = memo(
         },
         focus: () => baseRef.current?.focus(),
         setMessage: (msg: string) => baseRef.current?.setMessage(msg),
+        setEntries: (entries: PickerEntry[]) => setActiveEntries(entries),
       }));
 
       const onPasteText = useCallback(
@@ -343,31 +336,11 @@ const CraftInputBar = memo(
       );
 
       const bottomLeftSlot = (
-        <>
-          <PlusMenuButton
-            items={plusMenuItems}
-            disabled={disabled}
-            tooltip={t("plusMenu.tooltip")}
-          />
-          {onLongJobEnabledChange && (
-            <span data-testid="craft-long-job-toggle">
-              <SelectButton
-                disabled={disabled || longJobLocked}
-                variant="select-light"
-                icon={SvgHourglass}
-                onClick={() => {
-                  if (!longJobLocked) {
-                    onLongJobEnabledChange(!longJobEnabled);
-                  }
-                }}
-                state={longJobEnabled || longJobLocked ? "selected" : "empty"}
-                foldable={!longJobEnabled && !longJobLocked}
-              >
-                {longJobT("toggle")}
-              </SelectButton>
-            </span>
-          )}
-        </>
+        <PlusMenuButton
+          items={plusMenuItems}
+          disabled={disabled}
+          tooltip={t("plusMenu.tooltip")}
+        />
       );
 
       const bottomRightSlot =

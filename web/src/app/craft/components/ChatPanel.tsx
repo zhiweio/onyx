@@ -195,7 +195,6 @@ export default function BuildChatPanel({
     { refreshInterval: 2000, revalidateOnFocus: false }
   );
   const askQuestion = pendingQuestion ?? parkedQuestion ?? null;
-  const [longJobEnabled, setLongJobEnabled] = useState(false);
 
   const jobModelPayload = (model: BuildLlmSelection | null | undefined) =>
     model
@@ -661,7 +660,9 @@ export default function BuildChatPanel({
           toast.error(t("toast.operationWait"));
           return;
         }
-        if (longJobEnabled && !jobInFlight) {
+        // Long job is the only launch mode; while one is already in flight,
+        // follow-up questions stream as normal turns.
+        if (!jobInFlight) {
           try {
             const started = await createCraftJob({
               session_id: sessionId,
@@ -792,39 +793,26 @@ export default function BuildChatPanel({
           nameBuildSession(newSessionId);
         }, 1000);
 
-        if (longJobEnabled) {
-          try {
-            const started = await createCraftJob({
-              session_id: newSessionId,
-              prompt: message,
-              start: true,
-              ...jobModelPayload(chosen),
-              selected_skill_ids: slash.skillIds,
-              selected_mcp_server_ids: slash.mcpServerIds,
-            });
-            void mutateCraftJob();
-            updateSessionData(newSessionId, {
-              status: "running",
-              error: null,
-              activeTurnId: started.turn_id,
-              activeTurnLocalOwner: false,
-            });
-            return;
-          } catch (err) {
-            toast.error((err as Error).message);
-            return;
-          }
+        // Every new session launches as a long job — the only run mode.
+        try {
+          const started = await createCraftJob({
+            session_id: newSessionId,
+            prompt: message,
+            start: true,
+            ...jobModelPayload(chosen),
+            selected_skill_ids: slash.skillIds,
+            selected_mcp_server_ids: slash.mcpServerIds,
+          });
+          void mutateCraftJob();
+          updateSessionData(newSessionId, {
+            status: "running",
+            error: null,
+            activeTurnId: started.turn_id,
+            activeTurnLocalOwner: false,
+          });
+        } catch (err) {
+          toast.error((err as Error).message);
         }
-
-        // Stream the response (uses session ID directly, not currentSessionId)
-        await streamMessage(
-          newSessionId,
-          message,
-          chosen,
-          attachments,
-          slash.skillIds,
-          slash.mcpServerIds
-        );
       }
     },
     [
@@ -841,7 +829,6 @@ export default function BuildChatPanel({
       hasUploadingFiles,
       selectedModel,
       t,
-      longJobEnabled,
       jobInFlight,
       mutateCraftJob,
       updateSessionData,
@@ -967,12 +954,7 @@ export default function BuildChatPanel({
         updateSessionData(sessionId, { slashSelection: selection });
       }
     },
-    [
-      sessionId,
-      session?.slashSelection,
-      enqueueMessage,
-      updateSessionData,
-    ]
+    [sessionId, session?.slashSelection, enqueueMessage, updateSessionData]
   );
 
   const handleRemoveQueuedMessage = useCallback(
@@ -1126,8 +1108,6 @@ export default function BuildChatPanel({
                       onSubmit={handleSubmit}
                       isRunning={displayIsRunning}
                       sandboxInitializing={sandboxNotReady}
-                      longJobEnabled={longJobEnabled}
-                      onLongJobEnabledChange={setLongJobEnabled}
                       thoughtLevel={thoughtLevel}
                     />
                   ) : (
@@ -1234,9 +1214,6 @@ export default function BuildChatPanel({
                     ref={inputBarRef}
                     persistedSelection={session?.slashSelection}
                     onSubmit={handleSubmit}
-                    longJobEnabled={longJobEnabled || jobInFlight}
-                    onLongJobEnabledChange={setLongJobEnabled}
-                    longJobLocked={jobInFlight}
                     isRunning={displayIsRunning || jobInFlight}
                     isInterrupting={isInterrupting}
                     onInterrupt={

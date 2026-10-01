@@ -1051,9 +1051,24 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         !hasAgentStarterMessages &&
                         !onboardingVisible && (
                           <ChatExamplePrompts
-                            onPromptClick={(promptText) =>
-                              chatInputBarRef.current?.setMessage(promptText)
-                            }
+                            onPromptClick={(prompt) => {
+                              chatInputBarRef.current?.setMessage(
+                                prompt.fullText
+                              );
+                              if (prompt.entries.length > 0) {
+                                chatInputBarRef.current?.setEntries(
+                                  prompt.entries
+                                );
+                              }
+                              // Scenario wants fresh web results: turn deep
+                              // research on unless the user already did.
+                              if (
+                                prompt.webSearch &&
+                                !deepResearchEnabledForCurrentWorkflow
+                              ) {
+                                toggleDeepResearch();
+                              }
+                            }}
                           />
                         )}
                       <div
