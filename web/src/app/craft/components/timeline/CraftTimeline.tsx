@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button, CopyButton } from "@opal/components";
 import { Hoverable } from "@opal/core";
-import { SvgAlertCircle, SvgRefreshCw } from "@opal/icons";
+import { SvgAlertCircle, SvgEdit, SvgRefreshCw } from "@opal/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Logo } from "@/lib/app/components";
 import SetupCard from "@/app/craft/components/setup-requests/SetupCard";
@@ -52,6 +52,8 @@ interface CraftTimelineProps {
   trailingAssistantSlot?: React.ReactNode;
   /** Retry the last turn; shown on the final saved agent message when idle. */
   onRetry?: () => void;
+  /** Edit-resend the last user message (inline editor on that message). */
+  onEditResend?: (content: string) => void;
 }
 
 /**
@@ -71,16 +73,17 @@ export default function CraftTimeline({
   scrollContainerRef,
   trailingAssistantSlot,
   onRetry,
+  onEditResend,
 }: CraftTimelineProps) {
   const t = useTranslations("craft.timeline");
   // Resolve a connect card's app (oauth-vs-form, credential fields) by ID.
   const { data: connectableApps } = useSWR<ExternalAppUserResponse[]>(
     SWR_KEYS.buildExternalApps,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
   const appsById = useMemo(
     () => new Map((connectableApps ?? []).map((app) => [app.id, app])),
-    [connectableApps]
+    [connectableApps],
   );
 
   const hasStreamItems = streamItems.length > 0;
@@ -133,7 +136,7 @@ export default function CraftTimeline({
     opts: {
       isCurrentStream: boolean;
       extractLatestTodo: boolean;
-    }
+    },
   ): { nodes: React.ReactNode[]; pinnedTodo: TodoListState | null } => {
     let latestTodoIdx = -1;
     rawItems.forEach((it, idx) => {
@@ -281,7 +284,7 @@ export default function CraftTimeline({
   const renderAgentMessage = (
     message: BuildMessage,
     trailing?: React.ReactNode,
-    actionsExtra?: React.ReactNode
+    actionsExtra?: React.ReactNode,
   ) => {
     const savedStreamItems = message.message_metadata?.streamItems as
       | StreamItem[]
@@ -351,6 +354,37 @@ export default function CraftTimeline({
     return -1;
   }, [messages]);
 
+  // The last real user message owns edit-resend: the retry endpoint replaces
+  // and re-runs the latest turn only.
+  const lastUserIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (
+        message?.type === "user" &&
+        !isHostContinueMessage(message.message_metadata)
+      ) {
+        return i;
+      }
+    }
+    return -1;
+  }, [messages]);
+
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const editDisabled = showStreamingArea;
+  const startEdit = (message: BuildMessage) => {
+    setEditDraft(message.content);
+    setEditingMessageId(message.id);
+  };
+  const submitEdit = () => {
+    const next = editDraft.trim();
+    if (next && onEditResend) {
+      onEditResend(next);
+    }
+    setEditingMessageId(null);
+    setEditDraft("");
+  };
+
   const streamRender = hasStreamItems
     ? renderStreamItems(streamItems, {
         isCurrentStream: isStreaming,
@@ -406,22 +440,71 @@ export default function CraftTimeline({
                 }}
               >
                 {message.type === "user" ? (
-                  <div className="py-4">
-                    {sessionId && message.attachments && (
-                      <CraftMessageAttachments
-                        sessionId={sessionId}
-                        attachments={message.attachments}
-                        refreshKey={attachmentRefreshKey}
-                      />
-                    )}
-                    <HumanMessage content={message.content} nodeId={index} />
-                  </div>
+                  <Hoverable.Root group="craftUserMessage" width="full">
+                    <div className="py-4">
+                      {sessionId && message.attachments && (
+                        <CraftMessageAttachments
+                          sessionId={sessionId}
+                          attachments={message.attachments}
+                          refreshKey={attachmentRefreshKey}
+                        />
+                      )}
+                      {editingMessageId === message.id ? (
+                        <EditResendEditor
+                          value={editDraft}
+                          onChange={setEditDraft}
+                          onSubmit={submitEdit}
+                          onCancel={() => setEditingMessageId(null)}
+                          submitLabel={t("editResend.submit")}
+                          cancelLabel={t("editResend.cancel")}
+                        />
+                      ) : (
+                        <>
+                          <HumanMessage
+                            content={message.content}
+                            nodeId={index}
+                          />
+                          {!editDisabled &&
+                            index === lastUserIndex &&
+                            onEditResend && (
+                              <Hoverable.Item
+                                group="craftUserMessage"
+                                variant="appear-on-hover"
+                              >
+                                <div className="flex flex-row -ms-1">
+                                  <Button
+                                    icon={SvgEdit}
+                                    prominence="tertiary"
+                                    tooltip={t("editResend.tooltip")}
+                                    aria-label={t("editResend.tooltip")}
+                                    data-testid="CraftUserMessage/edit-button"
+                                    onClick={() => startEdit(message)}
+                                  />
+                                </div>
+                              </Hoverable.Item>
+                            )}
+                        </>
+                      )}
+                    </div>
+                  </Hoverable.Root>
                 ) : (
                   renderAgentMessage(
                     message,
                     !showStreamingArea && index === lastAssistantIndex
                       ? trailingAssistantSlot
-                      : null
+                      : null,
+                    !showStreamingArea &&
+                      index === lastAssistantIndex &&
+                      onRetry ? (
+                      <Button
+                        icon={SvgRefreshCw}
+                        prominence="tertiary"
+                        tooltip={t("retryAction.tooltip")}
+                        aria-label={t("retryAction.tooltip")}
+                        data-testid="CraftAgentMessage/retry-button"
+                        onClick={onRetry}
+                      />
+                    ) : null,
                   )
                 )}
               </div>
@@ -464,6 +547,66 @@ export default function CraftTimeline({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface EditResendEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  submitLabel: string;
+  cancelLabel: string;
+}
+
+/** Inline editor for edit-resend: multiline textarea, Enter submits
+ *  (Shift+Enter newlines), Escape cancels. */
+function EditResendEditor({
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  cancelLabel,
+}: EditResendEditorProps) {
+  return (
+    <div
+      className="flex w-full flex-col gap-2 rounded-16 border border-border-02 bg-background-neutral-00 p-3"
+      data-testid="CraftUserMessage/edit-editor"
+    >
+      <textarea
+        autoFocus
+        dir="auto"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+            return;
+          }
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            onSubmit();
+          }
+        }}
+        rows={3}
+        className="w-full resize-none bg-transparent text-text-05 outline-hidden"
+      />
+      <div className="flex flex-row justify-end gap-2">
+        <Button prominence="tertiary" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button
+          prominence="primary"
+          onClick={onSubmit}
+          disabled={!value.trim()}
+        >
+          {submitLabel}
+        </Button>
       </div>
     </div>
   );

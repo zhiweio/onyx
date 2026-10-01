@@ -12582,6 +12582,11 @@
       "workingFor": "يعمل لمدة {duration}",
       "retryAction": {
         "tooltip": "إعادة محاولة هذا الدور"
+      },
+      "editResend": {
+        "tooltip": "تحرير وإعادة الإرسال",
+        "submit": "إعادة الإرسال",
+        "cancel": "إلغاء"
       }
     },
     "toolBlocks": {

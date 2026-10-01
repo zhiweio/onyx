@@ -12582,6 +12582,11 @@
       "workingFor": "Arbeitet seit {duration}",
       "retryAction": {
         "tooltip": "Diesen Durchlauf wiederholen"
+      },
+      "editResend": {
+        "tooltip": "Bearbeiten und erneut senden",
+        "submit": "Erneut senden",
+        "cancel": "Abbrechen"
       }
     },
     "toolBlocks": {

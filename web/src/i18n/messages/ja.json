@@ -12582,6 +12582,11 @@
       "workingFor": "{duration} 作業中",
       "retryAction": {
         "tooltip": "このターンを再試行"
+      },
+      "editResend": {
+        "tooltip": "編集して再送信",
+        "submit": "再送信",
+        "cancel": "キャンセル"
       }
     },
     "toolBlocks": {

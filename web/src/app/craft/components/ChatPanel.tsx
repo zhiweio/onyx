@@ -887,25 +887,35 @@ export default function BuildChatPanel({
     (session?.messages?.length ?? 0) > 0,
   );
 
-  const handleRetryTurn = useCallback(() => {
-    if (!sessionId || !retryAvailable) {
-      return;
-    }
-    void (async () => {
-      try {
-        const started = await retryBuildTurn(sessionId);
-        updateSessionData(sessionId, {
-          status: "running",
-          error: null,
-          activeTurnId: started.turn_id,
-          activeTurnIndex: started.turn_index,
-          activeTurnLocalOwner: false,
-        });
-      } catch (err) {
-        toast.error((err as Error).message);
+  const startRetryTurn = useCallback(
+    (content?: string) => {
+      if (!sessionId || !retryAvailable) {
+        return;
       }
-    })();
-  }, [sessionId, retryAvailable, updateSessionData]);
+      void (async () => {
+        try {
+          const started = await retryBuildTurn(sessionId, content);
+          updateSessionData(sessionId, {
+            status: "running",
+            error: null,
+            activeTurnId: started.turn_id,
+            activeTurnIndex: started.turn_index,
+            activeTurnLocalOwner: false,
+          });
+        } catch (err) {
+          toast.error((err as Error).message);
+        }
+      })();
+    },
+    [sessionId, retryAvailable, updateSessionData],
+  );
+
+  const handleRetryTurn = useCallback(() => startRetryTurn(), [startRetryTurn]);
+
+  const handleEditResend = useCallback(
+    (content: string) => startRetryTurn(content),
+    [startRetryTurn],
+  );
 
   const handleJobAsk = useCallback(
     async (action: AskBarAction) => {
@@ -1156,6 +1166,9 @@ export default function BuildChatPanel({
                       isStreaming={displayIsRunning}
                       scrollContainerRef={scrollContainerRef}
                       onRetry={retryAvailable ? handleRetryTurn : undefined}
+                      onEditResend={
+                        retryAvailable ? handleEditResend : undefined
+                      }
                       trailingAssistantSlot={
                         wasInterrupted && !displayIsRunning ? (
                           <div className="flex items-center gap-2 text-sm text-text-03">

@@ -63,6 +63,8 @@ function renderList(props: {
   messages?: BuildMessage[];
   streamItems?: StreamItem[];
   isStreaming?: boolean;
+  onRetry?: () => void;
+  onEditResend?: (content: string) => void;
 }) {
   return render(
     <TooltipProvider>
@@ -72,8 +74,10 @@ function renderList(props: {
         streamItems={props.streamItems ?? []}
         isStreaming={props.isStreaming}
         scrollContainerRef={scrollRef()}
+        onRetry={props.onRetry}
+        onEditResend={props.onEditResend}
       />
-    </TooltipProvider>
+    </TooltipProvider>,
   );
 }
 
@@ -136,10 +140,10 @@ describe("CraftTimeline rendering", () => {
     });
 
     expect(
-      screen.getByRole("img", { name: "reference image.png" })
+      screen.getByRole("img", { name: "reference image.png" }),
     ).toHaveAttribute(
       "src",
-      "/api/build/sessions/session-1/artifacts/attachments/reference%20image.png"
+      "/api/build/sessions/session-1/artifacts/attachments/reference%20image.png",
     );
   });
 
@@ -155,7 +159,7 @@ describe("CraftTimeline rendering", () => {
     expect(thought).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Thought")).toBeInTheDocument();
     expect(
-      screen.getAllByText("Checking the app structure.").length
+      screen.getAllByText("Checking the app structure.").length,
     ).toBeGreaterThan(1);
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
@@ -165,7 +169,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
       "aria-expanded",
-      "false"
+      "false",
     );
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
@@ -192,7 +196,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
       "aria-expanded",
-      "false"
+      "false",
     );
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
@@ -219,7 +223,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(thinking).toHaveAttribute("aria-expanded", "true");
     expect(
-      screen.getAllByText("Checking the app structure.").length
+      screen.getAllByText("Checking the app structure.").length,
     ).toBeGreaterThan(1);
   });
 
@@ -254,7 +258,78 @@ describe("CraftTimeline rendering", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "provider model not found"
+      "provider model not found",
     );
+  });
+
+  const retryTranscript: BuildMessage[] = [
+    {
+      id: "u1",
+      type: "user",
+      content: "build a site",
+      timestamp: new Date(),
+    },
+    {
+      id: "a1",
+      type: "assistant",
+      content: "here is the site",
+      timestamp: new Date(),
+    },
+  ];
+
+  it("shows the retry action on the last agent message when idle", () => {
+    const onRetry = jest.fn();
+    renderList({ messages: retryTranscript, onRetry });
+    const retryButton = screen.getByTestId("CraftAgentMessage/retry-button");
+    expect(retryButton).toBeInTheDocument();
+    fireEvent.click(retryButton);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the retry action while streaming", () => {
+    renderList({
+      messages: retryTranscript,
+      isStreaming: true,
+      streamItems: [
+        { type: "text", id: "t1", content: "working", isStreaming: true },
+      ],
+      onRetry: () => undefined,
+    });
+    expect(
+      screen.queryByTestId("CraftAgentMessage/retry-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("edits the last user message and resends via onEditResend", () => {
+    const onEditResend = jest.fn();
+    renderList({ messages: retryTranscript, onEditResend });
+    fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
+
+    const editor = screen.getByTestId("CraftUserMessage/edit-editor");
+    expect(editor).toBeInTheDocument();
+    const textarea = editor.querySelector("textarea");
+    expect(textarea).not.toBeNull();
+    fireEvent.change(textarea!, {
+      target: { value: "build a site with blog" },
+    });
+    fireEvent.keyDown(textarea!, { key: "Enter" });
+
+    expect(onEditResend).toHaveBeenCalledWith("build a site with blog");
+  });
+
+  it("cancel closes the edit editor without resending", () => {
+    const onEditResend = jest.fn();
+    renderList({ messages: retryTranscript, onEditResend });
+    fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
+    fireEvent.keyDown(
+      screen
+        .getByTestId("CraftUserMessage/edit-editor")
+        .querySelector("textarea")!,
+      { key: "Escape" },
+    );
+    expect(onEditResend).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("CraftUserMessage/edit-editor"),
+    ).not.toBeInTheDocument();
   });
 });

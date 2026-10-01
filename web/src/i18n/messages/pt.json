@@ -12582,6 +12582,11 @@
       "workingFor": "Trabalhando por {duration}",
       "retryAction": {
         "tooltip": "Repetir este turno"
+      },
+      "editResend": {
+        "tooltip": "Editar e reenviar",
+        "submit": "Reenviar",
+        "cancel": "Cancelar"
       }
     },
     "toolBlocks": {

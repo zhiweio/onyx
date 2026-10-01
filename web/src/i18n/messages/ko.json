@@ -12582,6 +12582,11 @@
       "workingFor": "{duration} 동안 작업 중",
       "retryAction": {
         "tooltip": "이 턴 재시도"
+      },
+      "editResend": {
+        "tooltip": "편집 후 다시 보내기",
+        "submit": "다시 보내기",
+        "cancel": "취소"
       }
     },
     "toolBlocks": {

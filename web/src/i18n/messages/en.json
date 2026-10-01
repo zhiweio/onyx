@@ -12588,6 +12588,11 @@
       "workingFor": "Working for {duration}",
       "retryAction": {
         "tooltip": "Retry this turn"
+      },
+      "editResend": {
+        "tooltip": "Edit and resend",
+        "submit": "Resend",
+        "cancel": "Cancel"
       }
     },
     "toolBlocks": {

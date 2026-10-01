@@ -12582,6 +12582,11 @@
       "workingFor": "已工作 {duration}",
       "retryAction": {
         "tooltip": "重试本回合"
+      },
+      "editResend": {
+        "tooltip": "编辑后重发",
+        "submit": "重发",
+        "cancel": "取消"
       }
     },
     "toolBlocks": {
