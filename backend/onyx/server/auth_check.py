@@ -104,6 +104,8 @@ PUBLIC_ENDPOINT_SPECS = [
     # China IM bot callbacks — mounted without the /api prefix; per-platform
     # signature verification is the authentication (no session by design).
     ("/onyxbot/{platform}/callback", {"POST"}),
+    # WeCom configures its callback URL with a GET echo handshake.
+    ("/onyxbot/{platform}/callback", {"GET"}),
 ]
 
 
