@@ -12567,6 +12567,23 @@
         "hint": "Drop files to attach"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, one {# queued message} other {# queued messages}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "Drag to reorder"
+      },
+      "runNow": {
+        "tooltip": "Send now"
+      },
+      "edit": {
+        "tooltip": "Edit in composer"
+      },
+      "remove": {
+        "tooltip": "Remove"
+      }
+    },
     "timeline": {
       "workingFor": "Working for {duration}"
     },

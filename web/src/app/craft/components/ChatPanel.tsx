@@ -41,6 +41,7 @@ import { isScheduledRunContextInFlight } from "@/app/craft/v1/tasks/utils";
 import { toast } from "@opal/layouts";
 import Dropzone from "react-dropzone";
 import CraftComposer from "@/app/craft/components/composer/CraftComposer";
+import QueuePanel from "@/app/craft/components/QueuePanel";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import {
@@ -59,6 +60,7 @@ import CraftJobBanner, {
   useCraftJob,
 } from "@/app/craft/components/CraftJobBanner";
 import { craftComposerStopKind } from "@/app/craft/utils/jobInterrupt";
+import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
 import { settleTranscriptForJobStatus } from "@/app/craft/utils/laneTask";
 import {
   answerCraftQuestionAsk,
@@ -96,6 +98,13 @@ interface BuildChatPanelProps {
   /** Session ID from URL - used to prevent welcome flash while loading */
   existingSessionId?: string | null;
 }
+
+type QueuedMessageCast = {
+  id: number;
+  text: string;
+  attachments?: BuildMessageAttachment[];
+  selection?: SlashSelection;
+};
 
 function toMessageAttachments(files: BuildFile[]): BuildMessageAttachment[] {
   return files.flatMap((file) =>
@@ -309,6 +318,10 @@ export default function BuildChatPanel({
   const removeQueuedMessage = useBuildSessionStore(
     (state) => state.removeQueuedMessage,
   );
+  const reorderQueuedMessages = useBuildSessionStore(
+    (state) => state.reorderQueuedMessages,
+  );
+  const composerEditorRef = useRef<LexicalPromptInputHandle | null>(null);
   const attachedTurnRef = useRef<{
     turnId: string;
     controller: AbortController;
@@ -924,6 +937,37 @@ export default function BuildChatPanel({
     [sessionId, removeQueuedMessage],
   );
 
+  const handleReorderQueuedMessages = useCallback(
+    (messages: typeof queuedMessages) => {
+      if (sessionId) reorderQueuedMessages(sessionId, [...messages]);
+    },
+    [sessionId, reorderQueuedMessages],
+  );
+
+  const handleEditQueuedMessage = useCallback(
+    (message: QueuedMessageCast) => {
+      composerEditorRef.current?.setText(message.text);
+      composerEditorRef.current?.focus();
+      const index = queuedMessages.findIndex((m) => m.id === message.id);
+      if (index >= 0 && sessionId) removeQueuedMessage(sessionId, index);
+    },
+    [queuedMessages, sessionId, removeQueuedMessage],
+  );
+
+  const handleRunQueuedMessageNow = useCallback(
+    (message: QueuedMessageCast, index: number) => {
+      if (!sessionId) return;
+      removeQueuedMessage(sessionId, index);
+      void sendMessage(
+        message.text,
+        message.attachments ?? [],
+        undefined,
+        message.selection,
+      );
+    },
+    [sessionId, removeQueuedMessage, sendMessage],
+  );
+
   // Auto-send the next queued message FIFO after a run cleanly succeeds (each
   // send re-arms this for the message after). Only fire on a clean completion
   // and when the send is actually eligible — otherwise we'd dequeue a message
@@ -1169,10 +1213,21 @@ export default function BuildChatPanel({
                       />
                     </div>
                   )}
+                  {queuedMessages.length > 0 && sessionId && (
+                    <QueuePanel
+                      messages={queuedMessages}
+                      onReorder={handleReorderQueuedMessages}
+                      onEdit={handleEditQueuedMessage}
+                      onRemove={handleRemoveQueuedMessage}
+                      onRunNow={handleRunQueuedMessageNow}
+                    />
+                  )}
                   {/* The composer stays in view for subagents (layout consistency)
                   but is disabled — replying to subagents is not supported. */}
                   <CraftComposer
                     sessionId={sessionId ?? existingSessionId ?? null}
+                    editorHandleRef={composerEditorRef}
+                    hideQueueBar
                     persistedSelection={session?.slashSelection}
                     onSubmit={handleSubmit}
                     onQueueMessage={handleQueueMessage}

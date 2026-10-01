@@ -12561,6 +12561,23 @@
         "hint": "拖放文件以添加附件"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, other {# 条排队消息}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "拖动排序"
+      },
+      "runNow": {
+        "tooltip": "立即发送"
+      },
+      "edit": {
+        "tooltip": "回填到输入框编辑"
+      },
+      "remove": {
+        "tooltip": "删除"
+      }
+    },
     "timeline": {
       "workingFor": "已工作 {duration}"
     },

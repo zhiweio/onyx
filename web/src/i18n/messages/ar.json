@@ -12561,6 +12561,23 @@
         "hint": "أفلت الملفات لإرفاقها"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, one {# رسالة في قائمة الانتظار} other {# رسائل في قائمة الانتظار}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "اسحب لإعادة الترتيب"
+      },
+      "runNow": {
+        "tooltip": "إرسال الآن"
+      },
+      "edit": {
+        "tooltip": "تحرير في مربع الإدخال"
+      },
+      "remove": {
+        "tooltip": "إزالة"
+      }
+    },
     "timeline": {
       "workingFor": "يعمل لمدة {duration}"
     },

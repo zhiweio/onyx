@@ -12561,6 +12561,23 @@
         "hint": "Suelta archivos para adjuntar"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, one {# mensaje en cola} other {# mensajes en cola}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "Arrastra para reordenar"
+      },
+      "runNow": {
+        "tooltip": "Enviar ahora"
+      },
+      "edit": {
+        "tooltip": "Editar en el compositor"
+      },
+      "remove": {
+        "tooltip": "Eliminar"
+      }
+    },
     "timeline": {
       "workingFor": "Trabajando durante {duration}"
     },

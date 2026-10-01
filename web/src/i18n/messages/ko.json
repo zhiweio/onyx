@@ -12561,6 +12561,23 @@
         "hint": "파일을 놓아 첨부"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, other {#개의 대기 메시지}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "드래그하여 재정렬"
+      },
+      "runNow": {
+        "tooltip": "지금 보내기"
+      },
+      "edit": {
+        "tooltip": "입력창에서 편집"
+      },
+      "remove": {
+        "tooltip": "삭제"
+      }
+    },
     "timeline": {
       "workingFor": "{duration} 동안 작업 중"
     },

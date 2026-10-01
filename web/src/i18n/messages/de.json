@@ -12561,6 +12561,23 @@
         "hint": "Dateien zum Anhängen ablegen"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, one {# wartende Nachricht} other {# wartende Nachrichten}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "Zum Sortieren ziehen"
+      },
+      "runNow": {
+        "tooltip": "Jetzt senden"
+      },
+      "edit": {
+        "tooltip": "Im Eingabefeld bearbeiten"
+      },
+      "remove": {
+        "tooltip": "Entfernen"
+      }
+    },
     "timeline": {
       "workingFor": "Arbeitet seit {duration}"
     },

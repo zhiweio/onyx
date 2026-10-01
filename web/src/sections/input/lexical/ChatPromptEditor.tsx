@@ -66,6 +66,8 @@ interface ChatPromptEditorProps {
   onQueueMessage?: (text: string) => boolean | void;
   queuedMessages?: readonly QueuedMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
+  /** Surfaces rendering their own queue UI hide the built-in bar. */
+  hideQueueBar?: boolean;
 
   /** Esc while not composing: cancel (inline edit mode). */
   onCancel?: () => void;
@@ -122,6 +124,7 @@ function ChatPromptEditor({
   onQueueMessage,
   queuedMessages,
   onRemoveQueuedMessage,
+  hideQueueBar = false,
   onCancel,
   onChange,
   onMentionsChange,
@@ -436,7 +439,7 @@ function ChatPromptEditor({
       onKeyDown={handleKeyDown}
       className={cn("relative", className)}
     >
-      {queueEnabled && (
+      {queueEnabled && !hideQueueBar && (
         <QueuedMessageBar
           messages={queue}
           highlightedIndex={null}

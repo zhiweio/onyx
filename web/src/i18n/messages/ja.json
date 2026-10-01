@@ -12561,6 +12561,23 @@
         "hint": "ファイルをドロップして添付"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, other {# 件の予約メッセージ}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "ドラッグで並べ替え"
+      },
+      "runNow": {
+        "tooltip": "今すぐ送信"
+      },
+      "edit": {
+        "tooltip": "入力欄で編集"
+      },
+      "remove": {
+        "tooltip": "削除"
+      }
+    },
     "timeline": {
       "workingFor": "{duration} 作業中"
     },

@@ -72,6 +72,8 @@ interface CraftComposerProps {
   ) => void;
   queuedMessages?: readonly QueuedMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
+  /** The chat panel renders its own drag-reorderable queue panel. */
+  hideQueueBar?: boolean;
   isRunning: boolean;
   isInterrupting?: boolean;
   onInterrupt?: () => void;
@@ -121,6 +123,7 @@ function CraftComposer({
   onQueueMessage,
   queuedMessages,
   onRemoveQueuedMessage,
+  hideQueueBar = false,
   isRunning,
   isInterrupting = false,
   onInterrupt,
@@ -399,6 +402,7 @@ function CraftComposer({
         onQueueMessage={handleQueueMessage}
         queuedMessages={queuedMessages}
         onRemoveQueuedMessage={onRemoveQueuedMessage}
+        hideQueueBar={hideQueueBar}
         historyStorageKey={historyStorageKey}
         draft={{ surface: "craft", scope: sessionId ?? "__draft__" }}
         slashTrigger={slashTrigger}

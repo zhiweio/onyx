@@ -12561,6 +12561,23 @@
         "hint": "Déposez des fichiers à joindre"
       }
     },
+    "queuePanel": {
+      "header": {
+        "title": "{count, plural, one {# message en attente} other {# messages en attente}}"
+      },
+      "dragHandle": {
+        "ariaLabel": "Glisser pour réordonner"
+      },
+      "runNow": {
+        "tooltip": "Envoyer maintenant"
+      },
+      "edit": {
+        "tooltip": "Modifier dans le champ"
+      },
+      "remove": {
+        "tooltip": "Supprimer"
+      }
+    },
     "timeline": {
       "workingFor": "Travail en cours depuis {duration}"
     },

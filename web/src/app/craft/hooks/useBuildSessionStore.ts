@@ -151,7 +151,7 @@ function convertMessagesToStreamItems(messages: BuildMessage[]): StreamItem[] {
           const existingIdx = items.findIndex(
             (item) =>
               item.type === "todo_list" &&
-              item.todoList.id === packet.toolCallId
+              item.todoList.id === packet.toolCallId,
           );
           if (existingIdx >= 0) {
             const existing = items[existingIdx];
@@ -281,7 +281,7 @@ function isPlaceholderSubagentLabel(value: string): boolean {
 function laneTaskLabelFromSession(
   streamItems: StreamItem[],
   messages: BuildMessage[],
-  parentToolCallId: string
+  parentToolCallId: string,
 ): string {
   const live = laneTaskCardLabel(streamItems, parentToolCallId);
   if (live) return live;
@@ -298,20 +298,20 @@ function settleStreamItems(items: StreamItem[]): StreamItem[] {
   return items.map((item) =>
     item.type === "text" || item.type === "thinking"
       ? { ...item, isStreaming: false }
-      : item
+      : item,
   );
 }
 
 function upsertToolStreamItem(
   items: StreamItem[],
-  toolCall: ToolCallState
+  toolCall: ToolCallState,
 ): StreamItem[] {
   const idx = items.findIndex(
-    (item) => item.type === "tool_call" && item.id === toolCall.id
+    (item) => item.type === "tool_call" && item.id === toolCall.id,
   );
   if (idx >= 0) {
     return items.map((item, i) =>
-      i === idx ? { type: "tool_call", id: toolCall.id, toolCall } : item
+      i === idx ? { type: "tool_call", id: toolCall.id, toolCall } : item,
     );
   }
   return [...items, { type: "tool_call", id: toolCall.id, toolCall }];
@@ -320,7 +320,7 @@ function upsertToolStreamItem(
 function appendStreamingSubagentChunk(
   items: StreamItem[],
   type: "text" | "thinking",
-  text: string
+  text: string,
 ): StreamItem[] {
   const last = items[items.length - 1];
   if (last?.type === type) {
@@ -329,7 +329,7 @@ function appendStreamingSubagentChunk(
         ? { ...last, content: last.content + text, isStreaming: true }
         : item.type === "text" || item.type === "thinking"
           ? { ...item, isStreaming: false }
-          : item
+          : item,
     );
   }
   return [
@@ -345,7 +345,7 @@ function appendStreamingSubagentChunk(
 
 function replaceOrAppendSettledTextItem(
   items: StreamItem[],
-  text: string | null
+  text: string | null,
 ): StreamItem[] {
   const settled = settleStreamItems(items);
   if (!text) {
@@ -361,20 +361,20 @@ function replaceOrAppendSettledTextItem(
 
   if (lastTextIndex === -1) {
     return settleStreamItems(
-      appendStreamingSubagentChunk(settled, "text", text)
+      appendStreamingSubagentChunk(settled, "text", text),
     );
   }
 
   return settled.map((item, index) =>
     index === lastTextIndex && item.type === "text"
       ? { ...item, content: text, isStreaming: false }
-      : item
+      : item,
   );
 }
 
 function mergeSubagentMaps(
   rebuilt: Map<string, SubagentState>,
-  existing: Map<string, SubagentState>
+  existing: Map<string, SubagentState>,
 ): Map<string, SubagentState> {
   const merged = new Map(rebuilt);
   for (const [id, prior] of existing) {
@@ -400,7 +400,7 @@ function mergeSubagentMaps(
 }
 
 function buildSubagentsFromMessages(
-  messages: BuildMessage[]
+  messages: BuildMessage[],
 ): Map<string, SubagentState> {
   const subagents = new Map<string, SubagentState>();
 
@@ -424,7 +424,7 @@ function buildSubagentsFromMessages(
   /** Upsert a tool call into the last turn (best-effort for follow-ups). */
   function appendToolCallToLastTurn(
     sa: SubagentState,
-    toolCall: ToolCallState
+    toolCall: ToolCallState,
   ): SubagentTurn[] {
     const turns = sa.turns.length > 0 ? [...sa.turns] : [emptyTurn()];
     const last = turns[turns.length - 1] ?? emptyTurn();
@@ -494,8 +494,8 @@ function buildSubagentsFromMessages(
               appendStreamingSubagentChunk(
                 last.streamItems,
                 "text",
-                packet.text
-              )
+                packet.text,
+              ),
             ),
           };
         } else {
@@ -506,8 +506,8 @@ function buildSubagentsFromMessages(
               appendStreamingSubagentChunk(
                 last.streamItems,
                 "thinking",
-                packet.text
-              )
+                packet.text,
+              ),
             ),
           };
         }
@@ -548,7 +548,7 @@ function buildSubagentsFromMessages(
         response,
         streamItems: replaceOrAppendSettledTextItem(
           firstTurn.streamItems,
-          response
+          response,
         ),
       };
       subagents.set(cls.subagentSessionId, {
@@ -573,10 +573,10 @@ function stripSupersededErrors(messages: BuildMessage[]): BuildMessage[] {
   const isErrorRow = (message: BuildMessage) =>
     message.type === "assistant" && message.message_metadata?.type === "error";
   const lastActivityIdx = messages.findLastIndex(
-    (message) => !isErrorRow(message)
+    (message) => !isErrorRow(message),
   );
   return messages.filter(
-    (message, idx) => idx > lastActivityIdx || !isErrorRow(message)
+    (message, idx) => idx > lastActivityIdx || !isErrorRow(message),
   );
 }
 
@@ -591,7 +591,7 @@ function stripSupersededErrors(messages: BuildMessage[]): BuildMessage[] {
  * Returns: Array of consolidated messages (user messages + one agent message per turn)
  */
 function consolidateMessagesIntoTurns(
-  rawMessages: BuildMessage[]
+  rawMessages: BuildMessage[],
 ): BuildMessage[] {
   rawMessages = stripSupersededErrors(rawMessages);
   const consolidated: BuildMessage[] = [];
@@ -649,7 +649,7 @@ function consolidateMessagesIntoTurns(
 
 function splitActiveTurnTranscript(
   messages: BuildMessage[],
-  activeTurnIndex: number | null
+  activeTurnIndex: number | null,
 ): { messages: BuildMessage[]; streamItems: StreamItem[] } {
   if (activeTurnIndex === null) {
     return { messages, streamItems: [] };
@@ -676,7 +676,7 @@ function splitActiveTurnTranscript(
 }
 
 function mapApiSessionStatus(
-  apiStatus: ApiSessionResponse["status"]
+  apiStatus: ApiSessionResponse["status"],
 ): SessionStatus {
   switch (apiStatus) {
     case "active":
@@ -863,11 +863,11 @@ interface BuildSessionStore {
   setCurrentSession: (sessionId: string | null) => void;
   createSession: (
     sessionId: string,
-    initialData?: Partial<BuildSessionData>
+    initialData?: Partial<BuildSessionData>,
   ) => void;
   updateSessionData: (
     sessionId: string,
-    updates: Partial<BuildSessionData>
+    updates: Partial<BuildSessionData>,
   ) => void;
 
   // Actions - Current Session Shortcuts
@@ -884,20 +884,20 @@ interface BuildSessionStore {
   updateStreamItem: (
     sessionId: string,
     itemId: string,
-    updates: Partial<StreamItem>
+    updates: Partial<StreamItem>,
   ) => void;
   updateLastStreamingText: (sessionId: string, content: string) => void;
   updateLastStreamingThinking: (sessionId: string, content: string) => void;
   updateToolCallStreamItem: (
     sessionId: string,
     toolCallId: string,
-    updates: Partial<ToolCallState>
+    updates: Partial<ToolCallState>,
   ) => void;
   cancelLatestInFlightToolCallStreamItem: (sessionId: string) => void;
   upsertTodoListStreamItem: (
     sessionId: string,
     todoListId: string,
-    todoList: TodoListState
+    todoList: TodoListState,
   ) => void;
   clearStreamItems: (sessionId: string) => void;
 
@@ -906,9 +906,13 @@ interface BuildSessionStore {
     sessionId: string,
     text: string,
     attachments: BuildMessageAttachment[],
-    selection?: SlashSelection
+    selection?: SlashSelection,
   ) => void;
   removeQueuedMessage: (sessionId: string, index: number) => void;
+  reorderQueuedMessages: (
+    sessionId: string,
+    messages: CraftQueuedMessage[],
+  ) => void;
 
   // Actions - Abort Control
   setAbortController: (sessionId: string, controller: AbortController) => void;
@@ -918,7 +922,7 @@ interface BuildSessionStore {
   // Actions - Session Lifecycle
   loadSession: (
     sessionId: string,
-    options?: { force?: boolean; preferPersisted?: boolean }
+    options?: { force?: boolean; preferPersisted?: boolean },
   ) => Promise<void>;
 
   // Actions - Session History
@@ -927,7 +931,7 @@ interface BuildSessionStore {
   renameBuildSession: (sessionId: string, newName: string) => Promise<void>;
   assignBuildSessionProject: (
     sessionId: string,
-    projectId: string | null
+    projectId: string | null,
   ) => Promise<void>;
   deleteBuildSession: (sessionId: string) => Promise<void>;
 
@@ -965,15 +969,15 @@ interface BuildSessionStore {
   // Files Tab State Actions
   updateFilesTabState: (
     sessionId: string,
-    updates: Partial<FilesTabState>
+    updates: Partial<FilesTabState>,
   ) => void;
   mergeFilesTabDirectoryCache: (
     sessionId: string,
-    listings: Record<string, FileSystemEntry[]>
+    listings: Record<string, FileSystemEntry[]>,
   ) => void;
   retainFilesTabDirectoryCache: (
     sessionId: string,
-    retainedPaths: ReadonlySet<string>
+    retainedPaths: ReadonlySet<string>,
   ) => void;
 
   // Subagent Actions
@@ -988,7 +992,7 @@ interface BuildSessionStore {
     parentToolCallId: string,
     toolCall: ToolCallState,
     subagentType: string | null,
-    name: string
+    name: string,
   ) => void;
   /**
    * Seed/backfill a subagent's identifying meta from a parent `task` event.
@@ -1001,7 +1005,7 @@ interface BuildSessionStore {
     parentToolCallId: string,
     subagentType: string | null,
     name: string,
-    prompt: string
+    prompt: string,
   ) => void;
   /**
    * Mark a subagent as completed (or failed), optionally with its response.
@@ -1011,32 +1015,32 @@ interface BuildSessionStore {
     sessionId: string,
     subagentSessionId: string,
     status: SubagentStatus,
-    response?: string | null
+    response?: string | null,
   ) => void;
   /** Append streamed response text to the LAST turn's response. */
   appendSubagentResponseChunk: (
     sessionId: string,
     subagentSessionId: string,
-    text: string
+    text: string,
   ) => void;
   /** Append streamed thinking text to the LAST turn's thinking stream. */
   appendSubagentThinkingChunk: (
     sessionId: string,
     subagentSessionId: string,
-    text: string
+    text: string,
   ) => void;
   /** Seed every job lane into the parent session's subagent map. */
   syncJobSpecialists: (
     sessionId: string,
     specialists: CraftJobSpecialistResponse[],
     jobStatus?: string,
-    jobId?: string
+    jobId?: string,
   ) => void;
   /** Replace a job-lane transcript from that specialist session's messages. */
   hydrateSubagentFromMessages: (
     sessionId: string,
     subagentSessionId: string,
-    messages: BuildMessage[]
+    messages: BuildMessage[],
   ) => void;
 
   // Tab Navigation History Actions
@@ -1050,7 +1054,7 @@ interface BuildSessionStore {
 
 const createInitialSessionData = (
   sessionId: string,
-  initialData?: Partial<BuildSessionData>
+  initialData?: Partial<BuildSessionData>,
 ): BuildSessionData => ({
   id: sessionId,
   status: "idle",
@@ -1111,7 +1115,7 @@ const createInitialSessionData = (
 // before the webapp serves. Poll webapp-info until ready (bounded by maxAttempts).
 export async function waitForWebappReady(
   sessionId: string,
-  { intervalMs = 1500, maxAttempts = 20 }: WaitForWebappReadyOptions = {}
+  { intervalMs = 1500, maxAttempts = 20 }: WaitForWebappReadyOptions = {},
 ): Promise<void> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let info: Awaited<ReturnType<typeof fetchWebappInfo>> | null = null;
@@ -1193,7 +1197,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   // Initialize local session state (does NOT create backend session - use apiCreateSession for that)
   createSession: (
     sessionId: string,
-    initialData?: Partial<BuildSessionData>
+    initialData?: Partial<BuildSessionData>,
   ) => {
     set((state) => {
       // Inherit output panel state from no-session state if not explicitly set
@@ -1211,7 +1215,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
   updateSessionData: (
     sessionId: string,
-    updates: Partial<BuildSessionData>
+    updates: Partial<BuildSessionData>,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -1355,14 +1359,14 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   updateStreamItem: (
     sessionId: string,
     itemId: string,
-    updates: Partial<StreamItem>
+    updates: Partial<StreamItem>,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
       if (!session) return state;
 
       const streamItems = session.streamItems.map((item) =>
-        item.id === itemId ? { ...item, ...updates } : item
+        item.id === itemId ? { ...item, ...updates } : item,
       ) as StreamItem[];
       const updatedSession: BuildSessionData = {
         ...session,
@@ -1430,7 +1434,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   updateToolCallStreamItem: (
     sessionId: string,
     toolCallId: string,
-    updates: Partial<ToolCallState>
+    updates: Partial<ToolCallState>,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -1501,7 +1505,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   upsertTodoListStreamItem: (
     sessionId: string,
     todoListId: string,
-    todoList: TodoListState
+    todoList: TodoListState,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -1509,7 +1513,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
       // Check if a todo_list with this ID already exists
       const existingIndex = session.streamItems.findIndex(
-        (item) => item.type === "todo_list" && item.todoList.id === todoListId
+        (item) => item.type === "todo_list" && item.todoList.id === todoListId,
       );
 
       let streamItems: StreamItem[];
@@ -1571,7 +1575,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     sessionId: string,
     text: string,
     attachments: BuildMessageAttachment[],
-    selection?: SlashSelection
+    selection?: SlashSelection,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -1612,6 +1616,24 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     });
   },
 
+  reorderQueuedMessages: (
+    sessionId: string,
+    messages: CraftQueuedMessage[],
+  ) => {
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      if (!session) return state;
+      const updatedSession: BuildSessionData = {
+        ...session,
+        queuedMessages: messages,
+        lastAccessed: new Date(),
+      };
+      const newSessions = new Map(state.sessions);
+      newSessions.set(sessionId, updatedSession);
+      return { sessions: newSessions };
+    });
+  },
+
   // ===========================================================================
   // Abort Control (mirrors chat's per-session pattern)
   // ===========================================================================
@@ -1643,7 +1665,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
   loadSession: async (
     sessionId: string,
-    options?: { force?: boolean; preferPersisted?: boolean }
+    options?: { force?: boolean; preferPersisted?: boolean },
   ) => {
     const { setCurrentSession, updateSessionData, sessions } = get();
 
@@ -1714,7 +1736,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       // Construct webapp URL
       let webappUrl: string | null = null;
       const hasWebapp = artifacts.some(
-        (a) => a.type === "nextjs_app" || a.type === "web_app"
+        (a) => a.type === "nextjs_app" || a.type === "web_app",
       );
       if (hasWebapp && sessionData.nextjs_port) {
         webappUrl = `http://localhost:${sessionData.nextjs_port}`;
@@ -1751,7 +1773,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       const subagents = useDbMessages
         ? mergeSubagentMaps(
             buildSubagentsFromMessages(messages),
-            currentSession!.subagents
+            currentSession!.subagents,
           )
         : currentSession!.subagents;
       const sandbox =
@@ -1837,7 +1859,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         } catch (artifactsErr) {
           console.warn(
             "Failed to fetch artifacts after restore:",
-            artifactsErr
+            artifactsErr,
           );
         }
       }
@@ -1871,7 +1893,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       // This triggers the typewriter animation in the sidebar
       set((state) => ({
         sessionHistory: state.sessionHistory.map((item) =>
-          item.id === sessionId ? { ...item, title: generatedName } : item
+          item.id === sessionId ? { ...item, title: generatedName } : item,
         ),
       }));
 
@@ -1886,7 +1908,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
   assignBuildSessionProject: async (
     sessionId: string,
-    projectId: string | null
+    projectId: string | null,
   ) => {
     const updated = await updateSessionProject(sessionId, projectId);
     const nextProjectId = updated.project_id ?? projectId;
@@ -1899,7 +1921,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       return {
         sessions,
         sessionHistory: state.sessionHistory.map((item) =>
-          item.id === sessionId ? { ...item, projectId: nextProjectId } : item
+          item.id === sessionId ? { ...item, projectId: nextProjectId } : item,
         ),
       };
     });
@@ -1910,7 +1932,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       await updateSessionName(sessionId, newName);
       set((state) => ({
         sessionHistory: state.sessionHistory.map((item) =>
-          item.id === sessionId ? { ...item, title: newName } : item
+          item.id === sessionId ? { ...item, title: newName } : item,
         ),
       }));
     } catch (err) {
@@ -1944,7 +1966,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         return {
           sessions: newSessions,
           sessionHistory: state.sessionHistory.filter(
-            (historyItem) => historyItem.id !== sessionId
+            (historyItem) => historyItem.id !== sessionId,
           ),
           currentSessionId:
             currentSessionId === sessionId ? null : state.currentSessionId,
@@ -1969,7 +1991,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   cleanupOldSessions: (maxSessions: number = 10) => {
     set((state) => {
       const sortedSessions = Array.from(state.sessions.entries()).sort(
-        ([, a], [, b]) => b.lastAccessed.getTime() - a.lastAccessed.getTime()
+        ([, a], [, b]) => b.lastAccessed.getTime() - a.lastAccessed.getTime(),
       );
 
       if (sortedSessions.length <= maxSessions) {
@@ -2037,7 +2059,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         const newRetryCount = currentRetryCount + 1;
         const backoffMs = Math.min(
           1000 * Math.pow(2, newRetryCount - 1),
-          30000
+          30000,
         );
 
         provisioningPromise = null;
@@ -2077,7 +2099,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       // Optimistically add to session history so it appears in sidebar immediately
       // (Backend excludes empty sessions, but we're about to send a message)
       const alreadyInHistory = sessionHistory.some(
-        (item) => item.id === sessionId
+        (item) => item.id === sessionId,
       );
       if (!alreadyInHistory) {
         set({
@@ -2186,7 +2208,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       const tabId = panelTabId(newTab);
 
       const existingTab = session.panelTabs.find(
-        (t) => panelTabId(t) === tabId
+        (t) => panelTabId(t) === tabId,
       );
 
       const panelTabs = existingTab
@@ -2226,7 +2248,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       const tabId = panelTabId(newTab);
 
       const existingTab = session.panelTabs.find(
-        (t) => panelTabId(t) === tabId
+        (t) => panelTabId(t) === tabId,
       );
 
       const panelTabs = existingTab
@@ -2265,7 +2287,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       const closingTabId = panelTabId({ kind: "file", path, fileName: "" });
 
       const panelTabs = session.panelTabs.filter(
-        (t) => panelTabId(t) !== closingTabId
+        (t) => panelTabId(t) !== closingTabId,
       );
 
       const activePanelTabId =
@@ -2297,7 +2319,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
       if (!session) return state;
 
       const panelTabs = session.panelTabs.filter(
-        (t) => panelTabId(t) !== tabId
+        (t) => panelTabId(t) !== tabId,
       );
 
       const wasActive = session.activePanelTabId === tabId;
@@ -2404,7 +2426,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
   mergeFilesTabDirectoryCache: (
     sessionId: string,
-    listings: Record<string, FileSystemEntry[]>
+    listings: Record<string, FileSystemEntry[]>,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2429,17 +2451,17 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
 
   retainFilesTabDirectoryCache: (
     sessionId: string,
-    retainedPaths: ReadonlySet<string>
+    retainedPaths: ReadonlySet<string>,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
       if (!session) return state;
 
       const cachedListings = Object.entries(
-        session.filesTabState.directoryCache
+        session.filesTabState.directoryCache,
       );
       const retainedListings = cachedListings.filter(([path]) =>
-        retainedPaths.has(path)
+        retainedPaths.has(path),
       );
       if (retainedListings.length === cachedListings.length) return state;
 
@@ -2516,7 +2538,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     parentToolCallId: string,
     toolCall: ToolCallState,
     subagentType: string | null,
-    name: string
+    name: string,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2547,7 +2569,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         toolCalls,
         streamItems: upsertToolStreamItem(
           settleStreamItems(last.streamItems),
-          toolCall
+          toolCall,
         ),
       };
 
@@ -2581,7 +2603,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     parentToolCallId: string,
     subagentType: string | null,
     name: string,
-    prompt: string
+    prompt: string,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2644,7 +2666,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     sessionId: string,
     subagentSessionId: string,
     status: SubagentStatus,
-    response?: string | null
+    response?: string | null,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2663,7 +2685,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
           response,
           streamItems: replaceOrAppendSettledTextItem(
             last.streamItems,
-            response
+            response,
           ),
         };
       } else {
@@ -2695,7 +2717,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   appendSubagentResponseChunk: (
     sessionId: string,
     subagentSessionId: string,
-    text: string
+    text: string,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2721,7 +2743,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         streamItems: appendStreamingSubagentChunk(
           last.streamItems,
           "text",
-          text
+          text,
         ),
       };
 
@@ -2742,7 +2764,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   appendSubagentThinkingChunk: (
     sessionId: string,
     subagentSessionId: string,
-    text: string
+    text: string,
   ) => {
     set((state) => {
       const session = state.sessions.get(sessionId);
@@ -2768,7 +2790,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         streamItems: appendStreamingSubagentChunk(
           last.streamItems,
           "thinking",
-          text
+          text,
         ),
       };
 
@@ -2840,7 +2862,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
           streamItems,
           parentToolCallId,
           toolUpdates,
-          true
+          true,
         );
         messages = messages.map((message, messageIndex) => {
           const items = message.message_metadata?.streamItems;
@@ -2854,7 +2876,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
                 items as StreamItem[],
                 parentToolCallId,
                 toolUpdates,
-                true
+                true,
               ),
             },
           };
@@ -2863,7 +2885,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
           items.some(
             (item) =>
               item.type === "tool_call" &&
-              item.toolCall.subagentSessionId === specialist.session_id
+              item.toolCall.subagentSessionId === specialist.session_id,
           );
         const hasCard =
           cardHasSession(streamItems) ||
@@ -2931,7 +2953,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
               ...message.message_metadata,
               streamItems: settleOpenLaneTaskCards(
                 items as StreamItem[],
-                settleStatus
+                settleStatus,
               ),
             },
           };
@@ -3000,7 +3022,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         toolCalls: streamItems
           .filter(
             (item): item is Extract<StreamItem, { type: "tool_call" }> =>
-              item.type === "tool_call"
+              item.type === "tool_call",
           )
           .map((item) => item.toolCall),
       };
@@ -3191,7 +3213,7 @@ export const useToggleOutputPanel = () =>
 // Pre-provisioning selectors
 export const useIsPreProvisioning = () =>
   useBuildSessionStore(
-    (state) => state.preProvisioning.status === "provisioning"
+    (state) => state.preProvisioning.status === "provisioning",
   );
 
 export const useIsPreProvisioningReady = () =>
@@ -3204,7 +3226,7 @@ export const usePreProvisionedSessionId = () =>
   useBuildSessionStore((state) =>
     state.preProvisioning.status === "ready"
       ? state.preProvisioning.sessionId
-      : null
+      : null,
   );
 
 // Queued messages selector
@@ -3289,7 +3311,7 @@ export const useSubagents = () =>
   });
 
 export const useSubagent = (
-  subagentSessionId: string | null
+  subagentSessionId: string | null,
 ): SubagentState | null =>
   useBuildSessionStore((state) => {
     if (!subagentSessionId) return null;
