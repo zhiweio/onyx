@@ -31,6 +31,7 @@ class RuntimeCapability(Enum):
     MCP = "mcp"
     HISTORY_SNAPSHOT = "history_snapshot"
     BACKGROUND_PROCESSES = "background_processes"
+    TURN_REWIND = "turn_rewind"
 
 
 class AgentRuntimeProfile:
@@ -120,3 +121,16 @@ class AgentRuntime(ABC):
         self, opencode_session_id: str, message_id: str, *, directory: str
     ) -> dict[str, Any] | None:
         """Fetch a single message."""
+
+    def delete_messages_from(
+        self, opencode_session_id: str, *, directory: str, from_message_id: str
+    ) -> bool:
+        """Delete `from_message_id` and every message after it in the harness
+        session (true rewind for retry/edit-resend).
+
+        Returns False when the runtime cannot rewind (capability absent or
+        the harness rejected the deletion); the executor then falls back to
+        resending as a new turn. Runtimes advertising TURN_REWIND override
+        this; the default is the no-rewind fallback.
+        """
+        return False

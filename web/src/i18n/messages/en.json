@@ -12585,7 +12585,10 @@
       }
     },
     "timeline": {
-      "workingFor": "Working for {duration}"
+      "workingFor": "Working for {duration}",
+      "retryAction": {
+        "tooltip": "Retry this turn"
+      }
     },
     "toolBlocks": {
       "kind": {

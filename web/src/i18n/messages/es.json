@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "Trabajando durante {duration}"
+      "workingFor": "Trabajando durante {duration}",
+      "retryAction": {
+        "tooltip": "Reintentar este turno"
+      }
     },
     "toolBlocks": {
       "kind": {

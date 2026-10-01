@@ -39,6 +39,7 @@ _PROFILES: dict[str, AgentRuntimeProfile] = {
                 RuntimeCapability.TURN_BUDGET_STAMP,
                 RuntimeCapability.MCP,
                 RuntimeCapability.HISTORY_SNAPSHOT,
+                RuntimeCapability.TURN_REWIND,
             }
         ),
     ),

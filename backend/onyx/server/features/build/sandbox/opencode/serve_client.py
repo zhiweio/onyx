@@ -1353,6 +1353,31 @@ class OpencodeServeClient:
             return None
         return body if isinstance(body, dict) else None
 
+    def delete_message(
+        self, opencode_session_id: str, message_id: str, *, directory: str
+    ) -> bool:
+        """DELETE /session/{id}/message/{mid} — remove the message and
+        everything after it (harness rewind). False on any failure so the
+        caller can fall back to resend-as-new-turn semantics."""
+        try:
+            r = self._request(
+                "DELETE",
+                f"/session/{opencode_session_id}/message/{message_id}",
+                params={"directory": directory},
+            )
+        except httpx.HTTPError as e:
+            logger.warning("delete_message(%s) network error: %s", message_id, e)
+            return False
+        if r.status_code not in (200, 202, 204):
+            logger.warning(
+                "delete_message(%s) -> HTTP %s (%s)",
+                message_id,
+                r.status_code,
+                _short_body(r),
+            )
+            return False
+        return True
+
     def close(self) -> None:
         self._http.close()
 

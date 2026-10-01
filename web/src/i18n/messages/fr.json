@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "Travail en cours depuis {duration}"
+      "workingFor": "Travail en cours depuis {duration}",
+      "retryAction": {
+        "tooltip": "Relancer ce tour"
+      }
     },
     "toolBlocks": {
       "kind": {

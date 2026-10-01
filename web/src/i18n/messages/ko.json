@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "{duration} 동안 작업 중"
+      "workingFor": "{duration} 동안 작업 중",
+      "retryAction": {
+        "tooltip": "이 턴 재시도"
+      }
     },
     "toolBlocks": {
       "kind": {

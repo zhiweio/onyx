@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { CopyButton } from "@opal/components";
+import { Button, CopyButton } from "@opal/components";
 import { Hoverable } from "@opal/core";
-import { SvgAlertCircle } from "@opal/icons";
+import { SvgAlertCircle, SvgRefreshCw } from "@opal/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Logo } from "@/lib/app/components";
 import SetupCard from "@/app/craft/components/setup-requests/SetupCard";
@@ -49,6 +50,8 @@ interface CraftTimelineProps {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   /** Trailing content attached to the last assistant block (approvals). */
   trailingAssistantSlot?: React.ReactNode;
+  /** Retry the last turn; shown on the final saved agent message when idle. */
+  onRetry?: () => void;
 }
 
 /**
@@ -67,7 +70,9 @@ export default function CraftTimeline({
   isStreaming = false,
   scrollContainerRef,
   trailingAssistantSlot,
+  onRetry,
 }: CraftTimelineProps) {
+  const t = useTranslations("craft.timeline");
   // Resolve a connect card's app (oauth-vs-form, credential fields) by ID.
   const { data: connectableApps } = useSWR<ExternalAppUserResponse[]>(
     SWR_KEYS.buildExternalApps,
@@ -273,6 +278,7 @@ export default function CraftTimeline({
   const renderAgentMessage = (
     message: BuildMessage,
     trailing?: React.ReactNode,
+    actionsExtra?: React.ReactNode,
   ) => {
     const savedStreamItems = message.message_metadata?.streamItems as
       | StreamItem[]
@@ -324,6 +330,7 @@ export default function CraftTimeline({
                     prominence="tertiary"
                     data-testid="CraftAgentMessage/copy-button"
                   />
+                  {actionsExtra}
                 </div>
               </Hoverable.Item>
             )}

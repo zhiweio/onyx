@@ -19,8 +19,11 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.db.build_session import (
     count_user_messages,
     create_message,
+    delete_messages_from_turn,
     get_build_session,
+    get_last_user_message,
     session_runtime_stale,
+    update_message,
 )
 from onyx.server.features.build.db.sandbox import (
     get_sandbox_by_user_id,
@@ -49,6 +52,7 @@ from onyx.server.features.build.session.models import (
     MessageListResponse,
     MessageRequest,
     MessageResponse,
+    RetryTurnRequest,
     SubagentMessageRequest,
 )
 from onyx.server.features.scenario.runtime import apply_scenario_to_turn
@@ -234,6 +238,189 @@ def send_message(
         )
 
     return InteractiveTurnResponse.from_turn(turn)
+
+
+def _user_message_text(message: Any) -> str:
+    metadata = message.message_metadata or {}
+    content = metadata.get("content")
+    if isinstance(content, dict) and isinstance(content.get("text"), str):
+        return content["text"]
+    return ""
+
+
+@router.post("/sessions/{session_id}/retry-turn", tags=PUBLIC_API_TAGS)
+def retry_turn(
+    session_id: UUID,
+    request: RetryTurnRequest | None = None,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> InteractiveTurnResponse:
+    """Re-run the last user turn, optionally editing it first.
+
+    Capability-driven semantics (RuntimeCapability.TURN_REWIND):
+    - rewind-capable runtimes delete the old turn from the harness and the
+      transcript, then re-send the prompt as a clean new turn;
+    - everything else keeps the old history and appends the prompt as a new
+      turn annotated with ``retry_of`` so the transcript stays honest.
+    """
+    session = get_build_session(session_id, user.id, db_session)
+    if session is None:
+        raise OnyxError(OnyxErrorCode.SESSION_NOT_FOUND, "Session not found")
+
+    last_user_message = get_last_user_message(session_id, db_session)
+    if last_user_message is None:
+        raise OnyxError(
+            OnyxErrorCode.BAD_REQUEST,
+            "There is no turn to retry yet.",
+        )
+
+    prompt = _user_message_text(last_user_message)
+    if request and request.content is not None and request.content.strip():
+        prompt = request.content.strip()
+
+    cache = get_cache_backend()
+    client_request_id = (
+        request.client_request_id if request else None
+    ) or str(uuid4())
+
+    try:
+        lock = acquire_active_turn_lock(cache, session_id)
+    except InteractiveTurnLockError as exc:
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT,
+            "This session is busy with a previous turn.",
+        ) from exc
+
+    lock_released = False
+    try:
+        active = get_active_turn(cache=cache, session_id=session_id, user_id=user.id)
+        if active is not None:
+            raise OnyxError(
+                OnyxErrorCode.CONFLICT,
+                "This session is busy with a previous turn.",
+            )
+
+        sandbox = get_sandbox_by_user_id(db_session, user.id)
+        rewound = False
+        if sandbox is not None and session.opencode_session_id and prompt:
+            sandbox_manager = get_sandbox_manager()
+            try:
+                rewound = sandbox_manager.rewind_opencode_session(
+                    sandbox.id,
+                    session_id,
+                    session.opencode_session_id,
+                    # Rewind from the newest harness user message; the last
+                    # Onyx turn maps to it for interactive sessions.
+                    _last_harness_user_message_id(
+                        sandbox_manager, sandbox.id, session_id,
+                        session.opencode_session_id,
+                    )
+                    or "",
+                )
+            except Exception:
+                logger.exception(
+                    "Rewind failed for session %s; falling back to resend",
+                    session_id,
+                )
+                rewound = False
+
+        if request and request.content is not None and not rewound:
+            # Edit-resend without rewind: persist the edited text on the
+            # original user message so the transcript shows what was resent.
+            edited_metadata = dict(last_user_message.message_metadata or {})
+            edited_content = dict(edited_metadata.get("content") or {})
+            edited_content["text"] = prompt
+            edited_metadata["content"] = edited_content
+            update_message(
+                last_user_message.id, edited_metadata, db_session
+            )
+
+        if rewound:
+            delete_messages_from_turn(
+                session_id, last_user_message.turn_index, db_session
+            )
+
+        session_manager = SessionManager(db_session)
+        if session_runtime_stale(session, sandbox):
+            session_manager.reload_session_skills(session_id, user)
+
+        check_token_rate_limits(user)
+
+        turn_index = count_user_messages(session_id, db_session)
+        message_metadata: dict[str, Any] = {
+            "type": "user_message",
+            "content": {"type": "text", "text": prompt},
+        }
+        if not rewound:
+            message_metadata["retry_of"] = str(last_user_message.id)
+        create_message(
+            session_id=session_id,
+            message_type=MessageType.USER,
+            turn_index=turn_index,
+            message_metadata=message_metadata,
+            db_session=db_session,
+        )
+
+        turn = create_interactive_turn(
+            cache=cache,
+            session_id=session_id,
+            user_id=user.id,
+            client_request_id=client_request_id,
+            prompt=prompt,
+            turn_index=turn_index,
+            attachments=[],
+        )
+
+        try:
+            db_session.commit()
+        except Exception:
+            db_session.rollback()
+            lock.release()
+            lock_released = True
+            finish_turn(
+                cache=cache,
+                turn_id=turn.turn_id,
+                status=TURN_STATUS_FAILED,
+                error_detail="Failed to persist retried message.",
+            )
+            raise
+    finally:
+        if not lock_released:
+            lock.release()
+
+    try:
+        start_interactive_turn_runner(turn.turn_id)
+    except Exception:
+        logger.exception(
+            "Failed to start interactive turn %s; attach endpoints will retry",
+            turn.turn_id,
+        )
+
+    return InteractiveTurnResponse.from_turn(turn)
+
+
+def _last_harness_user_message_id(
+    sandbox_manager: Any,
+    sandbox_id: UUID,
+    session_id: UUID,
+    opencode_session_id: str,
+) -> str | None:
+    """Id of the newest user message in the harness session (rewind anchor)."""
+    try:
+        messages = sandbox_manager.list_opencode_messages(
+            sandbox_id, session_id, opencode_session_id
+        )
+    except Exception:
+        logger.exception(
+            "Could not list harness messages for rewind (session %s)", session_id
+        )
+        return None
+    for message in reversed(messages):
+        if isinstance(message, dict) and message.get("role") == "user":
+            message_id = message.get("id")
+            if isinstance(message_id, str):
+                return message_id
+    return None
 
 
 @router.post("/sessions/{session_id}/compact", tags=PUBLIC_API_TAGS)

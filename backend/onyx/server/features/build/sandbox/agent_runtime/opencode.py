@@ -35,6 +35,7 @@ OPENCODE_PROFILE = AgentRuntimeProfile(
             RuntimeCapability.MCP,
             RuntimeCapability.HISTORY_SNAPSHOT,
             RuntimeCapability.BACKGROUND_PROCESSES,
+            RuntimeCapability.TURN_REWIND,
         }
     ),
 )
@@ -128,4 +129,14 @@ class OpenCodeRuntime(AgentRuntime):
     ) -> dict[str, Any] | None:
         return self._client.get_message(
             opencode_session_id, message_id, directory=directory
+        )
+
+    def delete_messages_from(
+        self, opencode_session_id: str, *, directory: str, from_message_id: str
+    ) -> bool:
+        # The DELETE endpoint removes the message and everything after it, so
+        # a failed/obsolete turn disappears from the harness context before
+        # the retry re-sends the prompt.
+        return self._client.delete_message(
+            opencode_session_id, from_message_id, directory=directory
         )

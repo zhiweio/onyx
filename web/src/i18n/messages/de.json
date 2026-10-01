@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "Arbeitet seit {duration}"
+      "workingFor": "Arbeitet seit {duration}",
+      "retryAction": {
+        "tooltip": "Diesen Durchlauf wiederholen"
+      }
     },
     "toolBlocks": {
       "kind": {

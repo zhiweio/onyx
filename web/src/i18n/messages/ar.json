@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "يعمل لمدة {duration}"
+      "workingFor": "يعمل لمدة {duration}",
+      "retryAction": {
+        "tooltip": "إعادة محاولة هذا الدور"
+      }
     },
     "toolBlocks": {
       "kind": {

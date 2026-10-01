@@ -394,6 +394,44 @@ def count_user_messages(session_id: UUID, db_session: Session) -> int:
     )
 
 
+def get_last_user_message(
+    session_id: UUID, db_session: Session
+) -> BuildMessage | None:
+    """Newest user message (by turn index, then creation), for retry/edit."""
+    return (
+        db_session.query(BuildMessage)
+        .filter(
+            BuildMessage.session_id == session_id,
+            BuildMessage.type == MessageType.USER,
+        )
+        .order_by(BuildMessage.turn_index.desc(), BuildMessage.created_at.desc())
+        .first()
+    )
+
+
+def delete_messages_from_turn(
+    session_id: UUID, from_turn_index: int, db_session: Session
+) -> int:
+    """Delete every message from `from_turn_index` onward (true retry after a
+    harness rewind). Caller commits; returns the deleted row count."""
+    deleted = (
+        db_session.query(BuildMessage)
+        .filter(
+            BuildMessage.session_id == session_id,
+            BuildMessage.turn_index >= from_turn_index,
+        )
+        .delete(synchronize_session=False)
+    )
+    if deleted:
+        logger.info(
+            "Deleted %s build messages from turn %s (session %s)",
+            deleted,
+            from_turn_index,
+            session_id,
+        )
+    return deleted
+
+
 def _lane_task_id_match(node_id: str) -> list[Any]:
     id_match = [BuildMessage.message_metadata.contains({LANE_TASK_NODE_KEY: node_id})]
     id_match.extend(

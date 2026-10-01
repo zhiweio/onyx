@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "已工作 {duration}"
+      "workingFor": "已工作 {duration}",
+      "retryAction": {
+        "tooltip": "重试本回合"
+      }
     },
     "toolBlocks": {
       "kind": {

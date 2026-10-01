@@ -328,6 +328,56 @@ class _ServeMixin:
         ) as client:
             client.dispose_instance(directory=session_path)
 
+    def list_opencode_messages(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        opencode_session_id: str,
+    ) -> list[dict[str, Any]]:
+        """Harness message snapshot for a session (rewind anchor lookup)."""
+        session_path = self._session_directory(session_id)
+        with self._build_serve_client(
+            sandbox_id,
+            session_path,
+            with_event_bus=False,
+        ) as client:
+            return client.list_messages(opencode_session_id, directory=session_path)
+
+    def rewind_opencode_session(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        opencode_session_id: str,
+        from_message_id: str,
+    ) -> bool:
+        """True rewind: delete the harness message and everything after it.
+
+        Capability-gated through the AgentRuntime layer so runtimes without
+        TURN_REWIND report False and the caller falls back to resending the
+        prompt as a fresh turn (history kept, retry annotated).
+        """
+        from onyx.server.features.build.sandbox.agent_runtime.base import (
+            RuntimeCapability,
+        )
+        from onyx.server.features.build.sandbox.agent_runtime.opencode import (
+            OpenCodeRuntime,
+        )
+
+        session_path = self._session_directory(session_id)
+        with self._build_serve_client(
+            sandbox_id,
+            session_path,
+            with_event_bus=False,
+        ) as client:
+            runtime = OpenCodeRuntime(client)
+            if not runtime.profile.has(RuntimeCapability.TURN_REWIND):
+                return False
+            return runtime.delete_messages_from(
+                opencode_session_id,
+                directory=session_path,
+                from_message_id=from_message_id,
+            )
+
     def list_subagents(
         self,
         sandbox_id: UUID,

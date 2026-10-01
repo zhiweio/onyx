@@ -69,6 +69,7 @@ import {
   fetchActiveTurn,
   fetchCraftQuestionAsk,
   resumeCraftJob,
+  retryBuildTurn,
   updateSessionReasoning,
 } from "@/app/craft/services/apiServices";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
@@ -877,6 +878,35 @@ export default function BuildChatPanel({
     sessionId,
   ]);
 
+  const retryAvailable = Boolean(
+    sessionId &&
+    !isRunning &&
+    !jobInFlight &&
+    !scheduledRunInFlight &&
+    !isViewingSubagent &&
+    (session?.messages?.length ?? 0) > 0,
+  );
+
+  const handleRetryTurn = useCallback(() => {
+    if (!sessionId || !retryAvailable) {
+      return;
+    }
+    void (async () => {
+      try {
+        const started = await retryBuildTurn(sessionId);
+        updateSessionData(sessionId, {
+          status: "running",
+          error: null,
+          activeTurnId: started.turn_id,
+          activeTurnIndex: started.turn_index,
+          activeTurnLocalOwner: false,
+        });
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
+    })();
+  }, [sessionId, retryAvailable, updateSessionData]);
+
   const handleJobAsk = useCallback(
     async (action: AskBarAction) => {
       if (!craftJob) return;
@@ -1125,6 +1155,7 @@ export default function BuildChatPanel({
                       streamItems={displayTranscript.streamItems}
                       isStreaming={displayIsRunning}
                       scrollContainerRef={scrollContainerRef}
+                      onRetry={retryAvailable ? handleRetryTurn : undefined}
                       trailingAssistantSlot={
                         wasInterrupted && !displayIsRunning ? (
                           <div className="flex items-center gap-2 text-sm text-text-03">

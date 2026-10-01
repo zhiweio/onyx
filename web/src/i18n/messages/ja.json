@@ -12579,7 +12579,10 @@
       }
     },
     "timeline": {
-      "workingFor": "{duration} 作業中"
+      "workingFor": "{duration} 作業中",
+      "retryAction": {
+        "tooltip": "このターンを再試行"
+      }
     },
     "toolBlocks": {
       "kind": {

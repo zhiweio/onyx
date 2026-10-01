@@ -258,6 +258,19 @@ class MessageRequest(BaseModel):
     selected_mcp_server_ids: list[int] = Field(default_factory=list)
 
 
+class RetryTurnRequest(BaseModel):
+    """Retry the last turn (optionally editing the user message first).
+
+    Semantics are capability-driven: runtimes with harness rewind delete the
+    old turn and re-run it clean; others keep the history and resend the
+    prompt as a new turn annotated with its origin.
+    """
+
+    client_request_id: str | None = None
+    """Edit-resend: replaces the retried user message's text before resending."""
+    content: str | None = None
+
+
 class SubagentMessageRequest(BaseModel):
     """A subagent follow-up does not support native file prompt parts."""
 
