@@ -1,4 +1,4 @@
-import { SvgGlobe, SvgUserKey } from "@opal/icons";
+import { SvgBlocks, SvgGlobe, SvgLink, SvgUserCheck, SvgUserKey } from "@opal/icons";
 import { SvgGoogle } from "@opal/logos";
 import type { IconFunctionComponent } from "@opal/types";
 import { toast } from "@opal/layouts";
@@ -27,6 +27,26 @@ export const SSO_PROVIDER_DETAILS: Record<SSOProviderType, SSOProviderDetail> =
       icon: SvgUserKey,
       description: "Connect a SAML identity provider.",
     },
+    WECOM: {
+      label: "WeCom",
+      icon: SvgUserCheck,
+      description: "WeCom (企业微信) QR-code login and org-structure sync.",
+    },
+    DINGTALK: {
+      label: "DingTalk",
+      icon: SvgLink,
+      description: "DingTalk (钉钉) QR-code login and org-structure sync.",
+    },
+    FEISHU: {
+      label: "Feishu",
+      icon: SvgBlocks,
+      description: "Feishu (飞书) auth-code login and org-structure sync.",
+    },
+    WPS365: {
+      label: "WPS365",
+      icon: SvgGlobe,
+      description: "WPS 365 OAuth2 login on the regional account endpoint.",
+    },
   };
 
 // Provider types the create modal offers, in dropdown order.
@@ -34,6 +54,10 @@ export const CREATABLE_SSO_PROVIDER_TYPES: SSOProviderType[] = [
   "GOOGLE_OAUTH",
   "OIDC",
   "SAML",
+  "WECOM",
+  "DINGTALK",
+  "FEISHU",
+  "WPS365",
 ];
 
 export type SSOConfigFieldKind =
@@ -86,6 +110,16 @@ const SCOPES_FIELD: SSOConfigField = {
     "Override the OAuth scopes requested at login. " +
     "Empty uses the deployment defaults.",
   placeholder: "Add a scope (e.g. openid)",
+};
+
+const EMAIL_DOMAIN_FIELD: SSOConfigField = {
+  name: "email_domain",
+  label: "Email Domain",
+  kind: "text",
+  description:
+    "Builds a deterministic login email when the platform does not return " +
+    "one, e.g. account_id@this-domain. Use your company domain.",
+  placeholder: "corp.example.com",
 };
 
 export const CONFIG_FIELDS_BY_TYPE: Record<SSOProviderType, SSOConfigField[]> =
@@ -174,6 +208,118 @@ export const CONFIG_FIELDS_BY_TYPE: Record<SSOProviderType, SSOConfigField[]> =
           "SAML attribute holding the user's email. Defaults to common keys.",
         optional: true,
         placeholder: "email",
+      },
+    ],
+    WECOM: [
+      EMAIL_DOMAIN_FIELD,
+      {
+        name: "corp_id",
+        label: "Corp ID",
+        kind: "text",
+        description: "WeCom enterprise ID (企业ID), from the admin console.",
+        placeholder: "ww**************",
+      },
+      {
+        name: "corp_secret",
+        label: "Corp Secret",
+        kind: "password",
+        description: "The self-built app's secret. Stored encrypted.",
+        placeholder: "Corp secret",
+      },
+      {
+        name: "agent_id",
+        label: "Agent ID",
+        kind: "text",
+        description: "The self-built app's agent ID (应用AgentId).",
+        placeholder: "1000002",
+      },
+      {
+        name: "bot_token",
+        label: "IM Bot Token",
+        kind: "password",
+        description:
+          "WeCom callback-mode token. Set to also enable the WeCom IM bot.",
+        optional: true,
+        placeholder: "Callback token",
+      },
+      {
+        name: "bot_encoding_aes_key",
+        label: "IM Bot EncodingAESKey",
+        kind: "password",
+        description: "WeCom callback-mode message key. Stored encrypted.",
+        optional: true,
+        placeholder: "EncodingAESKey",
+      },
+    ],
+    DINGTALK: [
+      EMAIL_DOMAIN_FIELD,
+      CLIENT_ID_FIELD,
+      CLIENT_SECRET_FIELD,
+      {
+        name: "robot_code",
+        label: "Robot Code",
+        kind: "text",
+        description:
+          "DingTalk robot code. Set to also enable the DingTalk IM bot.",
+        optional: true,
+        placeholder: "Robot code",
+      },
+      {
+        name: "bot_aes_key",
+        label: "IM Bot AES Key",
+        kind: "password",
+        description: "DingTalk event-stream AES key. Stored encrypted.",
+        optional: true,
+        placeholder: "AES key",
+      },
+    ],
+    FEISHU: [
+      EMAIL_DOMAIN_FIELD,
+      {
+        name: "app_id",
+        label: "App ID",
+        kind: "text",
+        description: "Feishu app ID (应用 App ID) from the developer console.",
+        placeholder: "cli_a********",
+      },
+      {
+        name: "app_secret",
+        label: "App Secret",
+        kind: "password",
+        description: "The Feishu app secret. Stored encrypted.",
+        placeholder: "App secret",
+      },
+      {
+        name: "bot_verification_token",
+        label: "IM Bot Verification Token",
+        kind: "password",
+        description:
+          "Feishu event verification token. Set to also enable the Feishu IM bot.",
+        optional: true,
+        placeholder: "Verification token",
+      },
+      {
+        name: "bot_encrypt_key",
+        label: "IM Bot Encrypt Key",
+        kind: "password",
+        description: "Feishu event encryption key. Stored encrypted.",
+        optional: true,
+        placeholder: "Encrypt key",
+      },
+    ],
+    WPS365: [
+      EMAIL_DOMAIN_FIELD,
+      CLIENT_ID_FIELD,
+      CLIENT_SECRET_FIELD,
+      {
+        name: "base_url",
+        label: "Account Base URL",
+        kind: "text",
+        description:
+          "WPS 365 account-service base URL. The default fits the " +
+          "regional (cn) deployment.",
+        optional: true,
+        placeholder: "https://account.wps.cn",
       },
     ],
   };

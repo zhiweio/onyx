@@ -4,7 +4,14 @@
 // verbatim to keep the stored value. All other fields round-trip as real
 // values.
 
-export type SSOProviderType = "GOOGLE_OAUTH" | "OIDC" | "SAML";
+export type SSOProviderType =
+  | "GOOGLE_OAUTH"
+  | "OIDC"
+  | "SAML"
+  | "WECOM"
+  | "DINGTALK"
+  | "FEISHU"
+  | "WPS365";
 
 export interface SSOProviderResponse {
   id: number;
