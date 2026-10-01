@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "Ejecución programada en curso...",
         "subagentPlaceholder": "Cambia al agente principal para enviar un mensaje"
       },
+      "ariaLabel": "Conversación",
       "openSidebar": {
         "ariaLabel": "Abrir barra lateral"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "Suelta archivos para adjuntar"
       }
+    },
+    "timeline": {
+      "workingFor": "Trabajando durante {duration}"
     },
     "intro": {
       "beta": {

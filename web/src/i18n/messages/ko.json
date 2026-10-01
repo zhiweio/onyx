@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "예약된 실행 진행 중...",
         "subagentPlaceholder": "메시지를 보내려면 메인 에이전트로 전환하세요"
       },
+      "ariaLabel": "대화 기록",
       "openSidebar": {
         "ariaLabel": "사이드바 열기"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "파일을 놓아 첨부"
       }
+    },
+    "timeline": {
+      "workingFor": "{duration} 동안 작업 중"
     },
     "intro": {
       "beta": {

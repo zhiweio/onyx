@@ -75,7 +75,8 @@ import CraftAskBar, {
   type AskBarAction,
 } from "@/app/craft/components/CraftAskBar";
 import BuildWelcome from "@/app/craft/components/BuildWelcome";
-import BuildMessageList from "@/app/craft/components/BuildMessageList";
+import CraftTimeline from "@/app/craft/components/timeline/CraftTimeline";
+import { useTimelineScroll } from "@/app/craft/components/timeline/useTimelineScroll";
 import LiveApprovalsRegion from "@/app/craft/components/approvals/LiveApprovalsRegion";
 import AgentSwitcher from "@/app/craft/components/AgentSwitcher";
 import CraftSessionProjectCrumb from "@/app/craft/components/CraftSessionProjectCrumb";
@@ -532,87 +533,51 @@ export default function BuildChatPanel({
     updateSessionData,
   ]);
 
-  // Scroll detection for auto-scroll "magnet"
+  // Scroll system: stick-to-bottom magnet with user-intent TTL, per-session
+  // position memory, and the back-to-bottom flag (ZCode timeline behavior).
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const prevScrollTopRef = useRef(0);
+  const { isAtBottom, scrollToBottom, handleScroll, noteUserScrollIntent } =
+    useTimelineScroll(
+      scrollContainerRef,
+      sessionId ?? existingSessionId ?? null,
+      [
+        displayTranscript.messages.length,
+        displayTranscript.streamItems.length,
+      ].join(":"),
+    );
+  const showScrollButton = !isAtBottom;
 
-  // Check if user is at bottom of scroll container
-  const checkIfAtBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return true;
-
-    const scrollTop = container.scrollTop;
-    const scrollHeight = container.scrollHeight;
-    const clientHeight = container.clientHeight;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    const threshold = 32; // 2rem threshold
-
-    return distanceFromBottom <= threshold;
-  }, []);
-
-  // Handle scroll events - only update state on user-initiated scrolling
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const currentScrollTop = container.scrollTop;
-    const prevScrollTop = prevScrollTopRef.current;
-    const wasAtBottom = checkIfAtBottom();
-
-    // Detect if user scrolled up (scrollTop decreased)
-    // This distinguishes user scrolling from content growth
-    const scrolledUp = currentScrollTop < prevScrollTop - 5; // 5px threshold
-
-    // Only update state if user scrolled up (definitely user action)
-    // If content grows and we're still at bottom, don't change state
-    if (scrolledUp) {
-      // User scrolled up - release auto-scroll magnet
-      setIsAtBottom(wasAtBottom);
-      setShowScrollButton(!wasAtBottom);
-    } else if (wasAtBottom) {
-      // We're at bottom - ensure button stays hidden (handles content growth)
-      setIsAtBottom(true);
-      setShowScrollButton(false);
-    }
-    // If scrollTop increased but we're still at bottom, it's content growth - do nothing
-
-    prevScrollTopRef.current = currentScrollTop;
-  }, [checkIfAtBottom]);
-
-  // Scroll to bottom and resume auto-scroll
-  const scrollToBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    // Use requestAnimationFrame to ensure we scroll after any layout changes
-    requestAnimationFrame(() => {
-      if (!container) return;
-
-      // Scroll to a value larger than scrollHeight - browsers will clamp to max
-      // This ensures we always reach the absolute bottom
-      const targetScroll = container.scrollHeight + 1000; // Add buffer to ensure we go all the way
-      container.scrollTo({ top: targetScroll, behavior: "smooth" });
-
-      // Update state immediately
-      setIsAtBottom(true);
-      setShowScrollButton(false);
-
-      // Update prevScrollTopRef after scroll completes
-      setTimeout(() => {
-        if (container) {
-          prevScrollTopRef.current = container.scrollTop;
-        }
-      }, 600); // Smooth scroll animation duration
-    });
-  }, []);
-
-  // Reset scroll state when session changes
+  // Wheel/touch/keyboard input marks user scroll intent (passive listeners —
+  // the stick-to-bottom magnet must not fight deliberate scrolling).
   useEffect(() => {
-    setIsAtBottom(true);
-    setShowScrollButton(false);
-  }, [sessionId]);
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const scrollKeys = [
+      "PageUp",
+      "PageDown",
+      "Home",
+      "End",
+      "ArrowUp",
+      "ArrowDown",
+    ];
+    const onWheel = () => noteUserScrollIntent();
+    const onTouchMove = () => noteUserScrollIntent();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (scrollKeys.includes(event.key)) {
+        noteUserScrollIntent();
+      }
+    };
+    container.addEventListener("wheel", onWheel, { passive: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: true });
+    container.addEventListener("keydown", onKeyDown);
+    return () => {
+      container.removeEventListener("wheel", onWheel);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("keydown", onKeyDown);
+    };
+  }, [noteUserScrollIntent, scrollContainerRef]);
 
   useEffect(() => {
     if (!sessionId || !session?.isLoaded || !craftJob) {
@@ -1084,6 +1049,9 @@ export default function BuildChatPanel({
             agent and a subagent (keyed by the viewed agent). */}
             <div
               ref={scrollContainerRef}
+              role="log"
+              aria-live="polite"
+              aria-label={t("messageLog.ariaLabel")}
               onScroll={handleScroll}
               className="flex flex-col flex-1 min-h-0 overflow-auto"
             >
@@ -1106,13 +1074,12 @@ export default function BuildChatPanel({
                       thoughtLevel={thoughtLevel}
                     />
                   ) : (
-                    <BuildMessageList
+                    <CraftTimeline
                       sessionId={sessionId ?? existingSessionId ?? null}
                       attachmentRefreshKey={session?.webappNeedsRefresh}
                       messages={displayTranscript.messages}
                       streamItems={displayTranscript.streamItems}
                       isStreaming={displayIsRunning}
-                      autoScrollEnabled={isAtBottom}
                       scrollContainerRef={scrollContainerRef}
                       trailingAssistantSlot={
                         wasInterrupted && !displayIsRunning ? (

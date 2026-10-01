@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "Geplante Ausführung läuft...",
         "subagentPlaceholder": "Wechsle zum Hauptagenten, um eine Nachricht zu senden"
       },
+      "ariaLabel": "Unterhaltung",
       "openSidebar": {
         "ariaLabel": "Seitenleiste öffnen"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "Dateien zum Anhängen ablegen"
       }
+    },
+    "timeline": {
+      "workingFor": "Arbeitet seit {duration}"
     },
     "intro": {
       "beta": {

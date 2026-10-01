@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "Exécution planifiée en cours...",
         "subagentPlaceholder": "Passez à l'agent principal pour envoyer un message"
       },
+      "ariaLabel": "Conversation",
       "openSidebar": {
         "ariaLabel": "Ouvrir la barre latérale"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "Déposez des fichiers à joindre"
       }
+    },
+    "timeline": {
+      "workingFor": "Travail en cours depuis {duration}"
     },
     "intro": {
       "beta": {

@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "计划运行进行中...",
         "subagentPlaceholder": "切换到主代理以发送消息"
       },
+      "ariaLabel": "对话记录",
       "openSidebar": {
         "ariaLabel": "打开侧边栏"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "拖放文件以添加附件"
       }
+    },
+    "timeline": {
+      "workingFor": "已工作 {duration}"
     },
     "intro": {
       "beta": {

@@ -12331,6 +12331,7 @@
         "scheduledRunPlaceholder": "Scheduled run in progress...",
         "subagentPlaceholder": "Switch to the main agent to send a message"
       },
+      "ariaLabel": "Conversation",
       "openSidebar": {
         "ariaLabel": "Open Sidebar"
       },
@@ -12565,6 +12566,9 @@
       "dropFiles": {
         "hint": "Drop files to attach"
       }
+    },
+    "timeline": {
+      "workingFor": "Working for {duration}"
     },
     "intro": {
       "beta": {

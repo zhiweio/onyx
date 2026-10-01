@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "التشغيل المجدول قيد التقدم...",
         "subagentPlaceholder": "بدّل إلى الوكيل الرئيسي لإرسال رسالة"
       },
+      "ariaLabel": "المحادثة",
       "openSidebar": {
         "ariaLabel": "فتح الشريط الجانبي"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "أفلت الملفات لإرفاقها"
       }
+    },
+    "timeline": {
+      "workingFor": "يعمل لمدة {duration}"
     },
     "intro": {
       "beta": {

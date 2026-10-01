@@ -12325,6 +12325,7 @@
         "scheduledRunPlaceholder": "スケジュール実行中...",
         "subagentPlaceholder": "メッセージを送るにはメインエージェントに切り替えてください"
       },
+      "ariaLabel": "会話ログ",
       "openSidebar": {
         "ariaLabel": "サイドバーを開く"
       },
@@ -12559,6 +12560,9 @@
       "dropFiles": {
         "hint": "ファイルをドロップして添付"
       }
+    },
+    "timeline": {
+      "workingFor": "{duration} 作業中"
     },
     "intro": {
       "beta": {
