@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "Rechercher des outils…"
+      },
+      "expandButton": {
+        "label": "Déplier"
+      },
+      "foldButton": {
+        "label": "Replier"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "Application",
           "kindCommand": "Commande",
           "kindMcp": "Serveur MCP",
-          "kindSkill": "Compétence"
+          "kindSkill": "Compétence",
+          "kindFile": "Fichier"
+        },
+        "filesGroup": {
+          "label": "Fichiers"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "Démarrer une nouvelle session"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "Envoyer",
+        "queueLabel": "Mettre en file d'attente"
+      },
+      "stopButton": {
+        "tooltip": "Arrêter",
+        "ariaLabel": "Arrêter la génération"
+      },
+      "queuedMessagesHint": {
+        "text": "modifier les messages en attente"
       }
     },
     "mcpApiKey": {

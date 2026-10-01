@@ -864,6 +864,17 @@
         "ariaLabel": "Search tools",
         "placeholder": "Search tools…"
       }
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "Search tools…"
+      },
+      "expandButton": {
+        "label": "Expand"
+      },
+      "foldButton": {
+        "label": "Fold"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "App",
           "kindCommand": "Command",
           "kindMcp": "MCP server",
-          "kindSkill": "Skill"
+          "kindSkill": "Skill",
+          "kindFile": "File"
+        },
+        "filesGroup": {
+          "label": "Files"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "Start New Session"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "Send",
+        "queueLabel": "Queue message"
+      },
+      "stopButton": {
+        "tooltip": "Stop",
+        "ariaLabel": "Stop generating"
+      },
+      "queuedMessagesHint": {
+        "text": "to edit queued messages"
       }
     },
     "mcpApiKey": {

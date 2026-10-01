@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "搜索工具…"
+      },
+      "expandButton": {
+        "label": "展开"
+      },
+      "foldButton": {
+        "label": "收起"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "应用",
           "kindCommand": "命令",
           "kindMcp": "MCP 服务器",
-          "kindSkill": "技能"
+          "kindSkill": "技能",
+          "kindFile": "文件"
+        },
+        "filesGroup": {
+          "label": "文件"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "开始新会话"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "发送",
+        "queueLabel": "排队发送"
+      },
+      "stopButton": {
+        "tooltip": "停止",
+        "ariaLabel": "停止生成"
+      },
+      "queuedMessagesHint": {
+        "text": "编辑排队消息"
       }
     },
     "mcpApiKey": {

@@ -41,17 +41,30 @@ export interface PickerCommand {
   description: string;
 }
 
+/** A user-referencable file (library or sandbox) for @-mentions. */
+export interface PickerFileEntry {
+  kind: "file";
+  fileId: string;
+  name: string;
+  path?: string;
+  source: "library" | "sandbox";
+}
+
 export type PickerEntry =
   | PickerSkill
   | PickerApp
   | PickerMcpServer
-  | PickerCommand;
+  | PickerCommand
+  | PickerFileEntry;
 
 export interface PickerSections {
   commands: PickerCommand[];
   skills: PickerSkill[];
   apps: PickerApp[];
   mcpServers: PickerMcpServer[];
+  /** Optional so surfaces without file mentions keep constructing the four
+   * required groups alone. */
+  files?: PickerFileEntry[];
 }
 
 export const COMPACT_COMMAND_SLUG = "compact";
@@ -74,7 +87,7 @@ export function compareByName<T extends { name: string }>(a: T, b: T): number {
 export function toPickerSections(
   skillsData: SkillsList | undefined,
   externalApps: ExternalAppUserResponse[] | undefined,
-  mcpServers?: MCPServer[] | undefined
+  mcpServers?: MCPServer[] | undefined,
 ): PickerSections {
   if (!skillsData && !externalApps && !mcpServers) return EMPTY_SECTIONS;
 
@@ -146,7 +159,7 @@ export interface SlashTrigger {
 // Trigger rules: "/" must be at start-of-text or after whitespace; the query
 // (chars between "/" and the cursor) must not contain whitespace.
 export function detectSlashTrigger(
-  textBeforeCursor: string
+  textBeforeCursor: string,
 ): SlashTrigger | null {
   const slashIndex = textBeforeCursor.lastIndexOf("/");
   if (slashIndex === -1) return null;
@@ -178,6 +191,9 @@ function matchesQuery(entry: PickerEntry, query: string): boolean {
     case "command":
       fields = [entry.slug, entry.name, entry.description];
       break;
+    case "file":
+      fields = [entry.name, entry.path ?? ""];
+      break;
   }
   return fields.some((field) => field.toLowerCase().includes(query));
 }
@@ -192,6 +208,8 @@ export function pickerEntryKey(entry: PickerEntry): string {
       return `mcp:${entry.mcpServerId}`;
     case "command":
       return `command:${entry.slug}`;
+    case "file":
+      return `file:${entry.fileId}`;
   }
 }
 
@@ -206,7 +224,7 @@ export const EMPTY_SLASH_SELECTION: SlashSelection = {
 };
 
 export function slashSelectionFromEntries(
-  entries: PickerEntry[]
+  entries: PickerEntry[],
 ): SlashSelection {
   const skillIds: string[] = [];
   const mcpServerIds: number[] = [];
@@ -222,7 +240,7 @@ export function slashSelectionFromEntries(
 
 export function pickerEntriesFromSelection(
   sections: PickerSections,
-  selection: SlashSelection
+  selection: SlashSelection,
 ): PickerEntry[] {
   const skillIds = new Set(selection.skillIds);
   const mcpIds = new Set(selection.mcpServerIds);
@@ -242,6 +260,8 @@ export function pickerEntryPromptPrefix(entry: PickerEntry): string {
       return `[Use the MCP server ${JSON.stringify(entry.name)} and its tools]`;
     case "command":
       return `/${entry.slug}`;
+    case "file":
+      return `@${entry.name}`;
   }
 }
 
@@ -250,7 +270,7 @@ type PickerConnectionPath =
   | `${typeof CRAFT_APPS_PATH}?${typeof CRAFT_APPS_TAB_PARAM}=mcp`;
 
 export function pickerEntryConnectionPath(
-  entry: PickerEntry
+  entry: PickerEntry,
 ): PickerConnectionPath | null {
   switch (entry.kind) {
     case "skill":
@@ -266,12 +286,14 @@ export function pickerEntryConnectionPath(
         : `${CRAFT_APPS_PATH}?${CRAFT_APPS_TAB_PARAM}=mcp`;
     case "command":
       return null;
+    case "file":
+      return null;
   }
 }
 
 export function filterPickerSections(
   sections: PickerSections,
-  query: string
+  query: string,
 ): PickerSections {
   const q = query.trim().toLowerCase();
   if (!q) return sections;
@@ -280,16 +302,18 @@ export function filterPickerSections(
     skills: sections.skills.filter((s) => matchesQuery(s, q)),
     apps: sections.apps.filter((a) => matchesQuery(a, q)),
     mcpServers: sections.mcpServers.filter((m) => matchesQuery(m, q)),
+    files: (sections.files ?? []).filter((f) => matchesQuery(f, q)),
   };
 }
 
-// Commands, then skills, then apps, then MCP servers; must match the
-// popover's visual render order so keyboard nav indices line up.
+// Commands, then skills, then apps, then MCP servers, then files; must match
+// the popover's visual render order so keyboard nav indices line up.
 export function flattenSections(sections: PickerSections): PickerEntry[] {
   return [
     ...sections.commands,
     ...sections.skills,
     ...sections.apps,
     ...sections.mcpServers,
+    ...(sections.files ?? []),
   ];
 }

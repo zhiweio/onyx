@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "Buscar herramientas…"
+      },
+      "expandButton": {
+        "label": "Desplegar"
+      },
+      "foldButton": {
+        "label": "Plegar"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "App",
           "kindCommand": "Comando",
           "kindMcp": "Servidor MCP",
-          "kindSkill": "Habilidad"
+          "kindSkill": "Habilidad",
+          "kindFile": "Archivo"
+        },
+        "filesGroup": {
+          "label": "Archivos"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "Iniciar nueva sesión"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "Enviar",
+        "queueLabel": "Poner en cola"
+      },
+      "stopButton": {
+        "tooltip": "Detener",
+        "ariaLabel": "Detener generación"
+      },
+      "queuedMessagesHint": {
+        "text": "editar mensajes en cola"
       }
     },
     "mcpApiKey": {

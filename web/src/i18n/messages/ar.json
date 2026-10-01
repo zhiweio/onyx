@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "البحث في الأدوات…"
+      },
+      "expandButton": {
+        "label": "توسيع"
+      },
+      "foldButton": {
+        "label": "طي"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "تطبيق",
           "kindCommand": "أمر",
           "kindMcp": "خادم MCP",
-          "kindSkill": "مهارة"
+          "kindSkill": "مهارة",
+          "kindFile": "ملف"
+        },
+        "filesGroup": {
+          "label": "الملفات"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "بدء جلسة جديدة"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "إرسال",
+        "queueLabel": "إضافة الرسالة إلى قائمة الانتظار"
+      },
+      "stopButton": {
+        "tooltip": "إيقاف",
+        "ariaLabel": "إيقاف التوليد"
+      },
+      "queuedMessagesHint": {
+        "text": "لتحرير الرسائل في قائمة الانتظار"
       }
     },
     "mcpApiKey": {

@@ -60,7 +60,7 @@ export interface CraftInputBarProps {
   onSubmit: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection
+    selection: SlashSelection,
   ) => void;
   isRunning: boolean;
   disabled?: boolean;
@@ -71,7 +71,7 @@ export interface CraftInputBarProps {
   onQueueMessage?: (
     text: string,
     files: BuildFile[],
-    selection: SlashSelection
+    selection: SlashSelection,
   ) => void;
   onRemoveQueuedMessage?: (index: number) => void;
   onInterrupt?: () => void;
@@ -123,7 +123,7 @@ const CraftInputBar = memo(
         compactAvailable = false,
         onCompact,
       },
-      ref
+      ref,
     ) => {
       const t = useTranslations("craft.inputBar");
       const entryMenuT = useTranslations("craft.entryMenu");
@@ -149,30 +149,30 @@ const CraftInputBar = memo(
           name: t("compact.name"),
           description: t("compact.description"),
         }),
-        [t]
+        [t],
       );
       const pickerSections = useMemo(
         () => ({
           ...toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
           commands: compactAvailable ? [compactCommand] : [],
         }),
-        [skillsData, appsData, craftMcpData, compactAvailable, compactCommand]
+        [skillsData, appsData, craftMcpData, compactAvailable, compactCommand],
       );
 
       const { data: libraryTree } = useSWR(
         SWR_KEYS.buildUserLibraryTree,
-        fetchLibraryTree
+        fetchLibraryTree,
       );
       const libraryFiles = useMemo(
         () =>
           (libraryTree ?? [])
             .filter((entry) => !entry.is_directory)
             .map((entry) => ({ id: entry.id, name: entry.name })),
-        [libraryTree]
+        [libraryTree],
       );
 
       const [activeEntries, setActiveEntries] = useState<PickerEntry[]>(
-        initialEntries ?? []
+        initialEntries ?? [],
       );
 
       useEffect(() => {
@@ -181,7 +181,7 @@ const CraftInputBar = memo(
         }
         const restored = pickerEntriesFromSelection(
           pickerSections,
-          persistedSelection
+          persistedSelection,
         );
         if (restored.length === 0) {
           return;
@@ -207,18 +207,19 @@ const CraftInputBar = memo(
           }
           setActiveEntries((prev) =>
             prev.some(
-              (candidate) => pickerEntryKey(candidate) === pickerEntryKey(entry)
+              (candidate) =>
+                pickerEntryKey(candidate) === pickerEntryKey(entry),
             )
               ? prev
-              : [...prev, entry]
+              : [...prev, entry],
           );
         },
-        [router, onCompact]
+        [router, onCompact],
       );
 
       const removeEntry = useCallback((entryKey: string) => {
         setActiveEntries((prev) =>
-          prev.filter((entry) => pickerEntryKey(entry) !== entryKey)
+          prev.filter((entry) => pickerEntryKey(entry) !== entryKey),
         );
       }, []);
 
@@ -255,7 +256,7 @@ const CraftInputBar = memo(
           const slug = text.trim().match(/^\/(\S+)$/)?.[1];
           if (!slug) return false;
           const command = pickerSections.commands.find(
-            (entry) => entry.slug === slug
+            (entry) => entry.slug === slug,
           );
           if (command) {
             addEntry(command);
@@ -263,7 +264,7 @@ const CraftInputBar = memo(
           }
           const entry =
             pickerSections.skills.find(
-              (candidate) => candidate.slug === slug
+              (candidate) => candidate.slug === slug,
             ) ?? null;
           if (entry) {
             addEntry(entry);
@@ -271,7 +272,7 @@ const CraftInputBar = memo(
           }
           return false;
         },
-        [pickerSections, addEntry]
+        [pickerSections, addEntry],
       );
 
       const handleSubmit = useCallback(
@@ -279,12 +280,12 @@ const CraftInputBar = memo(
           onSubmit(
             withEntryPrefixes(message, activeEntries),
             currentMessageFiles,
-            slashSelectionFromEntries(activeEntries)
+            slashSelectionFromEntries(activeEntries),
           );
           setActiveEntries([]);
           clearFiles({ suppressRefetch: true });
         },
-        [activeEntries, currentMessageFiles, onSubmit, clearFiles]
+        [activeEntries, currentMessageFiles, onSubmit, clearFiles],
       );
 
       const handleQueueMessage = useCallback(
@@ -293,12 +294,12 @@ const CraftInputBar = memo(
           onQueueMessage(
             withEntryPrefixes(message, activeEntries),
             currentMessageFiles,
-            slashSelectionFromEntries(activeEntries)
+            slashSelectionFromEntries(activeEntries),
           );
           setActiveEntries([]);
           clearFiles({ suppressRefetch: true });
         },
-        [activeEntries, currentMessageFiles, onQueueMessage, clearFiles]
+        [activeEntries, currentMessageFiles, onQueueMessage, clearFiles],
       );
 
       // Always rendered so the strip can animate its own collapse/expand.
@@ -323,7 +324,7 @@ const CraftInputBar = memo(
               activeEntries,
               libraryFiles,
             },
-            entryMenuT
+            entryMenuT,
           ),
         [
           pickerSections,
@@ -332,7 +333,7 @@ const CraftInputBar = memo(
           activeEntries,
           libraryFiles,
           entryMenuT,
-        ]
+        ],
       );
 
       const bottomLeftSlot = (
@@ -417,9 +418,11 @@ const CraftInputBar = memo(
                 entryInfo.entry.kind === "skill" ||
                 entryInfo.entry.kind === "command"
                   ? entryInfo.entry.description
-                  : entryInfo.entry.authenticated
-                    ? t("entryInfo.connected")
-                    : t("entryInfo.connectionRequired")
+                  : entryInfo.entry.kind === "file"
+                    ? (entryInfo.entry.path ?? "")
+                    : entryInfo.entry.authenticated
+                      ? t("entryInfo.connected")
+                      : t("entryInfo.connectionRequired")
               }
               tileElement={entryInfo.chipEl}
               onDismiss={dismissEntryInfo}
@@ -427,8 +430,8 @@ const CraftInputBar = memo(
           )}
         </>
       );
-    }
-  )
+    },
+  ),
 );
 
 CraftInputBar.displayName = "CraftInputBar";

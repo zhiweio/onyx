@@ -1,5 +1,5 @@
 import type { IconFunctionComponent } from "@opal/types";
-import { SvgFold, SvgSparkle } from "@opal/icons";
+import { SvgFile, SvgFold, SvgSparkle } from "@opal/icons";
 import { getAppTypeLogo } from "@/app/craft/v1/apps/registry";
 import { getActionIcon } from "@/lib/tools/utils";
 import type { PickerEntry } from "@/lib/skills/picker";
@@ -18,5 +18,7 @@ export function pickerEntryIcon(entry: PickerEntry): IconFunctionComponent {
       return SvgSparkle;
     case "command":
       return SvgFold;
+    case "file":
+      return SvgFile;
   }
 }

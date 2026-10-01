@@ -44,7 +44,7 @@ function EntryPickerPopover({
 
   const filtered = useMemo(
     () => filterPickerSections(sections, query),
-    [sections, query]
+    [sections, query],
   );
   const flatEntries = useMemo(() => flattenSections(filtered), [filtered]);
 
@@ -56,7 +56,7 @@ function EntryPickerPopover({
   // doesn't silently fall back to a different row than the one highlighted.
   useEffect(() => {
     setSelectedIndex((i) =>
-      flatEntries.length === 0 ? 0 : Math.min(i, flatEntries.length - 1)
+      flatEntries.length === 0 ? 0 : Math.min(i, flatEntries.length - 1),
     );
   }, [flatEntries.length]);
 
@@ -65,7 +65,7 @@ function EntryPickerPopover({
     const container = scrollContainerRef.current;
     if (!container) return;
     const row = container.querySelector<HTMLElement>(
-      `[data-row-index="${selectedIndex}"]`
+      `[data-row-index="${selectedIndex}"]`,
     );
     row?.scrollIntoView({ block: "nearest" });
   }, [open, selectedIndex]);
@@ -84,7 +84,7 @@ function EntryPickerPopover({
         e.stopPropagation();
         if (flatEntries.length === 0) return;
         setSelectedIndex(
-          (i) => (i - 1 + flatEntries.length) % flatEntries.length
+          (i) => (i - 1 + flatEntries.length) % flatEntries.length,
         );
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
@@ -118,13 +118,17 @@ function EntryPickerPopover({
     skills: t("entryPickerPopover.skillsGroup.label"),
     apps: t("entryPickerPopover.appsGroup.label"),
     mcpServers: t("entryPickerPopover.mcpServersGroup.label"),
+    files: t("entryPickerPopover.filesGroup.label"),
     connected: t("entryPickerPopover.connectedRow.description"),
-    connectionRequired: t("entryPickerPopover.connectionRequiredRow.description"),
+    connectionRequired: t(
+      "entryPickerPopover.connectionRequiredRow.description",
+    ),
     connectAction: t("entryPickerPopover.connectAction.label"),
     kindSkill: t("entryPickerPopover.tooltip.kindSkill"),
     kindCommand: t("entryPickerPopover.tooltip.kindCommand"),
     kindApp: t("entryPickerPopover.tooltip.kindApp"),
     kindMcp: t("entryPickerPopover.tooltip.kindMcp"),
+    kindFile: t("entryPickerPopover.tooltip.kindFile"),
   };
 
   return createPortal(
@@ -176,7 +180,7 @@ function EntryPickerPopover({
         </div>
       </Popover.Content>
     </Popover>,
-    document.body
+    document.body,
   );
 }
 
@@ -185,6 +189,7 @@ interface PickerLabels {
   skills: string;
   apps: string;
   mcpServers: string;
+  files: string;
   connected: string;
   connectionRequired: string;
   connectAction: string;
@@ -192,6 +197,7 @@ interface PickerLabels {
   kindCommand: string;
   kindApp: string;
   kindMcp: string;
+  kindFile: string;
 }
 
 interface BuildMenuChildrenArgs {
@@ -239,6 +245,7 @@ function buildMenuChildren({
       label: labels.mcpServers,
       entries: filtered.mcpServers,
     },
+    { key: "files", label: labels.files, entries: filtered.files ?? [] },
   ];
 
   const children: ReactNode[] = [];
@@ -248,7 +255,7 @@ function buildMenuChildren({
     if (group.entries.length === 0) continue;
     if (children.length > 0) children.push(null);
     children.push(
-      <SectionHeader key={`${group.key}-header`} label={group.label} />
+      <SectionHeader key={`${group.key}-header`} label={group.label} />,
     );
     for (const entry of group.entries) {
       children.push(
@@ -260,7 +267,7 @@ function buildMenuChildren({
           labels={labels}
           onHover={() => onHover(idx)}
           onPick={() => onSelect(entry)}
-        />
+        />,
       );
       idx += 1;
     }
@@ -287,10 +294,15 @@ function pickerRowTitle(entry: PickerEntry): string {
     case "app":
     case "mcp":
       return entry.name;
+    case "file":
+      return `@${entry.name}`;
   }
 }
 
-function pickerRowDescription(entry: PickerEntry, labels: PickerLabels): string {
+function pickerRowDescription(
+  entry: PickerEntry,
+  labels: PickerLabels,
+): string {
   switch (entry.kind) {
     case "skill":
     case "command":
@@ -302,9 +314,9 @@ function pickerRowDescription(entry: PickerEntry, labels: PickerLabels): string 
           ? labels.connected
           : labels.connectionRequired;
     case "app":
-      return entry.authenticated
-        ? labels.connected
-        : labels.connectionRequired;
+      return entry.authenticated ? labels.connected : labels.connectionRequired;
+    case "file":
+      return entry.path ?? "";
   }
 }
 
@@ -318,6 +330,8 @@ function pickerRowKind(entry: PickerEntry, labels: PickerLabels): string {
       return labels.kindApp;
     case "mcp":
       return labels.kindMcp;
+    case "file":
+      return labels.kindFile;
   }
 }
 
@@ -331,6 +345,8 @@ function pickerRowTestId(entry: PickerEntry): string {
       return `app-picker-row-${entry.externalAppId}`;
     case "mcp":
       return `mcp-picker-row-${entry.mcpServerId}`;
+    case "file":
+      return `file-picker-row-${entry.fileId}`;
   }
 }
 
@@ -403,9 +419,7 @@ function PickerRow({
         <div
           className={cn(
             "flex w-full min-w-0 items-center gap-2 rounded-08 px-2 py-1",
-            selected
-              ? "line-item-row-main-emphasized"
-              : "line-item-row-main"
+            selected ? "line-item-row-main-emphasized" : "line-item-row-main",
           )}
           data-row-index={rowIndex}
           data-testid={pickerRowTestId(entry)}

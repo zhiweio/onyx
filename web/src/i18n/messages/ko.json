@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "도구 검색…"
+      },
+      "expandButton": {
+        "label": "펼치기"
+      },
+      "foldButton": {
+        "label": "접기"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "앱",
           "kindCommand": "명령",
           "kindMcp": "MCP 서버",
-          "kindSkill": "스킬"
+          "kindSkill": "스킬",
+          "kindFile": "파일"
+        },
+        "filesGroup": {
+          "label": "파일"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "새 세션 시작"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "보내기",
+        "queueLabel": "메시지 대기열 추가"
+      },
+      "stopButton": {
+        "tooltip": "중지",
+        "ariaLabel": "생성 중지"
+      },
+      "queuedMessagesHint": {
+        "text": "대기 메시지 편집"
       }
     },
     "mcpApiKey": {

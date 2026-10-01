@@ -864,6 +864,17 @@
     "mcpLineItem": {
       "personal": "{name} · Personal",
       "personalOnlyYou": "{name} · Personal — only you can run"
+    },
+    "toolsCard": {
+      "search": {
+        "placeholder": "ツールを検索…"
+      },
+      "expandButton": {
+        "label": "展開"
+      },
+      "foldButton": {
+        "label": "折りたたむ"
+      }
     }
   },
   "admin": {
@@ -10072,7 +10083,11 @@
           "kindApp": "アプリ",
           "kindCommand": "コマンド",
           "kindMcp": "MCP サーバー",
-          "kindSkill": "スキル"
+          "kindSkill": "スキル",
+          "kindFile": "ファイル"
+        },
+        "filesGroup": {
+          "label": "ファイル"
         }
       },
       "inputChip": {
@@ -10130,6 +10145,19 @@
         "startSessionButton": {
           "label": "新しいセッションを開始"
         }
+      }
+    },
+    "promptEditor": {
+      "sendButton": {
+        "sendLabel": "送信",
+        "queueLabel": "メッセージを予約"
+      },
+      "stopButton": {
+        "tooltip": "停止",
+        "ariaLabel": "生成を停止"
+      },
+      "queuedMessagesHint": {
+        "text": "予約メッセージを編集"
       }
     },
     "mcpApiKey": {
