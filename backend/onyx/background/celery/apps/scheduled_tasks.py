@@ -138,6 +138,10 @@ celery_app.autodiscover_tasks(
             # Craft loop item executor — same long-running shape as the
             # scheduled-task executor above (the sweep stays on primary).
             "onyx.background.celery.tasks.loops",
+            # Guardian-review drain ticks ride the SCHEDULED_TASKS queue
+            # (see beat_schedule); without this module the worker rejects
+            # them as unregistered every 15s.
+            "onyx.background.celery.tasks.build",
         ]
     )
 )
