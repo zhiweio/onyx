@@ -18,6 +18,7 @@ from onyx.db.models import (
     Document,
     DocumentByConnectorCredentialPair,
     DocumentSet__ConnectorCredentialPair,
+    DocumentSet__User,
     DocumentSet__UserGroup,
     FederatedConnector__DocumentSet,
     User,
@@ -271,14 +272,35 @@ def get_document_sets_by_ids(
 
 
 def make_doc_set_private(
-    document_set_id: int,  # noqa: ARG001
+    document_set_id: int,
     user_ids: list[UUID] | None,
     group_ids: list[int] | None,
-    db_session: Session,  # noqa: ARG001
+    db_session: Session,
 ) -> None:
-    # May cause error if someone switches down to MIT from EE
-    if user_ids or group_ids:
-        raise NotImplementedError("Onyx MIT does not support private Document Sets")
+    """Replace the document set's user/group access rows with the desired state.
+
+    Private document sets are a CE feature in this build. ``None`` inputs leave
+    that dimension untouched; a list (possibly empty) replaces it wholesale.
+    """
+    if user_ids is not None:
+        db_session.query(DocumentSet__User).filter(
+            DocumentSet__User.document_set_id == document_set_id
+        ).delete(synchronize_session="fetch")
+        db_session.add_all(
+            DocumentSet__User(document_set_id=document_set_id, user_id=user_id)
+            for user_id in set(user_ids)
+        )
+
+    if group_ids is not None:
+        db_session.query(DocumentSet__UserGroup).filter(
+            DocumentSet__UserGroup.document_set_id == document_set_id
+        ).delete(synchronize_session="fetch")
+        db_session.add_all(
+            DocumentSet__UserGroup(
+                document_set_id=document_set_id, user_group_id=group_id
+            )
+            for group_id in set(group_ids)
+        )
 
 
 def check_if_cc_pairs_are_owned_by_groups(
