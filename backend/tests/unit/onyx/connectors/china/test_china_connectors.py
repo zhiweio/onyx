@@ -8,7 +8,7 @@ from onyx.configs.constants import DocumentSource
 from onyx.connectors.china_common import AppTokenManager, paginated
 from onyx.connectors.dingtalk.connector import DingTalkConnector
 from onyx.connectors.feishu.connector import FeishuConnector
-from onyx.connectors.models import Document
+from onyx.connectors.models import Document, SlimDocument
 from onyx.connectors.sap_odata.connector import SapODataConnector
 from onyx.connectors.wecom.connector import WeComConnector
 
@@ -287,3 +287,94 @@ def test_sap_odata_entity_set_config_forms() -> None:
         }
     )
     assert connector2._entity_sets == ["A", "B"]
+
+
+def _mock_feishu_wiki_tree(requests_mock: RequestsMocker) -> None:
+    requests_mock.post(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        json={"code": 0, "tenant_access_token": "tt", "expire": 7200},
+    )
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/wiki/v2/spaces",
+        json={
+            "code": 0,
+            "data": {"items": [{"space_id": "sp1", "name": "财务知识库"}]},
+        },
+    )
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/wiki/v2/spaces/sp1/nodes",
+        json={
+            "code": 0,
+            "data": {
+                "items": [
+                    {
+                        "obj_token": "doccn1",
+                        "obj_type": "docx",
+                        "title": "报销制度",
+                        "node_edit_time": 1750000000,
+                    },
+                    {"obj_token": "m1", "obj_type": "mindnote", "title": "x"},
+                ]
+            },
+        },
+    )
+
+
+def test_feishu_perm_sync_maps_members_to_access(
+    requests_mock: RequestsMocker,
+) -> None:
+    _mock_feishu_wiki_tree(requests_mock)
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/drive/v1/permissions/doccn1/members",
+        json={
+            "code": 0,
+            "data": {
+                "members": [
+                    {"member_type": "user", "member_id": "ou_zhang"},
+                    {"member_type": "group", "member_id": "g_finance"},
+                ]
+            },
+        },
+    )
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/contact/v3/users/batch_get",
+        json={
+            "code": 0,
+            "data": {"users": [{"open_id": "ou_zhang", "email": "zhang@corp.cn"}]},
+        },
+    )
+
+    connector = FeishuConnector()
+    connector.load_credentials(FEISHU_CREDS)
+    batches = list(connector.retrieve_all_slim_docs_perm_sync())
+    slims = [s for batch in batches for s in batch if isinstance(s, SlimDocument)]
+    assert [s.id for s in slims] == ["feishu-wiki-doccn1"]
+    access = slims[0].external_access
+    assert access is not None
+    assert access.external_user_emails == {"zhang@corp.cn"}
+    assert access.external_user_group_ids == {"feishu:g_finance"}
+    assert access.is_public is False
+
+
+def test_feishu_perm_sync_unreadable_members_fall_back_private(
+    requests_mock: RequestsMocker,
+) -> None:
+    _mock_feishu_wiki_tree(requests_mock)
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/drive/v1/permissions/doccn1/members",
+        json={"code": 1770043, "msg": "no permission"},
+    )
+
+    connector = FeishuConnector()
+    connector.load_credentials(FEISHU_CREDS)
+    slims = [
+        s
+        for batch in connector.retrieve_all_slim_docs_perm_sync()
+        for s in batch
+        if isinstance(s, SlimDocument)
+    ]
+    access = slims[0].external_access
+    assert access is not None
+    assert access.external_user_emails == set()
+    assert access.external_user_group_ids == set()
+    assert access.is_public is False

@@ -13,9 +13,10 @@ deterministic ``{account_id}@{email_domain}`` address, so one platform
 identity always maps to one Onyx user.
 
 Org sync: after a successful login the user's platform departments are
-mapped onto Onyx user groups (best-effort, never blocks login). WeCom is
-the working implementation; the others return no departments until their
-contact-API bindings land.
+mapped onto Onyx user groups (best-effort, never blocks login). WeCom,
+DingTalk, and Feishu read departments through their contact APIs; WPS365's
+org structure has no stable open contact API, so it stays without
+department sync (documented degradation in docs/mainland).
 """
 
 from __future__ import annotations
@@ -288,12 +289,80 @@ async def dingtalk_exchange(
     union_id = me.get("unionId")
     if not union_id:
         raise ChinaSsoError("DingTalk returned no unionId")
+    departments = await _dingtalk_departments(client, config, union_id)
     return ChinaIdentity(
         account_id=f"dingtalk:{config.client_id}:{union_id}",
         email=_email_for(union_id, me.get("email"), config.email_domain),
         display_name=str(me.get("nick") or union_id),
         access_token=str(token),
+        departments=departments,
     )
+
+
+async def _dingtalk_departments(
+    client: httpx.AsyncClient, config: DingTalkProviderConfig, union_id: str
+) -> tuple[str, ...]:
+    """Best-effort department names for the login user (never raises).
+
+    unionid → userid (corp token) → user detail with dept_id_list →
+    department names via a bounded listsub walk."""
+    try:
+        token_resp = await client.post(
+            "https://api.dingtalk.com/v1.0/oauth2/accessToken",
+            json={"appKey": config.client_id, "appSecret": config.client_secret},
+        )
+        corp_token = token_resp.json().get("accessToken")
+        if not corp_token:
+            return ()
+        union_resp = await client.post(
+            "https://oapi.dingtalk.com/topapi/user/getByUnionid",
+            params={"access_token": corp_token},
+            json={"unionid": union_id},
+        )
+        userid = (union_resp.json().get("result") or {}).get("userid")
+        if not userid:
+            return ()
+        user_resp = await client.post(
+            "https://oapi.dingtalk.com/topapi/v2/user/get",
+            params={"access_token": corp_token},
+            json={"userid": userid},
+        )
+        dept_ids = (user_resp.json().get("result") or {}).get("dept_id_list") or []
+        if not dept_ids:
+            return ()
+        name_by_id = await _dingtalk_department_names(client, corp_token)
+        return tuple(name for d in dept_ids if (name := name_by_id.get(d)) is not None)
+    except Exception:
+        logger.warning("DingTalk department sync failed", exc_info=True)
+        return ()
+
+
+async def _dingtalk_department_names(
+    client: httpx.AsyncClient, corp_token: str
+) -> dict[int, str]:
+    """dept_id → name for the org tree, via bounded listsub recursion."""
+    name_by_id: dict[int, str] = {}
+    frontier = [1]  # DingTalk root department id
+    for _depth in range(5):
+        next_frontier: list[int] = []
+        for dept_id in frontier:
+            resp = await client.post(
+                "https://oapi.dingtalk.com/topapi/v2/department/listsub",
+                params={"access_token": corp_token},
+                json={"dept_id": dept_id},
+            )
+            for item in resp.json().get("result") or []:
+                child_id = item.get("dept_id")
+                if child_id is None:
+                    continue
+                name_by_id[int(child_id)] = str(item.get("name") or child_id)
+                next_frontier.append(int(child_id))
+            if len(name_by_id) >= 500:  # bound the walk for large orgs
+                return name_by_id
+        if not next_frontier:
+            break
+        frontier = next_frontier
+    return name_by_id
 
 
 async def feishu_exchange(
@@ -322,12 +391,52 @@ async def feishu_exchange(
     union_id = info.get("union_id") or info.get("open_id")
     if not union_id:
         raise ChinaSsoError("Feishu returned no union_id/open_id")
+    departments = await _feishu_departments(client, config, union_id)
     return ChinaIdentity(
         account_id=f"feishu:{config.app_id}:{union_id}",
         email=_email_for(union_id, info.get("email"), config.email_domain),
         display_name=str(info.get("name") or union_id),
         access_token=str(token),
+        departments=departments,
     )
+
+
+async def _feishu_departments(
+    client: httpx.AsyncClient, config: FeishuProviderConfig, open_id: str
+) -> tuple[str, ...]:
+    """Best-effort department names via the app's tenant token
+    (requires the contact read scope); never raises."""
+    try:
+        token_resp = await client.post(
+            "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+            json={"app_id": config.app_id, "app_secret": config.app_secret},
+        )
+        data = token_resp.json()
+        tenant_token = data.get("tenant_access_token")
+        if not tenant_token:
+            return ()
+        headers = {"Authorization": f"Bearer {tenant_token}"}
+        users_resp = await client.get(
+            "https://open.feishu.cn/open-apis/contact/v3/users/batch_get",
+            params={"user_id_type": "open_id", "user_ids": open_id},
+            headers=headers,
+        )
+        users = (users_resp.json().get("data") or {}).get("users") or []
+        dept_ids = list((users[0] if users else {}).get("department_ids") or [])
+        names: list[str] = []
+        for dept_id in dept_ids[:10]:  # bound: humans sit in few departments
+            dept_resp = await client.get(
+                f"https://open.feishu.cn/open-apis/contact/v3/departments/{dept_id}",
+                params={"department_id_type": "open_department_id"},
+                headers=headers,
+            )
+            dept = (dept_resp.json().get("data") or {}).get("department") or {}
+            if dept.get("name"):
+                names.append(str(dept["name"]))
+        return tuple(names)
+    except Exception:
+        logger.warning("Feishu department sync failed", exc_info=True)
+        return ()
 
 
 async def wps365_exchange(

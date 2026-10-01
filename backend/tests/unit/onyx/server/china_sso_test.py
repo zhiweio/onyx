@@ -223,3 +223,105 @@ def test_china_types_in_provider_type_enum() -> None:
         SSOProviderType.WPS365,
     ):
         assert ptype in _CONFIG_MODEL_BY_TYPE
+
+
+@pytest.mark.anyio
+async def test_dingtalk_exchange_maps_departments() -> None:
+    def route(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "oauth2/userAccessToken" in url:
+            return httpx.Response(200, json={"accessToken": "ut"})
+        if "contact/users/me" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "unionId": "u-zhang",
+                    "nick": "张三",
+                    "email": "zhang@corp.example.cn",
+                },
+            )
+        if "oauth2/accessToken" in url:
+            return httpx.Response(200, json={"accessToken": "ct"})
+        if "user/getByUnionid" in url:
+            return httpx.Response(
+                200, json={"errcode": 0, "result": {"userid": "u123"}}
+            )
+        if "topapi/v2/user/get" in url:
+            return httpx.Response(
+                200, json={"errcode": 0, "result": {"dept_id_list": [10, 20]}}
+            )
+        if "v2/department/listsub" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "errcode": 0,
+                    "result": [
+                        {"dept_id": 10, "name": "研发部"},
+                        {"dept_id": 20, "name": "生物医药组"},
+                    ],
+                },
+            )
+        return httpx.Response(500)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(route)) as client:
+        identity = await dingtalk_exchange(client, DINGTALK, "auth-code")
+
+    assert identity.email == "zhang@corp.example.cn"
+    assert set(identity.departments) == {"研发部", "生物医药组"}
+
+
+@pytest.mark.anyio
+async def test_dingtalk_department_failure_degrades_to_empty() -> None:
+    def route(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "oauth2/userAccessToken" in url:
+            return httpx.Response(200, json={"accessToken": "ut"})
+        if "contact/users/me" in url:
+            return httpx.Response(200, json={"unionId": "u-li"})
+        # Contact APIs unavailable → login still succeeds, no departments.
+        return httpx.Response(500)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(route)) as client:
+        identity = await dingtalk_exchange(client, DINGTALK, "auth-code")
+
+    assert identity.departments == ()
+
+
+@pytest.mark.anyio
+async def test_feishu_exchange_maps_departments() -> None:
+    def route(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "passport/oauth/token" in url:
+            return httpx.Response(200, json={"access_token": "ut"})
+        if "passport/oauth/userinfo" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "union_id": "ou_zhang",
+                    "name": "张三",
+                    "email": "zhang@corp.example.cn",
+                },
+            )
+        if "tenant_access_token/internal" in url:
+            return httpx.Response(200, json={"code": 0, "tenant_access_token": "tt"})
+        if "users/batch_get" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "users": [{"open_id": "ou_zhang", "department_ids": ["od-1"]}]
+                    },
+                },
+            )
+        if "contact/v3/departments/od-1" in url:
+            return httpx.Response(
+                200, json={"code": 0, "data": {"department": {"name": "财税风控部"}}}
+            )
+        return httpx.Response(500)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(route)) as client:
+        identity = await feishu_exchange(client, FEISHU, "auth-code")
+
+    assert identity.email == "zhang@corp.example.cn"
+    assert identity.departments == ("财税风控部",)

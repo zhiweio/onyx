@@ -192,6 +192,15 @@ beat_task_templates: list[dict] = [
         },
     },
     {
+        "name": "check-for-doc-permissions-sync",
+        "task": OnyxCeleryTask.CHECK_FOR_DOC_PERMISSIONS_SYNC,
+        "schedule": timedelta(hours=1),  # Check hourly, but only sync once per day
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+        },
+    },
+    {
         "name": "monitor-background-processes",
         "task": OnyxCeleryTask.MONITOR_BACKGROUND_PROCESSES,
         "schedule": timedelta(minutes=5),

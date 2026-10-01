@@ -352,6 +352,7 @@ celery_app.autodiscover_tasks(
     app_base.filter_task_modules(
         [
             "onyx.background.celery.tasks.connector_deletion",
+            "onyx.background.celery.tasks.doc_permission_syncing",
             "onyx.background.celery.tasks.docprocessing",
             "onyx.background.celery.tasks.index_reclaim",
             "onyx.background.celery.tasks.loops",

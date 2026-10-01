@@ -2,8 +2,10 @@
 
 Indexes wiki pages (spaces → node tree) and docx documents from My Space
 root folders, using the app's tenant_access_token. Only content the app
-can read is indexed; per-document ACL sync rides the permission-sync
-framework in a later milestone (content-only until then).
+can read is indexed. Per-document ACLs sync through
+``retrieve_all_slim_docs_perm_sync``: wiki member lists → external user
+emails (contact lookup) + external group ids; docs whose members cannot be
+read fall back to a restrictive (empty, private) ACL.
 
 Credentials: ``feishu_app_id`` / ``feishu_app_secret``.
 """
@@ -15,6 +17,7 @@ from typing import Any
 
 import requests
 
+from onyx.access.models import ExternalAccess
 from onyx.configs.app_configs import INDEX_BATCH_SIZE
 from onyx.configs.constants import DocumentSource
 from onyx.connectors.china_common import (
@@ -27,14 +30,17 @@ from onyx.connectors.china_common import (
 )
 from onyx.connectors.interfaces import (
     GenerateDocumentsOutput,
+    GenerateSlimDocumentOutput,
     LoadConnector,
     PollConnector,
     SecondsSinceUnixEpoch,
+    SlimConnectorWithPermSync,
 )
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
     HierarchyNode,
+    SlimDocument,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -49,12 +55,15 @@ def _strip_html(text: str) -> str:
     return _TAG_RE.sub("", text)
 
 
-class FeishuConnector(LoadConnector, PollConnector):
+class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
     def __init__(self, batch_size: int = INDEX_BATCH_SIZE) -> None:
         self.batch_size = batch_size
         self._app_id: str | None = None
         self._app_secret: str | None = None
         self._token: AppTokenManager | None = None
+        # open_id → email, cached across the perm-sync walk (contact lookups
+        # batch heavily, so one workspace walk resolves each user once).
+        self._email_cache: dict[str, str | None] = {}
 
     def load_credentials(self, credentials: dict[str, Any]) -> dict[str, Any] | None:
         self._app_id = credentials["feishu_app_id"]
@@ -180,3 +189,113 @@ class FeishuConnector(LoadConnector, PollConnector):
         self, start: SecondsSinceUnixEpoch, end: SecondsSinceUnixEpoch
     ) -> GenerateDocumentsOutput:
         return self._load_documents(start=start, end=end)
+
+    # ── permission sync ───────────────────────────────────────────────────
+
+    def retrieve_all_slim_docs_perm_sync(
+        self,
+        start: SecondsSinceUnixEpoch | None = None,
+        end: SecondsSinceUnixEpoch | None = None,
+        callback: Any = None,
+    ) -> GenerateSlimDocumentOutput:
+        """Walk the same wiki tree the indexer walks and emit one
+        SlimDocument per docx page carrying its external access.
+
+        Time filters are ignored on purpose: permission sync wants full
+        coverage regardless of edit recency."""
+        del start, end, callback
+        session = self._session()
+        # list is invariant: the batch must match the declared
+        # `Iterator[list[SlimDocument | HierarchyNode]]` yield type.
+        batch: list[SlimDocument | HierarchyNode] = []
+
+        for space in self._wiki_spaces(session):
+            for node in self._wiki_nodes(session, str(space["space_id"])):
+                if node.get("obj_type") not in ("docx", "doc"):
+                    continue
+                token = str(node["obj_token"])
+                batch.append(
+                    SlimDocument(
+                        id=f"feishu-wiki-{token}",
+                        external_access=self._wiki_doc_external_access(session, token),
+                    )
+                )
+                if len(batch) >= self.batch_size:
+                    yield batch
+                    batch = []
+        if batch:
+            yield batch
+
+    def _wiki_doc_external_access(
+        self, session: requests.Session, token: str
+    ) -> ExternalAccess:
+        """Read one wiki doc's member list.
+
+        A page whose members cannot be listed (app scope missing, doc in a
+        restricted space) yields the empty/private fallback — restrictive
+        beats unknown."""
+        emails: set[str] = set()
+        group_ids: set[str] = set()
+        try:
+            for member in self._wiki_doc_members(session, token):
+                member_type = str(member.get("member_type") or "")
+                member_id = str(member.get("member_id") or "")
+                if not member_id:
+                    continue
+                if member_type == "user":
+                    email = self._user_email(session, member_id)
+                    if email:
+                        emails.add(email)
+                elif member_type in ("group", "chat", "department"):
+                    group_ids.add(f"feishu:{member_id}")
+        except Exception:
+            logger.warning(
+                "Feishu permission members unreadable for %s; using private ACL",
+                token,
+                exc_info=True,
+            )
+            return ExternalAccess.empty()
+        return ExternalAccess(
+            external_user_emails=emails,
+            external_user_group_ids=group_ids,
+            is_public=False,
+        )
+
+    def _wiki_doc_members(
+        self, session: requests.Session, token: str
+    ) -> list[dict[str, Any]]:
+        def page(page_token: str | None) -> tuple[list[dict[str, Any]], str | None]:
+            params: dict[str, Any] = {"type": "wiki", "page_size": 50}
+            if page_token:
+                params["page_token"] = page_token
+            data = get_json(
+                session,
+                f"{FEISHU_BASE}/drive/v1/permissions/{token}/members",
+                params=params,
+            )
+            if data.get("code") not in (0, None):
+                raise ChinaConnectorError(f"Feishu members error: {data.get('msg')}")
+            payload = data.get("data") or {}
+            return list(payload.get("members") or []), payload.get("page_token")
+
+        return list(paginated(page))
+
+    def _user_email(self, session: requests.Session, open_id: str) -> str | None:
+        """Resolve one open_id to a work email via the batch contact API."""
+        if open_id in self._email_cache:
+            return self._email_cache[open_id]
+        email: str | None = None
+        try:
+            data = get_json(
+                session,
+                f"{FEISHU_BASE}/contact/v3/users/batch_get",
+                params={"user_id_type": "open_id", "user_ids": open_id},
+            )
+            if data.get("code") in (0, None):
+                users = (data.get("data") or {}).get("users") or []
+                if users and users[0].get("email"):
+                    email = str(users[0]["email"])
+        except Exception:
+            logger.debug("Feishu email lookup failed for %s", open_id)
+        self._email_cache[open_id] = email
+        return email
