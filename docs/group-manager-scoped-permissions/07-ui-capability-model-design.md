@@ -304,8 +304,15 @@ Two guards need **no extraction** — they are already booleans (`agent_mediated
 `assert_within_scope` (`:55-89`) → `within_scope` + thin raiser. The current guard fuses decide + raise:
 
 ```python
-def assert_within_scope(user, db_session, *, permission, current_group_ids,
-                        requested_group_ids, is_non_public) -> None:
+def assert_within_scope(
+    user,
+    db_session,
+    *,
+    permission,
+    current_group_ids,
+    requested_group_ids,
+    is_non_public,
+) -> None:
     authority = has_permission(user, permission)
     if authority is PermissionAuthority.GLOBAL:
         return
@@ -314,15 +321,24 @@ def assert_within_scope(user, db_session, *, permission, current_group_ids,
         final = set(current_group_ids) | set(requested_group_ids)
         if managed and final and final.issubset(managed) and is_non_public:
             return
-    raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Group managers can only ...")
+    raise OnyxError(
+        OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Group managers can only ..."
+    )
 ```
 
 Refactored — the decision is extracted; the raise is unchanged:
 
 ```python
-def within_scope(user, db_session, *, permission, current_group_ids,
-                 requested_group_ids, is_non_public,
-                 managed_group_ids: set[int] | None = None) -> bool:
+def within_scope(
+    user,
+    db_session,
+    *,
+    permission,
+    current_group_ids,
+    requested_group_ids,
+    is_non_public,
+    managed_group_ids: set[int] | None = None,
+) -> bool:
     """Pure GATE-2 decision. No raise. Called by assert_within_scope (write),
     the per-row read wrappers (projection), and the contract test.
     `managed_group_ids` lets a list caller pass a preloaded managed set so
@@ -331,21 +347,38 @@ def within_scope(user, db_session, *, permission, current_group_ids,
     if authority is PermissionAuthority.GLOBAL:
         return True
     if authority is PermissionAuthority.SCOPED:
-        managed = (managed_group_ids if managed_group_ids is not None
-                   else get_scoped_groups(user, db_session, permission))
+        managed = (
+            managed_group_ids
+            if managed_group_ids is not None
+            else get_scoped_groups(user, db_session, permission)
+        )
         final = set(current_group_ids) | set(requested_group_ids)
         return bool(managed and final and final.issubset(managed) and is_non_public)
     return False
 
-def assert_within_scope(user, db_session, *, permission, current_group_ids,
-                        requested_group_ids, is_non_public) -> None:
-    if not within_scope(user, db_session, permission=permission,
-                        current_group_ids=current_group_ids,
-                        requested_group_ids=requested_group_ids,
-                        is_non_public=is_non_public):
-        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
-                        "Group managers can only act on private resources "
-                        "within the groups they manage.")
+
+def assert_within_scope(
+    user,
+    db_session,
+    *,
+    permission,
+    current_group_ids,
+    requested_group_ids,
+    is_non_public,
+) -> None:
+    if not within_scope(
+        user,
+        db_session,
+        permission=permission,
+        current_group_ids=current_group_ids,
+        requested_group_ids=requested_group_ids,
+        is_non_public=is_non_public,
+    ):
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+            "Group managers can only act on private resources "
+            "within the groups they manage.",
+        )
 ```
 
 Same message, same trigger — the PR1–5 suite is unaffected.
@@ -353,18 +386,25 @@ Same message, same trigger — the PR1–5 suite is unaffected.
 `assert_manages_group` (`:92-104`) → `manages_group` + thin raiser:
 
 ```python
-def manages_group(user, db_session, *, group_id,
-                  managed_group_ids: set[int] | None = None) -> bool:
+def manages_group(
+    user, db_session, *, group_id, managed_group_ids: set[int] | None = None
+) -> bool:
     if has_global_permission(user, Permission.MANAGE_USER_GROUPS):
         return True
-    managed = (managed_group_ids if managed_group_ids is not None
-               else get_scoped_groups(user, db_session, Permission.MANAGE_USER_GROUPS))
+    managed = (
+        managed_group_ids
+        if managed_group_ids is not None
+        else get_scoped_groups(user, db_session, Permission.MANAGE_USER_GROUPS)
+    )
     return group_id in managed
+
 
 def assert_manages_group(user, db_session, *, group_id) -> None:
     if not manages_group(user, db_session, group_id=group_id):
-        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
-                        "Group managers can only act within the groups they manage.")
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+            "Group managers can only act within the groups they manage.",
+        )
 ```
 
 #### The write-shaped → read-mode adaptation (the crux of D1)
@@ -387,37 +427,64 @@ Because both bottom out on `within_scope`, `can_edit_persona(u,R,db)` and "`asse
 
 ```python
 # db/persona.py
-def persona_update_within_scope(user, db_session, *, persona_id,
-                                requested_group_ids, requested_is_public,
-                                managed_group_ids: set[int] | None = None) -> bool:
+def persona_update_within_scope(
+    user,
+    db_session,
+    *,
+    persona_id,
+    requested_group_ids,
+    requested_is_public,
+    managed_group_ids: set[int] | None = None,
+) -> bool:
     if has_permission(user, Permission.MANAGE_AGENTS) is not PermissionAuthority.SCOPED:
-        return True                              # not governed by the managed-scope gate
+        return True  # not governed by the managed-scope gate
     current_group_ids, current_is_public = _read_persona_scope(persona_id, db_session)
     if not current_group_ids and not requested_group_ids:
-        return True                              # personal (no-group) agent
-    return within_scope(user, db_session, permission=Permission.MANAGE_AGENTS,
-                        current_group_ids=current_group_ids,
-                        requested_group_ids=requested_group_ids,
-                        is_non_public=not current_is_public and not requested_is_public,
-                        managed_group_ids=managed_group_ids)
+        return True  # personal (no-group) agent
+    return within_scope(
+        user,
+        db_session,
+        permission=Permission.MANAGE_AGENTS,
+        current_group_ids=current_group_ids,
+        requested_group_ids=requested_group_ids,
+        is_non_public=not current_is_public and not requested_is_public,
+        managed_group_ids=managed_group_ids,
+    )
 
-def _assert_persona_update_within_managed_scope(persona_id, request, user, db_session) -> None:
+
+def _assert_persona_update_within_managed_scope(
+    persona_id, request, user, db_session
+) -> None:
     # keep the exact `requested_* := request.* if not None else current` resolution
     # the guard already does (db/persona.py:363-368); abbreviated here.
-    if not persona_update_within_scope(user, db_session, persona_id=persona_id,
-                                       requested_group_ids=_resolved_groups(request, ...),
-                                       requested_is_public=_resolved_public(request, ...)):
-        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Group managers can only ...")
+    if not persona_update_within_scope(
+        user,
+        db_session,
+        persona_id=persona_id,
+        requested_group_ids=_resolved_groups(request, ...),
+        requested_is_public=_resolved_public(request, ...),
+    ):
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Group managers can only ..."
+        )
 ```
 
 Read wrapper (projection + contract test call this):
 
 ```python
-def can_edit_persona(user, persona: Persona, db_session, *,
-                     editable_ids: set[int], managed_group_ids: set[int] | None = None) -> bool:
-    return persona.id in editable_ids and persona_update_within_scope(   # AND, per §3.3
-        user, db_session, persona_id=persona.id,
-        requested_group_ids=[g.id for g in persona.groups],   # requested := current
+def can_edit_persona(
+    user,
+    persona: Persona,
+    db_session,
+    *,
+    editable_ids: set[int],
+    managed_group_ids: set[int] | None = None,
+) -> bool:
+    return persona.id in editable_ids and persona_update_within_scope(  # AND, per §3.3
+        user,
+        db_session,
+        persona_id=persona.id,
+        requested_group_ids=[g.id for g in persona.groups],  # requested := current
         requested_is_public=persona.is_public,
         managed_group_ids=managed_group_ids,
     )
@@ -431,7 +498,7 @@ def can_edit_persona(user, persona: Persona, db_session, *,
 
 ```python
 def can_view_persona_stats(user, persona, db_session) -> bool:
-    return user_can_view_assistant_stats(db_session, user, persona.id)   # O-class
+    return user_can_view_assistant_stats(db_session, user, persona.id)  # O-class
 ```
 
 > **⚠️ SUPERSEDED by D8 (2026-08-03).** Custom-tool and MCP edit are now **owner-or-admin only** — the
@@ -444,20 +511,27 @@ def can_view_persona_stats(user, persona, db_session) -> bool:
 
 ```python
 def _action_within_managed_scope(tool_id, db_session, user) -> bool:
-    group_ids, has_public, has_ungrouped = get_action_agent_scope(tool_id, db_session)   # db/tools.py:141
-    return agent_mediated_scope_allows(user, db_session, group_ids=group_ids,
-                                       has_public_agent=has_public,
-                                       has_ungrouped_private_agent=has_ungrouped)
+    group_ids, has_public, has_ungrouped = get_action_agent_scope(
+        tool_id, db_session
+    )  # db/tools.py:141
+    return agent_mediated_scope_allows(
+        user,
+        db_session,
+        group_ids=group_ids,
+        has_public_agent=has_public,
+        has_ungrouped_private_agent=has_ungrouped,
+    )
+
 
 def can_edit_custom_tool(user, tool: Tool, db_session) -> bool:
     if tool.in_code_tool_id is not None:
-        return False                                                   # built-in
+        return False  # built-in
     if Permission.FULL_ADMIN_PANEL_ACCESS in get_effective_permissions(user):
-        return True                                                    # admin
+        return True  # admin
     if tool.user_id is not None and tool.user_id == user.id:
-        return True                                                    # creator bypass (:100)
+        return True  # creator bypass (:100)
     if has_permission(user, Permission.MANAGE_ACTIONS) is PermissionAuthority.SCOPED:
-        return _action_within_managed_scope(tool.id, db_session, user) # scoped
+        return _action_within_managed_scope(tool.id, db_session, user)  # scoped
     return False
 ```
 
@@ -468,20 +542,29 @@ def can_edit_custom_tool(user, tool: Tool, db_session) -> bool:
 ```python
 def can_edit_mcp_server(user, server: DbMCPServer, db_session) -> bool:
     if Permission.FULL_ADMIN_PANEL_ACCESS in get_effective_permissions(user):
-        return True                                    # admin
+        return True  # admin
     if server.owner == user.email:
-        return True                                    # owner-by-EMAIL (:1386)
+        return True  # owner-by-EMAIL (:1386)
     if has_permission(user, Permission.MANAGE_ACTIONS) is PermissionAuthority.SCOPED:
-        group_ids, has_public, has_ungrouped = get_mcp_server_agent_scope(server.id, db_session)  # db/tools.py:153
-        return agent_mediated_scope_allows(user, db_session, group_ids=group_ids,
-                                           has_public_agent=has_public,
-                                           has_ungrouped_private_agent=has_ungrouped)
+        group_ids, has_public, has_ungrouped = get_mcp_server_agent_scope(
+            server.id, db_session
+        )  # db/tools.py:153
+        return agent_mediated_scope_allows(
+            user,
+            db_session,
+            group_ids=group_ids,
+            has_public_agent=has_public,
+            has_ungrouped_private_agent=has_ungrouped,
+        )
     return False
+
 
 def _ensure_mcp_server_editable(server, user, db_session) -> None:
     if not can_edit_mcp_server(user, server, db_session):
-        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
-                        "Only the server owner or a manager of its groups can modify this MCP server.")
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+            "Only the server owner or a manager of its groups can modify this MCP server.",
+        )
 ```
 
 MCP `delete`/`authenticate`/`manage_status` stay **O** via `_ensure_mcp_server_owner_or_admin` (`:1358`) — extract a sibling `can_admin_mcp_server` the same way if those tags are stamped.
@@ -489,10 +572,12 @@ MCP `delete`/`authenticate`/`manage_status` stay **O** via `_ensure_mcp_server_o
 **User group manage — distinct single-group shape** (`user_group`):
 
 ```python
-def can_manage_group(user, group: UserGroup, db_session, *,
-                     managed_group_ids: set[int] | None = None) -> bool:
-    return manages_group(user, db_session, group_id=group.id,
-                         managed_group_ids=managed_group_ids)   # Tier-0
+def can_manage_group(
+    user, group: UserGroup, db_session, *, managed_group_ids: set[int] | None = None
+) -> bool:
+    return manages_group(
+        user, db_session, group_id=group.id, managed_group_ids=managed_group_ids
+    )  # Tier-0
 ```
 
 `assert_manages_group` (`:92`, called at `ee/.../user_group/api.py:191,333`, `ee/.../db/user_group.py:545`) already wraps `manages_group` after the extraction above. The `manager_ids` on the group snapshot is **not** the gate — the gate is managed-set membership OR global `MANAGE_USER_GROUPS`.
@@ -524,32 +609,51 @@ New module `backend/onyx/auth/permission_projection.py`. The projection **never 
 # auth/permission_projection.py
 @dataclass
 class ScopeCtx:
-    is_admin: bool                    # has_global_permission(user, <resource perm>)
-    editable_ids: set[int]            # 1 scoped query; resources that HAVE _add_user_filters(get_editable=True)
-    managed_group_ids: set[int]       # 1 query: fetch_managed_group_ids(user, db)  ── D3: passed into helpers
-                                      #          so within_scope/manages_group do NOT re-query per row
+    is_admin: bool  # has_global_permission(user, <resource perm>)
+    editable_ids: set[
+        int
+    ]  # 1 scoped query; resources that HAVE _add_user_filters(get_editable=True)
+    managed_group_ids: set[
+        int
+    ]  # 1 query: fetch_managed_group_ids(user, db)  ── D3: passed into helpers
+    #          so within_scope/manages_group do NOT re-query per row
+
 
 def build_persona_ctx(user, db_session) -> ScopeCtx:
     return ScopeCtx(
         is_admin=has_global_permission(user, Permission.MANAGE_AGENTS),
-        editable_ids=fetch_editable_persona_ids(user, db_session),   # wraps db/persona.py:82
-        managed_group_ids=fetch_managed_group_ids(user, db_session), # db/scoped_permissions.py:34
+        editable_ids=fetch_editable_persona_ids(
+            user, db_session
+        ),  # wraps db/persona.py:82
+        managed_group_ids=fetch_managed_group_ids(
+            user, db_session
+        ),  # db/scoped_permissions.py:34
     )
+
 
 def persona_permissions(user, persona, ctx: ScopeCtx) -> dict[str, bool]:
     return {
-        "edit":       can_edit_persona(user, persona, db=None,        # pure: reads ctx, no DB
-                                       editable_ids=ctx.editable_ids,
-                                       managed_group_ids=ctx.managed_group_ids),
-        "share":      can_share_persona(user, persona, db=None,
-                                        editable_ids=ctx.editable_ids,
-                                        managed_group_ids=ctx.managed_group_ids),
-        "view_stats": ctx.is_admin or persona.user_id == user.id,    # O-class (analytics.py:339 shape)
-        "delete":     ctx.is_admin or _owner_or_owner_group(persona, ctx),  # O|A, §3.3
-        "feature":    ctx.is_admin,   # A
-        "list":       ctx.is_admin,   # A
-        "publish":    ctx.is_admin or _owner_or_owner_group(persona, ctx),  # O|A
-        "reorder":    ctx.is_admin,   # A (FULL_ADMIN)
+        "edit": can_edit_persona(
+            user,
+            persona,
+            db=None,  # pure: reads ctx, no DB
+            editable_ids=ctx.editable_ids,
+            managed_group_ids=ctx.managed_group_ids,
+        ),
+        "share": can_share_persona(
+            user,
+            persona,
+            db=None,
+            editable_ids=ctx.editable_ids,
+            managed_group_ids=ctx.managed_group_ids,
+        ),
+        "view_stats": ctx.is_admin
+        or persona.user_id == user.id,  # O-class (analytics.py:339 shape)
+        "delete": ctx.is_admin or _owner_or_owner_group(persona, ctx),  # O|A, §3.3
+        "feature": ctx.is_admin,  # A
+        "list": ctx.is_admin,  # A
+        "publish": ctx.is_admin or _owner_or_owner_group(persona, ctx),  # O|A
+        "reorder": ctx.is_admin,  # A (FULL_ADMIN)
     }
 ```
 
@@ -580,9 +684,9 @@ v1 leans **(b)** for tool/MCP lists (edit is a per-card affordance the detail fe
 **List path (resources that DO have an editable filter):**
 
 ```python
-ctx = build_persona_ctx(user, db_session)          # editable set + managed set resolved ONCE
+ctx = build_persona_ctx(user, db_session)  # editable set + managed set resolved ONCE
 for dto in rows:
-    dto.permissions = persona_permissions(user, dto, ctx)   # pure, no DB → no N+1
+    dto.permissions = persona_permissions(user, dto, ctx)  # pure, no DB → no N+1
 ```
 
 The DTO field is **required** (D4/§3.3): `permissions: dict[str, bool]`, never optional — a stamp site that forgets to fill it is a type error, not a silently-empty map. Individual *action keys* remain fail-closed (a key absent from the dict ⇒ `false` on the client), which is what preserves forward-compat.
@@ -657,7 +761,7 @@ New field on `UserInfo` (`backend/onyx/server/manage/models.py:131`), derived, n
 ```python
 # UserInfo.from_model — no DB
 caps = set(effective_permissions or [])
-if user.is_group_manager:                        # cached column
+if user.is_group_manager:  # cached column
     caps |= SCOPED_MANAGER_PERMISSIONS_EXPANDED  # auth/permissions.py:263 (implied-expanded)
 admin_capabilities = sorted(caps)
 ```
@@ -930,9 +1034,12 @@ Each DTO type carries a `__resource: "PersonaSnapshot"` phantom tag, so `<Can re
 def test_every_scoped_mutation_maps_to_a_stamped_action():
     # routes carrying require_permission(..., allow_scope=True) OR assert_within_scope in the body
     for route in scoped_mutating_routes(app):
-        resource, action = ROUTE_TO_ACTION[route.endpoint]      # explicit registry, must be total
-        assert action in STAMPED_ACTIONS[resource], \
+        resource, action = ROUTE_TO_ACTION[
+            route.endpoint
+        ]  # explicit registry, must be total
+        assert action in STAMPED_ACTIONS[resource], (
             f"{route.path}: '{action}' not stamped for {resource}"
+        )
 ```
 
 `STAMPED_ACTIONS[resource]` is the exact key set the projection stamps (§3.3) and mirrors the hand-written frontend unions. Add a scoped route without registering its action → red CI, not a phantom `403`. This pairs with the `project == enforce` contract test (§6.1): that one proves each *stamped* key is correct; this one proves no *gate* is unstamped.
@@ -1102,25 +1209,36 @@ ACTORS = ["admin", "manager_in_scope", "manager_out_of_scope", "owner", "viewer"
 # (resource, action) -> the SAME can_* helper the projection stamps AND assert_* calls (§3.1a).
 # One entry per per-resource-gated action (M / O / M|O / O|A) in §3.3 + the D2 table.
 CAN = {
-  ("persona","edit"):       can_edit_persona,        # M   editable ∧ within_scope
-  ("persona","share"):      can_share_persona,       # M   editable ∧ group_share_within_scope
-  ("persona","view_stats"): can_view_persona_stats,  # O   owner ∨ FULL_ADMIN (analytics.py:339)
-  ("persona","delete"):     can_delete_persona,      # O|A owner-bypass filter (is_for_edit=True)
-  ("persona","publish"):    can_publish_persona,     # O|A owner ∨ global MANAGE_AGENTS
-  ("tool","edit"):          can_edit_custom_tool,    # M|O admin ∨ creator(user_id) ∨ scoped
-  ("mcp_server","edit"):    can_edit_mcp_server,     # M|O admin ∨ owner(email) ∨ scoped
-  ("user_group","manage"):  can_manage_group,        # M   per-group (managed set ∨ global)
-  ("document_set","edit"):  can_edit_document_set,    # M   editable-id membership
-  ("cc_pair","edit"):       can_edit_cc_pair,         # M   is_editable_for_current_user
-  # …share/manage_access variants stamped by their own can_* helper
+    ("persona", "edit"): can_edit_persona,  # M   editable ∧ within_scope
+    ("persona", "share"): can_share_persona,  # M   editable ∧ group_share_within_scope
+    (
+        "persona",
+        "view_stats",
+    ): can_view_persona_stats,  # O   owner ∨ FULL_ADMIN (analytics.py:339)
+    (
+        "persona",
+        "delete",
+    ): can_delete_persona,  # O|A owner-bypass filter (is_for_edit=True)
+    ("persona", "publish"): can_publish_persona,  # O|A owner ∨ global MANAGE_AGENTS
+    ("tool", "edit"): can_edit_custom_tool,  # M|O admin ∨ creator(user_id) ∨ scoped
+    ("mcp_server", "edit"): can_edit_mcp_server,  # M|O admin ∨ owner(email) ∨ scoped
+    ("user_group", "manage"): can_manage_group,  # M   per-group (managed set ∨ global)
+    ("document_set", "edit"): can_edit_document_set,  # M   editable-id membership
+    ("cc_pair", "edit"): can_edit_cc_pair,  # M   is_editable_for_current_user
+    # …share/manage_access variants stamped by their own can_* helper
 }
 
+
 @pytest.mark.parametrize("actor", ACTORS)
-@pytest.mark.parametrize(("resource_kind","action"), list(CAN))
+@pytest.mark.parametrize(("resource_kind", "action"), list(CAN))
 def test_helper_matches_guard(db_session, actor, resource_kind, action):
     u, r = make_actor(actor), make_resource(resource_kind, actor)
-    helper_says = CAN[(resource_kind, action)](u, r, db_session=db_session)  # projection's boolean
-    raised = guard_raised(resource_kind, action, u, r, db_session)           # drives the real assert_* guard
+    helper_says = CAN[(resource_kind, action)](
+        u, r, db_session=db_session
+    )  # projection's boolean
+    raised = guard_raised(
+        resource_kind, action, u, r, db_session
+    )  # drives the real assert_* guard
     assert helper_says is (not raised), f"DRIFT {resource_kind}.{action} for {actor}"
 ```
 
@@ -1151,10 +1269,12 @@ def test_every_mutating_scoped_route_is_stamped():
     # routes whose dep is require_permission(..., allow_scope=True) OR whose body
     # calls assert_within_scope / assert_manages_group (introspected from the router)
     for route in discover_scoped_mutations():
-        key = ROUTE_ACTION.get(route.endpoint)                       # (resource, action) — hand-maintained
+        key = ROUTE_ACTION.get(route.endpoint)  # (resource, action) — hand-maintained
         assert key, f"{route.path}: no (resource,action) mapping"
         resource, action = key
-        assert action in HAND_ACTIONS[resource], f"{action} missing from {resource} action union (§4.5)"
+        assert action in HAND_ACTIONS[resource], (
+            f"{action} missing from {resource} action union (§4.5)"
+        )
         assert key in CAN or key in GLOBAL_KEYS, f"{key} not stamped by the projection"
 ```
 

@@ -60,11 +60,15 @@ is_group_manager: Mapped[bool] = mapped_column(
 def upgrade() -> None:
     op.add_column(
         "user__user_group",
-        sa.Column("is_manager", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "is_manager", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
     )
     op.add_column(
         "user",
-        sa.Column("is_group_manager", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "is_group_manager", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
     )
     # Backfill is_manager — NOT a rename. is_curator alone misses GLOBAL_CURATOR (no per-group rows).
     op.execute("""
@@ -85,6 +89,7 @@ def upgrade() -> None:
             WHERE ug.user_id = u.id AND ug.is_manager = true
         )
     """)
+
 
 def downgrade() -> None:
     op.drop_column("user", "is_group_manager")
@@ -115,15 +120,17 @@ DB-querying scope logic (scope resolution, write gates, read clause) lives in
 ### 2.1 The manager ability bundle (in `permissions.py`)
 
 ```python
-SCOPED_MANAGER_PERMISSIONS: frozenset[Permission] = frozenset({
-    Permission.MANAGE_CONNECTORS,
-    Permission.MANAGE_DOCUMENT_SETS,
-    Permission.MANAGE_AGENTS,
-    Permission.ADD_AGENTS,
-    Permission.MANAGE_USER_GROUPS,   # membership + resource sharing of the managed group only
-    Permission.MANAGE_SKILLS,        # NEW dedicated token (D5) — also grantable globally in the groups UI
-    Permission.MANAGE_ACTIONS,       # tools/MCP — GATE 1 reach + create only (D4); manage is owner-or-admin (D8)
-})
+SCOPED_MANAGER_PERMISSIONS: frozenset[Permission] = frozenset(
+    {
+        Permission.MANAGE_CONNECTORS,
+        Permission.MANAGE_DOCUMENT_SETS,
+        Permission.MANAGE_AGENTS,
+        Permission.ADD_AGENTS,
+        Permission.MANAGE_USER_GROUPS,  # membership + resource sharing of the managed group only
+        Permission.MANAGE_SKILLS,  # NEW dedicated token (D5) — also grantable globally in the groups UI
+        Permission.MANAGE_ACTIONS,  # tools/MCP — GATE 1 reach + create only (D4); manage is owner-or-admin (D8)
+    }
+)
 ```
 Code-defined, never written to `permission_grant`, never merged into `effective_permissions` (which stays
 global-only). Lives in `permissions.py` (not `scoped_permissions.py`) so `has_permission` can read it to
@@ -144,15 +151,16 @@ org-wide powers. So `has_permission` returns **which** authority the user holds:
 
 ```python
 class PermissionAuthority(Enum):
-    GLOBAL   # holds the token outright / admin → unrestricted
-    SCOPED   # group manager → only within managed groups
-    NONE     # not authorized
+    GLOBAL  # holds the token outright / admin → unrestricted
+    SCOPED  # group manager → only within managed groups
+    NONE  # not authorized
+
 
 def has_permission(user: User, permission: Permission) -> PermissionAuthority:
-    if permission in get_effective_permissions(user):        # global token / admin override
+    if permission in get_effective_permissions(user):  # global token / admin override
         return PermissionAuthority.GLOBAL
     if permission in SCOPED_MANAGER_PERMISSIONS and user.is_group_manager:
-        return PermissionAuthority.SCOPED                    # cached flag → zero query
+        return PermissionAuthority.SCOPED  # cached flag → zero query
     return PermissionAuthority.NONE
 
 
@@ -180,8 +188,10 @@ def scoped_group_ids_subquery(user: User) -> Select:
         User__UserGroup.is_manager.is_(True),
     )
 
-def get_scoped_groups(user: User, db_session: Session,
-                      permission: Permission | None = None) -> set[int]:
+
+def get_scoped_groups(
+    user: User, db_session: Session, permission: Permission | None = None
+) -> set[int]:
     """Imperative form for the write-side gate. Empty if permission given but not scopable."""
     if permission is not None and permission not in SCOPED_MANAGER_PERMISSIONS:
         return set()
@@ -195,8 +205,11 @@ threshold** — it is NOT a second resolution path, and `has_permission_or_scope
 
 ```python
 # permissions.py — require_permission(required, *, allow_anonymous=False, allow_scope=False)
-permitted_by_user = (has_permission(user, required) is GLOBAL)        if not allow_scope \
-               else (has_permission(user, required) is not NONE)
+permitted_by_user = (
+    (has_permission(user, required) is GLOBAL)
+    if not allow_scope
+    else (has_permission(user, required) is not NONE)
+)
 # pass:  permitted_by_user AND permitted_by_token     (token cap unchanged)
 ```
 
@@ -217,15 +230,17 @@ Two gates, both built on the one classifier:
 
 ```python
 def assert_within_scope(
-    user: User, db_session: Session, *,
-    permission: Permission,                 # the manage:* token this write needs
-    current_group_ids: Collection[int],     # re-read from DB, in this txn
-    requested_group_ids: Collection[int],   # client-supplied target groups
-    is_non_public: bool,                     # access_type!=PUBLIC (cc_pair) / not is_public (doc set)
+    user: User,
+    db_session: Session,
+    *,
+    permission: Permission,  # the manage:* token this write needs
+    current_group_ids: Collection[int],  # re-read from DB, in this txn
+    requested_group_ids: Collection[int],  # client-supplied target groups
+    is_non_public: bool,  # access_type!=PUBLIC (cc_pair) / not is_public (doc set)
 ) -> None:
     authority = has_permission(user, permission)
     if authority is PermissionAuthority.GLOBAL:
-        return                                               # base-system rules govern
+        return  # base-system rules govern
     if authority is PermissionAuthority.SCOPED:
         managed = get_scoped_groups(user, db_session, permission)
         final = set(current_group_ids) | set(requested_group_ids)
@@ -234,11 +249,16 @@ def assert_within_scope(
     raise OnyxError(
         OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
         "Group managers can only act on private resources within the groups they manage.",
-    )                                                        # NONE, or out-of-scope
+    )  # NONE, or out-of-scope
 
-def assert_global(user: User, *, permission: Permission) -> None:   # delete / admin-only on a bundle token
+
+def assert_global(
+    user: User, *, permission: Permission
+) -> None:  # delete / admin-only on a bundle token
     if has_permission(user, permission) is not PermissionAuthority.GLOBAL:
-        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Admin only.")   # SCOPED manager rejected
+        raise OnyxError(
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS, "Admin only."
+        )  # SCOPED manager rejected
 ```
 
 `assert_within_scope` invariants: `final ⊆ managed` (closes capture-by-reassign), `final` non-empty (stays in
@@ -258,6 +278,8 @@ them.
 def make_group_manager(db_session: Session, user_id: UUID, group_id: int) -> None:
     """Flip is_manager=true on the (user, group) row. Row must exist (a manager is a member).
     Idempotent. Used by the migration backfill helper and the assignment UI."""
+
+
 def revoke_group_manager(db_session: Session, user_id: UUID, group_id: int) -> None:
     """Flip is_manager=false. Idempotent."""
 ```

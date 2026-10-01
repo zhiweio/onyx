@@ -30,6 +30,9 @@ services:
       - CRAFT_DEEP_JOB_PROJECT_MAX_FILES=${CRAFT_DEEP_JOB_PROJECT_MAX_FILES:-500}
       - OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS=${OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS:-600}
       - ENABLE_OPENCODE_DEBUGGING=${ENABLE_OPENCODE_DEBUGGING:-false}
+      # Room for a cold sandbox's first POST /session bootstrap (~80s on a
+      # 1-CPU sandbox); stays under PROVISION_DEADLINE_SECONDS (180).
+      - OPENCODE_SERVE_REQUEST_TIMEOUT=${OPENCODE_SERVE_REQUEST_TIMEOUT:-120}
       # Pinned: Container-side bind target. Overrides host-path values that
       # the operator's .env may inject via env_file.
       - SANDBOX_DOCKER_SOCKET=/var/run/docker.sock
@@ -74,6 +77,8 @@ services:
       - CRAFT_DEEP_JOB_PROJECT_MAX_FILES=${CRAFT_DEEP_JOB_PROJECT_MAX_FILES:-500}
       - OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS=${OPENCODE_LONG_TOOL_INACTIVITY_TIMEOUT_SECONDS:-600}
       - ENABLE_OPENCODE_DEBUGGING=${ENABLE_OPENCODE_DEBUGGING:-false}
+      # See api_server above re: cold-bootstrap room.
+      - OPENCODE_SERVE_REQUEST_TIMEOUT=${OPENCODE_SERVE_REQUEST_TIMEOUT:-120}
       - SANDBOX_DOCKER_SOCKET=/var/run/docker.sock
       - OPENCODE_SERVE_PORT=4096
       - SANDBOX_PROXY_HOST=${SANDBOX_PROXY_HOST-sandbox-proxy}

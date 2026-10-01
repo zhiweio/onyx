@@ -1,6 +1,7 @@
 package install
 
 import (
+	"regexp"
 	"context"
 	"errors"
 	"os"
@@ -13,6 +14,10 @@ import (
 )
 
 // installFixture runs a real (fake-backed) fresh install and returns the root.
+// hostPortLine matches the recorded HOST_PORT entry in .env, whatever port
+// the fixture install actually picked.
+var hostPortLine = regexp.MustCompile(`(?m)^HOST_PORT=\d+\n`)
+
 func installFixture(t *testing.T, runner *fakeRunner, tag string) string {
 	t.Helper()
 	isolateEnv(t)
@@ -194,13 +199,15 @@ func TestUpgradeRecoversUnrecordedPortFromContainers(t *testing.T) {
 	runner := &fakeRunner{handler: healthyDockerHandler}
 	root := installFixture(t, runner, "v4.0.0")
 
-	// A legacy .env: no HOST_PORT line at all.
+	// A legacy .env: no HOST_PORT line at all. The fixture install scans for
+	// a free port, so the recorded value depends on the host — strip whatever
+	// HOST_PORT line it wrote.
 	envPath := filepath.Join(root, "deployment", ".env")
 	env, err := os.ReadFile(envPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	legacy := strings.ReplaceAll(string(env), "HOST_PORT=3000\n", "")
+	legacy := hostPortLine.ReplaceAllString(string(env), "")
 	if err := os.WriteFile(envPath, []byte(legacy), 0600); err != nil {
 		t.Fatal(err)
 	}
