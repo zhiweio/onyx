@@ -34,6 +34,7 @@ import {
   PROGRAMMATIC_UPDATE_TAG,
 } from "@/sections/input/lexical/editorUpdateTags";
 import type {
+  ComposerMention,
   LexicalPasteEvent,
   LexicalPromptInputHandle,
   LexicalSubmitResult,
@@ -59,6 +60,8 @@ interface LexicalChatInputProps {
   submitDisabled?: boolean;
   onSubmit: (text: string) => LexicalSubmitResult;
   onChange?: (text: string) => void;
+  /** Fires whenever the set of chips in the editor changes. */
+  onMentionsChange?: (mentions: ComposerMention[]) => void;
   onFocus?: () => void;
   inputTestId?: string;
   editorApiRef?: RefObject<LexicalPromptInputHandle | null>;
@@ -143,12 +146,49 @@ function insertEditorMention(
 function collectEditorMentions(
   editor: LexicalEditor,
 ): Parameters<typeof $createPromptMentionNode>[0][] {
-  return editor.getEditorState().read(() =>
+  return collectEditorMentionsFromState(editor.getEditorState());
+}
+
+function collectEditorMentionsFromState(
+  editorState: EditorState,
+): Parameters<typeof $createPromptMentionNode>[0][] {
+  return editorState.read(() =>
     $getRoot()
       .getAllTextNodes()
       .filter($isPromptMentionNode)
       .map((node) => node.getMention()),
   );
+}
+
+function removeEditorMention(editor: LexicalEditor, id: string): boolean {
+  let removed = false;
+  editor.getEditorState().read(() => {
+    const node = $getRoot()
+      .getAllTextNodes()
+      .find(
+        (candidate) =>
+          $isPromptMentionNode(candidate) && candidate.getMention().id === id,
+      );
+    if (!node) {
+      return;
+    }
+    editor.update(
+      () => {
+        const latest = node.getLatest();
+        const nextSibling = latest.getNextSibling();
+        latest.remove();
+        if (
+          $isTextNode(nextSibling) &&
+          /^\s$/.test(nextSibling.getTextContent())
+        ) {
+          nextSibling.remove();
+        }
+      },
+      { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG },
+    );
+    removed = true;
+  });
+  return removed;
 }
 
 function KeyboardPlugin({
@@ -257,13 +297,15 @@ function KeyboardPlugin({
 
 function TextContentPlugin({
   onChange,
+  onMentionsChange,
 }: {
   onChange?: (text: string) => void;
+  onMentionsChange?: (mentions: ComposerMention[]) => void;
 }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    if (!onChange) {
+    if (!onChange && !onMentionsChange) {
       return;
     }
     return editor.registerUpdateListener(
@@ -273,13 +315,27 @@ function TextContentPlugin({
         }
         const nextText = getEditorMarkdown(editorState);
         const previousText = getEditorMarkdown(prevEditorState);
-        if (nextText === previousText) {
-          return;
+        if (nextText !== previousText) {
+          onChange?.(nextText);
         }
-        onChange(nextText);
+        if (onMentionsChange) {
+          const previousMentions =
+            collectEditorMentionsFromState(prevEditorState);
+          const nextMentions = collectEditorMentionsFromState(editorState);
+          const changed =
+            previousMentions.length !== nextMentions.length ||
+            previousMentions.some(
+              (mention, index) =>
+                nextMentions[index]?.id !== mention.id ||
+                nextMentions[index]?.markdown !== mention.markdown,
+            );
+          if (changed) {
+            onMentionsChange(nextMentions);
+          }
+        }
       },
     );
-  }, [editor, onChange]);
+  }, [editor, onChange, onMentionsChange]);
 
   return null;
 }
@@ -551,6 +607,7 @@ function EditorApiPlugin({
       appendText: (text: string) => appendEditorText(editor, text),
       insertMention: (mention) => insertEditorMention(editor, mention),
       getMentions: () => collectEditorMentions(editor),
+      removeMention: (id) => removeEditorMention(editor, id),
       getEditorStateJson: () =>
         JSON.stringify(editor.getEditorState().toJSON()),
       setEditorStateJson: (editorStateJson: string) => {
@@ -585,6 +642,7 @@ function LexicalChatInput({
   submitDisabled = false,
   onSubmit,
   onChange,
+  onMentionsChange,
   onFocus,
   inputTestId,
   editorApiRef,
@@ -649,7 +707,10 @@ function LexicalChatInput({
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />
-          <TextContentPlugin onChange={onChange} />
+          <TextContentPlugin
+            onChange={onChange}
+            onMentionsChange={onMentionsChange}
+          />
           <KeyboardPlugin
             onSubmit={handleSubmit}
             disabled={disabled}

@@ -36,6 +36,7 @@ import {
   readComposerDraft,
 } from "@/sections/input/lexical/draftStore";
 import type {
+  ComposerMention,
   LexicalPasteEvent,
   LexicalPromptInputHandle,
   TriggerMenuConfig,
@@ -66,6 +67,8 @@ interface ChatPromptEditorProps {
   /** Esc while not composing: cancel (inline edit mode). */
   onCancel?: () => void;
   onChange?: (text: string) => void;
+  /** Fires whenever the set of chips in the editor changes. */
+  onMentionsChange?: (mentions: ComposerMention[]) => void;
   onFocus?: () => void;
 
   /** Prompt history: entries to browse plus the storage key that records
@@ -115,6 +118,7 @@ function ChatPromptEditor({
   onRemoveQueuedMessage,
   onCancel,
   onChange,
+  onMentionsChange,
   onFocus,
   promptHistory,
   historyStorageKey = null,
@@ -459,6 +463,7 @@ function ChatPromptEditor({
           submitDisabled={submitBlocked || (isRunning && !canQueue)}
           onSubmit={handleEditorSubmit}
           onChange={handleChange}
+          onMentionsChange={onMentionsChange}
           onFocus={onFocus}
           inputTestId={inputTestId}
           editorApiRef={resolvedEditorRef}

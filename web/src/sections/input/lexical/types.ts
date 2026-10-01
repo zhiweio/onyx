@@ -50,6 +50,8 @@ export interface LexicalPromptInputHandle {
   insertMention(mention: ComposerMention): void;
   /** All chips currently in the editor, in document order. */
   getMentions(): ComposerMention[];
+  /** Remove the chip with the given id. Returns true when one was removed. */
+  removeMention(id: string): boolean;
   getEditorStateJson(): string;
   /** Restores a persisted editor state; falls back to plain text when the
    * JSON cannot be parsed. Returns false when neither could be applied. */

@@ -40,9 +40,7 @@ import {
 import { isScheduledRunContextInFlight } from "@/app/craft/v1/tasks/utils";
 import { toast } from "@opal/layouts";
 import Dropzone from "react-dropzone";
-import CraftInputBar, {
-  CraftInputBarHandle,
-} from "@/app/craft/components/CraftInputBar";
+import CraftComposer from "@/app/craft/components/composer/CraftComposer";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import { useLLMProviders } from "@/lib/languageModels/hooks";
 import {
@@ -108,7 +106,7 @@ function toMessageAttachments(files: BuildFile[]): BuildMessageAttachment[] {
             mimeType: file.file_type,
           },
         ]
-      : []
+      : [],
   );
 }
 
@@ -142,16 +140,16 @@ export default function BuildChatPanel({
   const shouldStreamScheduledRun = scheduledRunContext?.status === "RUNNING";
   const jobSessionId = sessionId ?? existingSessionId ?? null;
   const { data: craftJob, mutate: mutateCraftJob } = useCraftJob(
-    session?.origin === "SCHEDULED" ? null : jobSessionId
+    session?.origin === "SCHEDULED" ? null : jobSessionId,
   );
   const displayTranscript = useMemo(
     () =>
       settleTranscriptForJobStatus(
         session?.messages ?? [],
         session?.streamItems ?? [],
-        craftJob?.status
+        craftJob?.status,
       ),
-    [session?.messages, session?.streamItems, craftJob?.status]
+    [session?.messages, session?.streamItems, craftJob?.status],
   );
   const jobInFlight = isCraftJobInFlight(craftJob);
   const pendingQuestion = useMemo(() => {
@@ -192,7 +190,7 @@ export default function BuildChatPanel({
       ? ["craft-question-ask", jobSessionId]
       : null,
     ([, id]: [string, string]) => fetchCraftQuestionAsk(id),
-    { refreshInterval: 2000, revalidateOnFocus: false }
+    { refreshInterval: 2000, revalidateOnFocus: false },
   );
   const askQuestion = pendingQuestion ?? parkedQuestion ?? null;
 
@@ -228,9 +226,9 @@ export default function BuildChatPanel({
       resolveSessionLlmSelection(
         session?.agentProvider,
         session?.agentModel,
-        llmProviders
+        llmProviders,
       ),
-    [session?.agentProvider, session?.agentModel, llmProviders]
+    [session?.agentProvider, session?.agentModel, llmProviders],
   );
   const [modelBySession, setModelBySession] = useState<
     Record<string, BuildLlmSelection>
@@ -252,7 +250,7 @@ export default function BuildChatPanel({
       llmProviders,
       defaultCraft,
       defaultText,
-    ]
+    ],
   );
 
   const contextUsage = useMemo(() => {
@@ -261,10 +259,10 @@ export default function BuildChatPanel({
     let limit: number | null = null;
     if (selectedModel) {
       const provider = llmProviders?.find(
-        (candidate) => candidate.id === selectedModel.providerId
+        (candidate) => candidate.id === selectedModel.providerId,
       );
       const config = provider?.model_configurations.find(
-        (m) => m.name === selectedModel.modelName
+        (m) => m.name === selectedModel.modelName,
       );
       limit = config?.max_input_tokens ?? null;
     }
@@ -280,22 +278,22 @@ export default function BuildChatPanel({
   const reduceMotion = useReducedMotion();
 
   const updateSessionData = useBuildSessionStore(
-    (state) => state.updateSessionData
+    (state) => state.updateSessionData,
   );
   const syncJobSpecialists = useBuildSessionStore(
-    (state) => state.syncJobSpecialists
+    (state) => state.syncJobSpecialists,
   );
 
   // Access actions directly like chat does - these don't cause re-renders
   const consumePreProvisionedSession = useBuildSessionStore(
-    (state) => state.consumePreProvisionedSession
+    (state) => state.consumePreProvisionedSession,
   );
   const createSession = useBuildSessionStore((state) => state.createSession);
   const appendMessageToCurrent = useBuildSessionStore(
-    (state) => state.appendMessageToCurrent
+    (state) => state.appendMessageToCurrent,
   );
   const nameBuildSession = useBuildSessionStore(
-    (state) => state.nameBuildSession
+    (state) => state.nameBuildSession,
   );
   const {
     streamMessage,
@@ -308,7 +306,7 @@ export default function BuildChatPanel({
   const queuedMessages = useQueuedMessages();
   const enqueueMessage = useBuildSessionStore((state) => state.enqueueMessage);
   const removeQueuedMessage = useBuildSessionStore(
-    (state) => state.removeQueuedMessage
+    (state) => state.removeQueuedMessage,
   );
   const attachedTurnRef = useRef<{
     turnId: string;
@@ -319,7 +317,7 @@ export default function BuildChatPanel({
     timer: ReturnType<typeof setTimeout>;
   } | null>(null);
   const nameSessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
   const isPreProvisioning = useIsPreProvisioning();
   const isPreProvisioningFailed = useIsPreProvisioningFailed();
@@ -333,11 +331,11 @@ export default function BuildChatPanel({
   const selectedModelConfig = useMemo(() => {
     if (!selectedModel || !llmProviders) return null;
     const provider = llmProviders.find(
-      (candidate) => candidate.id === selectedModel.providerId
+      (candidate) => candidate.id === selectedModel.providerId,
     );
     return (
       provider?.model_configurations.find(
-        (model) => model.name === selectedModel.modelName
+        (model) => model.name === selectedModel.modelName,
       ) ?? null
     );
   }, [selectedModel, llmProviders]);
@@ -352,7 +350,7 @@ export default function BuildChatPanel({
         toast.error((err as Error).message);
       }
     },
-    [thoughtSessionId, updateSessionData]
+    [thoughtSessionId, updateSessionData],
   );
 
   const thoughtLevel = selectedModelConfig
@@ -394,7 +392,7 @@ export default function BuildChatPanel({
   }, [existingSessionId, preProvisionedSessionId, setActiveSession]);
 
   const maybeAutoOpenPanelForPreview = useBuildSessionStore(
-    (s) => s.maybeAutoOpenPanelForPreview
+    (s) => s.maybeAutoOpenPanelForPreview,
   );
 
   // Auto-open the panel the first time webappUrl becomes non-null this session.
@@ -477,7 +475,7 @@ export default function BuildChatPanel({
         if (attachedTurnRef.current === attachment) {
           attachedTurnRef.current = null;
         }
-      }
+      },
     );
 
     return () => scheduleCleanup(attachment);
@@ -533,9 +531,6 @@ export default function BuildChatPanel({
     activeTurnId,
     updateSessionData,
   ]);
-
-  // Ref to access InputBar methods
-  const inputBarRef = useRef<CraftInputBarHandle>(null);
 
   // Scroll detection for auto-scroll "magnet"
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -627,7 +622,7 @@ export default function BuildChatPanel({
       sessionId,
       craftJob.specialists,
       craftJob.status,
-      craftJob.id
+      craftJob.id,
     );
   }, [sessionId, session?.isLoaded, craftJob, syncJobSpecialists]);
 
@@ -636,7 +631,7 @@ export default function BuildChatPanel({
       message: string,
       attachments: BuildMessageAttachment[],
       modelOverride?: BuildLlmSelection | null,
-      selection?: SlashSelection
+      selection?: SlashSelection,
     ) => {
       if (scheduledRunInFlight) {
         toast.error(t("toast.scheduledRunWait"));
@@ -710,7 +705,7 @@ export default function BuildChatPanel({
           chosen,
           attachments,
           slash.skillIds,
-          slash.mcpServerIds
+          slash.mcpServerIds,
         );
       } else {
         // New session flow - ALWAYS use pre-provisioned session
@@ -744,7 +739,7 @@ export default function BuildChatPanel({
             const checkUploads = () => {
               // Check current state via ref (updates with each render)
               const stillUploading = currentFilesRef.current.some(
-                (f) => f.status === UploadFileStatus.UPLOADING
+                (f) => f.status === UploadFileStatus.UPLOADING,
               );
               if (!stillUploading || waited >= maxWaitMs) {
                 resolve();
@@ -776,7 +771,7 @@ export default function BuildChatPanel({
 
         // Navigate to URL - session controller will set currentSessionId
         router.push(
-          `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${newSessionId}`
+          `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${newSessionId}`,
         );
 
         // Schedule naming after delay (message will be saved by then)
@@ -833,7 +828,7 @@ export default function BuildChatPanel({
       mutateCraftJob,
       updateSessionData,
       session?.slashSelection,
-    ]
+    ],
   );
 
   const compactAvailable = Boolean(
@@ -842,7 +837,7 @@ export default function BuildChatPanel({
     !isRunning &&
     !scheduledRunInFlight &&
     !isViewingSubagent &&
-    (selectedModel || session.agentModel)
+    (selectedModel || session.agentModel),
   );
 
   const handleCompact = useCallback(async () => {
@@ -862,15 +857,15 @@ export default function BuildChatPanel({
       message: string,
       files: BuildFile[],
       selection: SlashSelection,
-      modelOverride?: BuildLlmSelection | null
+      modelOverride?: BuildLlmSelection | null,
     ) =>
       sendMessage(
         message,
         toMessageAttachments(files),
         modelOverride,
-        selection
+        selection,
       ),
-    [sendMessage]
+    [sendMessage],
   );
 
   const composerStopKind = craftComposerStopKind({
@@ -918,7 +913,7 @@ export default function BuildChatPanel({
         void mutateCraftJob();
       }
     },
-    [craftJob, mutateCraftJob]
+    [craftJob, mutateCraftJob],
   );
 
   const handleQuestionAnswer = useCallback(
@@ -928,7 +923,7 @@ export default function BuildChatPanel({
         if (sessionId) {
           updateSessionData(sessionId, {
             streamItems: (session?.streamItems ?? []).filter(
-              (item) => item.type !== "question_ask"
+              (item) => item.type !== "question_ask",
             ),
           });
         }
@@ -936,7 +931,7 @@ export default function BuildChatPanel({
         void mutateCraftJob();
       }
     },
-    [mutateCraftJob, session?.streamItems, sessionId, updateSessionData]
+    [mutateCraftJob, session?.streamItems, sessionId, updateSessionData],
   );
 
   const handleQueueMessage = useCallback(
@@ -954,14 +949,14 @@ export default function BuildChatPanel({
         updateSessionData(sessionId, { slashSelection: selection });
       }
     },
-    [sessionId, session?.slashSelection, enqueueMessage, updateSessionData]
+    [sessionId, session?.slashSelection, enqueueMessage, updateSessionData],
   );
 
   const handleRemoveQueuedMessage = useCallback(
     (index: number) => {
       if (sessionId) removeQueuedMessage(sessionId, index);
     },
-    [sessionId, removeQueuedMessage]
+    [sessionId, removeQueuedMessage],
   );
 
   // Auto-send the next queued message FIFO after a run cleanly succeeds (each
@@ -993,7 +988,7 @@ export default function BuildChatPanel({
           next.text,
           next.attachments,
           undefined,
-          next.selection
+          next.selection,
         );
       }
     }
@@ -1023,7 +1018,7 @@ export default function BuildChatPanel({
             {...getRootProps()}
             className={cn(
               "flex flex-col h-full transition-all duration-300 ease-in-out outline-hidden",
-              outputPanelOpen ? "w-1/2 ps-4" : "w-full"
+              outputPanelOpen ? "w-1/2 ps-4" : "w-full",
             )}
           >
             {/* Chat header */}
@@ -1074,7 +1069,7 @@ export default function BuildChatPanel({
                     "border rounded-full p-2.5!",
                     outputPanelOpen
                       ? "bg-background-tint-02!"
-                      : "bg-background-tint-00!"
+                      : "bg-background-tint-00!",
                   )}
                   iconClassName="stroke-text-04! h-5! w-5!"
                 />
@@ -1160,7 +1155,7 @@ export default function BuildChatPanel({
                             "bg-background-neutral-inverted-00 border border-border-01",
                             "shadow-box-01 hover:shadow-box-02",
                             "transition-all duration-200",
-                            "hover:bg-background-tint-inverted-01"
+                            "hover:bg-background-tint-inverted-01",
                           )}
                           aria-label={t("scrollToBottom.label")}
                         >
@@ -1209,11 +1204,13 @@ export default function BuildChatPanel({
                   )}
                   {/* The composer stays in view for subagents (layout consistency)
                   but is disabled — replying to subagents is not supported. */}
-                  <CraftInputBar
-                    key={sessionId ?? existingSessionId ?? "session"}
-                    ref={inputBarRef}
+                  <CraftComposer
+                    sessionId={sessionId ?? existingSessionId ?? null}
                     persistedSelection={session?.slashSelection}
                     onSubmit={handleSubmit}
+                    onQueueMessage={handleQueueMessage}
+                    onRemoveQueuedMessage={handleRemoveQueuedMessage}
+                    queuedMessages={queuedMessages}
                     isRunning={displayIsRunning || jobInFlight}
                     isInterrupting={isInterrupting}
                     onInterrupt={
@@ -1233,11 +1230,21 @@ export default function BuildChatPanel({
                             ? t("input.scheduledRunPlaceholder")
                             : t("input.continuePlaceholder")
                     }
-                    queuedMessages={queuedMessages}
-                    onQueueMessage={handleQueueMessage}
-                    onRemoveQueuedMessage={handleRemoveQueuedMessage}
                     contextUsage={contextUsage}
                     thoughtLevel={thoughtLevel}
+                    modelSelection={
+                      session?.isLoaded && !isViewingSubagent
+                        ? selectedModel
+                        : null
+                    }
+                    onModelChange={(model) => {
+                      if (sessionId) {
+                        setModelBySession((m) => ({
+                          ...m,
+                          [sessionId]: model,
+                        }));
+                      }
+                    }}
                   />
                 </div>
               </div>
