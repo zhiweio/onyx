@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "添加文件或技能"
+      },
+      "input": {
+        "placeholder": "让 Craft 帮你构建…"
+      },
+      "dropFiles": {
+        "hint": "拖放文件以添加附件"
       }
     },
     "intro": {

@@ -4,11 +4,11 @@ import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@opal/utils";
 import { Switch } from "@opal/components";
+import { InputHorizontal } from "@opal/layouts";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
 import type { IconProps } from "@opal/types";
 import {
-  SvgAlertTriangle,
   SvgArrowLeftDot,
   SvgArrowRightDot,
   SvgCornerRightUpDot,
@@ -151,7 +151,34 @@ const ToolItem: React.FC<ToolItemProps> = ({
     return segments;
   }, [openApiMetadata?.path, methodText]);
 
-  return (
+  return isMcpVariant ? (
+    // MCP rows share the chat-preferences inline-tool design: one bordered
+    // row, name + description stacked, controls on the right.
+    <div
+      className={cn(
+        "flex items-start justify-between w-full p-2 rounded-08 border border-border-01 gap-2",
+        unavailableStyles
+      )}
+    >
+      <div className={cn("flex-1 min-w-0", textOpacity)}>
+        <InputHorizontal
+          icon={Icon}
+          title={
+            isAvailable ? name : `${name} · ${t("toolItem.unavailable.label")}`
+          }
+          description={description}
+          withLabel
+        >
+          <Switch
+            checked={isEnabled}
+            onCheckedChange={onToggle}
+            disabled={!isAvailable || !canToggle}
+            aria-label={`tool-toggle-${name}`}
+          />
+        </InputHorizontal>
+      </div>
+    </div>
+  ) : (
     <div
       className={cn(
         "flex items-start justify-between w-full p-2 rounded-08 border border-border-01 gap-2",
@@ -208,57 +235,25 @@ const ToolItem: React.FC<ToolItemProps> = ({
       </div>
 
       {/* Right Section */}
-      {isMcpVariant ? (
-        <div className="flex gap-2 items-start justify-end shrink-0">
-          {/* Unavailable Badge */}
-          {!isAvailable && (
-            <div className="flex items-center min-h-[20px] px-0 py-0.5">
-              <div className="flex gap-0.5 items-center">
-                <div className="flex items-center px-0.5">
-                  <Text as="p" text03 secondaryBody className="text-end">
-                    {t("toolItem.unavailable.label")}
-                  </Text>
-                </div>
-                <div className="flex items-center justify-center p-0.5 w-4 h-4">
-                  <SvgAlertTriangle className="w-3 h-3 stroke-status-warning-05" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Switch */}
-          <div className="flex items-center justify-center gap-1 h-5 px-0.5 py-0.5">
-            <Switch
-              checked={isEnabled}
-              onCheckedChange={onToggle}
-              disabled={!isAvailable || !canToggle}
-              aria-label={`tool-toggle-${name}`}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-end justify-center">
-          {methodLabel && (
-            <div
-              className={cn("rounded-04 border border-transparent", methodBg)}
+      <div className="flex flex-col items-end justify-center">
+        {methodLabel && (
+          <div className={cn("rounded-04 border border-transparent", methodBg)}>
+            <Text
+              as="p"
+              figureSmallLabel
+              className={cn("uppercase tracking-wide p-0.5 ", methodText)}
             >
-              <Text
-                as="p"
-                figureSmallLabel
-                className={cn("uppercase tracking-wide p-0.5 ", methodText)}
-              >
-                {methodLabel}
-              </Text>
-            </div>
-          )}
+              {methodLabel}
+            </Text>
+          </div>
+        )}
 
-          {openApiMetadata?.path && (
-            <Truncated secondaryMono text03 className="text-end truncate">
-              {highlightedPathContent}
-            </Truncated>
-          )}
-        </div>
-      )}
+        {openApiMetadata?.path && (
+          <Truncated secondaryMono text03 className="text-end truncate">
+            {highlightedPathContent}
+          </Truncated>
+        )}
+      </div>
     </div>
   );
 };

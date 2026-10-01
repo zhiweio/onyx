@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "إضافة ملفات أو مهارات"
+      },
+      "input": {
+        "placeholder": "اطلب من Craft البناء…"
+      },
+      "dropFiles": {
+        "hint": "أفلت الملفات لإرفاقها"
       }
     },
     "intro": {

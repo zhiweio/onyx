@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "ファイルやスキルを追加"
+      },
+      "input": {
+        "placeholder": "Craft に作成を依頼…"
+      },
+      "dropFiles": {
+        "hint": "ファイルをドロップして添付"
       }
     },
     "intro": {

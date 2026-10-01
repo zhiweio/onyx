@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "Ajouter des fichiers ou des compétences"
+      },
+      "input": {
+        "placeholder": "Demandez à Craft de créer…"
+      },
+      "dropFiles": {
+        "hint": "Déposez des fichiers à joindre"
       }
     },
     "intro": {

@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "Dateien oder Skills hinzufügen"
+      },
+      "input": {
+        "placeholder": "Craft zum Erstellen auffordern …"
+      },
+      "dropFiles": {
+        "hint": "Dateien zum Anhängen ablegen"
       }
     },
     "intro": {

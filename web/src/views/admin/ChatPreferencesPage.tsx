@@ -26,8 +26,6 @@ import { useAdminLLMProviders } from "@/lib/languageModels/hooks";
 import {
   SvgAddLines,
   SvgActions,
-  SvgExpand,
-  SvgFold,
   SvgExternalLink,
   SvgOrganization,
   SvgRefreshCw,
@@ -35,13 +33,7 @@ import {
   SvgChevronDown,
 } from "@opal/icons";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
-import {
-  Card as CardLayout,
-  Content,
-  ContentAction,
-  InputHorizontal,
-  InputVertical,
-} from "@opal/layouts";
+import { Content, InputHorizontal, InputVertical } from "@opal/layouts";
 import { useSettings } from "@/lib/settings/hooks";
 import useCCPairs from "@/hooks/useCCPairs";
 import { getSourceMetadata } from "@/lib/sources";
@@ -71,7 +63,7 @@ import { useMcpServers } from "@/lib/tools/hooks";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { getActionIcon } from "@/lib/tools/utils";
 import { Disabled, Hoverable } from "@opal/core";
-import useFilter from "@/hooks/useFilter";
+import McpToolsCard, { McpToolSwitch } from "@/sections/actions/McpToolsCard";
 import {
   mcpServerMatches,
   useSearchablePagination,
@@ -103,119 +95,58 @@ interface MCPServerCardTool {
   description: string;
 }
 
-interface MCPServerCardProps {
-  server: MCPServer;
-  tools: MCPServerCardTool[];
-  isToolEnabled: (toolDbId: number) => boolean;
-  onToggleTool: (toolDbId: number, enabled: boolean) => void;
-  onToggleTools: (toolDbIds: number[], enabled: boolean) => void;
-}
-
 function MCPServerCard({
   server,
   tools,
   isToolEnabled,
   onToggleTool,
   onToggleTools,
-}: MCPServerCardProps) {
+}: {
+  server: MCPServer;
+  tools: MCPServerCardTool[];
+  isToolEnabled: (toolDbId: number) => boolean;
+  onToggleTool: (toolDbId: number, enabled: boolean) => void;
+  onToggleTools: (toolDbIds: number[], enabled: boolean) => void;
+}) {
   const t = useTranslations("admin.chatPreferences");
-  const [isFolded, setIsFolded] = useState(true);
-  const {
-    query,
-    setQuery,
-    filtered: filteredTools,
-  } = useFilter(tools, (tool) => `${tool.name} ${tool.description}`);
-
   const allToolIds = tools.map((t) => t.id);
   const serverEnabled = tools.some((t) => isToolEnabled(t.id));
   const needsAuth = !server.user_can_authenticate;
   const authTooltip = needsAuth ? t("mcpServer.authTooltip") : undefined;
 
-  const expanded = !isFolded;
-  const hasContent = tools.length > 0 && filteredTools.length > 0;
-
   return (
-    <Card
-      expandable
-      expanded={expanded}
-      border="solid"
-      rounding={4}
-      padding={2}
-      expandedContent={
-        hasContent ? (
-          <Section gap={2} padding={2}>
-            {filteredTools.map((tool) => (
-              <Card key={tool.id} border="solid" rounding={3}>
-                <InputHorizontal
-                  icon={tool.icon}
-                  title={tool.name}
-                  description={tool.description}
-                  withLabel
-                >
-                  <Tooltip tooltip={authTooltip} side="top">
-                    <Switch
-                      checked={isToolEnabled(tool.id)}
-                      onCheckedChange={(checked) =>
-                        onToggleTool(tool.id, checked)
-                      }
-                      disabled={needsAuth}
-                    />
-                  </Tooltip>
-                </InputHorizontal>
-              </Card>
-            ))}
-          </Section>
-        ) : undefined
-      }
-    >
-      <CardLayout.Header
-        bottomChildren={
-          tools.length > 0 ? (
-            <Section flexDirection="row" gap={2}>
-              <InputTypeIn
-                placeholder={t("mcpServer.search.placeholder")}
-                variant="internal"
-                searchIcon
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <Button
-                rightIcon={isFolded ? SvgExpand : SvgFold}
-                onClick={() => setIsFolded((prev) => !prev)}
-                prominence="internal"
-                size="lg"
-              >
-                {isFolded
-                  ? t("mcpServer.expandButton.label")
-                  : t("mcpServer.foldButton.label")}
-              </Button>
-            </Section>
-          ) : undefined
-        }
-      >
-        <div className="p-2">
-          <ContentAction
-            icon={getActionIcon(server.server_url, server.name)}
-            title={server.name}
-            description={server.description}
-            sizePreset="main-ui"
-            variant="section"
-            padding={0}
-            rightChildren={
-              <Tooltip tooltip={authTooltip} side="top">
-                <Switch
-                  checked={serverEnabled}
-                  onCheckedChange={(checked) =>
-                    onToggleTools(allToolIds, checked)
-                  }
-                  disabled={needsAuth}
-                />
-              </Tooltip>
-            }
+    <McpToolsCard
+      name={server.name}
+      description={server.description}
+      logo={getActionIcon(server.server_url, server.name)}
+      tools={tools.map((tool) => ({
+        id: String(tool.id),
+        name: tool.name,
+        description: tool.description,
+      }))}
+      toolsLocked={needsAuth}
+      headerRight={
+        <Tooltip tooltip={authTooltip} side="top">
+          <Switch
+            checked={serverEnabled}
+            onCheckedChange={(checked) => onToggleTools(allToolIds, checked)}
+            disabled={needsAuth}
           />
-        </div>
-      </CardLayout.Header>
-    </Card>
+        </Tooltip>
+      }
+      renderToolRight={(tool) => (
+        <Tooltip tooltip={authTooltip} side="top">
+          <McpToolSwitch
+            checked={isToolEnabled(Number(tool.id))}
+            onCheckedChange={(checked) =>
+              onToggleTool(Number(tool.id), checked)
+            }
+            disabled={needsAuth}
+            ariaLabel={`tool-toggle-${tool.name}`}
+          />
+        </Tooltip>
+      )}
+    />
   );
 }
 

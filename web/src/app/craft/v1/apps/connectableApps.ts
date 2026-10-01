@@ -73,6 +73,8 @@ export interface ConnectableApp {
   credentialValues: Record<string, string>;
   /** Returns the URL to redirect to for OAuth. */
   startOAuth: () => Promise<string>;
+  /** Raw server row for MCP entries; lets the member card lazy-load tools. */
+  mcpServer?: MCPServer;
   saveCredentials: (values: Record<string, string>) => Promise<void>;
   /** Absent when there is no per-user credential to remove. */
   disconnect: (() => Promise<void>) | null;
@@ -131,6 +133,7 @@ export function mcpServerToConnectable(server: MCPServer): ConnectableApp {
     credentialKeys: credentialKeys.length ? credentialKeys : ["api_key"],
     credentialValues: server.user_credentials ?? {},
     startOAuth,
+    mcpServer: server,
     saveCredentials: async (values) => {
       await saveMCPUserCredentials(server.id, values, server.transport);
       if (server.auth_type === MCPAuthenticationType.OAUTH) {

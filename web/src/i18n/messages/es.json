@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "Añadir archivos o habilidades"
+      },
+      "input": {
+        "placeholder": "Pide a Craft que construya…"
+      },
+      "dropFiles": {
+        "hint": "Suelta archivos para adjuntar"
       }
     },
     "intro": {

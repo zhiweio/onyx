@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "Adicionar arquivos ou habilidades"
+      },
+      "input": {
+        "placeholder": "Peça ao Craft para criar…"
+      },
+      "dropFiles": {
+        "hint": "Solte arquivos para anexar"
       }
     },
     "intro": {

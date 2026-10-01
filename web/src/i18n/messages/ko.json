@@ -12552,6 +12552,12 @@
       },
       "plusMenu": {
         "tooltip": "파일 또는 스킬 추가"
+      },
+      "input": {
+        "placeholder": "Craft에 만들기를 요청…"
+      },
+      "dropFiles": {
+        "hint": "파일을 놓아 첨부"
       }
     },
     "intro": {

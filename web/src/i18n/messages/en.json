@@ -12558,6 +12558,12 @@
       },
       "plusMenu": {
         "tooltip": "Add files or skills"
+      },
+      "input": {
+        "placeholder": "Ask Craft to build…"
+      },
+      "dropFiles": {
+        "hint": "Drop files to attach"
       }
     },
     "intro": {

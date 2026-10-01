@@ -43,6 +43,7 @@ import { useCraftMcpServers } from "@/lib/tools/hooks";
 import { compareByName } from "@/lib/skills/picker";
 import { clampPage, slicePage } from "@/lib/browse/page";
 import BrowsePagination from "@/sections/gallery/BrowsePagination";
+import McpToolsCard from "@/sections/actions/McpToolsCard";
 
 // Apps and MCP servers are connected, governed, and taught to the agent
 // differently, so each kind gets its own tab rather than one blended list.
@@ -279,6 +280,97 @@ interface ConnectableListProps {
   onChange: () => void;
 }
 
+/**
+ * The MCP member card: the shared expandable tools card carrying the
+ * connect/disconnect actions in its header. Read-only tool rows — enabling
+ * individual tools is an admin/personal-surface concern.
+ */
+function McpConnectableCard({
+  app,
+  highlight,
+  onChange,
+}: {
+  app: ConnectableApp;
+  highlight: boolean;
+  onChange: () => void;
+}) {
+  const t = useTranslations("craft.apps.page");
+  const [isStarting, setIsStarting] = useState(false);
+  const [credModalOpen, setCredModalOpen] = useState(false);
+
+  async function connect() {
+    if (app.connectMode === "credentials") {
+      setCredModalOpen(true);
+      return;
+    }
+    setIsStarting(true);
+    try {
+      window.location.href = await app.startOAuth();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("errors.startAuthFailed"));
+      setIsStarting(false);
+    }
+  }
+
+  async function disconnect() {
+    if (!app.disconnect) return;
+    setIsStarting(true);
+    try {
+      await app.disconnect();
+      onChange();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t("errors.disconnectFailed")
+      );
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
+  const headerRight = app.authenticated ? (
+    app.disconnect ? (
+      <Button prominence="secondary" disabled={isStarting} onClick={disconnect}>
+        {isStarting ? "…" : t("disconnectButton")}
+      </Button>
+    ) : null
+  ) : app.connectMode !== null ? (
+    <Button disabled={isStarting} onClick={connect}>
+      {isStarting ? t("connectingButton") : t("connectButton")}
+    </Button>
+  ) : null;
+
+  return (
+    <>
+      <div
+        className={cn(
+          "rounded-12 transition-shadow",
+          highlight && "ring-2 ring-action-selection-04"
+        )}
+      >
+        <McpToolsCard
+          name={app.name}
+          description={app.description}
+          logo={app.logo}
+          server={app.mcpServer}
+          surface="gallery"
+          headerRight={headerRight}
+        />
+      </div>
+
+      <UserCredentialsModal
+        open={credModalOpen}
+        onClose={() => setCredModalOpen(false)}
+        onSaved={onChange}
+        name={app.name}
+        logo={app.logo}
+        credentialKeys={app.credentialKeys}
+        credentialValues={app.credentialValues}
+        save={app.saveCredentials}
+      />
+    </>
+  );
+}
+
 function ConnectableList({
   kind,
   items,
@@ -321,19 +413,32 @@ function ConnectableList({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {pageItems.map((item) => (
-          <ConnectableCard
-            key={item.key}
-            app={item}
-            // Skills are an external-app concept, and only apps carry an id.
-            needsSkillSetup={
-              item.externalAppId !== null &&
-              appsNeedingSkillSetup.has(item.externalAppId)
-            }
-            highlight={connectParam !== null && connectParam === item.connectId}
-            onChange={onChange}
-          />
-        ))}
+        {pageItems.map((item) =>
+          item.kind === "mcp" && item.mcpServer ? (
+            <McpConnectableCard
+              key={item.key}
+              app={item}
+              highlight={
+                connectParam !== null && connectParam === item.connectId
+              }
+              onChange={onChange}
+            />
+          ) : (
+            <ConnectableCard
+              key={item.key}
+              app={item}
+              // Skills are an external-app concept, and only apps carry an id.
+              needsSkillSetup={
+                item.externalAppId !== null &&
+                appsNeedingSkillSetup.has(item.externalAppId)
+              }
+              highlight={
+                connectParam !== null && connectParam === item.connectId
+              }
+              onChange={onChange}
+            />
+          )
+        )}
       </div>
       <BrowsePagination
         page={safePage}

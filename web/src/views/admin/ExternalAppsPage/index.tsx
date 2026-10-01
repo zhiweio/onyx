@@ -40,6 +40,7 @@ import {
   mcpServerToIntegration,
 } from "@/views/admin/ExternalAppsPage/integrations";
 import IntegrationCard from "@/views/admin/ExternalAppsPage/IntegrationCard";
+import McpIntegrationCard from "@/views/admin/ExternalAppsPage/McpIntegrationCard";
 
 interface ModalState {
   descriptor: BuiltInExternalAppDescriptor;
@@ -325,6 +326,7 @@ function AppsAdminContent({
               <IntegrationPanel
                 copy={kindCopy[kind]}
                 integrations={byKind[kind]}
+                mcpServers={kind === "mcp" ? (mcpData?.mcp_servers ?? []) : []}
                 blurbAction={panels[kind].blurbAction}
                 emptyAction={panels[kind].emptyAction}
               />
@@ -400,6 +402,8 @@ function LoadingCard() {
 interface IntegrationPanelProps {
   copy: KindCopy;
   integrations: ConfiguredIntegration[];
+  /** Raw MCP servers, paired to rows by key for the inline tools card. */
+  mcpServers?: MCPServer[];
   /** Kind-appropriate affordance beside the blurb (e.g. MCP's Actions link). */
   blurbAction?: React.ReactNode;
   /** Call to action under the kind's empty state. */
@@ -416,11 +420,16 @@ const integrationMatches = (
 function IntegrationPanel({
   copy,
   integrations,
+  mcpServers = [],
   blurbAction,
   emptyAction,
 }: IntegrationPanelProps) {
   const tShared = useTranslations("admin.shared");
   const list = useSearchablePagination(integrations, integrationMatches);
+  const serverByKey = useMemo(
+    () => new Map(mcpServers.map((server) => [`mcp-${server.id}`, server])),
+    [mcpServers]
+  );
 
   if (integrations.length === 0) {
     return (
@@ -449,9 +458,18 @@ function IntegrationPanel({
         onSearchQueryChange={list.setSearchQuery}
         emptyStateText=""
       />
-      {list.pageItems.map((integration) => (
-        <IntegrationCard key={integration.key} integration={integration} />
-      ))}
+      {list.pageItems.map((integration) =>
+        integration.key.startsWith("mcp-") &&
+        serverByKey.has(integration.key) ? (
+          <McpIntegrationCard
+            key={integration.key}
+            integration={integration}
+            server={serverByKey.get(integration.key)!}
+          />
+        ) : (
+          <IntegrationCard key={integration.key} integration={integration} />
+        )
+      )}
       <BrowsePagination
         page={list.safePage}
         totalItems={list.filtered.length}

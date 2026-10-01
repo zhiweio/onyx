@@ -15,6 +15,25 @@ test("craft apps MCP tab carries the unified search header", async ({
   await expect.poll(async () => search.isVisible()).toBe(true);
 });
 
+test("craft apps MCP card expands into inline tools", async ({ page }) => {
+  await page.goto(`${ADMIN_ROUTES.CRAFT_APPS.path}?tab=mcp`);
+  await page.waitForLoadState("networkidle");
+
+  // The shared expandable tools card (chat-preferences design). Skips when
+  // this deployment has no MCP servers configured.
+  const expand = page
+    .getByText("展开", { exact: true })
+    .or(page.getByText("Expand", { exact: true }));
+  const count = await expand.count();
+  test.skip(count === 0, "No MCP servers configured");
+
+  await expand.first().click();
+  const fold = page
+    .getByText("收起", { exact: true })
+    .or(page.getByText("Fold", { exact: true }));
+  await expect(fold.first()).toBeVisible({ timeout: 15000 });
+});
+
 test("im bots page renders platforms and visibility switches", async ({
   page,
 }) => {
