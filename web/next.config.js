@@ -154,11 +154,6 @@ const nextConfig = {
         destination: "/admin/agents/:path*",
         permanent: true,
       },
-      {
-        source: "/ee/assistants/:path*",
-        destination: "/ee/agents/:path*",
-        permanent: true,
-      },
       // Next.js does not chain redirects, so these two point at the flattened
       // paths directly rather than at their old /admin/configuration/ targets.
       {

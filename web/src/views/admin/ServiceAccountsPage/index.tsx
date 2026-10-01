@@ -38,8 +38,6 @@ import AdminListHeader from "@/sections/admin/AdminListHeader";
 import { ConfirmationModalLayout } from "@opal/layouts";
 import { markdown } from "@opal/utils";
 
-import { useBillingInformation } from "@/hooks/useBillingInformation";
-import { BillingStatus, hasActiveSubscription } from "@/lib/billing/interfaces";
 import {
   deleteApiKey,
   regenerateApiKey,
@@ -69,12 +67,6 @@ export default function ServiceAccountsPage() {
     isLoading,
     error,
   } = useSWR<APIKey[]>(API_KEY_SWR_KEY, errorHandlingFetcher);
-
-  const { data: billingData } = useBillingInformation();
-  const isTrialing =
-    billingData !== undefined &&
-    hasActiveSubscription(billingData) &&
-    billingData.status === BillingStatus.TRIALING;
 
   const [fullApiKey, setFullApiKey] = useState<string | null>(null);
   const [showCreateUpdateForm, setShowCreateUpdateForm] = useState(false);
@@ -290,14 +282,6 @@ export default function ServiceAccountsPage() {
       />
 
       <SettingsLayouts.Body>
-        {isTrialing && (
-          <MessageCard
-            variant="warning"
-            title={t("trialNotice.title")}
-            description={t("trialNotice.description")}
-          />
-        )}
-
         <div className="flex flex-col">
           <AdminListHeader
             hasItems={hasKeys}

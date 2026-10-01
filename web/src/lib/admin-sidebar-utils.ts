@@ -46,7 +46,6 @@ export type AdminNavItemId =
   | "hookExtensions"
   | "users"
   | "groups"
-  | "scim"
   | "plansAndBilling"
   | "appearanceAndTheming"
   | "securityAndHardening"
@@ -111,9 +110,7 @@ export const NAV_ITEM_IDS: Record<
   HOOKS: "hookExtensions",
   USERS: "users",
   GROUPS: "groups",
-  SCIM: "scim",
   OAUTH_TEST: null,
-  BILLING: "plansAndBilling",
   THEME: "appearanceAndTheming",
   SECURITY_HARDENING: "securityAndHardening",
   SSO_PROVIDERS: "ssoProviders",
@@ -122,7 +119,6 @@ export const NAV_ITEM_IDS: Record<
   QUERY_HISTORY: "queryHistory",
   TRACING: "tracing",
   EXPORT_LOGS: "exportLogs",
-  STANDARD_ANSWERS: null,
   DOCUMENTS: null,
   PERFORMANCE: null,
 };
@@ -239,18 +235,6 @@ export function buildItems(
     }
 
     items.push(item);
-  }
-
-  if (
-    userCanAccess(Permission.FULL_ADMIN_PANEL_ACCESS) &&
-    !flags.hasSubscription
-  ) {
-    items.push({
-      sectionId: null,
-      nameId: "upgradePlan",
-      icon: SvgArrowUpCircle,
-      link: ADMIN_ROUTES.BILLING.path,
-    });
   }
 
   return items;

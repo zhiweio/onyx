@@ -6,9 +6,7 @@ import {
   QueryHistoryType,
 } from "@/lib/settings/types";
 import {
-  CUSTOM_ANALYTICS_ENABLED,
   HOST_URL,
-  SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
 } from "@/lib/constants";
 import { fetchSS } from "@/lib/utilsSS";
 import { getWebVersion } from "@/lib/version";
@@ -47,14 +45,8 @@ async function fetchCustomAnalyticsScriptSS(): Promise<string | null> {
 
 export async function fetchSettingsSS(): Promise<CombinedSettings | null> {
   const settingsTask = fetchSS("/settings");
-  const enterpriseTask = SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED
-    ? fetchSS("/enterprise-settings")
-    : Promise.resolve(null);
-  const analyticsTask =
-    SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED &&
-    CUSTOM_ANALYTICS_ENABLED
-      ? fetchSS("/enterprise-settings/custom-analytics-script")
-      : Promise.resolve(null);
+  const enterpriseTask = Promise.resolve(null);
+  const analyticsTask = Promise.resolve(null);
 
   try {
     const [settingsResponse, enterpriseResponse, analyticsResponse] =

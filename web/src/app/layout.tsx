@@ -19,7 +19,6 @@ import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
 import AppHealthBanner from "@/sections/banners/HealthBanner";
 import BannerQueue from "@/sections/banners/BannerQueue";
 import { AuthenticationShell } from "@/lib/auth/components";
-import ProductGatingWrapper from "@/providers/ProductGatingWrapper";
 import SWRConfigProvider from "@/providers/SWRConfigProvider";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -169,9 +168,7 @@ export default async function Layout({ children }: LayoutProps) {
                           <CustomAnalyticsScript />
                           <PostHogPageTracker />
                           <div id={MODAL_ROOT_ID} className="h-screen w-screen">
-                            <ProductGatingWrapper>
                               {children}
-                            </ProductGatingWrapper>
                           </div>
                           <WebVitals />
                           {process.env.NEXT_PUBLIC_ENABLE_STATS === "true" && (

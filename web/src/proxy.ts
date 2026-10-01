@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
-  SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
   SERVER_SIDE_ONLY__AUTH_COOKIE_NAME,
 } from "./lib/constants";
 
@@ -102,19 +101,6 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
-// Enterprise Edition specific routes (ONLY these get /ee rewriting)
-const EE_ROUTES = [
-  "/admin/groups",
-  "/admin/performance/usage",
-  "/admin/performance/analytics",
-  "/admin/performance/query-history",
-  "/admin/theme",
-  "/admin/performance/custom-analytics",
-  "/admin/standard-answer",
-  "/admin/export-logs",
-  "/agents/stats",
-];
-
 function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", CSP_HEADER);
   return response;
@@ -143,14 +129,6 @@ export async function proxy(request: NextRequest) {
       const fullPath = pathname + request.nextUrl.search + request.nextUrl.hash;
       loginUrl.searchParams.set("next", fullPath);
       return withSecurityHeaders(NextResponse.redirect(loginUrl));
-    }
-  }
-
-  // Enterprise Edition: Rewrite EE-specific routes to /ee prefix
-  if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
-    if (EE_ROUTES.some((route) => pathname.startsWith(route))) {
-      const newUrl = new URL(`/ee${pathname}`, request.url);
-      return withSecurityHeaders(NextResponse.rewrite(newUrl));
     }
   }
 

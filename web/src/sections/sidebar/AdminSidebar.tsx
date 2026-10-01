@@ -16,11 +16,6 @@ import { useCustomAnalyticsEnabled } from "@/lib/hooks/useCustomAnalyticsEnabled
 import { useUser } from "@/providers/UserProvider";
 import { Divider, InputTypeIn, SidebarTab } from "@opal/components";
 import { SvgSearch, SvgX } from "@opal/icons";
-import {
-  useBillingInformation,
-  useLicense,
-  hasActiveSubscription,
-} from "@/lib/billing";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import { Tier } from "@/lib/settings/types";
 import useFilter from "@/hooks/useFilter";
@@ -54,18 +49,6 @@ export default function AdminSidebar() {
   const { adminCapabilities } = useUser();
   const settings = useSettings();
   const tier = settings?.tier;
-  const { data: billingData, isLoading: billingLoading } =
-    useBillingInformation();
-  const { data: licenseData, isLoading: licenseLoading } = useLicense();
-  // Default to true while loading to avoid flashing "Upgrade Plan"
-  const hasSubscriptionOrLicense =
-    billingLoading || licenseLoading
-      ? true
-      : Boolean(
-          (billingData && hasActiveSubscription(billingData)) ||
-          licenseData?.has_license
-        );
-
   // Tier is not folded in here: ENTERPRISE is declared as the route's `requiredTier`, so
   // a lower tier renders the entry disabled with an upsell rather than hiding it.
   const flags: FeatureFlags = {
@@ -73,7 +56,7 @@ export default function AdminSidebar() {
     enableCloud: NEXT_PUBLIC_CLOUD_ENABLED,
     tier,
     customAnalyticsEnabled,
-    hasSubscription: hasSubscriptionOrLicense,
+    hasSubscription: true, // no billing in this CE-only build
     hooksEnabled: settings?.hooks_enabled ?? false,
     opensearchEnabled: settings?.opensearch_indexing_enabled ?? false,
     queryHistoryEnabled:

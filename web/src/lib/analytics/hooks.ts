@@ -14,7 +14,6 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { useSettings } from "@/lib/settings/hooks";
 import { useUser } from "@/providers/UserProvider";
-import { EE_ENABLED } from "@/lib/constants";
 
 // ─── Feature Flag Registry ─────────────────────────────────────────────────
 
@@ -94,7 +93,7 @@ export function useCustomAnalyticsScript(): string | null {
   const { user } = useUser();
   const shouldFetch =
     !!user &&
-    (EE_ENABLED || (!isLoading && !error && ee_features_enabled !== false));
+    (!isLoading && !error && ee_features_enabled !== false);
 
   const { data } = useSWR<string>(
     shouldFetch ? SWR_KEYS.customAnalyticsScript : null,

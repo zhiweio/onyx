@@ -77,39 +77,6 @@ function StatCell({ value, label, onFilter }: StatCellProps) {
 }
 
 // ---------------------------------------------------------------------------
-// SCIM card
-// ---------------------------------------------------------------------------
-
-function ScimCard() {
-  const t = useTranslations("admin.users");
-  return (
-    <Card border="solid" padding={3} rounding={4}>
-      <Section alignItems="start" height="fit" gap={2}>
-        <ContentAction
-          icon={SvgUserSync}
-          title={t("summary.scim.title")}
-          description={t("summary.scim.description")}
-          sizePreset="main-ui"
-          variant="section"
-          padding={0}
-          rightChildren={
-            <Link href={ADMIN_ROUTES.SCIM.path}>
-              <Button
-                prominence="tertiary"
-                rightIcon={SvgArrowUpRight}
-                size="sm"
-              >
-                {t("summary.scim.manageButton.label")}
-              </Button>
-            </Link>
-          }
-        />
-      </Section>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Stats bar: layout varies by SCIM status
 // ---------------------------------------------------------------------------
 
@@ -117,7 +84,6 @@ type UsersSummaryProps = {
   activeUsers: number | null;
   pendingInvites: number | null;
   requests: number | null;
-  showScim: boolean;
   onFilterActive?: () => void;
   onFilterInvites?: () => void;
   onFilterRequests?: () => void;
@@ -127,7 +93,6 @@ export default function UsersSummary({
   activeUsers,
   pendingInvites,
   requests,
-  showScim,
   onFilterActive,
   onFilterInvites,
   onFilterRequests,
@@ -160,20 +125,6 @@ export default function UsersSummary({
       </Section>
     </Card>
   );
-
-  if (showScim) {
-    return (
-      <Section
-        flexDirection="row"
-        justifyContent="start"
-        alignItems="stretch"
-        gap={2}
-      >
-        {statsCard}
-        <ScimCard />
-      </Section>
-    );
-  }
 
   return statsCard;
 }

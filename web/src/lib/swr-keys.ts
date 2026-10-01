@@ -139,8 +139,6 @@ export const SWR_KEYS = {
   userGroupPermissions: (groupId: number) =>
     `/api/manage/admin/user-group/${groupId}/permissions`,
   permissionRegistry: "/api/manage/admin/permissions/registry",
-  scimToken: "/api/admin/enterprise-settings/scim/token",
-
   // ── MCP Servers ───────────────────────────────────────────────────────────
   adminMcpServers: "/api/admin/mcp/servers",
   adminMcpServerToolSnapshots: (serverId: number) =>
@@ -217,11 +215,6 @@ export const SWR_KEYS = {
 
   // ── Admin Banner ──────────────────────────────────────────────────────────
   adminBanner: "/api/admin/banner",
-
-  // ── License & Billing ─────────────────────────────────────────────────────
-  license: "/api/license",
-  billingInformationCloud: "/api/tenants/billing-information",
-  billingInformationSelfHosted: "/api/admin/billing/billing-information",
 
   // ── Admin ─────────────────────────────────────────────────────────────────
   hooks: "/api/admin/hooks",

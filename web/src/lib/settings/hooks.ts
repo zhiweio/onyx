@@ -14,7 +14,6 @@ import {
   QueryHistoryType,
   Settings,
 } from "@/lib/settings/types";
-import { EE_ENABLED } from "@/lib/constants";
 
 const SETTINGS_ERROR_RETRY_INTERVAL = 5_000;
 
@@ -70,7 +69,6 @@ export function useSettings(): AppSettings {
   // Auth pages need branding pre-sign-in but standard web images lack the EE
   // flag, so probe the endpoint.
   const shouldFetchEnterprise =
-    EE_ENABLED ||
     onAuthPath ||
     (!settingsLoading && !settingsError && core.ee_features_enabled !== false);
 

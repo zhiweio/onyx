@@ -238,17 +238,6 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: (f: FeatureFlags) => f.craftAvailable,
   },
-  CUSTOM_ANALYTICS: {
-    path: "/admin/performance/custom-analytics",
-    icon: SvgBarChart,
-    title: "Custom Analytics",
-    sidebarLabel: "Custom Analytics",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "",
-    requiredTier: Tier.ENTERPRISE,
-    visibleWhen: (f: FeatureFlags) =>
-      !f.enableCloud && f.customAnalyticsEnabled,
-  },
 
   // ── Agents & Actions ──────────────────────────────────────────────
   AGENTS: {
@@ -394,16 +383,6 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: null,
   },
-  HOOKS: {
-    path: "/admin/hooks",
-    icon: SvgShareWebhook,
-    title: "Hook Extensions",
-    sidebarLabel: "Hook Extensions",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Integrations",
-    requiredTier: Tier.ENTERPRISE,
-    visibleWhen: (f: FeatureFlags) => f.hooksEnabled,
-  },
 
   // ── Permissions ───────────────────────────────────────────────────
   USERS: {
@@ -423,17 +402,7 @@ export const ADMIN_ROUTES = {
     sidebarLabel: "Groups",
     requiredPermission: Permission.MANAGE_USER_GROUPS,
     section: "Permissions",
-    requiredTier: Tier.BUSINESS,
-    visibleWhen: null,
-  },
-  SCIM: {
-    path: "/admin/scim",
-    icon: SvgUserSync,
-    title: "SCIM",
-    sidebarLabel: "SCIM",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Permissions",
-    requiredTier: Tier.ENTERPRISE,
+    requiredTier: null,
     visibleWhen: null,
   },
   OAUTH_TEST: {
@@ -449,26 +418,6 @@ export const ADMIN_ROUTES = {
   },
 
   // ── Organization ──────────────────────────────────────────────────
-  BILLING: {
-    path: "/admin/billing",
-    icon: SvgWallet,
-    title: "Plans & Billing",
-    sidebarLabel: "Plans & Billing",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Organization",
-    requiredTier: null,
-    visibleWhen: (f: FeatureFlags) => f.hasSubscription,
-  },
-  THEME: {
-    path: "/admin/theme",
-    icon: SvgPaintBrush,
-    title: "Appearance & Theming",
-    sidebarLabel: "Appearance & Theming",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Organization",
-    requiredTier: Tier.BUSINESS,
-    visibleWhen: null,
-  },
   SECURITY_HARDENING: {
     path: "/admin/security",
     icon: SvgShield,
@@ -493,36 +442,6 @@ export const ADMIN_ROUTES = {
   },
 
   // ── Usage ─────────────────────────────────────────────────────────
-  USAGE: {
-    path: "/admin/performance/usage",
-    icon: SvgPieChart,
-    title: "Usage",
-    sidebarLabel: "Usage",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Usage",
-    requiredTier: Tier.BUSINESS,
-    visibleWhen: null,
-  },
-  WORKSPACE_ANALYTICS: {
-    path: "/admin/performance/analytics",
-    icon: SvgActivity,
-    title: "Analytics",
-    sidebarLabel: "Analytics",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Usage",
-    requiredTier: Tier.BUSINESS,
-    visibleWhen: null,
-  },
-  QUERY_HISTORY: {
-    path: "/admin/performance/query-history",
-    icon: SvgHistory,
-    title: "Query History",
-    sidebarLabel: "Query History",
-    requiredPermission: Permission.READ_QUERY_HISTORY,
-    section: "Usage",
-    requiredTier: Tier.BUSINESS,
-    visibleWhen: (f: FeatureFlags) => f.queryHistoryEnabled,
-  },
   // Tracing config is not supported on multi-tenant cloud.
   TRACING: {
     path: "/admin/tracing",
@@ -535,28 +454,6 @@ export const ADMIN_ROUTES = {
     visibleWhen: (f: FeatureFlags) => !f.enableCloud,
   },
   // Log export reads container-local files; not applicable on multi-tenant cloud.
-  EXPORT_LOGS: {
-    path: "/admin/export-logs",
-    icon: SvgDownload,
-    title: "Export Logs",
-    sidebarLabel: "Export Logs",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "Usage",
-    requiredTier: Tier.ENTERPRISE,
-    visibleWhen: (f: FeatureFlags) => !f.enableCloud,
-  },
-
-  // ── Other (admin-only) ────────────────────────────────────────────
-  STANDARD_ANSWERS: {
-    path: "/admin/standard-answer",
-    icon: SvgClipboard,
-    title: "Standard Answers",
-    sidebarLabel: "",
-    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "",
-    requiredTier: null,
-    visibleWhen: null,
-  },
 
   // ── Prefix-only entries (layout matching, not sidebar items) ──────
   DOCUMENTS: {
