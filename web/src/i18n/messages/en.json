@@ -8600,24 +8600,6 @@
         }
       }
     },
-    "sidebar": {
-      "adminNav": {
-        "items": {
-          "agentModels": {
-            "label": "Agent Models"
-          },
-          "auditReport": {
-            "label": "Audit Report"
-          },
-          "tokenRateLimits": {
-            "label": "Token Rate Limits"
-          },
-          "standardAnswers": {
-            "label": "Standard Answers"
-          }
-        }
-      }
-    },
     "agentModels": {
       "title": "Agent Models",
       "subtitle": "Register model overlays that point catalog templates at custom endpoints.",
@@ -15362,12 +15344,6 @@
         "agents": {
           "label": "Agents"
         },
-        "analytics": {
-          "label": "Analytics"
-        },
-        "appearanceAndTheming": {
-          "label": "Appearance & Theming"
-        },
         "chatPreferences": {
           "label": "Chat Preferences"
         },
@@ -15383,9 +15359,6 @@
         "craftPreferences": {
           "label": "Preferences"
         },
-        "customAnalytics": {
-          "label": "Custom Analytics"
-        },
         "discordIntegration": {
           "label": "Discord Integration"
         },
@@ -15395,14 +15368,8 @@
         "existingConnectors": {
           "label": "Existing Connectors"
         },
-        "exportLogs": {
-          "label": "Export Logs"
-        },
         "groups": {
           "label": "Groups"
-        },
-        "hookExtensions": {
-          "label": "Hook Extensions"
         },
         "imageGeneration": {
           "label": "Image Generation"
@@ -15416,9 +15383,6 @@
         "mcpActions": {
           "label": "MCP Actions"
         },
-        "mcpCatalog": {
-          "label": "System MCP"
-        },
         "mcpGateway": {
           "label": "MCP Gateway"
         },
@@ -15427,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "Plans & Billing"
-        },
-        "queryHistory": {
-          "label": "Query History"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "Security & Hardening"
@@ -15452,9 +15410,6 @@
         "upgradePlan": {
           "label": "Upgrade Plan"
         },
-        "usage": {
-          "label": "Usage"
-        },
         "users": {
           "label": "Users"
         },
@@ -15466,6 +15421,18 @@
         },
         "craftCatalog": {
           "label": "Gallery"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
+        },
+        "tokenRateLimits": {
+          "label": "Token Rate Limits"
+        },
+        "standardAnswers": {
+          "label": "Standard Answers"
         }
       },
       "sections": {

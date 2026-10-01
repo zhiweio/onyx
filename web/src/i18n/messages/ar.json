@@ -15344,12 +15344,6 @@
         "agents": {
           "label": "الوكلاء"
         },
-        "analytics": {
-          "label": "التحليلات"
-        },
-        "appearanceAndTheming": {
-          "label": "المظهر والسمات"
-        },
         "chatPreferences": {
           "label": "تفضيلات المحادثة"
         },
@@ -15365,9 +15359,6 @@
         "craftPreferences": {
           "label": "التفضيلات"
         },
-        "customAnalytics": {
-          "label": "تحليلات مخصصة"
-        },
         "discordIntegration": {
           "label": "تكامل Discord"
         },
@@ -15377,14 +15368,8 @@
         "existingConnectors": {
           "label": "الموصلات الحالية"
         },
-        "exportLogs": {
-          "label": "تصدير السجلات"
-        },
         "groups": {
           "label": "المجموعات"
-        },
-        "hookExtensions": {
-          "label": "امتدادات Hook"
         },
         "imageGeneration": {
           "label": "توليد الصور"
@@ -15398,9 +15383,6 @@
         "mcpActions": {
           "label": "إجراءات MCP"
         },
-        "mcpCatalog": {
-          "label": "MCP للنظام"
-        },
         "mcpGateway": {
           "label": "بوابة MCP"
         },
@@ -15409,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "الخطط والفوترة"
-        },
-        "queryHistory": {
-          "label": "سجل الاستعلامات"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "الأمان والتحصين"
@@ -15434,9 +15410,6 @@
         "upgradePlan": {
           "label": "ترقية الخطة"
         },
-        "usage": {
-          "label": "الاستخدام"
-        },
         "users": {
           "label": "المستخدمون"
         },
@@ -15454,6 +15427,12 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
         }
       },
       "sections": {

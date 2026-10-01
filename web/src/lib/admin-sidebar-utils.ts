@@ -31,7 +31,6 @@ export type AdminNavItemId =
   | "craftApps"
   | "craftCatalog"
   | "craftPreferences"
-  | "customAnalytics"
   | "agents"
   | "mcpActions"
   | "mcpGateway"
@@ -43,18 +42,12 @@ export type AdminNavItemId =
   | "serviceAccounts"
   | "slackIntegration"
   | "discordIntegration"
-  | "hookExtensions"
   | "users"
   | "groups"
   | "plansAndBilling"
-  | "appearanceAndTheming"
   | "securityAndHardening"
   | "ssoProviders"
-  | "usage"
-  | "analytics"
-  | "queryHistory"
   | "tracing"
-  | "exportLogs"
   | "upgradePlan";
 
 /**
@@ -92,7 +85,6 @@ export const NAV_ITEM_IDS: Record<
   CRAFT_APPS: "craftApps",
   CRAFT_CATALOG: "craftCatalog",
   CRAFT_PREFERENCES: "craftPreferences",
-  CUSTOM_ANALYTICS: "customAnalytics",
   AGENTS: "agents",
   MCP_ACTIONS: "mcpActions",
   MCP_GATEWAY: "mcpGateway",
@@ -107,18 +99,12 @@ export const NAV_ITEM_IDS: Record<
   API_KEYS: "serviceAccounts",
   SLACK_BOTS: "slackIntegration",
   DISCORD_BOTS: "discordIntegration",
-  HOOKS: "hookExtensions",
   USERS: "users",
   GROUPS: "groups",
   OAUTH_TEST: null,
-  THEME: "appearanceAndTheming",
   SECURITY_HARDENING: "securityAndHardening",
   SSO_PROVIDERS: "ssoProviders",
-  USAGE: "usage",
-  WORKSPACE_ANALYTICS: "analytics",
-  QUERY_HISTORY: "queryHistory",
   TRACING: "tracing",
-  EXPORT_LOGS: "exportLogs",
   DOCUMENTS: null,
   PERFORMANCE: null,
 };
@@ -145,12 +131,12 @@ const ROUTE_KEYS = Object.keys(ADMIN_ROUTES) as (keyof typeof ADMIN_ROUTES)[];
 
 const NAV_ID_BY_PATH: Record<string, AdminNavItemId | null> =
   Object.fromEntries(
-    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, NAV_ITEM_IDS[key]]),
+    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, NAV_ITEM_IDS[key]])
   );
 
 const HIDDEN_ID_BY_PATH: Record<string, AdminHiddenRouteId | undefined> =
   Object.fromEntries(
-    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, HIDDEN_ROUTE_IDS[key]]),
+    ROUTE_KEYS.map((key) => [ADMIN_ROUTES[key].path, HIDDEN_ROUTE_IDS[key]])
   );
 
 /** Nav id for a route, for server components that resolve labels themselves. */
@@ -160,7 +146,7 @@ export function getAdminNavId(route: AdminRouteEntry): AdminNavItemId | null {
 
 /** Hidden-route title id for a route outside the sidebar, if it has one. */
 export function getAdminHiddenRouteId(
-  route: AdminRouteEntry,
+  route: AdminRouteEntry
 ): AdminHiddenRouteId | null {
   return HIDDEN_ID_BY_PATH[route.path] ?? null;
 }
@@ -198,7 +184,7 @@ export interface SidebarItemEntry {
 export function buildItems(
   permissions: string[],
   flags: FeatureFlags,
-  settings: Settings | null,
+  settings: Settings | null
 ): SidebarItemEntry[] {
   const userCanAccess = (perm: string) => hasPermission(permissions, perm);
   const items: SidebarItemEntry[] = [];

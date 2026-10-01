@@ -16,6 +16,10 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
   return useMemo<Record<AdminNavItemId, string>>(
     () => ({
       languageModels: t("adminNav.items.languageModels.label"),
+      agentModels: t("adminNav.items.agentModels.label"),
+      auditReport: t("adminNav.items.auditReport.label"),
+      tokenRateLimits: t("adminNav.items.tokenRateLimits.label"),
+      standardAnswers: t("adminNav.items.standardAnswers.label"),
       webSearch: t("adminNav.items.webSearch.label"),
       imageGeneration: t("adminNav.items.imageGeneration.label"),
       voice: t("adminNav.items.voice.label"),
@@ -25,7 +29,6 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       craftApps: t("adminNav.items.craftApps.label"),
       craftCatalog: t("adminNav.items.craftCatalog.label"),
       craftPreferences: t("adminNav.items.craftPreferences.label"),
-      customAnalytics: t("adminNav.items.customAnalytics.label"),
       agents: t("adminNav.items.agents.label"),
       mcpActions: t("adminNav.items.mcpActions.label"),
       mcpGateway: t("adminNav.items.mcpGateway.label"),
@@ -37,22 +40,15 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       serviceAccounts: t("adminNav.items.serviceAccounts.label"),
       slackIntegration: t("adminNav.items.slackIntegration.label"),
       discordIntegration: t("adminNav.items.discordIntegration.label"),
-      hookExtensions: t("adminNav.items.hookExtensions.label"),
       users: t("adminNav.items.users.label"),
       groups: t("adminNav.items.groups.label"),
-      scim: t("adminNav.items.scim.label"),
       plansAndBilling: t("adminNav.items.plansAndBilling.label"),
-      appearanceAndTheming: t("adminNav.items.appearanceAndTheming.label"),
       securityAndHardening: t("adminNav.items.securityAndHardening.label"),
       ssoProviders: t("adminNav.items.ssoProviders.label"),
-      usage: t("adminNav.items.usage.label"),
-      analytics: t("adminNav.items.analytics.label"),
-      queryHistory: t("adminNav.items.queryHistory.label"),
       tracing: t("adminNav.items.tracing.label"),
-      exportLogs: t("adminNav.items.exportLogs.label"),
       upgradePlan: t("adminNav.items.upgradePlan.label"),
     }),
-    [t],
+    [t]
   );
 }
 
@@ -66,7 +62,7 @@ function useAdminHiddenRouteTitles(): Record<AdminHiddenRouteId, string> {
       oauthTest: t("adminNav.hiddenRoutes.oauthTest.title"),
       standardAnswers: t("adminNav.hiddenRoutes.standardAnswers.title"),
     }),
-    [t],
+    [t]
   );
 }
 
@@ -83,6 +79,6 @@ export function useAdminRouteTitle(): (route: AdminRouteEntry) => string {
       const hiddenId = getAdminHiddenRouteId(route);
       return hiddenId ? hiddenTitles[hiddenId] : route.title;
     },
-    [labels, hiddenTitles],
+    [labels, hiddenTitles]
   );
 }

@@ -8600,24 +8600,6 @@
         }
       }
     },
-    "sidebar": {
-      "adminNav": {
-        "items": {
-          "agentModels": {
-            "label": "Agent 模型"
-          },
-          "auditReport": {
-            "label": "审计报表"
-          },
-          "tokenRateLimits": {
-            "label": "Token 限额"
-          },
-          "standardAnswers": {
-            "label": "标准答案"
-          }
-        }
-      }
-    },
     "agentModels": {
       "title": "智能体模型",
       "subtitle": "注册模型 Overlay，将目录模板指向自定义服务端点。",
@@ -15362,12 +15344,6 @@
         "agents": {
           "label": "智能体"
         },
-        "analytics": {
-          "label": "分析"
-        },
-        "appearanceAndTheming": {
-          "label": "外观与主题"
-        },
         "chatPreferences": {
           "label": "对话偏好设置"
         },
@@ -15383,9 +15359,6 @@
         "craftPreferences": {
           "label": "偏好设置"
         },
-        "customAnalytics": {
-          "label": "自定义分析"
-        },
         "discordIntegration": {
           "label": "Discord 集成"
         },
@@ -15395,14 +15368,8 @@
         "existingConnectors": {
           "label": "现有连接器"
         },
-        "exportLogs": {
-          "label": "导出日志"
-        },
         "groups": {
           "label": "用户组"
-        },
-        "hookExtensions": {
-          "label": "Hook 扩展"
         },
         "imageGeneration": {
           "label": "图像生成"
@@ -15416,9 +15383,6 @@
         "mcpActions": {
           "label": "MCP 操作"
         },
-        "mcpCatalog": {
-          "label": "系统 MCP"
-        },
         "mcpGateway": {
           "label": "MCP 网关"
         },
@@ -15427,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "套餐与账单"
-        },
-        "queryHistory": {
-          "label": "查询历史"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "安全与加固"
@@ -15452,9 +15410,6 @@
         "upgradePlan": {
           "label": "升级套餐"
         },
-        "usage": {
-          "label": "用量"
-        },
         "users": {
           "label": "用户"
         },
@@ -15466,6 +15421,18 @@
         },
         "craftCatalog": {
           "label": "广场"
+        },
+        "agentModels": {
+          "label": "Agent 模型"
+        },
+        "auditReport": {
+          "label": "审计报表"
+        },
+        "tokenRateLimits": {
+          "label": "Token 限额"
+        },
+        "standardAnswers": {
+          "label": "标准答案"
         }
       },
       "sections": {

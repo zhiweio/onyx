@@ -15344,12 +15344,6 @@
         "agents": {
           "label": "エージェント"
         },
-        "analytics": {
-          "label": "分析"
-        },
-        "appearanceAndTheming": {
-          "label": "外観とテーマ"
-        },
         "chatPreferences": {
           "label": "チャット設定"
         },
@@ -15365,9 +15359,6 @@
         "craftPreferences": {
           "label": "設定"
         },
-        "customAnalytics": {
-          "label": "カスタム分析"
-        },
         "discordIntegration": {
           "label": "Discord 連携"
         },
@@ -15377,14 +15368,8 @@
         "existingConnectors": {
           "label": "既存のコネクター"
         },
-        "exportLogs": {
-          "label": "ログのエクスポート"
-        },
         "groups": {
           "label": "グループ"
-        },
-        "hookExtensions": {
-          "label": "フック拡張"
         },
         "imageGeneration": {
           "label": "画像生成"
@@ -15398,9 +15383,6 @@
         "mcpActions": {
           "label": "MCP アクション"
         },
-        "mcpCatalog": {
-          "label": "システム MCP"
-        },
         "mcpGateway": {
           "label": "MCP ゲートウェイ"
         },
@@ -15409,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "プランと請求"
-        },
-        "queryHistory": {
-          "label": "クエリ履歴"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "セキュリティと堅牢化"
@@ -15434,9 +15410,6 @@
         "upgradePlan": {
           "label": "プランをアップグレード"
         },
-        "usage": {
-          "label": "使用状況"
-        },
         "users": {
           "label": "ユーザー"
         },
@@ -15454,6 +15427,12 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
         }
       },
       "sections": {

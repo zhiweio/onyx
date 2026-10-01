@@ -15344,12 +15344,6 @@
         "agents": {
           "label": "Agents"
         },
-        "analytics": {
-          "label": "Statistiques"
-        },
-        "appearanceAndTheming": {
-          "label": "Apparence et thèmes"
-        },
         "chatPreferences": {
           "label": "Préférences de discussion"
         },
@@ -15365,9 +15359,6 @@
         "craftPreferences": {
           "label": "Préférences"
         },
-        "customAnalytics": {
-          "label": "Statistiques personnalisées"
-        },
         "discordIntegration": {
           "label": "Intégration Discord"
         },
@@ -15377,14 +15368,8 @@
         "existingConnectors": {
           "label": "Connecteurs existants"
         },
-        "exportLogs": {
-          "label": "Exporter les journaux"
-        },
         "groups": {
           "label": "Groupes"
-        },
-        "hookExtensions": {
-          "label": "Extensions de hooks"
         },
         "imageGeneration": {
           "label": "Génération d'images"
@@ -15398,9 +15383,6 @@
         "mcpActions": {
           "label": "Actions MCP"
         },
-        "mcpCatalog": {
-          "label": "MCP système"
-        },
         "mcpGateway": {
           "label": "Passerelle MCP"
         },
@@ -15409,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "Forfaits et facturation"
-        },
-        "queryHistory": {
-          "label": "Historique des requêtes"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "Sécurité et renforcement"
@@ -15434,9 +15410,6 @@
         "upgradePlan": {
           "label": "Mettre à niveau le forfait"
         },
-        "usage": {
-          "label": "Utilisation"
-        },
         "users": {
           "label": "Utilisateurs"
         },
@@ -15454,6 +15427,12 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
         }
       },
       "sections": {

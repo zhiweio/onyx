@@ -15344,12 +15344,6 @@
         "agents": {
           "label": "Agentes"
         },
-        "analytics": {
-          "label": "Análises"
-        },
-        "appearanceAndTheming": {
-          "label": "Aparência e temas"
-        },
         "chatPreferences": {
           "label": "Preferências de chat"
         },
@@ -15365,9 +15359,6 @@
         "craftPreferences": {
           "label": "Preferências"
         },
-        "customAnalytics": {
-          "label": "Análises personalizadas"
-        },
         "discordIntegration": {
           "label": "Integração com Discord"
         },
@@ -15377,14 +15368,8 @@
         "existingConnectors": {
           "label": "Conectores existentes"
         },
-        "exportLogs": {
-          "label": "Exportar logs"
-        },
         "groups": {
           "label": "Grupos"
-        },
-        "hookExtensions": {
-          "label": "Extensões de hook"
         },
         "imageGeneration": {
           "label": "Geração de imagens"
@@ -15398,9 +15383,6 @@
         "mcpActions": {
           "label": "Ações MCP"
         },
-        "mcpCatalog": {
-          "label": "MCP do sistema"
-        },
         "mcpGateway": {
           "label": "Gateway MCP"
         },
@@ -15409,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "Planos e cobrança"
-        },
-        "queryHistory": {
-          "label": "Histórico de consultas"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "Segurança e proteção"
@@ -15434,9 +15410,6 @@
         "upgradePlan": {
           "label": "Fazer upgrade do plano"
         },
-        "usage": {
-          "label": "Uso"
-        },
         "users": {
           "label": "Usuários"
         },
@@ -15454,6 +15427,12 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
         }
       },
       "sections": {

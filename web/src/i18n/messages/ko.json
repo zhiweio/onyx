@@ -15344,12 +15344,6 @@
         "agents": {
           "label": "에이전트"
         },
-        "analytics": {
-          "label": "분석"
-        },
-        "appearanceAndTheming": {
-          "label": "모양 및 테마"
-        },
         "chatPreferences": {
           "label": "채팅 환경설정"
         },
@@ -15365,9 +15359,6 @@
         "craftPreferences": {
           "label": "환경설정"
         },
-        "customAnalytics": {
-          "label": "사용자 지정 분석"
-        },
         "discordIntegration": {
           "label": "Discord 연동"
         },
@@ -15377,14 +15368,8 @@
         "existingConnectors": {
           "label": "기존 커넥터"
         },
-        "exportLogs": {
-          "label": "로그 내보내기"
-        },
         "groups": {
           "label": "그룹"
-        },
-        "hookExtensions": {
-          "label": "훅 확장"
         },
         "imageGeneration": {
           "label": "이미지 생성"
@@ -15398,9 +15383,6 @@
         "mcpActions": {
           "label": "MCP 액션"
         },
-        "mcpCatalog": {
-          "label": "시스템 MCP"
-        },
         "mcpGateway": {
           "label": "MCP 게이트웨이"
         },
@@ -15409,12 +15391,6 @@
         },
         "plansAndBilling": {
           "label": "요금제 및 결제"
-        },
-        "queryHistory": {
-          "label": "쿼리 기록"
-        },
-        "scim": {
-          "label": "SCIM"
         },
         "securityAndHardening": {
           "label": "보안 및 강화"
@@ -15434,9 +15410,6 @@
         "upgradePlan": {
           "label": "요금제 업그레이드"
         },
-        "usage": {
-          "label": "사용량"
-        },
         "users": {
           "label": "사용자"
         },
@@ -15454,6 +15427,12 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "agentModels": {
+          "label": "Agent Models"
+        },
+        "auditReport": {
+          "label": "Audit Report"
         }
       },
       "sections": {
