@@ -12885,6 +12885,9 @@
       },
       "envVars": {
         "label": "环境变量与密钥"
+      },
+      "loops": {
+        "label": "循环"
       }
     },
     "skillsStale": {
@@ -14574,6 +14577,149 @@
         "cancelButton": "取消",
         "createButton": "创建",
         "saveChangesButton": "保存更改"
+      }
+    },
+    "loops": {
+      "listPage": {
+        "header": {
+          "title": "循环",
+          "description": "常驻 agent 循环:ship 门控、台账与毕业授权。"
+        },
+        "columns": {
+          "name": "名称",
+          "schedule": "调度",
+          "state": "状态",
+          "health": "健康",
+          "ledger": "台账",
+          "nextFire": "下次触发"
+        },
+        "scheduleManual": "手动",
+        "ledgerTooltip": "排队 {queued} · 待决策 {ready} · 失败 {failed}",
+        "toasts": {
+          "paused": "已暂停 {name}",
+          "resumed": "已恢复 {name}",
+          "stateChangeFailed": "修改状态失败",
+          "deleted": "已删除 {name}",
+          "deleteFailed": "删除失败"
+        },
+        "rowActions": {
+          "pauseTooltip": "暂停",
+          "resumeTooltip": "恢复",
+          "deleteTooltip": "删除"
+        },
+        "errors": {
+          "loadFailed": "加载循环失败",
+          "tryAgainButton": "重试"
+        },
+        "empty": {
+          "title": "暂无循环",
+          "description": "通过 API 或场景创建循环后会显示在这里。"
+        },
+        "confirmDelete": {
+          "title": "删除 {name}?",
+          "description": "循环及其台账、产出与授权将被永久删除。",
+          "deleteButton": "删除",
+          "deletingButton": "删除中…"
+        }
+      },
+      "detailPage": {
+        "fallbackTitle": "循环",
+        "scheduleManual": "手动",
+        "header": {
+          "description": "调度 {cron} · 策略 v{version}"
+        },
+        "autopilot": {
+          "label": "自动驾驶"
+        },
+        "failedFires": "连续失败 {count} 次",
+        "toasts": {
+          "failed": "操作失败",
+          "autopilotOn": "已开启自动驾驶:ship 门全部转为自动",
+          "autopilotOff": "已关闭自动驾驶:授权已撤销",
+          "shipped": "已交付 {title}",
+          "retried": "已重新排队 {key}"
+        },
+        "errors": {
+          "loadFailed": "加载循环失败"
+        },
+        "outputs": {
+          "title": "产出",
+          "empty": "暂无产出。",
+          "columns": {
+            "title": "产出",
+            "action": "交付动作",
+            "state": "状态",
+            "decided": "决策时间"
+          },
+          "shipTooltip": "交付",
+          "returnTooltip": "退回重做"
+        },
+        "ledger": {
+          "title": "台账",
+          "empty": "台账为空。",
+          "columns": {
+            "key": "来源",
+            "status": "状态",
+            "attempts": "尝试次数",
+            "guidance": "指导"
+          },
+          "retryTooltip": "重试"
+        },
+        "grants": {
+          "title": "授权",
+          "empty": "暂无长期授权。",
+          "grantButton": "发放授权",
+          "columns": {
+            "action": "交付动作",
+            "label": "标签",
+            "policyVersion": "策略版本",
+            "created": "创建时间",
+            "status": "状态"
+          },
+          "active": "生效中",
+          "revoked": "已撤销"
+        },
+        "confirmDelete": {
+          "title": "删除 {name}?",
+          "description": "循环及其台账、产出与授权将被永久删除。",
+          "deleteButton": "删除"
+        },
+        "returnModal": {
+          "title": "退回产出重做",
+          "notePlaceholder": "可选:给重试的指导…",
+          "hint": "条目将带着你的备注回到队列。",
+          "cancelButton": "取消",
+          "returnButton": "退回",
+          "returningButton": "退回中…",
+          "toasts": {
+            "returned": "已退回重做",
+            "failed": "退回失败"
+          }
+        },
+        "grantModal": {
+          "title": "发放长期授权",
+          "fields": {
+            "action": {
+              "label": "交付动作",
+              "placeholder": "如 im_push"
+            },
+            "label": {
+              "label": "标签(可选)",
+              "description": "playbook 变更(策略版本升级)时自动失效。",
+              "placeholder": "如 weekly-report"
+            }
+          },
+          "errors": {
+            "actionRequired": "请选择交付动作。",
+            "title": "无法发放"
+          },
+          "cancelButton": "取消",
+          "grantButton": "发放",
+          "toasts": {
+            "granted": "授权已发放",
+            "failed": "发放失败"
+          }
+        }
       }
     }
   },

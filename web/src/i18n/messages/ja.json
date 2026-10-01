@@ -12885,6 +12885,9 @@
       },
       "envVars": {
         "label": "Env vars & secrets"
+      },
+      "loops": {
+        "label": "ループ"
       }
     },
     "skillsStale": {
@@ -14574,6 +14577,149 @@
         "cancelButton": "Cancel",
         "createButton": "Create",
         "saveChangesButton": "Save changes"
+      }
+    },
+    "loops": {
+      "listPage": {
+        "header": {
+          "title": "ループ",
+          "description": "常駐エージェントループ:ship ゲート、台帳、卒業付与。"
+        },
+        "columns": {
+          "name": "名前",
+          "schedule": "スケジュール",
+          "state": "状態",
+          "health": "健全性",
+          "ledger": "台帳",
+          "nextFire": "次回発火"
+        },
+        "scheduleManual": "手動",
+        "ledgerTooltip": "待機 {queued} · 承認待ち {ready} · 失敗 {failed}",
+        "toasts": {
+          "paused": "一時停止しました {name}",
+          "resumed": "再開しました {name}",
+          "stateChangeFailed": "状態変更に失敗",
+          "deleted": "削除しました {name}",
+          "deleteFailed": "削除に失敗"
+        },
+        "rowActions": {
+          "pauseTooltip": "一時停止",
+          "resumeTooltip": "再開",
+          "deleteTooltip": "削除"
+        },
+        "errors": {
+          "loadFailed": "ループの読み込みに失敗",
+          "tryAgainButton": "再試行"
+        },
+        "empty": {
+          "title": "ループはありません",
+          "description": "API やシナリオからループを作成するとここに表示されます。"
+        },
+        "confirmDelete": {
+          "title": "{name} を削除?",
+          "description": "ループと台帳・成果・付与は完全に削除されます。",
+          "deleteButton": "削除",
+          "deletingButton": "削除中…"
+        }
+      },
+      "detailPage": {
+        "fallbackTitle": "ループ",
+        "scheduleManual": "手動",
+        "header": {
+          "description": "スケジュール {cron} · ポリシー v{version}"
+        },
+        "autopilot": {
+          "label": "オートパイロット"
+        },
+        "failedFires": "連続失敗 {count} 回",
+        "toasts": {
+          "failed": "操作に失敗",
+          "autopilotOn": "オートパイロットON:ship ゲートを自動に切替",
+          "autopilotOff": "オートパイロットOFF:付与を取り消し",
+          "shipped": "出荷しました {title}",
+          "retried": "{key} を再キューしました"
+        },
+        "errors": {
+          "loadFailed": "ループの読み込みに失敗"
+        },
+        "outputs": {
+          "title": "成果物",
+          "empty": "成果物はまだありません。",
+          "columns": {
+            "title": "成果物",
+            "action": "出荷アクション",
+            "state": "状態",
+            "decided": "決定日時"
+          },
+          "shipTooltip": "出荷",
+          "returnTooltip": "差し戻し"
+        },
+        "ledger": {
+          "title": "台帳",
+          "empty": "台帳は空です。",
+          "columns": {
+            "key": "ソース",
+            "status": "状態",
+            "attempts": "試行",
+            "guidance": "指針"
+          },
+          "retryTooltip": "再試行"
+        },
+        "grants": {
+          "title": "付与",
+          "empty": "常駐付与はありません。",
+          "grantButton": "付与",
+          "columns": {
+            "action": "出荷アクション",
+            "label": "ラベル",
+            "policyVersion": "ポリシー v",
+            "created": "作成日時",
+            "status": "状態"
+          },
+          "active": "有効",
+          "revoked": "取消済み"
+        },
+        "confirmDelete": {
+          "title": "{name} を削除?",
+          "description": "ループと台帳・成果・付与は完全に削除されます。",
+          "deleteButton": "削除"
+        },
+        "returnModal": {
+          "title": "成果物を差し戻し",
+          "notePlaceholder": "任意:再試行への指針…",
+          "hint": "項目はあなたのメモ付きでキューに戻ります。",
+          "cancelButton": "キャンセル",
+          "returnButton": "差し戻し",
+          "returningButton": "差し戻し中…",
+          "toasts": {
+            "returned": "差し戻しました",
+            "failed": "差し戻しに失敗"
+          }
+        },
+        "grantModal": {
+          "title": "常駐付与を発行",
+          "fields": {
+            "action": {
+              "label": "出荷アクション",
+              "placeholder": "例: im_push"
+            },
+            "label": {
+              "label": "ラベル(任意)",
+              "description": "playbook 変更(ポリシーバージョン繰上げ)で自動失効。",
+              "placeholder": "例: weekly-report"
+            }
+          },
+          "errors": {
+            "actionRequired": "出荷アクションを選択。",
+            "title": "付与できません"
+          },
+          "cancelButton": "キャンセル",
+          "grantButton": "付与",
+          "toasts": {
+            "granted": "付与しました",
+            "failed": "付与に失敗"
+          }
+        }
       }
     }
   },

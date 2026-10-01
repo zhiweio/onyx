@@ -41,6 +41,7 @@ import {
   SvgClock,
   SvgMoreHorizontal,
   SvgEdit,
+  SvgRefreshCw,
   SvgTrash,
   SvgPlug,
   SvgShare,
@@ -62,6 +63,7 @@ import {
   CRAFT_APPS_PATH,
   CRAFT_MCP_ACTIONS_PATH,
   CRAFT_TASKS_PATH,
+  CRAFT_LOOPS_PATH,
   CRAFT_ENV_VARS_PATH,
 } from "@/app/craft/v1/constants";
 import { useUnsavedChangesNavigation } from "@/providers/UnsavedChangesNavigationProvider";
@@ -612,6 +614,7 @@ const MemoizedBuildSidebarInner = memo(() => {
         }}
         isActive={
           !pathname.startsWith(CRAFT_TASKS_PATH) &&
+          !pathname.startsWith(CRAFT_LOOPS_PATH) &&
           !pathname.startsWith(CRAFT_SKILLS_PATH) &&
           !pathname.startsWith(CRAFT_SCENARIOS_PATH) &&
           !pathname.startsWith(CRAFT_REPORT_TEMPLATES_PATH) &&
@@ -662,6 +665,13 @@ const MemoizedBuildSidebarInner = memo(() => {
             selected={pathname.startsWith(CRAFT_TASKS_PATH)}
           >
             {t("scheduledTasks.label")}
+          </SidebarTab>
+          <SidebarTab
+            icon={SvgRefreshCw}
+            onClick={() => navigate(CRAFT_LOOPS_PATH)}
+            selected={pathname.startsWith(CRAFT_LOOPS_PATH)}
+          >
+            {t("loops.label")}
           </SidebarTab>
           <SidebarTab
             icon={SvgBlocks}

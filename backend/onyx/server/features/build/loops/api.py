@@ -35,7 +35,7 @@ from onyx.db.enums import (
     CraftLoopState,
     Permission,
 )
-from onyx.db.models import User
+from onyx.db.models import CraftLoopGrant, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.loops.core import (
@@ -140,7 +140,19 @@ def _serialize_output(output: Any) -> dict[str, Any]:
         "title": output.title,
         "summary": output.summary,
         "state": output.state.value,
+        "decided_by": str(output.decided_by) if output.decided_by else None,
         "decided_at": output.decided_at.isoformat() if output.decided_at else None,
+    }
+
+
+def _serialize_grant(grant: CraftLoopGrant) -> dict[str, Any]:
+    return {
+        "id": str(grant.id),
+        "ship_action": grant.ship_action,
+        "label": grant.label,
+        "policy_version": grant.policy_version,
+        "created_at": grant.created_at.isoformat(),
+        "revoked_at": grant.revoked_at.isoformat() if grant.revoked_at else None,
     }
 
 
@@ -153,16 +165,27 @@ def list_loops(
     db_session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     loops = list_craft_loops_for_user(db_session, user.id)
-    result = []
-    for loop in loops:
-        data = _serialize_loop(loop)
-        ledger = list_loop_items(db_session, loop.id)
-        data["counts"] = {
-            status.value: sum(1 for i in ledger if i.status is status)
-            for status in CraftLoopItemStatus
-        }
-        result.append(data)
-    return result
+    return [_loop_payload(db_session, loop) for loop in loops]
+
+
+def _loop_payload(db_session: Session, loop: Any) -> dict[str, Any]:
+    data = _serialize_loop(loop)
+    ledger = list_loop_items(db_session, loop.id)
+    data["counts"] = {
+        status.value: sum(1 for i in ledger if i.status is status)
+        for status in CraftLoopItemStatus
+    }
+    return data
+
+
+@router.get("/{loop_id}")
+def get_loop(
+    loop_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    _require_owner(db_session, loop_id, user)
+    return _loop_payload(db_session, get_craft_loop_or_404(db_session, loop_id))
 
 
 @router.post("")
@@ -338,6 +361,22 @@ def decide_output(
 # ── graduation controls ───────────────────────────────────────────────────
 
 
+@router.get("/{loop_id}/grants")
+def list_grants(
+    loop_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> list[dict[str, Any]]:
+    _require_owner(db_session, loop_id, user)
+    grants = (
+        db_session.query(CraftLoopGrant)
+        .filter(CraftLoopGrant.loop_id == loop_id)
+        .order_by(CraftLoopGrant.created_at.desc())
+        .all()
+    )
+    return [_serialize_grant(grant) for grant in grants]
+
+
 @router.post("/{loop_id}/grants")
 def grant_loop_action(
     loop_id: UUID,
@@ -355,12 +394,7 @@ def grant_loop_action(
     )
     db_session.add(grant)
     db_session.commit()
-    return {
-        "id": str(grant.id),
-        "ship_action": grant.ship_action,
-        "label": grant.label,
-        "policy_version": grant.policy_version,
-    }
+    return _serialize_grant(grant)
 
 
 @router.post("/{loop_id}/autopilot")

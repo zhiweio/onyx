@@ -295,6 +295,13 @@ export const SWR_KEYS = {
   craftJob: (sessionId: string) =>
     `/api/build/jobs?session_id=${encodeURIComponent(sessionId)}`,
 
+  // ── Loops (Craft) ─────────────────────────────────────────────────────────
+  craftLoops: "/api/build/loops",
+  craftLoop: (loopId: string) => `/api/build/loops/${loopId}`,
+  craftLoopItems: (loopId: string) => `/api/build/loops/${loopId}/items`,
+  craftLoopOutputs: (loopId: string) => `/api/build/loops/${loopId}/outputs`,
+  craftLoopGrants: (loopId: string) => `/api/build/loops/${loopId}/grants`,
+
   // ── Env Vars / Secrets (Craft) ────────────────────────────────────────────
   // Task-form picker mode (user scope + one project); management-page mode
   // (user scope + every readable project).

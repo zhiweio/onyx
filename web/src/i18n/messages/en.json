@@ -12891,6 +12891,9 @@
       },
       "envVars": {
         "label": "Env vars & secrets"
+      },
+      "loops": {
+        "label": "Loops"
       }
     },
     "skillsStale": {
@@ -14574,6 +14577,149 @@
         "cancelButton": "Cancel",
         "createButton": "Create",
         "saveChangesButton": "Save changes"
+      }
+    },
+    "loops": {
+      "listPage": {
+        "header": {
+          "title": "Loops",
+          "description": "Standing agent loops with a ship gate, ledger, and graduated grants."
+        },
+        "columns": {
+          "name": "Name",
+          "schedule": "Schedule",
+          "state": "State",
+          "health": "Health",
+          "ledger": "Ledger",
+          "nextFire": "Next fire"
+        },
+        "scheduleManual": "manual",
+        "ledgerTooltip": "Queued: {queued} · Ready: {ready} · Failed: {failed}",
+        "toasts": {
+          "paused": "Paused {name}",
+          "resumed": "Resumed {name}",
+          "stateChangeFailed": "Failed to change loop state",
+          "deleted": "Deleted {name}",
+          "deleteFailed": "Failed to delete loop"
+        },
+        "rowActions": {
+          "pauseTooltip": "Pause",
+          "resumeTooltip": "Resume",
+          "deleteTooltip": "Delete"
+        },
+        "errors": {
+          "loadFailed": "Failed to load loops",
+          "tryAgainButton": "Try again"
+        },
+        "empty": {
+          "title": "No loops yet",
+          "description": "Create a loop from the API or a scenario to see it here."
+        },
+        "confirmDelete": {
+          "title": "Delete {name}?",
+          "description": "The loop, its ledger, outputs, and grants are removed permanently.",
+          "deleteButton": "Delete",
+          "deletingButton": "Deleting…"
+        }
+      },
+      "detailPage": {
+        "fallbackTitle": "Loop",
+        "scheduleManual": "manual",
+        "header": {
+          "description": "Schedule {cron} · policy v{version}"
+        },
+        "autopilot": {
+          "label": "Autopilot"
+        },
+        "failedFires": "{count} failed fires",
+        "toasts": {
+          "failed": "Action failed",
+          "autopilotOn": "Autopilot on: ship gates flipped to auto",
+          "autopilotOff": "Autopilot off: grants revoked",
+          "shipped": "Shipped {title}",
+          "retried": "Queued {key} for retry"
+        },
+        "errors": {
+          "loadFailed": "Failed to load loop"
+        },
+        "outputs": {
+          "title": "Outputs",
+          "empty": "No outputs yet.",
+          "columns": {
+            "title": "Output",
+            "action": "Ship action",
+            "state": "State",
+            "decided": "Decided"
+          },
+          "shipTooltip": "Ship",
+          "returnTooltip": "Return to work"
+        },
+        "ledger": {
+          "title": "Ledger",
+          "empty": "No items in the ledger.",
+          "columns": {
+            "key": "Source",
+            "status": "Status",
+            "attempts": "Attempts",
+            "guidance": "Guidance"
+          },
+          "retryTooltip": "Retry"
+        },
+        "grants": {
+          "title": "Grants",
+          "empty": "No standing grants.",
+          "grantButton": "Grant",
+          "columns": {
+            "action": "Ship action",
+            "label": "Label",
+            "policyVersion": "Policy v",
+            "created": "Created",
+            "status": "Status"
+          },
+          "active": "Active",
+          "revoked": "Revoked"
+        },
+        "confirmDelete": {
+          "title": "Delete {name}?",
+          "description": "The loop, its ledger, outputs, and grants are removed permanently.",
+          "deleteButton": "Delete"
+        },
+        "returnModal": {
+          "title": "Return output to work",
+          "notePlaceholder": "Optional guidance for the retry…",
+          "hint": "The item returns to the queue with your note attached.",
+          "cancelButton": "Cancel",
+          "returnButton": "Return",
+          "returningButton": "Returning…",
+          "toasts": {
+            "returned": "Output returned to work",
+            "failed": "Failed to return output"
+          }
+        },
+        "grantModal": {
+          "title": "Issue standing grant",
+          "fields": {
+            "action": {
+              "label": "Ship action",
+              "placeholder": "e.g. im_push"
+            },
+            "label": {
+              "label": "Label (optional)",
+              "description": "Revoked automatically when the playbook changes (policy version bump).",
+              "placeholder": "e.g. weekly-report"
+            }
+          },
+          "errors": {
+            "actionRequired": "Pick a ship action.",
+            "title": "Cannot grant"
+          },
+          "cancelButton": "Cancel",
+          "grantButton": "Grant",
+          "toasts": {
+            "granted": "Grant issued",
+            "failed": "Failed to issue grant"
+          }
+        }
       }
     }
   },

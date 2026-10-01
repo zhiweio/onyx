@@ -1,5 +1,6 @@
 export const CRAFT_PATH = "/craft/v1";
 export const CRAFT_TASKS_PATH = `${CRAFT_PATH}/tasks`;
+export const CRAFT_LOOPS_PATH = `${CRAFT_PATH}/loops`;
 export const CRAFT_SKILLS_PATH = `${CRAFT_PATH}/skills`;
 export const CRAFT_SCENARIOS_PATH = `${CRAFT_PATH}/scenarios`;
 export const CRAFT_REPORT_TEMPLATES_PATH = `${CRAFT_PATH}/report-templates`;
