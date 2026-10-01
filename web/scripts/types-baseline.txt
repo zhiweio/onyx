@@ -1,6 +1,6 @@
 # Pre-existing tsc errors grandfathered by scripts/types-check.mjs.
 # Shrink by fixing code, then: bun run types:baseline-update
-# 252 entries.
+# 250 entries.
 lib/opal/src/layouts/content/ContentXl.tsx(223,13): error TS2322: Type '{ font: TextFont; color: "inherit"; maxLines: number | undefined; strikethrough: boolean | undefined; title: string; className: string | undefined; onClick: (() => void) | undefined; children: string | RichStr; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
 src/app/admin/bots/[bot-id]/channels/SlackChannelConfigCreationForm.tsx(34,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
 src/app/admin/bots/[bot-id]/channels/SlackChannelConfigFormFields.tsx(45,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
@@ -237,9 +237,7 @@ src/sections/modals/languageModels/DashscopeModal.tsx(267,11): error TS2739: Typ
 src/sections/modals/languageModels/ModelSettingsPopover.tsx(172,19): error TS2322: Type '{ value: string; disabled: boolean; onChange: (e: ChangeEvent<HTMLInputElement, HTMLInputElement>) => void; }' is not assignable to type 'IntrinsicAttributes & InputTypeInProps'.
 src/sections/scenarios/editor/OutputSection.tsx(79,36): error TS2339: Property 'description' does not exist on type '{ slug: string; name: string; }'.
 src/sections/scenarios/editor/ScenarioComposer.tsx(297,11): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
-src/views/AgentEditorPage.tsx(126,13): error TS2322: Type '{ font: string; color: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
 src/views/CraftProjectDetailPage.tsx(314,15): error TS2322: Type 'KeyedMutator<CraftProject>' is not assignable to type '() => void | Promise<void>'.
-src/views/admin/AgentModelsPage/index.tsx(250,9): error TS2322: Type 'KeyedMutator<AgentModelListResponse>' is not assignable to type '() => void | Promise<void>'.
 src/views/admin/AuditPage/RecordTables.tsx(131,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditApproval>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditApproval[]; total_items: number; }>'.
 src/views/admin/AuditPage/RecordTables.tsx(220,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditQuarantine>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditQuarantine[]; total_items: number; }>'.
 src/views/admin/AuditPage/RecordTables.tsx(318,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditQueryHistoryRow>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditQueryHistoryRow[]; total_items: number; }>'.

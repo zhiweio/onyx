@@ -41,6 +41,8 @@ import { CRAFT_MCP_ACTIONS_PATH } from "@/app/craft/v1/constants";
 import useUserSkills from "@/hooks/useUserSkills";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import { compareByName } from "@/lib/skills/picker";
+import { clampPage, slicePage } from "@/lib/browse/page";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 
 // Apps and MCP servers are connected, governed, and taught to the agent
 // differently, so each kind gets its own tab rather than one blended list.
@@ -149,7 +151,12 @@ function AppConnections({ query }: AppConnectionsProps) {
     // often come here to check on or disconnect.
     const visible = (items: ConnectableApp[]) =>
       items
-        .filter((item) => (q ? item.name.toLowerCase().includes(q) : true))
+        .filter(
+          (item) =>
+            !q ||
+            item.name.toLowerCase().includes(q) ||
+            item.description.toLowerCase().includes(q)
+        )
         .sort(
           (a, b) =>
             Number(b.authenticated) - Number(a.authenticated) ||
@@ -281,6 +288,16 @@ function ConnectableList({
   onChange,
 }: ConnectableListProps) {
   const t = useTranslations("craft.apps.page");
+  const [page, setPage] = useState(1);
+
+  // The parent refilters on every keystroke, giving `items` a new identity;
+  // riding that identity resets the page whenever the result set changes.
+  useEffect(() => {
+    setPage(1);
+  }, [items]);
+
+  const safePage = clampPage(page, items.length);
+  const pageItems = slicePage(items, safePage);
 
   if (items.length === 0) {
     return searching ? (
@@ -302,20 +319,28 @@ function ConnectableList({
   // connects moves up into that group but keeps its shape, so the page's
   // geometry never changes. The tab's count carries the totals.
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-      {items.map((item) => (
-        <ConnectableCard
-          key={item.key}
-          app={item}
-          // Skills are an external-app concept, and only apps carry an id.
-          needsSkillSetup={
-            item.externalAppId !== null &&
-            appsNeedingSkillSetup.has(item.externalAppId)
-          }
-          highlight={connectParam !== null && connectParam === item.connectId}
-          onChange={onChange}
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {pageItems.map((item) => (
+          <ConnectableCard
+            key={item.key}
+            app={item}
+            // Skills are an external-app concept, and only apps carry an id.
+            needsSkillSetup={
+              item.externalAppId !== null &&
+              appsNeedingSkillSetup.has(item.externalAppId)
+            }
+            highlight={connectParam !== null && connectParam === item.connectId}
+            onChange={onChange}
+          />
+        ))}
+      </div>
+      <BrowsePagination
+        page={safePage}
+        totalItems={items.length}
+        onPageChange={setPage}
+        units={t("pagination.units")}
+      />
     </div>
   );
 }

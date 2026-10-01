@@ -72,12 +72,23 @@ import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { getActionIcon } from "@/lib/tools/utils";
 import { Disabled, Hoverable } from "@opal/core";
 import useFilter from "@/hooks/useFilter";
+import {
+  mcpServerMatches,
+  useSearchablePagination,
+} from "@/hooks/useSearchablePagination";
+import AdminListHeader from "@/sections/admin/AdminListHeader";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import { MCPServer } from "@/lib/tools/types";
 import type { IconProps } from "@opal/types";
 import { useTierAtLeast } from "@/hooks/useTierAtLeast";
 import { Tier } from "@/lib/settings/types";
 
 const route = ADMIN_ROUTES.CHAT_PREFERENCES;
+
+const mcpEntryMatches = (
+  entry: { server: MCPServer; tools: MCPServerCardTool[] },
+  query: string
+) => mcpServerMatches(entry.server, query);
 
 interface DefaultAgentConfiguration {
   tool_ids: number[];
@@ -827,6 +838,8 @@ export default function ChatPreferencesPage() {
       })),
   }));
 
+  const mcpList = useSearchablePagination(mcpServersWithTools, mcpEntryMatches);
+
   // Default agent configuration (system prompt)
   const { data: defaultAgentConfig, mutate: mutateDefaultAgent } =
     useSWR<DefaultAgentConfiguration>(
@@ -1360,7 +1373,15 @@ export default function ChatPreferencesPage() {
 
                     {/* MCP Servers & OpenAPI Tools */}
                     <Section gap={2}>
-                      {mcpServersWithTools.map(({ server, tools }) => (
+                      {mcpServersWithTools.length > 0 && (
+                        <AdminListHeader
+                          hasItems
+                          searchQuery={mcpList.searchQuery}
+                          onSearchQueryChange={mcpList.setSearchQuery}
+                          emptyStateText=""
+                        />
+                      )}
+                      {mcpList.pageItems.map(({ server, tools }) => (
                         <MCPServerCard
                           key={server.id}
                           server={server}
@@ -1370,6 +1391,12 @@ export default function ChatPreferencesPage() {
                           onToggleTools={toggleTools}
                         />
                       ))}
+                      <BrowsePagination
+                        page={mcpList.safePage}
+                        totalItems={mcpList.filtered.length}
+                        onPageChange={mcpList.setPage}
+                        units={t("mcpServer.pagination.units")}
+                      />
                       {openApiTools.map((tool) => (
                         <Card key={tool.id} border="solid" rounding={4}>
                           <InputHorizontal

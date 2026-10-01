@@ -30,6 +30,9 @@ import {
   useConnectableTab,
 } from "@/app/craft/v1/apps/connectableApps";
 import { compareByName } from "@/lib/skills/picker";
+import { useSearchablePagination } from "@/hooks/useSearchablePagination";
+import AdminListHeader from "@/sections/admin/AdminListHeader";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import { ConfiguredIntegration } from "@/views/admin/ExternalAppsPage/interfaces";
 import {
   externalAppToIntegration,
@@ -403,12 +406,22 @@ interface IntegrationPanelProps {
   emptyAction?: React.ReactNode;
 }
 
+const integrationMatches = (
+  integration: ConfiguredIntegration,
+  query: string
+) =>
+  integration.name.toLowerCase().includes(query) ||
+  integration.facts.some((fact) => fact.toLowerCase().includes(query));
+
 function IntegrationPanel({
   copy,
   integrations,
   blurbAction,
   emptyAction,
 }: IntegrationPanelProps) {
+  const tShared = useTranslations("admin.shared");
+  const list = useSearchablePagination(integrations, integrationMatches);
+
   if (integrations.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 pt-2">
@@ -430,9 +443,21 @@ function IntegrationPanel({
         </Text>
         {blurbAction}
       </div>
-      {integrations.map((integration) => (
+      <AdminListHeader
+        hasItems
+        searchQuery={list.searchQuery}
+        onSearchQueryChange={list.setSearchQuery}
+        emptyStateText=""
+      />
+      {list.pageItems.map((integration) => (
         <IntegrationCard key={integration.key} integration={integration} />
       ))}
+      <BrowsePagination
+        page={list.safePage}
+        totalItems={list.filtered.length}
+        onPageChange={list.setPage}
+        units={tShared("pagination.units")}
+      />
     </div>
   );
 }

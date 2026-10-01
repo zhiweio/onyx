@@ -92,6 +92,12 @@ import {
   ToolSnapshot,
 } from "@/lib/tools/types";
 import useFilter from "@/hooks/useFilter";
+import {
+  mcpServerMatches,
+  useSearchablePagination,
+} from "@/hooks/useSearchablePagination";
+import AdminListHeader from "@/sections/admin/AdminListHeader";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import EnabledCount from "@/refresh-components/EnabledCount";
 import { useAppPosition } from "@/lib/position/hooks";
 import { isDateInFuture } from "@/lib/dateUtils";
@@ -123,7 +129,7 @@ function BudgetNumberField({ name, label }: { name: string; label: string }) {
   const [field, , helpers] = useField<number | undefined>(name);
   return (
     <label className="flex items-center justify-between gap-2">
-      <Text font="secondary-body" color="text-03">
+      <Text secondaryBody text03>
         {label}
       </Text>
       <input
@@ -342,6 +348,11 @@ interface MCPServerCardProps {
   tools: MCPTool[];
   isLoading: boolean;
 }
+
+const mcpEntryMatches = (
+  entry: { server: AgentEditorMCPServer; tools: MCPTool[] },
+  query: string
+) => mcpServerMatches(entry.server, query);
 
 function MCPServerCard({
   server,
@@ -743,6 +754,11 @@ export default function AgentEditorPage({
     ({ tools }) => tools.length > 0
   );
 
+  const mcpList = useSearchablePagination(
+    mcpServersWithVisibleTools,
+    mcpEntryMatches
+  );
+
   const initialValues = {
     // General
     icon_name: existingAgent?.icon_name ?? null,
@@ -1117,21 +1133,18 @@ export default function AgentEditorPage({
       // agent existed (the create payload only carries viewer-level ids)
       if (!existingAgent && values.shared_draft) {
         const draft = values.shared_draft;
-        const shareError = await updateAgentShares(
-          agent.id,
-          {
-            user_shares: draft.userShares.map((share) => ({
-              user_id: share.user.id,
-              permission: share.permission,
-            })),
-            group_shares: draft.groupShares.map((share) => ({
-              group_id: share.group_id,
-              permission: share.permission,
-            })),
-            is_public: draft.isPublic,
-            public_permission: draft.publicPermission,
-          },
-        );
+        const shareError = await updateAgentShares(agent.id, {
+          user_shares: draft.userShares.map((share) => ({
+            user_id: share.user.id,
+            permission: share.permission,
+          })),
+          group_shares: draft.groupShares.map((share) => ({
+            group_id: share.group_id,
+            permission: share.permission,
+          })),
+          is_public: draft.isPublic,
+          public_permission: draft.publicPermission,
+        });
         if (shareError) {
           toast.error(t("editor.toasts.sharingFailed", { error: shareError }));
         }
@@ -1841,7 +1854,13 @@ export default function AgentEditorPage({
                                   gap={2}
                                   alignItems="stretch"
                                 >
-                                  {mcpServersWithVisibleTools.map(
+                                  <AdminListHeader
+                                    hasItems
+                                    searchQuery={mcpList.searchQuery}
+                                    onSearchQueryChange={mcpList.setSearchQuery}
+                                    emptyStateText=""
+                                  />
+                                  {mcpList.pageItems.map(
                                     ({ server, tools, isLoading }) => (
                                       <MCPServerCard
                                         key={server.id}
@@ -1851,6 +1870,12 @@ export default function AgentEditorPage({
                                       />
                                     )
                                   )}
+                                  <BrowsePagination
+                                    page={mcpList.safePage}
+                                    totalItems={mcpList.filtered.length}
+                                    onPageChange={mcpList.setPage}
+                                    units={t("editor.actions.pagination.units")}
+                                  />
                                 </GeneralLayouts.Section>
                               )}
 

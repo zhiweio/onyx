@@ -28,7 +28,10 @@ import {
   updateMCPServer,
   updateToolsStatus,
 } from "@/lib/tools/svc";
-import { clampPage, slicePage } from "@/lib/browse/page";
+import {
+  mcpServerMatches,
+  useSearchablePagination,
+} from "@/hooks/useSearchablePagination";
 import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import { CatalogViewToggle } from "@/sections/gallery/CatalogBrowseControls";
 import type { CatalogViewMode } from "@/lib/system-catalog/types";
@@ -58,12 +61,11 @@ export default function MCPPageContent({
     mcpData,
     isLoading: isMcpLoading,
     mutateMcpServers,
-  } =
-    variant === "personal"
-      ? personalListing
-      : variant === "gallery"
-        ? galleryListing
-        : adminListing;
+  } = variant === "personal"
+    ? personalListing
+    : variant === "gallery"
+      ? galleryListing
+      : adminListing;
   const readOnly = variant === "gallery";
 
   // Modal management
@@ -79,9 +81,7 @@ export default function MCPPageContent({
   const [fetchingToolsServerIds, setFetchingToolsServerIds] = useState<
     number[]
   >([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<CatalogViewMode>("cards");
-  const [page, setPage] = useState(1);
   const attemptedEmptyDiscoverIds = useRef<Set<number>>(new Set());
 
   const mcpServers = useMemo(
@@ -575,25 +575,16 @@ export default function MCPPageContent({
     [mutateMcpServers, t]
   );
 
-  // Filter servers based on search query
-  const filteredServers = useMemo(() => {
-    if (!searchQuery.trim()) return mcpServers;
-
-    const query = searchQuery.toLowerCase();
-    return mcpServers.filter(
-      (server) =>
-        server.name.toLowerCase().includes(query) ||
-        server.description?.toLowerCase().includes(query) ||
-        server.server_url.toLowerCase().includes(query)
-    );
-  }, [mcpServers, searchQuery]);
+  // Shared client-side search + pagination (name / description / URL).
+  const mcpList = useSearchablePagination(mcpServers, mcpServerMatches);
+  const filteredServers = mcpList.filtered;
+  const pageServers = mcpList.pageItems;
+  const safePage = mcpList.safePage;
 
   useEffect(() => {
-    setPage(1);
-  }, [searchQuery, view]);
-
-  const safePage = clampPage(page, filteredServers.length);
-  const pageServers = slicePage(filteredServers, safePage);
+    mcpList.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -609,8 +600,8 @@ export default function MCPPageContent({
       <div className="shrink-0 mb-4">
         <AdminListHeader
           hasItems={isLoading || mcpServers.length > 0}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
+          searchQuery={mcpList.searchQuery}
+          onSearchQueryChange={mcpList.setSearchQuery}
           onAction={readOnly ? undefined : handleAddServer}
           actionLabel={readOnly ? undefined : t("mcpPage.addButton.label")}
           emptyStateText={
@@ -673,9 +664,7 @@ export default function MCPPageContent({
                       readOnly ? undefined : () => handleDelete(server.id)
                     }
                     onAuthenticate={
-                      readOnly
-                        ? undefined
-                        : () => handleAuthenticate(server.id)
+                      readOnly ? undefined : () => handleAuthenticate(server.id)
                     }
                     onReconnect={
                       readOnly ? undefined : () => handleReconnect(server.id)
@@ -695,7 +684,7 @@ export default function MCPPageContent({
             <BrowsePagination
               page={safePage}
               totalItems={filteredServers.length}
-              onPageChange={setPage}
+              onPageChange={mcpList.setPage}
               units={tGallery("pagination.units")}
             />
           )}
