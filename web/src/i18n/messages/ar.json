@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "نقل الملكية"
           }
+        },
+        "peopleOption": {
+          "description": "شارك هذه المحادثة مع مستخدمين أو مجموعات محددين.",
+          "title": "أشخاص محددون"
         }
       },
       "unsavedChanges": {
@@ -11881,7 +11885,7 @@
       "planningNext": "يخطط للخطوات التالية",
       "exploring": "يستكشف",
       "exploringTarget": "يستكشف {target}",
-      "exploredN": "استكشف {count} أداة",
+      "exploredN": "استكشف {count, plural, one {أداة واحدة} other {# أدوات}}",
       "editing": "يحرر",
       "editingTarget": "يحرر {target}",
       "edited": "حرر",

@@ -1937,6 +1937,7 @@ export function FileSystem({
     </DialogClose>
   );
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- component-level shortcut capture (Cmd/Ctrl+F), not a control
     <div
       ref={rootRef}
       tabIndex={-1}
@@ -2412,7 +2413,7 @@ function FileSystemSortSelect({
           </span>
         </SelectValue>
       </SelectTrigger>
-      <SelectContent align="end" position={false ? "item-aligned" : "popper"}>
+      <SelectContent align="end" position="popper">
         {SORT_OPTIONS.map((option) => (
           <SelectItem key={option.key} value={option.key}>
             {option.label}
@@ -3424,6 +3425,9 @@ function FileSystemIconsView({
         <div
           role="listbox"
           aria-label="Files"
+          // Focusable for programmatic focus only; the roving tab stop lives
+          // on the option buttons below.
+          tabIndex={-1}
           className="absolute inset-x-0 grid gap-x-1 gap-y-3"
           // The auto-fill expression produces the same column count the
           // ResizeObserver measures (the measurement exists only for the
@@ -3948,7 +3952,10 @@ function FileSystemPierreTree({
     // and rejects the differently-ordered prepared input. Passing only the
     // prepared input makes the reset adopt its path list as-is, and the
     // reset itself carries the selection over.
-    model.resetPaths(undefined as unknown as readonly string[], {
+    // The typed parameter is required; the runtime treats a missing `paths`
+    // as "adopt the prepared input's paths", so route undefined through unknown.
+    const pathsUnset = undefined as unknown;
+    model.resetPaths(pathsUnset as readonly string[], {
       initialExpandedPaths: expandedPaths,
       preparedInput,
     });
@@ -4791,6 +4798,7 @@ function FileSystemGalleryView(props: FileSystemViewProps) {
     });
   }, [activePath, entries]);
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- gallery keyboard-navigation capture, not a control
     <div className="flex size-full flex-col" onKeyDown={handleKeyDown}>
       {/* The strip comes first in DOM order (rendered below via order-last)
             so the filmstrip is the view's single tab stop: Shift+Tab exits to

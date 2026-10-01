@@ -447,7 +447,7 @@
       "access": {
         "public": "对所有用户公开",
         "restricted": "受限 — 未分配用户组",
-        "restrictedGroups": "仅限 {count} 个用户组",
+        "restrictedGroups": "{count, plural, other {仅限 # 个用户组}}",
         "restrictedNamed": "仅限用户组：{names}"
       }
     },
@@ -10882,6 +10882,10 @@
           "trailingButton": {
             "tooltip": "转移所有权"
           }
+        },
+        "peopleOption": {
+          "description": "与选定的用户或用户组共享此对话。",
+          "title": "指定成员"
         }
       },
       "unsavedChanges": {
@@ -11899,7 +11903,7 @@
       "planningNext": "正在规划下一步",
       "exploring": "探索中",
       "exploringTarget": "正在查看 {target}",
-      "exploredN": "已探索 {count} 个工具",
+      "exploredN": "{count, plural, other {已探索 # 个工具}}",
       "editing": "编辑中",
       "editingTarget": "正在编辑 {target}",
       "edited": "已编辑",
@@ -11910,10 +11914,10 @@
       "wroteTarget": "已写入 {target}",
       "running": "运行中",
       "runningTarget": "正在运行 {target}",
-      "runningN": "正在运行 {count} 个命令",
+      "runningN": "{count, plural, other {正在运行 # 个命令}}",
       "ran": "已运行",
       "ranTarget": "已运行 {target}",
-      "ranN": "已运行 {count} 个命令",
+      "ranN": "{count, plural, other {已运行 # 个命令}}",
       "task": "正在运行任务",
       "taskDone": "已运行任务",
       "taskCancelled": "已取消任务",

@@ -701,7 +701,7 @@ function DocxToolbar({
               </SelectTrigger>
               <SelectContent
                 align="end"
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
@@ -991,9 +991,13 @@ function DocxThumbnailSidebarList({
                   transform: `translateY(${virtualRow.start + DOCX_THUMBNAIL_LIST_PADDING}px)`,
                 }}
               >
+                {/* Keyboard interaction is owned by the focused listbox
+                    container (arrow keys + aria-activedescendant). */}
+                {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard handled at listbox level */}
                 <div
                   id={`${thumbnailListboxId}-page-${thumbnail.pageNumber}`}
                   role="option"
+                  tabIndex={-1}
                   aria-current={
                     thumbnail.pageNumber === activePage ? "page" : undefined
                   }

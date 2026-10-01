@@ -485,7 +485,7 @@ function PptxToolbar({
               </SelectTrigger>
               <SelectContent
                 align="end"
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
@@ -750,9 +750,13 @@ function PptxThumbnailSidebarList({
                   transform: `translateY(${virtualRow.start + PPTX_THUMBNAIL_LIST_PADDING}px)`,
                 }}
               >
+                {/* Keyboard interaction is owned by the focused listbox
+                    container (arrow keys + aria-activedescendant). */}
+                {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard handled at listbox level */}
                 <div
                   id={`${thumbnailListboxId}-slide-${thumbnail.slideNumber}`}
                   role="option"
+                  tabIndex={-1}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={`Slide ${thumbnail.slideNumber}`}
                   aria-posinset={thumbnail.slideNumber}

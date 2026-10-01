@@ -1315,7 +1315,10 @@ function InlineTextInput({
   const handleInput = React.useCallback(
     (event: React.InputEvent<HTMLInputElement>) => {
       onInput?.(event);
-      onChange?.(event as unknown as React.ChangeEvent<HTMLInputElement>);
+      onChange?.(
+        event as React.InputEvent<HTMLInputElement> &
+          React.ChangeEvent<HTMLInputElement>
+      );
     },
     [onChange, onInput]
   );
@@ -1821,6 +1824,7 @@ const SortablePropertyRows = React.memo(function SortablePropertyRows({
       </tr>
       {hasNestedEditor ? (
         <tr className="border-b bg-oklch(0.97 0 0)/20 dark:bg-oklch(0.269 0 0)/20">
+          {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- layout cell, not a control; the nested trigger carries its own label */}
           <td colSpan={3} className="p-0">
             <Collapsible
               open={isNestedEditorOpen}
@@ -1892,6 +1896,7 @@ function SchemaPropertyDropPreviewRows({
       aria-label={`Insert ${property.key || "property"} here`}
     >
       <tr className="h-0">
+        {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- visual drop-preview cell, not a control; labeled at the tbody level */}
         <td colSpan={3} className="p-0">
           <div className="relative z-20 h-0 overflow-visible">
             <div className="absolute inset-x-2 top-0 h-px -translate-y-1/2 bg-oklch(0.205 0 0) dark:bg-oklch(0.922 0 0)" />

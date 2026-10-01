@@ -94,6 +94,16 @@
       }
     },
     {
+      // The document editor/viewer suite has not finished string extraction.
+      // Re-enable the ratchet for this glob once its strings land in the
+      // message catalogs (see tools/oxlint/i18n — the ratchet grows per
+      // directory and never blocks unmigrated code).
+      "files": ["src/sections/extend/**"],
+      "rules": {
+        "i18n/no-raw-jsx-text": "off"
+      }
+    },
+    {
       // Last override wins: keep dev-only files exempt from the i18n ratchet
       // even when a migrated glob above matches them.
       "files": [

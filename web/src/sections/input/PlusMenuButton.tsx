@@ -147,6 +147,7 @@ function PanelView({
                   row.onCheckedChange(!row.checked);
                 }}
                 rightChildren={
+                  // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation-only wrapper so the switch doesn't trigger the row; keyboard goes through the Switch itself
                   <span
                     onClick={(event) => event.stopPropagation()}
                     onPointerDown={(event) => event.stopPropagation()}

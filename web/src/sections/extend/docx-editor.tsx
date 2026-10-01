@@ -539,7 +539,7 @@ function resolveParagraphStyleRunPreview(option?: ParagraphStyleDefinition) {
   return headingRunStyle
     ? {
         ...headingRunStyle,
-        ...(option.runStyle ?? {}),
+        ...option.runStyle,
       }
     : option.runStyle;
 }
@@ -1097,7 +1097,7 @@ function DocxEditorToolbar({
             <SelectContent
               align="start"
               className="z-40 min-w-[210px]"
-              position={false ? "item-aligned" : "popper"}
+              position="popper"
             >
               {paragraphStyleOptions.map((option) => (
                 <PreviewCard
@@ -1161,7 +1161,7 @@ function DocxEditorToolbar({
             <SelectContent
               align="start"
               className="z-40"
-              position={false ? "item-aligned" : "popper"}
+              position="popper"
             >
               {FONT_FAMILIES.map((fontFamily) => (
                 <SelectItem key={fontFamily} value={fontFamily}>
@@ -1191,7 +1191,7 @@ function DocxEditorToolbar({
             <SelectContent
               align="start"
               className="z-40"
-              position={false ? "item-aligned" : "popper"}
+              position="popper"
             >
               {FONT_SIZE_OPTIONS.map((size) => (
                 <SelectItem key={size} value={String(size)}>
@@ -1221,7 +1221,7 @@ function DocxEditorToolbar({
             <SelectContent
               align="start"
               className="z-40"
-              position={false ? "item-aligned" : "popper"}
+              position="popper"
             >
               {LINE_SPACING_OPTIONS.map((spacing) => (
                 <SelectItem key={spacing} value={String(spacing)}>
@@ -1652,7 +1652,7 @@ function DocxEditorToolbar({
               <SelectContent
                 align="end"
                 className="z-40"
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>

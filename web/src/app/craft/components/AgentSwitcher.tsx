@@ -136,7 +136,11 @@ export default function AgentSwitcher() {
       <Popover.Content side="bottom" align="start">
         <PopoverMenu>
           {[
-            // Pointer down selects before the popover unmounts and drops the click.
+            // Pointer down selects before the popover unmounts and drops the
+            // click. Keyboard activation is owned by the LineItemButton row
+            // (role="button": Enter/Space click bubbles to the wrapper), so
+            // the wrapper stays a pointer-capture div.
+            // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- pointer-capture wrapper around a keyboard-accessible row
             <div
               key="main"
               onPointerDown={(event) => {
@@ -154,6 +158,7 @@ export default function AgentSwitcher() {
               />
             </div>,
             ...sorted.map((s) => (
+              // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- pointer-capture wrapper around a keyboard-accessible row
               <div
                 key={s.sessionId}
                 onPointerDown={(event) => {

@@ -19,7 +19,7 @@ export function IconPlaceholder({
   remixicon: _remixicon,
   ...rest
 }: IconPlaceholderProps) {
-  const icons = Lucide as unknown as Record<string, LucideIcon>;
+  const icons = Lucide as typeof Lucide & Record<string, LucideIcon>;
   const Icon = icons[lucide] ?? Lucide.File;
   return <Icon {...rest} />;
 }

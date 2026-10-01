@@ -446,7 +446,7 @@
       "access": {
         "public": "すべてのユーザーに公開",
         "restricted": "制限付き — グループ未割当",
-        "restrictedGroups": "{count} グループに制限",
+        "restrictedGroups": "{count, plural, other {# グループに制限}}",
         "restrictedNamed": "{names} に制限"
       },
       "unavailable": "ゲートウェイがオフの間は利用できません"
@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "所有権を譲渡"
           }
+        },
+        "peopleOption": {
+          "description": "選択したユーザーまたはグループとこのチャットを共有します。",
+          "title": "特定のメンバー"
         }
       },
       "unsavedChanges": {
@@ -11881,7 +11885,7 @@
       "planningNext": "次の手順を計画中",
       "exploring": "調査中",
       "exploringTarget": "{target} を調査中",
-      "exploredN": "{count} 件のツールを調査済み",
+      "exploredN": "{count, plural, other {# 件のツールを調査済み}}",
       "editing": "編集中",
       "editingTarget": "{target} を編集中",
       "edited": "編集済み",
@@ -11892,10 +11896,10 @@
       "wroteTarget": "{target} を書き込み済み",
       "running": "実行中",
       "runningTarget": "{target} を実行中",
-      "runningN": "{count} 件のコマンドを実行中",
+      "runningN": "{count, plural, other {# 件のコマンドを実行中}}",
       "ran": "実行済み",
       "ranTarget": "{target} を実行済み",
-      "ranN": "{count} 件のコマンドを実行済み",
+      "ranN": "{count, plural, other {# 件のコマンドを実行済み}}",
       "task": "タスク実行中",
       "taskDone": "タスク実行済み",
       "taskCancelled": "タスクをキャンセルしました",

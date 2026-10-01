@@ -434,7 +434,7 @@ export class AdminMcpServersPage {
     });
     await expect(manage).toBeVisible();
     // The actions column can sit over the manage control on a crowded page.
-    await manage.evaluate((element) => element.click());
+    await manage.evaluate((element) => (element as HTMLElement).click());
     await expect(this.page.getByRole("dialog")).toBeVisible();
     await expect(this.page.getByTestId("mcp-gateway-section")).toBeVisible();
   }

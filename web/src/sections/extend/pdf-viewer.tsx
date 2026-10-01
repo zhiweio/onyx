@@ -1111,7 +1111,7 @@ function PDFViewerToolbar({
                   {Math.round(currentZoomLevel * 100)}%
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent position={false ? "item-aligned" : "popper"}>
+              <SelectContent position="popper">
                 {ZOOM_OPTIONS.map((option) => (
                   <SelectItem key={option} value={String(option)}>
                     {Math.round(option * 100)}%
@@ -1335,9 +1335,13 @@ function PDFViewerThumbnails({
             )}
             style={{ top: meta.top, height: meta.wrapperHeight }}
           >
+            {/* Keyboard interaction is owned by the focused listbox container
+                (arrow keys + aria-activedescendant), not by each option. */}
+            {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard handled at listbox level */}
             <div
               id={`${thumbnailListboxId}-page-${pageNumber}`}
               role="option"
+              tabIndex={-1}
               data-pdf-viewer-thumbnail-option={pageNumber}
               aria-current={isActive ? "page" : undefined}
               aria-label={`Page ${pageNumber}`}
@@ -1647,7 +1651,7 @@ function PDFViewerSelectionReleaseGuard({
         const selectionState = selection.getState(documentId);
         if (!selectionState.selecting) return;
         if (selectionState.selection && selectionPlugin) {
-          const pluginWithEndSelection = selectionPlugin as unknown as {
+          const pluginWithEndSelection = selectionPlugin as typeof selectionPlugin & {
             endSelection?: (documentId: string, modeId: string) => void;
           };
           pluginWithEndSelection.endSelection?.(
@@ -2144,28 +2148,29 @@ function PDFViewerInner({
       const pageIndex = pageNumber - 1;
       if (pageIndex < 0 || pageIndex >= numPages) return;
       suppressActivePageSelectionSyncRef.current = pageIndex;
-      setSelectedPageIndexes((previousSelection) => {
-        let nextSelection: Set<number>;
-        if (mode === "range") {
-          const anchorPageIndex =
-            selectionAnchorPageIndexRef.current ??
-            (activePage > 0 ? activePage - 1 : pageIndex);
-          nextSelection = getPageIndexRange(anchorPageIndex, pageIndex);
-        } else if (mode === "toggle") {
-          nextSelection = new Set(previousSelection);
-          if (nextSelection.has(pageIndex)) {
-            nextSelection.delete(pageIndex);
-          } else {
-            nextSelection.add(pageIndex);
-          }
-          selectionAnchorPageIndexRef.current = pageIndex;
+      // The ref mirrors the selection state (synced on every commit), so the
+      // next selection is computed here instead of inside a state updater.
+      const previousSelection = selectedPageIndexesRef.current;
+      let nextSelection: Set<number>;
+      if (mode === "range") {
+        const anchorPageIndex =
+          selectionAnchorPageIndexRef.current ??
+          (activePage > 0 ? activePage - 1 : pageIndex);
+        nextSelection = getPageIndexRange(anchorPageIndex, pageIndex);
+      } else if (mode === "toggle") {
+        nextSelection = new Set(previousSelection);
+        if (nextSelection.has(pageIndex)) {
+          nextSelection.delete(pageIndex);
         } else {
-          nextSelection = new Set([pageIndex]);
-          selectionAnchorPageIndexRef.current = pageIndex;
+          nextSelection.add(pageIndex);
         }
-        selectedPageIndexesRef.current = nextSelection;
-        return nextSelection;
-      });
+        selectionAnchorPageIndexRef.current = pageIndex;
+      } else {
+        nextSelection = new Set([pageIndex]);
+        selectionAnchorPageIndexRef.current = pageIndex;
+      }
+      selectedPageIndexesRef.current = nextSelection;
+      setSelectedPageIndexes(nextSelection);
       scrollToPage(pageNumber);
     },
     [activePage, numPages, scrollToPage]

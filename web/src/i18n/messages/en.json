@@ -10882,6 +10882,10 @@
           "trailingButton": {
             "tooltip": "Transfer Ownership"
           }
+        },
+        "peopleOption": {
+          "description": "Share this chat with selected users or groups.",
+          "title": "Specific people"
         }
       },
       "unsavedChanges": {

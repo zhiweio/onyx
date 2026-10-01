@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "Transférer la propriété"
           }
+        },
+        "peopleOption": {
+          "description": "Partagez cette conversation avec des utilisateurs ou des groupes sélectionnés.",
+          "title": "Personnes spécifiques"
         }
       },
       "unsavedChanges": {

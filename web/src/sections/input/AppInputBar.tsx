@@ -209,7 +209,7 @@ const AppInputBar = React.memo(
     );
     const [activeEntries, setActiveEntries] = useState<PickerEntry[]>([]);
     const slashInputRef = useRef<BaseInputBarHandle | null>(null);
-    slashInputRef.current = {
+    React.useImperativeHandle(slashInputRef, () => ({
       reset: () => {},
       focus: () => inputRef.current?.focus(),
       setMessage,
@@ -250,7 +250,7 @@ const AppInputBar = React.memo(
         if (!el) return false;
         return deleteTokenBeforeCursor(el, token);
       },
-    };
+    }));
     const addEntry = useCallback(
       (entry: PickerEntry) => {
         const connectionPath = pickerEntryConnectionPath(entry);

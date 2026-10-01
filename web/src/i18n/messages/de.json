@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "Eigentum übertragen"
           }
+        },
+        "peopleOption": {
+          "description": "Diesen Chat mit ausgewählten Benutzern oder Gruppen teilen.",
+          "title": "Bestimmte Personen"
         }
       },
       "unsavedChanges": {

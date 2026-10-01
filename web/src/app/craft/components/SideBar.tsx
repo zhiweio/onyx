@@ -314,7 +314,7 @@ interface BuildSessionButtonProps {
   historyItem: SessionHistoryItem;
   isActive: boolean;
   projects: CraftProject[];
-  onProjectsChanged: () => Promise<unknown>;
+  onProjectsChanged: () => Promise<void> | void;
   onLoad: () => void;
   onRename: (newName: string) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -607,7 +607,9 @@ const MemoizedBuildSidebarInner = memo(() => {
         key={historyItem.id}
         historyItem={historyItem}
         projects={visibleProjects}
-        onProjectsChanged={refreshProjects}
+        onProjectsChanged={async () => {
+          await refreshProjects();
+        }}
         isActive={
           !pathname.startsWith(CRAFT_TASKS_PATH) &&
           !pathname.startsWith(CRAFT_SKILLS_PATH) &&

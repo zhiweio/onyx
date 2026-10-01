@@ -77,9 +77,11 @@ test("the skills gallery shows what the API publishes", async ({ page }) => {
   const response = await page.request.get("/api/craft/gallery/skills");
   const items = (await response.json()).items as { name: string }[];
   expect(items.length).toBeGreaterThan(0);
+  const firstName = items[0]?.name;
+  expect(firstName).toBeTruthy();
 
   await expect(
-    page.getByTestId(GRID).getByText(items[0].name, { exact: false }).first(),
+    page.getByTestId(GRID).getByText(firstName!, { exact: false }).first(),
   ).toBeVisible();
   await expect(
     page.getByTestId(GRID).getByTestId("GalleryCard/fork").first(),
@@ -92,7 +94,7 @@ test("the scenario and report-template galleries also list content", async ({
   for (const [path, endpoint] of [
     ["/craft/v1/scenarios", "/api/craft/gallery/scenarios"],
     ["/craft/v1/report-templates", "/api/craft/gallery/report-templates"],
-  ]) {
+  ] as const) {
     await openGallery(page, path);
     const response = await page.request.get(endpoint);
     expect((await response.json()).items.length).toBeGreaterThan(0);

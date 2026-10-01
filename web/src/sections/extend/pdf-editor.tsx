@@ -1378,7 +1378,7 @@ function PdfEditorZoomControl({
             {Math.round(current * 100)}%
           </SelectValue>
         </SelectTrigger>
-        <SelectContent position={false ? "item-aligned" : "popper"}>
+        <SelectContent position="popper">
           {(Object.keys(ZOOM_MODE_LABELS) as ZoomMode[]).map((mode) => (
             <SelectItem key={mode} value={mode}>
               {ZOOM_MODE_LABELS[mode]}
@@ -2693,12 +2693,14 @@ function PdfEditorInner({
     if ("color" in defaults) return "color";
     return null;
   }, [activeTool]);
-  const activeToolColor = activeToolColorKey
-    ? String(
-        (activeTool?.defaults as Record<string, unknown>)[activeToolColorKey] ??
-          "#111827"
-      )
-    : null;
+  const activeToolColor =
+    activeTool && activeToolColorKey
+      ? String(
+          (activeTool.defaults as Record<string, unknown>)[
+            activeToolColorKey
+          ] ?? "#111827"
+        )
+      : null;
   const visibleLeftTabs = LEFT_PANEL_TABS.filter(
     (tab) => tab.feature === null || features[tab.feature]
   );
@@ -2791,7 +2793,7 @@ function PdfEditorInner({
             <BookOpenGlyph className="size-4 text-oklch(0.556 0 0) dark:text-oklch(0.708 0 0)" />
             <SelectValue placeholder="Layout" />
           </SelectTrigger>
-          <SelectContent position={false ? "item-aligned" : "popper"}>
+          <SelectContent position="popper">
             {SPREAD_MODE_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -2818,7 +2820,7 @@ function PdfEditorInner({
           >
             <SelectValue placeholder="Scroll" />
           </SelectTrigger>
-          <SelectContent position={false ? "item-aligned" : "popper"}>
+          <SelectContent position="popper">
             {SCROLL_DIRECTION_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -3168,6 +3170,7 @@ function PdfEditorInner({
             fullscreenState.isFullscreen && "h-full max-h-full"
           )}
         >
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- keyboard-shortcut capture surface for the editor, not a control */}
           <div
             ref={setRootElement}
             tabIndex={-1}

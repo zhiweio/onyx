@@ -289,8 +289,8 @@ export default function ShareChatSessionModal({
             />
             <PrivacyOption
               icon={SvgUser}
-              title="Specific people"
-              description="Share this chat with selected users or groups."
+              title={t("peopleOption.title")}
+              description={t("peopleOption.description")}
               selected={selectedPrivacy === "people"}
               onClick={() => setSelectedPrivacy("people")}
               ariaLabel="share-modal-option-people"

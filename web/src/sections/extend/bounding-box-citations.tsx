@@ -893,6 +893,7 @@ function HumanReviewTextOverlayEditor({
   }, [finishEditing]);
   return (
     <TextCellEntry
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- opening the cell editor focused on the textarea is intentional
       autoFocus={!readOnly}
       disabled={readOnly}
       highlight={isHighlighted}
@@ -1334,7 +1335,7 @@ function HumanReviewArrayValueGrid({
           activationBehaviorOverride: "double-click",
           themeOverride: {
             textDark: blueCellText,
-            ...(nestedCellTheme ?? {}),
+            ...nestedCellTheme,
           },
         };
       }
@@ -1807,6 +1808,7 @@ function HumanReviewFieldCardBase({
   }, [field, onFieldFocus, onLocationHover, resolveLocation]);
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- intentional tab stop: focusing the card syncs the document highlight
       tabIndex={0}
       onFocusCapture={focusAndHoverField}
       onMouseEnter={focusAndHoverField}

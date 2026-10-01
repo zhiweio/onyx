@@ -229,7 +229,7 @@ async function findXlsxSearchResults(
             startRow: number,
             rowCount: number,
             options?: Record<string, unknown>
-          ) => unknown;
+          ) => XlsxBatchRow[] | undefined;
         }
       | undefined;
     for (
@@ -878,7 +878,7 @@ function WorkbookToolbar({
               <SelectContent
                 align="end"
                 className={XLSX_DROPDOWN_Z_INDEX_CLASS}
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>

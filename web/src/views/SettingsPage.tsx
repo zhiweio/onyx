@@ -92,7 +92,6 @@ import {
 } from "@/sections/model-selector/setting-controls";
 import { LLM_GATEWAY_MIN_TIER, tierAtLeast } from "@/lib/tiers";
 import { Tooltip } from "@opal/components";
-import { useCloudSubscription } from "@/hooks/useCloudSubscription";
 import { useSmoothStreaming } from "@/hooks/useSmoothStreaming";
 import { hasPermission } from "@/lib/permissions";
 import { findModelConfigId } from "@/lib/languageModels/options";
@@ -1913,7 +1912,6 @@ function LLMGatewaySettings() {
     permissions,
     Permission.CREATE_USER_API_KEYS
   );
-  const canCreateTokens = useCloudSubscription();
   const tokenCreation = usePATCreation({
     defaultName: t("gateway.title"),
     defaultAccessMode: "limited",
@@ -1922,7 +1920,7 @@ function LLMGatewaySettings() {
   const currentTier = useSettings().tier;
   const { data: allScopeOptions = [], error: scopeOptionsError } = useSWR<
     PatScopeOption[]
-  >(canCreateTokens ? SWR_KEYS.userPatScopes : null, errorHandlingFetcher, {
+  >(SWR_KEYS.userPatScopes, errorHandlingFetcher, {
     fallbackData: [],
   });
   const scopeOptions = useMemo(
@@ -1933,7 +1931,6 @@ function LLMGatewaySettings() {
     [allScopeOptions, currentTier]
   );
   const canCreateGatewayToken =
-    canCreateTokens &&
     canCreatePAT &&
     scopeOptions.some((option) => option.scope === "use:llm_gateway");
 
@@ -1997,7 +1994,6 @@ function AccountsAccessSettings() {
 
   const [tokenToDelete, setTokenToDelete] = useState<PAT | null>(null);
 
-  const canCreateTokens = useCloudSubscription();
   const canCreatePAT = hasPermission(
     permissions,
     Permission.CREATE_USER_API_KEYS
@@ -2028,7 +2024,7 @@ function AccountsAccessSettings() {
   const { data: allScopeOptions = [], error: scopeOptionsError } = useSWR<
     PatScopeOption[]
   >(
-    showTokensSection && canCreateTokens ? SWR_KEYS.userPatScopes : null,
+    showTokensSection ? SWR_KEYS.userPatScopes : null,
     errorHandlingFetcher,
     { fallbackData: [] }
   );
@@ -2334,7 +2330,7 @@ function AccountsAccessSettings() {
               variant="section"
               width="full"
             />
-            {canCreateTokens ? (
+            (
               <Card border="solid" padding={1} rounding={4}>
                 <Section alignItems="start" height="fit">
                   <Section gap={0}>
@@ -2456,20 +2452,7 @@ function AccountsAccessSettings() {
                   </Section>
                 </Section>
               </Card>
-            ) : (
-              <Card border="solid" rounding={4}>
-                <Section alignItems="start" height="fit">
-                  <Section flexDirection="row" justifyContent="between">
-                    <Text font="secondary-body" color="text-03">
-                      {t("apiKeys.upsell.description")}
-                    </Text>
-                    <Button prominence="secondary" href="/admin/billing">
-                      {t("apiKeys.upsell.upgradeButton")}
-                    </Button>
-                  </Section>
-                </Section>
-              </Card>
-            )}
+            )
           </Section>
         )}
       </Section>

@@ -446,7 +446,7 @@
       "access": {
         "public": "모든 사용자에게 공개",
         "restricted": "제한됨 — 할당된 그룹 없음",
-        "restrictedGroups": "{count}개 그룹으로 제한",
+        "restrictedGroups": "{count, plural, other {#개 그룹으로 제한}}",
         "restrictedNamed": "{names}(으)로 제한"
       },
       "unavailable": "게이트웨이가 꺼져 있는 동안 사용할 수 없습니다"
@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "소유권 이전"
           }
+        },
+        "peopleOption": {
+          "description": "선택한 사용자 또는 그룹과 이 채팅을 공유합니다.",
+          "title": "특정 사용자"
         }
       },
       "unsavedChanges": {
@@ -11881,7 +11885,7 @@
       "planningNext": "다음 단계 계획 중",
       "exploring": "탐색 중",
       "exploringTarget": "{target} 탐색 중",
-      "exploredN": "도구 {count}개 탐색함",
+      "exploredN": "{count, plural, other {도구 #개 탐색함}}",
       "editing": "편집 중",
       "editingTarget": "{target} 편집 중",
       "edited": "편집함",
@@ -11892,10 +11896,10 @@
       "wroteTarget": "{target} 씀",
       "running": "실행 중",
       "runningTarget": "{target} 실행 중",
-      "runningN": "명령 {count}개 실행 중",
+      "runningN": "{count, plural, other {명령 #개 실행 중}}",
       "ran": "실행함",
       "ranTarget": "{target} 실행함",
-      "ranN": "명령 {count}개 실행함",
+      "ranN": "{count, plural, other {명령 #개 실행함}}",
       "task": "작업 실행 중",
       "taskDone": "작업 실행함",
       "taskCancelled": "작업 취소함",

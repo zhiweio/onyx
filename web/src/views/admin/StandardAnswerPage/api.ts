@@ -1,4 +1,5 @@
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import type { PaginatedResult } from "@/hooks/useServerPaginatedTable";
 
 export interface StandardAnswerCategoryRow {
   id: number;
@@ -58,10 +59,10 @@ function buildQuery(
   return encoded ? `?${encoded}` : "";
 }
 
-export function fetchStandardAnswers(
+export async function fetchStandardAnswers(
   args: StandardAnswerListArgs
-): Promise<StandardAnswerListResult> {
-  return errorHandlingFetcher<StandardAnswerListResult>(
+): Promise<PaginatedResult<StandardAnswerRow>> {
+  const result = await errorHandlingFetcher<StandardAnswerListResult>(
     `/api/admin/standard-answers${buildQuery({
       q: args.q || undefined,
       category_id: args.category_id ?? undefined,
@@ -69,6 +70,7 @@ export function fetchStandardAnswers(
       page_size: args.limit,
     })}`
   );
+  return { items: result.items, total: result.total_items };
 }
 
 export function fetchStandardAnswerCategories(): Promise<

@@ -400,7 +400,7 @@ function mergeResolvedCellStyle(
   overlay: XlsxResolvedCellStyle | null | undefined
 ): XlsxResolvedCellStyle | null {
   if (!base && !overlay) return null;
-  const nextStyle = { ...(base ?? {}), ...(overlay ?? {}) };
+  const nextStyle = { ...base, ...overlay };
   const baseFont = asResolvedStyleGroup(base?.font);
   const overlayFont = asResolvedStyleGroup(overlay?.font);
   if (baseFont || overlayFont) {
@@ -950,7 +950,7 @@ function NumberFormatSelect({
       <SelectContent
         align="start"
         className={XLSX_DROPDOWN_Z_INDEX_CLASS}
-        position={false ? "item-aligned" : "popper"}
+        position="popper"
       >
         {NUMBER_FORMAT_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
@@ -1719,7 +1719,7 @@ function EditorToolbar({
               <SelectContent
                 align="start"
                 className={XLSX_DROPDOWN_Z_INDEX_CLASS}
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {FONT_FAMILIES.map((option) => (
                   <SelectItem key={option} value={option}>
@@ -1751,7 +1751,7 @@ function EditorToolbar({
               <SelectContent
                 align="start"
                 className={XLSX_DROPDOWN_Z_INDEX_CLASS}
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {FONT_SIZE_OPTIONS.map((size) => (
                   <SelectItem key={size} value={String(size)}>
@@ -2149,7 +2149,7 @@ function EditorToolbar({
               <SelectContent
                 align="end"
                 className={XLSX_DROPDOWN_Z_INDEX_CLASS}
-                position={false ? "item-aligned" : "popper"}
+                position="popper"
               >
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>

@@ -770,7 +770,7 @@ export function CsvViewer({ className, data, search = false }: CsvViewerProps) {
                 </SelectTrigger>
                 <SelectContent
                   align="end"
-                  position={false ? "item-aligned" : "popper"}
+                  position="popper"
                 >
                   {ZOOM_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option.toString()}>

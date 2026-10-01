@@ -388,6 +388,10 @@ function PickerRow({
   return (
     <Tooltip tooltip={tooltip} side="right" align="start" delayDuration={300}>
       <div
+        role="button"
+        // Not a tab stop: keyboard selection runs through the input's
+        // arrow-key/Enter handling against the flat entry index.
+        tabIndex={-1}
         className="cursor-pointer"
         aria-label={[title, description, kind].filter(Boolean).join(" ")}
         onMouseEnter={onHover}

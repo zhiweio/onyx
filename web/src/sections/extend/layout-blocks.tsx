@@ -8350,6 +8350,7 @@ const OcrBlockMarkdown = React.memo(function OcrBlockMarkdown({
         remarkPlugins={OCR_MARKDOWN_REMARK_PLUGINS}
         components={{
           h1: ({ node: _node, ...props }) => (
+            // oxlint-disable-next-line jsx-a11y/heading-has-content -- heading children arrive from ReactMarkdown via spread props
             <h1
               className="my-0 text-base leading-5 font-semibold text-oklch(0.145 0 0) dark:text-oklch(0.985 0 0)"
               {...props}
@@ -8413,6 +8414,8 @@ const OcrBlockButton = React.memo(function OcrBlockButton({
   return (
     <button
       type="button"
+      // Concise accessible name instead of the full OCR text payload.
+      aria-label={`${style.label}, page ${block.page}`}
       onMouseEnter={() => onFocusBlock(block)}
       onFocus={() => onFocusBlock(block)}
       className={cn(

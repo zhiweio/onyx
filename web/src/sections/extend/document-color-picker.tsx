@@ -1007,7 +1007,7 @@ export function ColorPicker({
             <SelectContent
               align="end"
               className="min-w-28"
-              position={false ? "item-aligned" : "popper"}
+              position="popper"
             >
               {COLOR_FORMAT_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>

@@ -145,8 +145,9 @@ export default function GatewayOverview({
     [countLabel]: row.count,
   }));
   const bytesByServer = (series?.bytes_by_server ?? []).map((row) => ({
-    server: row.server,
-    [bytesLabel]: row.bytes,
+    // The chart requires defined values; API rows may omit either field.
+    server: row.server ?? "",
+    [bytesLabel]: row.bytes ?? 0,
   }));
 
   return (

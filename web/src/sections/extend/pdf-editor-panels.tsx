@@ -241,9 +241,13 @@ export function PdfEditorThumbnailsPanel({
               )}
               style={{ top: meta.top, height: meta.wrapperHeight }}
             >
+              {/* Keyboard interaction is owned by the focused listbox
+                  container (arrow keys + aria-activedescendant). */}
+              {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard handled at listbox level */}
               <div
                 id={`${listboxId}-page-${pageNumber}`}
                 role="option"
+                tabIndex={-1}
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={`Page ${pageNumber}`}
@@ -701,24 +705,26 @@ export function PdfEditorPagesPanel({
     selectedIndices[selectedIndices.length - 1] - selectedIndices[0] ===
       selectedIndices.length - 1;
   const select = (pageIndex: number, mode: "replace" | "toggle" | "range") => {
-    setSelected((previous) => {
-      if (mode === "range" && anchorRef.current !== null) {
-        const start = Math.min(anchorRef.current, pageIndex);
-        const end = Math.max(anchorRef.current, pageIndex);
-        const next = new Set<number>();
-        for (let index = start; index <= end; index += 1) next.add(index);
-        return next;
-      }
-      if (mode === "toggle") {
+    if (mode === "range" && anchorRef.current !== null) {
+      const start = Math.min(anchorRef.current, pageIndex);
+      const end = Math.max(anchorRef.current, pageIndex);
+      const next = new Set<number>();
+      for (let index = start; index <= end; index += 1) next.add(index);
+      setSelected(next);
+      return;
+    }
+    if (mode === "toggle") {
+      setSelected((previous) => {
         const next = new Set(previous);
         if (next.has(pageIndex)) next.delete(pageIndex);
         else next.add(pageIndex);
-        anchorRef.current = pageIndex;
         return next;
-      }
+      });
       anchorRef.current = pageIndex;
-      return new Set([pageIndex]);
-    });
+      return;
+    }
+    anchorRef.current = pageIndex;
+    setSelected(new Set([pageIndex]));
   };
   const runOperation = async (
     label: string,
@@ -1044,6 +1050,7 @@ function CommentComposer({
     <div className="space-y-1.5">
       <textarea
         value={value}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- opening the composer focused on the textarea is intentional
         autoFocus={autoFocus}
         rows={2}
         placeholder={placeholder}
@@ -1181,10 +1188,12 @@ function CommentCard({
             </blockquote>
           ) : null}
           {isEditing ? (
+            // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation-only wrapper, not a control
             <div className="mt-2" onClick={(event) => event.stopPropagation()}>
               <CommentComposer
                 placeholder="Write a comment…"
                 initialValue={contents}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- opening the composer focused on the textarea is intentional
                 autoFocus
                 onSubmit={(value) => {
                   onUpdate(annotation, value);
@@ -1234,10 +1243,12 @@ function CommentCard({
         </div>
       ) : null}
       {!readOnly ? (
+        // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation-only wrapper, not a control
         <div className="mt-2" onClick={(event) => event.stopPropagation()}>
           {isReplying ? (
             <CommentComposer
               placeholder="Reply…"
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- opening the composer focused on the textarea is intentional
               autoFocus
               submitLabel="Reply"
               onSubmit={(value) => {
@@ -1706,7 +1717,7 @@ export function PdfEditorStampsPanel({ documentId }: { documentId: string }) {
             <SelectTrigger size="sm" className="min-w-0 flex-1">
               <SelectValue placeholder="Library" />
             </SelectTrigger>
-            <SelectContent position={false ? "item-aligned" : "popper"}>
+            <SelectContent position="popper">
               {libraryOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -2147,6 +2158,7 @@ export function PdfEditorFormsPanel({ documentId }: { documentId: string }) {
               <button
                 key={field.name}
                 type="button"
+                aria-label={field.name}
                 className="flex w-full items-center gap-2 rounded-lg border border-oklch(0.922 0 0) px-2.5 py-2 text-left outline-none hover:bg-oklch(0.97 0 0)/40 focus-visible:ring-2 focus-visible:ring-oklch(0.708 0 0) dark:border-oklch(1 0 0 / 10%) dark:hover:bg-oklch(0.269 0 0)/40 dark:focus-visible:ring-oklch(0.556 0 0)"
                 onClick={() => focusField(field)}
               >

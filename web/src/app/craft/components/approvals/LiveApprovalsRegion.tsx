@@ -9,6 +9,8 @@ import { SvgAlertTriangle } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { ContentQuarantineView } from "@/app/craft/types/approvals";
 import { postContentQuarantineDecision } from "@/app/craft/services/apiServices";
+import ApprovalCard from "@/app/craft/components/approvals/ApprovalCard";
+import { useLiveApprovals } from "@/app/craft/hooks/useLiveApprovals";
 import { SWR_KEYS } from "@/lib/swr-keys";
 
 type QuarantineTranslate = ReturnType<

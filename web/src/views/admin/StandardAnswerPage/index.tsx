@@ -63,6 +63,7 @@ export default function StandardAnswerPage() {
   const {
     searchInputProps,
     searchTerm,
+    setSearchInput,
     rows,
     total,
     isLoading,

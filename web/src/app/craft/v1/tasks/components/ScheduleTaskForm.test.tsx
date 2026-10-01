@@ -15,7 +15,16 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("swr", () => ({
+  __esModule: true,
   ...jest.requireActual("swr"),
+  // useCraftProjects consumes the default export; without this the module
+  // interop resolves to a non-callable namespace.
+  default: () => ({
+    data: { projects: [] },
+    error: undefined,
+    isLoading: false,
+    mutate: mockMutate,
+  }),
   useSWRConfig: () => ({ mutate: mockMutate }),
 }));
 

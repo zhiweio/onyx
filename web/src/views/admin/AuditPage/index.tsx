@@ -15,7 +15,11 @@ import {
 import { isoWindowForInclusiveDateRange } from "@/lib/dateWindow";
 import ToolCallsTab from "./ToolCallsTab";
 import { ApprovalsTab, QuarantinesTab, QueryHistoryTab } from "./RecordTables";
-import { fetchAuditUsage, type AuditUsageSummary } from "./api";
+import {
+  fetchAuditUsage,
+  type AuditUsageSummary,
+  type AuditWindow,
+} from "./api";
 
 type AuditTab = "tools" | "approvals" | "quarantines" | "usage" | "history";
 
@@ -69,15 +73,23 @@ export default function AuditPage() {
   const adminRouteTitle = useAdminRouteTitle();
   const route = ADMIN_ROUTES.AUDIT;
   const [tab, setTab] = useState<AuditTab>("tools");
-  const [dateRange, setDateRange] = useState<DateRange>(
+  const [dateRange, setDateRange] = useState<NonNullable<DateRange>>(
     rangeForInclusiveDays(7)
   );
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const isoWindow = isoWindowForInclusiveDateRange(dateRange);
+  // The picker emits undefined when the user clears the range; fall back to
+  // the default window instead of rendering without a time filter.
+  const activeRange = dateRange ?? rangeForInclusiveDays(7);
+  const isoWindow = isoWindowForInclusiveDateRange(activeRange);
+  const auditWindow: AuditWindow = {
+    start: isoWindow.from,
+    end: isoWindow.to,
+  };
   const inclusiveDays =
-    Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / 86400000) +
-    1;
+    Math.round(
+      (activeRange.to.getTime() - activeRange.from.getTime()) / 86400000
+    ) + 1;
 
   return (
     <SettingsLayouts.Root width="lg" data-testid="audit-page">
@@ -95,7 +107,9 @@ export default function AuditPage() {
               </Text>
               <DateRangePicker
                 value={dateRange}
-                onValueChange={setDateRange}
+                onValueChange={(value) =>
+                  setDateRange(value ?? rangeForInclusiveDays(7))
+                }
                 size="md"
                 className="h-[42px] items-center rounded-08 border border-border-01 bg-background-neutral-00"
               />
@@ -126,14 +140,14 @@ export default function AuditPage() {
             </Tabs.List>
             <Tabs.Content value="tools">
               {tab === "tools" ? (
-                <ToolCallsTab key={`tools-${refreshKey}`} window={isoWindow} />
+                <ToolCallsTab key={`tools-${refreshKey}`} window={auditWindow} />
               ) : null}
             </Tabs.Content>
             <Tabs.Content value="approvals">
               {tab === "approvals" ? (
                 <ApprovalsTab
                   key={`approvals-${refreshKey}`}
-                  window={isoWindow}
+                  window={auditWindow}
                 />
               ) : null}
             </Tabs.Content>
@@ -141,7 +155,7 @@ export default function AuditPage() {
               {tab === "quarantines" ? (
                 <QuarantinesTab
                   key={`quarantines-${refreshKey}`}
-                  window={isoWindow}
+                  window={auditWindow}
                 />
               ) : null}
             </Tabs.Content>
@@ -154,7 +168,7 @@ export default function AuditPage() {
               {tab === "history" ? (
                 <QueryHistoryTab
                   key={`history-${refreshKey}`}
-                  window={isoWindow}
+                  window={auditWindow}
                 />
               ) : null}
             </Tabs.Content>

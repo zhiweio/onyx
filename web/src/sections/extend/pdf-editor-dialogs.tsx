@@ -451,6 +451,7 @@ function PasswordInput({
       autoComplete="off"
       value={value}
       placeholder={placeholder}
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- dialog inputs open focused on purpose
       autoFocus={autoFocus}
       onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
         onChange(event.target.value)
@@ -1432,7 +1433,7 @@ export function PdfEditorSignatureDialog({
                   <SelectTrigger size="sm" className="w-40">
                     <SelectValue placeholder="Font" />
                   </SelectTrigger>
-                  <SelectContent position={false ? "item-aligned" : "popper"}>
+                  <SelectContent position="popper">
                     {fontOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         <span style={{ fontFamily: option.value }}>
@@ -1703,6 +1704,7 @@ export function PdfEditorLinkDialog({
               </PdfEditorFieldLabel>
               <Input
                 id="pdf-editor-link-url"
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- dialog inputs open focused on purpose
                 autoFocus
                 placeholder="https://example.com"
                 value={url}
@@ -1888,6 +1890,7 @@ export function PdfEditorPasswordPrompt({
         </div>
         <PasswordInput
           value={password}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- dialog inputs open focused on purpose
           autoFocus
           placeholder="Document password"
           onChange={setPassword}

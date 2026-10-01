@@ -1754,7 +1754,7 @@ export type PdfEditorAnnotationMeta = {
 export function getAnnotationColor(
   annotation: PdfAnnotationObject
 ): string | undefined {
-  const record = annotation as unknown as Record<string, unknown>;
+  const record = annotation as PdfAnnotationObject & Record<string, unknown>;
   const candidates = [record.strokeColor, record.fontColor, record.color];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.trim()) return candidate;

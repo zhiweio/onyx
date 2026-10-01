@@ -35,6 +35,9 @@ interface InteractiveStatelessProps
     WithoutStyles<React.HTMLAttributes<HTMLElement>> {
   ref?: React.Ref<HTMLElement>;
 
+  /** id of the <form> this button submits (native form association). */
+  form?: string;
+
   /**
    * JS-controllable interaction state override.
    *

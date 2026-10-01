@@ -614,7 +614,7 @@ function SelectControl({
             )}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent position={false ? "item-aligned" : "popper"}>
+        <SelectContent position="popper">
           {options.map((option) => (
             <SelectItem
               key={option.value}
@@ -735,7 +735,7 @@ function FontControl({
           <SelectTrigger size="sm" className="min-w-0 flex-1">
             <SelectValue placeholder="Font" />
           </SelectTrigger>
-          <SelectContent position={false ? "item-aligned" : "popper"}>
+          <SelectContent position="popper">
             {familyOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -810,7 +810,7 @@ function FontSizeControl({
           <SelectTrigger size="sm" className="min-w-0 flex-1">
             <SelectValue placeholder="Size" />
           </SelectTrigger>
-          <SelectContent position={false ? "item-aligned" : "popper"}>
+          <SelectContent position="popper">
             {sizeOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -1618,9 +1618,10 @@ export function PdfEditorPropertiesPanel({
     .filter((config) => isEditing || !config.editOnly);
   const values = React.useMemo<Record<string, unknown>>(() => {
     if (isEditing)
-      return selected[0].object as unknown as Record<string, unknown>;
+      return selected[0].object as PdfAnnotationObject & Record<string, unknown>;
     if (activeTool)
-      return activeTool.defaults as unknown as Record<string, unknown>;
+      return activeTool.defaults as typeof activeTool.defaults &
+        Record<string, unknown>;
     return {};
   }, [activeTool, isEditing, selected]);
   const canEdit = permissions.canModifyAnnotations;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Button, Card, Checkbox, Tag, Text, type TagColor } from "@opal/components";
 import { ConfirmationModalLayout, ContentAction } from "@opal/layouts";
@@ -40,6 +40,7 @@ export default function CraftProjectSandboxCard({
     : liveStatus;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [migrateOutputs, setMigrateOutputs] = useState(false);
+  const migrateOutputsFieldId = useId();
   const heartbeat = sandbox?.last_heartbeat
     ? format.relativeTime(new Date(sandbox.last_heartbeat))
     : null;
@@ -148,8 +149,12 @@ export default function CraftProjectSandboxCard({
             </>
           }
         >
-          <label className="flex items-start gap-2">
+          <label
+            htmlFor={migrateOutputsFieldId}
+            className="flex items-start gap-2"
+          >
             <Checkbox
+              id={migrateOutputsFieldId}
               checked={migrateOutputs}
               aria-label={t("reset.migrateOutputs.label")}
               onCheckedChange={setMigrateOutputs}

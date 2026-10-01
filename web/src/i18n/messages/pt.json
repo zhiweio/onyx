@@ -10864,6 +10864,10 @@
           "trailingButton": {
             "tooltip": "Transferir propriedade"
           }
+        },
+        "peopleOption": {
+          "description": "Compartilhe este chat com usuários ou grupos selecionados.",
+          "title": "Pessoas específicas"
         }
       },
       "unsavedChanges": {

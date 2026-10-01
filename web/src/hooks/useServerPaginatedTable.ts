@@ -100,7 +100,9 @@ export function useServerPaginatedTable<T>({
     searchInputProps,
     setSearchInput,
     setPageIndex,
-    reload: mutate,
+    reload: async () => {
+      await mutate();
+    },
     serverSide,
   };
 }
