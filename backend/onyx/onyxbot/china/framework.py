@@ -146,13 +146,16 @@ def _answer_safely(message: InboundMessage, provider_config: Any) -> None:
 
 
 def _answer(message: InboundMessage, provider_config: Any) -> str | None:
-    """Provision the user and run one in-process chat turn."""
+    """Provision the user and run one in-process chat turn.
+
+    ``/场景`` commands bypass the chat turn and start a CraftJob instead."""
     from onyx.chat.process_message import (
         gather_stream,
         handle_stream_message_objects,
     )
     from onyx.db.engine.sql_engine import get_session_with_current_tenant
     from onyx.db.users import get_user_by_email
+    from onyx.onyxbot.china.scenario_trigger import try_scenario_trigger
     from onyx.server.query_and_chat.models import (
         ChatSessionCreationRequest,
         MessageOrigin,
@@ -174,6 +177,10 @@ def _answer(message: InboundMessage, provider_config: Any) -> str | None:
             chat_id=message.chat_id,
             display_name=message.sender_name,
         )
+
+        trigger_reply = try_scenario_trigger(db_session, user, message.text)
+        if trigger_reply is not None:
+            return trigger_reply
 
     origin_value = {
         "wecom": MessageOrigin.WECOMBOT,
@@ -219,7 +226,8 @@ def _provision_bot_user(db_session: Session, email: str) -> Any:
 
 
 def deterministic_email(platform: str, platform_user_id: str, config: Any) -> str:
-    domain = getattr(config, "email_domain", None) or BOT_EMAIL_DOMAIN_FALLBACK
+    # Every provider config model (and test stub) carries email_domain.
+    domain = config.email_domain or BOT_EMAIL_DOMAIN_FALLBACK
     return f"{platform}-{platform_user_id}@{domain}"
 
 

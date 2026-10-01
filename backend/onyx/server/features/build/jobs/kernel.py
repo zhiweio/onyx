@@ -754,6 +754,7 @@ def _dispatch_next(
         mark_job_finished(job, status=CraftJobStatus.SUCCEEDED)
         persist_state(job, state)
         _safe_commit(db_session)
+        _notify_job_finished(job, artifact_count=len(state.artifacts))
         _persist_job_workspace(
             db_session,
             user_id=user_id,
@@ -1568,3 +1569,25 @@ def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) ->
     if reaped:
         _safe_commit(db_session)
     return reaped
+
+
+def _notify_job_finished(job: CraftJob, *, artifact_count: int) -> None:
+    """Best-effort IM push to the job owner when a job succeeds.
+
+    In-app notifications stay the durable channel; this is the reach
+    channel for owners with a China IM binding (scenario runs launched
+    from IM land back in the same chat)."""
+    try:
+        from onyx.onyxbot.china.framework import dispatch_im_notification
+
+        dispatch_im_notification(
+            user_id=job.user_id,
+            title=f"Craft job succeeded: {job.name}",
+            description=(
+                f"{artifact_count} artifact(s) delivered. "
+                f"Open: /craft/v1?sessionId={job.session_id}"
+            ),
+            link=f"/craft/v1?sessionId={job.session_id}",
+        )
+    except Exception:
+        logger.warning("job-finished IM push failed", exc_info=True)

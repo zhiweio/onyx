@@ -271,6 +271,24 @@ CacheFactory = Callable[[str], CacheBackend]
 _CRAFT_SESSION_LINK_TEMPLATE = "/craft/v1?sessionId={session_id}"
 
 
+def _push_im_notification(user_id: UUID, *, title: str, link: str | None) -> None:
+    """Reach channel beside every durable in-app approval/quarantine
+    notification: DM users with a China IM binding. Fully best-effort —
+    ``dispatch_im_notification`` swallows its own errors, no binding means
+    no-op."""
+    try:
+        from onyx.onyxbot.china.framework import dispatch_im_notification
+
+        dispatch_im_notification(
+            user_id=user_id,
+            title=title,
+            description=("Open: " + link) if link else None,
+            link=link,
+        )
+    except Exception:
+        logger.warning("IM approval push failed", exc_info=True)
+
+
 @dataclass(frozen=True)
 class _ApprovalGrant:
     """A decision to approve a gated request without parking it.
@@ -653,6 +671,15 @@ class GateAddon:
                             "session_id": str(identity.session_id),
                         },
                         autocommit=False,
+                    )
+                    _push_im_notification(
+                        identity.user_id,
+                        title=(
+                            f"Content from {url_host} was quarantined — review needed"
+                        ),
+                        link=_CRAFT_SESSION_LINK_TEMPLATE.format(
+                            session_id=identity.session_id
+                        ),
                     )
                 db.commit()
             if not created:
@@ -1529,6 +1556,7 @@ class GateAddon:
                 additional_data=grant.notification_data,
                 autocommit=True,
             )
+        _push_im_notification(ctx.user_id, title=grant.notification_title, link=None)
 
     def _notify_approval_requested(
         self, approval_id: UUID, ctx: SessionContext, matched_actions: AllMatchedActions
@@ -1556,6 +1584,14 @@ class GateAddon:
                 },
                 autocommit=True,
             )
+        _push_im_notification(
+            ctx.user_id,
+            title=(
+                "Craft is requesting approval: "
+                f"{matched_actions.governing_action.action_type}"
+            ),
+            link=_CRAFT_SESSION_LINK_TEMPLATE.format(session_id=ctx.session_id),
+        )
 
     # --------------------------------------------------------------------------
     # internal helpers

@@ -81,6 +81,15 @@ def create_job(
     db_session: Session = Depends(get_session),
     _token_rate_limit_check: None = Depends(check_token_rate_limits),
 ) -> CraftJobStartResponse:
+    return create_job_run(db_session, user=user, request=request)
+
+
+def create_job_run(
+    db_session: Session, *, user: User, request: CraftJobCreateRequest
+) -> CraftJobStartResponse:
+    """Job-creation kernel shared by the REST endpoint and non-HTTP callers
+    (China IM scenario trigger). Assumes the caller holds an open session
+    transaction and commits as needed."""
     session = get_build_session(request.session_id, user.id, db_session)
     if session is None:
         raise OnyxError(OnyxErrorCode.SESSION_NOT_FOUND, "Session not found")

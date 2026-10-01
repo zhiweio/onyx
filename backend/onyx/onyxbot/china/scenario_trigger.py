@@ -1,0 +1,128 @@
+"""IM ``/场景`` command: launch a CraftJob for a scenario from chat.
+
+Dispatch runs before the normal chat turn: when the message starts with
+``/场景`` (or ``/scenario``), the command resolves the scenario by name
+among the ones visible to the IM user — visibility *is* the permission
+check — creates a BuildSession, and starts the job through the same
+``create_job_run`` kernel the REST endpoint uses. The platform reply is
+the run link; normal chat never sees command messages.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
+
+SCENARIO_COMMANDS = ("/场景", "/scenario")
+
+
+def parse_scenario_command(text: str) -> str | None:
+    """Return the command payload for a ``/场景`` message, else ``None``.
+
+    Name/payload splitting is deferred: scenario names may contain spaces,
+    so the longest-match against the visible scenario list decides where
+    the name ends."""
+    stripped = text.strip()
+    for command in SCENARIO_COMMANDS:
+        if not stripped.startswith(command):
+            continue
+        return stripped[len(command) :].strip()
+    return None
+
+
+def _split_name_and_payload(
+    rest: str, scenario_names: list[str]
+) -> tuple[str, str] | None:
+    """Longest-prefix match of the command payload against scenario names.
+
+    Exact match wins; otherwise the longest name that prefixes the payload
+    (followed by end-of-string or whitespace) is used, so names with spaces
+    resolve and the remainder becomes the job prompt."""
+    exact = next((name for name in scenario_names if rest == name), None)
+    if exact is not None:
+        return exact, ""
+    matches = [
+        name
+        for name in scenario_names
+        if rest.startswith(name) and rest[len(name) : len(name) + 1].isspace()
+    ]
+    if not matches:
+        return None
+    name = max(matches, key=len)
+    return name, rest[len(name) :].strip()
+
+
+def try_scenario_trigger(db_session: Session, user: Any, text: str) -> str | None:
+    """Handle a ``/场景`` message end-to-end.
+
+    Returns the platform reply when the message was a scenario command
+    (including the not-found/no-permission case); ``None`` lets the caller
+    fall through to a normal chat turn."""
+    payload_text = parse_scenario_command(text)
+    if payload_text is None:
+        return None
+    if not payload_text:
+        return _usage_reply()
+
+    from onyx.db.scenario import list_scenarios_for_user
+
+    scenarios = list_scenarios_for_user(db_session, user)
+    split = _split_name_and_payload(payload_text, [s.name for s in scenarios])
+    if split is None:
+        return _not_found_reply()
+    name, payload = split
+    scenario = next(s for s in scenarios if s.name == name)
+
+    try:
+        link = _launch_job(db_session, user=user, scenario=scenario, prompt=payload)
+    except Exception:
+        logger.exception("IM scenario trigger failed for %s", name)
+        return (
+            f"场景「{name}」启动失败,请稍后重试或在 Web 端启动。"
+            "\nFailed to start the scenario; retry later or use the web UI."
+        )
+    return f"任务已创建:场景「{name}」。\n进度与审批: {link}"
+
+
+def _launch_job(db_session: Session, *, user: Any, scenario: Any, prompt: str) -> str:
+    from onyx.server.features.build.jobs.api import create_job_run
+    from onyx.server.features.build.jobs.models import CraftJobCreateRequest
+    from onyx.server.features.build.session.manager import SessionManager
+
+    goal = prompt.strip() or f"Run scenario: {scenario.name}"
+    session_manager = SessionManager(db_session)
+    build_session = session_manager.create_session(
+        user_id=user.id,
+        name=f"IM: {scenario.name}",
+        scenario_id=scenario.id,
+    )
+    db_session.commit()
+    create_job_run(
+        db_session,
+        user=user,
+        request=CraftJobCreateRequest(
+            session_id=build_session.id,
+            scenario_id=scenario.id,
+            name=f"IM: {scenario.name}",
+            prompt=goal,
+            start=True,
+        ),
+    )
+    return f"/craft/v1?sessionId={build_session.id}"
+
+
+def _usage_reply() -> str:
+    return "用法 /usage: /场景 <名称> <任务内容> | /scenario <name> <task>"
+
+
+def _not_found_reply() -> str:
+    return (
+        "未找到该场景,或你没有使用权限。请确认场景名称;"
+        "场景由管理员在广场配置。"
+        "\nScenario not found or not shared with you."
+    )

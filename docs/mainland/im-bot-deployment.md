@@ -1,6 +1,7 @@
 # IM 机器人部署指南（企微 / 钉钉 / 飞书）
 
 回调端点统一为 `POST {你的域名}/onyxbot/{platform}/callback`（无 `/api` 前缀，nginx 直达 api_server）。
+企微的 URL 验证握手走 `GET` 同一路径；钉钉/飞书的验证走 POST（GET 返回 405，属预期）。
 机器人凭据**不单独配置**：直接写在对应的 SSO Provider 行上（管理后台 → SSO），presence 即启用。
 
 ## 1. 企业微信（wecom）
@@ -13,7 +14,7 @@
    - `corp_id` / `corp_secret` / `agent_id`
    - `bot_token`、`bot_encoding_aes_key`（第 2 步生成的两个值）
    - `email_domain`（如 `corp.example.cn`——平台不返回邮箱时构造确定性身份）
-4. 验证方式：企微后台点"保存"时平台会发 URL 验证请求，端点解密 echo 明文原样返回。
+4. 验证方式：企微后台点"保存"时平台发 **GET** URL 验证请求（query 携带 `msg_signature`/`timestamp`/`nonce`/`echostr`），端点验签解密 `echostr` 后明文原样返回。
 
 ## 2. 钉钉（dingtalk）
 
@@ -39,7 +40,8 @@
 - **应答时限**：平台要求 1-5 秒内回 200。端点内联完成验签/去重/URL 验证；真正回答在后台线程（进程内聊天引擎），答复通过平台 API 异步回发。
 - **去重**：Redis SETNX on msg id（平台会重试回调）。Redis 不可用时丢弃回调（宁可少答不重复答）。
 - **用户映射**：确定性邮箱 `{platform}-{platform_user_id}@{email_domain}`，与 SSO 登录同一身份（权限天然一致）；首条消息自动建 BOT 账号并记录 `china_im_binding`。
-- **推送**：审批卡片、循环待审产出（LOOP_OUTPUT_HELD）通过绑定表 DM 推送。
+- **推送**：审批请求、内容隔离、循环待审产出（LOOP_OUTPUT_HELD）、场景任务完成报告，均通过绑定表 DM 推送（带 `/craft/v1?sessionId=...` 深链；站点域名由部署侧可知）。
+- **场景触发**：聊天中发送 `/场景 <名称> <任务内容>`（或 `/scenario ...`）即以当前用户身份启动 CraftJob。场景名称按"可见即有权"匹配（最长前缀，支持含空格的名称）；未授权/未找到会得到拒绝回复。任务进度、审批与产出到深链会话里查看。
 - **规模**：单 api_server 进程并发回答上限 8（信号量）；更大规模把回答派发改投 celery（框架已隔离派发函数）。
 
 ## 已知边界（后续迭代）
