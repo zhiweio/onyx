@@ -214,6 +214,9 @@ export const worldTest = test.extend<{}, { world: ScopedWorld }>({
         grouplessGroupName,
         []
       );
+      // Detach leaves stale group-relationship rows until the group sync
+      // settles; wait so the groupless delete affordance is stamped correctly.
+      await adminClient.waitForGroupSync(grouplessGroupId);
 
       try {
         await use({

@@ -46,6 +46,8 @@ const ALLOWED_PAGES: string[] = [
   ...ALWAYS_PAGES,
   ...VECTOR_DB_PAGES,
   ...TIER_GATED_PAGES,
+  // Settings-driven entry (gateway enabled), not permission-gated in the sidebar.
+  ADMIN_ROUTES.MCP_GATEWAY.path,
 ];
 
 /** Admin-only pages that must not be linked, and must refuse a direct visit. */
