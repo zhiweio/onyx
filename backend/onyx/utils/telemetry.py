@@ -6,15 +6,12 @@ from typing import Any
 
 import requests
 
-from onyx.configs.app_configs import DISABLE_TELEMETRY, ENTERPRISE_EDITION_ENABLED
+from onyx.configs.app_configs import DISABLE_TELEMETRY
 from onyx.configs.constants import (
     KV_CUSTOMER_UUID_KEY,
-    KV_INSTANCE_DOMAIN_KEY,
     MilestoneRecordType,
 )
 from onyx.db.encrypted_kv_store import load_encrypted_kv, upsert_encrypted_kv
-from onyx.db.engine.sql_engine import get_session_with_current_tenant
-from onyx.db.models import User
 from onyx.key_value_store.interface import KvKeyNotFoundError, unwrap_str
 from onyx.utils.logger import setup_logger
 from onyx.utils.variable_functionality import (
@@ -29,7 +26,6 @@ logger = setup_logger()
 
 _DANSWER_TELEMETRY_ENDPOINT = "https://telemetry.onyx.app/anonymous_telemetry"
 _CACHED_UUID: str | None = None
-_CACHED_INSTANCE_DOMAIN: str | None = None
 
 # Cap each telemetry POST so a slow or unreachable endpoint cannot pin a sender
 # thread indefinitely and let threads accumulate.
@@ -74,26 +70,6 @@ def get_or_generate_uuid() -> str:
     return _CACHED_UUID
 
 
-def _get_or_generate_instance_domain() -> str | None:  #
-    global _CACHED_INSTANCE_DOMAIN
-
-    if _CACHED_INSTANCE_DOMAIN is not None:
-        return _CACHED_INSTANCE_DOMAIN
-
-    try:
-        _CACHED_INSTANCE_DOMAIN = unwrap_str(load_encrypted_kv(KV_INSTANCE_DOMAIN_KEY))
-    except KvKeyNotFoundError:
-        with get_session_with_current_tenant() as db_session:
-            first_user = db_session.query(User).first()
-            if first_user:
-                _CACHED_INSTANCE_DOMAIN = first_user.email.split("@")[-1]
-                upsert_encrypted_kv(
-                    KV_INSTANCE_DOMAIN_KEY, {"value": _CACHED_INSTANCE_DOMAIN}
-                )
-
-    return _CACHED_INSTANCE_DOMAIN
-
-
 def optional_telemetry(
     record_type: RecordType,
     data: dict,
@@ -126,8 +102,6 @@ def optional_telemetry(
                     "customer_uuid": customer_uuid,
                     "is_cloud": MULTI_TENANT,
                 }
-                if ENTERPRISE_EDITION_ENABLED:
-                    payload["instance_domain"] = _get_or_generate_instance_domain()
                 response = requests.post(
                     _DANSWER_TELEMETRY_ENDPOINT,
                     headers={"Content-Type": "application/json"},

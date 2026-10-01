@@ -30,7 +30,6 @@ from onyx.db.engine.sql_engine import (  # noqa: E402
 )
 from onyx.db.engine.tenant_utils import get_all_tenant_ids  # noqa: E402
 from onyx.db.rotate_encryption_key import rotate_encryption_key  # noqa: E402
-from onyx.utils.variable_functionality import global_version  # noqa: E402
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA  # noqa: E402
 
 
@@ -79,7 +78,6 @@ def main() -> None:
 
     old_key = args.old_key if args.old_key else None
 
-    global_version.set_ee()
     SqlEngine.init_engine(pool_size=5, max_overflow=2)
 
     if args.dry_run:

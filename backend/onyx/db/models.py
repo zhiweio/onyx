@@ -84,6 +84,10 @@ from onyx.db.enums import (
     ContentReleaseScope,
     CraftJobSpecialistStatus,
     CraftJobStatus,
+    CraftLoopHealth,
+    CraftLoopItemStatus,
+    CraftLoopOutputState,
+    CraftLoopState,
     CraftProjectFileSource,
     DefaultAppMode,
     EmbeddingPrecision,
@@ -127,11 +131,6 @@ from onyx.db.enums import (
     ScheduledTaskRunStatus,
     ScheduledTaskStatus,
     ScheduledTaskTriggerSource,
-    ShipGate,
-    CraftLoopState,
-    CraftLoopHealth,
-    CraftLoopItemStatus,
-    CraftLoopOutputState,
     SessionOrigin,
     SharingScope,
     SkillSharePermission,
@@ -7084,25 +7083,6 @@ class ExternalGroupPermissionSyncAttempt(Base):
         return self.status.is_terminal()
 
 
-class License(Base):
-    """Stores the signed license blob (singleton pattern - only one row)."""
-
-    __tablename__ = "license"
-    __table_args__ = (
-        # Singleton pattern - unique index on constant ensures only one row
-        Index("idx_license_singleton", text("(true)"), unique=True),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    license_data: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-
 class TenantUsage(Base):
     """
     Tracks per-tenant usage statistics within a time window for cloud usage limits.
@@ -8180,9 +8160,7 @@ class ProcessWatch(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    __table_args__ = (
-        Index("ix_process_watch_process", "process_id"),
-    )
+    __table_args__ = (Index("ix_process_watch_process", "process_id"),)
 
 
 class EnvVar(Base):
@@ -9201,7 +9179,9 @@ class CraftLoop(Base):
         DateTime(timezone=True), nullable=True
     )
     scenario_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("scenario.id", ondelete="SET NULL"), nullable=True
+        PGUUID(as_uuid=True),
+        ForeignKey("scenario.id", ondelete="SET NULL"),
+        nullable=True,
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -9470,7 +9450,9 @@ class PlatformToolLog(Base):
         PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
     session_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("build_session.id", ondelete="SET NULL"), nullable=True
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
     )
     tool: Mapped[str] = mapped_column(String(128), nullable=False)
     arguments: Mapped[dict[str, Any]] = mapped_column(

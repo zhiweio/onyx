@@ -10,7 +10,6 @@ from onyx.configs.app_configs import (
     DISABLE_OPENSEARCH_MIGRATION_TASK,
     DISABLE_VECTOR_DB,
     ENABLE_OPENSEARCH_INDEXING_FOR_ONYX,
-    ENTERPRISE_EDITION_ENABLED,
     ONYX_DISABLE_VESPA,
     SCHEDULED_EVAL_DATASET_NAMES,
 )
@@ -21,7 +20,6 @@ from onyx.configs.constants import (
     OnyxCeleryTask,
 )
 from onyx.server.features.build.configs import SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS
-from onyx.utils.variable_functionality import _LICENSE_ENFORCEMENT_ENABLED
 from shared_configs.configs import MULTI_TENANT
 
 # choosing 15 minutes because it roughly gives us enough time to process many tasks
@@ -331,33 +329,6 @@ beat_task_templates: list[dict] = [
     },
 ]
 
-# Mirror set_is_ee_based_on_env_variable(): EE features are active when either
-# ENABLE_PAID_ENTERPRISE_EDITION_FEATURES or LICENSE_ENFORCEMENT_ENABLED is set.
-if ENTERPRISE_EDITION_ENABLED or _LICENSE_ENFORCEMENT_ENABLED:
-    beat_task_templates.extend(
-        [
-            {
-                "name": "check-for-doc-permissions-sync",
-                "task": OnyxCeleryTask.CHECK_FOR_DOC_PERMISSIONS_SYNC,
-                "schedule": timedelta(seconds=30),
-                "options": {
-                    "priority": OnyxCeleryPriority.MEDIUM,
-                    "expires": BEAT_EXPIRES_DEFAULT,
-                    "work_gated": True,
-                },
-            },
-            {
-                "name": "check-for-external-group-sync",
-                "task": OnyxCeleryTask.CHECK_FOR_EXTERNAL_GROUP_SYNC,
-                "schedule": timedelta(seconds=20),
-                "options": {
-                    "priority": OnyxCeleryPriority.MEDIUM,
-                    "expires": BEAT_EXPIRES_DEFAULT,
-                    "work_gated": True,
-                },
-            },
-        ]
-    )
 
 # Add the Auto LLM update task if the config URL is set (has a default)
 if AUTO_LLM_CONFIG_URL:

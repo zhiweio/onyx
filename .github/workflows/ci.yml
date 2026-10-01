@@ -84,7 +84,6 @@ jobs:
             backend/requirements/default.txt
             backend/requirements/dev.txt
             backend/requirements/model_server.txt
-            backend/requirements/ee.txt
 
       - name: Ruff lint
         run: ruff check .
@@ -105,9 +104,6 @@ jobs:
     env:
       PYTHONPATH: ./backend
       DISABLE_TELEMETRY: "true"
-      # Unit tests run without a live backend; EE code paths that depend on
-      # Redis/Vespa/etc are not available, so disable enforcement here.
-      LICENSE_ENFORCEMENT_ENABLED: "false"
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v6
@@ -121,7 +117,6 @@ jobs:
             backend/requirements/default.txt
             backend/requirements/dev.txt
             backend/requirements/model_server.txt
-            backend/requirements/ee.txt
 
       - name: Run unit tests
         run: pytest -n auto backend/tests/unit
@@ -208,7 +203,6 @@ jobs:
           requirements: |
             backend/requirements/default.txt
             backend/requirements/dev.txt
-            backend/requirements/ee.txt
 
       # The compose merge is what install.sh --include-craft renders for
       # self-hosters. If this fails, the operator's first `compose up` silently

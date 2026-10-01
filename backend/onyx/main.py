@@ -70,6 +70,7 @@ from onyx.server.auth.captcha_api import CaptchaCookieMiddleware, LoginCaptchaMi
 from onyx.server.auth.captcha_api import router as captcha_router
 from onyx.server.auth.mobile import router as mobile_auth_router
 from onyx.server.auth_check import check_router_auth
+from onyx.server.china_sso import router as china_sso_router
 from onyx.server.documents.cc_pair import router as cc_pair_router
 from onyx.server.documents.connector import router as connector_router
 from onyx.server.documents.credential import router as credential_router
@@ -82,6 +83,9 @@ from onyx.server.documents.targeted_reindex import router as targeted_reindex_ro
 from onyx.server.features.admin_banner.api import admin_router as admin_banner_router
 from onyx.server.features.build.api import admin_router as build_admin_router
 from onyx.server.features.build.api import router as build_router
+from onyx.server.features.build.sandbox.agent_runtime.registry_api import (
+    router as agent_models_admin_router,
+)
 from onyx.server.features.build.webapp_proxy import public_build_router
 from onyx.server.features.craft_project.api import router as craft_project_router
 from onyx.server.features.default_assistant.api import (
@@ -128,6 +132,9 @@ from onyx.server.features.web_search.api import router as web_search_router
 from onyx.server.federated.api import router as federated_router
 from onyx.server.kg.api import admin_router as kg_admin_router
 from onyx.server.manage.administrative import router as admin_router
+from onyx.server.manage.audit_report.api import (
+    router as audit_report_admin_router,
+)
 from onyx.server.manage.code_interpreter.api import (
     admin_router as code_interpreter_admin_router,
 )
@@ -146,12 +153,6 @@ from onyx.server.manage.opensearch_migration.api import (
 )
 from onyx.server.manage.search_settings import router as search_settings_router
 from onyx.server.manage.slack_bot import router as slack_bot_management_router
-from onyx.server.features.build.sandbox.agent_runtime.registry_api import (
-    router as agent_models_admin_router,
-)
-from onyx.server.manage.audit_report.api import (
-    router as audit_report_admin_router,
-)
 from onyx.server.manage.sso.api import admin_router as sso_admin_router
 from onyx.server.manage.standard_answers.api import (
     router as standard_answers_admin_router,
@@ -159,10 +160,10 @@ from onyx.server.manage.standard_answers.api import (
 from onyx.server.manage.token_rate_limits.api import (
     router as token_rate_limits_admin_router,
 )
+from onyx.server.manage.tracing.api import admin_router as tracing_admin_router
 from onyx.server.manage.user_group.api import (
     router as user_group_admin_router,
 )
-from onyx.server.manage.tracing.api import admin_router as tracing_admin_router
 from onyx.server.manage.users import router as user_router
 from onyx.server.manage.voice.api import admin_router as voice_admin_router
 from onyx.server.manage.voice.user_api import router as voice_router
@@ -180,10 +181,9 @@ from onyx.server.middleware.rate_limiting import (
     get_auth_rate_limiters,
     setup_auth_limiter,
 )
-from onyx.server.china_sso import router as china_sso_router
-from onyx.server.onyxbot_china_api import router as onyxbot_china_router
 from onyx.server.oidc_multi import router as oidc_multi_router
 from onyx.server.onyx_api.ingestion import router as onyx_api_router
+from onyx.server.onyxbot_china_api import router as onyxbot_china_router
 from onyx.server.pat.api import router as pat_router
 from onyx.server.query_and_chat.chat_backend import router as chat_router
 from onyx.server.query_and_chat.query_backend import admin_router as admin_query_router
@@ -207,8 +207,6 @@ from onyx.utils.telemetry import RecordType, get_or_generate_uuid, optional_tele
 from onyx.utils.variable_functionality import (
     fetch_ee_implementation_or_noop,
     fetch_versioned_implementation,
-    global_version,
-    set_is_ee_based_on_env_variable,
 )
 from shared_configs.configs import (
     CORS_ALLOW_CREDENTIALS,
@@ -634,8 +632,12 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, sso_admin_router)
     include_router_with_global_prefix_prepended(application, agent_models_admin_router)
     include_router_with_global_prefix_prepended(application, audit_report_admin_router)
-    include_router_with_global_prefix_prepended(application, token_rate_limits_admin_router)
-    include_router_with_global_prefix_prepended(application, standard_answers_admin_router)
+    include_router_with_global_prefix_prepended(
+        application, token_rate_limits_admin_router
+    )
+    include_router_with_global_prefix_prepended(
+        application, standard_answers_admin_router
+    )
     include_router_with_global_prefix_prepended(application, user_group_admin_router)
     include_router_with_global_prefix_prepended(application, llm_admin_router)
     include_router_with_global_prefix_prepended(application, kg_admin_router)
@@ -863,7 +865,6 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
 
 # NOTE: needs to be outside of the `if __name__ == "__main__"` block so that the
 # app is exportable
-set_is_ee_based_on_env_variable()
 app = fetch_versioned_implementation(module="onyx.main", attribute="get_application")
 
 
@@ -874,8 +875,5 @@ if __name__ == "__main__":
         APP_HOST,
         str(APP_PORT),
     )
-
-    if global_version.is_ee_version():
-        logger.notice("Running Enterprise Edition")
 
     uvicorn.run(app, host=APP_HOST, port=APP_PORT)

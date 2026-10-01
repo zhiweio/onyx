@@ -28,7 +28,6 @@ from onyx.db.engine.sql_engine import (  # noqa: E402
 )
 from onyx.db.engine.tenant_utils import get_all_tenant_ids  # noqa: E402
 from onyx.db.models import Connector  # noqa: E402
-from onyx.utils.variable_functionality import global_version  # noqa: E402
 
 _SECONDS_PER_DAY = 86400
 
@@ -88,7 +87,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    global_version.set_ee()
     SqlEngine.init_engine(pool_size=5, max_overflow=2)
 
     run(from_days=args.from_days, to_days=args.to_days, dry_run=args.dry_run)

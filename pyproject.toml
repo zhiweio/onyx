@@ -23,8 +23,7 @@ dependencies = [
     "voyageai==0.2.3",
     "brotli>=1.2.0",
     "agent-client-protocol>=0.7.1",
-    # Pin here so backend + ee hashed exports share one version. pyiceberg[s3fs]
-    # pulls 2026.7.0; an older ee pin makes the Docker dual-file install fail.
+    # pyiceberg[s3fs] pulls 2026.7.0; pin so the hashed export stays stable.
     "fsspec==2026.7.0",
     "mcp>=1.12",
 ]
@@ -158,6 +157,7 @@ dev = [
     "pytest-asyncio==1.4.0",
     "pytest-dotenv==0.5.2",
     "pytest-mock==3.12.0",
+    "requests-mock==1.12.1",
     "pytest-playwright==0.7.2",
     "pytest-repeat==0.9.4",
     "pytest-xdist==3.8.0",
@@ -187,9 +187,6 @@ dev = [
 # the rest of the dev toolchain.
 zizmor = ["zizmor==1.25.2"]
 
-# Enterprise Edition features
-ee = ["posthog==3.7.4"]
-
 # Locust load-test runtime (the tools/loadtest/ project). Kept OUT of default-groups
 # so a normal `uv sync` doesn't pull locust's heavy gevent/flask/socketio tree.
 # Opt in with `uv sync --group loadtest`. See tools/loadtest/README.md.
@@ -217,7 +214,7 @@ model_server = [
 # deps from the requirements exports, and local imports resolve via cwd /
 # PYTHONPATH conventions (see backend/pytest.ini).
 package = false
-default-groups = ["backend", "dev", "ee", "model_server"]
+default-groups = ["backend", "dev", "model_server"]
 
 # Loosen mitmproxy's over-tight upper caps so the resolver keeps the
 # backend's newer versions.
@@ -324,7 +321,7 @@ extend-immutable-calls = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["onyx", "ee", "tests", "shared_configs", "model_server"]
+known-first-party = ["onyx", "tests", "shared_configs", "model_server"]
 
 [tool.ruff.lint.per-file-ignores]
 # alembic has a folder named `alembic` in backend/ which confuses import sorters.
@@ -343,11 +340,6 @@ known-first-party = ["onyx", "ee", "tests", "shared_configs", "model_server"]
 # number is the highest complexity in that file at the time. Remove an entry
 # once its functions are simplified. NOTE: the ignore is per file, so it also
 # hides new complex functions added to these files. Tracked in #2403.
-"backend/ee/onyx/background/celery/tasks/doc_permission_syncing/tasks.py" = ["C901"] # 21
-"backend/ee/onyx/external_permissions/google_drive/doc_sync.py" = ["C901"] # 21
-"backend/ee/onyx/server/gateway/anthropic_passthrough.py" = ["C901"] # 23
-"backend/ee/onyx/server/gateway/api.py" = ["C901"] # 27
-"backend/ee/onyx/server/gateway/openai_passthrough.py" = ["C901"] # 32
 "backend/onyx/auth/users.py" = ["C901"] # 30
 "backend/onyx/background/celery/tasks/docfetching/tasks.py" = ["C901"] # 43
 "backend/onyx/background/celery/tasks/docprocessing/tasks.py" = ["C901"] # 24
@@ -373,6 +365,7 @@ known-first-party = ["onyx", "ee", "tests", "shared_configs", "model_server"]
 "backend/onyx/connectors/testrail/connector.py" = ["C901"] # 21
 "backend/onyx/connectors/web/connector.py" = ["C901"] # 23
 "backend/onyx/context/search/federated/slack_search.py" = ["C901"] # 31
+"backend/onyx/db/llm.py" = ["C901"] # 21
 "backend/onyx/db/persona.py" = ["C901"] # 49
 "backend/onyx/deep_research/dr_loop.py" = ["C901"] # 26
 "backend/onyx/document_index/opensearch/search.py" = ["C901"] # 48
@@ -409,3 +402,11 @@ known-first-party = ["onyx", "ee", "tests", "shared_configs", "model_server"]
 "backend/scripts/tenant_cleanup/no_bastion_cleanup_tenants.py" = ["C901"] # 49
 "backend/scripts/tenant_cleanup/no_bastion_mark_connectors.py" = ["C901"] # 39
 "backend/tests/unit/onyx/connectors/salesforce/test_salesforce_sqlite.py" = ["C901"] # 24
+"backend/onyx/skills/builtin/financial-report-analysis/scripts/analyze_financials.py" = ["C901"] # 35
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/bib_authenticity_check.py" = ["C901"] # 26
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/capability_check.py" = ["C901"] # 27
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/drawio_check.py" = ["C901"] # 46
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/facts_audit.py" = ["C901"] # 43
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/plot_utils.py" = ["C901"] # 40
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/recipe_style_review.py" = ["C901"] # 44
+"backend/onyx/skills/builtin/vivid-figures-skill/original/resources/assets/shared-scripts/stats_utils.py" = ["C901"] # 25

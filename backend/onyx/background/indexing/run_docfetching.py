@@ -105,7 +105,6 @@ from onyx.utils.postgres_sanitization import (
     sanitize_document_for_postgres,
     sanitize_hierarchy_nodes_for_postgres,
 )
-from onyx.utils.variable_functionality import global_version
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.contextvars import INDEX_ATTEMPT_INFO_CONTEXTVAR
 
@@ -365,13 +364,10 @@ def run_docfetching_entrypoint(
     index_attempt_id: int,
     tenant_id: str,
     connector_credential_pair_id: int,
-    is_ee: bool = False,
+    is_ee: bool = False,  # noqa: ARG001 kept for task-call compatibility
     callback: IndexingHeartbeatInterface | None = None,
 ) -> None:
     """Don't swallow exceptions here ... propagate them up."""
-
-    if is_ee:
-        global_version.set_ee()
 
     # set the indexing attempt ID so that all log messages from this process
     # will have it added as a prefix

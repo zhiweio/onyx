@@ -81,7 +81,10 @@ def rotate_encryption_key(
     making the operation safe to re-run.
     """
     if not global_version.is_ee_version():
-        raise RuntimeError("EE mode is not enabled — rotation requires EE encryption.")
+        raise RuntimeError(
+            "Key rotation is not supported in this CE-only build — the EE "
+            "encryption layer it rotates is not present."
+        )
 
     if not ENCRYPTION_KEY_SECRET:
         raise RuntimeError(

@@ -35,18 +35,6 @@ repos:
           ]
         files: ^(pyproject\.toml|uv\.lock|backend/requirements/.*\.txt)$
       - id: uv-export
-        name: uv-export ee.txt
-        args:
-          [
-            "--no-emit-project",
-            "--no-default-groups",
-            "--group",
-            "ee",
-            "-o",
-            "backend/requirements/ee.txt",
-          ]
-        files: ^(pyproject\.toml|uv\.lock|backend/requirements/.*\.txt)$
-      - id: uv-export
         name: uv-export model_server.txt
         args:
           [

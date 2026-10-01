@@ -24,7 +24,6 @@ backend/
 └── requirements/                   # Legacy .txt files (for Docker compat)
     ├── default.txt
     ├── dev.txt
-    ├── ee.txt
     ├── model_server.txt
     └── combined.txt
 ```
@@ -66,7 +65,6 @@ To manually regenerate:
 uv lock
 uv export --no-emit-project --no-default-groups --group backend -o backend/requirements/default.txt
 uv export --no-emit-project --no-default-groups --group dev -o backend/requirements/dev.txt
-uv export --no-emit-project --no-default-groups --group ee -o backend/requirements/ee.txt
 uv export --no-emit-project --no-default-groups --group model_server -o backend/requirements/model_server.txt
 ```
 

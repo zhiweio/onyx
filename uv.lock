@@ -3768,15 +3768,6 @@ wheels = [
 ]
 
 [[package]]
-name = "monotonic"
-version = "1.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ea/ca/8e91948b782ddfbd194f323e7e7d9ba12e5877addf04fb2bf8fca38e86ac/monotonic-1.6.tar.gz", hash = "sha256:3a55207bcfed53ddd5c5bae174524062935efed17792e9de2ad0205ce9ad63f7", size = 7615 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/67/7e8406a29b6c45be7af7740456f7f37025f0506ae2e05fb9009a53946860/monotonic-1.6-py2.py3-none-any.whl", hash = "sha256:68687e19a14f11f26d140dd5c86f3dba4bf5df58003000ed467e0e2a69bca96c", size = 8154 },
-]
-
-[[package]]
 name = "more-itertools"
 version = "10.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4275,6 +4266,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "huggingface-hub" },
     { name = "litellm", extra = ["google"] },
+    { name = "mcp" },
     { name = "openai" },
     { name = "prometheus-client" },
     { name = "prometheus-fastapi-instrumentator" },
@@ -4403,6 +4395,7 @@ dev = [
     { name = "pytest-repeat" },
     { name = "pytest-xdist" },
     { name = "release-tag" },
+    { name = "requests-mock" },
     { name = "ruff" },
     { name = "ty" },
     { name = "types-beautifulsoup4" },
@@ -4420,9 +4413,6 @@ dev = [
     { name = "types-regex" },
     { name = "types-requests" },
     { name = "zizmor" },
-]
-ee = [
-    { name = "posthog" },
 ]
 loadtest = [
     { name = "fastapi" },
@@ -4454,6 +4444,7 @@ requires-dist = [
     { name = "google-genai", specifier = "==2.18.1" },
     { name = "huggingface-hub", specifier = "==1.26.0" },
     { name = "litellm", extras = ["google"], specifier = "==1.93.0" },
+    { name = "mcp", specifier = ">=1.12" },
     { name = "openai", specifier = "==2.38.0" },
     { name = "prometheus-client", specifier = ">=0.21.1" },
     { name = "prometheus-fastapi-instrumentator", specifier = "==8.0.2" },
@@ -4582,6 +4573,7 @@ dev = [
     { name = "pytest-repeat", specifier = "==0.9.4" },
     { name = "pytest-xdist", specifier = "==3.8.0" },
     { name = "release-tag", specifier = "==0.5.2" },
+    { name = "requests-mock", specifier = "==1.12.1" },
     { name = "ruff", specifier = "==0.16.1" },
     { name = "ty", specifier = "==0.0.63" },
     { name = "types-beautifulsoup4", specifier = "==4.12.0.3" },
@@ -4600,7 +4592,6 @@ dev = [
     { name = "types-requests", specifier = "==2.32.0.20250328" },
     { name = "zizmor", specifier = "==1.25.2" },
 ]
-ee = [{ name = "posthog", specifier = "==3.7.4" }]
 loadtest = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "locust", specifier = ">=2.32" },
@@ -5114,22 +5105,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e5/69/882ee5c9d017149285cab114ebeab373308ef0f874fcdac9beb90e0ac4da/ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3", size = 159130 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a3/58/35da89ee790598a0700ea49b2a66594140f44dec458c07e8e3d4979137fc/ply-3.11-py2.py3-none-any.whl", hash = "sha256:096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce", size = 49567 },
-]
-
-[[package]]
-name = "posthog"
-version = "3.7.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "backoff" },
-    { name = "monotonic" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/a0/7607d4fd7c52b086671d8618e76cb5b9a642311fd6f352ebd7eb035319f2/posthog-3.7.4.tar.gz", hash = "sha256:19384bd09d330f9787a7e2446aba14c8057ece56144970ea2791072d4e40cd36", size = 50174 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/f2/5ee24cd69e2120bf87356c02ace0438b4e4fb78229fddcbf6f1c6be377d5/posthog-3.7.4-py2.py3-none-any.whl", hash = "sha256:21c18c6bf43b2de303ea4cd6e95804cc0f24c20cb2a96a8fd09da2ed50b62faa", size = 54777 },
 ]
 
 [[package]]
@@ -6444,6 +6419,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3c/f8/5dc70102e4d337063452c82e1f0d95e39abfe67aa222ed8a5ddeb9df8de8/requests_file-3.0.1.tar.gz", hash = "sha256:f14243d7796c588f3521bd423c5dea2ee4cc730e54a3cac9574d78aca1272576", size = 6967 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/d5/de8f089119205a09da657ed4784c584ede8381a0ce6821212a6d4ca47054/requests_file-3.0.1-py2.py3-none-any.whl", hash = "sha256:d0f5eb94353986d998f80ac63c7f146a307728be051d4d1cd390dbdb59c10fa2", size = 4514 },
+]
+
+[[package]]
+name = "requests-mock"
+version = "1.12.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/92/32/587625f91f9a0a3d84688bf9cfc4b2480a7e8ec327cefd0ff2ac891fd2cf/requests-mock-1.12.1.tar.gz", hash = "sha256:e9e12e333b525156e82a3c852f22016b9158220d2f47454de9cae8a77d371401", size = 60901 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/ec/889fbc557727da0c34a33850950310240f2040f3b1955175fdb2b36a8910/requests_mock-1.12.1-py2.py3-none-any.whl", hash = "sha256:b1e37054004cdd5e56c84454cc7df12b25f90f382159087f4b6915aaeef39563", size = 27695 },
 ]
 
 [[package]]
