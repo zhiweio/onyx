@@ -8,7 +8,7 @@ import {
   useBuildSessionStore,
 } from "@/app/craft/hooks/useBuildSessionStore";
 import { useLaneTranscript } from "@/app/craft/hooks/useLaneTranscript";
-import BuildMessageList from "@/app/craft/components/BuildMessageList";
+import CraftTimeline from "@/app/craft/components/timeline/CraftTimeline";
 import type { BuildMessage } from "@/app/craft/types/streamingTypes";
 import type {
   SubagentState,
@@ -22,7 +22,7 @@ interface SubagentViewProps {
 
 /**
  * SubagentView - Read-only transcript of a subagent's run. Reuses the main
- * chat renderer (BuildMessageList): each turn becomes a user message (the
+ * chat renderer (CraftTimeline): each turn becomes a user message (the
  * dispatch prompt) + an assistant message whose stream items are the
  * subagent's tool calls and final response — so tool groups, assistant
  * styling, etc. all mirror the main conversation.
@@ -92,12 +92,11 @@ export default function SubagentView({ subagentSessionId }: SubagentViewProps) {
   }
 
   return (
-    <BuildMessageList
+    <CraftTimeline
       sessionId={null}
       messages={messages}
       streamItems={activeStreamItems}
       isStreaming={subagent.status === "running"}
-      autoScrollEnabled={subagent.status === "running"}
       scrollContainerRef={scrollRef}
     />
   );

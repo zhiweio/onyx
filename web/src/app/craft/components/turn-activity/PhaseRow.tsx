@@ -11,7 +11,6 @@ import {
   CollapsibleTrigger,
 } from "@/refresh-components/Collapsible";
 import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
-import ActivityToolLine from "@/app/craft/components/turn-activity/ActivityToolLine";
 import {
   SvgLoader,
   getToolIcon,
@@ -22,7 +21,6 @@ import {
   toolTarget,
   type ToolPhase,
 } from "@/lib/craft/foldTurnStream";
-import type { ToolCallState } from "@/app/craft/types/displayTypes";
 
 interface ThinkingBlockProps {
   children?: ReactNode;
@@ -86,7 +84,7 @@ const THINKING_MARKDOWN_OVERRIDES = {
 function rowTriggerClass(expandable: boolean): string {
   return cn(
     "group flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden py-0.5 text-left",
-    expandable && "rounded-sm hover:bg-background-tint-02",
+    expandable && "rounded-sm hover:bg-background-tint-02"
   );
 }
 
@@ -231,126 +229,6 @@ export function PlanningNextRow() {
       <Text font="main-ui-muted" color="text-03" nowrap>
         {t("planningNext")}
       </Text>
-    </div>
-  );
-}
-
-function phaseLabel({
-  phase,
-  tools,
-  live,
-  t,
-}: {
-  phase: ToolPhase;
-  tools: ToolCallState[];
-  live: boolean;
-  t: ReturnType<typeof useTranslations>;
-}): string {
-  const last = tools[tools.length - 1];
-  const target = last ? shortPhaseTarget(toolTarget(last)) : "";
-  if (phase === "explore") {
-    if (live) {
-      return target ? t("exploringTarget", { target }) : t("exploring");
-    }
-    return t("exploredN", { count: tools.length });
-  }
-  if (phase === "edit") {
-    const writing = last?.isNewFile || last?.toolName === "write";
-    if (live) {
-      if (writing) {
-        return target ? t("writingTarget", { target }) : t("writing");
-      }
-      return target ? t("editingTarget", { target }) : t("editing");
-    }
-    if (writing) {
-      return target ? t("wroteTarget", { target }) : t("wrote");
-    }
-    return target ? t("editedTarget", { target }) : t("edited");
-  }
-  if (phase === "run") {
-    if (live) {
-      return tools.length > 1
-        ? t("runningN", { count: tools.length })
-        : t("running");
-    }
-    return tools.length > 1 ? t("ranN", { count: tools.length }) : t("ran");
-  }
-  if (phase === "task") {
-    if (live) return t("task");
-    if (
-      tools.length > 0 &&
-      tools.every(
-        (tool) => tool.status === "cancelled" || tool.status === "failed",
-      )
-    ) {
-      return t("taskCancelled");
-    }
-    return t("taskDone");
-  }
-  return live ? t("running") : t("ran");
-}
-
-export function ToolPhaseRow({
-  phase,
-  tools,
-  autoCollapse,
-  summary,
-}: {
-  phase: ToolPhase;
-  tools: ToolCallState[];
-  autoCollapse: boolean;
-  summary?: string;
-}) {
-  const t = useTranslations("craft.turnActivity");
-  const live = toolBatchIsLive(tools);
-  const [isOpen, setIsOpen] = useState(live);
-  const didAutoCollapse = useRef(false);
-
-  useEffect(() => {
-    if (autoCollapse && !didAutoCollapse.current) {
-      didAutoCollapse.current = true;
-      setIsOpen(false);
-    }
-  }, [autoCollapse]);
-
-  const PhaseIcon = getToolIcon(
-    phase === "explore"
-      ? "read"
-      : phase === "run"
-        ? "execute"
-        : phase === "task"
-          ? "task"
-          : "edit",
-  );
-
-  return (
-    <div className="min-w-0 max-w-full">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <button type="button" className={rowTriggerClass(true)}>
-            {live ? (
-              <SvgLoader className="size-4 shrink-0 animate-spin stroke-status-info-05" />
-            ) : (
-              <PhaseIcon className="size-4 shrink-0 stroke-text-03" />
-            )}
-            <PhaseTitle>{phaseLabel({ phase, tools, live, t })}</PhaseTitle>
-            <SvgChevronDown
-              className={cn(
-                "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-                !isOpen && "-rotate-90",
-              )}
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex min-w-0 flex-col ps-6">
-            {tools.map((toolCall) => (
-              <ActivityToolLine key={toolCall.id} toolCall={toolCall} />
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      <StepSummary text={summary ?? ""} />
     </div>
   );
 }

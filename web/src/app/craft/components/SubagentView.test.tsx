@@ -14,7 +14,7 @@ const mockBuildMessageList = jest.fn(
 );
 const mockUseLaneTranscript = jest.fn();
 
-jest.mock("@/app/craft/components/BuildMessageList", () => ({
+jest.mock("@/app/craft/components/timeline/CraftTimeline", () => ({
   __esModule: true,
   default: (props: {
     messages: BuildMessage[];

@@ -76,11 +76,11 @@ export default function CraftTimeline({
   // Resolve a connect card's app (oauth-vs-form, credential fields) by ID.
   const { data: connectableApps } = useSWR<ExternalAppUserResponse[]>(
     SWR_KEYS.buildExternalApps,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const appsById = useMemo(
     () => new Map((connectableApps ?? []).map((app) => [app.id, app])),
-    [connectableApps],
+    [connectableApps]
   );
 
   const hasStreamItems = streamItems.length > 0;
@@ -115,6 +115,9 @@ export default function CraftTimeline({
     estimateSize: () => 200,
     overscan: 8,
     getItemKey: (index) => historyItems[index]?.key ?? `row-${index}`,
+    // jsdom (unit tests) reports a zero-sized scroll element and never fires
+    // resize observers; seed a viewport so history rows still render there.
+    initialRect: { width: 720, height: 600 },
   });
 
   // Content growth still needs to extend the virtual container's measured
@@ -130,7 +133,7 @@ export default function CraftTimeline({
     opts: {
       isCurrentStream: boolean;
       extractLatestTodo: boolean;
-    },
+    }
   ): { nodes: React.ReactNode[]; pinnedTodo: TodoListState | null } => {
     let latestTodoIdx = -1;
     rawItems.forEach((it, idx) => {
@@ -278,7 +281,7 @@ export default function CraftTimeline({
   const renderAgentMessage = (
     message: BuildMessage,
     trailing?: React.ReactNode,
-    actionsExtra?: React.ReactNode,
+    actionsExtra?: React.ReactNode
   ) => {
     const savedStreamItems = message.message_metadata?.streamItems as
       | StreamItem[]
@@ -418,7 +421,7 @@ export default function CraftTimeline({
                     message,
                     !showStreamingArea && index === lastAssistantIndex
                       ? trailingAssistantSlot
-                      : null,
+                      : null
                   )
                 )}
               </div>

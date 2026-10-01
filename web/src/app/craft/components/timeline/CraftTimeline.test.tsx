@@ -2,9 +2,22 @@ import React from "react";
 import { fireEvent, screen } from "@testing-library/react";
 import { render } from "@tests/setup/test-utils";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
-import BuildMessageList from "@/app/craft/components/BuildMessageList";
+import CraftTimeline from "@/app/craft/components/timeline/CraftTimeline";
 import type { BuildMessage } from "@/app/craft/types/streamingTypes";
 import type { StreamItem } from "@/app/craft/types/displayTypes";
+
+// jsdom reports zero-sized elements; the virtualizer reads
+// offsetWidth/offsetHeight and needs a viewport to render rows.
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+    configurable: true,
+    value: 600,
+  });
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+    configurable: true,
+    value: 720,
+  });
+});
 
 jest.mock("@/lib/app/components", () => ({
   Logo: () => <div data-testid="onyx-logo" />,
@@ -53,12 +66,11 @@ function renderList(props: {
 }) {
   return render(
     <TooltipProvider>
-      <BuildMessageList
+      <CraftTimeline
         sessionId="session-1"
         messages={props.messages ?? []}
         streamItems={props.streamItems ?? []}
         isStreaming={props.isStreaming}
-        autoScrollEnabled={false}
         scrollContainerRef={scrollRef()}
       />
     </TooltipProvider>
@@ -103,7 +115,7 @@ const savedAssistantMessage: BuildMessage = {
   },
 };
 
-describe("BuildMessageList thinking visibility", () => {
+describe("CraftTimeline rendering", () => {
   it("renders image attachments on user messages", () => {
     renderList({
       messages: [
@@ -142,9 +154,9 @@ describe("BuildMessageList thinking visibility", () => {
 
     expect(thought).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Thought")).toBeInTheDocument();
-    expect(screen.getAllByText("Checking the app structure.").length).toBeGreaterThan(
-      1
-    );
+    expect(
+      screen.getAllByText("Checking the app structure.").length
+    ).toBeGreaterThan(1);
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
 
@@ -206,9 +218,9 @@ describe("BuildMessageList thinking visibility", () => {
     fireEvent.click(thinking);
 
     expect(thinking).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getAllByText("Checking the app structure.").length).toBeGreaterThan(
-      1
-    );
+    expect(
+      screen.getAllByText("Checking the app structure.").length
+    ).toBeGreaterThan(1);
   });
 
   it("does not show planning next after a settled task when idle", () => {
@@ -216,7 +228,8 @@ describe("BuildMessageList thinking visibility", () => {
       isStreaming: false,
       streamItems: [settledTaskItem],
     });
-    expect(screen.getByRole("button", { name: /Ran task/ })).toBeInTheDocument();
+    // The settled task renders as a collapsed group row with its summary.
+    expect(screen.getByText(/Ran task/)).toBeInTheDocument();
     expect(screen.queryByText("Planning next moves")).not.toBeInTheDocument();
   });
 
@@ -225,7 +238,7 @@ describe("BuildMessageList thinking visibility", () => {
       isStreaming: true,
       streamItems: [settledTaskItem],
     });
-    expect(screen.getByRole("button", { name: /Ran task/ })).toBeInTheDocument();
+    expect(screen.getByText(/Ran task/)).toBeInTheDocument();
     expect(screen.getByText("Planning next moves")).toBeInTheDocument();
   });
 
