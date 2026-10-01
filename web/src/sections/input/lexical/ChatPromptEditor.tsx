@@ -56,6 +56,9 @@ interface ChatPromptEditorProps {
   submitBlocked?: boolean;
   isRunning?: boolean;
   isInterrupting?: boolean;
+  /** Spinner state that is not a stoppable interrupt (e.g. query
+   * classification); defaults to isInterrupting. */
+  isBusy?: boolean;
   onInterrupt?: () => void;
 
   onSubmit: (text: string) => boolean | void;
@@ -94,6 +97,8 @@ interface ChatPromptEditorProps {
   onPasteFiles?: (files: File[]) => void;
 
   inputTestId?: string;
+  /** DOM id for the primary-action button (e2e continuity). */
+  submitButtonId?: string;
   editorRef?: RefObject<LexicalPromptInputHandle | null>;
   /** One-shot text sync on mount (inline edit prefill); skipped when a draft
    * for the scope exists. */
@@ -111,6 +116,7 @@ function ChatPromptEditor({
   submitBlocked = false,
   isRunning = false,
   isInterrupting = false,
+  isBusy,
   onInterrupt,
   onSubmit,
   onQueueMessage,
@@ -133,6 +139,7 @@ function ChatPromptEditor({
   onDropFiles,
   onPasteFiles,
   inputTestId,
+  submitButtonId,
   editorRef,
   initialValue,
   className,
@@ -157,7 +164,7 @@ function ChatPromptEditor({
     isRunning,
     hasText: text.trim().length > 0,
     canQueue,
-    isBusy: isInterrupting,
+    isBusy: isBusy ?? isInterrupting,
     canStop: interruptible,
   });
   const actionDisabled =
@@ -489,6 +496,7 @@ function ChatPromptEditor({
             {toolbarTrailing}
             {submitControl ?? (
               <Button
+                id={submitButtonId}
                 data-testid="composer-primary-action"
                 icon={
                   primaryAction === "busy"
