@@ -3,11 +3,15 @@
   "compilerOptions": {
     "target": "ES2017",
     "moduleResolution": "bundler",
-    // typescript-7's incremental cache keeps reporting fixed errors in JSON
-    // modules (the i18n catalogs are type-checked via messages/keyParity.ts),
-    // so a repaired catalog can fail types:check until the cache is deleted.
-    // A cold run costs ~3s extra; always-correct beats that. Remove when
-    // https://github.com/microsoft/TypeScript/issues/64025 is fixed.
+    // Only en.json stays in the type graph, and even that NOT as next-intl's
+    // `Messages` (see src/i18n/types.d.ts): typing the ~40k-key catalog into
+    // `useTranslations` key resolution is what used to push tsgo to tens of
+    // GB of RSS without finishing. Catalog parity is enforced by
+    // scripts/i18n-parity.mjs; residual type debt is bounded by
+    // scripts/types-baseline.txt via scripts/types-check.mjs. Keep
+    // incremental off until
+    // https://github.com/microsoft/TypeScript/issues/64025 is fixed (stale
+    // JSON-module errors in the cache).
     "incremental": false,
     "paths": {
       "@/*": ["./src/*"],

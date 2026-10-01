@@ -1,0 +1,255 @@
+# Pre-existing tsc errors grandfathered by scripts/types-check.mjs.
+# Shrink by fixing code, then: bun run types:baseline-update
+# 252 entries.
+lib/opal/src/layouts/content/ContentXl.tsx(223,13): error TS2322: Type '{ font: TextFont; color: "inherit"; maxLines: number | undefined; strikethrough: boolean | undefined; title: string; className: string | undefined; onClick: (() => void) | undefined; children: string | RichStr; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/app/admin/bots/[bot-id]/channels/SlackChannelConfigCreationForm.tsx(34,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
+src/app/admin/bots/[bot-id]/channels/SlackChannelConfigFormFields.tsx(45,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
+src/app/app/shared/[chatId]/page.tsx(10,3): error TS2741: Property 'agent_budget' is missing in type '{ id: number; name: string; is_listed: true; is_public: true; display_priority: number; description: string; document_sets: never[]; tools: never[]; owner: null; owner_group: null; user_permission: null; starter_messages: null; builtin_persona: false; ... 7 more ...; replace_base_system_prompt: false; }' but required in type 'Agent'.
+src/app/craft/components/CraftJobBanner.test.tsx(163,9): error TS2322: Type '{ data: { id: string; session_id: string; project_id: string | null; scenario_id: string | null; name: string; domain: string; status: CraftJobStatus; current_phase_index: number; ... 8 more ...; specialists: never[]; }; onCancel: Mock<...>; onApprove: Mock<...>; }' is not assignable to type 'IntrinsicAttributes & { data: CraftJobResponse; onCancel: () => void; }'.
+src/app/craft/components/CraftProjectFilePreview.tsx(411,9): error TS2322: Type '() => void' is not assignable to type '() => undefined'.
+src/app/craft/components/CraftSessionProjectCrumb.tsx(39,5): error TS2322: Type 'KeyedMutator<CraftProjectListResponse>' is not assignable to type '() => void | Promise<void>'.
+src/app/craft/components/approvals/LiveApprovalsRegion.tsx(133,39): error TS2820: Type '"text-status-error-05"' is not assignable to type 'TextColor | undefined'. Did you mean '"status-error-05"'?
+src/app/craft/components/approvals/LiveApprovalsRegion.tsx(70,7): error TS2322: Type '{ border: "solid"; rounding: 4; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & CardProps'.
+src/app/craft/components/approvals/LiveApprovalsRegion.tsx(79,53): error TS2322: Type '{ font: "secondary-body"; color: "text-03"; breakWords: true; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/app/craft/components/approvals/LiveApprovalsRegion.tsx(94,13): error TS2322: Type '"outline"' is not assignable to type 'InteractiveVariant | undefined'.
+src/app/craft/components/output-panel/MarkdownFilePreview.tsx(49,11): error TS2322: Type '({ src, alt }: { src?: string; alt?: string; }) => JSX.Element' is not assignable to type 'ComponentType<ClassAttributes<HTMLImageElement> & ImgHTMLAttributes<HTMLImageElement> & ExtraProps> | keyof IntrinsicElements | undefined'.
+src/app/craft/utils/markdownImages.ts(34,9): error TS2532: Object is possibly 'undefined'.
+src/app/craft/utils/markdownImages.ts(34,9): error TS2532: Object is possibly 'undefined'.
+src/app/craft/utils/markdownImages.ts(80,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+src/app/craft/v1/env-vars/page.tsx(280,11): error TS2322: Type 'KeyedMutator<EnvVarListResponse>' is not assignable to type '() => void | Promise<void>'.
+src/app/craft/v1/env-vars/page.tsx(58,53): error TS2322: Type '{ font: "secondary-mono"; color: "text-05"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/app/craft/v1/env-vars/page.tsx(88,15): error TS2322: Type '{ font: "secondary-mono"; color: "text-03"; nowrap: true; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/app/craft/v1/tasks/[id]/edit/page.tsx(83,11): error TS2322: Type '"text-status-warning-05"' is not assignable to type 'TextColor | undefined'.
+src/app/craft/v1/tasks/components/EnvVarPicker.tsx(195,41): error TS2322: Type '{ font: "main-ui-action"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/app/craft/v1/tasks/components/EnvVarPicker.tsx(204,15): error TS2322: Type 'string | null' is not assignable to type 'string | RichNodes | RichStr | undefined'.
+src/lib/craft-projects/display.ts(187,18): error TS2532: Object is possibly 'undefined'.
+src/lib/craft-projects/display.ts(190,18): error TS2532: Object is possibly 'undefined'.
+src/lib/craft-projects/display.ts(190,48): error TS2532: Object is possibly 'undefined'.
+src/lib/languageModels/dashscope.ts(88,16): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+src/lib/languageModels/dashscope.ts(88,29): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+src/lib/languageModels/index.ts(284,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/languageModels/index.ts(292,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/languageModels/index.ts(294,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/languageModels/index.ts(296,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/languageModels/index.ts(297,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/scenarios/hooks.ts(421,13): error TS2322: Type 'ScenarioRules' is not assignable to type 'Record<string, unknown>'.
+src/lib/scenarios/hooks.ts(430,13): error TS2322: Type 'ScenarioRules' is not assignable to type 'Record<string, unknown>'.
+src/lib/settings/svcSS.ts(104,29): error TS2339: Property 'ok' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(105,57): error TS2339: Property 'json' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(106,36): error TS2339: Property 'status' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(109,31): error TS2339: Property 'status' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(110,44): error TS2339: Property 'text' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(88,30): error TS2339: Property 'ok' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(89,55): error TS2339: Property 'json' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(91,28): error TS2339: Property 'status' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(92,28): error TS2339: Property 'status' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(96,32): error TS2339: Property 'status' does not exist on type 'never'.
+src/lib/settings/svcSS.ts(97,45): error TS2339: Property 'text' does not exist on type 'never'.
+src/lib/system-catalog/types.test.ts(189,9): error TS2353: Object literal may only specify known properties, and 'is_built_in_content' does not exist in type 'CatalogItem'.
+src/lib/tools/components/ManageConnectionsView.tsx(95,17): error TS2322: Type '{ key: string; font: "secondary-body"; color: "text-03"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/sections/actions/modals/AddMCPServerModal.tsx(240,49): error TS2345: Argument of type '{ is_public: boolean; groups: number[]; users: string[]; pack_slug: string; name: string; slug: string | undefined; description: string | undefined; upstream_url: string | undefined; credentials: { ...; } | { ...; }; }' is not assignable to parameter of type '{ pack_slug: string; name?: string | undefined; slug?: string | undefined; description?: string | undefined; upstream_url?: string | undefined; credentials?: Record<string, string> | undefined; is_public?: boolean | undefined; groups?: number[] | undefined; users?: string[] | undefined; }'.
+src/sections/actions/modals/AddMCPServerModal.tsx(247,63): error TS2345: Argument of type '{ is_public: boolean; groups: number[]; users: string[]; pack_slug: string; name: string; slug: string | undefined; description: string | undefined; upstream_url: string | undefined; credentials: { ...; } | { ...; }; }' is not assignable to parameter of type '{ pack_slug: string; name?: string | undefined; slug?: string | undefined; description?: string | undefined; upstream_url?: string | undefined; credentials?: Record<string, string> | undefined; is_public?: boolean | undefined; groups?: number[] | undefined; users?: string[] | undefined; }'.
+src/sections/document-preview/saveProjectFile.ts(11,26): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/sections/document-preview/saveProjectFile.ts(21,26): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/sections/extend/bounding-box-citations.tsx(1585,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/bounding-box-citations.tsx(1848,19): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/bounding-box-citations.tsx(1872,19): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(246,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(442,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(500,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(517,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(716,13): error TS2345: Argument of type '0.75 | 1 | 1.25 | 1.5 | 2 | undefined' is not assignable to parameter of type 'SetStateAction<0.75 | 1 | 1.25 | 1.5 | 2>'.
+src/sections/extend/csv-viewer.tsx(743,19): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(765,19): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/csv-viewer.tsx(785,19): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/csv-viewer.tsx(787,37): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/document-color-picker.tsx(1031,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/document-color-picker.tsx(477,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/document-color-picker.tsx(913,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/document-splits.tsx(105,39): error TS2345: Argument of type '`page-${number}` | undefined' is not assignable to parameter of type '`page-${number}`'.
+src/sections/extend/document-splits.tsx(106,38): error TS2345: Argument of type '`page-${number}` | undefined' is not assignable to parameter of type '`page-${number}`'.
+src/sections/extend/document-splits.tsx(325,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-editor.tsx(1091,15): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-editor.tsx(1155,15): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-editor.tsx(1185,15): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-editor.tsx(1215,15): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-editor.tsx(1245,13): error TS2322: Type '{ className: string; disabled: boolean; value: DocxFontToggleValue[]; onMouseDown: (event: MouseEvent<HTMLElement, MouseEvent> | PointerEvent<...>) => void; ... 4 more ...; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/docx-editor.tsx(1357,19): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-editor.tsx(1646,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-editor.tsx(441,11): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-editor.tsx(663,9): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-editor.tsx(864,9): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-editor.tsx(869,11): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-editor.tsx(875,33): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-viewer.tsx(186,11): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-viewer.tsx(332,9): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-viewer.tsx(396,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-viewer.tsx(623,33): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/docx-viewer.tsx(643,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-viewer.tsx(671,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/docx-viewer.tsx(696,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/docx-viewer.tsx(717,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/file-system.tsx(1554,32): error TS2769: No overload matches this call.
+src/sections/extend/file-system.tsx(1555,30): error TS2769: No overload matches this call.
+src/sections/extend/file-system.tsx(1761,31): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+src/sections/extend/file-system.tsx(1925,9): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/file-system.tsx(2007,15): error TS2322: Type '{ size: string; "aria-label": string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/file-system.tsx(2195,13): error TS2322: Type '{ className: string; showCloseButton: boolean; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & Omit<DialogContentProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/file-system.tsx(2397,9): error TS2322: Type '{ size: string; "aria-label": string; title: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/file-system.tsx(2532,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/file-system.tsx(3259,13): error TS18048: 'entry' is possibly 'undefined'.
+src/sections/extend/file-system.tsx(3295,41): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/file-system.tsx(3732,16): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/file-system.tsx(3732,39): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/file-system.tsx(767,29): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+src/sections/extend/file-system.tsx(768,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+src/sections/extend/file-system.tsx(772,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+src/sections/extend/pdf-editor-dialogs.tsx(1216,44): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-dialogs.tsx(1218,5): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-dialogs.tsx(1250,16): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-dialogs.tsx(1251,21): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-dialogs.tsx(1339,17): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-dialogs.tsx(1433,34): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor-panels.tsx(1069,33): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1075,11): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1164,19): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1174,19): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1230,21): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1263,15): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1323,16): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1514,23): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1525,23): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1601,41): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1642,9): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(1717,28): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor-panels.tsx(1919,21): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(2103,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(2113,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(2123,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(612,19): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(619,19): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-panels.tsx(705,5): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(705,51): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(815,34): error TS18048: 'first' is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(816,24): error TS18048: 'first' is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(817,24): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+src/sections/extend/pdf-editor-panels.tsx(819,34): error TS18048: 'last' is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(820,24): error TS18048: 'last' is possibly 'undefined'.
+src/sections/extend/pdf-editor-panels.tsx(821,24): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+src/sections/extend/pdf-editor-panels.tsx(830,37): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+src/sections/extend/pdf-editor-panels.tsx(832,22): error TS18048: 'referenceIndex' is possibly 'undefined'.
+src/sections/extend/pdf-editor-properties.tsx(1046,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-properties.tsx(1484,21): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-properties.tsx(1499,17): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor-properties.tsx(1616,11): error TS7006: Parameter 'key' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(1617,14): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(1618,14): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(1621,14): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor-properties.tsx(1681,9): error TS2322: Type 'TrackedAnnotation<PdfAnnotationObject> | null | undefined' is not assignable to type 'TrackedAnnotation<PdfAnnotationObject> | null'.
+src/sections/extend/pdf-editor-properties.tsx(1707,6): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(1732,27): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(1735,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(287,41): error TS2538: Type 'undefined' cannot be used as an index type.
+src/sections/extend/pdf-editor-properties.tsx(291,20): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/sections/extend/pdf-editor-properties.tsx(294,27): error TS2538: Type 'undefined' cannot be used as an index type.
+src/sections/extend/pdf-editor-properties.tsx(294,53): error TS7006: Parameter 'property' implicitly has an 'any' type.
+src/sections/extend/pdf-editor-properties.tsx(605,24): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor-properties.tsx(735,26): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor-properties.tsx(752,11): error TS2322: Type '{ value: string[]; onValueChange: (next: string[]) => void; className: string; spacing: number; type: "multiple"; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/pdf-editor-properties.tsx(810,26): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor-properties.tsx(844,9): error TS2322: Type '{ spacing: number; type: "single"; value: string; onValueChange: (next: string) => void; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/pdf-editor-shared.tsx(1981,3): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null'.
+src/sections/extend/pdf-editor-shared.tsx(2056,13): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(1183,43): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-editor.tsx(1373,11): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor.tsx(1533,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(1580,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(1590,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(1634,13): error TS2322: Type '"icon-xs" | "xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(1703,11): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(2789,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor.tsx(2817,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor.tsx(2963,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(2972,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(3334,31): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(742,7): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(792,3): error TS2322: Type '{ pageIndex?: number | undefined; pageNumber?: number | undefined; pageSize?: Size | undefined; rect?: Rect | undefined; rects?: Rect[] | undefined; normalizedRect?: PdfEditorNormalizedRect | undefined; normalizedRects?: PdfEditorNormalizedRect[] | undefined; documentId: string; text: string; pages: PdfEditorSelecti...' is not assignable to type 'PdfEditorSelectionPayload'.
+src/sections/extend/pdf-editor.tsx(958,17): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(1036,21): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(1055,21): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(1082,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(1085,59): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-viewer.tsx(1091,32): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+src/sections/extend/pdf-viewer.tsx(1109,30): error TS2322: Type '{ size: string; className: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-viewer.tsx(1126,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(1130,39): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-viewer.tsx(1137,21): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+src/sections/extend/pdf-viewer.tsx(1657,34): error TS2339: Property 'endSelection' does not exist on type 'never'.
+src/sections/extend/pdf-viewer.tsx(2268,25): error TS18048: 'referencePageIndex' is possibly 'undefined'.
+src/sections/extend/pdf-viewer.tsx(402,32): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pdf-viewer.tsx(477,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(586,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(851,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(903,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(920,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-viewer.tsx(998,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(138,9): error TS18048: 'value' is possibly 'undefined'.
+src/sections/extend/pptx-viewer.tsx(220,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(381,33): error TS2532: Object is possibly 'undefined'.
+src/sections/extend/pptx-viewer.tsx(390,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(410,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(435,15): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(457,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(461,27): error TS2345: Argument of type '(currentZoom: number) => number | undefined' is not assignable to parameter of type 'SetStateAction<number>'.
+src/sections/extend/pptx-viewer.tsx(480,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pptx-viewer.tsx(501,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pptx-viewer.tsx(505,27): error TS2345: Argument of type '(currentZoom: number) => number | undefined' is not assignable to parameter of type 'SetStateAction<number>'.
+src/sections/extend/xlsx-editor.tsx(1006,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1096,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1151,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1628,21): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1662,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1681,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(1710,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-editor.tsx(1742,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-editor.tsx(1772,13): error TS2322: Type '{ className: string; disabled: boolean; value: XlsxFontToggleValue[]; onValueChange: (value: string[]) => void; spacing: number; type: "multiple"; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/xlsx-editor.tsx(1881,15): error TS2322: Type '{ className: string; disabled: boolean; spacing: number; type: "single"; value: string; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/xlsx-editor.tsx(1940,15): error TS2322: Type '{ className: string; disabled: boolean; spacing: number; type: "single"; value: string; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & (((Omit<ToggleGroupMultipleProps & RefAttributes<HTMLDivElement>, "ref"> | Omit<...>) & VariantProps<...>) & RefAttributes<...>)'.
+src/sections/extend/xlsx-editor.tsx(2049,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(2068,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(2089,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-editor.tsx(2119,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(2140,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-editor.tsx(2165,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(756,9): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(844,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-editor.tsx(940,9): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: (Element | ReactElement<InlineRegistryIconProps, string | JSXElementConstructor<any>>)[]; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-viewer.tsx(431,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(528,11): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(709,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(766,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(783,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(852,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/xlsx-viewer.tsx(872,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/xlsx-viewer.tsx(894,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/input/PlusMenuButton.tsx(128,17): error TS2322: Type '{ key: string; font: "secondary-body"; color: "text-03"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/sections/modals/languageModels/DashscopeModal.tsx(267,11): error TS2739: Type '{ id?: number; name?: string; test_model_name?: string; is_public: boolean; is_auto_mode: boolean; groups: number[]; personas: number[]; model_configurations: ModelConfiguration[]; custom_config?: Record<string, string>; api_key: string; api_base: string; }' is missing the following properties from type 'DashscopeModalValues': workspace_id, region, custom_api_base
+src/sections/modals/languageModels/ModelSettingsPopover.tsx(172,19): error TS2322: Type '{ value: string; disabled: boolean; onChange: (e: ChangeEvent<HTMLInputElement, HTMLInputElement>) => void; }' is not assignable to type 'IntrinsicAttributes & InputTypeInProps'.
+src/sections/scenarios/editor/OutputSection.tsx(79,36): error TS2339: Property 'description' does not exist on type '{ slug: string; name: string; }'.
+src/sections/scenarios/editor/ScenarioComposer.tsx(297,11): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/views/AgentEditorPage.tsx(126,13): error TS2322: Type '{ font: string; color: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/views/CraftProjectDetailPage.tsx(314,15): error TS2322: Type 'KeyedMutator<CraftProject>' is not assignable to type '() => void | Promise<void>'.
+src/views/admin/AgentModelsPage/index.tsx(250,9): error TS2322: Type 'KeyedMutator<AgentModelListResponse>' is not assignable to type '() => void | Promise<void>'.
+src/views/admin/AuditPage/RecordTables.tsx(131,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditApproval>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditApproval[]; total_items: number; }>'.
+src/views/admin/AuditPage/RecordTables.tsx(220,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditQuarantine>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditQuarantine[]; total_items: number; }>'.
+src/views/admin/AuditPage/RecordTables.tsx(318,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditQueryHistoryRow>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditQueryHistoryRow[]; total_items: number; }>'.
+src/views/admin/AuditPage/ToolCallsTab.tsx(251,23): error TS2339: Property 'stats' does not exist on type 'PaginatedResult<AuditToolCall>'.
+src/views/admin/AuditPage/index.tsx(62,17): error TS2322: Type '"main-ui-title"' is not assignable to type 'TextFont | undefined'.
+tests/e2e/admin/permissions/permission_gating.spec.ts(834,36): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/permissions/permission_gating.spec.ts(847,36): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/permissions/permission_gating.spec.ts(850,49): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/permissions/permission_gating.spec.ts(865,36): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/query_history_toggle.spec.ts(111,34): error TS2339: Property 'USAGE' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/query_history_toggle.spec.ts(116,31): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/query_history_toggle.spec.ts(122,34): error TS2339: Property 'USAGE' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.
+tests/e2e/admin/query_history_toggle.spec.ts(127,31): error TS2339: Property 'QUERY_HISTORY' does not exist on type '{ readonly LLM_MODELS: { readonly path: "/admin/language-models"; readonly icon: ({ size, ...props }: IconProps) => Element; readonly title: "Language Models"; readonly sidebarLabel: "Language Models"; readonly requiredPermission: Permission.MANAGE_LLMS; readonly section: ""; readonly requiredTier: null; readonly vi...'.

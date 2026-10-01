@@ -479,15 +479,18 @@ The UI is being migrated to next-intl. English message catalogs live in
   `web/.oxlintrc.json`), never hardcode user-facing strings. Use
   `const t = useTranslations("<namespace>")` (client) or
   `await getTranslations("<namespace>")` (server) and add the English value to
-  `en.json`. The oxlint rule and the `types:check` key augmentation both fail on
-  violations.
+  `en.json`. The oxlint rule fails on violations; message keys are plain
+  strings to the compiler (see `src/i18n/types.d.ts` for why), so a typo'd key
+  surfaces as a `MISSING_MESSAGE` error in dev/test, not a compile error.
 - **Update every locale when you touch a key.** `en.json` is the source of
   truth. When you add or change a key, also give `es/pt/fr/de.json` your best
-  translation of the English value. Key parity is a compile-time check:
-  `src/i18n/messages/keyParity.ts` makes a missing or extra locale key fail
-  `types:check` (pre-commit, CI, IDE). Keep the ICU shape (arguments, tags,
+  translation of the English value. Key parity is checked by
+  `web/scripts/i18n-parity.mjs`, which `types:check` runs before the compiler
+  (pre-commit, CI). Keep the ICU shape (arguments, tags,
   plurals) identical across locales — `web/src/i18n/__tests__/catalog.test.ts`
-  enforces this.
+  enforces this. Only `en.json` stays in the compiler's type graph (next-intl
+  `Messages` autocomplete); the other catalogs are deliberately kept out to
+  bound `tsc` memory.
 - Keys are stable identifiers, not English sentences:
   `<namespace>.<section>.<element>.<role>` in camelCase
   (e.g. `settings.appearance.colorMode.title`). Rewording English copy must not

@@ -4,8 +4,8 @@
  * - each translation uses exactly the same ICU placeholders as its English
  *   source.
  *
- * Key parity (no missing or extra keys per locale) is a compile-time check —
- * see src/i18n/messages/keyParity.ts.
+ * Key parity (no missing or extra keys per locale) is enforced by
+ * scripts/i18n-parity.mjs, which types:check runs before the compiler.
  */
 import {
   parse,
@@ -147,7 +147,7 @@ describe("i18n message catalogs", () => {
     test(`${locale}: every message is valid ICU with the same placeholders as English`, () => {
       for (const [key, message] of Object.entries(flatten(catalog))) {
         const englishMessage = flatEnglish[key];
-        // Key parity is compile-time checked (messages/keyParity.ts).
+        // Key parity is enforced by scripts/i18n-parity.mjs.
         if (englishMessage === undefined) continue;
 
         expect(() => parse(message)).not.toThrow();
