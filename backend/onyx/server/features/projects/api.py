@@ -542,9 +542,7 @@ def replace_user_file(
         content,
         file.content_type,
     )
-    enqueue_user_file_processing(
-        [updated], bg_tasks if DISABLE_VECTOR_DB else None
-    )
+    enqueue_user_file_processing([updated], bg_tasks if DISABLE_VECTOR_DB else None)
     return UserFileSnapshot.from_model(updated)
 
 

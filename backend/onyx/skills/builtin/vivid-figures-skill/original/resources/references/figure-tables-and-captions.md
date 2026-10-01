@@ -72,10 +72,13 @@ from _utils.stats_utils import regression_table, descriptive_table
 
 # 自动按后缀选格式（推荐）
 ext = "md" if output_format == "docx" else "tex"
-regression_table(results, ['OLS', 'Logit'],
-                 output=f'figures/TABLE_regression.{ext}',
-                 caption='回归结果')
-descriptive_table(df, output=f'figures/TABLE_descriptive.{ext}')
+regression_table(
+    results,
+    ["OLS", "Logit"],
+    output=f"figures/TABLE_regression.{ext}",
+    caption="回归结果",
+)
+descriptive_table(df, output=f"figures/TABLE_descriptive.{ext}")
 ```
 
 <table_sizing>

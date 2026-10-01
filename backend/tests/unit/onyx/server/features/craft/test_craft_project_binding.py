@@ -6,17 +6,19 @@ from onyx.server.features.build.jobs import kernel as job_kernel
 
 def test_is_implicit_untitled_project() -> None:
     assert is_implicit_untitled_project(
-        SimpleNamespace(
+        SimpleNamespace(  # ty: ignore[invalid-argument-type]
             name="Untitled project",
             instructions=None,
             description="",
         )
     )
     assert not is_implicit_untitled_project(
-        SimpleNamespace(name="Tax pack", instructions=None, description="")
+        SimpleNamespace(  # ty: ignore[invalid-argument-type]
+            name="Tax pack", instructions=None, description=""
+        )
     )
     assert not is_implicit_untitled_project(
-        SimpleNamespace(
+        SimpleNamespace(  # ty: ignore[invalid-argument-type]
             name="Untitled project",
             instructions="Be brief.",
             description="",

@@ -22,7 +22,6 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
-
 GOV_PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCSMhMJQ+XLI7oW0k9Bwufur4Ag40tcsrzT7WZf6Ao0O/hyY1gZtCSYFxkxIZUXjW46j27XSW8IDX1rTJoHaMxHCWsOpTi2W5stybGYZytsY5on8gd8AIaS1d52h9eaS2TFydtJJtE50xHmT0WmoyoinWCuVCOkdCLhh9b9jSdeSQIDAQAB
 -----END PUBLIC KEY-----"""
@@ -61,8 +60,9 @@ def http_json(
     headers: Optional[dict[str, str]] = None,
     timeout: int = 20,
 ) -> Any:
-    req = urllib.request.Request(url, data=data, headers=headers or {})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    # Fetches known official tax-bureau URLs by design.
+    req = urllib.request.Request(url, data=data, headers=headers or {})  # noqa: S310
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
         raw = resp.read().decode("utf-8", "ignore")
     return json.loads(raw)
 
@@ -101,7 +101,9 @@ def rsa_public_numbers_from_pem(pem: str) -> tuple[int, int]:
     exp_tag, exp_bytes, _ = read_tlv(rsa_seq, offset)
     if mod_tag != 0x02 or exp_tag != 0x02:
         raise ValueError("expected RSA integer fields")
-    return int.from_bytes(mod_bytes.lstrip(b"\x00"), "big"), int.from_bytes(exp_bytes, "big")
+    return int.from_bytes(mod_bytes.lstrip(b"\x00"), "big"), int.from_bytes(
+        exp_bytes, "big"
+    )
 
 
 def rsa_pkcs1_v15_encrypt(message: bytes, pem: str) -> str:
@@ -120,7 +122,9 @@ def rsa_pkcs1_v15_encrypt(message: bytes, pem: str) -> str:
 
 
 def search_gov(query: str, limit: int, order_by: str) -> list[SearchResult]:
-    app_key = urllib.parse.quote(rsa_pkcs1_v15_encrypt(GOV_APP_TOKEN, GOV_PUBLIC_KEY_PEM))
+    app_key = urllib.parse.quote(
+        rsa_pkcs1_v15_encrypt(GOV_APP_TOKEN, GOV_PUBLIC_KEY_PEM)
+    )
     payload = {
         "code": "17da70961a7",
         "searchWord": query,
@@ -149,20 +153,19 @@ def search_gov(query: str, limit: int, order_by: str) -> list[SearchResult]:
         },
     )
     items = data.get("result", {}).get("data", {}).get("middle", {}).get("list", [])
-    results: list[SearchResult] = []
-    for item in items[:limit]:
-        results.append(
-            SearchResult(
-                source="gov.cn",
-                title=strip_html(item.get("title_no_tag") or item.get("title")),
-                url=item.get("url", ""),
-                published_at=item.get("time", ""),
-                authority=strip_html(item.get("agencies") or item.get("source")),
-                document_no=strip_html(item.get("pubcode")),
-                category=strip_html(item.get("label") or item.get("type")),
-                snippet=strip_html(item.get("summary") or item.get("content"))[:500],
-            )
+    results: list[SearchResult] = [
+        SearchResult(
+            source="gov.cn",
+            title=strip_html(item.get("title_no_tag") or item.get("title")),
+            url=item.get("url", ""),
+            published_at=item.get("time", ""),
+            authority=strip_html(item.get("agencies") or item.get("source")),
+            document_no=strip_html(item.get("pubcode")),
+            category=strip_html(item.get("label") or item.get("type")),
+            snippet=strip_html(item.get("summary") or item.get("content"))[:500],
         )
+        for item in items[:limit]
+    ]
     return results
 
 
@@ -187,30 +190,37 @@ def search_chinatax(query: str, limit: int, site_code: str) -> list[SearchResult
         },
     )
     items = data.get("searchResultAll", {}).get("searchTotal", [])
-    results: list[SearchResult] = []
-    for item in items[:limit]:
-        results.append(
-            SearchResult(
-                source="chinatax.gov.cn",
-                title=strip_html(item.get("title") or item.get("zwtitle")),
-                url=item.get("url") or item.get("snapshotUrl") or "",
-                published_at=item.get("pubDate", ""),
-                authority=strip_html(item.get("pubName") or item.get("source") or item.get("siteName")),
-                document_no=strip_html((item.get("govDoc") or {}).get("docNo", "")),
-                category=strip_html(item.get("column") or item.get("label")),
-                snippet=strip_html(item.get("shortContent") or item.get("content"))[:500],
-            )
+    results: list[SearchResult] = [
+        SearchResult(
+            source="chinatax.gov.cn",
+            title=strip_html(item.get("title") or item.get("zwtitle")),
+            url=item.get("url") or item.get("snapshotUrl") or "",
+            published_at=item.get("pubDate", ""),
+            authority=strip_html(
+                item.get("pubName") or item.get("source") or item.get("siteName")
+            ),
+            document_no=strip_html((item.get("govDoc") or {}).get("docNo", "")),
+            category=strip_html(item.get("column") or item.get("label")),
+            snippet=strip_html(item.get("shortContent") or item.get("content"))[:500],
         )
+        for item in items[:limit]
+    ]
     return results
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="检索中国政府网和国家税务总局的官方财税政策来源。")
+    parser = argparse.ArgumentParser(
+        description="检索中国政府网和国家税务总局的官方财税政策来源。"
+    )
     parser.add_argument("query", help="政策关键词。")
     parser.add_argument("--source", choices=["all", "gov", "chinatax"], default="all")
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument("--order-by", choices=["related", "time"], default="related")
-    parser.add_argument("--site-code", default="bm29000002", help="国家税务总局站内搜索 siteCode，默认总局。")
+    parser.add_argument(
+        "--site-code",
+        default="bm29000002",
+        help="国家税务总局站内搜索 siteCode，默认总局。",
+    )
     parser.add_argument("--json", action="store_true", help="输出 JSON 结果。")
     args = parser.parse_args()
 
@@ -220,16 +230,30 @@ def main() -> int:
     if args.source in ("all", "gov"):
         try:
             results.extend(search_gov(args.query, args.limit, args.order_by))
-        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
             errors.append({"source": "gov.cn", "error": str(exc)})
 
     if args.source in ("all", "chinatax"):
         try:
             results.extend(search_chinatax(args.query, args.limit, args.site_code))
-        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
             errors.append({"source": "chinatax.gov.cn", "error": str(exc)})
 
-    payload = {"query": args.query, "results": [asdict(r) for r in results], "errors": errors}
+    payload = {
+        "query": args.query,
+        "results": [asdict(r) for r in results],
+        "errors": errors,
+    }
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:

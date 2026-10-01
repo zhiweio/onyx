@@ -55,9 +55,7 @@ def test_scan_artifacts_does_not_store_nul_summary(monkeypatch) -> None:
         "onyx.server.features.build.jobs.blackboard.get_sandbox_manager",
         lambda: _FakeManager(),
     )
-    found = scan_artifacts(
-        sandbox_id=uuid4(), session_id=uuid4(), producer_node="plan"
-    )
+    found = scan_artifacts(sandbox_id=uuid4(), session_id=uuid4(), producer_node="plan")
     assert found["outputs/PLAN.md"].summary == "(binary)"
     assert found["outputs/mcp/hit.bin"].summary == "(binary)"
     dumped = {path: record.model_dump(mode="json") for path, record in found.items()}
@@ -91,7 +89,10 @@ def test_persist_state_strips_nul_from_job_state() -> None:
             },
         },
     )
-    persist_state(job, state)
+    persist_state(
+        job,  # ty: ignore[invalid-argument-type]
+        state,
+    )
     assert job.state["goal"] == "goalx"
     assert job.state["artifacts"]["outputs/a.md"]["summary"] == "keepnul"
     assert "\x00" not in str(job.state)

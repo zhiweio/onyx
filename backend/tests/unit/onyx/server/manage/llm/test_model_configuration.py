@@ -717,6 +717,10 @@ def _make_model_config(
     mc.reasoning_effort_max = reasoning_effort_max
     mc.reasoning_effort_default = reasoning_effort_default
     mc.temperature_default = temperature_default
+    # A row without admin-set modalities has NULL columns; MagicMock would
+    # auto-create non-None values and force the "stored lists win" branch.
+    mc.input_modalities = None
+    mc.output_modalities = None
     mc.llm_model_flow_types = (
         flow_types if flow_types is not None else [LLMModelFlowType.CHAT]
     )

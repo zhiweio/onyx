@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-
 ZERO = Decimal("0.00")
 FIELD_ALIASES = {
     "account_code": ["account_code", "科目编码", "会计科目编码"],
@@ -156,7 +155,14 @@ def build_outputs(ledger: Path, out_dir: Path) -> dict[str, object]:
 
     write_csv(
         out_dir / "trial_balance.csv",
-        ["account_code", "account_name", "account_type", "debit_total", "credit_total", "signed_balance"],
+        [
+            "account_code",
+            "account_name",
+            "account_type",
+            "debit_total",
+            "credit_total",
+            "signed_balance",
+        ],
         trial_rows,
     )
 
@@ -204,13 +210,19 @@ def build_outputs(ledger: Path, out_dir: Path) -> dict[str, object]:
         "balanced": equation_difference == ZERO,
         "warnings": warnings,
     }
-    (out_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     return summary
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="根据账簿 CSV 生成试算平衡、资产负债表和利润表底稿。")
-    parser.add_argument("--ledger", required=True, type=Path, help="账簿 CSV 文件，支持中文或英文表头。")
+    parser = argparse.ArgumentParser(
+        description="根据账簿 CSV 生成试算平衡、资产负债表和利润表底稿。"
+    )
+    parser.add_argument(
+        "--ledger", required=True, type=Path, help="账簿 CSV 文件，支持中文或英文表头。"
+    )
     parser.add_argument("--out", required=True, type=Path, help="输出目录。")
     args = parser.parse_args()
     summary = build_outputs(args.ledger, args.out)

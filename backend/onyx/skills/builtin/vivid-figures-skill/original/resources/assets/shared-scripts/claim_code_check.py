@@ -19,10 +19,12 @@
   python _utils/claim_code_check.py [--modeling MODELING_REPORT.md] [--codedir code]
 退出码：0=无 HARD FAIL（可能有 WARN） 1=有 HARD FAIL（阻断） 2=无法检查（缺文件，跳过不阻断）
 """
+
 from __future__ import annotations
-import sys
-import re
+
 import argparse
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -46,7 +48,7 @@ def _load_code(codedir: Path) -> str:
     for f in sorted(codedir.rglob("*.py")):
         for line in _read(f).splitlines():
             s = line.strip()
-            if s.startswith("#"):        # 整行注释跳过（防注释里写 poisson 骗过检测）
+            if s.startswith("#"):  # 整行注释跳过（防注释里写 poisson 骗过检测）
                 continue
             buf.append(line)
     return "\n".join(buf)
@@ -59,32 +61,67 @@ def _load_code(codedir: Path) -> str:
 RULES = [
     {
         "name": "整数规划(整数决策变量)",
-        "claim_kw": [r"整数规划", r"混合整数", r"\bMILP\b", r"\bMIP\b", r"integer program"],
-        "need_any": [r"LpInteger", r"cat\s*=\s*['\"]Integer['\"]", r"GRB\.INTEGER",
-                     r"vtype\s*=\s*['\"]?I", r"integrality\s*=", r"cp_model", r"NewIntVar",
-                     r"Bool(ean)?Var", r"LpBinary", r"cat\s*=\s*['\"]Binary['\"]"],
+        "claim_kw": [
+            r"整数规划",
+            r"混合整数",
+            r"\bMILP\b",
+            r"\bMIP\b",
+            r"integer program",
+        ],
+        "need_any": [
+            r"LpInteger",
+            r"cat\s*=\s*['\"]Integer['\"]",
+            r"GRB\.INTEGER",
+            r"vtype\s*=\s*['\"]?I",
+            r"integrality\s*=",
+            r"cp_model",
+            r"NewIntVar",
+            r"Bool(ean)?Var",
+            r"LpBinary",
+            r"cat\s*=\s*['\"]Binary['\"]",
+        ],
         "hint": "声称整数规划，但代码里找不到任何整数/0-1 变量标记"
-                "（LpInteger/cat=Integer/GRB.INTEGER/integrality=/NewIntVar 等）。"
-                "若实际用 scipy.optimize.linprog 且变量全连续 → 名不副实，改代码或改声称。",
+        "（LpInteger/cat=Integer/GRB.INTEGER/integrality=/NewIntVar 等）。"
+        "若实际用 scipy.optimize.linprog 且变量全连续 → 名不副实，改代码或改声称。",
     },
     {
         "name": "随机仿真(泊松到达/指数服务/蒙特卡洛/排队)",
         # ⛔ 裸词 排队/泊松/Poisson 会被论文背景+文献综述误命中（"交通排队现象""数据服从泊松分布"）
         #   → 方法明明是确定性优化却被判"声称随机仿真但没实现" HARD FAIL。收紧成带方法意图的词组，
         #   强信号词（蒙特卡洛/M/M//离散事件/随机仿真/到达过程）保留（背景里罕见）。宁漏勿误。
-        "claim_kw": [r"蒙特卡洛", r"Monte\s*Carlo", r"\bM/M/", r"离散事件", r"随机仿真", r"到达过程",
-                     r"泊松到达", r"泊松过程", r"[Pp]oisson\s*(?:arrival|process|到达|过程)",
-                     r"排队(?:仿真|模型|系统|网络|论)"],
+        "claim_kw": [
+            r"蒙特卡洛",
+            r"Monte\s*Carlo",
+            r"\bM/M/",
+            r"离散事件",
+            r"随机仿真",
+            r"到达过程",
+            r"泊松到达",
+            r"泊松过程",
+            r"[Pp]oisson\s*(?:arrival|process|到达|过程)",
+            r"排队(?:仿真|模型|系统|网络|论)",
+        ],
         # ⛔ 铁证只认"到达过程 + 队列/事件结构"，故意不收 exponential/expovariate——
         #   因为"给固定值加一点指数噪声"也用 exponential，收了它就会把红线三放过去。
         #   真排队/离散事件仿真必然有：泊松到达采样 或 队列/事件堆 或 到达时刻推进。
-        "need_any": [r"\.poisson\s*\(", r"rng\.poisson", r"np\.random\.poisson",
-                     r"\bqueue\b", r"heapq", r"simpy", r"interarrival",
-                     r"到达时刻", r"到达间隔", r"arrival_time", r"event_list", r"SimTime"],
+        "need_any": [
+            r"\.poisson\s*\(",
+            r"rng\.poisson",
+            r"np\.random\.poisson",
+            r"\bqueue\b",
+            r"heapq",
+            r"simpy",
+            r"interarrival",
+            r"到达时刻",
+            r"到达间隔",
+            r"arrival_time",
+            r"event_list",
+            r"SimTime",
+        ],
         "hint": "声称泊松/排队/蒙特卡洛仿真，但代码里找不到到达过程采样或队列/事件结构"
-                "（poisson 到达 / queue / heapq / 到达时刻推进）。"
-                "若只是给固定响应时间加一点指数噪声（如 base + exponential(0.3)）→ 不是仿真，"
-                "必须补真到达采样+队列状态，或把声称改成'解析近似/敏感性扰动'。",
+        "（poisson 到达 / queue / heapq / 到达时刻推进）。"
+        "若只是给固定响应时间加一点指数噪声（如 base + exponential(0.3)）→ 不是仿真，"
+        "必须补真到达采样+队列状态，或把声称改成'解析近似/敏感性扰动'。",
     },
 ]
 
@@ -115,7 +152,11 @@ def _parse_contract(claim_text: str):
     语义：must = 至少命中一个（need_any，防误判）；forbid = 命中任一即降级铁证 → FAIL。
     返回 [{id, must:[...], forbid:[...]}]；无合同块返回 []。
     """
-    m = re.search(r"<!--\s*METHOD_CLAIMS_MACHINE\s*(.*?)-->", claim_text, re.DOTALL | re.IGNORECASE)
+    m = re.search(
+        r"<!--\s*METHOD_CLAIMS_MACHINE\s*(.*?)-->",
+        claim_text,
+        re.DOTALL | re.IGNORECASE,
+    )
     if not m:
         return []
     rows = []
@@ -158,14 +199,16 @@ def main() -> int:
     code_text = _load_code(codedir)
 
     if not claim_text.strip() or not code_text.strip():
-        print("[claim_code_check] 缺 MODELING_REPORT/RESULTS 或 code/*.py，跳过（不阻断）")
+        print(
+            "[claim_code_check] 缺 MODELING_REPORT/RESULTS 或 code/*.py，跳过（不阻断）"
+        )
         return 2
 
     hard_fails, warns, checked = [], [], 0
     for rule in RULES:
         claimed = _hit_any(rule["claim_kw"], claim_text)
         if not claimed:
-            continue                      # 没声称这类方法 → 不检查（宁漏勿误的第一道门）
+            continue  # 没声称这类方法 → 不检查（宁漏勿误的第一道门）
         checked += 1
         evidence = _hit_any(rule["need_any"], code_text)
         if evidence == 0:
@@ -182,31 +225,41 @@ def main() -> int:
     for c in contract:
         # must：至少命中一个（宁漏勿误，与内置 need_any 同语义）
         if c["must"] and not any(_safe_search(p, code_text) for p in c["must"]):
-            c_fails.append((c["id"], "must",
-                            f"声称需实现但代码找不到任一必备签名：{c['must']}"))
+            c_fails.append(
+                (c["id"], "must", f"声称需实现但代码找不到任一必备签名：{c['must']}")
+            )
         # forbid：命中任一 = 用了建模明令禁止的降级范式（铁证）
         hit_forbid = [p for p in c["forbid"] if _safe_search(p, code_text)]
         if hit_forbid:
-            c_fails.append((c["id"], "forbid",
-                            f"代码出现建模报告明令禁止的降级签名：{hit_forbid}"))
+            c_fails.append(
+                (c["id"], "forbid", f"代码出现建模报告明令禁止的降级签名：{hit_forbid}")
+            )
     if contract:
-        print(f"[claim_code_check] 通用合同核对了 {len(contract)} 条 METHOD_CLAIMS 签名")
+        print(
+            f"[claim_code_check] 通用合同核对了 {len(contract)} 条 METHOD_CLAIMS 签名"
+        )
     else:
-        print("  （MODELING_REPORT 无 METHOD_CLAIMS_MACHINE 合同块 —— 仅内置安全网生效，"
-              "建议建模阶段补机器可核签名以覆盖本题特有方法）")
+        print(
+            "  （MODELING_REPORT 无 METHOD_CLAIMS_MACHINE 合同块 —— 仅内置安全网生效，"
+            "建议建模阶段补机器可核签名以覆盖本题特有方法）"
+        )
 
     for name, _ in warns:
         print(f"  [WARN] {name}")
     if hard_fails or c_fails:
         total = len(hard_fails) + len(c_fails)
-        print(f"❌ HARD FAIL {total} 条 —— 声称的方法与代码实现脱钩（名不副实/降级冒充）：")
+        print(
+            f"❌ HARD FAIL {total} 条 —— 声称的方法与代码实现脱钩（名不副实/降级冒充）："
+        )
         for name, hint in hard_fails:
             print(f"  ✗ [内置] {name}")
             print(f"    → {hint}")
         for cid, kind, msg in c_fails:
             print(f"  ✗ [合同 {cid}·{kind}] {msg}")
-        print("  修复：要么把代码补成真正实现该方法，要么把建模报告/正文的声称改成代码真做的事。"
-              "（合同 must/forbid 签名由建模阶段针对本题所填，方向无关）")
+        print(
+            "  修复：要么把代码补成真正实现该方法，要么把建模报告/正文的声称改成代码真做的事。"
+            "（合同 must/forbid 签名由建模阶段针对本题所填，方向无关）"
+        )
         return 1
     if checked == 0 and not contract:
         print("  （未触发内置强规则、也无合同签名，本闸未拦截）")
@@ -217,4 +270,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

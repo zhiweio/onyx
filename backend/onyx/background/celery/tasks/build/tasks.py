@@ -154,7 +154,7 @@ def poll_process_watches_task(self: Task, *, tenant_id: str) -> None:  # noqa: A
     reap expired processes. The cursor advances on every poll, so a match
     never re-fires; the 60s throttle bounds wake storms."""
     from onyx.db.engine.sql_engine import get_session_with_current_tenant
-    from onyx.db.models import BuildSession
+    from onyx.db.models import BuildSession, SandboxProcess
     from onyx.db.sandbox_process import (
         is_wake_throttled,
         list_active_watches,
@@ -177,12 +177,15 @@ def poll_process_watches_task(self: Task, *, tenant_id: str) -> None:  # noqa: A
         sandbox_manager = get_sandbox_manager()
         for watch in watches:
             process_id = watch.process_id
+            # ProcessWatch carries no sandbox_id; resolve it from the process.
+            process = db_session.get(SandboxProcess, process_id)
+            if process is None:
+                continue
             try:
                 output = sandbox_manager.poll_process(
-                    watch.sandbox_id,
+                    process.sandbox_id,
                     process_id,
                     cursor=watch.cursor,
-                    max_bytes=64 * 1024,
                 )
             except Exception:
                 task_logger.exception(
@@ -218,7 +221,6 @@ def poll_process_watches_task(self: Task, *, tenant_id: str) -> None:  # noqa: A
                 db_session.commit()
                 continue
             envelope = new_watch_event_envelope(
-                watch_id=watch.id,
                 process_id=process_id,
                 event=event,
                 matched_line=_first_matching_line(chunk, watch.pattern),
@@ -245,7 +247,6 @@ def _first_matching_line(chunk: str, pattern: str) -> str:
             if needle in line:
                 return line
     return ""
-
 
 
 def _sweep_running_sandboxes(

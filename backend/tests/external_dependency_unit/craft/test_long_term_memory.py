@@ -67,11 +67,12 @@ def test_recall_is_user_isolated(
 ) -> None:
     user_a = create_test_user(db_session, email_prefix="ltm_a")
     user_b = create_test_user(db_session, email_prefix="ltm_b")
-    with patch(
-        "onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect
-    ), patch(
-        "onyx.memory.long_term._embedding_model",
-        return_value=(object(), "test-model", 8),
+    with (
+        patch("onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect),
+        patch(
+            "onyx.memory.long_term._embedding_model",
+            return_value=(object(), "test-model", 8),
+        ),
     ):
         upsert_facts(
             db_session,
@@ -103,11 +104,12 @@ def test_hash_dedupe_and_secret_drop(
     tenant_context: None,  # noqa: ARG001
 ) -> None:
     user = create_test_user(db_session, email_prefix="ltm_dedupe")
-    with patch(
-        "onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect
-    ), patch(
-        "onyx.memory.long_term._embedding_model",
-        return_value=(object(), "test-model", 8),
+    with (
+        patch("onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect),
+        patch(
+            "onyx.memory.long_term._embedding_model",
+            return_value=(object(), "test-model", 8),
+        ),
     ):
         first = upsert_facts(
             db_session,
@@ -139,8 +141,8 @@ def test_hash_dedupe_and_secret_drop(
 def test_craft_toggle_off_skips_recall_prompt(
     db_session: Session, test_user: User
 ) -> None:
-    from onyx.db.models import BuildSession
     from onyx.db.enums import BuildSessionStatus, SessionOrigin
+    from onyx.db.models import BuildSession
 
     test_user.craft_use_long_term_memory = False
     session = BuildSession(
@@ -163,11 +165,12 @@ def test_chat_long_term_can_read_craft_row(
 ) -> None:
     user = create_test_user(db_session, email_prefix="ltm_bridge")
     user.chat_memory_mode = ChatMemoryMode.LONG_TERM
-    with patch(
-        "onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect
-    ), patch(
-        "onyx.memory.long_term._embedding_model",
-        return_value=(object(), "test-model", 8),
+    with (
+        patch("onyx.memory.long_term.embed_texts", side_effect=_embed_side_effect),
+        patch(
+            "onyx.memory.long_term._embedding_model",
+            return_value=(object(), "test-model", 8),
+        ),
     ):
         upsert_facts(
             db_session,

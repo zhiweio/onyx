@@ -21,7 +21,8 @@ from tests.unit.onyx.connectors.source_operation_harnesses import (
 import_all_source_operation_gateways()
 
 
-@pytest.mark.usefixtures("enable_ee")
+# CE-only fork: EE perm-sync checks no longer exist, so the ratchet runs in
+# CE mode where perm-sync units resolve to no checks.
 @pytest.mark.parametrize(
     "gateway_class",
     list(registered_source_operations().values()),

@@ -10,7 +10,6 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-
 ZERO = Decimal("0.00")
 PROFILE_FIELD_ALIASES = {
     "entity_name": ["entity_name", "纳税人名称", "主体名称"],
@@ -101,16 +100,30 @@ def profile_value(data: dict[str, Any], field: str) -> Any:
 def validate_profile(path: Path) -> list[dict[str, str]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     findings: list[dict[str, str]] = []
-    for key in PROFILE_REQUIRED:
-        if not profile_value(data, key):
-            findings.append(finding("blocker", f"profile.missing.{key}", f"纳税人画像缺少字段：{PROFILE_DISPLAY[key]}。"))
+    findings.extend(
+        finding(
+            "blocker",
+            f"profile.missing.{key}",
+            f"纳税人画像缺少字段：{PROFILE_DISPLAY[key]}。",
+        )
+        for key in PROFILE_REQUIRED
+        if not profile_value(data, key)
+    )
     if not profile_value(data, "official_policy_checked_at"):
         findings.append(
-            finding("high", "policy.national.not_checked", "全国政策核验时间为空；请重新核验官方来源。")
+            finding(
+                "high",
+                "policy.national.not_checked",
+                "全国政策核验时间为空；请重新核验官方来源。",
+            )
         )
     if not profile_value(data, "local_policy_checked_at"):
         findings.append(
-            finding("high", "policy.local.not_checked", "地方政策核验时间为空；请核验省市税务局口径。")
+            finding(
+                "high",
+                "policy.local.not_checked",
+                "地方政策核验时间为空；请核验省市税务局口径。",
+            )
         )
     return findings
 
@@ -146,33 +159,63 @@ def validate_vat(path: Path, tolerance: Decimal) -> list[dict[str, str]]:
         missing = [field for field in required if not has_field(fieldnames, field)]
         if missing:
             names = "、".join(VAT_FIELD_DISPLAY[field] for field in missing)
-            return [finding("blocker", "vat.columns_missing", f"增值税勾稽表缺少必填列: {names}")]
+            return [
+                finding(
+                    "blocker", "vat.columns_missing", f"增值税勾稽表缺少必填列: {names}"
+                )
+            ]
         for row_no, row in enumerate(reader, 2):
             period = field_value(row, "period") or f"第 {row_no} 行"
-            sales_diff = money(field_value(row, "sales_ledger_ex_tax")) - money(field_value(row, "sales_invoice_ex_tax"))
-            output_diff = money(field_value(row, "output_tax_ledger")) - money(field_value(row, "output_tax_invoice"))
-            input_diff = money(field_value(row, "input_tax_ledger")) - money(field_value(row, "input_tax_certified"))
+            sales_diff = money(field_value(row, "sales_ledger_ex_tax")) - money(
+                field_value(row, "sales_invoice_ex_tax")
+            )
+            output_diff = money(field_value(row, "output_tax_ledger")) - money(
+                field_value(row, "output_tax_invoice")
+            )
+            input_diff = money(field_value(row, "input_tax_ledger")) - money(
+                field_value(row, "input_tax_certified")
+            )
             if abs(sales_diff) > tolerance:
                 findings.append(
-                    finding("high", "vat.sales_mismatch", f"{period}：账面销售额与发票销售额差异 {sales_diff}。")
+                    finding(
+                        "high",
+                        "vat.sales_mismatch",
+                        f"{period}：账面销售额与发票销售额差异 {sales_diff}。",
+                    )
                 )
             if abs(output_diff) > tolerance:
                 findings.append(
-                    finding("high", "vat.output_tax_mismatch", f"{period}：账面销项税额与发票销项税额差异 {output_diff}。")
+                    finding(
+                        "high",
+                        "vat.output_tax_mismatch",
+                        f"{period}：账面销项税额与发票销项税额差异 {output_diff}。",
+                    )
                 )
             if abs(input_diff) > tolerance:
                 findings.append(
-                    finding("medium", "vat.input_tax_mismatch", f"{period}：账面进项税额与已认证/已勾选进项税额差异 {input_diff}。")
+                    finding(
+                        "medium",
+                        "vat.input_tax_mismatch",
+                        f"{period}：账面进项税额与已认证/已勾选进项税额差异 {input_diff}。",
+                    )
                 )
     return findings
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="校验财税申报工作底稿是否具备申报准备条件。")
+    parser = argparse.ArgumentParser(
+        description="校验财税申报工作底稿是否具备申报准备条件。"
+    )
     parser.add_argument("--profile", type=Path, help="纳税人画像 JSON。")
-    parser.add_argument("--statement-summary", type=Path, help="报表生成脚本输出的 summary.json。")
-    parser.add_argument("--vat-reconciliation", type=Path, help="增值税勾稽 CSV，支持中文或英文表头。")
-    parser.add_argument("--tolerance", default="0.01", help="金额差异容忍度，默认 0.01。")
+    parser.add_argument(
+        "--statement-summary", type=Path, help="报表生成脚本输出的 summary.json。"
+    )
+    parser.add_argument(
+        "--vat-reconciliation", type=Path, help="增值税勾稽 CSV，支持中文或英文表头。"
+    )
+    parser.add_argument(
+        "--tolerance", default="0.01", help="金额差异容忍度，默认 0.01。"
+    )
     parser.add_argument("--json", action="store_true", help="输出 JSON。")
     args = parser.parse_args()
 

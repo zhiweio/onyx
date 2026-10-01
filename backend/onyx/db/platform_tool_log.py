@@ -66,7 +66,9 @@ def _tool_call_conditions(
         conditions.append(
             or_(
                 PlatformToolLog.tool.ilike(pattern),
-                User.email.ilike(pattern),
+                # fastapi-users declares User.email as plain str under
+                # TYPE_CHECKING; at runtime it is a mapped column.
+                User.email.ilike(pattern),  # ty: ignore[unresolved-attribute]
                 PlatformToolLog.result_excerpt.ilike(pattern),
             )
         )
@@ -84,7 +86,9 @@ def list_tool_calls(
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    stmt = select(PlatformToolLog, User.email).join(
+    # fastapi-users types User.email as plain str under TYPE_CHECKING; at
+    # runtime it is a mapped column.
+    stmt = select(PlatformToolLog, User.email).join(  # ty: ignore[no-matching-overload]
         User, PlatformToolLog.user_id == User.id
     )
     stmt = stmt.where(

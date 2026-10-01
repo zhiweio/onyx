@@ -2,9 +2,10 @@ from types import SimpleNamespace
 
 from onyx.db.enums import MCPGatewayAuthAdapter
 from onyx.mcp_gateway.pack_credentials import normalize_pack_credentials
-from onyx.server.features.mcp.gateway_bind import apply_pack_upstream_url
-from onyx.mcp_gateway.packs.hithink_finance import HITHINK_ENDPOINT_SLUGS, PACK as HITHINK
-from onyx.mcp_gateway.packs.qichacha import QCC_ENDPOINT_SLUGS, PACK as QICHACHA
+from onyx.mcp_gateway.packs.hithink_finance import HITHINK_ENDPOINT_SLUGS
+from onyx.mcp_gateway.packs.hithink_finance import PACK as HITHINK
+from onyx.mcp_gateway.packs.qichacha import PACK as QICHACHA
+from onyx.mcp_gateway.packs.qichacha import QCC_ENDPOINT_SLUGS
 from onyx.mcp_gateway.packs.zhihuiya import PACK as ZHIHUIYA
 from onyx.mcp_gateway.packs.zhihuiya_endpoints import (
     ZHIHUIYA_CONNECT,
@@ -13,6 +14,7 @@ from onyx.mcp_gateway.packs.zhihuiya_endpoints import (
     ZHIHUIYA_STARTER,
 )
 from onyx.mcp_gateway.registry import get_pack
+from onyx.server.features.mcp.gateway_bind import apply_pack_upstream_url
 
 
 def test_family_packs_are_registered() -> None:
@@ -86,12 +88,10 @@ def test_apply_pack_upstream_url_rewrites_stale_qcc_path() -> None:
         pack_slug="qichacha",
         upstream_url="https://agent.qcc.com/mcp/qcc-company/stream",
     )
-    assert apply_pack_upstream_url(entry) is True
+    assert apply_pack_upstream_url(entry) is True  # ty: ignore[invalid-argument-type]
     assert entry.upstream_url == "https://agent.qcc.com/mcp/company/stream"
 
 
 def test_qichacha_strips_bearer_prefix() -> None:
-    creds = normalize_pack_credentials(
-        QICHACHA, {"api_key": "Bearer token-value"}
-    )
+    creds = normalize_pack_credentials(QICHACHA, {"api_key": "Bearer token-value"})
     assert creds["api_key"] == "token-value"

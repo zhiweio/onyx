@@ -13,6 +13,7 @@ from onyx.server.features.build.jobs.reconcile import (
     write_blackboard_file,
     write_reconcile_file,
 )
+from onyx.server.features.build.sandbox.base import SandboxManager
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 
 MANIFEST_PATH = "outputs/ingest/MANIFEST.json"
@@ -81,12 +82,8 @@ def run_reconcile(
         state=state,
         lane_nodes=lane_nodes,
     )
-    write_reconcile_file(
-        sandbox_id=sandbox_id, session_id=session_id, payload=payload
-    )
-    write_blackboard_file(
-        sandbox_id=sandbox_id, session_id=session_id, payload=payload
-    )
+    write_reconcile_file(sandbox_id=sandbox_id, session_id=session_id, payload=payload)
+    write_blackboard_file(sandbox_id=sandbox_id, session_id=session_id, payload=payload)
     return HostWorkerResult(
         ok=True,
         payload={
@@ -98,13 +95,13 @@ def run_reconcile(
 
 
 def _try_workspace_command(
-    manager: object,
+    manager: SandboxManager,
     sandbox_id: UUID,
     session_id: UUID,
     command: list[str],
 ) -> bool:
     try:
-        runner = manager.run_workspace_command  # type: ignore[attr-defined]
+        runner = manager.run_workspace_command
     except AttributeError:
         return False
     try:
@@ -115,17 +112,18 @@ def _try_workspace_command(
 
 
 def _write_source_index(
-    manager: object, sandbox_id: UUID, session_id: UUID
+    manager: SandboxManager, sandbox_id: UUID, session_id: UUID
 ) -> bool:
     files: list[dict[str, str]] = []
-    for root in SOURCE_ROOTS:
-        names = _list(manager, sandbox_id, session_id, root)
-        for name in names:
-            files.append({"path": f"{root}/{name}", "status": "indexed"})
+    files.extend(
+        {"path": f"{root}/{name}", "status": "indexed"}
+        for root in SOURCE_ROOTS
+        for name in _list(manager, sandbox_id, session_id, root)
+    )
     payload = {"files": files, "source": "host_index"}
     raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
     try:
-        manager.write_files_to_sandbox(  # type: ignore[attr-defined]
+        manager.write_files_to_sandbox(
             sandbox_id=sandbox_id,
             mount_path=f"/workspace/sessions/{session_id}",
             files={MANIFEST_PATH: raw},
@@ -135,19 +133,21 @@ def _write_source_index(
         return False
 
 
-def _exists(manager: object, sandbox_id: UUID, session_id: UUID, path: str) -> bool:
+def _exists(
+    manager: SandboxManager, sandbox_id: UUID, session_id: UUID, path: str
+) -> bool:
     try:
-        raw = manager.read_file(sandbox_id, session_id, path)  # type: ignore[attr-defined]
+        raw = manager.read_file(sandbox_id, session_id, path)
     except Exception:
         return False
     return bool(raw)
 
 
 def _list(
-    manager: object, sandbox_id: UUID, session_id: UUID, path: str
+    manager: SandboxManager, sandbox_id: UUID, session_id: UUID, path: str
 ) -> list[str]:
     try:
-        names = manager.list_directory(sandbox_id, session_id, path)  # type: ignore[attr-defined]
+        names = manager.list_directory(sandbox_id, session_id, path)
     except Exception:
         return []
     if not isinstance(names, list):

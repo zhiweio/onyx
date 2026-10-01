@@ -136,7 +136,7 @@ def _answer_safely(message: InboundMessage, provider_config: Any) -> None:
         logger.warning("china bot answer pool saturated; dropping %s", message.msg_id)
         return
     try:
-        reply = _answer(message)
+        reply = _answer(message, provider_config)
         if reply:
             _send_reply(message, provider_config, reply)
     except Exception:
@@ -145,7 +145,7 @@ def _answer_safely(message: InboundMessage, provider_config: Any) -> None:
         _answer_semaphore.release()
 
 
-def _answer(message: InboundMessage) -> str | None:
+def _answer(message: InboundMessage, provider_config: Any) -> str | None:
     """Provision the user and run one in-process chat turn."""
     from onyx.chat.process_message import (
         gather_stream,
@@ -159,7 +159,9 @@ def _answer(message: InboundMessage) -> str | None:
         SendMessageRequest,
     )
 
-    email = deterministic_email(message.platform, message.platform_user_id, provider_config)
+    email = deterministic_email(
+        message.platform, message.platform_user_id, provider_config
+    )
     with get_session_with_current_tenant() as db_session:
         user = get_user_by_email(email, db_session)
         if user is None:
@@ -197,7 +199,7 @@ def _answer(message: InboundMessage) -> str | None:
         response = gather_stream(answer_stream)
     if response is None:
         return None
-    return (response.message or "").strip() or None
+    return response.answer.strip() or None
 
 
 def _provision_bot_user(db_session: Session, email: str) -> Any:
@@ -230,7 +232,9 @@ def _send_reply(message: InboundMessage, config: Any, text: str) -> None:
     if message.platform == "wecom":
         _wecom_send(config, AppTokenManager, message.chat_id, text)
     elif message.platform == "dingtalk":
-        _dingtalk_send(config, AppTokenManager, message.chat_id, message.platform_user_id, text)
+        _dingtalk_send(
+            config, AppTokenManager, message.chat_id, message.platform_user_id, text
+        )
     elif message.platform == "feishu":
         _feishu_send(config, AppTokenManager, message.chat_id, text)
     else:
@@ -263,7 +267,9 @@ def _wecom_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
     ).raise_for_status()
 
 
-def _dingtalk_send(config: Any, token_mgr: Any, chat_id: str, user_id: str, text: str) -> None:
+def _dingtalk_send(
+    config: Any, token_mgr: Any, _chat_id: str, user_id: str, text: str
+) -> None:
     import requests
 
     def fetch() -> tuple[str, int]:
@@ -324,8 +330,8 @@ def dispatch_im_notification(
     """
     try:
         from onyx.db.engine.sql_engine import get_session_with_current_tenant
-        from onyx.db.sso_provider import fetch_sso_providers
         from onyx.db.enums import SSOProviderType
+        from onyx.db.sso_provider import fetch_sso_providers
 
         with get_session_with_current_tenant() as db_session:
             binding = binding_for_user(db_session, user_id)

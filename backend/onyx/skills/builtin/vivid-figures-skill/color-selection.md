@@ -19,6 +19,7 @@ python _utils/vivid_config.py set palette olive-apricot
 
 ```python
 from _utils.vivid_config import write_config
+
 write_config(workspace, palette="custom", colors=user_colors)
 ```
 

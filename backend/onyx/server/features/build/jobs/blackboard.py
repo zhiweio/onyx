@@ -8,6 +8,7 @@ from uuid import UUID
 from onyx.server.features.build.jobs.channels import ArtifactRecord, JobState
 from onyx.server.features.build.jobs.durability import TREE_ROOTS, list_tree_files
 from onyx.server.features.build.jobs.graph import GraphNode
+from onyx.server.features.build.sandbox.base import SandboxManager
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 
 WATCH_PATHS = (
@@ -65,7 +66,7 @@ def merge_node_outputs(
 
 
 def _record_for(
-    manager: object,
+    manager: SandboxManager,
     sandbox_id: UUID,
     session_id: UUID,
     path: str,
@@ -95,10 +96,10 @@ def _safe_summary(raw: bytes) -> str:
 
 
 def _read_bytes(
-    manager: object, sandbox_id: UUID, session_id: UUID, path: str
+    manager: SandboxManager, sandbox_id: UUID, session_id: UUID, path: str
 ) -> bytes | None:
     try:
-        raw = manager.read_file(sandbox_id, session_id, path)  # type: ignore[attr-defined]
+        raw = manager.read_file(sandbox_id, session_id, path)
     except Exception:
         return None
     if not isinstance(raw, (bytes, bytearray)):

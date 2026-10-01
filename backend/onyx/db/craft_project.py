@@ -525,9 +525,7 @@ def list_all_sessions_for_project(
     )
 
 
-def list_snapshots_for_project(
-    db_session: Session, project_id: UUID
-) -> list[Snapshot]:
+def list_snapshots_for_project(db_session: Session, project_id: UUID) -> list[Snapshot]:
     """Snapshots for every session on the project, including specialist rows."""
     return list(
         db_session.scalars(

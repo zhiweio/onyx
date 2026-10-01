@@ -127,14 +127,10 @@ def test_cannot_delete_referenced_template(admin_user: DATestUser) -> None:
 def test_basic_user_cannot_edit_workspace_template(
     admin_user: DATestUser,
 ) -> None:
-    listed = client.get(
-        _url(), headers=admin_user.headers, cookies=admin_user.cookies
-    )
+    listed = client.get(_url(), headers=admin_user.headers, cookies=admin_user.cookies)
     listed.raise_for_status()
     workspace = next(
-        row
-        for row in listed.json()["templates"]
-        if row["slug"] == "initiation_report"
+        row for row in listed.json()["templates"] if row["slug"] == "initiation_report"
     )
     basic = UserManager.create(name=f"report-template-basic-{uuid4().hex[:8]}")
     denied = client.patch(
@@ -165,9 +161,9 @@ def test_upload_docx_stores_the_file_without_a_placeholder_schema(
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
         },
-            headers=multipart_headers(admin_user),
-            cookies=admin_user.cookies,
-        )
+        headers=multipart_headers(admin_user),
+        cookies=admin_user.cookies,
+    )
     uploaded.raise_for_status()
     body = uploaded.json()
     assert "placeholders" not in body

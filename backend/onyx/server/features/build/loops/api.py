@@ -39,8 +39,6 @@ from onyx.db.models import User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.loops.core import (
-    bump_policy_version,
-    decide_ship,
     graduate,
     set_autopilot,
 )
@@ -100,7 +98,7 @@ class AutopilotRequest(BaseModel):
 # ── serialization ─────────────────────────────────────────────────────────
 
 
-def _serialize_loop(loop: Any, *, with_ledger: bool = True) -> dict[str, Any]:
+def _serialize_loop(loop: Any, *, _with_ledger: bool = True) -> dict[str, Any]:
     data: dict[str, Any] = {
         "id": str(loop.id),
         "name": loop.name,
@@ -285,9 +283,9 @@ def list_outputs(
     _require_owner(db_session, loop_id, user)
     items = list_loop_items(db_session, loop_id)
     outputs: list[dict[str, Any]] = []
-    for item in items:
-        for output in item.outputs:
-            outputs.append(_serialize_output(output))
+    outputs.extend(
+        _serialize_output(output) for item in items for output in item.outputs
+    )
     return outputs
 
 

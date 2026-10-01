@@ -141,7 +141,7 @@ def test_retry_cap_fails_job(monkeypatch) -> None:
         continuation_mod, "_enqueue_or_remember", lambda *_a, **_k: None
     )
     continuation_mod._retry_or_fail_phase(
-        db,
+        db,  # ty: ignore[invalid-argument-type]
         job=job,
         user_id=uuid4(),
         phase=phase,
@@ -186,7 +186,7 @@ def test_golden_path_does_not_advance_without_done_when(monkeypatch) -> None:
     )
     db = SimpleNamespace(commit=lambda: None)
     continuation_mod.maybe_continue_craft_job(
-        db,
+        db,  # ty: ignore[invalid-argument-type]
         session_id=job.session_id,
         user_id=uuid4(),
         sandbox_id=uuid4(),
@@ -260,12 +260,10 @@ def test_golden_path_advances_only_after_artifacts(monkeypatch) -> None:
         job.status = CraftJobStatus.WAITING_LANES
         spawned.extend(node.id for node in lanes)
 
-    monkeypatch.setattr(
-        "onyx.server.features.build.jobs.kernel._spawn_lanes", _spawn
-    )
+    monkeypatch.setattr("onyx.server.features.build.jobs.kernel._spawn_lanes", _spawn)
     db = SimpleNamespace(commit=lambda: None)
     continuation_mod.maybe_continue_craft_job(
-        db,
+        db,  # ty: ignore[invalid-argument-type]
         session_id=job.session_id,
         user_id=uuid4(),
         sandbox_id=uuid4(),
@@ -310,7 +308,7 @@ def test_deadline_retries_same_phase(monkeypatch) -> None:
     )
     db = SimpleNamespace(commit=lambda: None)
     continuation_mod.maybe_continue_craft_job(
-        db,
+        db,  # ty: ignore[invalid-argument-type]
         session_id=job.session_id,
         user_id=uuid4(),
         sandbox_id=uuid4(),

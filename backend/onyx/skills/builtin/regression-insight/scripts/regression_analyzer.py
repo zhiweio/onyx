@@ -6,15 +6,14 @@ regression_analyzer.py — 自动回归建模工具
 
 import argparse
 import json
-import sys
 import os
+import sys
 from io import StringIO
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from scipy import stats
 
 
 def load_data(path: str) -> pd.DataFrame:
@@ -33,7 +32,7 @@ def load_data(path: str) -> pd.DataFrame:
 
 def detect_regression_type(series: pd.Series) -> str:
     unique = series.dropna().unique()
-    if len(unique) == 2 and set(unique).issubset({0, 1, 0.0, 1.0, True, False}):
+    if len(unique) == 2 and set(unique).issubset({0, 1}):
         return "logistic"
     return "linear"
 
@@ -91,7 +90,7 @@ def interpret_linear(result, vif_dict: dict) -> dict:
         fit_desc = "模型拟合很差"
 
     summary_lines.append(
-        f"R² = {r2:.4f}（{fit_desc}，模型解释了因变量 {r2*100:.1f}% 的变异）"
+        f"R² = {r2:.4f}（{fit_desc}，模型解释了因变量 {r2 * 100:.1f}% 的变异）"
     )
     summary_lines.append(f"调整后 R² = {adj_r2:.4f}")
 
@@ -141,18 +140,12 @@ def interpret_logistic(result, vif_dict: dict) -> dict:
     else:
         fit_desc = "模型拟合较弱"
 
-    summary_lines.append(
-        f"Pseudo R²（McFadden）= {pseudo_r2:.4f}（{fit_desc}）"
-    )
+    summary_lines.append(f"Pseudo R²（McFadden）= {pseudo_r2:.4f}（{fit_desc}）")
 
     if llr_pval < 0.05:
-        summary_lines.append(
-            f"似然比检验 p = {llr_pval:.4g}，模型整体显著"
-        )
+        summary_lines.append(f"似然比检验 p = {llr_pval:.4g}，模型整体显著")
     else:
-        summary_lines.append(
-            f"似然比检验 p = {llr_pval:.4g}，模型整体不显著"
-        )
+        summary_lines.append(f"似然比检验 p = {llr_pval:.4g}，模型整体不显著")
 
     coef_interpretations = []
     for name in result.params.index:
@@ -169,9 +162,13 @@ def interpret_logistic(result, vif_dict: dict) -> dict:
             vif_note = vif_warning(vif_val)
             vif_str = f"VIF = {vif_val:.2f}" if not np.isnan(vif_val) else "VIF = N/A"
             if odds_ratio > 1:
-                direction = f"每增加 1 单位，事件发生的几率增加 {(odds_ratio - 1) * 100:.1f}%"
+                direction = (
+                    f"每增加 1 单位，事件发生的几率增加 {(odds_ratio - 1) * 100:.1f}%"
+                )
             else:
-                direction = f"每增加 1 单位，事件发生的几率降低 {(1 - odds_ratio) * 100:.1f}%"
+                direction = (
+                    f"每增加 1 单位，事件发生的几率降低 {(1 - odds_ratio) * 100:.1f}%"
+                )
             coef_interpretations.append(
                 f"{name}：系数 = {coef:.4f}，OR = {odds_ratio:.4f}（p = {pval:.4g} {sig}），"
                 f"{direction}。{vif_str}（{vif_note}）"
@@ -183,7 +180,9 @@ def interpret_logistic(result, vif_dict: dict) -> dict:
     }
 
 
-def run_linear(df: pd.DataFrame, target: str, features: list, add_const: bool = True) -> dict:
+def run_linear(
+    df: pd.DataFrame, target: str, features: list, add_const: bool = True
+) -> dict:
     y = df[target].astype(float)
     X = df[features].astype(float)
 
@@ -216,9 +215,13 @@ def run_linear(df: pd.DataFrame, target: str, features: list, add_const: bool = 
         "f_p_value": round(float(result.f_pvalue), 6),
         "aic": round(float(result.aic), 4),
         "bic": round(float(result.bic), 4),
-        "durbin_watson": round(float(sm.stats.stattools.durbin_watson(result.resid)), 4),
+        "durbin_watson": round(
+            float(sm.stats.stattools.durbin_watson(result.resid)), 4
+        ),
         "coefficients": coefficients,
-        "vif": {k: round(v, 4) if not np.isnan(v) else None for k, v in vif_dict.items()},
+        "vif": {
+            k: round(v, 4) if not np.isnan(v) else None for k, v in vif_dict.items()
+        },
         "interpretation": interpret_linear(result, vif_dict),
     }
 
@@ -229,7 +232,9 @@ def run_linear(df: pd.DataFrame, target: str, features: list, add_const: bool = 
     return output
 
 
-def run_logistic(df: pd.DataFrame, target: str, features: list, add_const: bool = True) -> dict:
+def run_logistic(
+    df: pd.DataFrame, target: str, features: list, add_const: bool = True
+) -> dict:
     y = df[target].astype(float)
     X = df[features].astype(float)
 
@@ -268,7 +273,9 @@ def run_logistic(df: pd.DataFrame, target: str, features: list, add_const: bool 
         "aic": round(float(result.aic), 4),
         "bic": round(float(result.bic), 4),
         "coefficients": coefficients,
-        "vif": {k: round(v, 4) if not np.isnan(v) else None for k, v in vif_dict.items()},
+        "vif": {
+            k: round(v, 4) if not np.isnan(v) else None for k, v in vif_dict.items()
+        },
         "interpretation": interpret_logistic(result, vif_dict),
     }
 
@@ -286,16 +293,32 @@ def main():
     parser.add_argument("input", help="输入数据文件路径（CSV/TSV/Excel/JSON）")
     parser.add_argument("--target", "-t", required=True, help="因变量（目标变量）列名")
     parser.add_argument(
-        "--features", "-f", default=None,
-        help="自变量列名，逗号分隔。省略则使用除目标变量外的所有数值列"
+        "--features",
+        "-f",
+        default=None,
+        help="自变量列名，逗号分隔。省略则使用除目标变量外的所有数值列",
     )
     parser.add_argument(
-        "--type", "-T", choices=["linear", "logistic", "auto"], default="auto",
-        help="回归类型：linear（线性）、logistic（逻辑）、auto（自动检测，默认）"
+        "--type",
+        "-T",
+        choices=["linear", "logistic", "auto"],
+        default="auto",
+        help="回归类型：linear（线性）、logistic（逻辑）、auto（自动检测，默认）",
     )
-    parser.add_argument("--no-const", action="store_true", help="不添加截距项（常数项）")
-    parser.add_argument("--output", "-o", default=None, help="输出 JSON 文件路径（省略则打印到标准输出）")
-    parser.add_argument("--keep-na", action="store_true", help="保留缺失值（会导致回归报错，仅用于调试）")
+    parser.add_argument(
+        "--no-const", action="store_true", help="不添加截距项（常数项）"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="输出 JSON 文件路径（省略则打印到标准输出）",
+    )
+    parser.add_argument(
+        "--keep-na",
+        action="store_true",
+        help="保留缺失值（会导致回归报错，仅用于调试）",
+    )
 
     args = parser.parse_args()
 
@@ -310,19 +333,29 @@ def main():
         sys.exit(1)
 
     if args.target not in df.columns:
-        print(f"错误：目标变量 '{args.target}' 不在数据中。可用列：{list(df.columns)}", file=sys.stderr)
+        print(
+            f"错误：目标变量 '{args.target}' 不在数据中。可用列：{list(df.columns)}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if args.features:
         features = [f.strip() for f in args.features.split(",")]
         missing = [f for f in features if f not in df.columns]
         if missing:
-            print(f"错误：以下自变量不在数据中：{missing}。可用列：{list(df.columns)}", file=sys.stderr)
+            print(
+                f"错误：以下自变量不在数据中：{missing}。可用列：{list(df.columns)}",
+                file=sys.stderr,
+            )
             sys.exit(1)
     else:
-        features = [c for c in df.select_dtypes(include=[np.number]).columns if c != args.target]
+        features = [
+            c for c in df.select_dtypes(include=[np.number]).columns if c != args.target
+        ]
         if not features:
-            print("错误：未找到数值型自变量。请用 --features 手动指定。", file=sys.stderr)
+            print(
+                "错误：未找到数值型自变量。请用 --features 手动指定。", file=sys.stderr
+            )
             sys.exit(1)
 
     cols_needed = features + [args.target]
@@ -339,7 +372,10 @@ def main():
         df = df[cols_needed].dropna()
         after = len(df)
         if before > after:
-            print(f"提示：已删除 {before - after} 行含缺失值的数据（剩余 {after} 行）", file=sys.stderr)
+            print(
+                f"提示：已删除 {before - after} 行含缺失值的数据（剩余 {after} 行）",
+                file=sys.stderr,
+            )
 
     if len(df) < len(features) + 2:
         print(

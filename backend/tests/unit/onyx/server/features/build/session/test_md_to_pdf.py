@@ -102,9 +102,7 @@ def test_markdown_to_pdf_uses_latin_face_for_ascii() -> None:
 
 
 def test_markdown_to_pdf_keeps_cjk_inside_inline_code() -> None:
-    pdf = markdown_to_pdf_bytes(
-        "- HTML报告: `outputs/君禾股份_2026H1.html`\n"
-    )
+    pdf = markdown_to_pdf_bytes("- HTML报告: `outputs/君禾股份_2026H1.html`\n")
     text = "".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf)).pages)
     assert "君禾" in text
     assert "股份" in text

@@ -38,10 +38,13 @@ def _model(
     max_input_tokens: int | None = None,
     configured_max_input_tokens: int | None = None,
 ) -> ModelConfigurationView:
+    # Mirror from_model: a stored/inferred vision flow always shows up as
+    # "image" in input_modalities, never as supports_image_input alone.
     return ModelConfigurationView(
         name=name,
         display_name=display_name,
         is_visible=is_visible,
+        input_modalities=["text", "image"] if supports_image_input else ["text"],
         supports_image_input=supports_image_input,
         supports_reasoning=supports_reasoning,
         max_input_tokens=max_input_tokens,
@@ -623,9 +626,11 @@ def _reconcile_manager(
 
 
 def _fresh_session() -> BuildSession:
+    # reasoning_effort must be explicit: a bare MagicMock auto-attribute would
+    # leak into the serialized opencode config and break json.dumps.
     return cast(
         BuildSession,
-        MagicMock(id=2, agent_provider=None, agent_model=None),
+        MagicMock(id=2, agent_provider=None, agent_model=None, reasoning_effort=None),
     )
 
 
@@ -675,6 +680,7 @@ def test_unchanged_catalog_retries_pending_dispose() -> None:
             agent_provider=None,
             agent_model=None,
             opencode_session_id="ses-live",
+            reasoning_effort=None,
         ),
     )
     sandbox = cast(Sandbox, MagicMock(id=1))
@@ -725,6 +731,7 @@ def test_reconcile_parses_stored_gateway_selection() -> None:
             agent_provider="onyx",
             agent_model="17/anthropic/claude-sonnet",
             opencode_session_id=None,
+            reasoning_effort=None,
         ),
     )
 
@@ -756,6 +763,7 @@ def test_reconcile_forwards_legacy_provider_selection() -> None:
             agent_provider="anthropic",
             agent_model="claude-fable-5",
             opencode_session_id=None,
+            reasoning_effort=None,
         ),
     )
 
@@ -787,6 +795,7 @@ def test_empty_gateway_session_restarts_instance_for_changed_catalog() -> None:
             agent_model=None,
             opencode_session_id="ses-old",
             nextjs_port=3010,
+            reasoning_effort=None,
         ),
     )
     user = cast(User, MagicMock(spec=User, personal_name="Roshan"))
@@ -838,6 +847,7 @@ def test_workspace_rebuild_claims_a_dispose_the_next_reconcile_honours() -> None
             agent_provider=None,
             agent_model=None,
             opencode_session_id="ses_restored",
+            reasoning_effort=None,
         ),
     )
 

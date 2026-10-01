@@ -5,7 +5,6 @@ real Postgres with the stub sandbox manager (same pattern as the
 scheduled-task executor suite).
 """
 
-from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -25,7 +24,7 @@ from onyx.db.enums import (
     CraftLoopState,
     SandboxStatus,
 )
-from onyx.db.models import CraftLoopOutput, Sandbox, User
+from onyx.db.models import CraftLoopOutput, User
 from onyx.server.features.build.loops.fire import (
     loops_fire_sweep_logic,
     run_loop_item_logic,
@@ -36,7 +35,6 @@ from onyx.server.features.build.sandbox.event_schema import (
 )
 from onyx.server.features.build.session.manager import SessionManager
 from tests.common.craft.stubs import StubSandboxManager
-
 from tests.external_dependency_unit.craft.conftest import *  # noqa: F401,F403
 
 
@@ -71,7 +69,7 @@ _STUB_SILENT_ATTRS = (
 
 def _silence_stub(stub: StubSandboxManager) -> None:
     stub.health_check_returns = True
-    for attr in _SILENT_ATTRS:
+    for attr in _STUB_SILENT_ATTRS:
         setattr(stub, attr, True)
 
 
@@ -82,14 +80,12 @@ def _patch_skills_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _patch_artifacts(
-    monkeypatch: pytest.MonkeyPatch, paths: list[str]
-) -> None:
+def _patch_artifacts(monkeypatch: pytest.MonkeyPatch, paths: list[str]) -> None:
     """Stub the durable artifact catalog the executor stages outputs from."""
     monkeypatch.setattr(
         SessionManager,
         "list_artifacts",
-        lambda self, session_id, user_id: [
+        lambda _self, _session_id, _user_id: [
             {"name": p.split("/")[-1], "path": p, "type": "file"} for p in paths
         ],
     )
@@ -98,9 +94,7 @@ def _patch_artifacts(
 # ── sweep ─────────────────────────────────────────────────────────────────
 
 
-def test_sweep_claims_due_loop_and_items(
-    db_session: Session, test_user: User
-) -> None:
+def test_sweep_claims_due_loop_and_items(db_session: Session, test_user: User) -> None:
     loop = _seed_loop(db_session, test_user)
     loop.next_fire_at = None  # due immediately
     from datetime import datetime, timedelta, timezone
@@ -129,9 +123,7 @@ def test_sweep_claims_due_loop_and_items(
     assert all(i.attempts == 1 for i in items)
 
 
-def test_sweep_skips_not_due_and_capped(
-    db_session: Session, test_user: User
-) -> None:
+def test_sweep_skips_not_due_and_capped(db_session: Session, test_user: User) -> None:
     from datetime import datetime, timedelta, timezone
 
     loop = _seed_loop(db_session, test_user)
@@ -141,6 +133,7 @@ def test_sweep_skips_not_due_and_capped(
 
     # due again, but cap = 1
     loop = get_craft_loop(db_session, loop.id)
+    assert loop is not None
     loop.next_fire_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     loop.caps = {"max_items_per_fire": 1}
     db_session.commit()
@@ -153,9 +146,7 @@ def test_sweep_skips_not_due_and_capped(
     assert len(loops_fire_sweep_logic()) == 1
 
 
-def test_sweep_requeues_expired_claims(
-    db_session: Session, test_user: User
-) -> None:
+def test_sweep_requeues_expired_claims(db_session: Session, test_user: User) -> None:
     from datetime import datetime, timedelta, timezone
 
     loop = _seed_loop(db_session, test_user)
@@ -195,8 +186,14 @@ def test_item_success_hold_gate_parks_output(
         lambda: stub_sandbox_manager,
     )
     sandbox(user=test_user, status=SandboxStatus.RUNNING)
-    loop = _seed_loop(db_session, test_user, ship_actions=[{"action": "save_artifacts", "gate": "hold"}])
-    items = enqueue_loop_items(db_session, loop.id, [{"source_key": "f1", "summary": "事实"}])
+    loop = _seed_loop(
+        db_session,
+        test_user,
+        ship_actions=[{"action": "save_artifacts", "gate": "hold"}],
+    )
+    items = enqueue_loop_items(
+        db_session, loop.id, [{"source_key": "f1", "summary": "事实"}]
+    )
     db_session.commit()
 
     _silence_stub(stub_sandbox_manager)
@@ -232,7 +229,11 @@ def test_item_success_auto_gate_ships(
         lambda: stub_sandbox_manager,
     )
     sandbox(user=test_user, status=SandboxStatus.RUNNING)
-    loop = _seed_loop(db_session, test_user, ship_actions=[{"action": "save_artifacts", "gate": "auto"}])
+    loop = _seed_loop(
+        db_session,
+        test_user,
+        ship_actions=[{"action": "save_artifacts", "gate": "auto"}],
+    )
     items = enqueue_loop_items(db_session, loop.id, [{"source_key": "f2"}])
     db_session.commit()
 

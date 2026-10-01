@@ -2009,9 +2009,7 @@ fi
             sandbox_id=sandbox_id, process_id=process_id, cursor=cursor
         )
 
-    def write_process_input(
-        self, sandbox_id: UUID, process_id: str, data: str
-    ) -> None:
+    def write_process_input(self, sandbox_id: UUID, process_id: str, data: str) -> None:
         return self._sidecar_client.write_process_input(
             sandbox_id=sandbox_id, process_id=process_id, data=data
         )

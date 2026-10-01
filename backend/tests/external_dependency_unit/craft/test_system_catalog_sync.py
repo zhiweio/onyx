@@ -7,6 +7,8 @@ and it never overwrites an admin's edits to shipped content.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -134,7 +136,7 @@ def _count(db_session: Session, model: type) -> int:
     return int(db_session.scalar(select(func.count()).select_from(model)) or 0)
 
 
-def _count_workspace(db_session: Session, model: type) -> int:
+def _count_workspace(db_session: Session, model: type[Any]) -> int:
     return int(
         db_session.scalar(
             select(func.count())

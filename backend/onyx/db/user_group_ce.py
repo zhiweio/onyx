@@ -18,16 +18,16 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import Permission
+from onyx.db.enums import GrantSource, Permission
 from onyx.db.models import (
     PermissionGrant,
     User,
-    UserGroup,
     User__UserGroup,
+    UserGroup,
 )
+from onyx.db.permissions import parse_permission_values
 from onyx.db.user_group import (
     assert_group_config_is_editable,
-    assert_groups_config_are_editable,
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
@@ -101,21 +101,27 @@ def add_user_to_group__no_commit(
     db_session: Session, group: UserGroup, user_id: UUID
 ) -> bool:
     existing = db_session.scalar(
-        select(User__UserGroup.id).where(
+        select(User__UserGroup.user_group_id).where(
             User__UserGroup.user_id == user_id,
             User__UserGroup.user_group_id == group.id,
         )
     )
     if existing is not None:
         return False
-    user = db_session.scalar(select(User).where(User.id == user_id))
+    # fastapi-users declares User.id as a plain UUID under TYPE_CHECKING; at
+    # runtime it is a mapped column.
+    user = db_session.scalar(
+        select(User).where(User.id == user_id)  # ty: ignore[invalid-argument-type]
+    )
     if user is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, f"User {user_id} not found")
     db_session.add(User__UserGroup(user_id=user_id, user_group_id=group.id))
     return True
 
 
-def add_users_to_group(db_session: Session, group_id: int, user_ids: Sequence[UUID]) -> UserGroup:
+def add_users_to_group(
+    db_session: Session, group_id: int, user_ids: Sequence[UUID]
+) -> UserGroup:
     group = fetch_user_group_or_404(db_session, group_id)
     for user_id in user_ids:
         add_user_to_group__no_commit(db_session, group, user_id)
@@ -150,7 +156,13 @@ def set_group_permissions(
     for grant in list(group.permission_grants):
         db_session.delete(grant)
     for permission in permissions:
-        db_session.add(PermissionGrant(group_id=group.id, permission=permission))
+        db_session.add(
+            PermissionGrant(
+                group_id=group.id,
+                permission=permission,
+                grant_source=GrantSource.USER,
+            )
+        )
     db_session.commit()
     db_session.refresh(group)
     return [grant.permission for grant in group.permission_grants]
@@ -180,7 +192,7 @@ def effective_permissions_for_user(db_session: Session, user: User) -> list[Perm
         ).all()
         for grant in group.permission_grants
     }
-    return sorted(resolve_effective_permissions(granted))
+    return sorted(parse_permission_values(resolve_effective_permissions(granted)))
 
 
 # ── org sync entry point ─────────────────────────────────────────────────
@@ -193,7 +205,9 @@ def assign_user_to_groups_by_name(
     missing). Used by China SSO org sync to map platform departments onto
     groups. Commits nothing — the caller owns the transaction.
     """
-    user = db_session.scalar(select(User).where(User.email == user_email))
+    user = db_session.scalar(
+        select(User).where(User.email == user_email)  # ty: ignore[invalid-argument-type]
+    )
     if user is None:
         return []
     assigned: list[UserGroup] = []

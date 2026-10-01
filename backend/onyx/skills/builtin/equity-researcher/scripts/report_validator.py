@@ -15,8 +15,8 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
 from pathlib import Path
+from typing import List
 
 try:
     from bs4 import BeautifulSoup
@@ -85,15 +85,18 @@ class ReportValidator:
         """检查 Exhibit 编号是否连续"""
         text = self.soup.get_text()
         # 匹配 "图表 1:" 或 "Exhibit 1:"
-        pattern = re.compile(r'(?:图表|Exhibit)\s+(\d+):', re.IGNORECASE)
+        pattern = re.compile(r"(?:图表|Exhibit)\s+(\d+):", re.IGNORECASE)
         numbers = [int(m.group(1)) for m in pattern.finditer(text)]
 
         if not numbers:
-            self.results.append(CheckResult(
-                "exhibit_continuity", False,
-                "未找到任何 Exhibit 编号",
-                ["报告中应包含 '图表 X:' 或 'Exhibit X:' 编号"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "exhibit_continuity",
+                    False,
+                    "未找到任何 Exhibit 编号",
+                    ["报告中应包含 '图表 X:' 或 'Exhibit X:' 编号"],
+                )
+            )
             return
 
         expected = list(range(min(numbers), max(numbers) + 1))
@@ -107,13 +110,15 @@ class ReportValidator:
             details.append(f"重复编号: {duplicates}")
 
         passed = not missing and not duplicates
-        self.results.append(CheckResult(
-            "exhibit_continuity", passed,
-            f"找到 {len(numbers)} 个 Exhibit 编号，范围 {min(numbers)}-{max(numbers)}" + (
-                "" if passed else "，但存在缺失或重复"
-            ),
-            details
-        ))
+        self.results.append(
+            CheckResult(
+                "exhibit_continuity",
+                passed,
+                f"找到 {len(numbers)} 个 Exhibit 编号，范围 {min(numbers)}-{max(numbers)}"
+                + ("" if passed else "，但存在缺失或重复"),
+                details,
+            )
+        )
 
     def check_data_source_presence(self):
         """检查每个表格/图表下方是否有数据来源标注"""
@@ -166,13 +171,19 @@ class ReportValidator:
                 missing_sources.append("产业链图")
 
         passed = len(missing_sources) == 0
-        self.results.append(CheckResult(
-            "data_source_presence", passed,
-            f"检查了 {len(tables)} 个表格、{len(charts)} 个图表、{len(mermaids)} 个Mermaid图" + (
-                "，全部有数据来源标注" if passed else f"，{len(missing_sources)} 处缺失: {', '.join(missing_sources[:3])}"
-            ),
-            missing_sources
-        ))
+        self.results.append(
+            CheckResult(
+                "data_source_presence",
+                passed,
+                f"检查了 {len(tables)} 个表格、{len(charts)} 个图表、{len(mermaids)} 个Mermaid图"
+                + (
+                    "，全部有数据来源标注"
+                    if passed
+                    else f"，{len(missing_sources)} 处缺失: {', '.join(missing_sources[:3])}"
+                ),
+                missing_sources,
+            )
+        )
 
     def check_key_assumptions_table(self):
         """检查投资逻辑模块是否包含关键假设（独立表或合并的投资论点综合分析表均可），≥4行数据"""
@@ -181,32 +192,41 @@ class ReportValidator:
         for table in tables:
             text = table.get_text()
             # 合并表识别：同时包含假设关键词 AND 多空关键词
-            has_assumption = "关键假设" in text or "拐点信号" in text or \
-                            "Key Assumption" in text or "Inflection Signal" in text or "Inflection" in text
-            has_bull_bear = "多头" in text or "空头" in text or "Bull" in text or "Bear" in text
+            has_assumption = (
+                "关键假设" in text
+                or "拐点信号" in text
+                or "Key Assumption" in text
+                or "Inflection Signal" in text
+                or "Inflection" in text
+            )
             # 独立表或合并表都接受
             if has_assumption:
                 target_table = table
                 break
 
         if not target_table:
-            self.results.append(CheckResult(
-                "key_assumptions_table", False,
-                "未找到关键假设验证表或投资论点综合分析表",
-                ["投资逻辑模块中应包含含'关键假设'的表格（独立或合并均可）"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "key_assumptions_table",
+                    False,
+                    "未找到关键假设验证表或投资论点综合分析表",
+                    ["投资逻辑模块中应包含含'关键假设'的表格（独立或合并均可）"],
+                )
+            )
             return
 
         rows = target_table.find_all("tr")
         data_rows = [r for r in rows if r.find("td")]
         passed = len(data_rows) >= 4
-        self.results.append(CheckResult(
-            "key_assumptions_table", passed,
-            f"找到假设验证表，共 {len(data_rows)} 行数据" + (
-                "（≥4行，符合要求）" if passed else "（<4行，需要至少4个维度行）"
-            ),
-            []
-        ))
+        self.results.append(
+            CheckResult(
+                "key_assumptions_table",
+                passed,
+                f"找到假设验证表，共 {len(data_rows)} 行数据"
+                + ("（≥4行，符合要求）" if passed else "（<4行，需要至少4个维度行）"),
+                [],
+            )
+        )
 
     def check_bull_bear_debate(self):
         """检查投资逻辑模块是否包含多空 debate 表格（独立或合并的投资论点综合分析表均可）"""
@@ -214,33 +234,57 @@ class ReportValidator:
         target_table = None
         for table in tables:
             text = table.get_text()
-            if ("多头" in text and "空头" in text) or ("Bull" in text and "Bear" in text) or "多空" in text:
+            if (
+                ("多头" in text and "空头" in text)
+                or ("Bull" in text and "Bear" in text)
+                or "多空" in text
+            ):
                 headers = [th.get_text(strip=True) for th in table.find_all("th")]
-                if any("多头" in h or "Bull" in h or "论据" in h or "观点" in h for h in headers):
+                if any(
+                    "多头" in h or "Bull" in h or "论据" in h or "观点" in h
+                    for h in headers
+                ):
                     target_table = table
                     break
 
         passed = target_table is not None
-        self.results.append(CheckResult(
-            "bull_bear_debate", passed,
-            "找到多空Debate表格（独立或合并均可）" if passed else "未找到多空Debate表格",
-            [] if passed else ["投资逻辑模块中应包含含'多头'/'空头'论据的表格"]
-        ))
+        self.results.append(
+            CheckResult(
+                "bull_bear_debate",
+                passed,
+                "找到多空Debate表格（独立或合并均可）"
+                if passed
+                else "未找到多空Debate表格",
+                [] if passed else ["投资逻辑模块中应包含含'多头'/'空头'论据的表格"],
+            )
+        )
 
     def check_earnings_quality_signal(self):
         """检查财务分析模块是否包含'盈利质量信号'文本"""
         text = self.soup.get_text()
         text_lower = text.lower()
         passed = (
-            "盈利质量" in text or "盈利现金含量" in text or "OCF/净利润" in text
-            or "earnings quality" in text_lower or "ocf/net income" in text_lower
+            "盈利质量" in text
+            or "盈利现金含量" in text
+            or "OCF/净利润" in text
+            or "earnings quality" in text_lower
+            or "ocf/net income" in text_lower
             or ("operating cash flow" in text_lower and "net income" in text_lower)
         )
-        self.results.append(CheckResult(
-            "earnings_quality_signal", passed,
-            "财务分析模块包含盈利质量信号" if passed else "未在报告中找到'盈利质量'相关文本",
-            [] if passed else ["财务分析模块中应包含'盈利质量信号'段落，提及OCF/NI、非经常性损益等指标"]
-        ))
+        self.results.append(
+            CheckResult(
+                "earnings_quality_signal",
+                passed,
+                "财务分析模块包含盈利质量信号"
+                if passed
+                else "未在报告中找到'盈利质量'相关文本",
+                []
+                if passed
+                else [
+                    "财务分析模块中应包含'盈利质量信号'段落，提及OCF/NI、非经常性损益等指标"
+                ],
+            )
+        )
 
     def check_catalyst_count(self):
         """检查催化剂日历是否包含 ≥4 个事件"""
@@ -249,7 +293,9 @@ class ReportValidator:
         target_table = None
         for table in tables:
             caption = table.find_previous(["div"], class_="exhibit-label")
-            if caption and ("催化剂" in caption.get_text() or "Catalyst" in caption.get_text()):
+            if caption and (
+                "催化剂" in caption.get_text() or "Catalyst" in caption.get_text()
+            ):
                 target_table = table
                 break
             # 备用：通过表头判断
@@ -259,38 +305,58 @@ class ReportValidator:
                 break
 
         if not target_table:
-            self.results.append(CheckResult(
-                "catalyst_count", False,
-                "未找到催化剂日历表格",
-                ["报告中应包含一个标题含'催化剂'或'Catalyst'的表格"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "catalyst_count",
+                    False,
+                    "未找到催化剂日历表格",
+                    ["报告中应包含一个标题含'催化剂'或'Catalyst'的表格"],
+                )
+            )
             return
 
         rows = target_table.find_all("tr")
         data_rows = [r for r in rows if r.find("td")]
         passed = len(data_rows) >= 4
-        self.results.append(CheckResult(
-            "catalyst_count", passed,
-            f"催化剂日历包含 {len(data_rows)} 个事件" + (
-                "（≥4个，符合要求）" if passed else "（<4个，需要至少4个事件）"
-            ),
-            []
-        ))
+        self.results.append(
+            CheckResult(
+                "catalyst_count",
+                passed,
+                f"催化剂日历包含 {len(data_rows)} 个事件"
+                + ("（≥4个，符合要求）" if passed else "（<4个，需要至少4个事件）"),
+                [],
+            )
+        )
 
     def check_module_titles(self):
         """检查模块标题是否符合标准清单（支持中英文）"""
         text = self.soup.get_text()
         # 英文版判断：优先检查实际 HTML 元素是否有 report-container-en class（排除 <style> 标签）
-        en_container = self.soup.find(attrs={"class": lambda x: x and "report-container-en" in x.split()})
+        en_container = self.soup.find(
+            attrs={"class": lambda x: x and "report-container-en" in x.split()}
+        )
         has_en_class = en_container is not None
         # 备用判断：如果有2个及以上的英文模块标题，视为英文版
-        en_title_count = sum(1 for t in ["Company Overview", "Investment Thesis", "Valuation", "Industry Chain", "Financial Analysis"] if t in text)
+        en_title_count = sum(
+            1
+            for t in [
+                "Company Overview",
+                "Investment Thesis",
+                "Valuation",
+                "Industry Chain",
+                "Financial Analysis",
+            ]
+            if t in text
+        )
         is_english = has_en_class or en_title_count >= 2
 
         if is_english:
             required_pairs = [
                 ("Company Overview" in text, "公司概览"),
-                ("Investment Thesis" in text or "Investment Logic" in text, "投资逻辑/Investment Thesis"),
+                (
+                    "Investment Thesis" in text or "Investment Logic" in text,
+                    "投资逻辑/Investment Thesis",
+                ),
                 ("Valuation" in text, "估值分析/Valuation"),
                 ("Industry" in text or "Comparable" in text, "行业/可比公司"),
                 ("Supply Chain" in text or "Industry Chain" in text, "产业链"),
@@ -312,44 +378,67 @@ class ReportValidator:
             missing = [t for t in required_titles if t not in text]
 
         passed = len(missing) == 0
-        self.results.append(CheckResult(
-            "module_title_compliance", passed,
-            "所有标准模块标题均已找到" if passed else f"缺失模块标题: {missing}",
-            missing if missing else []
-        ))
+        self.results.append(
+            CheckResult(
+                "module_title_compliance",
+                passed,
+                "所有标准模块标题均已找到" if passed else f"缺失模块标题: {missing}",
+                missing if missing else [],
+            )
+        )
 
     def check_capital_flow_mention(self):
         """检查短期投资逻辑是否包含资金面/盘面结构分析"""
         text = self.soup.get_text()
         keywords = [
-            "解禁", "增减持", "减持", "增持", "定向增发", "定增", "回购",
-            "北向资金", "主力资金", "资金面", "盘面", "大股东",
-            "lock-up", "unlock", "shareholder reduction", "buyback",
-            "northbound", "capital flow", "major shareholder"
+            "解禁",
+            "增减持",
+            "减持",
+            "增持",
+            "定向增发",
+            "定增",
+            "回购",
+            "北向资金",
+            "主力资金",
+            "资金面",
+            "盘面",
+            "大股东",
+            "lock-up",
+            "unlock",
+            "shareholder reduction",
+            "buyback",
+            "northbound",
+            "capital flow",
+            "major shareholder",
         ]
         matches = [kw for kw in keywords if kw in text]
         passed = len(matches) >= 1
-        self.results.append(CheckResult(
-            "capital_flow_mention", passed,
-            f"短期投资逻辑/报告中提及资金面关键词: {matches[:3]}" if passed else "未在报告中找到解禁、增减持、定增、回购、北向资金、主力资金等资金面/盘面结构关键词",
-            [] if passed else ["短期投资逻辑必须包含至少1项资金面/盘面结构分析（如解禁、增减持、回购、资金流向）"]
-        ))
+        self.results.append(
+            CheckResult(
+                "capital_flow_mention",
+                passed,
+                f"短期投资逻辑/报告中提及资金面关键词: {matches[:3]}"
+                if passed
+                else "未在报告中找到解禁、增减持、定增、回购、北向资金、主力资金等资金面/盘面结构关键词",
+                []
+                if passed
+                else [
+                    "短期投资逻辑必须包含至少1项资金面/盘面结构分析（如解禁、增减持、回购、资金流向）"
+                ],
+            )
+        )
 
     def check_industry_chain_diagram(self):
         """检查产业链模块使用了图表（HTML flex / Mermaid / 预渲染PNG），而非纯表格"""
-        chain_wrappers = self.soup.select('.chain-wrapper')
-        mermaid_containers = self.soup.select('.mermaid-container')
-        mermaid_svgs = self.soup.select('.mermaid-container .mermaid')
+        chain_wrappers = self.soup.select(".chain-wrapper")
+        mermaid_containers = self.soup.select(".mermaid-container")
+        mermaid_svgs = self.soup.select(".mermaid-container .mermaid")
 
-        has_html_chain = any(
-            node.select('.chain-box') for node in chain_wrappers
-        )
+        has_html_chain = any(node.select(".chain-box") for node in chain_wrappers)
         # Mermaid may be pre-rendered to PNG (embedded as <img>) — this is explicitly allowed
         has_mermaid_rendered = any(
             node.get_text(strip=True) for node in mermaid_svgs
-        ) or any(
-            node.select('img') for node in mermaid_containers
-        )
+        ) or any(node.select("img") for node in mermaid_containers)
         # Also accept: .mermaid-container with any content (pre-rendered PNG as <img>)
         has_mermaid_container = len(mermaid_containers) > 0
 
@@ -362,16 +451,22 @@ class ReportValidator:
         elif has_mermaid_container:
             details.append("Mermaid container found (may be pre-rendered PNG)")
 
-        self.results.append(CheckResult(
-            "industry_chain_diagram", passed,
-            "找到产业链图（" + ", ".join(details) + ")" if passed else
-            "产业链模块未找到 .chain-wrapper 或 .mermaid-container — 禁止使用纯表格替代",
-            [] if passed else [
-                "产业链必须使用 HTML/CSS flex 布局（.chain-wrapper + .chain-box）或 Mermaid 图表（SVG或预渲染PNG）",
-                "纯 <table> 表格或纯文字描述不符合要求",
-                "Note: Mermaid pre-rendered to PNG via Playwright is valid — check .mermaid-container > img"
-            ]
-        ))
+        self.results.append(
+            CheckResult(
+                "industry_chain_diagram",
+                passed,
+                "找到产业链图（" + ", ".join(details) + ")"
+                if passed
+                else "产业链模块未找到 .chain-wrapper 或 .mermaid-container — 禁止使用纯表格替代",
+                []
+                if passed
+                else [
+                    "产业链必须使用 HTML/CSS flex 布局（.chain-wrapper + .chain-box）或 Mermaid 图表（SVG或预渲染PNG）",
+                    "纯 <table> 表格或纯文字描述不符合要求",
+                    "Note: Mermaid pre-rendered to PNG via Playwright is valid — check .mermaid-container > img",
+                ],
+            )
+        )
 
     def check_stock_chart(self):
         """检查52周股价图是否存在且base64长度足够（≥20,000字符表示有实际图像）"""
@@ -380,8 +475,12 @@ class ReportValidator:
         for img in imgs:
             src = img.get("src", "")
             alt = img.get("alt", "")
-            if "base64" in src and ("stock" in alt.lower() or "股价" in alt or "price" in alt.lower()
-                                     or len(src) > 20000):
+            if "base64" in src and (
+                "stock" in alt.lower()
+                or "股价" in alt
+                or "price" in alt.lower()
+                or len(src) > 20000
+            ):
                 chart_img = img
                 break
 
@@ -394,26 +493,37 @@ class ReportValidator:
                     break
 
         if not chart_img:
-            self.results.append(CheckResult(
-                "stock_chart", False,
-                "未找到股价图（base64 嵌入图像）",
-                ["必须使用 scripts/stock_chart_generator.py 生成52周股价图并以 base64 嵌入"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "stock_chart",
+                    False,
+                    "未找到股价图（base64 嵌入图像）",
+                    [
+                        "必须使用 scripts/stock_chart_generator.py 生成52周股价图并以 base64 嵌入"
+                    ],
+                )
+            )
             return
 
         b64_len = len(chart_img.get("src", ""))
         passed = b64_len >= 20000
-        self.results.append(CheckResult(
-            "stock_chart", passed,
-            f"找到股价图，base64长度: {b64_len:,}" + (
-                "（≥20,000，正常）" if passed else "（<20,000，可能为占位符或损坏图像）"
-            ),
-            []
-        ))
+        self.results.append(
+            CheckResult(
+                "stock_chart",
+                passed,
+                f"找到股价图，base64长度: {b64_len:,}"
+                + (
+                    "（≥20,000，正常）"
+                    if passed
+                    else "（<20,000，可能为占位符或损坏图像）"
+                ),
+                [],
+            )
+        )
 
     def check_supply_chain_svg(self):
         """检查产业链使用了预渲染图像（SVG或PNG）或HTML flex，而非raw Mermaid代码"""
-        text = self.soup.get_text()
+        self.soup.get_text()
 
         # Bad patterns: raw Mermaid code in HTML (these are real errors)
         has_raw_mermaid = bool(self.soup.find("pre", class_="mermaid"))
@@ -427,7 +537,7 @@ class ReportValidator:
             src = (tag.get("src") or "").lower()
             if "mermaid" in src and (src.endswith(".js") or "mermaid@" in src):
                 return True  # external mermaid script (including CDN versioned URLs)
-            inline = (tag.string or "")
+            inline = tag.string or ""
             return ("mermaid.initialize" in inline) or ("mermaid.init(" in inline)
 
         has_mermaid_script = any(
@@ -437,16 +547,17 @@ class ReportValidator:
         # Good patterns: SVG, PNG (pre-rendered Mermaid), or HTML flex
         has_svg = bool(self.soup.find("svg"))
         has_svg_img = any(
-            'image/svg+xml' in (img.get("src", "") or "")
+            "image/svg+xml" in (img.get("src", "") or "")
             for img in self.soup.find_all("img")
         )
         # Mermaid → PNG pre-rendering is explicitly allowed by the skill
         has_png_img = any(
-            'data:image/png;base64' in (img.get("src", "") or "")
+            "data:image/png;base64" in (img.get("src", "") or "")
             for img in self.soup.find_all("img")
-            if img.find_parent(class_="mermaid-container") or img.find_parent(class_="chart-container-free")
+            if img.find_parent(class_="mermaid-container")
+            or img.find_parent(class_="chart-container-free")
         )
-        has_chain_wrapper = bool(self.soup.select('.chain-wrapper .chain-box'))
+        has_chain_wrapper = bool(self.soup.select(".chain-wrapper .chain-box"))
 
         issues = []
         if has_raw_mermaid:
@@ -457,25 +568,40 @@ class ReportValidator:
         has_valid_chain = has_svg or has_svg_img or has_png_img or has_chain_wrapper
         passed = has_valid_chain and not has_raw_mermaid and not has_mermaid_script
 
-        self.results.append(CheckResult(
-            "supply_chain_svg", passed,
-            "产业链使用预渲染图像或HTML/CSS flex" if passed else
-            "产业链渲染问题" + ("：" + "; ".join(issues) if issues else "：未找到SVG、PNG或chain-wrapper"),
-            [] if passed else issues + [
-                "Note: Mermaid pre-rendered to PNG (via Playwright) is valid — skill explicitly allows this",
-                "Expected structure: .mermaid-container > .chart-container-free > img[src='data:image/png;base64,...']"
-            ]
-        ))
+        self.results.append(
+            CheckResult(
+                "supply_chain_svg",
+                passed,
+                "产业链使用预渲染图像或HTML/CSS flex"
+                if passed
+                else "产业链渲染问题"
+                + (
+                    "：" + "; ".join(issues)
+                    if issues
+                    else "：未找到SVG、PNG或chain-wrapper"
+                ),
+                []
+                if passed
+                else issues
+                + [
+                    "Note: Mermaid pre-rendered to PNG (via Playwright) is valid — skill explicitly allows this",
+                    "Expected structure: .mermaid-container > .chart-container-free > img[src='data:image/png;base64,...']",
+                ],
+            )
+        )
 
     def check_container_class(self):
         """检查report-container是否存在，且语言class是否匹配内容"""
         container = self.soup.find(class_="report-container")
         if not container:
-            self.results.append(CheckResult(
-                "container_class", False,
-                "未找到 .report-container 容器",
-                ["HTML必须包含 <div class='report-container'> 作为根容器"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "container_class",
+                    False,
+                    "未找到 .report-container 容器",
+                    ["HTML必须包含 <div class='report-container'> 作为根容器"],
+                )
+            )
             return
 
         classes = container.get("class", [])
@@ -484,23 +610,32 @@ class ReportValidator:
         # Heuristic: check if content is primarily English or Chinese
         text = container.get_text()
         # Count Chinese characters
-        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        chinese_chars = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
         total_chars = len(text)
         chinese_ratio = chinese_chars / max(total_chars, 1)
 
         issues = []
         if is_en and chinese_ratio > 0.3:
-            issues.append(f"容器标记为英文版 (.report-container-en) 但中文字符占比 {chinese_ratio:.0%}，可能语言设置错误")
+            issues.append(
+                f"容器标记为英文版 (.report-container-en) 但中文字符占比 {chinese_ratio:.0%}，可能语言设置错误"
+            )
         elif not is_en and chinese_ratio < 0.05:
-            issues.append(f"容器标记为中文版 (.report-container) 但中文字符占比仅 {chinese_ratio:.0%}，可能缺少 .report-container-en")
+            issues.append(
+                f"容器标记为中文版 (.report-container) 但中文字符占比仅 {chinese_ratio:.0%}，可能缺少 .report-container-en"
+            )
 
         passed = len(issues) == 0
         lang = "English" if is_en else "Chinese"
-        self.results.append(CheckResult(
-            "container_class", passed,
-            f"容器class正确 ({lang}版)" if passed else f"容器class可能与内容语言不匹配",
-            issues
-        ))
+        self.results.append(
+            CheckResult(
+                "container_class",
+                passed,
+                f"容器class正确 ({lang}版)"
+                if passed
+                else "容器class可能与内容语言不匹配",
+                issues,
+            )
+        )
 
     # --- Equity Report Specific Checks ---
 
@@ -510,18 +645,31 @@ class ReportValidator:
         text_lower = text.lower()
         signals = {
             "WACC": "wacc" in text_lower,
-            "FCF projection": "fcf" in text_lower or "free cash flow" in text_lower or "自由现金流" in text,
-            "Terminal value": "terminal" in text_lower or "终值" in text or "永续" in text,
-            "Equity bridge": ("equity value" in text_lower or "per share" in text_lower
-                              or "每股价值" in text or "股权价值" in text),
+            "FCF projection": "fcf" in text_lower
+            or "free cash flow" in text_lower
+            or "自由现金流" in text,
+            "Terminal value": "terminal" in text_lower
+            or "终值" in text
+            or "永续" in text,
+            "Equity bridge": (
+                "equity value" in text_lower
+                or "per share" in text_lower
+                or "每股价值" in text
+                or "股权价值" in text
+            ),
         }
         missing = [k for k, v in signals.items() if not v]
         passed = len(missing) == 0
-        self.results.append(CheckResult(
-            "dcf_section", passed,
-            "DCF模型包含所有必要组件" if passed else f"DCF模型缺少: {', '.join(missing)}",
-            missing
-        ))
+        self.results.append(
+            CheckResult(
+                "dcf_section",
+                passed,
+                "DCF模型包含所有必要组件"
+                if passed
+                else f"DCF模型缺少: {', '.join(missing)}",
+                missing,
+            )
+        )
 
     def check_sensitivity_matrix(self):
         """[Equity Report] 检查敏感性矩阵是否存在且有base-case高亮"""
@@ -531,36 +679,53 @@ class ReportValidator:
             tables = self.soup.find_all("table")
             for t in tables:
                 headers = t.get_text()
-                if "WACC" in headers and ("growth" in headers.lower() or "增长" in headers):
+                if "WACC" in headers and (
+                    "growth" in headers.lower() or "增长" in headers
+                ):
                     matrix = t
                     break
 
         if not matrix:
-            self.results.append(CheckResult(
-                "sensitivity_matrix", False,
-                "未找到敏感性矩阵 (.sensitivity-matrix 或含WACC的表格)",
-                ["估值部分必须包含 WACC × Terminal Growth 敏感性矩阵"]
-            ))
+            self.results.append(
+                CheckResult(
+                    "sensitivity_matrix",
+                    False,
+                    "未找到敏感性矩阵 (.sensitivity-matrix 或含WACC的表格)",
+                    ["估值部分必须包含 WACC × Terminal Growth 敏感性矩阵"],
+                )
+            )
             return
 
         has_base = matrix.find(class_="base-case") is not None
         issues = []
         if not has_base:
-            issues.append("敏感性矩阵缺少 .base-case 高亮标记 — 基础假设单元格应加粗或标注")
+            issues.append(
+                "敏感性矩阵缺少 .base-case 高亮标记 — 基础假设单元格应加粗或标注"
+            )
 
         passed = has_base
-        self.results.append(CheckResult(
-            "sensitivity_matrix", passed,
-            "敏感性矩阵存在" + ("且基础假设已高亮" if passed else "但基础假设未高亮"),
-            issues
-        ))
+        self.results.append(
+            CheckResult(
+                "sensitivity_matrix",
+                passed,
+                "敏感性矩阵存在"
+                + ("且基础假设已高亮" if passed else "但基础假设未高亮"),
+                issues,
+            )
+        )
 
     def check_historical_band(self):
         """[Equity Report] 检查历史估值带是否包含PE/PB和百分位"""
         text = self.soup.get_text()
-        has_band = ("percentile" in text.lower() or "百分位" in text or "分位" in text
-                    or "+1σ" in text or "+1SD" in text or "标准差" in text)
-        has_pe_pb = ("PE" in text and "PB" in text)
+        has_band = (
+            "percentile" in text.lower()
+            or "百分位" in text
+            or "分位" in text
+            or "+1σ" in text
+            or "+1SD" in text
+            or "标准差" in text
+        )
+        has_pe_pb = "PE" in text and "PB" in text
 
         passed = has_band and has_pe_pb
         issues = []
@@ -569,11 +734,14 @@ class ReportValidator:
         if not has_pe_pb:
             issues.append("未同时找到PE和PB — 历史估值带至少需要2个指标")
 
-        self.results.append(CheckResult(
-            "historical_band", passed,
-            "历史估值带分析完整" if passed else "历史估值带分析不完整",
-            issues
-        ))
+        self.results.append(
+            CheckResult(
+                "historical_band",
+                passed,
+                "历史估值带分析完整" if passed else "历史估值带分析不完整",
+                issues,
+            )
+        )
 
     def check_cross_method_synthesis(self):
         """[Equity Report] 检查估值方法交叉验证"""
@@ -587,31 +755,47 @@ class ReportValidator:
         ]
 
         passed = sum(synthesis_signals) >= 2
-        self.results.append(CheckResult(
-            "cross_method_synthesis", passed,
-            "估值方法交叉验证完整" if passed else "估值部分缺少方法间交叉验证/综合判断叙述",
-            [] if passed else ["估值部分需包含所有方法（可比、DCF、历史带）的综合判断叙述"]
-        ))
+        self.results.append(
+            CheckResult(
+                "cross_method_synthesis",
+                passed,
+                "估值方法交叉验证完整"
+                if passed
+                else "估值部分缺少方法间交叉验证/综合判断叙述",
+                []
+                if passed
+                else ["估值部分需包含所有方法（可比、DCF、历史带）的综合判断叙述"],
+            )
+        )
 
     def check_chart_exhibits(self):
         """[Equity Report] 检查数据图表是否存在（C1-C5 from chart_generator.py）"""
         imgs = self.soup.find_all("img")
         svg_charts = [
-            img for img in imgs
-            if "image/svg+xml;base64" in (img.get("src", "") or "")
+            img for img in imgs if "image/svg+xml;base64" in (img.get("src", "") or "")
         ]
 
         # Exclude stock chart (typically PNG base64)
         chart_count = len(svg_charts)
 
         passed = chart_count >= 3  # At least 3 of 5 charts should render
-        self.results.append(CheckResult(
-            "chart_exhibits", passed,
-            f"找到 {chart_count} 个SVG图表" + (
-                "（≥3个，符合要求）" if passed else "（<3个，建议至少3/5个数据图表）"
-            ),
-            [] if passed else ["equity report应包含revenue/margin/market share/PE band/scenario等SVG图表"]
-        ))
+        self.results.append(
+            CheckResult(
+                "chart_exhibits",
+                passed,
+                f"找到 {chart_count} 个SVG图表"
+                + (
+                    "（≥3个，符合要求）"
+                    if passed
+                    else "（<3个，建议至少3/5个数据图表）"
+                ),
+                []
+                if passed
+                else [
+                    "equity report应包含revenue/margin/market share/PE band/scenario等SVG图表"
+                ],
+            )
+        )
 
     def check_change_highlight(self):
         """检查同比/环比数据是否使用了 change-positive/change-negative 色块"""
@@ -619,13 +803,19 @@ class ReportValidator:
         negative_spans = self.soup.find_all("span", class_="change-negative")
         total = len(positive_spans) + len(negative_spans)
         passed = total >= 1
-        self.results.append(CheckResult(
-            "change_highlight_usage", passed,
-            f"找到 {len(positive_spans)} 处正向高亮和 {len(negative_spans)} 处负向高亮" + (
-                "" if passed else "（建议至少在同比/环比数据中使用 .change-positive/.change-negative 类）"
-            ),
-            []
-        ))
+        self.results.append(
+            CheckResult(
+                "change_highlight_usage",
+                passed,
+                f"找到 {len(positive_spans)} 处正向高亮和 {len(negative_spans)} 处负向高亮"
+                + (
+                    ""
+                    if passed
+                    else "（建议至少在同比/环比数据中使用 .change-positive/.change-negative 类）"
+                ),
+                [],
+            )
+        )
 
     def check_page_balance(self, mode: str = "auto"):
         """页面美观度/平衡度检查：检测模块标题与内容是否可能被分页截断
@@ -642,7 +832,7 @@ class ReportValidator:
         issues = []
         details = []
         module_rows = self.soup.find_all("div", class_="module-row")
-        is_tear_sheet = (mode == "tear_sheet")
+        is_tear_sheet = mode == "tear_sheet"
 
         # 第一页核心模块不需要分页保护（它们本来就在第一页）
         first_page_modules = ["投资逻辑", "股价走势", "核心交易", "交易数据"]
@@ -669,10 +859,12 @@ class ReportValidator:
             if char_count > 600 and not is_protected and not is_first_page:
                 msg = (
                     f"模块 '{title_text}' 内容量 {char_count} 字符，缺少分页保护 "
-                    f"（建议评估是否需要 style=\"page-break-before: always;\"）"
+                    f'（建议评估是否需要 style="page-break-before: always;"）'
                 )
                 if is_tear_sheet:
-                    details.append(msg + " [Tear Sheet：不强制分页，由空间感知规则控制]")
+                    details.append(
+                        msg + " [Tear Sheet：不强制分页，由空间感知规则控制]"
+                    )
                 else:
                     issues.append(msg)
 
@@ -713,17 +905,21 @@ class ReportValidator:
                     label_text = label.get_text(strip=True)[:40]
                     issues.append(
                         f"Exhibit标题 '{label_text}' 缺少 page-break-after 保护，"
-                        f"可能在PDF中被孤立在页底（建议添加 style=\"page-break-after: avoid;\"）"
+                        f'可能在PDF中被孤立在页底（建议添加 style="page-break-after: avoid;"）'
                     )
 
         passed = len(issues) == 0
         all_details = issues + details
-        self.results.append(CheckResult(
-            "page_balance", passed,
-            "页面平衡度检查通过，无分页截断风险" if passed else
-            f"发现 {len(issues)} 处页面平衡度问题",
-            all_details if all_details else []
-        ))
+        self.results.append(
+            CheckResult(
+                "page_balance",
+                passed,
+                "页面平衡度检查通过，无分页截断风险"
+                if passed
+                else f"发现 {len(issues)} 处页面平衡度问题",
+                all_details if all_details else [],
+            )
+        )
 
 
 def print_results(results: List[CheckResult], use_json: bool = False):
@@ -745,6 +941,7 @@ def print_results(results: List[CheckResult], use_json: bool = False):
             ],
         }
         import json
+
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:
         print("=" * 60)
@@ -771,8 +968,12 @@ def main():
     parser = argparse.ArgumentParser(description="研报结构自动化预检脚本")
     parser.add_argument("--html", type=str, required=True, help="报告 HTML 文件路径")
     parser.add_argument("--json", action="store_true", help="以 JSON 格式输出")
-    parser.add_argument("--mode", choices=["tear_sheet", "equity_report", "auto"],
-                       default="auto", help="报告模式 (default: auto-detect)")
+    parser.add_argument(
+        "--mode",
+        choices=["tear_sheet", "equity_report", "auto"],
+        default="auto",
+        help="报告模式 (default: auto-detect)",
+    )
     args = parser.parse_args()
 
     path = Path(args.html)

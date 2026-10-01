@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from onyx.configs.constants import MessageType
-from onyx.llm.models import ReasoningEffort
 from onyx.db.enums import (
     ArtifactType,
     BuildSessionStatus,
@@ -13,6 +12,7 @@ from onyx.db.enums import (
     SessionOrigin,
     SharingScope,
 )
+from onyx.llm.models import ReasoningEffort
 from onyx.server.features.build.db.build_session import session_runtime_stale
 
 if TYPE_CHECKING:

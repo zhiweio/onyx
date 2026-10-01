@@ -8,7 +8,7 @@ transcript continuity. Disk artifacts remain the long-job source of truth.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -58,7 +58,7 @@ def _line_from_message(message: _ReplayMessage) -> tuple[str, str] | None:
 
 
 def format_replay_preamble(
-    messages: list[_ReplayMessage],
+    messages: Sequence[_ReplayMessage],
     *,
     skip_last_user_text: str | None = None,
 ) -> str | None:

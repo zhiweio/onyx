@@ -39,7 +39,9 @@ def test_dry_run_writes_no_files(tmp_path: Path) -> None:
 def test_csv_extract_writes_manifest(tmp_path: Path) -> None:
     source = tmp_path / "project"
     source.mkdir()
-    (source / "payables.csv").write_text("vendor,amount\nA,10\nB,20\n", encoding="utf-8")
+    (source / "payables.csv").write_text(
+        "vendor,amount\nA,10\nB,20\n", encoding="utf-8"
+    )
     out = tmp_path / "outputs"
     result = ingest.run_ingest(roots=[source], out_dir=out)
     assert result.entries[0].status == "ok"

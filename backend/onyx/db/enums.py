@@ -590,6 +590,10 @@ class SandboxStatus(str, PyEnum):
         """Check if sandbox is in an active state (running)."""
         return self == SandboxStatus.RUNNING
 
+    def is_sleeping(self) -> bool:
+        """Check if the runtime is stopped (hibernated or evicted)."""
+        return self == SandboxStatus.SLEEPING
+
     def is_terminal(self) -> bool:
         """Check if sandbox is in a terminal state."""
         return self in (SandboxStatus.TERMINATED, SandboxStatus.FAILED)

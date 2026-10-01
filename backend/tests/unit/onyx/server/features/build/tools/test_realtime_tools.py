@@ -50,7 +50,9 @@ def test_gateway_config_parsing() -> None:
 def test_gateway_allowlist_and_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[Any] = []
 
-    async def fake_call(self: McpGatewayService, config: Any, tool: str, args: dict[str, Any]) -> str:
+    async def fake_call(
+        _self: McpGatewayService, config: Any, tool: str, _args: dict[str, Any]
+    ) -> str:
         return f"upstream:{config.name}:{tool}"
 
     monkeypatch.setattr(McpGatewayService, "_call_upstream", fake_call)
@@ -82,7 +84,12 @@ def test_gateway_allowlist_and_audit(monkeypatch: pytest.MonkeyPatch) -> None:
         service.call_tool_sync(server="nope", tool="t", arguments={}, user_id="u1")
 
     # upstream failure is journaled as not ok
-    async def boom(self: McpGatewayService, config: Any, tool: str, args: dict[str, Any]) -> str:
+    async def boom(
+        _self: McpGatewayService,
+        _config: Any,
+        _tool: str,
+        _args: dict[str, Any],
+    ) -> str:
         raise RuntimeError("upstream down")
 
     monkeypatch.setattr(McpGatewayService, "_call_upstream", boom)
@@ -101,12 +108,14 @@ def test_mcp_call_tool_requires_and_degrades() -> None:
     )
     assert "unavailable" in result.text()
 
-    missing = McpCallTool(lambda s, t, a: "ok").execute(
+    missing = McpCallTool(lambda _s, _t, _a: "ok").execute(
         ToolInvocation(tool="mcp_call", arguments={}), CTX
     )
     assert "required" in missing.text()
 
-    failing = McpCallTool(lambda s, t, a: (_ for _ in ()).throw(RuntimeError("x"))).execute(
+    failing = McpCallTool(
+        lambda _s, _t, _a: (_ for _ in ()).throw(RuntimeError("x"))
+    ).execute(
         ToolInvocation(tool="mcp_call", arguments={"server": "s", "tool": "t"}), CTX
     )
     assert "gateway error" in failing.text()
@@ -158,9 +167,12 @@ def test_web_search_tool_formats_via_injected_fn() -> None:
     assert "hits for 增值税新政" in result.text()
 
     unbound = WebSearchTool()
-    assert "unavailable" in unbound.execute(
-        ToolInvocation(tool="web_search", arguments={"query": "q"}), CTX
-    ).text()
+    assert (
+        "unavailable"
+        in unbound.execute(
+            ToolInvocation(tool="web_search", arguments={"query": "q"}), CTX
+        ).text()
+    )
 
 
 # ── crawler ───────────────────────────────────────────────────────────────
@@ -168,14 +180,18 @@ def test_web_search_tool_formats_via_injected_fn() -> None:
 
 def test_crawler_submit_poll_sync(requests_mock: RequestsMocker) -> None:
     client = CrawlerClient("http://crawler.example", poll_interval=0.01, max_wait=5)
-    requests_mock.post(
-        "http://crawler.example/crawl", json={"job_id": "j1"}
-    )
+    requests_mock.post("http://crawler.example/crawl", json={"job_id": "j1"})
     requests_mock.get(
         "http://crawler.example/crawl/j1",
         [
             {"json": {"status": "running"}},
-            {"json": {"status": "done", "content": "公告全文…", "url": "https://gov/1"}},
+            {
+                "json": {
+                    "status": "done",
+                    "content": "公告全文…",
+                    "url": "https://gov/1",
+                }
+            },
         ],
     )
     result = client.crawl_sync("https://gov/1")
@@ -184,9 +200,7 @@ def test_crawler_submit_poll_sync(requests_mock: RequestsMocker) -> None:
 
 
 def test_crawler_timeout_raises(requests_mock: RequestsMocker) -> None:
-    client = CrawlerClient(
-        "http://crawler.example", poll_interval=0.01, max_wait=0.05
-    )
+    client = CrawlerClient("http://crawler.example", poll_interval=0.01, max_wait=0.05)
     requests_mock.post("http://crawler.example/crawl", json={"job_id": "j1"})
     requests_mock.get("http://crawler.example/crawl/j1", json={"status": "running"})
     with pytest.raises(CrawlerError, match="did not finish"):
@@ -199,9 +213,9 @@ def test_crawler_timeout_raises(requests_mock: RequestsMocker) -> None:
 def test_registry_runs_bound_realtime_tools() -> None:
     registry = PlatformToolRegistry.build(
         ToolBindings(
-            mcp_call_fn=lambda s, t, a: f"mcp:{s}/{t}",
-            web_search_fn=lambda q, n: f"search:{q}",
-            crawl_fn=lambda u, w: f"crawl:{u}",
+            mcp_call_fn=lambda s, t, _a: f"mcp:{s}/{t}",
+            web_search_fn=lambda q, _n: f"search:{q}",
+            crawl_fn=lambda u, _w: f"crawl:{u}",
         )
     )
     assert (

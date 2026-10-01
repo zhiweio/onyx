@@ -16,7 +16,7 @@ selects what to index.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -31,6 +31,7 @@ from onyx.connectors.interfaces import (
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
+    HierarchyNode,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -45,10 +46,12 @@ def _extract_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
         inner = data["d"]
         if isinstance(inner, dict) and "results" in inner:
             return list(inner["results"])
-        return list(inner) if isinstance(inner, list) else [inner]
+        if isinstance(inner, list):
+            return cast("list[dict[str, Any]]", list(inner))
+        return [inner]
     for value in data.values():
         if isinstance(value, list):
-            return list(value)
+            return cast("list[dict[str, Any]]", list(value))
     return [data]
 
 
@@ -77,7 +80,7 @@ class SapODataConnector(LoadConnector, PollConnector):
         self._user = credentials.get("sap_odata_user")
         self._password = credentials.get("sap_odata_password")
         self._apikey = credentials.get("sap_odata_apikey")
-        raw_sets = credentials.get("sap_odata_entity_sets") or '[]'
+        raw_sets = credentials.get("sap_odata_entity_sets") or "[]"
         if isinstance(raw_sets, str):
             try:
                 raw_sets = json.loads(raw_sets)
@@ -97,7 +100,9 @@ class SapODataConnector(LoadConnector, PollConnector):
         session.headers["Accept"] = "application/json"
         return session
 
-    def _fetch_entity(self, session: requests.Session, entity: str) -> list[dict[str, Any]]:
+    def _fetch_entity(
+        self, session: requests.Session, entity: str
+    ) -> list[dict[str, Any]]:
         resp = session.get(
             f"{self._base_url}/{entity}",
             params={"$top": 5000, "$format": "json"},
@@ -108,10 +113,14 @@ class SapODataConnector(LoadConnector, PollConnector):
             return []
         return _extract_rows(resp.json())
 
-    def _load(self, start: float | None = None, end: float | None = None) -> GenerateDocumentsOutput:
+    def _load(
+        self, start: float | None = None, end: float | None = None
+    ) -> GenerateDocumentsOutput:
         del start, end  # OData delta queries come with the poll upgrade
         session = self._session()
-        batch: list[Document] = []
+        # list is invariant: the batch must match the declared
+        # `Iterator[list[Document | HierarchyNode]]` yield type.
+        batch: list[Document | HierarchyNode] = []
         for entity in self._entity_sets:
             rows = self._fetch_entity(session, entity)
             if not rows:
@@ -123,7 +132,6 @@ class SapODataConnector(LoadConnector, PollConnector):
                     source=DocumentSource.SAP_ODATA,
                     semantic_identifier=f"SAP/{entity}",
                     title=f"SAP {entity}",
-                    text=text,
                     sections=[TextSection(text=text)],
                     metadata={"entity_set": entity, "row_count": len(rows)},
                 )
@@ -138,6 +146,8 @@ class SapODataConnector(LoadConnector, PollConnector):
         return self._load()
 
     def poll_source(
-        self, start: SecondsSinceUnixEpoch, end: SecondsSinceUnixEpoch
+        self,
+        start: SecondsSinceUnixEpoch,  # noqa: ARG002
+        end: SecondsSinceUnixEpoch,  # noqa: ARG002
     ) -> GenerateDocumentsOutput:
         return self._load()

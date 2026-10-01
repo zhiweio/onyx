@@ -59,9 +59,7 @@ def get_craft_loop_or_404(
     return loop
 
 
-def list_craft_loops_for_user(
-    db_session: Session, user_id: UUID
-) -> list[CraftLoop]:
+def list_craft_loops_for_user(db_session: Session, user_id: UUID) -> list[CraftLoop]:
     return list(
         db_session.scalars(
             select(CraftLoop)
@@ -166,7 +164,12 @@ def _validated_ship_actions(entries: list[dict] | None) -> list[dict]:
         seen.add(action)
         gate = str(entry.get("gate") or ShipGate.HOLD.value).lower()
         actions.append(
-            {"action": action, "gate": ShipGate.AUTO.value if gate == ShipGate.AUTO.value else ShipGate.HOLD.value}
+            {
+                "action": action,
+                "gate": ShipGate.AUTO.value
+                if gate == ShipGate.AUTO.value
+                else ShipGate.HOLD.value,
+            }
         )
     return actions
 
@@ -196,7 +199,9 @@ def claim_due_loops(
     return list(db_session.execute(stmt).scalars())
 
 
-def advance_next_fire_at(db_session: Session, *, loop: CraftLoop, now: datetime) -> datetime | None:
+def advance_next_fire_at(
+    db_session: Session, *, loop: CraftLoop, now: datetime
+) -> datetime | None:
     """Recompute ``next_fire_at`` from ``now``; None without a cron."""
     if not loop.trigger_cron:
         loop.next_fire_at = None
@@ -244,9 +249,7 @@ def enqueue_loop_items(
 ) -> list[CraftLoopItem]:
     """Upsert by source_key: new facts queue; known ones refresh summaries."""
     created: list[CraftLoopItem] = []
-    existing = {
-        item.source_key: item for item in list_loop_items(db_session, loop_id)
-    }
+    existing = {item.source_key: item for item in list_loop_items(db_session, loop_id)}
     for entry in items:
         source_key = str(entry.get("source_key") or "").strip()
         if not source_key:
@@ -291,6 +294,10 @@ def active_grants_for_loop(db_session: Session, loop_id: UUID) -> list[CraftLoop
 
 
 def loop_owner(db_session: Session, loop: CraftLoop) -> User:
-    owner = db_session.scalar(select(User).where(User.id == loop.user_id))
+    # fastapi-users declares User.id as a plain UUID under TYPE_CHECKING; at
+    # runtime it is a mapped column.
+    owner = db_session.scalar(
+        select(User).where(User.id == loop.user_id)  # ty: ignore[invalid-argument-type]
+    )
     assert owner is not None
     return owner

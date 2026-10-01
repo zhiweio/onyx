@@ -135,9 +135,7 @@ def test_fork_endpoint_returns_a_user_owned_copy(
 def test_admin_get_skill_includes_instructions_for_drafts(
     db_session: Session, draft_entry: SystemSkill, gallery_user: User
 ) -> None:
-    detail = get_catalog_skill(
-        draft_entry.id, _=gallery_user, db_session=db_session
-    )
+    detail = get_catalog_skill(draft_entry.id, _=gallery_user, db_session=db_session)
     assert detail.instructions_markdown
     assert detail.is_built_in_content is True
 
@@ -152,9 +150,7 @@ def test_admin_patch_normalizes_tags(
         db_session=db_session,
     )
 
-    refreshed = get_catalog_skill(
-        draft_entry.id, _=gallery_user, db_session=db_session
-    )
+    refreshed = get_catalog_skill(draft_entry.id, _=gallery_user, db_session=db_session)
     assert refreshed.tags == ["chart", "route"]
 
 

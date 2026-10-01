@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from onyx.skills.built_in import BUILTIN_SKILLS_PATH, BUILT_IN_SKILLS
+from onyx.skills.built_in import BUILT_IN_SKILLS, BUILTIN_SKILLS_PATH
 from onyx.skills.metadata import parse_skill_document
 
 _FORBIDDEN = (

@@ -464,7 +464,7 @@ class SidecarClient:
         host = self._host(sandbox_id)
         payload = _json.dumps(body).encode("utf-8")
         sha = hashlib.sha256(payload).hexdigest()
-        sig, ts = self._sign_sidecar_request(signing_path, sha)
+        sig, ts = _sign_sidecar_request(signing_path, sha)
         url = f"http://{host}:{PUSH_DAEMON_PORT}{endpoint_path}"
         with httpx.Client(timeout=30.0) as client:
             resp = client.post(
@@ -494,7 +494,7 @@ class SidecarClient:
 
         host = self._host(sandbox_id)
         sha = _hashlib.sha256(b"").hexdigest()
-        sig, ts = self._sign_sidecar_request(signing_path, sha)
+        sig, ts = _sign_sidecar_request(signing_path, sha)
         url = f"http://{host}:{PUSH_DAEMON_PORT}{endpoint_path}"
         with httpx.Client(timeout=30.0) as client:
             resp = client.get(

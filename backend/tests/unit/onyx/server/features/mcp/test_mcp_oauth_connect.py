@@ -11,6 +11,7 @@ from onyx.db.enums import (
     MCPAuthenticationPerformer,
     MCPAuthenticationType,
     MCPOAuthProviderMode,
+    MCPServerScope,
     MCPTransport,
 )
 from onyx.db.models import User
@@ -42,6 +43,9 @@ def _server() -> SimpleNamespace:
         oauth_additional_auth_params=None,
         admin_connection_config=None,
         admin_connection_config_id=100,
+        scope=MCPServerScope.USER,
+        catalog_entry_id=None,
+        catalog_entry=None,
     )
 
 

@@ -21,11 +21,13 @@
   python _utils/leakage_audit.py [--codedir code] [--results RESULTS.md]
 退出码：0=通过（可能WARN） 1=HARD FAIL（高分无举证） 2=无可查内容（跳过不阻断）
 """
+
 from __future__ import annotations
-import sys
-import re
-import json
+
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -52,28 +54,40 @@ _METRIC_KEYS = re.compile(
     r"^(.*_)?("
     r"auc|roc_auc|auroc|auc_pr|"
     r"accuracy|balanced_accuracy|f1|f1_score|precision|recall|"
-    r"average_precision|ap_score|mean_ap|m?ap[@_]?\d+|"       # AP/mAP 明确写法(ap50/map@50/map_50)
+    r"average_precision|ap_score|mean_ap|m?ap[@_]?\d+|"  # AP/mAP 明确写法(ap50/map@50/map_50)
     r"cohens?_kappa|kappa_score|kappa_coef(?:ficient)?|cohen_k"
-    r")(_.*)?$", re.IGNORECASE)
+    r")(_.*)?$",
+    re.IGNORECASE,
+)
 
 # 物理量单位后缀：带这些后缀的键是"有量纲物理量"，分类性能指标恒为无量纲，故一律豁免，
 # 从根上挡住"曲率 1/m、加速度 m/s²、频率 Hz…数值落进 [0.99,1] 被误当高分指标"。
 _PHYS_UNIT_SUFFIX = re.compile(
     r"(_1?_?per_[a-z]|_m_per_s|_per_s|_per_m|_m$|_mm$|_cm$|_km$|_s$|_ms$|_hz$|_khz$|"
     r"_rad$|_deg$|_kg$|_n$|_pa$|_kpa$|_mpa$|_j$|_w$|_v$|_a$|_k$|_mol$|"
-    r"_1_per_m$|_per_m2$|_m2$|_m3$|_m_per_s2$)", re.IGNORECASE)
+    r"_1_per_m$|_per_m2$|_m2$|_m3$|_m_per_s2$)",
+    re.IGNORECASE,
+)
 
 # 去泄漏/严谨评估的举证标记（全局出现任一即认为"举了证"）
 _JUSTIFY = re.compile(
     r"去泄漏|去除泄漏|防泄漏|deleaked|de-leaked|leak.?free|无泄漏|"
     r"holdout|hold-out|留出|嵌套交叉|nested.?cv|独立测试集|外部测试|out.?of.?sample|"
-    r"时序切分|时间切分|滚动预测|walk.?forward|真实标签|人工标注|ground.?truth", re.IGNORECASE)
+    r"时序切分|时间切分|滚动预测|walk.?forward|真实标签|人工标注|ground.?truth",
+    re.IGNORECASE,
+)
 
 # 弱标签生成信号
-_WEAK_LABEL = re.compile(r"弱标签|伪标签|weak.?label|pseudo.?label|自动打标|规则打标|公式.*标签", re.IGNORECASE)
+_WEAK_LABEL = re.compile(
+    r"弱标签|伪标签|weak.?label|pseudo.?label|自动打标|规则打标|公式.*标签",
+    re.IGNORECASE,
+)
 # 弱标签"已隔离"声明
-_WEAK_OK = re.compile(r"未进入.*(评估|模型|特征)|不参与.*评估|标签源.*(剔除|排除|未用)|"
-                      r"生成.*标签.*特征.*(剔除|排除|未进)", re.IGNORECASE)
+_WEAK_OK = re.compile(
+    r"未进入.*(评估|模型|特征)|不参与.*评估|标签源.*(剔除|排除|未用)|"
+    r"生成.*标签.*特征.*(剔除|排除|未进)",
+    re.IGNORECASE,
+)
 
 
 def _read(p: Path) -> str:
@@ -92,7 +106,7 @@ def _walk_metrics(obj, path=""):
         for i, v in enumerate(obj):
             yield from _walk_metrics(v, f"{path}[{i}]")
     elif isinstance(obj, bool):
-        return                      # 布尔别当数值
+        return  # 布尔别当数值
     elif isinstance(obj, (int, float)):
         yield path, float(obj)
 
@@ -113,7 +127,7 @@ def _high_metric(val: float, key: str) -> bool:
         return False
     if 0.99 <= val <= 1.0:
         return True
-    if 99.0 <= val <= 100.0:        # 百分数写法
+    if 99.0 <= val <= 100.0:  # 百分数写法
         return True
     return False
 
@@ -145,8 +159,7 @@ def _gather_text(codedir: Path, results_path: Path) -> str:
     """把 RESULTS.md + 代码 + 建模报告拼一坨，用于全局找举证/弱标签声明。"""
     buf = [_read(results_path), _read(Path("MODELING_REPORT.md"))]
     if codedir.is_dir():
-        for f in sorted(codedir.rglob("*.py")):
-            buf.append(_read(f))
+        buf.extend(_read(f) for f in sorted(codedir.rglob("*.py")))
     return "\n".join(buf)
 
 
@@ -178,19 +191,23 @@ def main() -> int:
             "（去泄漏/holdout/嵌套CV/独立测试集/真实标签…）。"
             "近乎满分极可能是标签泄漏/循环论证（如用生成弱标签的公式又去算该指标）。"
             "请补：①用去泄漏后的独立评估重算该指标并写进结果；"
-            "②在 RESULTS.md 说明评估为何无泄漏。二者缺一不可。")
+            "②在 RESULTS.md 说明评估为何无泄漏。二者缺一不可。"
+        )
 
     # B) 弱标签回流提醒：出现弱标签生成、却无"标签源未进评估"声明 → WARN
     if _WEAK_LABEL.search(text) and not _WEAK_OK.search(text):
         warn.append(
             "检测到弱标签/伪标签生成，但没找到'生成弱标签所用的特征未进入评估模型'这类声明。"
             "务必确认：算指标用的模型没有吃到生成标签的那些列，否则就是循环论证虚高。"
-            "（此项静态难判准，仅提醒；严格模式请重点核对。）")
+            "（此项静态难判准，仅提醒；严格模式请重点核对。）"
+        )
 
     # 有高分且已举证：给一行确认信息（供严格模式参考）
     if json_hits and justified:
-        warn.append(f"有 {len(json_hits)} 处 ≥0.99 高分指标，但已找到去泄漏举证标记（通过）——"
-                    "仍建议自查举证是否针对这些高分指标本身。")
+        warn.append(
+            f"有 {len(json_hits)} 处 ≥0.99 高分指标，但已找到去泄漏举证标记（通过）——"
+            "仍建议自查举证是否针对这些高分指标本身。"
+        )
 
     for w in warn:
         print(f"  [WARN] {w}")

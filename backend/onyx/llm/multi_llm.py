@@ -28,7 +28,6 @@ from onyx.llm.constants import (
     LlmProviderNames,
     litellm_provider_name,
 )
-from onyx.llm.well_known_providers.constants import DEFAULT_API_BASE_FOR_PROVIDER
 from onyx.llm.cost import compute_cost_cents
 from onyx.llm.custom_config_mapping import (
     UI_ONLY_CONFIG_KEYS,
@@ -67,7 +66,10 @@ from onyx.llm.models import (
 )
 from onyx.llm.request_context import get_llm_mock_response, set_llm_request_params
 from onyx.llm.utils import build_litellm_passthrough_kwargs
-from onyx.llm.well_known_providers.constants import VERTEX_LOCATION_KWARG
+from onyx.llm.well_known_providers.constants import (
+    DEFAULT_API_BASE_FOR_PROVIDER,
+    VERTEX_LOCATION_KWARG,
+)
 from onyx.tracing.llm_utils import record_llm_request_params
 from onyx.utils.encryption import mask_env_value_for_logging, mask_string
 from onyx.utils.logger import setup_logger

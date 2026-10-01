@@ -79,6 +79,7 @@ python scripts/search.py --list-sources
 
 ```python
 from scripts.search import search_to_json
+
 result = search_to_json("鲁迅 创伤叙事", sources=["cnki", "semantic_scholar"], limit=10)
 ```
 

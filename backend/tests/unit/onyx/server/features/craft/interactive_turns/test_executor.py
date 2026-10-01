@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import Literal
 from uuid import UUID, uuid4
 
 import pytest
@@ -106,7 +107,7 @@ def _run_turn_with_events(
     reclaimed: bool = False,
     prompt_slot: "_FakePromptSlot | None" = None,
     session_missing: bool = False,
-    kind: str = "prompt",
+    kind: Literal["prompt", "compact"] = "prompt",
     selected_skill_ids: list[str] | None = None,
     selected_mcp_server_ids: list[int] | None = None,
 ) -> SimpleNamespace:
@@ -132,7 +133,7 @@ def _run_turn_with_events(
         client_request_id="req-1",
         prompt="hello",
         turn_index=0,
-        kind=kind,  # type: ignore[arg-type]
+        kind=kind,
         selected_skill_ids=selected_skill_ids,
         selected_mcp_server_ids=selected_mcp_server_ids,
     )

@@ -908,13 +908,17 @@ def test_send_message_auto_allows_permission_asks(bus: PodEventBus) -> None:
     assert permission_posts[0]["body"] == {"response": "once"}
 
 
-def test_send_message_parks_question_asked(bus: PodEventBus, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_send_message_parks_question_asked(
+    bus: PodEventBus, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """OpenCode 1.18 emits ``question.asked`` (not permission.asked). Park it
     for the AskBar; do not auto-allow or POST a permission reply."""
     announced: list[Any] = []
     monkeypatch.setattr(serve_client, "get_cache_backend", lambda **_kwargs: object())
     monkeypatch.setattr(serve_client, "get_current_tenant_id", lambda: "public")
-    monkeypatch.setattr(serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         serve_client.question_ask,
         "announce_request",
@@ -995,7 +999,9 @@ def test_send_message_parks_question_asked_data_envelope(
     announced: list[Any] = []
     monkeypatch.setattr(serve_client, "get_cache_backend", lambda **_kwargs: object())
     monkeypatch.setattr(serve_client, "get_current_tenant_id", lambda: "public")
-    monkeypatch.setattr(serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        serve_client.question_ask, "stash_pending", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         serve_client.question_ask,
         "announce_request",

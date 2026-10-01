@@ -2,13 +2,13 @@
 
 from typing import Any
 
-import pytest
 from requests_mock import Mocker as RequestsMocker
 
 from onyx.configs.constants import DocumentSource
 from onyx.connectors.china_common import AppTokenManager, paginated
 from onyx.connectors.dingtalk.connector import DingTalkConnector
 from onyx.connectors.feishu.connector import FeishuConnector
+from onyx.connectors.models import Document
 from onyx.connectors.sap_odata.connector import SapODataConnector
 from onyx.connectors.wecom.connector import WeComConnector
 
@@ -39,17 +39,24 @@ def test_token_manager_caches_until_expiry() -> None:
 
 
 def test_pagination_stops_without_token() -> None:
-    pages = {None: (["a", "b"], "t1"), "t1": (["c"], None)}
+    pages: dict[str | None, tuple[list[dict[str, Any]], str | None]] = {
+        None: ([{"k": "a"}, {"k": "b"}], "t1"),
+        "t1": ([{"k": "c"}], None),
+    }
 
-    def fetch_page(token: str | None) -> tuple[list[str], str | None]:
-        return pages[token]  # type: ignore[index]
+    def fetch_page(
+        token: str | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        return pages[token]
 
-    assert list(paginated(fetch_page)) == ["a", "b", "c"]
+    assert list(paginated(fetch_page)) == [{"k": "a"}, {"k": "b"}, {"k": "c"}]
 
 
 def test_pagination_caps_at_max_pages() -> None:
-    def forever(token: str | None) -> tuple[list[int], str]:
-        return [1], "same"
+    def forever(
+        _token: str | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        return [{"i": 1}], "same"
 
     assert len(list(paginated(forever, max_pages=5))) == 5
 
@@ -96,7 +103,7 @@ def test_feishu_connector_indexes_wiki(requests_mock: RequestsMocker) -> None:
     connector = FeishuConnector()
     connector.load_credentials(FEISHU_CREDS)
     batches = list(connector.load_from_state())
-    docs = [doc for batch in batches for doc in batch]
+    docs = [doc for batch in batches for doc in batch if isinstance(doc, Document)]
     assert len(docs) == 1
     doc = docs[0]
     assert doc.source is DocumentSource.FEISHU
@@ -144,7 +151,12 @@ def test_feishu_poll_window_filters(requests_mock: RequestsMocker) -> None:
 
     connector = FeishuConnector()
     connector.load_credentials(FEISHU_CREDS)
-    docs = [d for b in connector.poll_source(start=1500, end=3000) for d in b]
+    docs = [
+        d
+        for b in connector.poll_source(start=1500, end=3000)
+        for d in b
+        if isinstance(d, Document)
+    ]
     assert [d.id for d in docs] == ["feishu-wiki-new"]
 
 
@@ -159,7 +171,11 @@ def test_wecom_connector_indexes_text_files(requests_mock: RequestsMocker) -> No
             "errcode": 0,
             "file_list": {
                 "file_list": [
-                    {"file_id": "f1", "file_name": "制度.md", "update_time": 1750000000},
+                    {
+                        "file_id": "f1",
+                        "file_name": "制度.md",
+                        "update_time": 1750000000,
+                    },
                     {"file_id": "f2", "file_name": "logo.png"},
                 ]
             },
@@ -174,21 +190,29 @@ def test_wecom_connector_indexes_text_files(requests_mock: RequestsMocker) -> No
 
     connector = WeComConnector()
     connector.load_credentials(WECOM_CREDS)
-    docs = [d for b in connector.load_from_state() for d in b]
+    docs = [
+        d for b in connector.load_from_state() for d in b if isinstance(d, Document)
+    ]
     assert len(docs) == 1
     assert docs[0].id == "wecom-wedrive-f1"
     assert "员工手册" in docs[0].get_text_content()
     assert docs[0].source is DocumentSource.WECOM
 
 
-def test_dingtalk_connector_indexes_knowledge_base(requests_mock: RequestsMocker) -> None:
+def test_dingtalk_connector_indexes_knowledge_base(
+    requests_mock: RequestsMocker,
+) -> None:
     requests_mock.post(
         "https://api.dingtalk.com/v1.0/oauth2/accessToken",
         json={"accessToken": "dt", "expireIn": 7200},
     )
     requests_mock.get(
         "https://api.dingtalk.com/v1.0/kb/orgs/knowledgeBases",
-        json={"result": {"knowledgeBases": [{"knowledgeBaseId": "kb1", "name": "研发知识库"}]}},
+        json={
+            "result": {
+                "knowledgeBases": [{"knowledgeBaseId": "kb1", "name": "研发知识库"}]
+            }
+        },
     )
     requests_mock.get(
         "https://api.dingtalk.com/v1.0/kb/knowledgeBases/kb1/nodes",
@@ -206,7 +230,9 @@ def test_dingtalk_connector_indexes_knowledge_base(requests_mock: RequestsMocker
 
     connector = DingTalkConnector()
     connector.load_credentials(DING_CREDS)
-    docs = [d for b in connector.load_from_state() for d in b]
+    docs = [
+        d for b in connector.load_from_state() for d in b if isinstance(d, Document)
+    ]
     assert len(docs) == 1
     assert docs[0].id == "dingtalk-kb-n1"
     assert docs[0].semantic_identifier == "研发知识库/发布流程"
@@ -231,7 +257,9 @@ def test_sap_odata_parses_v2_wrapper(requests_mock: RequestsMocker) -> None:
 
     connector = SapODataConnector()
     connector.load_credentials(SAP_CREDS)
-    docs = [d for b in connector.load_from_state() for d in b]
+    docs = [
+        d for b in connector.load_from_state() for d in b if isinstance(d, Document)
+    ]
     by_id = {d.id: d for d in docs}
     assert set(by_id) == {"sap-odata-A_Suppliers", "sap-odata-A_Invoices"}
     assert "S001" in by_id["sap-odata-A_Suppliers"].get_text_content()

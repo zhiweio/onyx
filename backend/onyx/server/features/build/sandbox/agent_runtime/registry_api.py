@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -72,7 +72,10 @@ def list_agent_models(
     merged = model_registry.merge_overlays(overlays)
     return {
         "models": [
-            {**_serialize_spec(spec), "overlay": _serialize_overlay(overlay_by_model.get(spec.model_id))}
+            {
+                **_serialize_spec(spec),
+                "overlay": _serialize_overlay(overlay_by_model.get(spec.model_id)),
+            }
             for spec in merged
         ],
     }
@@ -173,7 +176,7 @@ def delete_overlay(
 @router.post("/{overlay_id}/verify")
 def verify_overlay(
     overlay_id: int,
-    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    _user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     """Probe the overlay's provider with one real one-shot completion.
@@ -220,9 +223,7 @@ def _provider_credential_revision(db_session: Session, provider: str) -> str:
     from onyx.db.models import LLMProvider
 
     try:
-        row = db_session.scalar(
-            select(LLMProvider).where(LLMProvider.name == provider)
-        )
+        row = db_session.scalar(select(LLMProvider).where(LLMProvider.name == provider))
         if row is not None and row.api_key is not None:
             material = str(row.api_key._decrypt())  # decrypt-once for hashing
             digest = hashlib.sha256(material.encode()).hexdigest()[:12]
@@ -232,12 +233,13 @@ def _provider_credential_revision(db_session: Session, provider: str) -> str:
     return provider
 
 
-def _run_probe_completion(row: AgentModelOverlay) -> str:
+def _run_probe_completion(_row: AgentModelOverlay) -> str:
     """One real completion through the configured LLM stack."""
     from onyx.llm.factory import get_default_llm
+    from onyx.llm.models import UserMessage
 
     llm = get_default_llm()
-    result = llm.invoke(["Reply with the single word: OK"])
+    result = llm.invoke([UserMessage(content="Reply with the single word: OK")])
     content = getattr(result, "content", None)
     if isinstance(content, str) and content.strip():
         return content

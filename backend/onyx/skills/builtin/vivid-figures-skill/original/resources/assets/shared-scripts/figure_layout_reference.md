@@ -13,8 +13,8 @@ matplotlib 默认刻度经常给出 `0 / 2.5 / 5.0 / 7.5` 这种无意义分割�
 自己按**数据语义**挑刻度，尤其**把关键阈值/上限/范围端点塞进刻度**——读者能直接从轴上读出结论：
 
 ```python
-ax.set_xticks([4, 8, 12, 16, 21])        # 21 是题给硬上限 → 进刻度，一眼看出实测顶到上限
-ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 0.9, 1.0])   # 0.9 是 Q90 判据线 → 单独加一个刻度
+ax.set_xticks([4, 8, 12, 16, 21])  # 21 是题给硬上限 → 进刻度，一眼看出实测顶到上限
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 0.9, 1.0])  # 0.9 是 Q90 判据线 → 单独加一个刻度
 # 数据范围很窄时（如 0.41~0.44）别让 matplotlib 给 0/0.2/0.4，那样细节全糊：
 ax.set_yticks([0.41, 0.42, 0.43, 0.44])
 # 刻度本身无意义时（状态矩阵、类别条形的位置轴）主动清空，别留一排没用的数字：
@@ -27,9 +27,9 @@ ax.set_yticks([])
 ```python
 FS_ANNO, FS_TICK, FS_LAB, FS_TITLE, FS_LEG = 8.4, 9.0, 10.4, 11.4, 8.6
 #         标注    刻度    轴标签   面板标题  图例
-ax.set_xlabel('...', fontsize=FS_LAB)
+ax.set_xlabel("...", fontsize=FS_LAB)
 ax.tick_params(labelsize=FS_TICK)
-ax.set_title('(a) ...', fontsize=FS_TITLE, fontweight='bold', loc='left', pad=5)
+ax.set_title("(a) ...", fontsize=FS_TITLE, fontweight="bold", loc="left", pad=5)
 ```
 层级关系（**标注 < 刻度 < 轴标签 < 面板标题**）比具体数值更重要。
 
@@ -67,14 +67,23 @@ ax.set_title('(a) ...', fontsize=FS_TITLE, fontweight='bold', loc='left', pad=5)
 
 **一种可选写法 —— 把 cax 做成 gridspec 的一列，为色条明确留位：**
 ```python
-fig = plt.figure(figsize=(5.4, 4.9))                      # 示例尺寸；按模板比例和实际交付尺寸适配
-gs  = fig.add_gridspec(2, 3, width_ratios=[1, 1, 0.055],  # 第3列留给 colorbar
-                       wspace=0.30, hspace=0.34)
-axes = np.array([[fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])],
-                 [fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]])
-cax  = fig.add_subplot(gs[:, 2])                          # 跨两行
-cbar = fig.colorbar(sm, cax=cax)                          # 此布局显式使用独立色条轴
-cbar.set_label('...', fontsize=9.5, labelpad=8)           # 标签长了会撞自己的刻度 → 加 labelpad
+fig = plt.figure(figsize=(5.4, 4.9))  # 示例尺寸；按模板比例和实际交付尺寸适配
+gs = fig.add_gridspec(
+    2,
+    3,
+    width_ratios=[1, 1, 0.055],  # 第3列留给 colorbar
+    wspace=0.30,
+    hspace=0.34,
+)
+axes = np.array(
+    [
+        [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])],
+        [fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])],
+    ]
+)
+cax = fig.add_subplot(gs[:, 2])  # 跨两行
+cbar = fig.colorbar(sm, cax=cax)  # 此布局显式使用独立色条轴
+cbar.set_label("...", fontsize=9.5, labelpad=8)  # 标签长了会撞自己的刻度 → 加 labelpad
 cbar.ax.tick_params(labelsize=8.5)
 ```
 - 单 panel 也可用 `fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.03)`；仍需检查色条、标签与主图的实际间距。
@@ -85,9 +94,11 @@ cbar.ax.tick_params(labelsize=8.5)
 若各面板含义和单位一致，可只在外侧保留共同轴标签；不同指标的面板应保留各自标签。以下为共享坐标示例：
 ```python
 for i, ax in enumerate(axes.flat):
-    if i >= 2:      ax.set_xlabel('x (m)', fontsize=9.5)   # 只下排
-    if i % 2 == 0:  ax.set_ylabel('y (m)', fontsize=9.5)   # 只左列
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))       # 画布小了刻度会挤 → 限档数
+    if i >= 2:
+        ax.set_xlabel("x (m)", fontsize=9.5)  # 只下排
+    if i % 2 == 0:
+        ax.set_ylabel("y (m)", fontsize=9.5)  # 只左列
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))  # 画布小了刻度会挤 → 限档数
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
 ```
 
@@ -95,13 +106,15 @@ for i, ax in enumerate(axes.flat):
 保留模板的图例位置、边框和间距。需要更紧凑的无框图例时可参考下例；不因 `frameon=True` 就自动去框：
 
 ```python
-ax.legend(frameon=False,          # ★ 去掉那个灰框
-          fontsize=FS_LEG,
-          handlelength=1.7,       # 默认 2.0 偏长
-          labelspacing=0.28,      # 默认 0.5 偏松
-          handletextpad=0.36,
-          borderpad=0.2,
-          loc='upper right')      # 位置按数据空白区挑，挤就 bbox_to_anchor 移轴外
+ax.legend(
+    frameon=False,  # ★ 去掉那个灰框
+    fontsize=FS_LEG,
+    handlelength=1.7,  # 默认 2.0 偏长
+    labelspacing=0.28,  # 默认 0.5 偏松
+    handletextpad=0.36,
+    borderpad=0.2,
+    loc="upper right",
+)  # 位置按数据空白区挑，挤就 bbox_to_anchor 移轴外
 ```
 
 **④ 浅色填充 + 主色描边（`_lighten` 用了 113 次 vs 0 次）**
@@ -109,9 +122,14 @@ ax.legend(frameon=False,          # ★ 去掉那个灰框
 比"每个系列换一个色相"高级得多，也不会让图变成调色盘：
 
 ```python
-ax.stairs(counts, edges, fill=True,
-          color=_lighten(PALETTE[0], 0.50),   # 填充：主色的浅版（0.4~0.6 最常用）
-          edgecolor=PALETTE[0], lw=1.5)       # 描边：主色本身
+ax.stairs(
+    counts,
+    edges,
+    fill=True,
+    color=_lighten(PALETTE[0], 0.50),  # 填充：主色的浅版（0.4~0.6 最常用）
+    edgecolor=PALETTE[0],
+    lw=1.5,
+)  # 描边：主色本身
 ax.bar(x, y, color=_lighten(PALETTE[1], 0.44), edgecolor=PALETTE[1], linewidth=1.4)
 ax.fill_between(x, lo, hi, color=_lighten(PALETTE[2], 0.60), alpha=0.42)  # 置信带更浅
 ```
@@ -124,17 +142,23 @@ ax.fill_between(x, lo, hi, color=_lighten(PALETTE[2], 0.60), alpha=0.42)  # 置�
 # 层次约定：参考带/网格 0-2 → 填充 3 → 数据主体 4-6 → 关键标记 7-9
 ax.fill_between(x, lo, hi, color=..., alpha=0.2, zorder=2)
 ax.plot(x, y, lw=2.0, color=PALETTE[0], zorder=6)
-ax.scatter(x_key, y_key, s=86, color=PALETTE[2], zorder=8,
-           edgecolors='white', linewidths=1.1)      # ★ 白描边=从背景里跳出来
-ax.plot(x, y, '-o', markersize=4.4, markeredgecolor='white', markeredgewidth=0.7)
+ax.scatter(
+    x_key, y_key, s=86, color=PALETTE[2], zorder=8, edgecolors="white", linewidths=1.1
+)  # ★ 白描边=从背景里跳出来
+ax.plot(x, y, "-o", markersize=4.4, markeredgecolor="white", markeredgewidth=0.7)
 ```
 
 **⑥ 多 panel 用 `subplots_adjust` 手动抠边距（46% vs 0%）**
 显式调用 `tight_layout()` 后若留白或标签位置不合适，可手动调整多 panel 布局；保存本身不会自动重排：
 
 ```python
-gs = gridspec.GridSpec(2, 2, hspace=0.44, wspace=0.24,   # 子图间距：0.24~0.52 常用
-                       height_ratios=[1.0, 1.06])        # 行高微调（下排放长标签就给多点）
+gs = gridspec.GridSpec(
+    2,
+    2,
+    hspace=0.44,
+    wspace=0.24,  # 子图间距：0.24~0.52 常用
+    height_ratios=[1.0, 1.06],
+)  # 行高微调（下排放长标签就给多点）
 # ... 画完所有 panel 后 ...
 fig.subplots_adjust(left=0.075, right=0.985, bottom=0.062, top=0.945)
 ```
@@ -192,9 +216,10 @@ fig.tight_layout()
 
 # 散点标注防重叠（需要 pip install adjustText）
 from adjustText import adjust_text
+
 texts = [ax.text(x[i], y[i], labels[i], fontsize=8) for i in range(len(x))]
-adjust_text(texts, arrowprops=dict(arrowstyle='->', color='gray', lw=0.5))
+adjust_text(texts, arrowprops=dict(arrowstyle="->", color="gray", lw=0.5))
 
 # 先检查标签和边界，再保存；保存函数本身不调整布局
-save_fig(fig, 'xxx.pdf')
+save_fig(fig, "xxx.pdf")
 ```

@@ -132,8 +132,7 @@ def list_active_watches(db_session: Session) -> list[ProcessWatch]:
             )
             .where(SandboxProcess.status == "running")
             .where(
-                (ProcessWatch.expires_at.is_(None))
-                | (ProcessWatch.expires_at > _now())
+                (ProcessWatch.expires_at.is_(None)) | (ProcessWatch.expires_at > _now())
             )
         )
     )
@@ -149,9 +148,7 @@ def is_wake_throttled(
 ) -> bool:
     if watch.last_fired_at is None:
         return False
-    return (
-        _now() - watch.last_fired_at
-    ).total_seconds() < min_fire_interval_s
+    return (_now() - watch.last_fired_at).total_seconds() < min_fire_interval_s
 
 
 def process_registry_snapshot(row: SandboxProcess) -> dict[str, Any]:

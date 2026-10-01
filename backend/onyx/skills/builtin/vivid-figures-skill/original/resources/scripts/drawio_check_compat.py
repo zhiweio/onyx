@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -12,11 +11,14 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
-    parser.add_argument("--mode", choices=["general", "architecture"], default="general")
+    parser.add_argument(
+        "--mode", choices=["general", "architecture"], default="general"
+    )
     args = parser.parse_args()
     path = Path(args.input)
     try:
-        root = ET.parse(path).getroot()
+        # Parses locally generated drawio XML files, not untrusted input.
+        root = ET.parse(path).getroot()  # noqa: S314
     except Exception as exc:
         print(f"CRITICAL: invalid Draw.io XML: {exc}")
         return 2
@@ -34,11 +36,14 @@ def main():
     if unlabeled:
         issues.append("unlabeled nodes: " + ", ".join(filter(None, unlabeled)))
     broken = [
-        c.get("id") for c in edges
+        c.get("id")
+        for c in edges
         if c.get("source") not in ids or c.get("target") not in ids
     ]
     if broken:
-        issues.append("edges with missing endpoints: " + ", ".join(filter(None, broken)))
+        issues.append(
+            "edges with missing endpoints: " + ", ".join(filter(None, broken))
+        )
     bad_geometry = []
     for cell in vertices:
         geom = cell.find("mxGeometry")
@@ -65,4 +70,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

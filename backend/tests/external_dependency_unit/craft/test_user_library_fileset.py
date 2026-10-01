@@ -116,9 +116,10 @@ class TestUserLibraryFileset:
         assert payload.library_files == {"docs/readme.md": b"hello"}
         assert stub_sandbox_manager.write_files_to_sandbox_count == 3
         assert stub_sandbox_manager.last_write_files_to_sandbox_payload is not None
-        assert stub_sandbox_manager.last_write_files_to_sandbox_payload[
-            "sandbox_id"
-        ] == sandbox_row.id
+        assert (
+            stub_sandbox_manager.last_write_files_to_sandbox_payload["sandbox_id"]
+            == sandbox_row.id
+        )
 
     def test_sync_user_library_pushes_to_running_sandbox(
         self,

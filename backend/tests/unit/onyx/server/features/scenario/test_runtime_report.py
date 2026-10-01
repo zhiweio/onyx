@@ -39,7 +39,7 @@ def test_render_docx_template_as_reference(monkeypatch) -> None:
         skill_links=[],
         report_template="monthly_close",
     )
-    text = render_scenario_markdown_named(_FakeSession(template), scenario)
+    text = render_scenario_markdown_named(_FakeSession(template), scenario)  # ty: ignore[invalid-argument-type]
     assert "layout and style reference" in text
     assert "/workspace/managed/report_templates/monthly_close.docx" in text
     assert "fill_template.py" not in text
@@ -68,7 +68,7 @@ def test_render_includes_template_body(monkeypatch) -> None:
         skill_links=[],
         report_template="compliance_risk",
     )
-    text = render_scenario_markdown_named(_FakeSession(template), scenario)
+    text = render_scenario_markdown_named(_FakeSession(template), scenario)  # ty: ignore[invalid-argument-type]
     assert "Preferred report template: `compliance_risk`" in text
     assert "Tax compliance risk brief for an entity." in text
     assert "# 合规风险预警报告" in text
@@ -94,7 +94,7 @@ def test_render_keeps_slug_when_template_missing(monkeypatch) -> None:
         skill_links=[SimpleNamespace(skill_id=skill_id, sort_order=0)],
         report_template="missing_slug",
     )
-    text = render_scenario_markdown_named(_FakeSession(None), scenario)
+    text = render_scenario_markdown_named(_FakeSession(None), scenario)  # ty: ignore[invalid-argument-type]
     assert "Preferred report template: `missing_slug`" in text
     assert "# missing_slug" not in text
 
@@ -164,12 +164,12 @@ def test_apply_merges_resolved_skills_and_rewrites_md(monkeypatch) -> None:
             written[path] = content
 
     merged = apply_scenario_to_turn(
-        _FakeSession(None),
+        _FakeSession(None),  # ty: ignore[invalid-argument-type]
         scenario_id=uuid4(),
-        user=SimpleNamespace(),
+        user=SimpleNamespace(),  # ty: ignore[invalid-argument-type]
         query="patent search",
         selected_skill_ids=["user-picked"],
-        sandbox_manager=_Writer(),
+        sandbox_manager=_Writer(),  # ty: ignore[invalid-argument-type]
         sandbox_id=uuid4(),
         session_id=session_id,
     )

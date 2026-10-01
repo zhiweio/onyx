@@ -21,14 +21,22 @@ subtle grids (alpha=0.15), and minimal decoration. Titles are handled by LaTeX c
 **⚠ 关键要点**: 茎线从 x=0 开始；颜色按 HSL 明度线性渐变（避免相邻项同色）；前三名实心圆徽章。
 
 ```python
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten, smart_labels
+from _utils.plot_utils import (
+    setup_style,
+    save_fig,
+    PALETTE,
+    COLORS,
+    _lighten,
+    smart_labels,
+)
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
 import numpy as np
 import colorsys
 
-methods = ['Ours', 'Baseline-A', 'Baseline-B', 'Baseline-C', 'Baseline-D']
+methods = ["Ours", "Baseline-A", "Baseline-B", "Baseline-C", "Baseline-D"]
 scores = [0.923, 0.887, 0.862, 0.841, 0.815]
 
 n = len(methods)
@@ -36,8 +44,9 @@ score_min, score_max = min(scores), max(scores)
 score_range = score_max - score_min if score_max > score_min else 1
 
 # ── 渐变配色：从紫罗兰 → 珊瑚橙（明度和色相同时渐变）
-color_top = '#7B6BA5'     # 紫罗兰（高分，偏冷一点）
-color_bottom = '#E08B74'  # 珊瑚橙（低分，偏暖）
+color_top = "#7B6BA5"  # 紫罗兰（高分，偏冷一点）
+color_bottom = "#E08B74"  # 珊瑚橙（低分，偏暖）
+
 
 def interpolate_color(c1, c2, t):
     """HSL 空间插值：t=0 返回 c1，t=1 返回 c2"""
@@ -46,14 +55,20 @@ def interpolate_color(c1, c2, t):
     h1, l1, s1 = colorsys.rgb_to_hls(r1, g1, b1)
     h2, l2, s2 = colorsys.rgb_to_hls(r2, g2, b2)
     if abs(h2 - h1) > 0.5:
-        if h1 < h2: h1 += 1.0
-        else: h2 += 1.0
+        if h1 < h2:
+            h1 += 1.0
+        else:
+            h2 += 1.0
     h = (h1 + (h2 - h1) * t) % 1.0
     l = l1 + (l2 - l1) * t
     s = s1 + (s2 - s1) * t
     return colorsys.hls_to_rgb(h, l, s)
 
-item_colors = [interpolate_color(color_top, color_bottom, i / (n - 1) if n > 1 else 0) for i in range(n)]
+
+item_colors = [
+    interpolate_color(color_top, color_bottom, i / (n - 1) if n > 1 else 0)
+    for i in range(n)
+]
 
 # ── 自适应高度（每项 0.46 高度 + 上下留白）
 _fig_h = max(4, n * 0.46 + 1.8)
@@ -61,12 +76,19 @@ fig, ax = plt.subplots(figsize=(7.5, _fig_h))
 y_pos = np.arange(n)
 
 # 极浅网格线
-ax.grid(axis='x', alpha=0.12, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="x", alpha=0.12, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # 中位数参考线（置于底层）
 median_val = np.median(scores)
-ax.axvline(median_val, color=COLORS['ref_line'], linestyle=':', linewidth=1.0, alpha=0.5, zorder=1)
+ax.axvline(
+    median_val,
+    color=COLORS["ref_line"],
+    linestyle=":",
+    linewidth=1.0,
+    alpha=0.5,
+    zorder=1,
+)
 
 # ── 主体：渐变色茎线 + 渐变圆点
 for i, (m, s) in enumerate(zip(methods, scores)):
@@ -75,54 +97,97 @@ for i, (m, s) in enumerate(zip(methods, scores)):
     lw = 1.6 + 2.0 * ratio
 
     # 茎线从 0 开始
-    ax.plot([0, s], [y_pos[i], y_pos[i]],
-            color=c, linewidth=lw, zorder=3, solid_capstyle='round')
+    ax.plot(
+        [0, s],
+        [y_pos[i], y_pos[i]],
+        color=c,
+        linewidth=lw,
+        zorder=3,
+        solid_capstyle="round",
+    )
 
     # 端点圆点 —— 大小随分数渐变
     dot_size = 55 + 120 * ratio
-    ax.scatter(s, y_pos[i], color=c, s=dot_size, zorder=5,
-               edgecolors='white', linewidths=1.8)
+    ax.scatter(
+        s, y_pos[i], color=c, s=dot_size, zorder=5, edgecolors="white", linewidths=1.8
+    )
 
     # 数值标签
-    ax.text(s + score_range * 0.03, y_pos[i], f'{s:.3f}',
-            fontsize=8.5, fontweight='bold' if i < 3 else 'normal',
-            color=c, va='center', ha='left')
+    ax.text(
+        s + score_range * 0.03,
+        y_pos[i],
+        f"{s:.3f}",
+        fontsize=8.5,
+        fontweight="bold" if i < 3 else "normal",
+        color=c,
+        va="center",
+        ha="left",
+    )
 
     # ── 排名徽章区域
     badge_x = -score_range * 0.065
     rank = i + 1
     if rank <= 3:
-        badge = plt.Circle((badge_x, y_pos[i]), 0.3,
-                            color=_lighten(c, 0.15), zorder=6,
-                            transform=ax.transData)
+        badge = plt.Circle(
+            (badge_x, y_pos[i]),
+            0.3,
+            color=_lighten(c, 0.15),
+            zorder=6,
+            transform=ax.transData,
+        )
         ax.add_patch(badge)
-        ax.text(badge_x, y_pos[i], str(rank),
-                fontsize=8.5, fontweight='bold', color='white',
-                ha='center', va='center', zorder=7)
+        ax.text(
+            badge_x,
+            y_pos[i],
+            str(rank),
+            fontsize=8.5,
+            fontweight="bold",
+            color="white",
+            ha="center",
+            va="center",
+            zorder=7,
+        )
     else:
-        ax.text(badge_x, y_pos[i], str(rank),
-                fontsize=7.5, color=_lighten(c, 0.2),
-                ha='center', va='center', fontweight='bold')
+        ax.text(
+            badge_x,
+            y_pos[i],
+            str(rank),
+            fontsize=7.5,
+            color=_lighten(c, 0.2),
+            ha="center",
+            va="center",
+            fontweight="bold",
+        )
 
 # 第一名背景高亮条
-ax.axhspan(y_pos[0] - 0.42, y_pos[0] + 0.42, alpha=0.06,
-           color=item_colors[0], zorder=0)
+ax.axhspan(y_pos[0] - 0.42, y_pos[0] + 0.42, alpha=0.06, color=item_colors[0], zorder=0)
 
 # 中位数标注 —— 置于图的顶部
-ax.text(median_val, -0.9, f'中位数 {median_val:.3f}',
-        fontsize=8, color=COLORS['ref_line'], ha='center', va='bottom',
-        bbox=dict(boxstyle='round,pad=0.25', facecolor='white',
-                  edgecolor=COLORS['ref_line'], alpha=0.85))
+ax.text(
+    median_val,
+    -0.9,
+    f"中位数 {median_val:.3f}",
+    fontsize=8,
+    color=COLORS["ref_line"],
+    ha="center",
+    va="bottom",
+    bbox=dict(
+        boxstyle="round,pad=0.25",
+        facecolor="white",
+        edgecolor=COLORS["ref_line"],
+        alpha=0.85,
+    ),
+)
 
 ax.set_yticks(y_pos)
 ax.set_yticklabels(methods, fontsize=10)
-ax.set_xlabel('F1 Score', fontsize=11)
+ax.set_xlabel("F1 Score", fontsize=11)
 ax.set_xlim(-score_range * 0.13, score_max + score_range * 0.15)
 ax.set_ylim(n - 0.5, -1.4)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_lollipop.pdf')
+save_fig(fig, "figures/fig_lollipop.pdf")
 ```
 
 **⚠ 易踩的坑（棒棒糖图专用）：**
@@ -144,11 +209,12 @@ save_fig(fig, 'figures/fig_lollipop.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
 
-metrics = ['Accuracy', 'Precision', 'Recall', 'F1', 'AUC']
+metrics = ["Accuracy", "Precision", "Recall", "F1", "AUC"]
 before = [0.82, 0.79, 0.85, 0.81, 0.88]
 after = [0.91, 0.88, 0.90, 0.89, 0.94]
 
@@ -158,7 +224,7 @@ fig, ax = plt.subplots(figsize=(8, _fig_h))
 y = np.arange(len(metrics))
 
 # Subtle grid
-ax.grid(axis='x', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="x", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Simple connector lines + arrow heads
@@ -166,42 +232,88 @@ for i in range(len(metrics)):
     delta = after[i] - before[i]
     pct_change = delta / before[i] * 100
     # Simple connector line
-    ax.plot([before[i], after[i]], [y[i], y[i]],
-            color=PALETTE[2], linewidth=2.0, solid_capstyle='round')
+    ax.plot(
+        [before[i], after[i]],
+        [y[i], y[i]],
+        color=PALETTE[2],
+        linewidth=2.0,
+        solid_capstyle="round",
+    )
     # Arrow head at the "after" end
-    ax.annotate('', xy=(after[i], y[i]), xytext=(after[i] - 0.012, y[i]),
-                arrowprops=dict(arrowstyle='->', color=PALETTE[0], lw=2.0))
+    ax.annotate(
+        "",
+        xy=(after[i], y[i]),
+        xytext=(after[i] - 0.012, y[i]),
+        arrowprops=dict(arrowstyle="->", color=PALETTE[0], lw=2.0),
+    )
 
     # Before / After dots
-    ax.scatter(before[i], y[i], color=PALETTE[3], s=80, zorder=3,
-               edgecolors='white', linewidths=1.0, label='Before' if i == 0 else '')
-    ax.scatter(after[i], y[i], color=PALETTE[0], s=80, zorder=3,
-               edgecolors='white', linewidths=1.0, label='After' if i == 0 else '')
+    ax.scatter(
+        before[i],
+        y[i],
+        color=PALETTE[3],
+        s=80,
+        zorder=3,
+        edgecolors="white",
+        linewidths=1.0,
+        label="Before" if i == 0 else "",
+    )
+    ax.scatter(
+        after[i],
+        y[i],
+        color=PALETTE[0],
+        s=80,
+        zorder=3,
+        edgecolors="white",
+        linewidths=1.0,
+        label="After" if i == 0 else "",
+    )
 
     # % change label
-    ax.text(after[i] + 0.015, y[i] - 0.15, f'+{delta:.2f} ({pct_change:+.1f}%)',
-            va='center', fontsize=8, color=PALETTE[0], fontweight='bold')
+    ax.text(
+        after[i] + 0.015,
+        y[i] - 0.15,
+        f"+{delta:.2f} ({pct_change:+.1f}%)",
+        va="center",
+        fontsize=8,
+        color=PALETTE[0],
+        fontweight="bold",
+    )
 
     # Significance marker (stars)
     if pct_change > 8:
-        sig = '***'
+        sig = "***"
     elif pct_change > 5:
-        sig = '**'
+        sig = "**"
     else:
-        sig = '*'
-    ax.text(after[i] + 0.015, y[i] + 0.2, sig, va='center', fontsize=9,
-            color=COLORS['down'], fontweight='bold')
+        sig = "*"
+    ax.text(
+        after[i] + 0.015,
+        y[i] + 0.2,
+        sig,
+        va="center",
+        fontsize=9,
+        color=COLORS["down"],
+        fontweight="bold",
+    )
 
 ax.set_yticks(y)
 ax.set_yticklabels(metrics, fontsize=10)
-ax.set_xlabel('Score', fontsize=11)
-ax.legend(loc='lower right', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=9,
-          fancybox=True, shadow=False)
+ax.set_xlabel("Score", fontsize=11)
+ax.legend(
+    loc="lower right",
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=9,
+    fancybox=True,
+    shadow=False,
+)
 ax.invert_yaxis()
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_dumbbell.pdf')
+save_fig(fig, "figures/fig_dumbbell.pdf")
 ```
 
 **⚠ 易踩的坑（哑铃图专用）：**
@@ -220,18 +332,19 @@ save_fig(fig, 'figures/fig_dumbbell.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
 
-methods = ['Method-A', 'Method-B', 'Method-C', 'Method-D']
+methods = ["Method-A", "Method-B", "Method-C", "Method-D"]
 dataset1 = [0.92, 0.88, 0.85, 0.90]
 dataset2 = [0.87, 0.91, 0.89, 0.86]
 
 fig, ax = plt.subplots(figsize=(6, 5.5))
 
 # Subtle grid
-ax.grid(axis='y', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="y", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Compute ranks
@@ -241,45 +354,97 @@ rank2 = list(np.argsort(np.argsort([-v for v in dataset2])) + 1)
 for i, m in enumerate(methods):
     diff = dataset2[i] - dataset1[i]
     # Green = improve, Red = decline
-    base_color = COLORS['up'] if diff >= 0 else COLORS['down']
+    base_color = COLORS["up"] if diff >= 0 else COLORS["down"]
 
     # Simple line connecting two points
-    ax.plot([0, 1], [dataset1[i], dataset2[i]], color=base_color,
-            linewidth=2.5, solid_capstyle='round')
+    ax.plot(
+        [0, 1],
+        [dataset1[i], dataset2[i]],
+        color=base_color,
+        linewidth=2.5,
+        solid_capstyle="round",
+    )
 
     # Endpoints
-    ax.scatter([0], [dataset1[i]], color=base_color, s=90, zorder=5,
-               edgecolors='white', linewidths=1.2)
-    ax.scatter([1], [dataset2[i]], color=base_color, s=90, zorder=5,
-               edgecolors='white', linewidths=1.2)
+    ax.scatter(
+        [0],
+        [dataset1[i]],
+        color=base_color,
+        s=90,
+        zorder=5,
+        edgecolors="white",
+        linewidths=1.2,
+    )
+    ax.scatter(
+        [1],
+        [dataset2[i]],
+        color=base_color,
+        s=90,
+        zorder=5,
+        edgecolors="white",
+        linewidths=1.2,
+    )
 
     # Value labels
-    ax.text(-0.08, dataset1[i], f'{dataset1[i]:.2f}', ha='right', va='center',
-            fontsize=9, color=base_color)
-    ax.text(1.08, dataset2[i], f'{dataset2[i]:.2f}', ha='left', va='center',
-            fontsize=9, color=base_color)
+    ax.text(
+        -0.08,
+        dataset1[i],
+        f"{dataset1[i]:.2f}",
+        ha="right",
+        va="center",
+        fontsize=9,
+        color=base_color,
+    )
+    ax.text(
+        1.08,
+        dataset2[i],
+        f"{dataset2[i]:.2f}",
+        ha="left",
+        va="center",
+        fontsize=9,
+        color=base_color,
+    )
 
     # Rank change annotation
     rank_delta = rank1[i] - rank2[i]  # positive = improved rank
     if rank_delta != 0:
-        arrow_sym = '↑' if rank_delta > 0 else '↓'
-        rank_color = COLORS['up'] if rank_delta > 0 else COLORS['down']
-        ax.text(1.22, dataset2[i], f'{m} {arrow_sym}{abs(rank_delta)}',
-                ha='left', va='center', fontsize=8, color=rank_color,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=rank_color, alpha=0.9))
+        arrow_sym = "↑" if rank_delta > 0 else "↓"
+        rank_color = COLORS["up"] if rank_delta > 0 else COLORS["down"]
+        ax.text(
+            1.22,
+            dataset2[i],
+            f"{m} {arrow_sym}{abs(rank_delta)}",
+            ha="left",
+            va="center",
+            fontsize=8,
+            color=rank_color,
+            bbox=dict(
+                boxstyle="round,pad=0.3",
+                facecolor="white",
+                edgecolor=rank_color,
+                alpha=0.9,
+            ),
+        )
     else:
-        ax.text(1.22, dataset2[i], f'{m} →', ha='left', va='center',
-                fontsize=8, color=COLORS['ref_line'])
+        ax.text(
+            1.22,
+            dataset2[i],
+            f"{m} →",
+            ha="left",
+            va="center",
+            fontsize=8,
+            color=COLORS["ref_line"],
+        )
 
 ax.set_xticks([0, 1])
-ax.set_xticklabels(['Dataset-1', 'Dataset-2'], fontsize=11)
+ax.set_xticklabels(["Dataset-1", "Dataset-2"], fontsize=11)
 ax.set_xlim(-0.35, 1.65)
 ax.set_ylim(min(dataset1 + dataset2) - 0.03, max(dataset1 + dataset2) + 0.03)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.spines['bottom'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.spines["bottom"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_slope.pdf')
+save_fig(fig, "figures/fig_slope.pdf")
 ```
 
 **⚠ 易踩的坑（Slope Chart 专用）：**
@@ -299,23 +464,24 @@ save_fig(fig, 'figures/fig_slope.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
 
-methods = ['Ours', 'BERT', 'GPT', 'RoBERTa']
-datasets = ['MNLI', 'QQP', 'SST-2', 'QNLI']
+methods = ["Ours", "BERT", "GPT", "RoBERTa"]
+datasets = ["MNLI", "QQP", "SST-2", "QNLI"]
 ranks = [[1, 1, 2, 1], [3, 2, 1, 3], [2, 3, 3, 2], [4, 4, 4, 4]]
 
 fig, ax = plt.subplots(figsize=(8, 5))
 x = np.arange(len(datasets))
 
 # Subtle grid
-ax.grid(axis='y', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="y", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 for i, (m, r) in enumerate(zip(methods, ranks)):
-    is_ours = (i == 0)
+    is_ours = i == 0
     lw = 3.5 if is_ours else 1.8
     alpha_line = 1.0 if is_ours else 0.55
     ms = 14 if is_ours else 9
@@ -325,41 +491,72 @@ for i, (m, r) in enumerate(zip(methods, ranks)):
         for k in range(len(x) - 1):
             x_fill = np.linspace(x[k], x[k + 1], 50)
             y_fill = np.interp(x_fill, x, r)
-            ax.fill_between(x_fill, y_fill - 0.15, y_fill + 0.15,
-                            alpha=0.15, color=PALETTE[0])
+            ax.fill_between(
+                x_fill, y_fill - 0.15, y_fill + 0.15, alpha=0.15, color=PALETTE[0]
+            )
 
     # Line
-    ax.plot(x, r, 'o-', color=PALETTE[i], linewidth=lw, markersize=ms,
-            label=m, zorder=3 + (1 if is_ours else 0), alpha=alpha_line,
-            markeredgecolor='white', markeredgewidth=1.5 if is_ours else 0.8)
+    ax.plot(
+        x,
+        r,
+        "o-",
+        color=PALETTE[i],
+        linewidth=lw,
+        markersize=ms,
+        label=m,
+        zorder=3 + (1 if is_ours else 0),
+        alpha=alpha_line,
+        markeredgecolor="white",
+        markeredgewidth=1.5 if is_ours else 0.8,
+    )
 
     # Rank labels at both ends
-    ax.text(x[0] - 0.2, r[0], f'#{r[0]} {m}', va='center', ha='right',
-            fontsize=9, color=PALETTE[i],
-            fontweight='bold' if is_ours else 'normal')
-    ax.text(x[-1] + 0.2, r[-1], f'#{r[-1]} {m}', va='center', ha='left',
-            fontsize=9, color=PALETTE[i],
-            fontweight='bold' if is_ours else 'normal')
+    ax.text(
+        x[0] - 0.2,
+        r[0],
+        f"#{r[0]} {m}",
+        va="center",
+        ha="right",
+        fontsize=9,
+        color=PALETTE[i],
+        fontweight="bold" if is_ours else "normal",
+    )
+    ax.text(
+        x[-1] + 0.2,
+        r[-1],
+        f"#{r[-1]} {m}",
+        va="center",
+        ha="left",
+        fontsize=9,
+        color=PALETTE[i],
+        fontweight="bold" if is_ours else "normal",
+    )
 
 # Highlight box for "Ours"
-ax.annotate('★ Ours: Rank #1 in 3/4 datasets',
-            xy=(x[0], ranks[0][0]), xytext=(x[0] + 0.5, ranks[0][0] - 0.6),
-            fontsize=8.5, color=PALETTE[0], fontweight='bold',
-            arrowprops=dict(arrowstyle='->', color=PALETTE[0], lw=1.2),
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                      edgecolor=PALETTE[0], alpha=0.9))
+ax.annotate(
+    "★ Ours: Rank #1 in 3/4 datasets",
+    xy=(x[0], ranks[0][0]),
+    xytext=(x[0] + 0.5, ranks[0][0] - 0.6),
+    fontsize=8.5,
+    color=PALETTE[0],
+    fontweight="bold",
+    arrowprops=dict(arrowstyle="->", color=PALETTE[0], lw=1.2),
+    bbox=dict(
+        boxstyle="round,pad=0.3", facecolor="white", edgecolor=PALETTE[0], alpha=0.9
+    ),
+)
 
 ax.set_xticks(x)
 ax.set_xticklabels(datasets, fontsize=10)
 ax.set_yticks([1, 2, 3, 4])
-ax.set_yticklabels(['1st', '2nd', '3rd', '4th'], fontsize=10)
-ax.set_ylabel('Rank', fontsize=11)
+ax.set_yticklabels(["1st", "2nd", "3rd", "4th"], fontsize=10)
+ax.set_ylabel("Rank", fontsize=11)
 ax.invert_yaxis()
 ax.set_xlim(-0.6, len(datasets) - 0.4)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_bump.pdf')
+save_fig(fig, "figures/fig_bump.pdf")
 ```
 
 **⚠ 易踩的坑（Bump Chart 专用）：**
@@ -380,25 +577,35 @@ save_fig(fig, 'figures/fig_bump.pdf')
 
 ```python
 import shutil, os
-os.makedirs('_utils', exist_ok=True)
-for f in ['plot_utils.py']:
+
+os.makedirs("_utils", exist_ok=True)
+for f in ["plot_utils.py"]:
     src = os.path.join(os.path.dirname(__file__), f)
     if os.path.exists(src):
-        shutil.copy2(src, f'_utils/{f}')
+        shutil.copy2(src, f"_utils/{f}")
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch, Rectangle
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 
 
-def draw_sankey(ax, source_nodes, target_nodes, flows,
-                source_colors=None, target_colors=None,
-                left_x=0.10, right_x=0.90,
-                node_width=0.025, node_gap=0.03,
-                title_top=None):
+def draw_sankey(
+    ax,
+    source_nodes,
+    target_nodes,
+    flows,
+    source_colors=None,
+    target_colors=None,
+    left_x=0.10,
+    right_x=0.90,
+    node_width=0.025,
+    node_gap=0.03,
+    title_top=None,
+):
     """D3 风格 Sankey 图（矩形节点 + 贝塞尔流带）。
 
     Args:
@@ -413,7 +620,9 @@ def draw_sankey(ax, source_nodes, target_nodes, flows,
     total_src = sum(v for _, v in source_nodes)
     total_tgt = sum(v for _, v in target_nodes)
     if abs(total_src - total_tgt) > 1e-3:
-        raise ValueError(f'流量不守恒：source 合计 {total_src} ≠ target 合计 {total_tgt}')
+        raise ValueError(
+            f"流量不守恒：source 合计 {total_src} ≠ target 合计 {total_tgt}"
+        )
 
     Y_MARGIN = 0.08
     avail_h_src = (1 - 2 * Y_MARGIN) - node_gap * max(0, len(source_nodes) - 1)
@@ -436,125 +645,185 @@ def draw_sankey(ax, source_nodes, target_nodes, flows,
     if source_colors is None:
         source_colors = [PALETTE[i % len(PALETTE)] for i in range(len(source_nodes))]
     if target_colors is None:
-        target_colors = [COLORS.get('text', '#444444')] * len(target_nodes)
+        target_colors = [COLORS.get("text", "#444444")] * len(target_nodes)
 
     # 左侧节点矩形 + 标签
     for i, ((name, v), (y0, y1)) in enumerate(zip(source_nodes, src_ranges)):
-        rect = Rectangle((left_x - node_width / 2, y0), node_width, y1 - y0,
-                         facecolor=source_colors[i], edgecolor='none', alpha=0.92, zorder=3)
+        rect = Rectangle(
+            (left_x - node_width / 2, y0),
+            node_width,
+            y1 - y0,
+            facecolor=source_colors[i],
+            edgecolor="none",
+            alpha=0.92,
+            zorder=3,
+        )
         ax.add_patch(rect)
-        ax.text(left_x - node_width / 2 - 0.012, (y0 + y1) / 2,
-                f'{name}\n{v:g}',
-                ha='right', va='center', fontsize=9,
-                color=COLORS.get('text', '#222'), fontweight='bold')
+        ax.text(
+            left_x - node_width / 2 - 0.012,
+            (y0 + y1) / 2,
+            f"{name}\n{v:g}",
+            ha="right",
+            va="center",
+            fontsize=9,
+            color=COLORS.get("text", "#222"),
+            fontweight="bold",
+        )
 
     # 右侧节点矩形 + 标签
     for i, ((name, v), (y0, y1)) in enumerate(zip(target_nodes, tgt_ranges)):
-        rect = Rectangle((right_x - node_width / 2, y0), node_width, y1 - y0,
-                         facecolor=target_colors[i], edgecolor='none', alpha=0.92, zorder=3)
+        rect = Rectangle(
+            (right_x - node_width / 2, y0),
+            node_width,
+            y1 - y0,
+            facecolor=target_colors[i],
+            edgecolor="none",
+            alpha=0.92,
+            zorder=3,
+        )
         ax.add_patch(rect)
-        ax.text(right_x + node_width / 2 + 0.012, (y0 + y1) / 2,
-                f'{name}\n{v:g}',
-                ha='left', va='center', fontsize=9,
-                color=COLORS.get('text', '#222'), fontweight='bold')
+        ax.text(
+            right_x + node_width / 2 + 0.012,
+            (y0 + y1) / 2,
+            f"{name}\n{v:g}",
+            ha="left",
+            va="center",
+            fontsize=9,
+            color=COLORS.get("text", "#222"),
+            fontweight="bold",
+        )
 
     # 贝塞尔流带
     src_top_used = [r[1] for r in src_ranges]
     tgt_top_used = [r[1] for r in tgt_ranges]
 
     for flow in flows:
-        si, ti, val = flow['source_idx'], flow['target_idx'], flow['value']
+        si, ti, val = flow["source_idx"], flow["target_idx"], flow["value"]
         s_h = val / total_src * avail_h_src
         t_h = val / total_tgt * avail_h_tgt
-        s_y_top = src_top_used[si]; s_y_bot = s_y_top - s_h; src_top_used[si] = s_y_bot
-        t_y_top = tgt_top_used[ti]; t_y_bot = t_y_top - t_h; tgt_top_used[ti] = t_y_bot
+        s_y_top = src_top_used[si]
+        s_y_bot = s_y_top - s_h
+        src_top_used[si] = s_y_bot
+        t_y_top = tgt_top_used[ti]
+        t_y_bot = t_y_top - t_h
+        tgt_top_used[ti] = t_y_bot
 
         mid_x = (left_x + right_x) / 2
         path_data = [
-            (Path.MOVETO,    (left_x + node_width / 2, s_y_top)),
-            (Path.CURVE4,    (mid_x, s_y_top)),
-            (Path.CURVE4,    (mid_x, t_y_top)),
-            (Path.CURVE4,    (right_x - node_width / 2, t_y_top)),
-            (Path.LINETO,    (right_x - node_width / 2, t_y_bot)),
-            (Path.CURVE4,    (mid_x, t_y_bot)),
-            (Path.CURVE4,    (mid_x, s_y_bot)),
-            (Path.CURVE4,    (left_x + node_width / 2, s_y_bot)),
+            (Path.MOVETO, (left_x + node_width / 2, s_y_top)),
+            (Path.CURVE4, (mid_x, s_y_top)),
+            (Path.CURVE4, (mid_x, t_y_top)),
+            (Path.CURVE4, (right_x - node_width / 2, t_y_top)),
+            (Path.LINETO, (right_x - node_width / 2, t_y_bot)),
+            (Path.CURVE4, (mid_x, t_y_bot)),
+            (Path.CURVE4, (mid_x, s_y_bot)),
+            (Path.CURVE4, (left_x + node_width / 2, s_y_bot)),
             (Path.CLOSEPOLY, (left_x + node_width / 2, s_y_top)),
         ]
         codes, verts = zip(*path_data)
-        flow_color = flow.get('color', source_colors[si])
-        patch = PathPatch(Path(verts, codes),
-                          facecolor=flow_color, edgecolor='none', alpha=0.42, zorder=2)
+        flow_color = flow.get("color", source_colors[si])
+        patch = PathPatch(
+            Path(verts, codes),
+            facecolor=flow_color,
+            edgecolor="none",
+            alpha=0.42,
+            zorder=2,
+        )
         ax.add_patch(patch)
 
     if title_top:
-        ax.text(0.5, 0.98, title_top, ha='center', va='top',
-                fontsize=10, color=COLORS.get('text', '#444'), fontweight='bold')
+        ax.text(
+            0.5,
+            0.98,
+            title_top,
+            ha="center",
+            va="top",
+            fontsize=10,
+            color=COLORS.get("text", "#444"),
+            fontweight="bold",
+        )
 
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_aspect('auto'); ax.axis('off')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("auto")
+    ax.axis("off")
 
 
 # ── 示例 1: 多 source → 单 target（资源分配场景）
 fig, ax = plt.subplots(figsize=(9, 5))
-source_nodes = [('国产', 1473), ('俄罗斯', 1500), ('卡塔尔', 27)]
-target_nodes = [('总供给 = 需求 (万 m³)', 3000)]
+source_nodes = [("国产", 1473), ("俄罗斯", 1500), ("卡塔尔", 27)]
+target_nodes = [("总供给 = 需求 (万 m³)", 3000)]
 flows = [
-    {'source_idx': 0, 'target_idx': 0, 'value': 1473},
-    {'source_idx': 1, 'target_idx': 0, 'value': 1500},
-    {'source_idx': 2, 'target_idx': 0, 'value': 27},
+    {"source_idx": 0, "target_idx": 0, "value": 1473},
+    {"source_idx": 1, "target_idx": 0, "value": 1500},
+    {"source_idx": 2, "target_idx": 0, "value": 27},
 ]
-draw_sankey(ax, source_nodes, target_nodes, flows,
-            title_top='问题一 最优供应量分配（流量守恒，万 m³）')
+draw_sankey(
+    ax,
+    source_nodes,
+    target_nodes,
+    flows,
+    title_top="问题一 最优供应量分配（流量守恒，万 m³）",
+)
 
 auto_rate = 1473 / 3000 * 100
 import_rate = (1500 + 27) / 3000 * 100
-ax.text(0.05, 0.04,
-        f'自给率 = {auto_rate:.1f}%   进口依赖 = {import_rate:.1f}%',
-        ha='left', va='bottom', fontsize=8.5,
-        color=COLORS.get('text', '#444'),
-        bbox=dict(boxstyle='round,pad=0.4', facecolor='white',
-                  edgecolor='#cccccc', linewidth=0.5))
+ax.text(
+    0.05,
+    0.04,
+    f"自给率 = {auto_rate:.1f}%   进口依赖 = {import_rate:.1f}%",
+    ha="left",
+    va="bottom",
+    fontsize=8.5,
+    color=COLORS.get("text", "#444"),
+    bbox=dict(
+        boxstyle="round,pad=0.4", facecolor="white", edgecolor="#cccccc", linewidth=0.5
+    ),
+)
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_sankey_supply.pdf')
+save_fig(fig, "figures/fig_sankey_supply.pdf")
 
 
 # ── 示例 2: 单 source → 多 target（数据分流场景）
 fig, ax = plt.subplots(figsize=(10, 5.5))
-source_nodes = [('原始数据', 1000)]
-target_nodes = [('训练集', 600), ('测试集', 300), ('验证集', 100)]
+source_nodes = [("原始数据", 1000)]
+target_nodes = [("训练集", 600), ("测试集", 300), ("验证集", 100)]
 flows = [
-    {'source_idx': 0, 'target_idx': 0, 'value': 600, 'color': PALETTE[0]},
-    {'source_idx': 0, 'target_idx': 1, 'value': 300, 'color': PALETTE[1]},
-    {'source_idx': 0, 'target_idx': 2, 'value': 100, 'color': PALETTE[2]},
+    {"source_idx": 0, "target_idx": 0, "value": 600, "color": PALETTE[0]},
+    {"source_idx": 0, "target_idx": 1, "value": 300, "color": PALETTE[1]},
+    {"source_idx": 0, "target_idx": 2, "value": 100, "color": PALETTE[2]},
 ]
-draw_sankey(ax, source_nodes, target_nodes, flows,
-            target_colors=[PALETTE[0], PALETTE[1], PALETTE[2]],
-            title_top='数据集划分')
+draw_sankey(
+    ax,
+    source_nodes,
+    target_nodes,
+    flows,
+    target_colors=[PALETTE[0], PALETTE[1], PALETTE[2]],
+    title_top="数据集划分",
+)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_sankey_split.pdf')
+save_fig(fig, "figures/fig_sankey_split.pdf")
 
 
 # ── 示例 3: 多对多
 fig, ax = plt.subplots(figsize=(10.5, 6))
-source_nodes = [('来源A', 500), ('来源B', 300), ('来源C', 200)]
-target_nodes = [('去向X', 400), ('去向Y', 350), ('去向Z', 150), ('去向W', 100)]
+source_nodes = [("来源A", 500), ("来源B", 300), ("来源C", 200)]
+target_nodes = [("去向X", 400), ("去向Y", 350), ("去向Z", 150), ("去向W", 100)]
 flows = [
-    {'source_idx': 0, 'target_idx': 0, 'value': 300},
-    {'source_idx': 0, 'target_idx': 1, 'value': 150},
-    {'source_idx': 0, 'target_idx': 2, 'value':  50},
-    {'source_idx': 1, 'target_idx': 0, 'value': 100},
-    {'source_idx': 1, 'target_idx': 1, 'value': 150},
-    {'source_idx': 1, 'target_idx': 3, 'value':  50},
-    {'source_idx': 2, 'target_idx': 1, 'value':  50},
-    {'source_idx': 2, 'target_idx': 2, 'value': 100},
-    {'source_idx': 2, 'target_idx': 3, 'value':  50},
+    {"source_idx": 0, "target_idx": 0, "value": 300},
+    {"source_idx": 0, "target_idx": 1, "value": 150},
+    {"source_idx": 0, "target_idx": 2, "value": 50},
+    {"source_idx": 1, "target_idx": 0, "value": 100},
+    {"source_idx": 1, "target_idx": 1, "value": 150},
+    {"source_idx": 1, "target_idx": 3, "value": 50},
+    {"source_idx": 2, "target_idx": 1, "value": 50},
+    {"source_idx": 2, "target_idx": 2, "value": 100},
+    {"source_idx": 2, "target_idx": 3, "value": 50},
 ]
-draw_sankey(ax, source_nodes, target_nodes, flows,
-            title_top='多对多流向分析')
+draw_sankey(ax, source_nodes, target_nodes, flows, title_top="多对多流向分析")
 fig.tight_layout()
-save_fig(fig, 'figures/fig_sankey_many.pdf')
+save_fig(fig, "figures/fig_sankey_many.pdf")
 ```
 
 **⛔ 易踩的坑（Sankey Diagram 专用）：**
@@ -701,13 +970,14 @@ save_fig(fig, 'figures/fig_waterfall.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 
 np.random.seed(42)
-features = ['Feature A', 'Feature B', 'Feature C', 'Feature D', 'Feature E']
+features = ["Feature A", "Feature B", "Feature C", "Feature D", "Feature E"]
 n_samples = 200
 
 fig = plt.figure(figsize=(9, 5))
@@ -715,7 +985,7 @@ gs = gridspec.GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
 
 # Left panel: SHAP beeswarm
 ax_shap = fig.add_subplot(gs[0])
-ax_shap.grid(axis='x', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax_shap.grid(axis="x", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax_shap.set_axisbelow(True)
 
 mean_abs_shap = []
@@ -723,38 +993,48 @@ for i, feat in enumerate(features):
     shap_vals = np.random.randn(n_samples) * (len(features) - i) * 0.12
     feat_vals = np.random.rand(n_samples)
     y_jitter = np.random.uniform(-0.3, 0.3, n_samples) + i
-    sc = ax_shap.scatter(shap_vals, y_jitter, c=feat_vals, cmap='coolwarm',
-                         s=10, alpha=0.65, vmin=0, vmax=1, edgecolors='none')
+    sc = ax_shap.scatter(
+        shap_vals,
+        y_jitter,
+        c=feat_vals,
+        cmap="coolwarm",
+        s=10,
+        alpha=0.65,
+        vmin=0,
+        vmax=1,
+        edgecolors="none",
+    )
     mean_abs_shap.append(np.mean(np.abs(shap_vals)))
 
 ax_shap.set_yticks(range(len(features)))
 ax_shap.set_yticklabels(features, fontsize=10)
-ax_shap.set_xlabel('SHAP value (impact on prediction)', fontsize=10)
-ax_shap.axvline(x=0, color=COLORS['ref_line'], linewidth=0.8, linestyle='--')
-ax_shap.spines['top'].set_visible(False)
-ax_shap.spines['right'].set_visible(False)
+ax_shap.set_xlabel("SHAP value (impact on prediction)", fontsize=10)
+ax_shap.axvline(x=0, color=COLORS["ref_line"], linewidth=0.8, linestyle="--")
+ax_shap.spines["top"].set_visible(False)
+ax_shap.spines["right"].set_visible(False)
 
 # Colorbar
 cbar = plt.colorbar(sc, ax=ax_shap, shrink=0.5, pad=0.02, aspect=20)
-cbar.set_label('Feature value', fontsize=8)
+cbar.set_label("Feature value", fontsize=8)
 cbar.ax.tick_params(labelsize=7)
 
 # Right panel: Mean |SHAP| importance bar —— 浅色填充 + 原色边框
 ax_bar = fig.add_subplot(gs[1])
 for i, v in enumerate(mean_abs_shap):
-    is_top = (v == max(mean_abs_shap))
+    is_top = v == max(mean_abs_shap)
     c = PALETTE[0] if is_top else PALETTE[2]
-    ax_bar.barh(i, v, color=_lighten(c, 0.4), edgecolor=c,
-                linewidth=1.5, height=0.5, alpha=0.9)
-    ax_bar.text(v + 0.002, i, f'{v:.3f}', va='center', fontsize=8, color=COLORS['text'])
+    ax_bar.barh(
+        i, v, color=_lighten(c, 0.4), edgecolor=c, linewidth=1.5, height=0.5, alpha=0.9
+    )
+    ax_bar.text(v + 0.002, i, f"{v:.3f}", va="center", fontsize=8, color=COLORS["text"])
 ax_bar.set_yticks([])
-ax_bar.set_xlabel('Mean |SHAP|', fontsize=9)
-ax_bar.spines['top'].set_visible(False)
-ax_bar.spines['right'].set_visible(False)
-ax_bar.spines['left'].set_visible(False)
+ax_bar.set_xlabel("Mean |SHAP|", fontsize=9)
+ax_bar.spines["top"].set_visible(False)
+ax_bar.spines["right"].set_visible(False)
+ax_bar.spines["left"].set_visible(False)
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_shap.pdf')
+save_fig(fig, "figures/fig_shap.pdf")
 ```
 
 ---
@@ -765,6 +1045,7 @@ save_fig(fig, 'figures/fig_shap.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -781,7 +1062,7 @@ std_diff = np.std(diff_vals)
 fig, ax = plt.subplots(figsize=(7, 5.5))
 
 # Subtle grid
-ax.grid(alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Gradient CI band (fading from center outward)
@@ -789,52 +1070,109 @@ x_range = np.linspace(mean_vals.min() - 2, mean_vals.max() + 2, 200)
 upper = mean_diff + 1.96 * std_diff
 lower = mean_diff - 1.96 * std_diff
 # Inner band (darker)
-ax.fill_between(x_range, mean_diff - 0.5 * std_diff, mean_diff + 0.5 * std_diff,
-                alpha=0.15, color=PALETTE[0], label='±0.5 SD')
+ax.fill_between(
+    x_range,
+    mean_diff - 0.5 * std_diff,
+    mean_diff + 0.5 * std_diff,
+    alpha=0.15,
+    color=PALETTE[0],
+    label="±0.5 SD",
+)
 # Middle band
-ax.fill_between(x_range, mean_diff - 1.0 * std_diff, mean_diff + 1.0 * std_diff,
-                alpha=0.10, color=PALETTE[0])
+ax.fill_between(
+    x_range,
+    mean_diff - 1.0 * std_diff,
+    mean_diff + 1.0 * std_diff,
+    alpha=0.10,
+    color=PALETTE[0],
+)
 # Outer band (lightest)
-ax.fill_between(x_range, lower, upper, alpha=0.06, color=PALETTE[3], label='±1.96 SD (95% CI)')
+ax.fill_between(
+    x_range, lower, upper, alpha=0.06, color=PALETTE[3], label="±1.96 SD (95% CI)"
+)
 
 # Scatter points
-ax.scatter(mean_vals, diff_vals, color=PALETTE[0], alpha=0.55, s=30,
-           edgecolors='white', linewidths=0.5, zorder=3)
+ax.scatter(
+    mean_vals,
+    diff_vals,
+    color=PALETTE[0],
+    alpha=0.55,
+    s=30,
+    edgecolors="white",
+    linewidths=0.5,
+    zorder=3,
+)
 
 # Mean line
-ax.axhline(mean_diff, color=PALETTE[0], linestyle='-', linewidth=1.8,
-           label=f'Mean bias: {mean_diff:.2f}')
+ax.axhline(
+    mean_diff,
+    color=PALETTE[0],
+    linestyle="-",
+    linewidth=1.8,
+    label=f"Mean bias: {mean_diff:.2f}",
+)
 # Limits of agreement
-ax.axhline(upper, color=PALETTE[3], linestyle='--', linewidth=1.2,
-           label=f'+1.96 SD: {upper:.2f}')
-ax.axhline(lower, color=PALETTE[3], linestyle='--', linewidth=1.2,
-           label=f'-1.96 SD: {lower:.2f}')
+ax.axhline(
+    upper,
+    color=PALETTE[3],
+    linestyle="--",
+    linewidth=1.2,
+    label=f"+1.96 SD: {upper:.2f}",
+)
+ax.axhline(
+    lower,
+    color=PALETTE[3],
+    linestyle="--",
+    linewidth=1.2,
+    label=f"-1.96 SD: {lower:.2f}",
+)
 
 # Proportional bias regression line
 z = np.polyfit(mean_vals, diff_vals, 1)
 p = np.poly1d(z)
 x_fit = np.linspace(mean_vals.min(), mean_vals.max(), 100)
-ax.plot(x_fit, p(x_fit), color=COLORS['highlight'], linewidth=1.5, linestyle='-.',
-        label=f'Prop. bias (slope={z[0]:.3f})', zorder=4)
+ax.plot(
+    x_fit,
+    p(x_fit),
+    color=COLORS["highlight"],
+    linewidth=1.5,
+    linestyle="-.",
+    label=f"Prop. bias (slope={z[0]:.3f})",
+    zorder=4,
+)
 
 # Outlier labels (points beyond ±1.96 SD)
 outliers = np.where((diff_vals > upper) | (diff_vals < lower))[0]
 for idx in outliers:
-    ax.annotate(f'#{idx}', xy=(mean_vals[idx], diff_vals[idx]),
-                xytext=(mean_vals[idx] + 1.5, diff_vals[idx] + 0.8),
-                fontsize=7, color=COLORS['down'],
-                arrowprops=dict(arrowstyle='->', color=COLORS['down'], lw=0.8),
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                          edgecolor=COLORS['down'], alpha=0.9))
+    ax.annotate(
+        f"#{idx}",
+        xy=(mean_vals[idx], diff_vals[idx]),
+        xytext=(mean_vals[idx] + 1.5, diff_vals[idx] + 0.8),
+        fontsize=7,
+        color=COLORS["down"],
+        arrowprops=dict(arrowstyle="->", color=COLORS["down"], lw=0.8),
+        bbox=dict(
+            boxstyle="round,pad=0.3",
+            facecolor="white",
+            edgecolor=COLORS["down"],
+            alpha=0.9,
+        ),
+    )
 
-ax.set_xlabel('Mean of two methods', fontsize=11)
-ax.set_ylabel('Difference (Method 1 − Method 2)', fontsize=11)
-ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=7.5, loc='upper left',
-          fancybox=True)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.set_xlabel("Mean of two methods", fontsize=11)
+ax.set_ylabel("Difference (Method 1 − Method 2)", fontsize=11)
+ax.legend(
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=7.5,
+    loc="upper left",
+    fancybox=True,
+)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_bland_altman.pdf')
+save_fig(fig, "figures/fig_bland_altman.pdf")
 ```
 
 **⚠ 易踩的坑（Bland-Altman Plot 专用）：**
@@ -853,6 +1191,7 @@ save_fig(fig, 'figures/fig_bland_altman.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -861,6 +1200,7 @@ import numpy as np
 np.random.seed(42)
 t_treat = np.sort(np.random.exponential(20, 50))
 t_ctrl = np.sort(np.random.exponential(12, 50))
+
 
 def km_curve_data(times):
     n = len(times)
@@ -871,8 +1211,10 @@ def km_curve_data(times):
         t_plot[i + 1] = t
     return t_plot, surv
 
+
 def number_at_risk(times, time_points):
     return [np.sum(times >= tp) for tp in time_points]
+
 
 fig = plt.figure(figsize=(8, 6))
 gs = gridspec.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.08)
@@ -880,23 +1222,24 @@ ax = fig.add_subplot(gs[0])
 ax_risk = fig.add_subplot(gs[1])
 
 # Subtle grid
-ax.grid(alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Treatment group
 t1, s1 = km_curve_data(t_treat)
-ax.step(t1, s1, where='post', color=PALETTE[0], linewidth=2.5, label='Treatment (n=50)')
+ax.step(t1, s1, where="post", color=PALETTE[0], linewidth=2.5, label="Treatment (n=50)")
 # Gradient CI band
 ci_upper = np.clip(s1 + 0.08 * np.sqrt(np.linspace(1, 0.1, len(s1))), 0, 1)
 ci_lower = np.clip(s1 - 0.08 * np.sqrt(np.linspace(1, 0.1, len(s1))), 0, 1)
-ax.fill_between(t1, ci_lower, ci_upper, step='post', alpha=0.12, color=PALETTE[0])
+ax.fill_between(t1, ci_lower, ci_upper, step="post", alpha=0.12, color=PALETTE[0])
 
 # Control group
 t2, s2 = km_curve_data(t_ctrl)
-ax.step(t2, s2, where='post', color=PALETTE[3], linewidth=2.5, label='Control (n=50)')
+ax.step(t2, s2, where="post", color=PALETTE[3], linewidth=2.5, label="Control (n=50)")
 ci_upper2 = np.clip(s2 + 0.10 * np.sqrt(np.linspace(1, 0.1, len(s2))), 0, 1)
 ci_lower2 = np.clip(s2 - 0.10 * np.sqrt(np.linspace(1, 0.1, len(s2))), 0, 1)
-ax.fill_between(t2, ci_lower2, ci_upper2, step='post', alpha=0.12, color=PALETTE[3])
+ax.fill_between(t2, ci_lower2, ci_upper2, step="post", alpha=0.12, color=PALETTE[3])
+
 
 # Median survival markers with dashed lines
 def find_median_survival(t_arr, s_arr):
@@ -905,42 +1248,90 @@ def find_median_survival(t_arr, s_arr):
             return t_arr[i + 1]
     return None
 
+
 med_treat = find_median_survival(t1, s1)
 med_ctrl = find_median_survival(t2, s2)
 
 if med_treat is not None:
-    ax.plot([med_treat, med_treat], [0, 0.5], '--', color=PALETTE[0], linewidth=1.0, alpha=0.7)
-    ax.plot([0, med_treat], [0.5, 0.5], '--', color=PALETTE[0], linewidth=1.0, alpha=0.7)
-    ax.scatter([med_treat], [0.5], color=PALETTE[0], s=60, zorder=5, marker='D',
-               edgecolors='white', linewidths=1.0)
-    ax.annotate(f'Median = {med_treat:.1f}m', xy=(med_treat, 0.5),
-                xytext=(med_treat + 3, 0.58), fontsize=8, color=PALETTE[0],
-                arrowprops=dict(arrowstyle='->', color=PALETTE[0], lw=0.8),
-                bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+    ax.plot(
+        [med_treat, med_treat],
+        [0, 0.5],
+        "--",
+        color=PALETTE[0],
+        linewidth=1.0,
+        alpha=0.7,
+    )
+    ax.plot(
+        [0, med_treat], [0.5, 0.5], "--", color=PALETTE[0], linewidth=1.0, alpha=0.7
+    )
+    ax.scatter(
+        [med_treat],
+        [0.5],
+        color=PALETTE[0],
+        s=60,
+        zorder=5,
+        marker="D",
+        edgecolors="white",
+        linewidths=1.0,
+    )
+    ax.annotate(
+        f"Median = {med_treat:.1f}m",
+        xy=(med_treat, 0.5),
+        xytext=(med_treat + 3, 0.58),
+        fontsize=8,
+        color=PALETTE[0],
+        arrowprops=dict(arrowstyle="->", color=PALETTE[0], lw=0.8),
+        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8),
+    )
 
 if med_ctrl is not None:
-    ax.plot([med_ctrl, med_ctrl], [0, 0.5], '--', color=PALETTE[3], linewidth=1.0, alpha=0.7)
-    ax.plot([0, med_ctrl], [0.5, 0.5], '--', color=PALETTE[3], linewidth=1.0, alpha=0.7)
-    ax.scatter([med_ctrl], [0.5], color=PALETTE[3], s=60, zorder=5, marker='D',
-               edgecolors='white', linewidths=1.0)
-    ax.annotate(f'Median = {med_ctrl:.1f}m', xy=(med_ctrl, 0.5),
-                xytext=(med_ctrl + 3, 0.42), fontsize=8, color=PALETTE[3],
-                arrowprops=dict(arrowstyle='->', color=PALETTE[3], lw=0.8),
-                bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+    ax.plot(
+        [med_ctrl, med_ctrl], [0, 0.5], "--", color=PALETTE[3], linewidth=1.0, alpha=0.7
+    )
+    ax.plot([0, med_ctrl], [0.5, 0.5], "--", color=PALETTE[3], linewidth=1.0, alpha=0.7)
+    ax.scatter(
+        [med_ctrl],
+        [0.5],
+        color=PALETTE[3],
+        s=60,
+        zorder=5,
+        marker="D",
+        edgecolors="white",
+        linewidths=1.0,
+    )
+    ax.annotate(
+        f"Median = {med_ctrl:.1f}m",
+        xy=(med_ctrl, 0.5),
+        xytext=(med_ctrl + 3, 0.42),
+        fontsize=8,
+        color=PALETTE[3],
+        arrowprops=dict(arrowstyle="->", color=PALETTE[3], lw=0.8),
+        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8),
+    )
 
 # Log-rank p-value annotation
-ax.annotate('Log-rank p = 0.003',
-            xy=(0.98, 0.98), xycoords='axes fraction', ha='right', va='top',
-            fontsize=9, fontweight='bold',
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=_lighten(PALETTE[0], 0.7),
-                      edgecolor=PALETTE[0], alpha=0.9))
+ax.annotate(
+    "Log-rank p = 0.003",
+    xy=(0.98, 0.98),
+    xycoords="axes fraction",
+    ha="right",
+    va="top",
+    fontsize=9,
+    fontweight="bold",
+    bbox=dict(
+        boxstyle="round,pad=0.4",
+        facecolor=_lighten(PALETTE[0], 0.7),
+        edgecolor=PALETTE[0],
+        alpha=0.9,
+    ),
+)
 
-ax.set_ylabel('Survival probability', fontsize=11)
+ax.set_ylabel("Survival probability", fontsize=11)
 ax.set_ylim(0, 1.05)
 ax.set_xlim(left=0)
-ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=9, loc='best')
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=9, loc="best")
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 ax.set_xticklabels([])
 
 # Number-at-risk table
@@ -951,23 +1342,55 @@ nar_ctrl = number_at_risk(t_ctrl, time_points)
 ax_risk.set_xlim(ax.get_xlim())
 ax_risk.set_ylim(-0.5, 1.5)
 for i, tp in enumerate(time_points):
-    ax_risk.text(tp, 1, str(nar_treat[i]), ha='center', va='center',
-                 fontsize=8, color=PALETTE[0], fontweight='bold')
-    ax_risk.text(tp, 0, str(nar_ctrl[i]), ha='center', va='center',
-                 fontsize=8, color=PALETTE[3], fontweight='bold')
-ax_risk.text(-2, 1, 'Treatment', ha='right', va='center', fontsize=8,
-             color=PALETTE[0], fontweight='bold')
-ax_risk.text(-2, 0, 'Control', ha='right', va='center', fontsize=8,
-             color=PALETTE[3], fontweight='bold')
-ax_risk.set_xlabel('Time (months)', fontsize=11)
+    ax_risk.text(
+        tp,
+        1,
+        str(nar_treat[i]),
+        ha="center",
+        va="center",
+        fontsize=8,
+        color=PALETTE[0],
+        fontweight="bold",
+    )
+    ax_risk.text(
+        tp,
+        0,
+        str(nar_ctrl[i]),
+        ha="center",
+        va="center",
+        fontsize=8,
+        color=PALETTE[3],
+        fontweight="bold",
+    )
+ax_risk.text(
+    -2,
+    1,
+    "Treatment",
+    ha="right",
+    va="center",
+    fontsize=8,
+    color=PALETTE[0],
+    fontweight="bold",
+)
+ax_risk.text(
+    -2,
+    0,
+    "Control",
+    ha="right",
+    va="center",
+    fontsize=8,
+    color=PALETTE[3],
+    fontweight="bold",
+)
+ax_risk.set_xlabel("Time (months)", fontsize=11)
 ax_risk.set_yticks([])
-ax_risk.spines['top'].set_visible(False)
-ax_risk.spines['right'].set_visible(False)
-ax_risk.spines['left'].set_visible(False)
-ax_risk.set_title('Number at risk', fontsize=8, loc='left', fontstyle='italic')
+ax_risk.spines["top"].set_visible(False)
+ax_risk.spines["right"].set_visible(False)
+ax_risk.spines["left"].set_visible(False)
+ax_risk.set_title("Number at risk", fontsize=8, loc="left", fontstyle="italic")
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_kaplan_meier.pdf')
+save_fig(fig, "figures/fig_kaplan_meier.pdf")
 ```
 
 **⚠ 易踩的坑（Kaplan-Meier Survival 专用）：**
@@ -987,6 +1410,7 @@ save_fig(fig, 'figures/fig_kaplan_meier.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -997,7 +1421,7 @@ n = 2000
 log2fc = np.random.normal(0, 1.5, n)
 pvals = 10 ** (-np.abs(log2fc) * np.random.uniform(0.5, 3, n))
 neg_log_p = -np.log10(pvals)
-gene_names = [f'Gene_{i}' for i in range(n)]
+gene_names = [f"Gene_{i}" for i in range(n)]
 
 sig_up = (log2fc > 1) & (neg_log_p > 2)
 sig_down = (log2fc < -1) & (neg_log_p > 2)
@@ -1006,54 +1430,99 @@ ns = ~sig_up & ~sig_down
 fig, ax = plt.subplots(figsize=(7, 5.5))
 
 # Gradient density background (hexbin)
-hb = ax.hexbin(log2fc, neg_log_p, gridsize=30, cmap='Blues', alpha=0.25,
-               mincnt=1, linewidths=0.0, zorder=0)
+hb = ax.hexbin(
+    log2fc,
+    neg_log_p,
+    gridsize=30,
+    cmap="Blues",
+    alpha=0.25,
+    mincnt=1,
+    linewidths=0.0,
+    zorder=0,
+)
 
 # Fold-change threshold shading
-ax.axvspan(-1, 1, alpha=0.06, color=COLORS['ref_line'], zorder=0, label='|FC| < 2')
+ax.axvspan(-1, 1, alpha=0.06, color=COLORS["ref_line"], zorder=0, label="|FC| < 2")
 ax.axvspan(1, log2fc.max() + 1, alpha=0.04, color=PALETTE[3], zorder=0)
 ax.axvspan(log2fc.min() - 1, -1, alpha=0.04, color=PALETTE[0], zorder=0)
 
 # Subtle grid
-ax.grid(alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Scatter points
-ax.scatter(log2fc[ns], neg_log_p[ns], c=COLORS['neutral'], alpha=0.35, s=8,
-           label=f'NS ({ns.sum()})', zorder=2)
-ax.scatter(log2fc[sig_up], neg_log_p[sig_up], c=PALETTE[3], alpha=0.7, s=15,
-           label=f'Up ({sig_up.sum()})', edgecolors='white', linewidths=0.3, zorder=3)
-ax.scatter(log2fc[sig_down], neg_log_p[sig_down], c=PALETTE[0], alpha=0.7, s=15,
-           label=f'Down ({sig_down.sum()})', edgecolors='white', linewidths=0.3, zorder=3)
+ax.scatter(
+    log2fc[ns],
+    neg_log_p[ns],
+    c=COLORS["neutral"],
+    alpha=0.35,
+    s=8,
+    label=f"NS ({ns.sum()})",
+    zorder=2,
+)
+ax.scatter(
+    log2fc[sig_up],
+    neg_log_p[sig_up],
+    c=PALETTE[3],
+    alpha=0.7,
+    s=15,
+    label=f"Up ({sig_up.sum()})",
+    edgecolors="white",
+    linewidths=0.3,
+    zorder=3,
+)
+ax.scatter(
+    log2fc[sig_down],
+    neg_log_p[sig_down],
+    c=PALETTE[0],
+    alpha=0.7,
+    s=15,
+    label=f"Down ({sig_down.sum()})",
+    edgecolors="white",
+    linewidths=0.3,
+    zorder=3,
+)
 
 # Threshold lines
-ax.axhline(2, color=COLORS['ref_line'], linestyle='--', linewidth=0.8, alpha=0.7)
-ax.axvline(1, color=COLORS['ref_line'], linestyle='--', linewidth=0.8, alpha=0.7)
-ax.axvline(-1, color=COLORS['ref_line'], linestyle='--', linewidth=0.8, alpha=0.7)
+ax.axhline(2, color=COLORS["ref_line"], linestyle="--", linewidth=0.8, alpha=0.7)
+ax.axvline(1, color=COLORS["ref_line"], linestyle="--", linewidth=0.8, alpha=0.7)
+ax.axvline(-1, color=COLORS["ref_line"], linestyle="--", linewidth=0.8, alpha=0.7)
 
 # Gene labels for top hits (top 5 by significance)
 all_sig = np.where(sig_up | sig_down)[0]
 if len(all_sig) > 0:
     top_idx = all_sig[np.argsort(neg_log_p[all_sig])[-5:]]
     for idx in top_idx:
-        ax.annotate(gene_names[idx],
-                    xy=(log2fc[idx], neg_log_p[idx]),
-                    xytext=(log2fc[idx] + 0.3 * np.sign(log2fc[idx]),
-                            neg_log_p[idx] + 0.5),
-                    fontsize=7, fontstyle='italic',
-                    color=COLORS['text'],
-                    arrowprops=dict(arrowstyle='->', color=COLORS['text'], lw=0.7),
-                    bbox=dict(boxstyle='round,pad=0.15', facecolor='white',
-                              edgecolor=COLORS['neutral'], alpha=0.85))
+        ax.annotate(
+            gene_names[idx],
+            xy=(log2fc[idx], neg_log_p[idx]),
+            xytext=(log2fc[idx] + 0.3 * np.sign(log2fc[idx]), neg_log_p[idx] + 0.5),
+            fontsize=7,
+            fontstyle="italic",
+            color=COLORS["text"],
+            arrowprops=dict(arrowstyle="->", color=COLORS["text"], lw=0.7),
+            bbox=dict(
+                boxstyle="round,pad=0.15",
+                facecolor="white",
+                edgecolor=COLORS["neutral"],
+                alpha=0.85,
+            ),
+        )
 
-ax.set_xlabel('$\\log_2$(Fold Change)', fontsize=11)
-ax.set_ylabel('$-\\log_{10}$(p-value)', fontsize=11)
-ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8, loc='best',
-          fancybox=True)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.set_xlabel("$\\log_2$(Fold Change)", fontsize=11)
+ax.set_ylabel("$-\\log_{10}$(p-value)", fontsize=11)
+ax.legend(
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=8,
+    loc="best",
+    fancybox=True,
+)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_volcano.pdf')
+save_fig(fig, "figures/fig_volcano.pdf")
 ```
 
 **⚠ 易踩的坑（Volcano Plot 专用）：**
@@ -1072,6 +1541,7 @@ save_fig(fig, 'figures/fig_volcano.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -1081,7 +1551,7 @@ np.random.seed(42)
 bins = np.linspace(0, 1, 11)
 bin_centers = (bins[:-1] + bins[1:]) / 2
 model_a = np.clip(bin_centers + np.random.uniform(-0.05, 0.05, 10), 0, 1)
-model_b = np.clip(bin_centers ** 0.7 + np.random.uniform(-0.03, 0.03, 10), 0, 1)
+model_b = np.clip(bin_centers**0.7 + np.random.uniform(-0.03, 0.03, 10), 0, 1)
 
 # Simulated predicted probabilities for histogram
 pred_probs_a = np.clip(np.random.beta(2, 2, 500), 0, 1)
@@ -1096,59 +1566,109 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.08)
 
 # Top: Calibration curve
 ax_cal = fig.add_subplot(gs[0])
-ax_cal.grid(alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax_cal.grid(alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax_cal.set_axisbelow(True)
 
 # Perfect calibration line
-ax_cal.plot([0, 1], [0, 1], 'k--', linewidth=0.8, alpha=0.5, label='Perfect')
+ax_cal.plot([0, 1], [0, 1], "k--", linewidth=0.8, alpha=0.5, label="Perfect")
 
 # Gradient CI band for Model A
 ci_width_a = np.random.uniform(0.03, 0.07, 10)
-ax_cal.fill_between(bin_centers, model_a - ci_width_a, model_a + ci_width_a,
-                     alpha=0.15, color=PALETTE[0])
-ax_cal.plot(bin_centers, model_a, 'o-', color=PALETTE[0], linewidth=2.2,
-            markersize=7, label=f'Ours (Brier={brier_a:.3f})',
-            markeredgecolor='white', markeredgewidth=1.0)
+ax_cal.fill_between(
+    bin_centers,
+    model_a - ci_width_a,
+    model_a + ci_width_a,
+    alpha=0.15,
+    color=PALETTE[0],
+)
+ax_cal.plot(
+    bin_centers,
+    model_a,
+    "o-",
+    color=PALETTE[0],
+    linewidth=2.2,
+    markersize=7,
+    label=f"Ours (Brier={brier_a:.3f})",
+    markeredgecolor="white",
+    markeredgewidth=1.0,
+)
 
 # Gradient CI band for Model B
 ci_width_b = np.random.uniform(0.04, 0.09, 10)
-ax_cal.fill_between(bin_centers, model_b - ci_width_b, model_b + ci_width_b,
-                     alpha=0.12, color=PALETTE[3])
-ax_cal.plot(bin_centers, model_b, 's--', color=PALETTE[3], linewidth=2.0,
-            markersize=7, label=f'Baseline (Brier={brier_b:.3f})',
-            markeredgecolor='white', markeredgewidth=1.0)
+ax_cal.fill_between(
+    bin_centers,
+    model_b - ci_width_b,
+    model_b + ci_width_b,
+    alpha=0.12,
+    color=PALETTE[3],
+)
+ax_cal.plot(
+    bin_centers,
+    model_b,
+    "s--",
+    color=PALETTE[3],
+    linewidth=2.0,
+    markersize=7,
+    label=f"Baseline (Brier={brier_b:.3f})",
+    markeredgecolor="white",
+    markeredgewidth=1.0,
+)
 
 # Brier score annotation box
-ax_cal.annotate(f'Brier Score\nOurs: {brier_a:.3f}\nBaseline: {brier_b:.3f}',
-                xy=(0.05, 0.88), xycoords='axes fraction',
-                fontsize=8.5, va='top',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor=_lighten(PALETTE[0], 0.7),
-                          edgecolor=PALETTE[0], alpha=0.9))
+ax_cal.annotate(
+    f"Brier Score\nOurs: {brier_a:.3f}\nBaseline: {brier_b:.3f}",
+    xy=(0.05, 0.88),
+    xycoords="axes fraction",
+    fontsize=8.5,
+    va="top",
+    bbox=dict(
+        boxstyle="round,pad=0.4",
+        facecolor=_lighten(PALETTE[0], 0.7),
+        edgecolor=PALETTE[0],
+        alpha=0.9,
+    ),
+)
 
-ax_cal.set_ylabel('Fraction of positives', fontsize=11)
+ax_cal.set_ylabel("Fraction of positives", fontsize=11)
 ax_cal.set_xlim(0, 1)
 ax_cal.set_ylim(0, 1)
-ax_cal.set_aspect('equal')
-ax_cal.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8.5, loc='lower right')
-ax_cal.spines['top'].set_visible(False)
-ax_cal.spines['right'].set_visible(False)
+ax_cal.set_aspect("equal")
+ax_cal.legend(
+    frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8.5, loc="lower right"
+)
+ax_cal.spines["top"].set_visible(False)
+ax_cal.spines["right"].set_visible(False)
 ax_cal.set_xticklabels([])
 
 # Bottom: Histogram of predicted probabilities
 ax_hist = fig.add_subplot(gs[1])
-ax_hist.hist(pred_probs_a, bins=20, alpha=0.5, color=PALETTE[0], label='Ours',
-             edgecolor='white', linewidth=0.5)
-ax_hist.hist(pred_probs_b, bins=20, alpha=0.4, color=PALETTE[3], label='Baseline',
-             edgecolor='white', linewidth=0.5)
-ax_hist.set_xlabel('Mean predicted probability', fontsize=11)
-ax_hist.set_ylabel('Count', fontsize=10)
+ax_hist.hist(
+    pred_probs_a,
+    bins=20,
+    alpha=0.5,
+    color=PALETTE[0],
+    label="Ours",
+    edgecolor="white",
+    linewidth=0.5,
+)
+ax_hist.hist(
+    pred_probs_b,
+    bins=20,
+    alpha=0.4,
+    color=PALETTE[3],
+    label="Baseline",
+    edgecolor="white",
+    linewidth=0.5,
+)
+ax_hist.set_xlabel("Mean predicted probability", fontsize=11)
+ax_hist.set_ylabel("Count", fontsize=10)
 ax_hist.set_xlim(0, 1)
 ax_hist.legend(frameon=False, fontsize=8)
-ax_hist.spines['top'].set_visible(False)
-ax_hist.spines['right'].set_visible(False)
+ax_hist.spines["top"].set_visible(False)
+ax_hist.spines["right"].set_visible(False)
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_calibration.pdf')
+save_fig(fig, "figures/fig_calibration.pdf")
 ```
 
 ---
@@ -1159,6 +1679,7 @@ save_fig(fig, 'figures/fig_calibration.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1168,12 +1689,12 @@ n_studies = 30
 effects = np.random.normal(0.5, 0.3, n_studies)
 se = np.random.uniform(0.05, 0.4, n_studies)
 effects += np.random.normal(0, se)
-study_names = [f'Study {i+1}' for i in range(n_studies)]
+study_names = [f"Study {i + 1}" for i in range(n_studies)]
 
 fig, ax = plt.subplots(figsize=(7, 5.5))
 
 # Subtle grid
-ax.grid(alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 mean_eff = np.mean(effects)
@@ -1181,50 +1702,83 @@ se_range = np.linspace(0, 0.45, 200)
 
 # Gradient CI bands (99%, 95%, 90%)
 ci_levels = [
-    (2.576, '99% CI', PALETTE[2], 0.06),
-    (1.960, '95% CI', PALETTE[1], 0.08),
-    (1.645, '90% CI', PALETTE[0], 0.10),
+    (2.576, "99% CI", PALETTE[2], 0.06),
+    (1.960, "95% CI", PALETTE[1], 0.08),
+    (1.645, "90% CI", PALETTE[0], 0.10),
 ]
 for z_val, label, color, alpha in ci_levels:
-    ax.fill_betweenx(se_range,
-                      mean_eff - z_val * se_range,
-                      mean_eff + z_val * se_range,
-                      alpha=alpha, color=color, label=label)
+    ax.fill_betweenx(
+        se_range,
+        mean_eff - z_val * se_range,
+        mean_eff + z_val * se_range,
+        alpha=alpha,
+        color=color,
+        label=label,
+    )
 
 # Pooled effect line
-ax.axvline(mean_eff, color=PALETTE[0], linestyle='-', linewidth=1.8, alpha=0.6)
+ax.axvline(mean_eff, color=PALETTE[0], linestyle="-", linewidth=1.8, alpha=0.6)
 
 # Study points
-ax.scatter(effects, se, color=PALETTE[0], s=50, alpha=0.8, edgecolors='white',
-           linewidths=0.8, zorder=4)
+ax.scatter(
+    effects,
+    se,
+    color=PALETTE[0],
+    s=50,
+    alpha=0.8,
+    edgecolors="white",
+    linewidths=0.8,
+    zorder=4,
+)
 
 # Study labels for outliers (outside 95% CI)
 for i in range(n_studies):
     if abs(effects[i] - mean_eff) > 1.96 * se[i] * 1.5:
-        ax.annotate(study_names[i],
-                    xy=(effects[i], se[i]),
-                    xytext=(effects[i] + 0.08, se[i] - 0.03),
-                    fontsize=7, color=COLORS['down'],
-                    arrowprops=dict(arrowstyle='->', color=COLORS['down'], lw=0.7),
-                    bbox=dict(boxstyle='round,pad=0.15', facecolor=COLORS['bg_box'],
-                              edgecolor=COLORS['down'], alpha=0.7))
+        ax.annotate(
+            study_names[i],
+            xy=(effects[i], se[i]),
+            xytext=(effects[i] + 0.08, se[i] - 0.03),
+            fontsize=7,
+            color=COLORS["down"],
+            arrowprops=dict(arrowstyle="->", color=COLORS["down"], lw=0.7),
+            bbox=dict(
+                boxstyle="round,pad=0.15",
+                facecolor=COLORS["bg_box"],
+                edgecolor=COLORS["down"],
+                alpha=0.7,
+            ),
+        )
 
 # Egger's test annotation
-ax.annotate("Egger's test: t = 1.42, p = 0.167\nNo significant asymmetry",
-            xy=(0.02, 0.02), xycoords='axes fraction',
-            fontsize=8, va='bottom',
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=_lighten(PALETTE[0], 0.7),
-                      edgecolor=PALETTE[0], alpha=0.9))
+ax.annotate(
+    "Egger's test: t = 1.42, p = 0.167\nNo significant asymmetry",
+    xy=(0.02, 0.02),
+    xycoords="axes fraction",
+    fontsize=8,
+    va="bottom",
+    bbox=dict(
+        boxstyle="round,pad=0.4",
+        facecolor=_lighten(PALETTE[0], 0.7),
+        edgecolor=PALETTE[0],
+        alpha=0.9,
+    ),
+)
 
-ax.set_xlabel('Effect size', fontsize=11)
-ax.set_ylabel('Standard error', fontsize=11)
+ax.set_xlabel("Effect size", fontsize=11)
+ax.set_ylabel("Standard error", fontsize=11)
 ax.invert_yaxis()
-ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8, loc='best',
-          fancybox=True)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.legend(
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=8,
+    loc="best",
+    fancybox=True,
+)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_funnel.pdf')
+save_fig(fig, "figures/fig_funnel.pdf")
 ```
 
 
@@ -1235,19 +1789,26 @@ save_fig(fig, 'figures/fig_funnel.pdf')
 **场景**: 多方法多指标对比。比柱状图信息密度更高——同时展示显著性、汇总估计和各自的置信区间。Nature/Cell 风格。
 
 ```python
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten; from _utils.vivid_config import palette_colors
-setup_style(); scale_colors = palette_colors()
+from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+from _utils.vivid_config import palette_colors
+
+setup_style()
+scale_colors = palette_colors()
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 
-methods = ['Ours', 'BERT', 'GPT-4', 'LLaMA', 'T5']
-metrics = ['Acc', 'F1', 'Prec', 'Rec']
-scores = np.array([[0.92, 0.90, 0.91, 0.89],
-                    [0.88, 0.86, 0.89, 0.84],
-                    [0.90, 0.88, 0.87, 0.90],
-                    [0.85, 0.83, 0.86, 0.81],
-                    [0.87, 0.85, 0.88, 0.83]])
+methods = ["Ours", "BERT", "GPT-4", "LLaMA", "T5"]
+metrics = ["Acc", "F1", "Prec", "Rec"]
+scores = np.array(
+    [
+        [0.92, 0.90, 0.91, 0.89],
+        [0.88, 0.86, 0.89, 0.84],
+        [0.90, 0.88, 0.87, 0.90],
+        [0.85, 0.83, 0.86, 0.81],
+        [0.87, 0.85, 0.88, 0.83],
+    ]
+)
 ci = np.random.uniform(0.01, 0.03, scores.shape)
 
 # Compute p-values (simulated) for gradient coloring
@@ -1258,52 +1819,113 @@ pvals[0, :] = np.random.uniform(0.001, 0.01, 4)  # Ours is most significant
 fig, ax = plt.subplots(figsize=(8, 5))
 
 # Subtle grid
-ax.grid(axis='x', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="x", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 y_base = np.arange(len(methods))
 offsets = np.linspace(-0.25, 0.25, len(metrics))
 
 # Gradient colormap for significance
-cmap_sig = mcolors.LinearSegmentedColormap.from_list('sig', [scale_colors[1], scale_colors[4] if len(scale_colors) > 4 else scale_colors[0], scale_colors[2] if len(scale_colors) > 2 else scale_colors[0]])
+cmap_sig = mcolors.LinearSegmentedColormap.from_list(
+    "sig",
+    [
+        scale_colors[1],
+        scale_colors[4] if len(scale_colors) > 4 else scale_colors[0],
+        scale_colors[2] if len(scale_colors) > 2 else scale_colors[0],
+    ],
+)
 
 for j, metric in enumerate(metrics):
     for i in range(len(methods)):
         # Color by significance (lower p = greener)
         sig_norm = min(pvals[i, j] / 0.1, 1.0)
         dot_color = cmap_sig(1 - sig_norm)
-        ax.errorbar(scores[i, j], y_base[i] + offsets[j], xerr=ci[i, j],
-                     fmt='o', color=dot_color, markersize=8, capsize=3,
-                     linewidth=1.5, markeredgecolor='white', markeredgewidth=0.8,
-                     label=metric if i == 0 else '', zorder=3)
+        ax.errorbar(
+            scores[i, j],
+            y_base[i] + offsets[j],
+            xerr=ci[i, j],
+            fmt="o",
+            color=dot_color,
+            markersize=8,
+            capsize=3,
+            linewidth=1.5,
+            markeredgecolor="white",
+            markeredgewidth=0.8,
+            label=metric if i == 0 else "",
+            zorder=3,
+        )
 
 # Pooled estimate diamond for each method
 pooled = np.mean(scores, axis=1)
 pooled_ci = np.mean(ci, axis=1)
 for i in range(len(methods)):
-    diamond_x = [pooled[i] - pooled_ci[i], pooled[i], pooled[i] + pooled_ci[i], pooled[i]]
+    diamond_x = [
+        pooled[i] - pooled_ci[i],
+        pooled[i],
+        pooled[i] + pooled_ci[i],
+        pooled[i],
+    ]
     diamond_y = [y_base[i] + 0.35, y_base[i] + 0.42, y_base[i] + 0.35, y_base[i] + 0.28]
-    ax.fill(diamond_x, diamond_y, color=PALETTE[0] if i == 0 else COLORS['ref_line'],
-            alpha=0.7, zorder=4)
-    ax.text(pooled[i] + pooled_ci[i] + 0.008, y_base[i] + 0.35,
-            f'{pooled[i]:.3f}', fontsize=7, va='center', color=COLORS['text'])
+    ax.fill(
+        diamond_x,
+        diamond_y,
+        color=PALETTE[0] if i == 0 else COLORS["ref_line"],
+        alpha=0.7,
+        zorder=4,
+    )
+    ax.text(
+        pooled[i] + pooled_ci[i] + 0.008,
+        y_base[i] + 0.35,
+        f"{pooled[i]:.3f}",
+        fontsize=7,
+        va="center",
+        color=COLORS["text"],
+    )
 
 ax.set_yticks(y_base)
 ax.set_yticklabels(methods, fontsize=10)
-ax.set_xlabel('Score', fontsize=11)
+ax.set_xlabel("Score", fontsize=11)
 
 # Custom legend
 from matplotlib.lines import Line2D
-legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor=PALETTE[j],
-                           markersize=8, label=metrics[j]) for j in range(len(metrics))]
-legend_elements.append(Line2D([0], [0], marker='D', color='w', markerfacecolor=COLORS['ref_line'],
-                               markersize=8, label='Pooled'))
-ax.legend(handles=legend_elements, loc='lower right', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8, ncol=3)
+
+legend_elements = [
+    Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=PALETTE[j],
+        markersize=8,
+        label=metrics[j],
+    )
+    for j in range(len(metrics))
+]
+legend_elements.append(
+    Line2D(
+        [0],
+        [0],
+        marker="D",
+        color="w",
+        markerfacecolor=COLORS["ref_line"],
+        markersize=8,
+        label="Pooled",
+    )
+)
+ax.legend(
+    handles=legend_elements,
+    loc="lower right",
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=8,
+    ncol=3,
+)
 ax.invert_yaxis()
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_dot_ci.pdf')
+save_fig(fig, "figures/fig_dot_ci.pdf")
 ```
 
 **⚠ 易踩的坑（Dot Plot with CI 专用）：**
@@ -1322,7 +1944,9 @@ save_fig(fig, 'figures/fig_dot_ci.pdf')
 **⚠ 布局**: 只画列方向树状图（不画行方向树状图），避免遮挡 y 轴标签。使用 `fig.add_axes()` 手动分区（不要用 gridspec）。树状图和热力图的 left/width 参数完全一致。
 
 ```python
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten; from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1331,41 +1955,48 @@ from scipy.spatial.distance import pdist
 
 np.random.seed(42)
 data = np.random.randn(10, 8)
-labels_row = [f'Sample-{i+1}' for i in range(10)]
-labels_col = [f'Feat-{i+1}' for i in range(8)]
+labels_row = [f"Sample-{i + 1}" for i in range(10)]
+labels_col = [f"Feat-{i + 1}" for i in range(8)]
 
-Z_col = linkage(pdist(data.T), method='ward')
-Z_row = linkage(pdist(data), method='ward')
+Z_col = linkage(pdist(data.T), method="ward")
+Z_row = linkage(pdist(data), method="ward")
 
 n_clusters = 3
-col_clusters = fcluster(Z_col, n_clusters, criterion='maxclust')
-row_clusters = fcluster(Z_row, n_clusters, criterion='maxclust')
+col_clusters = fcluster(Z_col, n_clusters, criterion="maxclust")
+row_clusters = fcluster(Z_row, n_clusters, criterion="maxclust")
 
 fig = plt.figure(figsize=(10, 8))
 
 # ── 关键：树状图和热力图的 left 和 width 参数完全一致，否则会对不齐
 # ── _left 需要足够容纳色条(左侧) + 间距 + y轴标签区域(至少 0.15)
-_left = 0.22   # 长文本标签需要更大左边距
+_left = 0.22  # 长文本标签需要更大左边距
 _width = 0.56
 _cbar_left = _left + _width + 0.03
 
 # 列树状图（只画列方向，不画行方向，避免遮挡标签）
 ax_dendro_top = fig.add_axes([_left, 0.86, _width, 0.10])
-dn_col = dendrogram(Z_col, ax=ax_dendro_top, leaf_font_size=0,
-                     color_threshold=Z_col[-n_clusters + 1, 2],
-                     above_threshold_color=COLORS['ref_line'])
+dn_col = dendrogram(
+    Z_col,
+    ax=ax_dendro_top,
+    leaf_font_size=0,
+    color_threshold=Z_col[-n_clusters + 1, 2],
+    above_threshold_color=COLORS["ref_line"],
+)
 ax_dendro_top.set_axis_off()
 
 # Heatmap —— left 和 width 与树状图完全一致
 ax_heat = fig.add_axes([_left, 0.08, _width, 0.76])
-col_order = dn_col['leaves']
+col_order = dn_col["leaves"]
 row_order = list(range(len(labels_row)))
 ordered_data = data[row_order][:, col_order]
 
-im = ax_heat.imshow(ordered_data, aspect='auto', cmap=palette_cmap('diverging'), interpolation='nearest')
+im = ax_heat.imshow(
+    ordered_data, aspect="auto", cmap=palette_cmap("diverging"), interpolation="nearest"
+)
 ax_heat.set_xticks(range(len(labels_col)))
-ax_heat.set_xticklabels([labels_col[i] for i in col_order], fontsize=8,
-                         rotation=45, ha='right')
+ax_heat.set_xticklabels(
+    [labels_col[i] for i in col_order], fontsize=8, rotation=45, ha="right"
+)
 ax_heat.set_yticks(range(len(labels_row)))
 ax_heat.set_yticklabels([labels_row[i] for i in row_order], fontsize=8)
 
@@ -1373,11 +2004,11 @@ ax_heat.set_yticklabels([labels_row[i] for i in row_order], fontsize=8)
 sorted_col_clusters = [col_clusters[i] for i in col_order]
 for k in range(1, len(sorted_col_clusters)):
     if sorted_col_clusters[k] != sorted_col_clusters[k - 1]:
-        ax_heat.axvline(k - 0.5, color='white', linewidth=2.5)
+        ax_heat.axvline(k - 0.5, color="white", linewidth=2.5)
 sorted_row_clusters = [row_clusters[i] for i in row_order]
 for k in range(1, len(sorted_row_clusters)):
     if sorted_row_clusters[k] != sorted_row_clusters[k - 1]:
-        ax_heat.axhline(k - 0.5, color='white', linewidth=2.5)
+        ax_heat.axhline(k - 0.5, color="white", linewidth=2.5)
 
 # Colorbar
 ax_cbar = fig.add_axes([_cbar_left, 0.08, 0.02, 0.76])
@@ -1385,12 +2016,23 @@ cbar = plt.colorbar(im, cax=ax_cbar)
 cbar.ax.tick_params(labelsize=8)
 
 # Silhouette score annotation
-ax_heat.text(0.98, 0.02, 'Silhouette = 0.42',
-             transform=ax_heat.transAxes, fontsize=8, ha='right', va='bottom',
-             bbox=dict(boxstyle='round,pad=0.3', facecolor=_lighten(PALETTE[0], 0.7),
-                       edgecolor=PALETTE[0], alpha=0.9))
+ax_heat.text(
+    0.98,
+    0.02,
+    "Silhouette = 0.42",
+    transform=ax_heat.transAxes,
+    fontsize=8,
+    ha="right",
+    va="bottom",
+    bbox=dict(
+        boxstyle="round,pad=0.3",
+        facecolor=_lighten(PALETTE[0], 0.7),
+        edgecolor=PALETTE[0],
+        alpha=0.9,
+    ),
+)
 
-save_fig(fig, 'figures/fig_cluster_heatmap.pdf')
+save_fig(fig, "figures/fig_cluster_heatmap.pdf")
 ```
 
 **⚠ 易踩的坑（聚类热力图专用）：**
@@ -1419,6 +2061,7 @@ save_fig(fig, 'figures/fig_cluster_heatmap.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1427,11 +2070,11 @@ from scipy.spatial.distance import pdist
 
 # data: (n_row, n_col); labels_row 可为中文长标签; z-score 后 vmin/vmax 取 ±2
 n_row, n_col = data.shape
-Z_row = linkage(pdist(data), method='ward')
-Z_col = linkage(pdist(data.T), method='ward')
+Z_row = linkage(pdist(data), method="ward")
+Z_col = linkage(pdist(data.T), method="ward")
 n_clusters = 3
-row_clusters = fcluster(Z_row, n_clusters, criterion='maxclust')
-col_clusters = fcluster(Z_col, n_clusters, criterion='maxclust')
+row_clusters = fcluster(Z_row, n_clusters, criterion="maxclust")
+col_clusters = fcluster(Z_col, n_clusters, criterion="maxclust")
 
 fig = plt.figure(figsize=(10, 7))
 # 横向分区[左→右]: [行树状图][热力图][右侧标签(自动占位)][色条]
@@ -1439,32 +2082,51 @@ _heat_x, _heat_w, _bottom, _height = 0.19, 0.56, 0.10, 0.72
 
 # 行树状图(左, orientation='left')
 ax_dleft = fig.add_axes([0.05, _bottom, 0.12, _height])
-dn_row = dendrogram(Z_row, ax=ax_dleft, orientation='left', no_labels=True,
-                    color_threshold=Z_row[-n_clusters + 1, 2],
-                    above_threshold_color=COLORS['ref_line'])
-ax_dleft.invert_yaxis()          # ★ 让叶子[上→下]与 imshow(origin=upper) 同向
+dn_row = dendrogram(
+    Z_row,
+    ax=ax_dleft,
+    orientation="left",
+    no_labels=True,
+    color_threshold=Z_row[-n_clusters + 1, 2],
+    above_threshold_color=COLORS["ref_line"],
+)
+ax_dleft.invert_yaxis()  # ★ 让叶子[上→下]与 imshow(origin=upper) 同向
 ax_dleft.set_axis_off()
-row_order = dn_row['leaves']     # ★ invert 后 row_order = leaves 正序(勿加 [::-1]，否则行全错位)
+row_order = dn_row[
+    "leaves"
+]  # ★ invert 后 row_order = leaves 正序(勿加 [::-1]，否则行全错位)
 
 # 列树状图(顶)
 ax_dtop = fig.add_axes([_heat_x, 0.84, _heat_w, 0.11])
-dn_col = dendrogram(Z_col, ax=ax_dtop, no_labels=True,
-                    color_threshold=Z_col[-n_clusters + 1, 2],
-                    above_threshold_color=COLORS['ref_line'])
+dn_col = dendrogram(
+    Z_col,
+    ax=ax_dtop,
+    no_labels=True,
+    color_threshold=Z_col[-n_clusters + 1, 2],
+    above_threshold_color=COLORS["ref_line"],
+)
 ax_dtop.set_axis_off()
-col_order = dn_col['leaves']
+col_order = dn_col["leaves"]
 
 # 热力图(left/width 与列树状图完全一致，才对得齐)
 ax_heat = fig.add_axes([_heat_x, _bottom, _heat_w, _height])
-im = ax_heat.imshow(data[np.ix_(row_order, col_order)], aspect='auto',
-                    cmap='coolwarm', interpolation='nearest', vmin=-2, vmax=2)
+im = ax_heat.imshow(
+    data[np.ix_(row_order, col_order)],
+    aspect="auto",
+    cmap="coolwarm",
+    interpolation="nearest",
+    vmin=-2,
+    vmax=2,
+)
 # ★ 行标签移到右侧，彻底避开左侧树状图连线
 ax_heat.set_yticks(range(n_row))
 ax_heat.set_yticklabels([labels_row[i] for i in row_order], fontsize=9)
 ax_heat.yaxis.tick_right()
-ax_heat.yaxis.set_tick_params(length=0)   # 去刻度线只留文字
+ax_heat.yaxis.set_tick_params(length=0)  # 去刻度线只留文字
 ax_heat.set_xticks(range(n_col))
-ax_heat.set_xticklabels([labels_col[i] for i in col_order], fontsize=8, rotation=45, ha='right')
+ax_heat.set_xticklabels(
+    [labels_col[i] for i in col_order], fontsize=8, rotation=45, ha="right"
+)
 for s in ax_heat.spines.values():
     s.set_visible(False)
 
@@ -1472,18 +2134,19 @@ for s in ax_heat.spines.values():
 srow = [row_clusters[i] for i in row_order]
 for k in range(1, n_row):
     if srow[k] != srow[k - 1]:
-        ax_heat.axhline(k - 0.5, color='white', linewidth=2.5)
+        ax_heat.axhline(k - 0.5, color="white", linewidth=2.5)
 scol = [col_clusters[i] for i in col_order]
 for k in range(1, n_col):
     if scol[k] != scol[k - 1]:
-        ax_heat.axvline(k - 0.5, color='white', linewidth=2.5)
+        ax_heat.axvline(k - 0.5, color="white", linewidth=2.5)
 
 # 色条(最右, 给右侧标签留出 0.75→0.90 的空间)
 ax_cbar = fig.add_axes([0.90, _bottom, 0.02, _height])
-cbar = plt.colorbar(im, cax=ax_cbar); cbar.ax.tick_params(labelsize=8)
-cbar.set_label('成分含量 (列 z-score)', fontsize=9)
+cbar = plt.colorbar(im, cax=ax_cbar)
+cbar.ax.tick_params(labelsize=8)
+cbar.set_label("成分含量 (列 z-score)", fontsize=9)
 
-save_fig(fig, 'figures/fig_cluster_heatmap.pdf')
+save_fig(fig, "figures/fig_cluster_heatmap.pdf")
 ```
 
 **⚠ 变体专用坑（已实跑验证）：**
@@ -1504,8 +2167,11 @@ save_fig(fig, 'figures/fig_cluster_heatmap.pdf')
 **场景**: 引用网络、知识图谱、社交网络、因果关系。
 
 ```python
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten; from _utils.vivid_config import palette_colors
-setup_style(); scale_colors = palette_colors()
+from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+from _utils.vivid_config import palette_colors
+
+setup_style()
+scale_colors = palette_colors()
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
@@ -1514,7 +2180,8 @@ try:
     import networkx as nx
 except ImportError:
     import subprocess, sys
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'networkx', '-q'])
+
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "networkx", "-q"])
     import networkx as nx
 
 from scipy.spatial import ConvexHull
@@ -1549,46 +2216,96 @@ for i, comm in enumerate(communities):
             # Expand hull slightly
             centroid = points.mean(axis=0)
             expanded = centroid + 1.15 * (hull_points - centroid)
-            ax.fill(expanded[:, 0], expanded[:, 1],
-                    color=PALETTE[i % len(PALETTE)], alpha=0.08)
-            ax.plot(expanded[:, 0], expanded[:, 1],
-                    color=PALETTE[i % len(PALETTE)], linewidth=1.5,
-                    linestyle='--', alpha=0.4)
+            ax.fill(
+                expanded[:, 0],
+                expanded[:, 1],
+                color=PALETTE[i % len(PALETTE)],
+                alpha=0.08,
+            )
+            ax.plot(
+                expanded[:, 0],
+                expanded[:, 1],
+                color=PALETTE[i % len(PALETTE)],
+                linewidth=1.5,
+                linestyle="--",
+                alpha=0.4,
+            )
         except Exception:
             pass
 
 # Edge weight gradient
 edges = G.edges()
-edge_weights = [G[u][v].get('weight', 1) for u, v in edges]
+edge_weights = [G[u][v].get("weight", 1) for u, v in edges]
 max_w = max(edge_weights) if edge_weights else 1
-cmap_edge = mcolors.LinearSegmentedColormap.from_list('ew', [_lighten(scale_colors[0], 0.8), COLORS['ref_line']])
+cmap_edge = mcolors.LinearSegmentedColormap.from_list(
+    "ew", [_lighten(scale_colors[0], 0.8), COLORS["ref_line"]]
+)
 for (u, v), w in zip(edges, edge_weights):
     x0, y0 = pos[u]
     x1, y1 = pos[v]
     norm_w = w / max_w
-    ax.plot([x0, x1], [y0, y1], color=cmap_edge(norm_w),
-            linewidth=0.5 + 1.5 * norm_w, alpha=0.3 + 0.4 * norm_w, zorder=1)
+    ax.plot(
+        [x0, x1],
+        [y0, y1],
+        color=cmap_edge(norm_w),
+        linewidth=0.5 + 1.5 * norm_w,
+        alpha=0.3 + 0.4 * norm_w,
+        zorder=1,
+    )
 
 # Draw nodes
-nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, node_size=node_sizes,
-                        edgecolors='white', linewidths=1.2, alpha=0.9, zorder=3)
+nx.draw_networkx_nodes(
+    G,
+    pos,
+    ax=ax,
+    node_color=node_colors,
+    node_size=node_sizes,
+    edgecolors="white",
+    linewidths=1.2,
+    alpha=0.9,
+    zorder=3,
+)
 
 # Labels for high-degree nodes only
 high_deg_nodes = {n: str(n) for n in G.nodes() if degrees[n] >= 4}
-nx.draw_networkx_labels(G, pos, labels=high_deg_nodes, ax=ax,
-                         font_size=7, font_color=COLORS['text'], font_weight='bold')
+nx.draw_networkx_labels(
+    G,
+    pos,
+    labels=high_deg_nodes,
+    ax=ax,
+    font_size=7,
+    font_color=COLORS["text"],
+    font_weight="bold",
+)
 
 # Legend for communities
 from matplotlib.lines import Line2D
-legend_elements = [Line2D([0], [0], marker='o', color='w',
-                           markerfacecolor=PALETTE[i % len(PALETTE)],
-                           markersize=10, label=f'Community {i+1}')
-                   for i in range(len(communities))]
-ax.legend(handles=legend_elements, loc='upper left', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8, fancybox=True)
+
+legend_elements = [
+    Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=PALETTE[i % len(PALETTE)],
+        markersize=10,
+        label=f"Community {i + 1}",
+    )
+    for i in range(len(communities))
+]
+ax.legend(
+    handles=legend_elements,
+    loc="upper left",
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=8,
+    fancybox=True,
+)
 
 ax.set_axis_off()
 fig.tight_layout()
-save_fig(fig, 'figures/fig_network.pdf')
+save_fig(fig, "figures/fig_network.pdf")
 ```
 
 **⚠ 易踩的坑（Network Graph 专用）：**
@@ -1608,26 +2325,30 @@ save_fig(fig, 'figures/fig_network.pdf')
 **风格**: YlOrRd heatmap + 浅色填充+原色边框 用于列最优单元格 + 排名奖牌。
 
 ```python
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten; from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import pdist
 
-methods = ['Ours', 'LSTM', 'Random Forest', 'Linear Reg']
-metrics = ['MAE', 'RMSE', 'R2', 'MAPE(%)', 'Speed']
+methods = ["Ours", "LSTM", "Random Forest", "Linear Reg"]
+metrics = ["MAE", "RMSE", "R2", "MAPE(%)", "Speed"]
 # Lower is better for MAE/RMSE/MAPE, higher for R2/Speed
-data = np.array([
-    [0.29, 1.05, 0.987, 2.1, 0.85],
-    [72.23, 85.4, 0.812, 15.3, 0.60],
-    [0.45, 1.82, 0.965, 3.8, 0.92],
-    [137.08, 152.3, 0.421, 48.2, 0.98],
-])
+data = np.array(
+    [
+        [0.29, 1.05, 0.987, 2.1, 0.85],
+        [72.23, 85.4, 0.812, 15.3, 0.60],
+        [0.45, 1.82, 0.965, 3.8, 0.92],
+        [137.08, 152.3, 0.421, 48.2, 0.98],
+    ]
+)
 higher_better = [False, False, True, False, True]
 
 # Rank medals
-rank_symbols = ['🥇', '🥈', '🥉', '④']
+rank_symbols = ["🥇", "🥈", "🥉", "④"]
 
 # Normalize for color mapping
 norm_data = np.zeros_like(data)
@@ -1642,7 +2363,7 @@ for j in range(data.shape[1]):
 overall_rank_score = np.mean(norm_data, axis=1)
 
 # Add overall ranking column
-metrics_ext = metrics + ['Overall']
+metrics_ext = metrics + ["Overall"]
 data_ext = np.column_stack([data, overall_rank_score])
 norm_ext = np.column_stack([norm_data, overall_rank_score / overall_rank_score.max()])
 
@@ -1650,11 +2371,17 @@ fig = plt.figure(figsize=(9, 4.5))
 
 # Dendrogram on top
 ax_dendro = fig.add_axes([0.15, 0.82, 0.65, 0.14])
-Z = linkage(pdist(norm_data), method='ward')
-dn = dendrogram(Z, labels=methods, ax=ax_dendro, leaf_font_size=0,
-                color_threshold=0, above_threshold_color=COLORS['ref_line'])
+Z = linkage(pdist(norm_data), method="ward")
+dn = dendrogram(
+    Z,
+    labels=methods,
+    ax=ax_dendro,
+    leaf_font_size=0,
+    color_threshold=0,
+    above_threshold_color=COLORS["ref_line"],
+)
 ax_dendro.set_axis_off()
-row_order = dn['leaves']
+row_order = dn["leaves"]
 
 # Heatmap
 ax = fig.add_axes([0.15, 0.12, 0.72, 0.68])
@@ -1662,7 +2389,9 @@ ordered_norm = norm_ext[row_order]
 ordered_data = data_ext[row_order]
 ordered_methods = [methods[i] for i in row_order]
 
-im = ax.imshow(ordered_norm, cmap=palette_cmap('sequential'), aspect='auto', vmin=0, vmax=1)
+im = ax.imshow(
+    ordered_norm, cmap=palette_cmap("sequential"), aspect="auto", vmin=0, vmax=1
+)
 ax.set_xticks(range(len(metrics_ext)))
 ax.set_xticklabels(metrics_ext, fontsize=10)
 ax.set_yticks(range(len(methods)))
@@ -1683,30 +2412,50 @@ for j in range(len(metrics_ext)):
         # Find position in ordered display
         i_display = row_order.index(rank_pos)
         if j < len(metrics):
-            val_str = f'{data[rank_pos, j]:.2f}'
+            val_str = f"{data[rank_pos, j]:.2f}"
         else:
-            val_str = f'{overall_rank_score[rank_pos]:.2f}'
+            val_str = f"{overall_rank_score[rank_pos]:.2f}"
 
         rank_idx = i_orig
-        rank_label = rank_symbols[rank_idx] if rank_idx < len(rank_symbols) else ''
+        rank_label = rank_symbols[rank_idx] if rank_idx < len(rank_symbols) else ""
 
         color = contrast_text(im.cmap(im.norm(ordered_norm[i_display, j])))
-        weight = 'bold' if rank_idx == 0 else 'normal'
+        weight = "bold" if rank_idx == 0 else "normal"
 
-        ax.text(j, i_display, f'{val_str}\n{rank_label}', ha='center', va='center',
-                fontsize=8.5, fontweight=weight, color=color)
+        ax.text(
+            j,
+            i_display,
+            f"{val_str}\n{rank_label}",
+            ha="center",
+            va="center",
+            fontsize=8.5,
+            fontweight=weight,
+            color=color,
+        )
 
         # 列最优：浅色填充背景 + 原色粗边框
         if rank_idx == 0:
-            rect = plt.Rectangle((j - 0.5, i_display - 0.5), 1, 1,
-                                  linewidth=2.5, edgecolor=PALETTE[0],
-                                  facecolor=_lighten(PALETTE[0], 0.5),
-                                  alpha=0.3, zorder=4)
+            rect = plt.Rectangle(
+                (j - 0.5, i_display - 0.5),
+                1,
+                1,
+                linewidth=2.5,
+                edgecolor=PALETTE[0],
+                facecolor=_lighten(PALETTE[0], 0.5),
+                alpha=0.3,
+                zorder=4,
+            )
             ax.add_patch(rect)
             # 原色边框（不透明）
-            rect_border = plt.Rectangle((j - 0.5, i_display - 0.5), 1, 1,
-                                         linewidth=2.5, edgecolor=PALETTE[0],
-                                         facecolor='none', zorder=5)
+            rect_border = plt.Rectangle(
+                (j - 0.5, i_display - 0.5),
+                1,
+                1,
+                linewidth=2.5,
+                edgecolor=PALETTE[0],
+                facecolor="none",
+                zorder=5,
+            )
             ax.add_patch(rect_border)
 
 ax.spines[:].set_visible(False)
@@ -1714,10 +2463,10 @@ ax.spines[:].set_visible(False)
 # Colorbar
 ax_cbar = fig.add_axes([0.89, 0.12, 0.02, 0.68])
 cbar = plt.colorbar(im, cax=ax_cbar)
-cbar.set_label('Normalized (1=best)', fontsize=8)
+cbar.set_label("Normalized (1=best)", fontsize=8)
 cbar.ax.tick_params(labelsize=7)
 
-save_fig(fig, 'figures/fig_method_heatmap.pdf')
+save_fig(fig, "figures/fig_method_heatmap.pdf")
 ```
 
 ---
@@ -1728,70 +2477,133 @@ save_fig(fig, 'figures/fig_method_heatmap.pdf')
 
 ```python
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 import matplotlib.pyplot as plt
 import numpy as np
 
-methods = ['Ours', 'LSTM', 'Random Forest', 'Linear Reg']
-metrics = ['MAE↓', 'RMSE↓', 'R²↑', 'Speed↑', 'Stability↑']
+methods = ["Ours", "LSTM", "Random Forest", "Linear Reg"]
+metrics = ["MAE↓", "RMSE↓", "R²↑", "Speed↑", "Stability↑"]
 # All normalized to [0,1] where 1=best
-data = np.array([
-    [0.95, 0.92, 0.987, 0.85, 0.90],
-    [0.45, 0.50, 0.812, 0.60, 0.65],
-    [0.88, 0.82, 0.965, 0.92, 0.78],
-    [0.10, 0.15, 0.421, 0.98, 0.55],
-])
+data = np.array(
+    [
+        [0.95, 0.92, 0.987, 0.85, 0.90],
+        [0.45, 0.50, 0.812, 0.60, 0.65],
+        [0.88, 0.82, 0.965, 0.92, 0.78],
+        [0.10, 0.15, 0.421, 0.98, 0.55],
+    ]
+)
 
 fig, ax = plt.subplots(figsize=(9, 5))
 x = np.arange(len(metrics))
 
 # Subtle grid
-ax.grid(axis='y', alpha=0.15, linestyle='-', color=COLORS['grid'])
+ax.grid(axis="y", alpha=0.15, linestyle="-", color=COLORS["grid"])
 ax.set_axisbelow(True)
 
 # Optimal region shading per axis (top 20%)
 for j in range(len(metrics)):
-    ax.fill_between([j - 0.3, j + 0.3], 0.8, 1.0, alpha=0.06,
-                     color=COLORS['up'], zorder=0)
-    ax.text(j, 0.82, '最优区', ha='center', fontsize=6, color=COLORS['up'],
-            alpha=0.6, fontstyle='italic')
+    ax.fill_between(
+        [j - 0.3, j + 0.3], 0.8, 1.0, alpha=0.06, color=COLORS["up"], zorder=0
+    )
+    ax.text(
+        j,
+        0.82,
+        "最优区",
+        ha="center",
+        fontsize=6,
+        color=COLORS["up"],
+        alpha=0.6,
+        fontstyle="italic",
+    )
 
 # Draw simple lines per method
 for i, (method, row) in enumerate(zip(methods, data)):
-    is_ours = (i == 0)
+    is_ours = i == 0
 
     if is_ours:
         # Thick solid line for "Ours"
-        ax.plot(x, row, '-', color=PALETTE[0], linewidth=3.5, zorder=5,
-                solid_capstyle='round')
+        ax.plot(
+            x,
+            row,
+            "-",
+            color=PALETTE[0],
+            linewidth=3.5,
+            zorder=5,
+            solid_capstyle="round",
+        )
         # Markers
-        ax.scatter(x, row, color=PALETTE[0], s=100, zorder=6,
-                   edgecolors='white', linewidths=1.5, marker='o')
+        ax.scatter(
+            x,
+            row,
+            color=PALETTE[0],
+            s=100,
+            zorder=6,
+            edgecolors="white",
+            linewidths=1.5,
+            marker="o",
+        )
         # Value labels
         for j, v in enumerate(row):
-            ax.text(j, v + 0.04, f'{v:.2f}', ha='center', fontsize=8.5,
-                    color=PALETTE[0], fontweight='bold')
+            ax.text(
+                j,
+                v + 0.04,
+                f"{v:.2f}",
+                ha="center",
+                fontsize=8.5,
+                color=PALETTE[0],
+                fontweight="bold",
+            )
         # Highlight label
-        ax.text(x[-1] + 0.25, row[-1], f'★ {method}', va='center', fontsize=10,
-                color=PALETTE[0], fontweight='bold')
+        ax.text(
+            x[-1] + 0.25,
+            row[-1],
+            f"★ {method}",
+            va="center",
+            fontsize=10,
+            color=PALETTE[0],
+            fontweight="bold",
+        )
     else:
         # Simple line for other methods
-        ax.plot(x, row, '-', color=PALETTE[i], linewidth=1.5, alpha=0.6,
-                solid_capstyle='round')
-        ax.scatter(x, row, color=PALETTE[i], s=50, zorder=4, alpha=0.7,
-                   edgecolors='white', linewidths=0.8)
-        ax.text(x[-1] + 0.25, row[-1], method, va='center', fontsize=8.5,
-                color=PALETTE[i], alpha=0.8)
+        ax.plot(
+            x,
+            row,
+            "-",
+            color=PALETTE[i],
+            linewidth=1.5,
+            alpha=0.6,
+            solid_capstyle="round",
+        )
+        ax.scatter(
+            x,
+            row,
+            color=PALETTE[i],
+            s=50,
+            zorder=4,
+            alpha=0.7,
+            edgecolors="white",
+            linewidths=0.8,
+        )
+        ax.text(
+            x[-1] + 0.25,
+            row[-1],
+            method,
+            va="center",
+            fontsize=8.5,
+            color=PALETTE[i],
+            alpha=0.8,
+        )
 
 ax.set_xticks(x)
 ax.set_xticklabels(metrics, fontsize=10.5)
-ax.set_ylabel('归一化得分 (1=最优)', fontsize=11)
+ax.set_ylabel("归一化得分 (1=最优)", fontsize=11)
 ax.set_ylim(0, 1.12)
 ax.set_xlim(-0.4, len(metrics) - 0.3)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_parallel_coords.pdf')
+save_fig(fig, "figures/fig_parallel_coords.pdf")
 ```
 
 
@@ -1807,14 +2619,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from _utils.plot_utils import setup_style, save_fig, PALETTE, smart_labels, auto_legend
+
 setup_style()
 
 # === Example data (replace with your PCA results) ===
 np.random.seed(42)
 n_samples, n_features = 80, 12
-feature_names = ['市场规模', '供应链成熟度', '短期恢复能力', '响应梯度元素',
-                 '长期恢复速度', '研发投入强度', '短期恢复弹性', '产能利用率',
-                 '短期集中度', '专利授权量', '产业链完整度', '客户集中度']
+feature_names = [
+    "市场规模",
+    "供应链成熟度",
+    "短期恢复能力",
+    "响应梯度元素",
+    "长期恢复速度",
+    "研发投入强度",
+    "短期恢复弹性",
+    "产能利用率",
+    "短期集中度",
+    "专利授权量",
+    "产业链完整度",
+    "客户集中度",
+]
 
 # Simulated PCA scores and loadings
 scores = np.random.randn(n_samples, 2) * 2
@@ -1825,8 +2649,16 @@ explained_var = [66.3, 11.4]  # explained variance %
 fig, ax = plt.subplots(figsize=(8, 7))
 
 # Scatter: sample scores (gray, semi-transparent)
-ax.scatter(scores[:, 0], scores[:, 1], s=25, alpha=0.35, color=COLORS['gray'],
-           edgecolors='white', linewidths=0.3, zorder=2)
+ax.scatter(
+    scores[:, 0],
+    scores[:, 1],
+    s=25,
+    alpha=0.35,
+    color=COLORS["gray"],
+    edgecolors="white",
+    linewidths=0.3,
+    zorder=2,
+)
 
 # Loading arrows
 arrow_colors = []
@@ -1834,32 +2666,49 @@ for i, (name, lx, ly) in enumerate(zip(feature_names, loadings[:, 0], loadings[:
     magnitude = np.sqrt(lx**2 + ly**2)
     color = PALETTE[0]
     arrow_colors.append(color)
-    ax.annotate('', xy=(lx, ly), xytext=(0, 0),
-                arrowprops=dict(arrowstyle='->', color=color, lw=1.5, alpha=0.7))
+    ax.annotate(
+        "",
+        xy=(lx, ly),
+        xytext=(0, 0),
+        arrowprops=dict(arrowstyle="->", color=color, lw=1.5, alpha=0.7),
+    )
 
 # ── 特征名标签 —— smart_labels 自动推开重叠标签
 # Offset labels slightly beyond arrow tips
 label_xs = [lx * 1.08 for lx in loadings[:, 0]]
 label_ys = [ly * 1.08 for ly in loadings[:, 1]]
-smart_labels(ax, label_xs, label_ys, feature_names,
-             colors=arrow_colors, fontsize=8.5, fontweight='bold',
-             offset=(5, 0),
-             bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                       edgecolor=PALETTE[0], alpha=0.8, linewidth=0.5),
-             arrowprops=dict(arrowstyle='-', color=COLORS['grid'], lw=0.4),
-             force_text=0.8, force_points=0.5)
+smart_labels(
+    ax,
+    label_xs,
+    label_ys,
+    feature_names,
+    colors=arrow_colors,
+    fontsize=8.5,
+    fontweight="bold",
+    offset=(5, 0),
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=PALETTE[0],
+        alpha=0.8,
+        linewidth=0.5,
+    ),
+    arrowprops=dict(arrowstyle="-", color=COLORS["grid"], lw=0.4),
+    force_text=0.8,
+    force_points=0.5,
+)
 
 # Reference lines
-ax.axhline(0, color=COLORS['ref_line'], linewidth=0.5, alpha=0.4)
-ax.axvline(0, color=COLORS['ref_line'], linewidth=0.5, alpha=0.4)
+ax.axhline(0, color=COLORS["ref_line"], linewidth=0.5, alpha=0.4)
+ax.axvline(0, color=COLORS["ref_line"], linewidth=0.5, alpha=0.4)
 
-ax.set_xlabel(f'PC1 ({explained_var[0]:.1f}%)', fontsize=11)
-ax.set_ylabel(f'PC2 ({explained_var[1]:.1f}%)', fontsize=11)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.grid(alpha=0.1, linestyle='--')
+ax.set_xlabel(f"PC1 ({explained_var[0]:.1f}%)", fontsize=11)
+ax.set_ylabel(f"PC2 ({explained_var[1]:.1f}%)", fontsize=11)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.grid(alpha=0.1, linestyle="--")
 fig.tight_layout()
-save_fig(fig, 'figures/fig_pca_biplot.pdf')
+save_fig(fig, "figures/fig_pca_biplot.pdf")
 ```
 
 **⚠ 易踩的坑（PCA Biplot 专用）：**
@@ -1882,7 +2731,15 @@ save_fig(fig, 'figures/fig_pca_biplot.pdf')
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten, smart_labels
+from _utils.plot_utils import (
+    setup_style,
+    save_fig,
+    PALETTE,
+    COLORS,
+    _lighten,
+    smart_labels,
+)
+
 setup_style()
 
 # === Example data (replace with your model evaluation results) ===
@@ -1891,11 +2748,11 @@ ref_std = 1.0  # normalized
 
 # Model results: (correlation, normalized_std)
 models = {
-    'Ours':        (0.95, 1.02),
-    'LSTM':        (0.88, 0.85),
-    'XGBoost':     (0.91, 1.15),
-    'SVR':         (0.82, 0.78),
-    'Linear Reg':  (0.75, 1.30),
+    "Ours": (0.95, 1.02),
+    "LSTM": (0.88, 0.85),
+    "XGBoost": (0.91, 1.15),
+    "SVR": (0.82, 0.78),
+    "Linear Reg": (0.75, 1.30),
 }
 
 fig, ax = plt.subplots(figsize=(7, 7))
@@ -1907,16 +2764,28 @@ for corr in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
     r_vals = np.linspace(0, max_std, 100)
     x_arc = r_vals * np.cos(theta)
     y_arc = r_vals * np.sin(theta)
-    ax.plot(x_arc, y_arc, color=COLORS['grid'], linewidth=0.5, alpha=0.6)
-    ax.text(max_std * np.cos(theta) * 1.03, max_std * np.sin(theta) * 1.03,
-            f'{corr}', fontsize=7, color=COLORS['ref_line'], ha='center', va='center',
-            rotation=np.degrees(theta) - 90)
+    ax.plot(x_arc, y_arc, color=COLORS["grid"], linewidth=0.5, alpha=0.6)
+    ax.text(
+        max_std * np.cos(theta) * 1.03,
+        max_std * np.sin(theta) * 1.03,
+        f"{corr}",
+        fontsize=7,
+        color=COLORS["ref_line"],
+        ha="center",
+        va="center",
+        rotation=np.degrees(theta) - 90,
+    )
 
 # Draw std arcs (centered at origin)
 for s in [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]:
     theta_range = np.linspace(0, np.pi / 2, 100)
-    ax.plot(s * np.cos(theta_range), s * np.sin(theta_range),
-            color=COLORS['grid'], linewidth=0.5, linestyle='--')
+    ax.plot(
+        s * np.cos(theta_range),
+        s * np.sin(theta_range),
+        color=COLORS["grid"],
+        linewidth=0.5,
+        linestyle="--",
+    )
 
 # Draw RMSE arcs (centered at reference point) —— 暖橙色
 ref_x, ref_y = ref_std, 0
@@ -1926,11 +2795,19 @@ for rmse in [0.25, 0.5, 0.75, 1.0, 1.25]:
     cy = rmse * np.sin(theta_range)
     mask = (cx >= 0) & (cy >= 0) & (np.sqrt(cx**2 + cy**2) <= max_std)
     if mask.any():
-        ax.plot(cx[mask], cy[mask], color=COLORS['highlight'], linewidth=0.5,
-                alpha=0.4, linestyle=':')
+        ax.plot(
+            cx[mask],
+            cy[mask],
+            color=COLORS["highlight"],
+            linewidth=0.5,
+            alpha=0.4,
+            linestyle=":",
+        )
 
 # Reference point
-ax.scatter(ref_std, 0, s=150, color=COLORS['text'], marker='*', zorder=10, label='Observed')
+ax.scatter(
+    ref_std, 0, s=150, color=COLORS["text"], marker="*", zorder=10, label="Observed"
+)
 
 # ── 绘制模型点：浅色填充+原色边框 标记
 label_xs, label_ys, label_texts, label_colors = [], [], [], []
@@ -1939,28 +2816,47 @@ for i, (name, (corr, std)) in enumerate(models.items()):
     x = std * np.cos(theta)
     y = std * np.sin(theta)
     color = PALETTE[i % len(PALETTE)]
-    marker = 'D' if i == 0 else 'o'
+    marker = "D" if i == 0 else "o"
     size = 140 if i == 0 else 90
     # 浅色填充 + 原色边框
-    ax.scatter(x, y, s=size, color=_lighten(color, 0.35), marker=marker, zorder=5,
-               edgecolors=color, linewidths=1.8, label=name)
-    label_xs.append(x); label_ys.append(y)
-    label_texts.append(name); label_colors.append(color)
+    ax.scatter(
+        x,
+        y,
+        s=size,
+        color=_lighten(color, 0.35),
+        marker=marker,
+        zorder=5,
+        edgecolors=color,
+        linewidths=1.8,
+        label=name,
+    )
+    label_xs.append(x)
+    label_ys.append(y)
+    label_texts.append(name)
+    label_colors.append(color)
 
 # Smart labels to avoid overlap
-smart_labels(ax, label_xs, label_ys, label_texts, colors=label_colors,
-             fontsize=8.5, fontweight='bold', offset=(8, 5))
+smart_labels(
+    ax,
+    label_xs,
+    label_ys,
+    label_texts,
+    colors=label_colors,
+    fontsize=8.5,
+    fontweight="bold",
+    offset=(8, 5),
+)
 
 ax.set_xlim(0, max_std)
 ax.set_ylim(0, max_std)
-ax.set_aspect('equal')
-ax.set_xlabel('标准差（归一化）', fontsize=11)
-ax.set_ylabel('标准差（归一化）', fontsize=11)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.legend(loc='upper left', fontsize=9, frameon=False, edgecolor=COLORS['grid'])
+ax.set_aspect("equal")
+ax.set_xlabel("标准差（归一化）", fontsize=11)
+ax.set_ylabel("标准差（归一化）", fontsize=11)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.legend(loc="upper left", fontsize=9, frameon=False, edgecolor=COLORS["grid"])
 fig.tight_layout()
-save_fig(fig, 'figures/fig_taylor.pdf')
+save_fig(fig, "figures/fig_taylor.pdf")
 ```
 
 ---
@@ -1973,11 +2869,26 @@ save_fig(fig, 'figures/fig_taylor.pdf')
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten, smart_labels
+from _utils.plot_utils import (
+    setup_style,
+    save_fig,
+    PALETTE,
+    COLORS,
+    _lighten,
+    smart_labels,
+)
+
 setup_style()
 
-methods = ['Ours (full)', 'w/o Attention', 'w/o Pretrain', 'w/o Augment',
-           'Baseline-A', 'Baseline-B', 'Baseline-C']
+methods = [
+    "Ours (full)",
+    "w/o Attention",
+    "w/o Pretrain",
+    "w/o Augment",
+    "Baseline-A",
+    "Baseline-B",
+    "Baseline-C",
+]
 deltas = [+5.2, +3.1, +1.8, +0.5, 0.0, -1.3, -2.7]
 
 # ── 自适应高度
@@ -1986,51 +2897,84 @@ fig, ax = plt.subplots(figsize=(8, _fig_h))
 y_pos = np.arange(len(methods))
 
 # 方向性颜色背景
-ax.axvspan(0, max(deltas)*1.3, alpha=0.05, color=COLORS['up'], zorder=0)
-ax.axvspan(min(deltas)*1.3, 0, alpha=0.05, color=COLORS['down'], zorder=0)
+ax.axvspan(0, max(deltas) * 1.3, alpha=0.05, color=COLORS["up"], zorder=0)
+ax.axvspan(min(deltas) * 1.3, 0, alpha=0.05, color=COLORS["down"], zorder=0)
 
 # Color: positive = up(green), negative = down(red)
-base_colors = [COLORS['up'] if d >= 0 else COLORS['down'] for d in deltas]
+base_colors = [COLORS["up"] if d >= 0 else COLORS["down"] for d in deltas]
 
 # 柱体阴影
-ax.barh(y_pos + 0.03, deltas, height=0.5, color='#cccccc', alpha=0.1, zorder=1)
+ax.barh(y_pos + 0.03, deltas, height=0.5, color="#cccccc", alpha=0.1, zorder=1)
 # ── 主柱体：浅色填充 + 原色边框
-bars = ax.barh(y_pos, deltas, height=0.5,
-               color=[_lighten(c, 0.4) for c in base_colors],
-               edgecolor=base_colors, linewidth=1.5, zorder=3)
+bars = ax.barh(
+    y_pos,
+    deltas,
+    height=0.5,
+    color=[_lighten(c, 0.4) for c in base_colors],
+    edgecolor=base_colors,
+    linewidth=1.5,
+    zorder=3,
+)
 
 # Zero reference line
-ax.axvline(0, color=COLORS['text'], linewidth=1.2, zorder=2)
+ax.axvline(0, color=COLORS["text"], linewidth=1.2, zorder=2)
 
 # Value labels at bar ends（白底保护）
 for i, (bar, d) in enumerate(zip(bars, deltas)):
     x_pos = d + (0.2 if d >= 0 else -0.2)
-    ha = 'left' if d >= 0 else 'right'
-    sign = '+' if d > 0 else ''
-    ax.text(x_pos, y_pos[i], f'{sign}{d:.1f}%', va='center', ha=ha,
-            fontsize=9, fontweight='bold', color=base_colors[i],
-            bbox=dict(boxstyle='round,pad=0.1', facecolor='white', edgecolor='none', alpha=0.7))
+    ha = "left" if d >= 0 else "right"
+    sign = "+" if d > 0 else ""
+    ax.text(
+        x_pos,
+        y_pos[i],
+        f"{sign}{d:.1f}%",
+        va="center",
+        ha=ha,
+        fontsize=9,
+        fontweight="bold",
+        color=base_colors[i],
+        bbox=dict(
+            boxstyle="round,pad=0.1", facecolor="white", edgecolor="none", alpha=0.7
+        ),
+    )
 
 # Highlight "Ours" row
-ax.axhspan(y_pos[0]-0.35, y_pos[0]+0.35, alpha=0.06, color=PALETTE[0], zorder=0)
-bars[0].set_edgecolor(PALETTE[0]); bars[0].set_linewidth(2.0)
+ax.axhspan(y_pos[0] - 0.35, y_pos[0] + 0.35, alpha=0.06, color=PALETTE[0], zorder=0)
+bars[0].set_edgecolor(PALETTE[0])
+bars[0].set_linewidth(2.0)
 
 # 方向标注
-ax.text(0.98, 0.02, '更优 →', transform=ax.transAxes, fontsize=8, ha='right',
-        color=COLORS['up'], fontweight='bold')
-ax.text(0.02, 0.02, '← 更差', transform=ax.transAxes, fontsize=8, ha='left',
-        color=COLORS['down'], fontweight='bold')
+ax.text(
+    0.98,
+    0.02,
+    "更优 →",
+    transform=ax.transAxes,
+    fontsize=8,
+    ha="right",
+    color=COLORS["up"],
+    fontweight="bold",
+)
+ax.text(
+    0.02,
+    0.02,
+    "← 更差",
+    transform=ax.transAxes,
+    fontsize=8,
+    ha="left",
+    color=COLORS["down"],
+    fontweight="bold",
+)
 
 ax.set_yticks(y_pos)
 ax.set_yticklabels(methods, fontsize=10)
-ax.set_xlabel('Relative Improvement over Baseline (%)', fontsize=11)
+ax.set_xlabel("Relative Improvement over Baseline (%)", fontsize=11)
 ax.invert_yaxis()
-ax.grid(axis='x', alpha=0.12, linestyle='--', color=COLORS['grid'])
-ax.spines['left'].set_visible(False)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.grid(axis="x", alpha=0.12, linestyle="--", color=COLORS["grid"])
+ax.spines["left"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_diverging_bar.pdf')
+save_fig(fig, "figures/fig_diverging_bar.pdf")
 ```
 
 ---
@@ -2043,9 +2987,10 @@ save_fig(fig, 'figures/fig_diverging_bar.pdf')
 import numpy as np
 import matplotlib.pyplot as plt
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 
-categories = ['Accuracy', 'Precision', 'Recall', 'F1', 'AUC', 'MCC']
+categories = ["Accuracy", "Precision", "Recall", "F1", "AUC", "MCC"]
 group_a = [92.3, 89.1, 94.5, 91.7, 96.2, 88.4]  # e.g., "Ours"
 group_b = [87.5, 84.2, 90.1, 87.0, 93.1, 82.6]  # e.g., "Baseline"
 
@@ -2055,43 +3000,85 @@ fig, ax = plt.subplots(figsize=(8, _fig_h))
 y_pos = np.arange(len(categories))
 
 # ── 左侧（负方向）= Group B —— 浅色填充 + 原色边框
-bars_b = ax.barh(y_pos, [-v for v in group_b], height=0.55,
-                 color=_lighten(PALETTE[1], 0.4), edgecolor=PALETTE[1],
-                 linewidth=1.2, label='Baseline', zorder=3)
+bars_b = ax.barh(
+    y_pos,
+    [-v for v in group_b],
+    height=0.55,
+    color=_lighten(PALETTE[1], 0.4),
+    edgecolor=PALETTE[1],
+    linewidth=1.2,
+    label="Baseline",
+    zorder=3,
+)
 # ── 右侧（正方向）= Group A —— 浅色填充 + 原色边框
-bars_a = ax.barh(y_pos, group_a, height=0.55,
-                 color=_lighten(PALETTE[0], 0.4), edgecolor=PALETTE[0],
-                 linewidth=1.2, label='Ours', zorder=3)
+bars_a = ax.barh(
+    y_pos,
+    group_a,
+    height=0.55,
+    color=_lighten(PALETTE[0], 0.4),
+    edgecolor=PALETTE[0],
+    linewidth=1.2,
+    label="Ours",
+    zorder=3,
+)
 
 # Value labels
 for i in range(len(categories)):
-    ax.text(group_a[i] + 0.5, y_pos[i], f'{group_a[i]:.1f}',
-            va='center', ha='left', fontsize=8.5, color=PALETTE[0], fontweight='bold')
-    ax.text(-group_b[i] - 0.5, y_pos[i], f'{group_b[i]:.1f}',
-            va='center', ha='right', fontsize=8.5, color=PALETTE[1], fontweight='bold')
+    ax.text(
+        group_a[i] + 0.5,
+        y_pos[i],
+        f"{group_a[i]:.1f}",
+        va="center",
+        ha="left",
+        fontsize=8.5,
+        color=PALETTE[0],
+        fontweight="bold",
+    )
+    ax.text(
+        -group_b[i] - 0.5,
+        y_pos[i],
+        f"{group_b[i]:.1f}",
+        va="center",
+        ha="right",
+        fontsize=8.5,
+        color=PALETTE[1],
+        fontweight="bold",
+    )
     # Gap label in center
     gap = group_a[i] - group_b[i]
-    sign = '+' if gap > 0 else ''
-    ax.text(0, y_pos[i], f'{sign}{gap:.1f}', va='center', ha='center',
-            fontsize=7.5, fontweight='bold', color=COLORS['text'],
-            bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                      edgecolor=COLORS['grid'], alpha=0.9))
+    sign = "+" if gap > 0 else ""
+    ax.text(
+        0,
+        y_pos[i],
+        f"{sign}{gap:.1f}",
+        va="center",
+        ha="center",
+        fontsize=7.5,
+        fontweight="bold",
+        color=COLORS["text"],
+        bbox=dict(
+            boxstyle="round,pad=0.2",
+            facecolor="white",
+            edgecolor=COLORS["grid"],
+            alpha=0.9,
+        ),
+    )
 
 ax.set_yticks(y_pos)
 ax.set_yticklabels(categories, fontsize=10)
-ax.axvline(0, color=COLORS['text'], linewidth=0.8)
-ax.set_xlabel('Score (%)', fontsize=11)
-ax.legend(loc='lower right', fontsize=9, frameon=False, edgecolor=COLORS['grid'])
+ax.axvline(0, color=COLORS["text"], linewidth=0.8)
+ax.set_xlabel("Score (%)", fontsize=11)
+ax.legend(loc="lower right", fontsize=9, frameon=False, edgecolor=COLORS["grid"])
 
 # Clean up x-axis to show absolute values
 ticks = ax.get_xticks()
-ax.set_xticklabels([f'{abs(t):.0f}' for t in ticks])
+ax.set_xticklabels([f"{abs(t):.0f}" for t in ticks])
 ax.invert_yaxis()
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.grid(axis='x', alpha=0.1, linestyle='--')
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.grid(axis="x", alpha=0.1, linestyle="--")
 fig.tight_layout()
-save_fig(fig, 'figures/fig_back2back.pdf')
+save_fig(fig, "figures/fig_back2back.pdf")
 ```
 
 
@@ -2105,11 +3092,12 @@ save_fig(fig, 'figures/fig_back2back.pdf')
 import numpy as np
 import matplotlib.pyplot as plt
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS
+
 setup_style()
 
 np.random.seed(42)
 n = 20
-labels = ['Before', 'After']
+labels = ["Before", "After"]
 before = np.random.normal(75, 8, n)
 after = before + np.random.normal(5, 4, n)  # general improvement with variance
 
@@ -2118,46 +3106,93 @@ fig, ax = plt.subplots(figsize=(5, 6))
 # Individual paired lines
 for i in range(n):
     color = PALETTE[0] if after[i] > before[i] else PALETTE[1]
-    ax.plot([0, 1], [before[i], after[i]], color=color, alpha=0.35,
-            linewidth=1.2, zorder=2)
-    ax.scatter([0, 1], [before[i], after[i]], color=color, s=30,
-               edgecolors='white', linewidths=0.5, zorder=3, alpha=0.6)
+    ax.plot(
+        [0, 1], [before[i], after[i]], color=color, alpha=0.35, linewidth=1.2, zorder=2
+    )
+    ax.scatter(
+        [0, 1],
+        [before[i], after[i]],
+        color=color,
+        s=30,
+        edgecolors="white",
+        linewidths=0.5,
+        zorder=3,
+        alpha=0.6,
+    )
 
 # Mean markers (large, prominent)
 mean_before, mean_after = before.mean(), after.mean()
-ax.scatter(0, mean_before, s=200, color=PALETTE[1], marker='D',
-           edgecolors='white', linewidths=2, zorder=5, label=f'Mean Before: {mean_before:.1f}')
-ax.scatter(1, mean_after, s=200, color=PALETTE[0], marker='D',
-           edgecolors='white', linewidths=2, zorder=5, label=f'Mean After: {mean_after:.1f}')
+ax.scatter(
+    0,
+    mean_before,
+    s=200,
+    color=PALETTE[1],
+    marker="D",
+    edgecolors="white",
+    linewidths=2,
+    zorder=5,
+    label=f"Mean Before: {mean_before:.1f}",
+)
+ax.scatter(
+    1,
+    mean_after,
+    s=200,
+    color=PALETTE[0],
+    marker="D",
+    edgecolors="white",
+    linewidths=2,
+    zorder=5,
+    label=f"Mean After: {mean_after:.1f}",
+)
 
 # Mean shift arrow
-ax.annotate('', xy=(1, mean_after), xytext=(0, mean_before),
-            arrowprops=dict(arrowstyle='->', color=COLORS['text'], lw=2.5,
-                            connectionstyle='arc3,rad=0.15'))
+ax.annotate(
+    "",
+    xy=(1, mean_after),
+    xytext=(0, mean_before),
+    arrowprops=dict(
+        arrowstyle="->", color=COLORS["text"], lw=2.5, connectionstyle="arc3,rad=0.15"
+    ),
+)
 delta = mean_after - mean_before
-ax.text(0.5, (mean_before + mean_after) / 2 + 2,
-        f'Δ = +{delta:.1f}', ha='center', fontsize=10, fontweight='bold',
-        color=PALETTE[0],
-        bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                  edgecolor=PALETTE[0], alpha=0.9))
+ax.text(
+    0.5,
+    (mean_before + mean_after) / 2 + 2,
+    f"Δ = +{delta:.1f}",
+    ha="center",
+    fontsize=10,
+    fontweight="bold",
+    color=PALETTE[0],
+    bbox=dict(
+        boxstyle="round,pad=0.3", facecolor="white", edgecolor=PALETTE[0], alpha=0.9
+    ),
+)
 
 # Significance annotation
 from scipy import stats
+
 t_stat, p_val = stats.ttest_rel(after, before)
-sig_text = f'p = {p_val:.4f}' if p_val >= 0.001 else 'p < 0.001'
-ax.text(0.5, max(max(before), max(after)) + 4, sig_text,
-        ha='center', fontsize=9, fontstyle='italic', color=COLORS['text'])
+sig_text = f"p = {p_val:.4f}" if p_val >= 0.001 else "p < 0.001"
+ax.text(
+    0.5,
+    max(max(before), max(after)) + 4,
+    sig_text,
+    ha="center",
+    fontsize=9,
+    fontstyle="italic",
+    color=COLORS["text"],
+)
 
 ax.set_xticks([0, 1])
-ax.set_xticklabels(labels, fontsize=12, fontweight='bold')
-ax.set_ylabel('Score', fontsize=11)
+ax.set_xticklabels(labels, fontsize=12, fontweight="bold")
+ax.set_ylabel("Score", fontsize=11)
 ax.set_xlim(-0.4, 1.4)
-ax.legend(loc='lower right', fontsize=8, frameon=False, edgecolor=COLORS['grid'])
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.grid(axis='y', alpha=0.1, linestyle='--')
+ax.legend(loc="lower right", fontsize=8, frameon=False, edgecolor=COLORS["grid"])
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.grid(axis="y", alpha=0.1, linestyle="--")
 fig.tight_layout()
-save_fig(fig, 'figures/fig_paired_dot.pdf')
+save_fig(fig, "figures/fig_paired_dot.pdf")
 ```
 
 **⚠ 易踩的坑（Paired Dot Plot 专用）：**
@@ -2179,11 +3214,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 
 np.random.seed(42)
-groups = ['Model A', 'Model B', 'Model C', 'Model D', 'Model E',
-          'Model F', 'Model G', 'Model H']
+groups = [
+    "Model A",
+    "Model B",
+    "Model C",
+    "Model D",
+    "Model E",
+    "Model F",
+    "Model G",
+    "Model H",
+]
 n_groups = len(groups)
 
 # Generate sample data (replace with real data)
@@ -2196,8 +3240,9 @@ for i in range(n_groups):
 
 fig, ax = plt.subplots(figsize=(8, 6))
 overlap = 0.6  # vertical overlap factor
-x_grid = np.linspace(min(d.min() for d in data) - 5,
-                      max(d.max() for d in data) + 5, 300)
+x_grid = np.linspace(
+    min(d.min() for d in data) - 5, max(d.max() for d in data) + 5, 300
+)
 
 for i in range(n_groups - 1, -1, -1):  # draw back to front
     kde = gaussian_kde(data[i], bw_method=0.3)
@@ -2210,33 +3255,64 @@ for i in range(n_groups - 1, -1, -1):  # draw back to front
     light = _lighten(color, 0.5)
 
     # Gradient fill
-    ax.fill_between(x_grid, baseline, baseline + density,
-                    color=light, alpha=0.85, zorder=n_groups - i)
-    ax.plot(x_grid, baseline + density, color=color, linewidth=1.5,
-            zorder=n_groups - i + 0.5)
+    ax.fill_between(
+        x_grid,
+        baseline,
+        baseline + density,
+        color=light,
+        alpha=0.85,
+        zorder=n_groups - i,
+    )
+    ax.plot(
+        x_grid,
+        baseline + density,
+        color=color,
+        linewidth=1.5,
+        zorder=n_groups - i + 0.5,
+    )
 
     # Median line
     median = np.median(data[i])
     med_density = kde(median)[0] / density.max() * 0.8
-    ax.plot([median, median], [baseline, baseline + med_density],
-            color=color, linewidth=1.5, linestyle='--', alpha=0.7,
-            zorder=n_groups - i + 1)
-    ax.text(median, baseline + med_density + 0.02,
-            f'{median:.1f}', ha='center', fontsize=7, color=color,
-            fontweight='bold', zorder=n_groups + 10)
+    ax.plot(
+        [median, median],
+        [baseline, baseline + med_density],
+        color=color,
+        linewidth=1.5,
+        linestyle="--",
+        alpha=0.7,
+        zorder=n_groups - i + 1,
+    )
+    ax.text(
+        median,
+        baseline + med_density + 0.02,
+        f"{median:.1f}",
+        ha="center",
+        fontsize=7,
+        color=color,
+        fontweight="bold",
+        zorder=n_groups + 10,
+    )
 
     # Group label
-    ax.text(x_grid[0] - 1, baseline + 0.15, groups[i],
-            ha='right', va='center', fontsize=9, fontweight='bold',
-            color=color)
+    ax.text(
+        x_grid[0] - 1,
+        baseline + 0.15,
+        groups[i],
+        ha="right",
+        va="center",
+        fontsize=9,
+        fontweight="bold",
+        color=color,
+    )
 
 ax.set_yticks([])
-ax.set_xlabel('Score', fontsize=11)
-ax.spines['left'].set_visible(False)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.set_xlabel("Score", fontsize=11)
+ax.spines["left"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_ridgeline.pdf')
+save_fig(fig, "figures/fig_ridgeline.pdf")
 ```
 
 **⚠ 易踩的坑（Ridgeline Plot 专用）：**
@@ -2257,11 +3333,12 @@ save_fig(fig, 'figures/fig_ridgeline.pdf')
 import numpy as np
 import matplotlib.pyplot as plt
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
+
 setup_style()
 
 np.random.seed(42)
-categories = ['Dataset A', 'Dataset B', 'Dataset C', 'Dataset D']
-group_names = ['Ours', 'Baseline-1', 'Baseline-2']
+categories = ["Dataset A", "Dataset B", "Dataset C", "Dataset D"]
+group_names = ["Ours", "Baseline-1", "Baseline-2"]
 n_groups = len(group_names)
 
 # Generate sample data (replace with real results)
@@ -2282,11 +3359,16 @@ for g, gname in enumerate(group_names):
     color = PALETTE[g % len(PALETTE)]
     light = _lighten(color, 0.4)
 
-    parts = ax.violinplot(all_data[gname], positions=positions,
-                          widths=width * 0.85, showmeans=False,
-                          showmedians=False, showextrema=False)
+    parts = ax.violinplot(
+        all_data[gname],
+        positions=positions,
+        widths=width * 0.85,
+        showmeans=False,
+        showmedians=False,
+        showextrema=False,
+    )
 
-    for pc in parts['bodies']:
+    for pc in parts["bodies"]:
         pc.set_facecolor(light)
         pc.set_edgecolor(color)
         pc.set_linewidth(1.2)
@@ -2297,23 +3379,24 @@ for g, gname in enumerate(group_names):
         q1, med, q3 = np.percentile(d, [25, 50, 75])
         pos = positions[i]
         # Median dot
-        ax.scatter(pos, med, color=color, s=30, zorder=5,
-                   edgecolors='white', linewidths=0.8)
+        ax.scatter(
+            pos, med, color=color, s=30, zorder=5, edgecolors="white", linewidths=0.8
+        )
         # Quartile whisker
         ax.vlines(pos, q1, q3, color=color, linewidth=2.5, zorder=4)
 
     # Invisible scatter for legend
-    ax.scatter([], [], color=color, s=60, label=gname, edgecolors='white')
+    ax.scatter([], [], color=color, s=60, label=gname, edgecolors="white")
 
 ax.set_xticks(positions_base)
 ax.set_xticklabels(categories, fontsize=10)
-ax.set_ylabel('Score', fontsize=11)
+ax.set_ylabel("Score", fontsize=11)
 ax.legend(frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=9)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.grid(axis='y', alpha=0.1, linestyle='--')
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.grid(axis="y", alpha=0.1, linestyle="--")
 fig.tight_layout()
-save_fig(fig, 'figures/fig_grouped_violin.pdf')
+save_fig(fig, "figures/fig_grouped_violin.pdf")
 ```
 
 
@@ -2335,12 +3418,12 @@ np.random.seed(42)
 
 # === 模拟数据：5 个算法在 30 个问题上的求解时间 ===
 n_problems = 30
-algos = ['本文方法', 'Baseline A', 'Baseline B', 'Baseline C', 'Heuristic']
+algos = ["本文方法", "Baseline A", "Baseline B", "Baseline C", "Heuristic"]
 # 每行一个问题，每列一个算法的求解时间
 times = np.abs(np.random.lognormal(0, 0.6, (n_problems, len(algos))))
-times[:, 0] *= 0.7   # 本文方法更快
+times[:, 0] *= 0.7  # 本文方法更快
 times[10:15, 2] = np.inf  # Baseline B 有 5 个失败
-times[5:8, 3] = np.inf    # Baseline C 失败 3 个
+times[5:8, 3] = np.inf  # Baseline C 失败 3 个
 
 # === 计算 performance ratio ===
 best = np.nanmin(np.where(np.isinf(times), np.nan, times), axis=1, keepdims=True)
@@ -2356,47 +3439,77 @@ for s in range(len(algos)):
 
 fig, ax = plt.subplots(figsize=(7, 4.5))
 
-markers = ['o', 's', '^', 'D', 'v']
+markers = ["o", "s", "^", "D", "v"]
 for s, name in enumerate(algos):
-    is_self = (s == 0)
+    is_self = s == 0
     lw = 2.4 if is_self else 1.4
     alpha = 1.0 if is_self else 0.78
     # ★ 阶梯函数 — drawstyle='steps-post' 是 Dolan-Moré 标准
-    ax.step(tau_grid, rho[:, s], where='post',
-            color=PALETTE[s % len(PALETTE)],
-            linewidth=lw, alpha=alpha,
-            marker=markers[s % len(markers)], markersize=5,
-            markevery=20, markeredgecolor='white', markeredgewidth=0.6,
-            label=name + (' ★' if is_self else ''))
+    ax.step(
+        tau_grid,
+        rho[:, s],
+        where="post",
+        color=PALETTE[s % len(PALETTE)],
+        linewidth=lw,
+        alpha=alpha,
+        marker=markers[s % len(markers)],
+        markersize=5,
+        markevery=20,
+        markeredgecolor="white",
+        markeredgewidth=0.6,
+        label=name + (" ★" if is_self else ""),
+    )
 
 # ★ τ=1 处的左端值标注（"找到最优的比例"）
 for s, name in enumerate(algos):
     rho0 = rho[0, s]
     if rho0 > 0.05:
-        ax.text(1.02, rho0, f'{rho0:.2f}', fontsize=7,
-                color=PALETTE[s % len(PALETTE)], va='center', ha='left',
-                bbox=dict(boxstyle='round,pad=0.15', facecolor='white',
-                          edgecolor=PALETTE[s % len(PALETTE)], alpha=0.85, linewidth=0.4))
+        ax.text(
+            1.02,
+            rho0,
+            f"{rho0:.2f}",
+            fontsize=7,
+            color=PALETTE[s % len(PALETTE)],
+            va="center",
+            ha="left",
+            bbox=dict(
+                boxstyle="round,pad=0.15",
+                facecolor="white",
+                edgecolor=PALETTE[s % len(PALETTE)],
+                alpha=0.85,
+                linewidth=0.4,
+            ),
+        )
 
 # ★ "完美求解器"参考线（理论上限 ρ=1）
-ax.axhline(1.0, color=COLORS['ref_line'], linestyle=':', linewidth=0.8, alpha=0.5)
-ax.text(tau_grid[-1] * 0.95, 1.01, 'Ideal solver (ρ=1)',
-        fontsize=7, color=COLORS['ref_line'], ha='right', va='bottom', style='italic')
+ax.axhline(1.0, color=COLORS["ref_line"], linestyle=":", linewidth=0.8, alpha=0.5)
+ax.text(
+    tau_grid[-1] * 0.95,
+    1.01,
+    "Ideal solver (ρ=1)",
+    fontsize=7,
+    color=COLORS["ref_line"],
+    ha="right",
+    va="bottom",
+    style="italic",
+)
 
 # ★ 灰色背景区暗示"τ=1 = 全部找到最优"是稀有的
-ax.axvspan(1.0, 1.05, alpha=0.08, color=COLORS['highlight'], zorder=0)
+ax.axvspan(1.0, 1.05, alpha=0.08, color=COLORS["highlight"], zorder=0)
 
-ax.set_xscale('log')
+ax.set_xscale("log")
 ax.set_xlim(1.0, tau_grid[-1])
 ax.set_ylim(0, 1.05)
-ax.set_xlabel(r'性能比率 $\tau$ (相对最优解的倍数, log scale)', fontsize=10)
-ax.set_ylabel(r'$\rho_s(\tau)$  (在 $\tau$ 倍内解出的问题比例)', fontsize=10)
-ax.legend(loc='lower right', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8)
-ax.grid(which='both', alpha=0.12, linestyle='--', color=COLORS['grid'])
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.set_xlabel(r"性能比率 $\tau$ (相对最优解的倍数, log scale)", fontsize=10)
+ax.set_ylabel(r"$\rho_s(\tau)$  (在 $\tau$ 倍内解出的问题比例)", fontsize=10)
+ax.legend(
+    loc="lower right", frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8
+)
+ax.grid(which="both", alpha=0.12, linestyle="--", color=COLORS["grid"])
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_perf_profile.pdf')
+save_fig(fig, "figures/fig_perf_profile.pdf")
 ```
 
 **★ 解读要点：**
@@ -2431,11 +3544,15 @@ x_grid = np.linspace(0, 10, 80)
 # 每个样本的随机基线 + 非线性形状
 baselines = np.random.normal(0.5, 0.15, n_samples)
 shape_strength = np.random.normal(1.0, 0.25, n_samples)
-ice_curves = np.array([
-    baselines[i] + shape_strength[i] * (0.45 / (1 + np.exp(-1.2*(x_grid - 4))) + 0.08 * np.sin(x_grid * 0.6))
-    + np.random.normal(0, 0.02, len(x_grid))
-    for i in range(n_samples)
-])
+ice_curves = np.array(
+    [
+        baselines[i]
+        + shape_strength[i]
+        * (0.45 / (1 + np.exp(-1.2 * (x_grid - 4))) + 0.08 * np.sin(x_grid * 0.6))
+        + np.random.normal(0, 0.02, len(x_grid))
+        for i in range(n_samples)
+    ]
+)
 pdp = ice_curves.mean(axis=0)
 pdp_ci_lo = np.percentile(ice_curves, 5, axis=0)
 pdp_ci_hi = np.percentile(ice_curves, 95, axis=0)
@@ -2451,47 +3568,83 @@ ax_marg = fig.add_subplot(gs[1], sharex=ax)
 
 # ★ ICE 细线（每条 alpha 极低，重叠出"密度感"）
 for i in range(n_samples):
-    ax.plot(x_grid, ice_curves[i], color=PALETTE[0], linewidth=0.5, alpha=0.06, zorder=1)
+    ax.plot(
+        x_grid, ice_curves[i], color=PALETTE[0], linewidth=0.5, alpha=0.06, zorder=1
+    )
 
 # ★ PDP 95% CI 带（外层浅、内层稍深）
-ax.fill_between(x_grid, pdp_ci_lo, pdp_ci_hi, color=_lighten(PALETTE[0], 0.55),
-                alpha=0.45, linewidth=0, zorder=2, label='90% 区间')
+ax.fill_between(
+    x_grid,
+    pdp_ci_lo,
+    pdp_ci_hi,
+    color=_lighten(PALETTE[0], 0.55),
+    alpha=0.45,
+    linewidth=0,
+    zorder=2,
+    label="90% 区间",
+)
 
 # ★ PDP 中位数线 — 主信号
-ax.plot(x_grid, pdp, color=PALETTE[0], linewidth=2.6, zorder=3, label='PDP (均值)')
+ax.plot(x_grid, pdp, color=PALETTE[0], linewidth=2.6, zorder=3, label="PDP (均值)")
 # 加白色描边让曲线在 ICE 海里更突出
-ax.plot(x_grid, pdp, color='white', linewidth=4.5, zorder=2.5, alpha=0.6)
+ax.plot(x_grid, pdp, color="white", linewidth=4.5, zorder=2.5, alpha=0.6)
 ax.plot(x_grid, pdp, color=PALETTE[0], linewidth=2.6, zorder=3)
 
 # ★ 拐点标注
 turn_idx = np.argmax(np.abs(np.gradient(pdp)))
-ax.scatter([x_grid[turn_idx]], [pdp[turn_idx]], s=80, color=COLORS['highlight'],
-           edgecolor='white', linewidth=1.5, zorder=5, marker='o')
-ax.annotate(f'拐点\n(x={x_grid[turn_idx]:.1f})',
-            xy=(x_grid[turn_idx], pdp[turn_idx]),
-            xytext=(15, 18), textcoords='offset points',
-            fontsize=8, fontweight='bold', color=COLORS['highlight'],
-            arrowprops=dict(arrowstyle='->', color=COLORS['highlight'], lw=1.1, alpha=0.7),
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                      edgecolor=COLORS['highlight'], alpha=0.9, linewidth=0.6))
+ax.scatter(
+    [x_grid[turn_idx]],
+    [pdp[turn_idx]],
+    s=80,
+    color=COLORS["highlight"],
+    edgecolor="white",
+    linewidth=1.5,
+    zorder=5,
+    marker="o",
+)
+ax.annotate(
+    f"拐点\n(x={x_grid[turn_idx]:.1f})",
+    xy=(x_grid[turn_idx], pdp[turn_idx]),
+    xytext=(15, 18),
+    textcoords="offset points",
+    fontsize=8,
+    fontweight="bold",
+    color=COLORS["highlight"],
+    arrowprops=dict(arrowstyle="->", color=COLORS["highlight"], lw=1.1, alpha=0.7),
+    bbox=dict(
+        boxstyle="round,pad=0.3",
+        facecolor="white",
+        edgecolor=COLORS["highlight"],
+        alpha=0.9,
+        linewidth=0.6,
+    ),
+)
 
-ax.set_ylabel('预测值 (P(y=1))', fontsize=10)
-ax.legend(loc='lower right', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8)
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.tick_params(axis='x', labelbottom=False)
-ax.grid(axis='y', alpha=0.1, linestyle='--', color=COLORS['grid'])
+ax.set_ylabel("预测值 (P(y=1))", fontsize=10)
+ax.legend(
+    loc="lower right", frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8
+)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.tick_params(axis="x", labelbottom=False)
+ax.grid(axis="y", alpha=0.1, linestyle="--", color=COLORS["grid"])
 
 # ★ 底部 rug + 直方图：告诉读者 PDP 在哪些 x 上有数据
-ax_marg.hist(x_samples, bins=40, color=_lighten(PALETTE[0], 0.4), alpha=0.85,
-             edgecolor=PALETTE[0], linewidth=0.4)
-ax_marg.set_xlabel('特征 x', fontsize=10)
-ax_marg.set_ylabel('样本密度', fontsize=8)
-ax_marg.spines['top'].set_visible(False)
-ax_marg.spines['right'].set_visible(False)
-ax_marg.tick_params(axis='y', labelsize=7)
+ax_marg.hist(
+    x_samples,
+    bins=40,
+    color=_lighten(PALETTE[0], 0.4),
+    alpha=0.85,
+    edgecolor=PALETTE[0],
+    linewidth=0.4,
+)
+ax_marg.set_xlabel("特征 x", fontsize=10)
+ax_marg.set_ylabel("样本密度", fontsize=8)
+ax_marg.spines["top"].set_visible(False)
+ax_marg.spines["right"].set_visible(False)
+ax_marg.tick_params(axis="y", labelsize=7)
 
-save_fig(fig, 'figures/fig_ice_pdp.pdf')
+save_fig(fig, "figures/fig_ice_pdp.pdf")
 ```
 
 **★ 设计要点：**
@@ -2514,76 +3667,152 @@ setup_style()
 np.random.seed(42)
 
 # === 模拟时序：历史 24 个月 + 预测 12 个月 ===
-n_hist = 24; n_pred = 12
+n_hist = 24
+n_pred = 12
 t = np.arange(n_hist + n_pred)
 hist = 100 + np.cumsum(np.random.normal(0, 1.5, n_hist))
 # 预测：均值随机游走，方差随时间扩散
 pred_mean = hist[-1] + np.cumsum(np.random.normal(0.3, 0.5, n_pred))
-pred_std = np.sqrt(np.arange(1, n_pred + 1)) * 1.6   # 不确定性随时间增长
+pred_std = np.sqrt(np.arange(1, n_pred + 1)) * 1.6  # 不确定性随时间增长
 
 # 预测分位数
 quantiles = {
-    'p05': pred_mean - 1.96 * pred_std, 'p95': pred_mean + 1.96 * pred_std,
-    'p10': pred_mean - 1.28 * pred_std, 'p90': pred_mean + 1.28 * pred_std,
-    'p25': pred_mean - 0.67 * pred_std, 'p75': pred_mean + 0.67 * pred_std,
+    "p05": pred_mean - 1.96 * pred_std,
+    "p95": pred_mean + 1.96 * pred_std,
+    "p10": pred_mean - 1.28 * pred_std,
+    "p90": pred_mean + 1.28 * pred_std,
+    "p25": pred_mean - 0.67 * pred_std,
+    "p75": pred_mean + 0.67 * pred_std,
 }
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
 
 # === 历史段：实线 ===
-ax.plot(t[:n_hist], hist, color=COLORS['text'], linewidth=1.8, zorder=4, label='历史值')
-ax.scatter(t[n_hist-1], hist[-1], s=50, color=COLORS['text'], zorder=5,
-           edgecolor='white', linewidth=1)
+ax.plot(t[:n_hist], hist, color=COLORS["text"], linewidth=1.8, zorder=4, label="历史值")
+ax.scatter(
+    t[n_hist - 1],
+    hist[-1],
+    s=50,
+    color=COLORS["text"],
+    zorder=5,
+    edgecolor="white",
+    linewidth=1,
+)
 
 # === 预测段：多层 CI 带（外到内 alpha 递增）===
-t_pred = t[n_hist-1:]
+t_pred = t[n_hist - 1 :]
 # 拼接：起点用历史最后值，让带子接续
 pred_full = np.concatenate(([hist[-1]], pred_mean))
 quant_full = {k: np.concatenate(([hist[-1]], v)) for k, v in quantiles.items()}
 
 # 5%-95%（外层，最浅）
-ax.fill_between(t_pred, quant_full['p05'], quant_full['p95'],
-                color=_lighten(PALETTE[0], 0.65), alpha=0.55, linewidth=0,
-                label='95% 区间', zorder=1)
+ax.fill_between(
+    t_pred,
+    quant_full["p05"],
+    quant_full["p95"],
+    color=_lighten(PALETTE[0], 0.65),
+    alpha=0.55,
+    linewidth=0,
+    label="95% 区间",
+    zorder=1,
+)
 # 10%-90%
-ax.fill_between(t_pred, quant_full['p10'], quant_full['p90'],
-                color=_lighten(PALETTE[0], 0.4), alpha=0.7, linewidth=0,
-                label='80% 区间', zorder=2)
+ax.fill_between(
+    t_pred,
+    quant_full["p10"],
+    quant_full["p90"],
+    color=_lighten(PALETTE[0], 0.4),
+    alpha=0.7,
+    linewidth=0,
+    label="80% 区间",
+    zorder=2,
+)
 # 25%-75%（内层，最深）
-ax.fill_between(t_pred, quant_full['p25'], quant_full['p75'],
-                color=_lighten(PALETTE[0], 0.2), alpha=0.8, linewidth=0,
-                label='50% 区间', zorder=3)
+ax.fill_between(
+    t_pred,
+    quant_full["p25"],
+    quant_full["p75"],
+    color=_lighten(PALETTE[0], 0.2),
+    alpha=0.8,
+    linewidth=0,
+    label="50% 区间",
+    zorder=3,
+)
 # 中位数预测线（虚线区别历史）
-ax.plot(t_pred, pred_full, color=PALETTE[0], linewidth=1.8, linestyle='--', zorder=4,
-        label='中位数预测')
+ax.plot(
+    t_pred,
+    pred_full,
+    color=PALETTE[0],
+    linewidth=1.8,
+    linestyle="--",
+    zorder=4,
+    label="中位数预测",
+)
 
 # === 历史/预测分隔线 ===
-ax.axvline(n_hist - 1, color=COLORS['ref_line'], linestyle=':', linewidth=1.1, alpha=0.6)
-ax.text(n_hist - 1, ax.get_ylim()[1] * 0.97 if False else hist.max() * 1.02,
-        '预测起点', fontsize=8, ha='center', va='bottom',
-        color=COLORS['ref_line'], style='italic',
-        bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                  edgecolor=COLORS['grid'], alpha=0.9, linewidth=0.4))
+ax.axvline(
+    n_hist - 1, color=COLORS["ref_line"], linestyle=":", linewidth=1.1, alpha=0.6
+)
+ax.text(
+    n_hist - 1,
+    ax.get_ylim()[1] * 0.97 if False else hist.max() * 1.02,
+    "预测起点",
+    fontsize=8,
+    ha="center",
+    va="bottom",
+    color=COLORS["ref_line"],
+    style="italic",
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=COLORS["grid"],
+        alpha=0.9,
+        linewidth=0.4,
+    ),
+)
 
 # === 终点不确定性范围标注 ===
-y_min = quant_full['p05'][-1]; y_max = quant_full['p95'][-1]
-ax.annotate('', xy=(t[-1] + 0.2, y_min), xytext=(t[-1] + 0.2, y_max),
-            arrowprops=dict(arrowstyle='<->', color=COLORS['highlight'], lw=1.2))
-ax.text(t[-1] + 0.8, (y_min + y_max) / 2,
-        f'95% 跨度\n{y_max - y_min:.1f}', fontsize=8, va='center',
-        color=COLORS['highlight'], fontweight='bold',
-        bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                  edgecolor=COLORS['highlight'], alpha=0.9, linewidth=0.5))
+y_min = quant_full["p05"][-1]
+y_max = quant_full["p95"][-1]
+ax.annotate(
+    "",
+    xy=(t[-1] + 0.2, y_min),
+    xytext=(t[-1] + 0.2, y_max),
+    arrowprops=dict(arrowstyle="<->", color=COLORS["highlight"], lw=1.2),
+)
+ax.text(
+    t[-1] + 0.8,
+    (y_min + y_max) / 2,
+    f"95% 跨度\n{y_max - y_min:.1f}",
+    fontsize=8,
+    va="center",
+    color=COLORS["highlight"],
+    fontweight="bold",
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=COLORS["highlight"],
+        alpha=0.9,
+        linewidth=0.5,
+    ),
+)
 
-ax.set_xlabel('时间（月）', fontsize=10)
-ax.set_ylabel('指标值', fontsize=10)
-ax.legend(loc='upper left', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=8, ncol=2)
-ax.grid(axis='y', alpha=0.12, linestyle='--', color=COLORS['grid'])
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
+ax.set_xlabel("时间（月）", fontsize=10)
+ax.set_ylabel("指标值", fontsize=10)
+ax.legend(
+    loc="upper left",
+    frameon=False,
+    labelspacing=0.35,
+    handlelength=1.6,
+    fontsize=8,
+    ncol=2,
+)
+ax.grid(axis="y", alpha=0.12, linestyle="--", color=COLORS["grid"])
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 ax.set_xlim(0, t[-1] + 3)
 fig.tight_layout()
-save_fig(fig, 'figures/fig_fan_chart.pdf')
+save_fig(fig, "figures/fig_fan_chart.pdf")
 ```
 
 **★ 设计要点：**
@@ -2598,14 +3827,16 @@ save_fig(fig, 'figures/fig_fan_chart.pdf')
 **场景**: 时序观察（每日数据：交易量、能耗、降雨、用户活跃）。GitHub 贡献图风格。一眼看出周期性 / 节假日 / 异常日。
 
 ```python
-import numpy as np; from _utils.vivid_config import palette_colors
+import numpy as np
+from _utils.vivid_config import palette_colors
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import LinearSegmentedColormap
 from datetime import date, timedelta
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
 
-setup_style(); scale_colors = palette_colors()
+setup_style()
+scale_colors = palette_colors()
 np.random.seed(42)
 
 # === 模拟一年的日数据（周末偏低，月底偏高，几个事件峰值）===
@@ -2614,18 +3845,20 @@ n_days = 366
 daily = np.random.gamma(2.0, 1.2, n_days)  # 基线
 for i in range(n_days):
     d = start + timedelta(days=i)
-    if d.weekday() >= 5: daily[i] *= 0.55  # 周末
-    if d.day >= 28: daily[i] *= 1.3  # 月底
+    if d.weekday() >= 5:
+        daily[i] *= 0.55  # 周末
+    if d.day >= 28:
+        daily[i] *= 1.3  # 月底
 # 几个事件峰值
 for ev in [40, 95, 180, 290]:
-    daily[ev:ev+3] *= 2.5
+    daily[ev : ev + 3] *= 2.5
 
 # === 转 7×53 矩阵：行=周中第几天（周一-周日），列=年中第几周 ===
 grid = np.full((7, 54), np.nan)
 month_starts = []  # 记录每月第一天位置（用于画分隔线）
 for i in range(n_days):
     d = start + timedelta(days=i)
-    week = int(d.strftime('%W'))  # ISO 周
+    week = int(d.strftime("%W"))  # ISO 周
     weekday = d.weekday()  # 0=Mon
     grid[weekday, week] = daily[i]
     if d.day == 1:
@@ -2634,33 +3867,61 @@ for i in range(n_days):
 # === 主色调渐变 colormap（用原色序首色的浅→深）===
 base = scale_colors[0]
 cmap_calendar = LinearSegmentedColormap.from_list(
-    'cal', [_lighten(base, 0.92), _lighten(base, 0.5), base, _lighten(base, -0.15) if False else base],
-    N=128
+    "cal",
+    [
+        _lighten(base, 0.92),
+        _lighten(base, 0.5),
+        base,
+        _lighten(base, -0.15) if False else base,
+    ],
+    N=128,
 )
 
 fig, ax = plt.subplots(figsize=(11, 2.6))
-im = ax.imshow(grid, aspect='equal', cmap=cmap_calendar, vmin=0,
-               vmax=np.nanpercentile(grid, 98))
+im = ax.imshow(
+    grid, aspect="equal", cmap=cmap_calendar, vmin=0, vmax=np.nanpercentile(grid, 98)
+)
 
 # === 月份分隔线 + 月名标注 ===
-month_names = ['1月', '2月', '3月', '4月', '5月', '6月',
-               '7月', '8月', '9月', '10月', '11月', '12月']
+month_names = [
+    "1月",
+    "2月",
+    "3月",
+    "4月",
+    "5月",
+    "6月",
+    "7月",
+    "8月",
+    "9月",
+    "10月",
+    "11月",
+    "12月",
+]
 for m, wk, _ in month_starts:
-    ax.axvline(wk - 0.5, color=COLORS['grid'], linewidth=0.8, alpha=0.5)
-    ax.text(wk + 0.5, -1.0, month_names[m - 1], fontsize=8,
-            ha='left', va='center', color=COLORS['text'])
+    ax.axvline(wk - 0.5, color=COLORS["grid"], linewidth=0.8, alpha=0.5)
+    ax.text(
+        wk + 0.5,
+        -1.0,
+        month_names[m - 1],
+        fontsize=8,
+        ha="left",
+        va="center",
+        color=COLORS["text"],
+    )
 
 # === Y 轴：仅显示 Mon / Wed / Fri ===
 ax.set_yticks([0, 2, 4, 6])
-ax.set_yticklabels(['周一', '周三', '周五', '周日'], fontsize=8)
+ax.set_yticklabels(["周一", "周三", "周五", "周日"], fontsize=8)
 ax.set_xticks([])
-ax.tick_params(axis='y', length=0)
-for spine in ax.spines.values(): spine.set_visible(False)
+ax.tick_params(axis="y", length=0)
+for spine in ax.spines.values():
+    spine.set_visible(False)
 
 # === 顶部 colorbar（横向）===
-cbar = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.35,
-                    pad=0.25, aspect=30)
-cbar.set_label('日均值', fontsize=8)
+cbar = fig.colorbar(
+    im, ax=ax, orientation="horizontal", shrink=0.35, pad=0.25, aspect=30
+)
+cbar.set_label("日均值", fontsize=8)
 cbar.ax.tick_params(labelsize=7, length=0)
 cbar.outline.set_linewidth(0)
 
@@ -2669,13 +3930,22 @@ threshold = np.nanpercentile(daily, 99)
 outliers_idx = np.where(daily > threshold)[0]
 for idx in outliers_idx[:5]:  # 最多标 5 个
     d = start + timedelta(days=int(idx))
-    wk = int(d.strftime('%W')); wd = d.weekday()
-    ax.add_patch(Rectangle((wk - 0.45, wd - 0.45), 0.9, 0.9,
-                            fill=False, edgecolor=COLORS['highlight'],
-                            linewidth=1.3, zorder=5))
+    wk = int(d.strftime("%W"))
+    wd = d.weekday()
+    ax.add_patch(
+        Rectangle(
+            (wk - 0.45, wd - 0.45),
+            0.9,
+            0.9,
+            fill=False,
+            edgecolor=COLORS["highlight"],
+            linewidth=1.3,
+            zorder=5,
+        )
+    )
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_calendar_heatmap.pdf')
+save_fig(fig, "figures/fig_calendar_heatmap.pdf")
 ```
 
 **★ 设计要点：**
@@ -2692,7 +3962,8 @@ save_fig(fig, 'figures/fig_calendar_heatmap.pdf')
 ⛔ **不要画反 Y 轴方向**：Hovmöller 约定时间从上往下（即 `ax.invert_yaxis()` 或直接 `extent` 反过来）。
 
 ```python
-import numpy as np; from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+import numpy as np
+from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
 import matplotlib.pyplot as plt
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
 
@@ -2700,7 +3971,8 @@ setup_style()
 np.random.seed(42)
 
 # === 模拟数据：60 个月 × 40 个经度 ===
-n_time = 60; n_space = 40
+n_time = 60
+n_space = 40
 months = np.arange(n_time)
 lons = np.linspace(120, 280, n_space)  # 太平洋经度
 # 季节波动 + 空间波形 + ENSO 信号 + 噪声
@@ -2708,58 +3980,126 @@ seasonal = 0.6 * np.sin(2 * np.pi * months[:, None] / 12)
 spatial = 0.3 * np.cos(2 * np.pi * (lons - 180) / 80)[None, :]
 enso = np.zeros((n_time, n_space))
 # 模拟两个事件
-enso[15:25, 10:30] += 1.8 * np.exp(-((np.arange(10)[:, None] - 5)**2 + (np.arange(20)[None, :] - 10)**2) / 30)
-enso[40:48, 20:35] -= 1.3 * np.exp(-((np.arange(8)[:, None] - 4)**2 + (np.arange(15)[None, :] - 7)**2) / 25)
+enso[15:25, 10:30] += 1.8 * np.exp(
+    -((np.arange(10)[:, None] - 5) ** 2 + (np.arange(20)[None, :] - 10) ** 2) / 30
+)
+enso[40:48, 20:35] -= 1.3 * np.exp(
+    -((np.arange(8)[:, None] - 4) ** 2 + (np.arange(15)[None, :] - 7) ** 2) / 25
+)
 data = seasonal + spatial + enso + np.random.normal(0, 0.18, (n_time, n_space))
 
 fig, ax = plt.subplots(figsize=(7, 5))
 
 # ★ 双向色阶（偏离零）— 用 coolwarm 但反转让暖色=正
 v = np.nanmax(np.abs(data))
-im = ax.imshow(data, aspect='auto', cmap=palette_cmap('diverging'), vmin=-v, vmax=v,
-               extent=[lons[0], lons[-1], months[-1], months[0]],
-               interpolation='bilinear')
+im = ax.imshow(
+    data,
+    aspect="auto",
+    cmap=palette_cmap("diverging"),
+    vmin=-v,
+    vmax=v,
+    extent=[lons[0], lons[-1], months[-1], months[0]],
+    interpolation="bilinear",
+)
 
 # ★ 零线等高线（可选，帮助读者定位"基线")
-cs = ax.contour(lons, months, data, levels=[0], colors=[COLORS['ref_line']],
-                linewidths=0.6, alpha=0.5, linestyles='--')
+cs = ax.contour(
+    lons,
+    months,
+    data,
+    levels=[0],
+    colors=[COLORS["ref_line"]],
+    linewidths=0.6,
+    alpha=0.5,
+    linestyles="--",
+)
 
 # ★ 事件标注：用半透明矩形圈出
 from matplotlib.patches import Rectangle
-ax.add_patch(Rectangle((lons[10], 15), lons[30] - lons[10], 10,
-                        fill=False, edgecolor=COLORS['highlight'],
-                        linewidth=1.4, linestyle='-', zorder=5))
-ax.text(lons[20], 12, 'El Niño 期', fontsize=8, ha='center',
-        color=COLORS['highlight'], fontweight='bold',
-        bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                  edgecolor=COLORS['highlight'], alpha=0.9, linewidth=0.6))
 
-ax.add_patch(Rectangle((lons[20], 40), lons[35] - lons[20], 8,
-                        fill=False, edgecolor=PALETTE[0],
-                        linewidth=1.4, linestyle='-', zorder=5))
-ax.text(lons[27], 53, 'La Niña 期', fontsize=8, ha='center',
-        color=PALETTE[0], fontweight='bold',
-        bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                  edgecolor=PALETTE[0], alpha=0.9, linewidth=0.6))
+ax.add_patch(
+    Rectangle(
+        (lons[10], 15),
+        lons[30] - lons[10],
+        10,
+        fill=False,
+        edgecolor=COLORS["highlight"],
+        linewidth=1.4,
+        linestyle="-",
+        zorder=5,
+    )
+)
+ax.text(
+    lons[20],
+    12,
+    "El Niño 期",
+    fontsize=8,
+    ha="center",
+    color=COLORS["highlight"],
+    fontweight="bold",
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=COLORS["highlight"],
+        alpha=0.9,
+        linewidth=0.6,
+    ),
+)
 
-ax.set_xlabel('经度 (°E)', fontsize=10)
-ax.set_ylabel('时间（月）', fontsize=10)
+ax.add_patch(
+    Rectangle(
+        (lons[20], 40),
+        lons[35] - lons[20],
+        8,
+        fill=False,
+        edgecolor=PALETTE[0],
+        linewidth=1.4,
+        linestyle="-",
+        zorder=5,
+    )
+)
+ax.text(
+    lons[27],
+    53,
+    "La Niña 期",
+    fontsize=8,
+    ha="center",
+    color=PALETTE[0],
+    fontweight="bold",
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=PALETTE[0],
+        alpha=0.9,
+        linewidth=0.6,
+    ),
+)
+
+ax.set_xlabel("经度 (°E)", fontsize=10)
+ax.set_ylabel("时间（月）", fontsize=10)
 ax.tick_params(labelsize=9)
 
 # ★ 右侧 colorbar
 cbar = fig.colorbar(im, ax=ax, shrink=0.7, pad=0.04, aspect=20)
-cbar.set_label('SST 距平 (°C)', fontsize=9)
+cbar.set_label("SST 距平 (°C)", fontsize=9)
 cbar.ax.tick_params(labelsize=8)
 cbar.outline.set_linewidth(0.4)
-cbar.outline.set_edgecolor(COLORS['grid'])
+cbar.outline.set_edgecolor(COLORS["grid"])
 
 # 顶部加经度参考标记
-ax.axvline(180, color=COLORS['ref_line'], linewidth=0.5, alpha=0.4, linestyle=':')
-ax.text(180, -1.5, '日期变更线', fontsize=7, ha='center',
-        color=COLORS['ref_line'], style='italic')
+ax.axvline(180, color=COLORS["ref_line"], linewidth=0.5, alpha=0.4, linestyle=":")
+ax.text(
+    180,
+    -1.5,
+    "日期变更线",
+    fontsize=7,
+    ha="center",
+    color=COLORS["ref_line"],
+    style="italic",
+)
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_hovmoller.pdf')
+save_fig(fig, "figures/fig_hovmoller.pdf")
 ```
 
 **★ 设计要点：**
@@ -2786,11 +4126,11 @@ np.random.seed(42)
 # === 模拟 4 个变量（含正/负/弱相关）===
 n = 250
 v1 = np.random.normal(0, 1, n)
-v2 = 0.75 * v1 + np.random.normal(0, 0.55, n)        # 强正相关
+v2 = 0.75 * v1 + np.random.normal(0, 0.55, n)  # 强正相关
 v3 = -0.55 * v1 + 0.3 * v2 + np.random.normal(0, 0.7, n)  # 中等负相关
-v4 = np.random.normal(0, 1, n)                        # 弱相关
+v4 = np.random.normal(0, 1, n)  # 弱相关
 data = np.column_stack([v1, v2, v3, v4])
-names = ['X1', 'X2', 'X3', 'X4']
+names = ["X1", "X2", "X3", "X4"]
 N = len(names)
 
 fig, axes = plt.subplots(N, N, figsize=(8.5, 8.5))
@@ -2800,29 +4140,60 @@ for i in range(N):
         ax = axes[i, j]
         if i == j:
             # ★ 对角线：直方图 + KDE
-            ax.hist(data[:, i], bins=22, color=_lighten(PALETTE[i % len(PALETTE)], 0.55),
-                    edgecolor=PALETTE[i % len(PALETTE)], linewidth=0.5, alpha=0.85)
+            ax.hist(
+                data[:, i],
+                bins=22,
+                color=_lighten(PALETTE[i % len(PALETTE)], 0.55),
+                edgecolor=PALETTE[i % len(PALETTE)],
+                linewidth=0.5,
+                alpha=0.85,
+            )
             ax2 = ax.twinx()
             xg = np.linspace(data[:, i].min(), data[:, i].max(), 200)
-            ax2.plot(xg, gaussian_kde(data[:, i])(xg),
-                     color=PALETTE[i % len(PALETTE)], linewidth=1.5)
+            ax2.plot(
+                xg,
+                gaussian_kde(data[:, i])(xg),
+                color=PALETTE[i % len(PALETTE)],
+                linewidth=1.5,
+            )
             ax2.set_yticks([])
-            ax2.spines['top'].set_visible(False)
-            ax2.spines['right'].set_visible(False)
-            ax2.spines['left'].set_visible(False)
-            ax.text(0.05, 0.92, names[i], transform=ax.transAxes,
-                    fontsize=11, fontweight='bold', color=PALETTE[i % len(PALETTE)],
-                    va='top', ha='left')
+            ax2.spines["top"].set_visible(False)
+            ax2.spines["right"].set_visible(False)
+            ax2.spines["left"].set_visible(False)
+            ax.text(
+                0.05,
+                0.92,
+                names[i],
+                transform=ax.transAxes,
+                fontsize=11,
+                fontweight="bold",
+                color=PALETTE[i % len(PALETTE)],
+                va="top",
+                ha="left",
+            )
         elif i > j:
             # ★ 下三角：散点 + 拟合线
-            ax.scatter(data[:, j], data[:, i], s=10, alpha=0.35,
-                       color=PALETTE[0], edgecolor='white', linewidth=0.2)
+            ax.scatter(
+                data[:, j],
+                data[:, i],
+                s=10,
+                alpha=0.35,
+                color=PALETTE[0],
+                edgecolor="white",
+                linewidth=0.2,
+            )
             # 简易线性拟合
             slope, intercept = np.polyfit(data[:, j], data[:, i], 1)
             xfit = np.linspace(data[:, j].min(), data[:, j].max(), 60)
             yfit = slope * xfit + intercept
-            ax.plot(xfit, yfit, color=COLORS['highlight'], linewidth=1.4,
-                    alpha=0.85, zorder=5)
+            ax.plot(
+                xfit,
+                yfit,
+                color=COLORS["highlight"],
+                linewidth=1.4,
+                alpha=0.85,
+                zorder=5,
+            )
         else:
             # ★ 上三角：相关系数（按强度上色 + 字号映射强度）
             r, p = pearsonr(data[:, j], data[:, i])
@@ -2830,33 +4201,52 @@ for i in range(N):
             if r > 0:
                 bg = _lighten(PALETTE[0], 1 - abs(r) * 0.7)
             else:
-                bg = _lighten(COLORS['down'], 1 - abs(r) * 0.7)
+                bg = _lighten(COLORS["down"], 1 - abs(r) * 0.7)
             ax.set_facecolor(bg)
-            sig = '***' if p < 0.001 else ('**' if p < 0.01 else ('*' if p < 0.05 else ''))
+            sig = (
+                "***"
+                if p < 0.001
+                else ("**" if p < 0.01 else ("*" if p < 0.05 else ""))
+            )
             fs = 10 + abs(r) * 12  # 字号随 |r| 增大
-            ax.text(0.5, 0.55, f'{r:+.2f}', transform=ax.transAxes,
-                    fontsize=fs, fontweight='bold',
-                    color=COLORS['text'], ha='center', va='center')
+            ax.text(
+                0.5,
+                0.55,
+                f"{r:+.2f}",
+                transform=ax.transAxes,
+                fontsize=fs,
+                fontweight="bold",
+                color=COLORS["text"],
+                ha="center",
+                va="center",
+            )
             if sig:
-                ax.text(0.5, 0.18, sig, transform=ax.transAxes,
-                        fontsize=11, color=COLORS['text'], ha='center')
+                ax.text(
+                    0.5,
+                    0.18,
+                    sig,
+                    transform=ax.transAxes,
+                    fontsize=11,
+                    color=COLORS["text"],
+                    ha="center",
+                )
 
         # 仅在最下/最左行留刻度
         if i < N - 1:
-            ax.tick_params(axis='x', labelbottom=False)
+            ax.tick_params(axis="x", labelbottom=False)
         else:
             ax.tick_params(labelsize=7)
         if j > 0:
-            ax.tick_params(axis='y', labelleft=False)
+            ax.tick_params(axis="y", labelleft=False)
         else:
             ax.tick_params(labelsize=7)
         if i != j:
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.grid(alpha=0.08, linestyle='--', color=COLORS['grid'])
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.grid(alpha=0.08, linestyle="--", color=COLORS["grid"])
 
 fig.tight_layout(pad=0.4)
-save_fig(fig, 'figures/fig_pair_plot.pdf')
+save_fig(fig, "figures/fig_pair_plot.pdf")
 ```
 
 **★ 设计要点：**
@@ -2872,7 +4262,8 @@ save_fig(fig, 'figures/fig_pair_plot.pdf')
 **场景**: CV / NLP / AI 定性结果展示。三个等宽子图横向并列，子图间用箭头暗示数据流，共享色标（如适用）。
 
 ```python
-import numpy as np; from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
+import numpy as np
+from _utils.palette_maps import palette_cmap, palette_stops, contrast_text
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import FancyArrowPatch
@@ -2884,57 +4275,82 @@ np.random.seed(42)
 # === 模拟数据：输入图 / 注意力图 / 输出图 ===
 H, W = 80, 80
 y, x = np.mgrid[0:H, 0:W]
-input_img = np.exp(-((x - 28)**2 + (y - 32)**2) / 250) + \
-            0.6 * np.exp(-((x - 52)**2 + (y - 48)**2) / 200) + \
-            np.random.normal(0, 0.04, (H, W))
-attention = np.exp(-((x - 40)**2 + (y - 40)**2) / 500) * (input_img > 0.2)
+input_img = (
+    np.exp(-((x - 28) ** 2 + (y - 32) ** 2) / 250)
+    + 0.6 * np.exp(-((x - 52) ** 2 + (y - 48) ** 2) / 200)
+    + np.random.normal(0, 0.04, (H, W))
+)
+attention = np.exp(-((x - 40) ** 2 + (y - 40) ** 2) / 500) * (input_img > 0.2)
 output_img = input_img * attention * 1.6
 
 # === 1 行 3 列 + 上方薄色条 ===
 fig = plt.figure(figsize=(9, 4))
 gs = GridSpec(2, 3, height_ratios=[0.5, 6], hspace=0.05, wspace=0.12)
 
-titles = ['(a) 输入', '(b) 注意力图', '(c) 重构输出']
+titles = ["(a) 输入", "(b) 注意力图", "(c) 重构输出"]
 images = [input_img, attention, output_img]
 v = max(np.max(im) for im in images)
 
 axes_img = []
 for col in range(3):
     ax = fig.add_subplot(gs[1, col])
-    im = ax.imshow(images[col], cmap=palette_cmap('sequential'), vmin=0, vmax=v,
-                   interpolation='bilinear')
-    ax.set_title(titles[col], fontsize=11, fontweight='bold',
-                 color=COLORS['text'], pad=8)
-    ax.axis('off')
+    im = ax.imshow(
+        images[col],
+        cmap=palette_cmap("sequential"),
+        vmin=0,
+        vmax=v,
+        interpolation="bilinear",
+    )
+    ax.set_title(
+        titles[col], fontsize=11, fontweight="bold", color=COLORS["text"], pad=8
+    )
+    ax.axis("off")
     axes_img.append((ax, im))
 
 # === 顶部共享色条 ===
 cbar_ax = fig.add_subplot(gs[0, :])
-cbar = fig.colorbar(axes_img[0][1], cax=cbar_ax, orientation='horizontal')
-cbar.set_label('归一化激活', fontsize=8); cbar.ax.xaxis.set_label_position('top'); cbar.ax.xaxis.set_ticks_position('top')
+cbar = fig.colorbar(axes_img[0][1], cax=cbar_ax, orientation="horizontal")
+cbar.set_label("归一化激活", fontsize=8)
+cbar.ax.xaxis.set_label_position("top")
+cbar.ax.xaxis.set_ticks_position("top")
 cbar.ax.tick_params(labelsize=7, length=2)
 cbar.outline.set_linewidth(0.4)
-cbar.outline.set_edgecolor(COLORS['grid'])
+cbar.outline.set_edgecolor(COLORS["grid"])
+
 
 # === 子图间流向箭头（用 figure-level transform）===
 def add_arrow(fig, axL, axR, label=None):
-    bbL = axL.get_position(); bbR = axR.get_position()
+    bbL = axL.get_position()
+    bbR = axR.get_position()
     y_mid = (bbL.y0 + bbL.y1) / 2
-    arrow = FancyArrowPatch((bbL.x1 + 0.005, y_mid), (bbR.x0 - 0.005, y_mid),
-                             transform=fig.transFigure,
-                             arrowstyle='->', mutation_scale=14,
-                             color=COLORS['highlight'], linewidth=1.5,
-                             clip_on=False)
+    arrow = FancyArrowPatch(
+        (bbL.x1 + 0.005, y_mid),
+        (bbR.x0 - 0.005, y_mid),
+        transform=fig.transFigure,
+        arrowstyle="->",
+        mutation_scale=14,
+        color=COLORS["highlight"],
+        linewidth=1.5,
+        clip_on=False,
+    )
     fig.patches.append(arrow)
     if label:
-        fig.text((bbL.x1 + bbR.x0) / 2, y_mid + 0.04, label,
-                 fontsize=8, ha='center', color=COLORS['highlight'],
-                 fontweight='bold', style='italic')
+        fig.text(
+            (bbL.x1 + bbR.x0) / 2,
+            y_mid + 0.04,
+            label,
+            fontsize=8,
+            ha="center",
+            color=COLORS["highlight"],
+            fontweight="bold",
+            style="italic",
+        )
 
-add_arrow(fig, axes_img[0][0], axes_img[1][0], 'Encoder')
-add_arrow(fig, axes_img[1][0], axes_img[2][0], 'Decoder')
 
-save_fig(fig, 'figures/fig_triptych.pdf')
+add_arrow(fig, axes_img[0][0], axes_img[1][0], "Encoder")
+add_arrow(fig, axes_img[1][0], axes_img[2][0], "Decoder")
+
+save_fig(fig, "figures/fig_triptych.pdf")
 ```
 
 **★ 设计要点：**
@@ -2960,8 +4376,9 @@ setup_style()
 np.random.seed(42)
 
 # === 模拟 4 条 MCMC 链，2 个参数 ===
-n_chains = 4; n_iter = 2000
-params = ['μ', 'σ']
+n_chains = 4
+n_iter = 2000
+params = ["μ", "σ"]
 true_vals = [1.5, 0.7]
 # 每条链有点初始偏移然后收敛
 chains = np.zeros((2, n_chains, n_iter))
@@ -2969,7 +4386,9 @@ for p in range(2):
     for c in range(n_chains):
         init = true_vals[p] + np.random.normal(0, 0.6) * (1 if c < 2 else 0.4)
         for i in range(n_iter):
-            init = init + 0.95 * (true_vals[p] - init) * 0.05 + np.random.normal(0, 0.08)
+            init = (
+                init + 0.95 * (true_vals[p] - init) * 0.05 + np.random.normal(0, 0.08)
+            )
             chains[p, c, i] = init
 
 # === 2 行 2 列：每行一个参数 ===
@@ -2981,50 +4400,98 @@ for p in range(2):
     # 左：trace plot
     ax_trace = fig.add_subplot(gs[p, 0])
     for c in range(n_chains):
-        ax_trace.plot(np.arange(n_iter), chains[p, c],
-                      color=PALETTE[c % len(PALETTE)], linewidth=0.5, alpha=0.75,
-                      label=f'链 {c+1}' if p == 0 else None)
-    ax_trace.axvline(burnin, color=COLORS['ref_line'], linestyle=':', linewidth=1, alpha=0.6)
-    ax_trace.text(burnin + 20, ax_trace.get_ylim()[0] + (ax_trace.get_ylim()[1] - ax_trace.get_ylim()[0]) * 0.05,
-                  f'burn-in={burnin}', fontsize=7, color=COLORS['ref_line'], style='italic')
-    ax_trace.axhline(true_vals[p], color=COLORS['highlight'], linestyle='--', linewidth=1, alpha=0.7)
-    ax_trace.set_ylabel(params[p], fontsize=11, fontweight='bold')
+        ax_trace.plot(
+            np.arange(n_iter),
+            chains[p, c],
+            color=PALETTE[c % len(PALETTE)],
+            linewidth=0.5,
+            alpha=0.75,
+            label=f"链 {c + 1}" if p == 0 else None,
+        )
+    ax_trace.axvline(
+        burnin, color=COLORS["ref_line"], linestyle=":", linewidth=1, alpha=0.6
+    )
+    ax_trace.text(
+        burnin + 20,
+        ax_trace.get_ylim()[0]
+        + (ax_trace.get_ylim()[1] - ax_trace.get_ylim()[0]) * 0.05,
+        f"burn-in={burnin}",
+        fontsize=7,
+        color=COLORS["ref_line"],
+        style="italic",
+    )
+    ax_trace.axhline(
+        true_vals[p], color=COLORS["highlight"], linestyle="--", linewidth=1, alpha=0.7
+    )
+    ax_trace.set_ylabel(params[p], fontsize=11, fontweight="bold")
     if p == 1:
-        ax_trace.set_xlabel('迭代步数', fontsize=10)
-    ax_trace.spines['top'].set_visible(False)
-    ax_trace.spines['right'].set_visible(False)
-    ax_trace.grid(axis='y', alpha=0.1, linestyle='--', color=COLORS['grid'])
+        ax_trace.set_xlabel("迭代步数", fontsize=10)
+    ax_trace.spines["top"].set_visible(False)
+    ax_trace.spines["right"].set_visible(False)
+    ax_trace.grid(axis="y", alpha=0.1, linestyle="--", color=COLORS["grid"])
     if p == 0:
-        ax_trace.legend(loc='upper right', frameon=False, labelspacing=0.35, handlelength=1.6, fontsize=7, ncol=4, columnspacing=1)
+        ax_trace.legend(
+            loc="upper right",
+            frameon=False,
+            labelspacing=0.35,
+            handlelength=1.6,
+            fontsize=7,
+            ncol=4,
+            columnspacing=1,
+        )
 
     # 右：边际密度（合并所有链，去除 burn-in）
     ax_dens = fig.add_subplot(gs[p, 1], sharey=ax_trace)
     pooled = chains[p, :, burnin:].flatten()
     yg = np.linspace(pooled.min(), pooled.max(), 200)
     density = gaussian_kde(pooled)(yg)
-    ax_dens.fill_betweenx(yg, 0, density, color=_lighten(PALETTE[0], 0.4),
-                          alpha=0.7, linewidth=0)
+    ax_dens.fill_betweenx(
+        yg, 0, density, color=_lighten(PALETTE[0], 0.4), alpha=0.7, linewidth=0
+    )
     ax_dens.plot(density, yg, color=PALETTE[0], linewidth=1.5)
     # 95% HPDI
     sorted_x = np.sort(pooled)
     ci_lo, ci_hi = np.percentile(sorted_x, [2.5, 97.5])
-    ax_dens.axhline(ci_lo, color=COLORS['ref_line'], linestyle=':', linewidth=0.8, alpha=0.6)
-    ax_dens.axhline(ci_hi, color=COLORS['ref_line'], linestyle=':', linewidth=0.8, alpha=0.6)
-    ax_dens.axhline(pooled.mean(), color=COLORS['highlight'], linestyle='--', linewidth=1.1, alpha=0.8)
+    ax_dens.axhline(
+        ci_lo, color=COLORS["ref_line"], linestyle=":", linewidth=0.8, alpha=0.6
+    )
+    ax_dens.axhline(
+        ci_hi, color=COLORS["ref_line"], linestyle=":", linewidth=0.8, alpha=0.6
+    )
+    ax_dens.axhline(
+        pooled.mean(),
+        color=COLORS["highlight"],
+        linestyle="--",
+        linewidth=1.1,
+        alpha=0.8,
+    )
 
     # 假装计算 Rhat（实际 Rhat 需要严谨实现，这里展示标注样式）
     rhat_value = 1.005 + np.random.uniform(-0.001, 0.003)
-    info_text = f'$\\hat{{\\theta}}$ = {pooled.mean():.3f}\n95% HPDI: [{ci_lo:.2f}, {ci_hi:.2f}]\n$\\hat{{R}}$ = {rhat_value:.3f}'
-    ax_dens.text(0.95, 0.95, info_text, transform=ax_dens.transAxes,
-                 fontsize=7.5, va='top', ha='right',
-                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                           edgecolor=COLORS['grid'], alpha=0.95, linewidth=0.4))
+    info_text = f"$\\hat{{\\theta}}$ = {pooled.mean():.3f}\n95% HPDI: [{ci_lo:.2f}, {ci_hi:.2f}]\n$\\hat{{R}}$ = {rhat_value:.3f}"
+    ax_dens.text(
+        0.95,
+        0.95,
+        info_text,
+        transform=ax_dens.transAxes,
+        fontsize=7.5,
+        va="top",
+        ha="right",
+        bbox=dict(
+            boxstyle="round,pad=0.3",
+            facecolor="white",
+            edgecolor=COLORS["grid"],
+            alpha=0.95,
+            linewidth=0.4,
+        ),
+    )
 
     ax_dens.set_xticks([])
-    ax_dens.tick_params(axis='y', labelleft=False)
-    for sp in ['top', 'right', 'bottom']: ax_dens.spines[sp].set_visible(False)
+    ax_dens.tick_params(axis="y", labelleft=False)
+    for sp in ["top", "right", "bottom"]:
+        ax_dens.spines[sp].set_visible(False)
 
-save_fig(fig, 'figures/fig_posterior_trace.pdf')
+save_fig(fig, "figures/fig_posterior_trace.pdf")
 ```
 
 **★ 设计要点：**
@@ -3049,15 +4516,16 @@ setup_style()
 np.random.seed(42)
 
 # === 模拟 5 个类别在 50 个时间点的数值 ===
-n_t = 50; n_cat = 5
+n_t = 50
+n_cat = 5
 t = np.arange(n_t)
 # 每个类别有不同的生命周期形状
 shapes = [
-    20 + 30 * np.exp(-((t - 20)**2) / 250),                # 凸起在中间
-    10 + 15 * (1 / (1 + np.exp(-0.2 * (t - 25)))),         # 后期增长
-    25 - 20 * (1 / (1 + np.exp(-0.2 * (t - 15)))) + 5,     # 早期衰退
-    18 * np.sin(t * 0.3) ** 2 + 5,                         # 周期波动
-    12 + np.random.normal(0, 2, n_t)                        # 平稳基线
+    20 + 30 * np.exp(-((t - 20) ** 2) / 250),  # 凸起在中间
+    10 + 15 * (1 / (1 + np.exp(-0.2 * (t - 25)))),  # 后期增长
+    25 - 20 * (1 / (1 + np.exp(-0.2 * (t - 15)))) + 5,  # 早期衰退
+    18 * np.sin(t * 0.3) ** 2 + 5,  # 周期波动
+    12 + np.random.normal(0, 2, n_t),  # 平稳基线
 ]
 data = np.array([gaussian_filter1d(s, sigma=2) for s in shapes])
 data = np.clip(data, 0.5, None)  # 保证非负
@@ -3067,40 +4535,72 @@ total = data.sum(axis=0)
 baseline = -total / 2  # 起点放底，向上堆叠
 fig, ax = plt.subplots(figsize=(9, 4.5))
 
-names = ['类别 A', '类别 B', '类别 C', '类别 D', '类别 E']
+names = ["类别 A", "类别 B", "类别 C", "类别 D", "类别 E"]
 cumsum = baseline.copy()
 for i, (vals, name) in enumerate(zip(data, names)):
     color = PALETTE[i % len(PALETTE)]
-    ax.fill_between(t, cumsum, cumsum + vals,
-                    color=_lighten(color, 0.25), alpha=0.88,
-                    edgecolor=color, linewidth=0.5, label=name)
+    ax.fill_between(
+        t,
+        cumsum,
+        cumsum + vals,
+        color=_lighten(color, 0.25),
+        alpha=0.88,
+        edgecolor=color,
+        linewidth=0.5,
+        label=name,
+    )
     # ★ 末端标签：放在每条流带末端的中心
     end_mid = cumsum[-1] + vals[-1] / 2
-    ax.text(t[-1] + 0.7, end_mid, name, fontsize=8, va='center',
-            color=color, fontweight='bold',
-            bbox=dict(boxstyle='round,pad=0.18', facecolor='white',
-                      edgecolor=color, alpha=0.9, linewidth=0.5))
+    ax.text(
+        t[-1] + 0.7,
+        end_mid,
+        name,
+        fontsize=8,
+        va="center",
+        color=color,
+        fontweight="bold",
+        bbox=dict(
+            boxstyle="round,pad=0.18",
+            facecolor="white",
+            edgecolor=color,
+            alpha=0.9,
+            linewidth=0.5,
+        ),
+    )
     cumsum += vals
 
 # 中心参考线
-ax.axhline(0, color=COLORS['ref_line'], linewidth=0.5, alpha=0.4, linestyle='-')
+ax.axhline(0, color=COLORS["ref_line"], linewidth=0.5, alpha=0.4, linestyle="-")
 
-ax.set_xlabel('时间', fontsize=10)
+ax.set_xlabel("时间", fontsize=10)
 ax.set_yticks([])  # 居中堆叠图通常省略 y 轴刻度（数值由颜色面积表达）
 ax.set_xlim(t[0], t[-1] + 7)
-for sp in ['top', 'right', 'left']: ax.spines[sp].set_visible(False)
-ax.tick_params(axis='y', length=0)
-ax.grid(axis='x', alpha=0.08, linestyle='--', color=COLORS['grid'])
+for sp in ["top", "right", "left"]:
+    ax.spines[sp].set_visible(False)
+ax.tick_params(axis="y", length=0)
+ax.grid(axis="x", alpha=0.08, linestyle="--", color=COLORS["grid"])
 
 # 顶部小注释解释读法
-ax.text(0.02, 0.97, '流带厚度 = 该时刻的数值；垂直位置无意义',
-        transform=ax.transAxes, fontsize=7, color=COLORS['text'],
-        style='italic', va='top',
-        bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
-                  edgecolor=COLORS['grid'], alpha=0.85, linewidth=0.3))
+ax.text(
+    0.02,
+    0.97,
+    "流带厚度 = 该时刻的数值；垂直位置无意义",
+    transform=ax.transAxes,
+    fontsize=7,
+    color=COLORS["text"],
+    style="italic",
+    va="top",
+    bbox=dict(
+        boxstyle="round,pad=0.2",
+        facecolor="white",
+        edgecolor=COLORS["grid"],
+        alpha=0.85,
+        linewidth=0.3,
+    ),
+)
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_streamgraph.pdf')
+save_fig(fig, "figures/fig_streamgraph.pdf")
 ```
 
 **★ 设计要点：**
@@ -3116,30 +4616,38 @@ save_fig(fig, 'figures/fig_streamgraph.pdf')
 **场景**: 双变量空间分布（社会-经济、风险-暴露、降水-气温）。一个图同时表达两个变量的高/中/低组合。配 3×3 颜色矩阵作图例。
 
 ```python
-import numpy as np; from _utils.vivid_config import palette_colors
+import numpy as np
+from _utils.vivid_config import palette_colors
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LinearSegmentedColormap
 from _utils.plot_utils import setup_style, save_fig, PALETTE, COLORS, _lighten
 
-setup_style(); scale_colors = palette_colors()
+setup_style()
+scale_colors = palette_colors()
 np.random.seed(42)
 
 # === 模拟 2 个变量在 30×30 网格上的取值 ===
 N = 30
 y, x = np.mgrid[0:N, 0:N]
-var_a = np.exp(-((x - 10)**2 + (y - 12)**2) / 100) + 0.3 * np.random.rand(N, N)
-var_b = np.exp(-((x - 20)**2 + (y - 22)**2) / 120) + 0.3 * np.random.rand(N, N)
+var_a = np.exp(-((x - 10) ** 2 + (y - 12) ** 2) / 100) + 0.3 * np.random.rand(N, N)
+var_b = np.exp(-((x - 20) ** 2 + (y - 22) ** 2) / 120) + 0.3 * np.random.rand(N, N)
 var_a = (var_a - var_a.min()) / (var_a.max() - var_a.min())
 var_b = (var_b - var_b.min()) / (var_b.max() - var_b.min())
+
 
 # === 3×3 双变量配色（X 维度用 scale_colors[0] 渐变，Y 维度用 scale_colors[1] 渐变，组合产生中间色）===
 def bivariate_color(a, b):
     """a, b in [0,1] -> RGB. 用两个主色的加权混合。"""
-    c1 = np.array([int(scale_colors[0].lstrip('#')[i:i+2], 16)/255 for i in (0,2,4)])  # 蓝
-    c2 = np.array([int(scale_colors[1].lstrip('#')[i:i+2], 16)/255 for i in (0,2,4)])  # 橙
+    c1 = np.array(
+        [int(scale_colors[0].lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    )  # 蓝
+    c2 = np.array(
+        [int(scale_colors[1].lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    )  # 橙
     base = np.array([0.97, 0.97, 0.97])  # 浅灰底
-    return base * (1 - 0.5*a - 0.5*b) + c1 * 0.5*a + c2 * 0.5*b
+    return base * (1 - 0.5 * a - 0.5 * b) + c1 * 0.5 * a + c2 * 0.5 * b
+
 
 # 量化到 3×3 等级
 qa = np.clip(np.digitize(var_a, np.quantile(var_a, [0.33, 0.67])), 0, 2)
@@ -3155,37 +4663,50 @@ for i in range(N):
 fig = plt.figure(figsize=(7.5, 5))
 gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.15)
 ax_main = fig.add_subplot(gs[0, 0])
-ax_main.imshow(rgb, origin='lower', interpolation='nearest')
-ax_main.set_xlabel('经度网格', fontsize=10)
-ax_main.set_ylabel('纬度网格', fontsize=10)
-ax_main.set_title('双变量空间分布', fontsize=11, color=COLORS['text'], pad=6)
+ax_main.imshow(rgb, origin="lower", interpolation="nearest")
+ax_main.set_xlabel("经度网格", fontsize=10)
+ax_main.set_ylabel("纬度网格", fontsize=10)
+ax_main.set_title("双变量空间分布", fontsize=11, color=COLORS["text"], pad=6)
 ax_main.tick_params(labelsize=8)
-for sp in ax_main.spines.values(): sp.set_edgecolor(COLORS['grid']); sp.set_linewidth(0.5)
+for sp in ax_main.spines.values():
+    sp.set_edgecolor(COLORS["grid"])
+    sp.set_linewidth(0.5)
 
 # === 3×3 图例矩阵 ===
 ax_leg = fig.add_subplot(gs[0, 1])
 legend_grid = np.zeros((3, 3, 3))
 for i in range(3):
     for j in range(3):
-        legend_grid[2-i, j] = bivariate_color(j / 2, i / 2)
-ax_leg.imshow(legend_grid, origin='lower', interpolation='nearest')
-ax_leg.set_xticks([0, 1, 2]); ax_leg.set_yticks([0, 1, 2])
-ax_leg.set_xticklabels(['低', '中', '高'], fontsize=8)
-ax_leg.set_yticklabels(['低', '中', '高'], fontsize=8)
-ax_leg.set_xlabel('变量 A →', fontsize=9, color=scale_colors[0], fontweight='bold')
-ax_leg.set_ylabel('变量 B →', fontsize=9, color=scale_colors[1], fontweight='bold')
-ax_leg.set_title('图例', fontsize=9, color=COLORS['text'], pad=4)
-for sp in ax_leg.spines.values(): sp.set_edgecolor(COLORS['grid']); sp.set_linewidth(0.5)
+        legend_grid[2 - i, j] = bivariate_color(j / 2, i / 2)
+ax_leg.imshow(legend_grid, origin="lower", interpolation="nearest")
+ax_leg.set_xticks([0, 1, 2])
+ax_leg.set_yticks([0, 1, 2])
+ax_leg.set_xticklabels(["低", "中", "高"], fontsize=8)
+ax_leg.set_yticklabels(["低", "中", "高"], fontsize=8)
+ax_leg.set_xlabel("变量 A →", fontsize=9, color=scale_colors[0], fontweight="bold")
+ax_leg.set_ylabel("变量 B →", fontsize=9, color=scale_colors[1], fontweight="bold")
+ax_leg.set_title("图例", fontsize=9, color=COLORS["text"], pad=4)
+for sp in ax_leg.spines.values():
+    sp.set_edgecolor(COLORS["grid"])
+    sp.set_linewidth(0.5)
 ax_leg.tick_params(length=0)
 
 # 在图例每格中标"AaBb"短标识
 for i in range(3):
     for j in range(3):
-        ax_leg.text(j, 2-i, f'A{j+1}B{i+1}', ha='center', va='center',
-                    fontsize=7, color=COLORS['text'], fontweight='bold')
+        ax_leg.text(
+            j,
+            2 - i,
+            f"A{j + 1}B{i + 1}",
+            ha="center",
+            va="center",
+            fontsize=7,
+            color=COLORS["text"],
+            fontweight="bold",
+        )
 
 fig.tight_layout()
-save_fig(fig, 'figures/fig_bivariate.pdf')
+save_fig(fig, "figures/fig_bivariate.pdf")
 ```
 
 **★ 设计要点：**
@@ -3212,56 +4733,79 @@ Default demo heights were transcribed from the reference image; demo errors are
 illustrative only. Custom data never receives invented uncertainty.
 Run from a bootstrapped Vivid workspace, or directly from the installed catalog.
 """
+
 from pathlib import Path
 import argparse
 import csv
 import sys
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm, to_rgb, LinearSegmentedColormap
+from matplotlib.colors import (
+    ListedColormap,
+    BoundaryNorm,
+    to_rgb,
+    LinearSegmentedColormap,
+)
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Resolve the active workspace utilities or the installed skill's shared bundle.
 for base in (Path.cwd(), *Path.cwd().parents, *Path(__file__).resolve().parents):
-    candidates = (base / '_utils', base / 'original/resources/assets/shared-scripts')
-    found = next((p for p in candidates if (p / 'vivid_config.py').is_file()), None)
+    candidates = (base / "_utils", base / "original/resources/assets/shared-scripts")
+    found = next((p for p in candidates if (p / "vivid_config.py").is_file()), None)
     if found is not None:
         sys.path.insert(0, str(found))
         break
 else:
-    raise RuntimeError('Run Vivid bootstrap in the workspace before using this recipe.')
+    raise RuntimeError("Run Vivid bootstrap in the workspace before using this recipe.")
 from vivid_config import palette_colors
 from plot_utils import setup_style
 
 
 def read_matrix(path):
     """Wide CSV: first column row label, remaining column headers are conditions."""
-    with Path(path).open(encoding='utf-8-sig', newline='') as stream:
+    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.reader(stream))
     if len(rows) < 2 or len(rows[0]) < 2 or any(len(r) != len(rows[0]) for r in rows):
-        raise ValueError('Expected a rectangular CSV with row and column labels.')
+        raise ValueError("Expected a rectangular CSV with row and column labels.")
     labels, conditions = [r[0] for r in rows[1:]], rows[0][1:]
     if len(set(labels)) != len(labels) or len(set(conditions)) != len(conditions):
-        raise ValueError('Row and column labels must be unique.')
+        raise ValueError("Row and column labels must be unique.")
     return np.array([[float(v) for v in r[1:]] for r in rows[1:]]), labels, conditions
 
 
-def plot_chart(values, samples, ss, *, errors=None, bounds=None,
-               value_label='Value', sample_label='Sample', condition_label='Condition',
-               note=None):
+def plot_chart(
+    values,
+    samples,
+    ss,
+    *,
+    errors=None,
+    bounds=None,
+    value_label="Value",
+    sample_label="Sample",
+    condition_label="Condition",
+    note=None,
+):
     """errors: nonnegative lengths shaped (rows, columns) or (2, rows, columns).
 
     A 2-D array gives symmetric errors; a 3-D array gives lower/upper lengths.
     None omits error marks. Heights and colorbar share the same explicit bins.
     """
     values = np.asarray(values, dtype=float)
-    if (values.ndim != 2 or values.size == 0 or not np.isfinite(values).all()
-            or (values < 0).any() or values.shape != (len(samples), len(ss))):
-        raise ValueError('Expected finite nonnegative heights matching both label axes.')
+    if (
+        values.ndim != 2
+        or values.size == 0
+        or not np.isfinite(values).all()
+        or (values < 0).any()
+        or values.shape != (len(samples), len(ss))
+    ):
+        raise ValueError(
+            "Expected finite nonnegative heights matching both label axes."
+        )
     nrows, ncols = values.shape
     lower = upper = np.zeros_like(values)
     if errors is not None:
@@ -3271,98 +4815,167 @@ def plot_chart(values, samples, ss, *, errors=None, bounds=None,
         elif error_array.shape == (2, *values.shape):
             lower, upper = error_array
         else:
-            raise ValueError('Error shape must match heights, optionally with lower/upper axis.')
-        if (not np.isfinite(error_array).all() or (error_array < 0).any()
-                or (lower > values).any()):
-            raise ValueError('Errors must be finite, nonnegative and not cross the zero base.')
+            raise ValueError(
+                "Error shape must match heights, optionally with lower/upper axis."
+            )
+        if (
+            not np.isfinite(error_array).all()
+            or (error_array < 0).any()
+            or (lower > values).any()
+        ):
+            raise ValueError(
+                "Errors must be finite, nonnegative and not cross the zero base."
+            )
     if bounds is None:
         # Linear bins for new data; original demo binning is supplied explicitly.
         bounds = np.linspace(0, max(float(values.max()), 1.0), 12)
     bounds = np.asarray(bounds, dtype=float)
-    if (bounds.ndim != 1 or len(bounds) < 3 or not np.isfinite(bounds).all()
-            or (np.diff(bounds) <= 0).any()
-            or bounds[0] > values.min() or bounds[-1] < values.max()):
-        raise ValueError('Increasing bin boundaries must cover every height.')
+    if (
+        bounds.ndim != 1
+        or len(bounds) < 3
+        or not np.isfinite(bounds).all()
+        or (np.diff(bounds) <= 0).any()
+        or bounds[0] > values.min()
+        or bounds[-1] < values.max()
+    ):
+        raise ValueError("Increasing bin boundaries must cover every height.")
     setup_style()
-    plt.rcParams.update({'font.family': 'serif', 'font.serif': ['Times New Roman', 'DejaVu Serif'],
-                         'font.weight': 'bold', 'axes.labelweight': 'bold', 'font.size': 12,
-                         'pdf.fonttype': 42, 'axes.linewidth': 1.2})
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "DejaVu Serif"],
+            "font.weight": "bold",
+            "axes.labelweight": "bold",
+            "font.size": 12,
+            "pdf.fonttype": 42,
+            "axes.linewidth": 1.2,
+        }
+    )
     # Numeric bins use the palette's raw ordered scale, not categorical ordering.
-    scale = LinearSegmentedColormap.from_list('vivid_ordered', palette_colors())
-    colors = scale(np.linspace(0, 1, len(bounds)-1))[:, :3]
+    scale = LinearSegmentedColormap.from_list("vivid_ordered", palette_colors())
+    colors = scale(np.linspace(0, 1, len(bounds) - 1))[:, :3]
     cmap = ListedColormap(colors)
     norm = BoundaryNorm(bounds, cmap.N, clip=True)
-    fig = plt.figure(figsize=(14.4, 12.8), facecolor='white')
-    ax = fig.add_axes([.015, .055, .81, .90], projection='3d', computed_zorder=False)
+    fig = plt.figure(figsize=(14.4, 12.8), facecolor="white")
+    ax = fig.add_axes(
+        [0.015, 0.055, 0.81, 0.90], projection="3d", computed_zorder=False
+    )
     ax.view_init(elev=27, azim=-56)
-    ax.set_proj_type('ortho')
-    ax.set_box_aspect((max(nrows * 1.1, 2), max(ncols * .955, 2), 8))
+    ax.set_proj_type("ortho")
+    ax.set_box_aspect((max(nrows * 1.1, 2), max(ncols * 0.955, 2), 8))
 
     # Side faces fade from near-white at the foot to the bin color at the top.
-    label_offset = max(float((values + upper).max()), 1.0) * .02
+    label_offset = max(float((values + upper).max()), 1.0) * 0.02
     faces, facecolors = [], []
-    w, d = .62, .62
+    w, d = 0.62, 0.62
     for i in range(nrows):
         for j in range(ncols):
-            h = values[i,j]
+            h = values[i, j]
             base = np.array(to_rgb(colors[int(norm(h))]))
-            x0, x1, y0, y1 = i-w/2, i+w/2, j-d/2, j+d/2
+            x0, x1, y0, y1 = i - w / 2, i + w / 2, j - d / 2, j + d / 2
             n = 40 if h > 1.5 else 1
-            levels = np.linspace(0, h, n+1)
+            levels = np.linspace(0, h, n + 1)
             for k in range(n):
-                z0, z1 = levels[k:k+2]
-                t = (k+.5)/n
-                c = base if h <= 1.5 else np.ones(3)*(1-t**.65)+base*t**.65
-                for points, shade in [([(x0,y0,z0),(x1,y0,z0),(x1,y0,z1),(x0,y0,z1)],.98),
-                                      ([(x1,y0,z0),(x1,y1,z0),(x1,y1,z1),(x1,y0,z1)],.88),
-                                      ([(x1,y1,z0),(x0,y1,z0),(x0,y1,z1),(x1,y1,z1)],.92),
-                                      ([(x0,y1,z0),(x0,y0,z0),(x0,y0,z1),(x0,y1,z1)],1.)]:
+                z0, z1 = levels[k : k + 2]
+                t = (k + 0.5) / n
+                c = base if h <= 1.5 else np.ones(3) * (1 - t**0.65) + base * t**0.65
+                for points, shade in [
+                    ([(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)], 0.98),
+                    ([(x1, y0, z0), (x1, y1, z0), (x1, y1, z1), (x1, y0, z1)], 0.88),
+                    ([(x1, y1, z0), (x0, y1, z0), (x0, y1, z1), (x1, y1, z1)], 0.92),
+                    ([(x0, y1, z0), (x0, y0, z0), (x0, y0, z1), (x0, y1, z1)], 1.0),
+                ]:
                     faces.append(points)
-                    facecolors.append(np.clip(c*shade,0,1))
-            faces.append([(x0,y0,h),(x1,y0,h),(x1,y1,h),(x0,y1,h)])
-            facecolors.append(np.clip(base*1.04,0,1))
-    ax.add_collection3d(Poly3DCollection(faces, facecolors=facecolors, edgecolors='none',
-                                        linewidths=0, antialiased=False, zsort='average', zorder=3))
+                    facecolors.append(np.clip(c * shade, 0, 1))
+            faces.append([(x0, y0, h), (x1, y0, h), (x1, y1, h), (x0, y1, h)])
+            facecolors.append(np.clip(base * 1.04, 0, 1))
+    ax.add_collection3d(
+        Poly3DCollection(
+            faces,
+            facecolors=facecolors,
+            edgecolors="none",
+            linewidths=0,
+            antialiased=False,
+            zsort="average",
+            zorder=3,
+        )
+    )
     # Draw error marks only from the supplied symmetric/asymmetric error lengths.
     for i in range(nrows):
         for j in range(ncols):
-            h = values[i,j]
-            err = upper[i,j]
+            h = values[i, j]
+            err = upper[i, j]
             if errors is not None:
-                ax.plot([i,i], [j,j], [h-lower[i,j],h+err], c='black', lw=1.25, zorder=5)
-                ax.plot([i-.10,i+.10], [j,j], [h+err,h+err], c='black', lw=1.25, zorder=5)
-            ax.text(i, j, h+err+label_offset, f'{h:.2f}', ha='center', va='bottom',
-                    fontsize=10, zorder=6, bbox=dict(facecolor='white', edgecolor='none', alpha=.87, pad=.15))
-    ax.set(xlim=(-.65,nrows-.35), ylim=(-.65,ncols-.35),
-           zlim=(0,max(float((values+upper).max()), 1.0) * 1.08))
+                ax.plot(
+                    [i, i],
+                    [j, j],
+                    [h - lower[i, j], h + err],
+                    c="black",
+                    lw=1.25,
+                    zorder=5,
+                )
+                ax.plot(
+                    [i - 0.10, i + 0.10],
+                    [j, j],
+                    [h + err, h + err],
+                    c="black",
+                    lw=1.25,
+                    zorder=5,
+                )
+            ax.text(
+                i,
+                j,
+                h + err + label_offset,
+                f"{h:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+                zorder=6,
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.87, pad=0.15),
+            )
+    ax.set(
+        xlim=(-0.65, nrows - 0.35),
+        ylim=(-0.65, ncols - 0.35),
+        zlim=(0, max(float((values + upper).max()), 1.0) * 1.08),
+    )
     ax.set_xticks(range(nrows), samples, rotation=-15)
     ax.set_yticks(range(ncols), ss, rotation=18)
     ax.zaxis.set_major_locator(MaxNLocator(nbins=12))
     ax.set_xlabel(sample_label, labelpad=22, fontsize=19)
     ax.set_ylabel(condition_label, labelpad=24, fontsize=19)
     ax.set_zlabel(value_label, labelpad=20, fontsize=18)
-    ax.zaxis._axinfo['juggled'] = (1,2,0)
+    ax.zaxis._axinfo["juggled"] = (1, 2, 0)
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
-        axis.set_pane_color((1,1,1,1))
-        axis.pane.set_edgecolor('black')
-        axis._axinfo['grid'].update(color=(.68,.68,.68,1), linestyle='--', linewidth=.8)
-    ax.tick_params(axis='both', labelsize=12, pad=3)
-    cax = fig.add_axes([.865,.205,.024,.63])
-    cb = ColorbarBase(cax, cmap=cmap, norm=norm, boundaries=bounds, ticks=bounds, spacing='uniform')
-    cb.ax.set_yticklabels([f'{v:.3g}' for v in bounds])
+        axis.set_pane_color((1, 1, 1, 1))
+        axis.pane.set_edgecolor("black")
+        axis._axinfo["grid"].update(
+            color=(0.68, 0.68, 0.68, 1), linestyle="--", linewidth=0.8
+        )
+    ax.tick_params(axis="both", labelsize=12, pad=3)
+    cax = fig.add_axes([0.865, 0.205, 0.024, 0.63])
+    cb = ColorbarBase(
+        cax, cmap=cmap, norm=norm, boundaries=bounds, ticks=bounds, spacing="uniform"
+    )
+    cb.ax.set_yticklabels([f"{v:.3g}" for v in bounds])
     cb.ax.tick_params(labelsize=14, pad=6)
     cb.set_label(value_label, fontsize=18, labelpad=17)
     if note:
-        fig.text(.05, .018, note, fontsize=11, color='#444444')
+        fig.text(0.05, 0.018, note, fontsize=11, color="#444444")
     return fig
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', type=Path, help='Wide CSV of heights')
-    parser.add_argument('--errors', type=Path, help='Wide CSV of symmetric error lengths, matching data labels')
-    parser.add_argument('--output', type=Path, default=Path('figures/fig_grouped_bar_3d'))
-    parser.add_argument('--value-label', default=None)
+    parser.add_argument("--data", type=Path, help="Wide CSV of heights")
+    parser.add_argument(
+        "--errors",
+        type=Path,
+        help="Wide CSV of symmetric error lengths, matching data labels",
+    )
+    parser.add_argument(
+        "--output", type=Path, default=Path("figures/fig_grouped_bar_3d")
+    )
+    parser.add_argument("--value-label", default=None)
     args = parser.parse_args()
     if args.data:
         values, samples, conditions = read_matrix(args.data)
@@ -3370,32 +4983,117 @@ def main():
         if args.errors:
             errors, error_rows, error_cols = read_matrix(args.errors)
             if samples != error_rows or conditions != error_cols:
-                raise ValueError('Error CSV labels and order must match the data CSV.')
-        fig = plot_chart(values, samples, conditions, errors=errors,
-                         value_label=args.value_label or 'Value')
+                raise ValueError("Error CSV labels and order must match the data CSV.")
+        fig = plot_chart(
+            values,
+            samples,
+            conditions,
+            errors=errors,
+            value_label=args.value_label or "Value",
+        )
     else:
         if args.errors:
-            parser.error('--errors requires --data')
+            parser.error("--errors requires --data")
         # Heights transcribed from the user reference. Errors are illustrative.
-        samples = ['C-28', 'C-7', 'C-3', 'C-1', 'U-28', 'U-1']
-        conditions = ['SS-0', 'SS-0.1', 'SS-0.2', 'SS-0.3', 'SS-0.4', 'SS-0.5', 'SS-0.6', 'SS-0.7', 'SS-0.8', 'SS-0.9', 'SS-1']
-        values = np.array([[0.34, 3.95, 8.36, 13.81, 16.24, 23.39, 32.97, 35.36, 38.44, 46.64, 57.14], [0.33, 3.12, 7.98, 13.09, 14.75, 20.15, 28.26, 31.24, 35.76, 42.32, 55.28], [0.3, 3.01, 6.3, 12.16, 13.12, 18.45, 25.76, 28.29, 33.03, 37.68, 49.88], [0.28, 2.84, 5.48, 9.72, 11.09, 14.44, 22.31, 25.53, 30.48, 34.04, 36.08], [0.33, 2.77, 4.23, 5.52, 6.12, 7.29, 9.26, 10.76, 13.49, 14.24, 17.13], [0.21, 0.55, 0.71, 0.81, 1.12, 1.24, 2.59, 3.54, 3.86, 4.07, 6.31]])
-        upper = np.maximum(.10, .025 * values)
-        errors = np.stack([.35 * upper, upper])
-        bounds = [.21, .35, .58, .97, 1.6, 2.7, 4.5, 7.4, 12.4, 20.6, 34.3, 57.14]
-        fig = plot_chart(values, samples, conditions, errors=errors, bounds=bounds,
-                         value_label=args.value_label or 'Compressive strength /MPa',
-                         condition_label='SS Content',
-                         note='Reference-label heights; illustrative error bars (not measured).')
+        samples = ["C-28", "C-7", "C-3", "C-1", "U-28", "U-1"]
+        conditions = [
+            "SS-0",
+            "SS-0.1",
+            "SS-0.2",
+            "SS-0.3",
+            "SS-0.4",
+            "SS-0.5",
+            "SS-0.6",
+            "SS-0.7",
+            "SS-0.8",
+            "SS-0.9",
+            "SS-1",
+        ]
+        values = np.array(
+            [
+                [
+                    0.34,
+                    3.95,
+                    8.36,
+                    13.81,
+                    16.24,
+                    23.39,
+                    32.97,
+                    35.36,
+                    38.44,
+                    46.64,
+                    57.14,
+                ],
+                [
+                    0.33,
+                    3.12,
+                    7.98,
+                    13.09,
+                    14.75,
+                    20.15,
+                    28.26,
+                    31.24,
+                    35.76,
+                    42.32,
+                    55.28,
+                ],
+                [
+                    0.3,
+                    3.01,
+                    6.3,
+                    12.16,
+                    13.12,
+                    18.45,
+                    25.76,
+                    28.29,
+                    33.03,
+                    37.68,
+                    49.88,
+                ],
+                [
+                    0.28,
+                    2.84,
+                    5.48,
+                    9.72,
+                    11.09,
+                    14.44,
+                    22.31,
+                    25.53,
+                    30.48,
+                    34.04,
+                    36.08,
+                ],
+                [0.33, 2.77, 4.23, 5.52, 6.12, 7.29, 9.26, 10.76, 13.49, 14.24, 17.13],
+                [0.21, 0.55, 0.71, 0.81, 1.12, 1.24, 2.59, 3.54, 3.86, 4.07, 6.31],
+            ]
+        )
+        upper = np.maximum(0.10, 0.025 * values)
+        errors = np.stack([0.35 * upper, upper])
+        bounds = [0.21, 0.35, 0.58, 0.97, 1.6, 2.7, 4.5, 7.4, 12.4, 20.6, 34.3, 57.14]
+        fig = plot_chart(
+            values,
+            samples,
+            conditions,
+            errors=errors,
+            bounds=bounds,
+            value_label=args.value_label or "Compressive strength /MPa",
+            condition_label="SS Content",
+            note="Reference-label heights; illustrative error bars (not measured).",
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    for suffix in ('png', 'pdf'):
-        fig.savefig(args.output.with_suffix('.' + suffix), dpi=300,
-                    facecolor='white', bbox_inches='tight', pad_inches=.25)
+    for suffix in ("png", "pdf"):
+        fig.savefig(
+            args.output.with_suffix("." + suffix),
+            dpi=300,
+            facecolor="white",
+            bbox_inches="tight",
+            pad_inches=0.25,
+        )
     plt.close(fig)
-    print('Saved PNG and PDF:', args.output)
+    print("Saved PNG and PDF:", args.output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
@@ -3416,6 +5114,7 @@ Reconstructed from a user image; default samples are synthetic, not paper data.
 Custom CSV uses columns group,value. Normal fits describe data; they do not
 establish normality. Independent Y scales do not permit direct height comparison.
 """
+
 from pathlib import Path
 import argparse
 import csv
@@ -3423,7 +5122,8 @@ import json
 import sys
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 from matplotlib.colors import to_rgb
@@ -3432,33 +5132,52 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import MaxNLocator, MultipleLocator
 
 for base in (Path.cwd(), *Path.cwd().parents, *Path(__file__).resolve().parents):
-    found = next((p for p in (base/'_utils', base/'original/resources/assets/shared-scripts')
-                  if (p/'vivid_config.py').is_file()), None)
+    found = next(
+        (
+            p
+            for p in (
+                base / "_utils",
+                base / "original/resources/assets/shared-scripts",
+            )
+            if (p / "vivid_config.py").is_file()
+        ),
+        None,
+    )
     if found is not None:
         sys.path.insert(0, str(found))
         break
 else:
-    raise RuntimeError('Run Vivid bootstrap in the workspace before using this recipe.')
+    raise RuntimeError("Run Vivid bootstrap in the workspace before using this recipe.")
 from vivid_config import categorical_colors
 from plot_utils import setup_style
 
 
 def read_samples(path):
     groups = {}
-    with Path(path).open(encoding='utf-8-sig', newline='') as stream:
+    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
         rows = csv.DictReader(stream)
-        if not {'group', 'value'}.issubset(rows.fieldnames or []):
-            raise ValueError('CSV requires group,value columns.')
+        if not {"group", "value"}.issubset(rows.fieldnames or []):
+            raise ValueError("CSV requires group,value columns.")
         for row in rows:
-            name = row['group'].strip()
+            name = row["group"].strip()
             if not name:
-                raise ValueError('Group labels cannot be empty.')
-            groups.setdefault(name, []).append(float(row['value']))
+                raise ValueError("Group labels cannot be empty.")
+            groups.setdefault(name, []).append(float(row["value"]))
     return groups
 
 
-def plot_chart(groups, *, bins=14, xlabel='Residual', fit=True, ylimits=None,
-               note=None, colors=None, xlim=None, ytick_step=None):
+def plot_chart(
+    groups,
+    *,
+    bins=14,
+    xlabel="Residual",
+    fit=True,
+    ylimits=None,
+    note=None,
+    colors=None,
+    xlim=None,
+    ytick_step=None,
+):
     """One to three groups of raw observations with a shared X scale.
 
     bins may be shared or a dict of group-specific equal-width bin edges.
@@ -3468,52 +5187,81 @@ def plot_chart(groups, *, bins=14, xlabel='Residual', fit=True, ylimits=None,
     Optional ylimits supplies one (0, upper) pair per group without clipping.
     """
     if not 1 <= len(groups) <= 3:
-        raise ValueError('Use one to three groups to keep the independent axes readable.')
-    arrays = {str(name): np.asarray(values, dtype=float) for name, values in groups.items()}
+        raise ValueError(
+            "Use one to three groups to keep the independent axes readable."
+        )
+    arrays = {
+        str(name): np.asarray(values, dtype=float) for name, values in groups.items()
+    }
     if len(arrays) != len(groups) or any(not name.strip() for name in arrays):
-        raise ValueError('Group labels must be distinct nonempty strings.')
+        raise ValueError("Group labels must be distinct nonempty strings.")
     for name, values in arrays.items():
         if values.ndim != 1 or len(values) < 2 or not np.isfinite(values).all():
-            raise ValueError(f'{name}: provide at least two finite raw observations.')
+            raise ValueError(f"{name}: provide at least two finite raw observations.")
         if fit and values.std(ddof=0) <= 0:
-            raise ValueError(f'{name}: zero variance; disable the normal fit.')
+            raise ValueError(f"{name}: zero variance; disable the normal fit.")
     combined = np.concatenate(list(arrays.values()))
     if isinstance(bins, dict) and set(bins) != set(arrays):
-        raise ValueError('Group-specific bins must include every group exactly once.')
+        raise ValueError("Group-specific bins must include every group exactly once.")
     bin_edges = {}
     for name, values in arrays.items():
-        edges = np.histogram_bin_edges(values if isinstance(bins,dict) else combined,
-                                       bins=bins[name] if isinstance(bins,dict) else bins)
+        edges = np.histogram_bin_edges(
+            values if isinstance(bins, dict) else combined,
+            bins=bins[name] if isinstance(bins, dict) else bins,
+        )
         widths = np.diff(edges)
-        if (len(widths) < 2 or not np.isfinite(edges).all() or (widths <= 0).any()
-                or not np.allclose(widths, widths[0])
-                or edges[0] > values.min() or edges[-1] < values.max()):
-            raise ValueError('Each group needs equal-width bins covering all its observations.')
+        if (
+            len(widths) < 2
+            or not np.isfinite(edges).all()
+            or (widths <= 0).any()
+            or not np.allclose(widths, widths[0])
+            or edges[0] > values.min()
+            or edges[-1] < values.max()
+        ):
+            raise ValueError(
+                "Each group needs equal-width bins covering all its observations."
+            )
         bin_edges[name] = edges
     if ylimits is not None and len(ylimits) != len(arrays):
-        raise ValueError('Supply one Y range for every group.')
+        raise ValueError("Supply one Y range for every group.")
     if ytick_step is not None and (not np.isfinite(ytick_step) or ytick_step <= 0):
-        raise ValueError('Y tick step must be positive and finite.')
+        raise ValueError("Y tick step must be positive and finite.")
 
     setup_style()
     colors = categorical_colors() if colors is None else colors
     if len(colors) < len(arrays):
-        raise ValueError('The selected palette needs at least one color per group.')
-    plt.rcParams.update({'font.family': 'serif', 'font.serif': ['Times New Roman', 'DejaVu Serif'],
-                         'font.weight': 'bold', 'axes.labelweight': 'bold',
-                         'pdf.fonttype': 42, 'font.size': 11, 'axes.linewidth': 1.25})
+        raise ValueError("The selected palette needs at least one color per group.")
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "DejaVu Serif"],
+            "font.weight": "bold",
+            "axes.labelweight": "bold",
+            "pdf.fonttype": 42,
+            "font.size": 11,
+            "axes.linewidth": 1.25,
+        }
+    )
     fig, host = plt.subplots(figsize=(9.5, 7.2))
-    fig.subplots_adjust(left=.085, right=.86 if len(arrays) == 3 else .92,
-                        bottom=.12, top=.975)
-    axes = [host] + [host.twinx() for _ in range(len(arrays)-1)]
-    extent = (min(e[0] for e in bin_edges.values()), max(e[-1] for e in bin_edges.values()))
-    if xlim is not None and (len(xlim)!=2 or not np.isfinite(xlim).all()
-                            or xlim[0]>extent[0] or xlim[1]<extent[1]):
-        raise ValueError('X range must cover all histogram bins.')
+    fig.subplots_adjust(
+        left=0.085, right=0.86 if len(arrays) == 3 else 0.92, bottom=0.12, top=0.975
+    )
+    axes = [host] + [host.twinx() for _ in range(len(arrays) - 1)]
+    extent = (
+        min(e[0] for e in bin_edges.values()),
+        max(e[-1] for e in bin_edges.values()),
+    )
+    if xlim is not None and (
+        len(xlim) != 2
+        or not np.isfinite(xlim).all()
+        or xlim[0] > extent[0]
+        or xlim[1] < extent[1]
+    ):
+        raise ValueError("X range must cover all histogram bins.")
     host.set_xlim(*(extent if xlim is None else xlim))
     host.set_xlabel(xlabel, fontsize=15)
-    host.spines['top'].set_visible(True)
-    host.tick_params(axis='x', top=True, direction='in', width=1.25, length=6)
+    host.spines["top"].set_visible(True)
+    host.tick_params(axis="x", top=True, direction="in", width=1.25, length=6)
     # All data layers live on the host with each group's own data transform.
     # This keeps every dashed fit above all translucent bars across twin axes.
     host.set_zorder(10)
@@ -3528,29 +5276,49 @@ def plot_chart(groups, *, bins=14, xlabel='Residual', fit=True, ylimits=None,
         counts, _ = np.histogram(values, bins=edges)
         mu, sigma = float(values.mean()), float(values.std(ddof=0))
         xfit = np.linspace(*host.get_xlim(), 700)
-        yfit = (len(values)*widths[0]/(sigma*np.sqrt(2*np.pi))
-                * np.exp(-.5*((xfit-mu)/sigma)**2)) if fit else np.zeros_like(xfit)
-        peak = max(float(counts.max()), float(yfit.max()), 1.)
-        ylim = (0., peak*1.28) if ylimits is None else tuple(ylimits[i])
-        if len(ylim) != 2 or not np.isfinite(ylim).all() or ylim[0] != 0 or ylim[1] < peak:
-            raise ValueError('Y ranges must start at zero and cover all counts and fitted peaks.')
+        yfit = (
+            (
+                len(values)
+                * widths[0]
+                / (sigma * np.sqrt(2 * np.pi))
+                * np.exp(-0.5 * ((xfit - mu) / sigma) ** 2)
+            )
+            if fit
+            else np.zeros_like(xfit)
+        )
+        peak = max(float(counts.max()), float(yfit.max()), 1.0)
+        ylim = (0.0, peak * 1.28) if ylimits is None else tuple(ylimits[i])
+        if (
+            len(ylim) != 2
+            or not np.isfinite(ylim).all()
+            or ylim[0] != 0
+            or ylim[1] < peak
+        ):
+            raise ValueError(
+                "Y ranges must start at zero and cover all counts and fitted peaks."
+            )
         ax.set_ylim(*ylim)
-        side = 'left' if i == 0 else 'right'
+        side = "left" if i == 0 else "right"
         if i:
-            ax.spines['left'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['right'].set_position(('axes', 1.+.12*(i-1)))
+            ax.spines["left"].set_visible(False)
+            ax.spines["top"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
+            ax.spines["right"].set_position(("axes", 1.0 + 0.12 * (i - 1)))
         else:
-            ax.spines['right'].set_visible(False)
+            ax.spines["right"].set_visible(False)
         ax.spines[side].set_color(color)
         ax.spines[side].set_visible(True)
-        ax.tick_params(axis='y', colors=color, direction='in', width=1.3, length=6)
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True) if ytick_step is None
-                                  else MultipleLocator(ytick_step))
+        ax.tick_params(axis="y", colors=color, direction="in", width=1.3, length=6)
+        ax.yaxis.set_major_locator(
+            MaxNLocator(nbins=6, integer=True)
+            if ytick_step is None
+            else MultipleLocator(ytick_step)
+        )
         # Reference layout: one black frequency label; group/axis mapping is
         # carried by colored ticks and the matching legend, not repeated titles.
-        ax.set_ylabel('Frequency' if i == 0 else '', color='black', fontsize=15, labelpad=6)
+        ax.set_ylabel(
+            "Frequency" if i == 0 else "", color="black", fontsize=15, labelpad=6
+        )
 
         # True alpha gradient: transparent foot to colored cap, not an opaque
         # white rectangle. Earlier groups remain visible through overlaps.
@@ -3559,40 +5327,89 @@ def plot_chart(groups, *, bins=14, xlabel='Residual', fit=True, ylimits=None,
         for left, width, height in zip(edges[:-1], widths, counts):
             if height == 0:
                 continue
-            levels = np.linspace(0., float(height), 65)
+            levels = np.linspace(0.0, float(height), 65)
             for k, (low, high) in enumerate(zip(levels[:-1], levels[1:])):
-                x0, x1 = left+.11*width, left+.89*width
-                vertices.append([(x0,low),(x1,low),(x1,high),(x0,high)])
-                facecolors.append((*rgb, .02+.76*((k+.5)/64)**.85))
-        host.add_collection(PolyCollection(vertices, facecolors=facecolors,
-                            edgecolors='none', antialiased=False,
-                            transform=ax.transData, zorder=2+({0:.1,1:0.,2:.2}[i])), autolim=False)
-        legend_bars.append(Patch(facecolor=color, alpha=.75, edgecolor='none',
-                                 label=name))
+                x0, x1 = left + 0.11 * width, left + 0.89 * width
+                vertices.append([(x0, low), (x1, low), (x1, high), (x0, high)])
+                facecolors.append((*rgb, 0.02 + 0.76 * ((k + 0.5) / 64) ** 0.85))
+        host.add_collection(
+            PolyCollection(
+                vertices,
+                facecolors=facecolors,
+                edgecolors="none",
+                antialiased=False,
+                transform=ax.transData,
+                zorder=2 + ({0: 0.1, 1: 0.0, 2: 0.2}[i]),
+            ),
+            autolim=False,
+        )
+        legend_bars.append(
+            Patch(facecolor=color, alpha=0.75, edgecolor="none", label=name)
+        )
         if fit:
-            host.plot(xfit, yfit, color=color, ls='--', lw=2.2,
-                      transform=ax.transData, zorder=5)
-            legend_fits.append(Line2D([],[],color=color,ls='--',lw=2.2,
-                                      label=fr'{name} fit ($\mu={mu:.1f},\ \sigma={sigma:.1f}$)'))
-        stats.append(dict(group=name,n=len(values),mean=mu,std_mle=sigma,
-                          counts=counts.tolist(),bin_edges=edges.tolist(),
-                          color=color,ylim=list(ylim),fit='normal_mle' if fit else None))
-    host.legend(handles=legend_bars[::-1]+legend_fits[::-1],loc='upper left',fontsize=8.6,
-                handlelength=2.2,labelspacing=.25,borderpad=.4,
-                frameon=True,facecolor='white',edgecolor='#aaaaaa',framealpha=.94)
+            host.plot(
+                xfit,
+                yfit,
+                color=color,
+                ls="--",
+                lw=2.2,
+                transform=ax.transData,
+                zorder=5,
+            )
+            legend_fits.append(
+                Line2D(
+                    [],
+                    [],
+                    color=color,
+                    ls="--",
+                    lw=2.2,
+                    label=rf"{name} fit ($\mu={mu:.1f},\ \sigma={sigma:.1f}$)",
+                )
+            )
+        stats.append(
+            dict(
+                group=name,
+                n=len(values),
+                mean=mu,
+                std_mle=sigma,
+                counts=counts.tolist(),
+                bin_edges=edges.tolist(),
+                color=color,
+                ylim=list(ylim),
+                fit="normal_mle" if fit else None,
+            )
+        )
+    host.legend(
+        handles=legend_bars[::-1] + legend_fits[::-1],
+        loc="upper left",
+        fontsize=8.6,
+        handlelength=2.2,
+        labelspacing=0.25,
+        borderpad=0.4,
+        frameon=True,
+        facecolor="white",
+        edgecolor="#aaaaaa",
+        framealpha=0.94,
+    )
     if note:
-        fig.text(.085,.025,note,fontsize=8,color='#444444')
+        fig.text(0.085, 0.025, note, fontsize=8, color="#444444")
     return fig, stats
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data',type=Path,help='Long CSV: group,value')
-    parser.add_argument('--bins',type=int,default=None)
-    parser.add_argument('--no-fit',action='store_true')
-    parser.add_argument('--reference-colors',action='store_true',help='Explicit screenshot color reproduction; otherwise use the project palette')
-    parser.add_argument('--xlabel',default='Residual')
-    parser.add_argument('--output',type=Path,default=Path('figures/fig_multi_y_gradient_hist'))
+    parser.add_argument("--data", type=Path, help="Long CSV: group,value")
+    parser.add_argument("--bins", type=int, default=None)
+    parser.add_argument("--no-fit", action="store_true")
+    parser.add_argument(
+        "--reference-colors",
+        action="store_true",
+        help="Explicit screenshot color reproduction; otherwise use the project palette",
+    )
+    parser.add_argument("--xlabel", default="Residual")
+    parser.add_argument(
+        "--output", type=Path, default=Path("figures/fig_multi_y_gradient_hist")
+    )
     args = parser.parse_args()
     if args.data:
         groups, note = read_samples(args.data), None
@@ -3600,39 +5417,58 @@ def main():
         groups = {}
         # Controlled synthetic samples match the reference's approximate widths
         # and locations; neither counts nor samples were recovered from the paper.
-        for name,n,mu,sigma,seed in [('Group A',90,3.1,14.3,17),
-                                     ('Group B',105,-6.5,23.4,53),
-                                     ('Group C',100,2.5,10.,11)]:
+        for name, n, mu, sigma, seed in [
+            ("Group A", 90, 3.1, 14.3, 17),
+            ("Group B", 105, -6.5, 23.4, 53),
+            ("Group C", 100, 2.5, 10.0, 11),
+        ]:
             sample = np.random.default_rng(seed).normal(size=n)
-            groups[name] = (sample-sample.mean())/sample.std()*sigma+mu
-        note = 'Synthetic reconstruction; independent colored Y scales.'
+            groups[name] = (sample - sample.mean()) / sample.std() * sigma + mu
+        note = "Synthetic reconstruction; independent colored Y scales."
     options = {}
     if args.data is None and args.bins is None:
         # Offset bins reproduce the interleaved bars visible in the reference.
-        options = dict(bins={'Group A':np.arange(-70.,71.,10.),
-                             'Group B':np.arange(-72.,79.,10.),
-                             'Group C':np.arange(-68.,77.,8.)},
-                       ylimits=[(0,29),(0,27),(0,33.5)],ytick_step=5)
+        options = dict(
+            bins={
+                "Group A": np.arange(-70.0, 71.0, 10.0),
+                "Group B": np.arange(-72.0, 79.0, 10.0),
+                "Group C": np.arange(-68.0, 77.0, 8.0),
+            },
+            ylimits=[(0, 29), (0, 27), (0, 33.5)],
+            ytick_step=5,
+        )
     else:
-        options['bins'] = args.bins if args.bins is not None else 14
+        options["bins"] = args.bins if args.bins is not None else 14
     if args.reference_colors:
-        options['colors'] = ['#E74C3C','#40516D','#22998D']
-    fig, stats = plot_chart(groups,xlabel=args.xlabel,fit=not args.no_fit,note=note,**options)
-    args.output.parent.mkdir(parents=True,exist_ok=True)
-    for suffix in ('png','pdf'):
-        fig.savefig(args.output.with_suffix('.'+suffix),dpi=300,facecolor='white',
-                    bbox_inches='tight',pad_inches=.2)
-    args.output.with_suffix('.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2),encoding='utf8')
+        options["colors"] = ["#E74C3C", "#40516D", "#22998D"]
+    fig, stats = plot_chart(
+        groups, xlabel=args.xlabel, fit=not args.no_fit, note=note, **options
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    for suffix in ("png", "pdf"):
+        fig.savefig(
+            args.output.with_suffix("." + suffix),
+            dpi=300,
+            facecolor="white",
+            bbox_inches="tight",
+            pad_inches=0.2,
+        )
+    args.output.with_suffix(".json").write_text(
+        json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf8"
+    )
     if args.data is None:
-        with args.output.with_suffix('.csv').open('w',encoding='utf8',newline='') as stream:
-            writer=csv.writer(stream);writer.writerow(['group','value'])
-            for name,values in groups.items():
-                writer.writerows((name,float(v)) for v in values)
+        with args.output.with_suffix(".csv").open(
+            "w", encoding="utf8", newline=""
+        ) as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["group", "value"])
+            for name, values in groups.items():
+                writer.writerows((name, float(v)) for v in values)
     plt.close(fig)
-    print('Saved PNG, PDF and statistics:',args.output)
+    print("Saved PNG, PDF and statistics:", args.output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
@@ -3652,6 +5488,7 @@ Square cell faces retain matrix layout; two shaded walls connect to the base.
 Color encodes signed Pearson r. Extrusion length is 0.12 + 1.4*(r+1)/2;
 this height rule is a declared template choice, not recovered from the image.
 """
+
 from pathlib import Path
 import argparse
 import csv
@@ -3659,172 +5496,286 @@ import json
 import sys
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from matplotlib.cm import ScalarMappable
 
 for base in (Path.cwd(), *Path.cwd().parents, *Path(__file__).resolve().parents):
-    found=next((p for p in (base/'_utils',base/'original/resources/assets/shared-scripts')
-                if (p/'vivid_config.py').is_file()),None)
+    found = next(
+        (
+            p
+            for p in (
+                base / "_utils",
+                base / "original/resources/assets/shared-scripts",
+            )
+            if (p / "vivid_config.py").is_file()
+        ),
+        None,
+    )
     if found is not None:
-        sys.path.insert(0,str(found));break
+        sys.path.insert(0, str(found))
+        break
 else:
-    raise RuntimeError('Run Vivid bootstrap in the workspace before using this recipe.')
+    raise RuntimeError("Run Vivid bootstrap in the workspace before using this recipe.")
 from plot_utils import setup_style
 from palette_maps import palette_cmap
 
 
 def validate_correlation(matrix, labels):
-    matrix=np.asarray(matrix,dtype=float)
-    if (matrix.ndim!=2 or matrix.shape[0]!=matrix.shape[1]
-            or not 2<=matrix.shape[0]<=40 or len(labels)!=len(matrix)):
-        raise ValueError('Provide a square correlation matrix of 2–40 labeled variables.')
-    if len(set(labels))!=len(labels) or any(not str(label).strip() for label in labels):
-        raise ValueError('Variable labels must be nonempty and unique.')
-    if not np.isfinite(matrix).all() or np.any(np.abs(matrix)>1+1e-8):
-        raise ValueError('Correlations must be finite and within [-1,1].')
-    if not np.allclose(matrix,matrix.T,atol=1e-8,rtol=0) or not np.allclose(np.diag(matrix),1,atol=1e-8,rtol=0):
-        raise ValueError('Correlation matrices must be symmetric with diagonal 1.')
+    matrix = np.asarray(matrix, dtype=float)
+    if (
+        matrix.ndim != 2
+        or matrix.shape[0] != matrix.shape[1]
+        or not 2 <= matrix.shape[0] <= 40
+        or len(labels) != len(matrix)
+    ):
+        raise ValueError(
+            "Provide a square correlation matrix of 2–40 labeled variables."
+        )
+    if len(set(labels)) != len(labels) or any(
+        not str(label).strip() for label in labels
+    ):
+        raise ValueError("Variable labels must be nonempty and unique.")
+    if not np.isfinite(matrix).all() or np.any(np.abs(matrix) > 1 + 1e-8):
+        raise ValueError("Correlations must be finite and within [-1,1].")
+    if not np.allclose(matrix, matrix.T, atol=1e-8, rtol=0) or not np.allclose(
+        np.diag(matrix), 1, atol=1e-8, rtol=0
+    ):
+        raise ValueError("Correlation matrices must be symmetric with diagonal 1.")
     if np.linalg.eigvalsh(matrix).min() < -1e-6:
-        raise ValueError('The supplied matrix is not positive semidefinite; verify its source.')
+        raise ValueError(
+            "The supplied matrix is not positive semidefinite; verify its source."
+        )
     return matrix
 
 
 def from_samples(samples, labels):
-    values=np.asarray(samples,dtype=float)
-    if (values.ndim!=2 or values.shape[0]<3 or values.shape[1]!=len(labels)
-            or not np.isfinite(values).all() or np.any(values.std(axis=0)==0)):
-        raise ValueError('Supply at least three complete observations and nonconstant numeric columns.')
-    return validate_correlation(np.corrcoef(values,rowvar=False),labels)
+    values = np.asarray(samples, dtype=float)
+    if (
+        values.ndim != 2
+        or values.shape[0] < 3
+        or values.shape[1] != len(labels)
+        or not np.isfinite(values).all()
+        or np.any(values.std(axis=0) == 0)
+    ):
+        raise ValueError(
+            "Supply at least three complete observations and nonconstant numeric columns."
+        )
+    return validate_correlation(np.corrcoef(values, rowvar=False), labels)
 
 
-def cell_geometry(row, col, size, r, relief=1.):
+def cell_geometry(row, col, size, r, relief=1.0):
     """Return the two side walls and the colored square face, in draw order."""
-    if not np.isfinite(relief) or relief<0:
-        raise ValueError('Relief must be finite and nonnegative.')
-    x,y=float(col),float(size-1-row)
-    base=np.array([[x,y],[x+1,y],[x+1,y+1],[x,y+1]])
-    height=relief*(.12+1.4*(float(r)+1)/2)
-    face=base+height*np.array([.58,.98])
-    bottom=np.array([base[0],base[1],face[1],face[0]])
-    left=np.array([base[0],base[3],face[3],face[0]])
-    return bottom,left,face,height
+    if not np.isfinite(relief) or relief < 0:
+        raise ValueError("Relief must be finite and nonnegative.")
+    x, y = float(col), float(size - 1 - row)
+    base = np.array([[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]])
+    height = relief * (0.12 + 1.4 * (float(r) + 1) / 2)
+    face = base + height * np.array([0.58, 0.98])
+    bottom = np.array([base[0], base[1], face[1], face[0]])
+    left = np.array([base[0], base[3], face[3], face[0]])
+    return bottom, left, face, height
 
 
-def plot_chart(matrix, labels, *, cmap=None, relief=1., note=None):
+def plot_chart(matrix, labels, *, cmap=None, relief=1.0, note=None):
     """Deterministic 2.5D oblique projection; full N×N matrix, no smoothing.
 
     Only square faces use the exact colorbar mapping. Side walls are shaded
     for geometry and must not be used to read correlation values.
     """
-    matrix=validate_correlation(matrix,labels)
-    n=len(labels)
+    matrix = validate_correlation(matrix, labels)
+    n = len(labels)
     setup_style()
-    cmap=palette_cmap('diverging') if cmap is None else cmap
-    norm=Normalize(-1,1)
-    plt.rcParams.update({'font.family':'sans-serif','font.sans-serif':['Arial','Microsoft YaHei','DejaVu Sans'],
-                         'pdf.fonttype':42,'axes.unicode_minus':False})
-    fig=plt.figure(figsize=(11.4,10.2),facecolor='white')
-    ax=fig.add_axes([.18,.19,.71,.76])
+    cmap = palette_cmap("diverging") if cmap is None else cmap
+    norm = Normalize(-1, 1)
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial", "Microsoft YaHei", "DejaVu Sans"],
+            "pdf.fonttype": 42,
+            "axes.unicode_minus": False,
+        }
+    )
+    fig = plt.figure(figsize=(11.4, 10.2), facecolor="white")
+    ax = fig.add_axes([0.18, 0.19, 0.71, 0.76])
     # Rows at the top/back first, columns right to left: nearer cells cover
     # hidden parts of farther walls while every complete matrix cell is kept.
-    faces=[]
+    faces = []
     for row in range(n):
-        for col in range(n-1,-1,-1):
-            r=float(matrix[row,col]);rgb=np.asarray(cmap(norm(r))[:3])
-            bottom,left,face,height=cell_geometry(row,col,n,r,relief)
-            for points,color in ((bottom,rgb*.77),(left,rgb*.87),(face,rgb)):
-                polygon=Polygon(points,closed=True,facecolor=color,
-                                edgecolor='#273641',linewidth=.62,joinstyle='miter')
+        for col in range(n - 1, -1, -1):
+            r = float(matrix[row, col])
+            rgb = np.asarray(cmap(norm(r))[:3])
+            bottom, left, face, height = cell_geometry(row, col, n, r, relief)
+            for points, color in (
+                (bottom, rgb * 0.77),
+                (left, rgb * 0.87),
+                (face, rgb),
+            ):
+                polygon = Polygon(
+                    points,
+                    closed=True,
+                    facecolor=color,
+                    edgecolor="#273641",
+                    linewidth=0.62,
+                    joinstyle="miter",
+                )
                 ax.add_patch(polygon)
-            faces.append(dict(row=row,col=col,r=r,height=height,face_color=rgb.tolist()))
-    max_height=relief*1.52
-    ax.set_xlim(-.02,n+.58*max_height+.06)
-    ax.set_ylim(-.02,n+.98*max_height+.06)
-    ax.set_aspect('equal')
-    ax.set_xticks(np.arange(n)+.5,labels,rotation=90,fontsize=7.4 if n>16 else 9)
-    ax.set_yticks(n-np.arange(n)-.5,labels,fontsize=7.4 if n>16 else 9)
-    ax.tick_params(axis='both',which='both',length=0,pad=3)
+            faces.append(
+                dict(row=row, col=col, r=r, height=height, face_color=rgb.tolist())
+            )
+    max_height = relief * 1.52
+    ax.set_xlim(-0.02, n + 0.58 * max_height + 0.06)
+    ax.set_ylim(-0.02, n + 0.98 * max_height + 0.06)
+    ax.set_aspect("equal")
+    ax.set_xticks(
+        np.arange(n) + 0.5, labels, rotation=90, fontsize=7.4 if n > 16 else 9
+    )
+    ax.set_yticks(n - np.arange(n) - 0.5, labels, fontsize=7.4 if n > 16 else 9)
+    ax.tick_params(axis="both", which="both", length=0, pad=3)
     ax.grid(False)
-    for spine in ax.spines.values():spine.set_visible(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     # Fixed limits and an unshaded colorbar preserve the sign and magnitude.
-    cax=fig.add_axes([.925,.455,.013,.13])
-    colorbar=fig.colorbar(ScalarMappable(norm=norm,cmap=cmap),cax=cax,
-                         ticks=[-1,-.5,0,.5,1])
-    cax.set_title('Pearson r',loc='left',fontsize=9,fontweight='bold',pad=5)
-    colorbar.ax.tick_params(labelsize=8,length=2,pad=2)
+    cax = fig.add_axes([0.925, 0.455, 0.013, 0.13])
+    colorbar = fig.colorbar(
+        ScalarMappable(norm=norm, cmap=cmap), cax=cax, ticks=[-1, -0.5, 0, 0.5, 1]
+    )
+    cax.set_title("Pearson r", loc="left", fontsize=9, fontweight="bold", pad=5)
+    colorbar.ax.tick_params(labelsize=8, length=2, pad=2)
     colorbar.outline.set_visible(False)
-    if note:fig.text(.18,.04,note,fontsize=8,color='#444444')
-    return fig,dict(matrix=matrix.tolist(),labels=list(labels),faces=faces,
-                    height_rule='relief * (0.12 + 1.4 * (r + 1) / 2)',projection=[.58,.98])
+    if note:
+        fig.text(0.18, 0.04, note, fontsize=8, color="#444444")
+    return fig, dict(
+        matrix=matrix.tolist(),
+        labels=list(labels),
+        faces=faces,
+        height_rule="relief * (0.12 + 1.4 * (r + 1) / 2)",
+        projection=[0.58, 0.98],
+    )
 
 
 def read_csv(path, matrix_input=False):
-    with Path(path).open(encoding='utf-8-sig',newline='') as stream:rows=list(csv.reader(stream))
-    if len(rows)<2 or any(len(row)!=len(rows[0]) for row in rows):
-        raise ValueError('CSV must be rectangular with a header row.')
+    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.reader(stream))
+    if len(rows) < 2 or any(len(row) != len(rows[0]) for row in rows):
+        raise ValueError("CSV must be rectangular with a header row.")
     if matrix_input:
-        labels=rows[0][1:]
-        if [r[0] for r in rows[1:]]!=labels:
-            raise ValueError('Matrix row and column labels and ordering must match.')
-        matrix=np.array([[float(v) for v in row[1:]] for row in rows[1:]])
-        return validate_correlation(matrix,labels),labels,None
-    labels=rows[0];samples=np.array([[float(v) for v in row] for row in rows[1:]])
-    return from_samples(samples,labels),labels,samples
+        labels = rows[0][1:]
+        if [r[0] for r in rows[1:]] != labels:
+            raise ValueError("Matrix row and column labels and ordering must match.")
+        matrix = np.array([[float(v) for v in row[1:]] for row in rows[1:]])
+        return validate_correlation(matrix, labels), labels, None
+    labels = rows[0]
+    samples = np.array([[float(v) for v in row] for row in rows[1:]])
+    return from_samples(samples, labels), labels, samples
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    inputs=parser.add_mutually_exclusive_group()
-    inputs.add_argument('--data',type=Path,help='Observations CSV; numeric columns with variable names')
-    inputs.add_argument('--matrix',type=Path,help='Square correlation CSV with row and column labels')
-    parser.add_argument('--reference-colors',action='store_true',help='Explicit blue reference-style ramp')
-    parser.add_argument('--relief',type=float,default=1.)
-    parser.add_argument('--output',type=Path,default=Path('figures/fig_relief_correlation_heatmap'))
-    args=parser.parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument(
+        "--data",
+        type=Path,
+        help="Observations CSV; numeric columns with variable names",
+    )
+    inputs.add_argument(
+        "--matrix", type=Path, help="Square correlation CSV with row and column labels"
+    )
+    parser.add_argument(
+        "--reference-colors",
+        action="store_true",
+        help="Explicit blue reference-style ramp",
+    )
+    parser.add_argument("--relief", type=float, default=1.0)
+    parser.add_argument(
+        "--output", type=Path, default=Path("figures/fig_relief_correlation_heatmap")
+    )
+    args = parser.parse_args()
     if args.data or args.matrix:
-        matrix,labels,samples=read_csv(args.matrix or args.data,matrix_input=args.matrix is not None)
-        note=None
+        matrix, labels, samples = read_csv(
+            args.matrix or args.data, matrix_input=args.matrix is not None
+        )
+        note = None
     else:
         # Domain labels follow the reference only to demonstrate its dense layout.
         # All observations are synthetic latent-factor data, not recovered study data.
-        labels=['ACs','T-SOD','MPNs','DTPNs','CAT','GSH-PX','Unique AAs','Non-Essential AAs',
-                'Essential AAs','Conditionally Essential AAs','SpNDs','Ketone compounds',
-                'Hydrocarbon compounds','Alcohol compounds','MDA','T-AOC','Hardness',
-                'Springiness','POD','Gumminess','Chewiness','Cohesiveness','Elasticity']
-        rng=np.random.default_rng(20260916)
-        latent=rng.normal(size=(360,4))
+        labels = [
+            "ACs",
+            "T-SOD",
+            "MPNs",
+            "DTPNs",
+            "CAT",
+            "GSH-PX",
+            "Unique AAs",
+            "Non-Essential AAs",
+            "Essential AAs",
+            "Conditionally Essential AAs",
+            "SpNDs",
+            "Ketone compounds",
+            "Hydrocarbon compounds",
+            "Alcohol compounds",
+            "MDA",
+            "T-AOC",
+            "Hardness",
+            "Springiness",
+            "POD",
+            "Gumminess",
+            "Chewiness",
+            "Cohesiveness",
+            "Elasticity",
+        ]
+        rng = np.random.default_rng(20260916)
+        latent = rng.normal(size=(360, 4))
         # Heterogeneous loadings produce varied relief instead of uniform blocks.
-        loadings=rng.normal(0,.3,size=(23,4))
-        loadings[:,0]=rng.uniform(.3,1.2,size=23)
-        loadings[:,1]+=.65*np.sin(np.arange(23)*.85)
-        loadings[:,2]+=.55*np.cos(np.arange(23)*.6)
-        loadings[10:15,0]*=-1
-        noise=rng.uniform(.18,.58,size=23)
-        samples=latent@loadings.T+rng.normal(size=(360,23))*noise
-        matrix=from_samples(samples,labels)
-        note='Synthetic data. Face color = Pearson r; relief increases linearly with r.'
-    cmap=None
+        loadings = rng.normal(0, 0.3, size=(23, 4))
+        loadings[:, 0] = rng.uniform(0.3, 1.2, size=23)
+        loadings[:, 1] += 0.65 * np.sin(np.arange(23) * 0.85)
+        loadings[:, 2] += 0.55 * np.cos(np.arange(23) * 0.6)
+        loadings[10:15, 0] *= -1
+        noise = rng.uniform(0.18, 0.58, size=23)
+        samples = latent @ loadings.T + rng.normal(size=(360, 23)) * noise
+        matrix = from_samples(samples, labels)
+        note = (
+            "Synthetic data. Face color = Pearson r; relief increases linearly with r."
+        )
+    cmap = None
     if args.reference_colors:
-        cmap=LinearSegmentedColormap.from_list('reference_blue',
-                     ['#F5FCFC','#CFEAF0','#AAC5E4','#6B9FCB','#399DCB'])
-    fig,stats=plot_chart(matrix,labels,cmap=cmap,relief=args.relief,note=note)
-    args.output.parent.mkdir(parents=True,exist_ok=True)
-    for suffix in ('png','pdf'):
-        fig.savefig(args.output.with_suffix('.'+suffix),dpi=300,facecolor='white',
-                    bbox_inches='tight',pad_inches=.12)
-    args.output.with_suffix('.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2),encoding='utf8')
-    with args.output.with_suffix('.csv').open('w',encoding='utf8',newline='') as stream:
-        writer=csv.writer(stream);writer.writerow(['variable',*labels])
-        writer.writerows([label,*row] for label,row in zip(labels,matrix))
+        cmap = LinearSegmentedColormap.from_list(
+            "reference_blue", ["#F5FCFC", "#CFEAF0", "#AAC5E4", "#6B9FCB", "#399DCB"]
+        )
+    fig, stats = plot_chart(matrix, labels, cmap=cmap, relief=args.relief, note=note)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    for suffix in ("png", "pdf"):
+        fig.savefig(
+            args.output.with_suffix("." + suffix),
+            dpi=300,
+            facecolor="white",
+            bbox_inches="tight",
+            pad_inches=0.12,
+        )
+    args.output.with_suffix(".json").write_text(
+        json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf8"
+    )
+    with args.output.with_suffix(".csv").open(
+        "w", encoding="utf8", newline=""
+    ) as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["variable", *labels])
+        writer.writerows([label, *row] for label, row in zip(labels, matrix))
     if args.data is None and args.matrix is None:
-        with args.output.with_name(args.output.name+'-samples.csv').open('w',encoding='utf8',newline='') as stream:
-            writer=csv.writer(stream);writer.writerow(labels);writer.writerows(samples)
+        with args.output.with_name(args.output.name + "-samples.csv").open(
+            "w", encoding="utf8", newline=""
+        ) as stream:
+            writer = csv.writer(stream)
+            writer.writerow(labels)
+            writer.writerows(samples)
     plt.close(fig)
-    print('Saved PNG, vector PDF, matrix CSV and geometry:',args.output)
+    print("Saved PNG, vector PDF, matrix CSV and geometry:", args.output)
 
 
-if __name__=='__main__':main()
+if __name__ == "__main__":
+    main()
 ```

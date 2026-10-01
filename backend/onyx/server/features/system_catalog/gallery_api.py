@@ -33,10 +33,13 @@ from onyx.db.system_catalog.report_template import (
     list_system_report_templates,
     read_catalog_docx_asset,
 )
-from onyx.report_templates.docx_template import DOCX_CONTENT_TYPE
 from onyx.db.system_catalog.scenario import get_system_scenario, list_system_scenarios
 from onyx.db.system_catalog.skill import get_system_skill, list_system_skills
+from onyx.report_templates.docx_template import DOCX_CONTENT_TYPE
 from onyx.server.features.build.api import require_onyx_craft_enabled
+from onyx.server.features.system_catalog.instructions import (
+    read_catalog_skill_instructions,
+)
 from onyx.server.features.system_catalog.models import (
     ForkResponse,
     SystemReportTemplateListResponse,
@@ -45,9 +48,6 @@ from onyx.server.features.system_catalog.models import (
     SystemScenarioResponse,
     SystemSkillListResponse,
     SystemSkillResponse,
-)
-from onyx.server.features.system_catalog.instructions import (
-    read_catalog_skill_instructions,
 )
 
 router = APIRouter(
@@ -190,9 +190,7 @@ def download_gallery_report_template_docx(
     return StreamingResponse(
         io.BytesIO(payload),
         media_type=DOCX_CONTENT_TYPE,
-        headers={
-            "Content-Disposition": f'attachment; filename="{quote(filename)}"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{quote(filename)}"'},
     )
 
 

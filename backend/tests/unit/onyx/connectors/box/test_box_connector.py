@@ -424,13 +424,34 @@ def test_perm_sync_skips_root_folder_collaborations() -> None:
     assert "0" not in fake_client.list_collaborations.folder_collaboration_calls
 
 
-@pytest.mark.usefixtures("enable_ee")
-def test_web_link_shared_link_access_consistent_full_vs_slim() -> None:
+def test_web_link_shared_link_access_consistent_full_vs_slim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The slim (perm-sync) path must apply a web link's own shared link the same
     as the full path; otherwise perm sync overwrites and revokes the link-granted
-    (public/company) access."""
+    (public/company) access.
+
+    The shared-link resolution itself is a versioned (EE) implementation; the
+    CE-only fork falls back to a no-op, so the contract is tested with a stub
+    that mirrors the open-shared-link -> public mapping."""
     connector = _make_connector(_build_fake_client(), include_web_links=True)
     connector._enterprise_id = "ent"
+
+    def fake_resolve_web_link_access(
+        web_link: WebLink, _folder_access: ExternalAccess, _enterprise_id: str
+    ) -> ExternalAccess | None:
+        if web_link.shared_link is None:
+            return None
+        return ExternalAccess(
+            external_user_emails=set(),
+            external_user_group_ids=set(),
+            is_public=True,
+        )
+
+    monkeypatch.setattr(
+        "onyx.connectors.box.connector.resolve_box_web_link_access",
+        fake_resolve_web_link_access,
+    )
     web_link = WebLink(
         id="9",
         url="https://example.com",

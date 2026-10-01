@@ -1347,7 +1347,8 @@ def update_user_personalization_api(
         "long_term",
     }:
         raise OnyxError(
-            OnyxErrorCode.INVALID_INPUT, "chat_memory_mode must be short_term or long_term"
+            OnyxErrorCode.INVALID_INPUT,
+            "chat_memory_mode must be short_term or long_term",
         )
 
     update_user_personalization(

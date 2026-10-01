@@ -221,7 +221,9 @@ def _specialist_responses(job: CraftJob) -> list[CraftJobSpecialistResponse]:
     except AttributeError:
         return []
     activities: dict[UUID, str] = {}
-    db = object_session(job)
+    # from_model also sees duck-typed job structs (unit-test fakes), where
+    # object_session would raise on an unmapped instance.
+    db = object_session(job) if isinstance(job, CraftJob) else None
     if db is not None and rows:
         from onyx.server.features.build.db.build_session import (
             latest_assistant_metadata_for_sessions,

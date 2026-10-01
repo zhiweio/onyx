@@ -837,7 +837,7 @@ def _reconcile_part_text(
                     "content": {"type": "text", "text": tail},
                 }
             )
-            if emit_class is AgentThoughtChunk:
+            if isinstance(event, AgentThoughtChunk):
                 _stamp_thought_start(state, event)
             else:
                 _clear_thought_clock(state)
@@ -1690,9 +1690,7 @@ class OpencodeServeClient:
             self._reject_expired_connect_app_permissions(
                 state, now, directory=directory
             )
-            self._reject_expired_question_permissions(
-                state, now, directory=directory
-            )
+            self._reject_expired_question_permissions(state, now, directory=directory)
 
             inactivity_remaining = timeout - (now - last_activity_at)
             absolute_remaining = (

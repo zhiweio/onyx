@@ -117,9 +117,7 @@ class HarnessRouter:
 
     # ── precedence levels ────────────────────────────────────────────────
 
-    def _from_purpose(
-        self, request: RuntimeResolutionRequest
-    ) -> RuntimeChoice | None:
+    def _from_purpose(self, request: RuntimeResolutionRequest) -> RuntimeChoice | None:
         if request.purpose is None:
             return None
         binding = self._purpose_bindings.get(request.purpose)
@@ -179,9 +177,7 @@ class HarnessRouter:
         else:
             model_id = model_registry.default_model_for(runtime_id)
             assert model_id is not None
-        return RuntimeChoice(
-            runtime_id=runtime_id, model_id=model_id, origin="request"
-        )
+        return RuntimeChoice(runtime_id=runtime_id, model_id=model_id, origin="request")
 
     def _from_scenario(self, request: RuntimeResolutionRequest) -> RuntimeChoice | None:
         runtime_id = request.scenario_runtime
@@ -210,7 +206,9 @@ class HarnessRouter:
         runtime_id = self._org_default
         model_id = model_registry.default_model_for(runtime_id)
         assert model_id is not None
-        return RuntimeChoice(runtime_id=runtime_id, model_id=model_id, origin="org_default")
+        return RuntimeChoice(
+            runtime_id=runtime_id, model_id=model_id, origin="org_default"
+        )
 
     # ── helpers ──────────────────────────────────────────────────────────
 
@@ -267,7 +265,8 @@ def build_router_from_env() -> HarnessRouter:
     if PRIMARY_RUNTIME not in approved:
         approved = approved | {PRIMARY_RUNTIME}
     org_default = (
-        os.environ.get(AGENT_RUNTIME_ENV, PRIMARY_RUNTIME).strip().lower() or PRIMARY_RUNTIME
+        os.environ.get(AGENT_RUNTIME_ENV, PRIMARY_RUNTIME).strip().lower()
+        or PRIMARY_RUNTIME
     )
     return HarnessRouter(
         approved_runtimes=approved,

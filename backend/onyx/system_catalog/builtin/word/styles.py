@@ -12,6 +12,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt, RGBColor
+from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
@@ -207,14 +208,14 @@ def _add_edge_border(
     borders.append(line)
 
 
-def _set_table_full_width(table: object) -> None:
+def _set_table_full_width(table: Table) -> None:
     width = OxmlElement("w:tblW")
     width.set(qn("w:w"), "5000")
     width.set(qn("w:type"), "pct")
-    table._tbl.tblPr.append(width)  # type: ignore[attr-defined]
+    table._tbl.tblPr.append(width)
 
 
-def _set_table_borders(table: object) -> None:
+def _set_table_borders(table: Table) -> None:
     borders = OxmlElement("w:tblBorders")
     for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
         line = OxmlElement(f"w:{edge}")
@@ -223,25 +224,25 @@ def _set_table_borders(table: object) -> None:
         line.set(qn("w:space"), "0")
         line.set(qn("w:color"), TABLE_BORDER)
         borders.append(line)
-    table._tbl.tblPr.append(borders)  # type: ignore[attr-defined]
+    table._tbl.tblPr.append(borders)
 
 
-def _set_table_cell_margins(table: object) -> None:
+def _set_table_cell_margins(table: Table) -> None:
     margins = OxmlElement("w:tblCellMar")
     for edge, width in (("top", 40), ("left", 80), ("bottom", 40), ("right", 80)):
         element = OxmlElement(f"w:{edge}")
         element.set(qn("w:w"), str(width))
         element.set(qn("w:type"), "dxa")
         margins.append(element)
-    table._tbl.tblPr.append(margins)  # type: ignore[attr-defined]
+    table._tbl.tblPr.append(margins)
 
 
-def _shade_cell(cell: object, fill: str) -> None:
+def _shade_cell(cell: _Cell, fill: str) -> None:
     shading = OxmlElement("w:shd")
     shading.set(qn("w:val"), "clear")
     shading.set(qn("w:color"), "auto")
     shading.set(qn("w:fill"), fill)
-    cell._tc.get_or_add_tcPr().append(shading)  # type: ignore[attr-defined]
+    cell._tc.get_or_add_tcPr().append(shading)
 
 
 def _add_page_field(paragraph: Paragraph) -> None:

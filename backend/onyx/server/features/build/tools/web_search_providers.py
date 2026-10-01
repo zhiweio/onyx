@@ -38,8 +38,7 @@ class WebSearchHit:
 class WebSearchProvider(Protocol):
     name: str
 
-    def search(self, query: str, max_results: int = 8) -> list[WebSearchHit]:
-        ...
+    def search(self, query: str, max_results: int = 8) -> list[WebSearchHit]: ...
 
 
 def _truncate(text: str, limit: int = 400) -> str:
@@ -64,15 +63,16 @@ class BochaSearchProvider:
         )
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
-        hits: list[WebSearchHit] = []
-        for item in (data.get("data") or {}).get("webPages") or []:
-            hits.append(
-                WebSearchHit(
-                    title=str(item.get("name") or item.get("url") or ""),
-                    url=str(item.get("url") or ""),
-                    snippet=_truncate(str(item.get("summary") or item.get("snippet") or "")),
-                )
+        hits = [
+            WebSearchHit(
+                title=str(item.get("name") or item.get("url") or ""),
+                url=str(item.get("url") or ""),
+                snippet=_truncate(
+                    str(item.get("summary") or item.get("snippet") or "")
+                ),
             )
+            for item in (data.get("data") or {}).get("webPages") or []
+        ]
         return hits[:max_results]
 
 
@@ -92,15 +92,14 @@ class BaiduSearchProvider:
         )
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
-        hits: list[WebSearchHit] = []
-        for item in data.get("results") or []:
-            hits.append(
-                WebSearchHit(
-                    title=str(item.get("title") or ""),
-                    url=str(item.get("url") or item.get("link") or ""),
-                    snippet=_truncate(str(item.get("abstract") or "")),
-                )
+        hits = [
+            WebSearchHit(
+                title=str(item.get("title") or ""),
+                url=str(item.get("url") or item.get("link") or ""),
+                snippet=_truncate(str(item.get("abstract") or "")),
             )
+            for item in data.get("results") or []
+        ]
         return hits[:max_results]
 
 
@@ -120,16 +119,15 @@ class SearXNGSearchProvider:
         )
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
-        hits: list[WebSearchHit] = []
-        for item in data.get("results") or []:
-            hits.append(
-                WebSearchHit(
-                    title=str(item.get("title") or item.get("url") or ""),
-                    url=str(item.get("url") or ""),
-                    snippet=_truncate(str(item.get("content") or "")),
-                    published=str(item.get("publishedDate") or "") or None,
-                )
+        hits = [
+            WebSearchHit(
+                title=str(item.get("title") or item.get("url") or ""),
+                url=str(item.get("url") or ""),
+                snippet=_truncate(str(item.get("content") or "")),
+                published=str(item.get("publishedDate") or "") or None,
             )
+            for item in data.get("results") or []
+        ]
         return hits[:max_results]
 
 

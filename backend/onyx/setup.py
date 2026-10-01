@@ -59,6 +59,7 @@ from onyx.key_value_store.factory import get_kv_store
 from onyx.key_value_store.interface import KvKeyNotFoundError
 from onyx.llm.constants import LlmProviderNames
 from onyx.llm.well_known_providers.llm_provider_options import get_openai_model_names
+from onyx.mcp_gateway.bootstrap import bootstrap_builtin_mcp_families
 from onyx.natural_language_processing.search_nlp_models import (
     EmbeddingModel,
     warm_up_bi_encoder,
@@ -72,7 +73,6 @@ from onyx.server.settings.store import (
     settings_write_lock,
     store_settings,
 )
-from onyx.mcp_gateway.bootstrap import bootstrap_builtin_mcp_families
 from onyx.system_catalog.builtin.sync import sync_builtin_system_catalog
 from onyx.utils.gpu_utils import gpu_status_request
 from onyx.utils.logger import setup_logger

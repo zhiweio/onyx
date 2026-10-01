@@ -70,7 +70,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["mcp_server_id"], ["mcp_server.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["mcp_server_id"], ["mcp_server.id"], ondelete="SET NULL"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("slug", name="uq_mcp_gateway_provider_slug"),
     )

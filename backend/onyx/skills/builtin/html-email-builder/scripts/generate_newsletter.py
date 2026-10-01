@@ -12,10 +12,9 @@ Usage:
 
 import argparse
 import json
-import sys
 import os
+import sys
 from html import escape
-
 
 DEFAULT_THEME = {
     "primary_color": "#2563EB",
@@ -94,7 +93,7 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
 }}
 </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: {escape(self.theme['bg_color'])}; font-family: {font}; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">"""
+<body style="margin: 0; padding: 0; background-color: {escape(self.theme["bg_color"])}; font-family: {font}; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">"""
 
     def _doc_end(self):
         return "</body>\n</html>"
@@ -103,7 +102,7 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         if not self.preheader:
             return ""
         text = escape(self.preheader)
-        return f"""<div style="display: none; font-size: 1px; color: {escape(self.theme['bg_color'])}; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+        return f"""<div style="display: none; font-size: 1px; color: {escape(self.theme["bg_color"])}; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
 {text}
 &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847;
 </div>"""
@@ -136,9 +135,9 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
             return ""
 
         primary = escape(self.theme["primary_color"])
-        content_bg = escape(self.theme["content_bg_color"])
+        escape(self.theme["content_bg_color"])
         font = escape(self.theme["font_family"])
-        mw = int(self.theme["max_width"])
+        int(self.theme["max_width"])
 
         logo_html = ""
         if self.header.get("logo_url"):
@@ -170,7 +169,9 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
 
     def _content_html(self):
         content_bg = escape(self.theme["content_bg_color"])
-        parts = [f'<tr>\n<td bgcolor="{content_bg}" style="background-color: {content_bg};">']
+        parts = [
+            f'<tr>\n<td bgcolor="{content_bg}" style="background-color: {content_bg};">'
+        ]
 
         for section in self.sections:
             section_type = section.get("type", "text")
@@ -190,7 +191,12 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         return "\n".join(parts)
 
     def _render_hero_banner(self, section):
-        image_url = escape(section.get("image_url", "https://placehold.co/600x280/2563EB/FFFFFF?text=Newsletter"))
+        image_url = escape(
+            section.get(
+                "image_url",
+                "https://placehold.co/600x280/2563EB/FFFFFF?text=Newsletter",
+            )
+        )
         title = escape(section.get("title", ""))
         subtitle = escape(section.get("subtitle", ""))
         overlay = section.get("overlay_color", "rgba(0,0,0,0.35)")
@@ -207,7 +213,7 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
 
         if title or subtitle:
             return f"""
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-image: url('{image_url}'); background-size: cover; background-position: center center; background-color: {escape(self.theme['primary_color'])};">
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-image: url('{image_url}'); background-size: cover; background-position: center center; background-color: {escape(self.theme["primary_color"])};">
 <tr>
 <td style="padding: 60px 40px; text-align: center;">
 <!--[if mso]>
@@ -239,18 +245,24 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
     def _render_text(self, section):
         font = escape(self.theme["font_family"])
         text_color = escape(self.theme["text_color"])
-        primary = escape(self.theme["primary_color"])
+        escape(self.theme["primary_color"])
         title = section.get("title", "")
         body = section.get("body", "")
 
-        parts = ['<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n<tr>\n<td style="padding: 24px 40px;" class="padding-mobile">']
+        parts = [
+            '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n<tr>\n<td style="padding: 24px 40px;" class="padding-mobile">'
+        ]
 
         if title:
-            parts.append(f'<h2 style="margin: 0 0 12px 0; font-family: {font}; font-size: 21px; line-height: 28px; font-weight: bold; color: {text_color};">{title}</h2>')
+            parts.append(
+                f'<h2 style="margin: 0 0 12px 0; font-family: {font}; font-size: 21px; line-height: 28px; font-weight: bold; color: {text_color};">{title}</h2>'
+            )
 
         if body:
-            link_style = f"color: {escape(self.theme['link_color'])}; text-decoration: underline;"
-            parts.append(f'<p style="margin: 0; font-family: {font}; font-size: 15px; line-height: 24px; color: {text_color};">{body}</p>')
+            f"color: {escape(self.theme['link_color'])}; text-decoration: underline;"
+            parts.append(
+                f'<p style="margin: 0; font-family: {font}; font-size: 15px; line-height: 24px; color: {text_color};">{body}</p>'
+            )
 
         parts.append("</td>\n</tr>\n</table>")
         return "\n".join(parts)
@@ -259,7 +271,9 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         font = escape(self.theme["font_family"])
         text_color = escape(self.theme["text_color"])
         primary = escape(self.theme["primary_color"])
-        image_url = escape(section.get("image_url", "https://placehold.co/260x200/EEE/333?text=Image"))
+        image_url = escape(
+            section.get("image_url", "https://placehold.co/260x200/EEE/333?text=Image")
+        )
         image_alt = escape(section.get("image_alt", ""))
         image_position = section.get("image_position", "left")
         title = section.get("title", "")
@@ -268,7 +282,7 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         cta_url = escape(section.get("cta_url", "#"))
 
         img_width = 240
-        text_width = int(self.theme["max_width"]) - img_width - 80
+        int(self.theme["max_width"]) - img_width - 80
 
         img_cell = f"""<td width="{img_width}" class="stack-column" style="padding: 0; vertical-align: top;">
 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -282,11 +296,17 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
 
         text_parts = []
         if title:
-            text_parts.append(f'<h3 style="margin: 0 0 8px 0; font-family: {font}; font-size: 18px; line-height: 24px; font-weight: bold; color: {text_color};">{title}</h3>')
+            text_parts.append(
+                f'<h3 style="margin: 0 0 8px 0; font-family: {font}; font-size: 18px; line-height: 24px; font-weight: bold; color: {text_color};">{title}</h3>'
+            )
         if body:
-            text_parts.append(f'<p style="margin: 0 0 12px 0; font-family: {font}; font-size: 14px; line-height: 22px; color: {text_color};">{body}</p>')
+            text_parts.append(
+                f'<p style="margin: 0 0 12px 0; font-family: {font}; font-size: 14px; line-height: 22px; color: {text_color};">{body}</p>'
+            )
         if cta_text:
-            text_parts.append(f'<a href="{cta_url}" style="font-family: {font}; font-size: 14px; font-weight: bold; color: {primary}; text-decoration: underline;">{escape(cta_text)}</a>')
+            text_parts.append(
+                f'<a href="{cta_url}" style="font-family: {font}; font-size: 14px; font-weight: bold; color: {primary}; text-decoration: underline;">{escape(cta_text)}</a>'
+            )
 
         text_content = "\n".join(text_parts)
         text_cell = f"""<td class="stack-column" style="padding: 20px; vertical-align: top;">
@@ -306,7 +326,7 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
 </table>"""
 
     def _render_cta(self, section):
-        primary = escape(self.theme["primary_color"])
+        escape(self.theme["primary_color"])
         font = escape(self.theme["font_family"])
         text = escape(section.get("text", "Click Here"))
         url = escape(section.get("url", "#"))
@@ -434,13 +454,19 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         def render_col(col):
             parts = []
             if col.get("title"):
-                parts.append(f'<h3 style="margin: 0 0 8px 0; font-family: {font}; font-size: 17px; line-height: 22px; font-weight: bold; color: {text_color};">{col["title"]}</h3>')
+                parts.append(
+                    f'<h3 style="margin: 0 0 8px 0; font-family: {font}; font-size: 17px; line-height: 22px; font-weight: bold; color: {text_color};">{col["title"]}</h3>'
+                )
             if col.get("body"):
-                parts.append(f'<p style="margin: 0; font-family: {font}; font-size: 14px; line-height: 22px; color: {text_color};">{col["body"]}</p>')
+                parts.append(
+                    f'<p style="margin: 0; font-family: {font}; font-size: 14px; line-height: 22px; color: {text_color};">{col["body"]}</p>'
+                )
             if col.get("image_url"):
                 img_url = escape(col["image_url"])
                 img_alt = escape(col.get("image_alt", ""))
-                parts.append(f'<img src="{img_url}" alt="{img_alt}" width="{col_width - 20}" style="display: block; width: 100%; max-width: {col_width - 20}px; height: auto; margin-top: 10px; border-radius: 4px;" class="fluid" />')
+                parts.append(
+                    f'<img src="{img_url}" alt="{img_alt}" width="{col_width - 20}" style="display: block; width: 100%; max-width: {col_width - 20}px; height: auto; margin-top: 10px; border-radius: 4px;" class="fluid" />'
+                )
             return "\n".join(parts)
 
         return f"""
@@ -488,9 +514,13 @@ a[x-apple-data-detectors] {{ color: inherit !important; text-decoration: none !i
         for link in extra_links:
             link_text = escape(link.get("text", ""))
             link_url = escape(link.get("url", "#"))
-            links_parts.append(f'<a href="{link_url}" style="font-family: {font}; font-size: 12px; color: {muted}; text-decoration: underline;">{link_text}</a>')
+            links_parts.append(
+                f'<a href="{link_url}" style="font-family: {font}; font-size: 12px; color: {muted}; text-decoration: underline;">{link_text}</a>'
+            )
 
-        links_parts.append(f'<a href="{unsubscribe_url}" style="font-family: {font}; font-size: 12px; color: {muted}; text-decoration: underline;">退订 / Unsubscribe</a>')
+        links_parts.append(
+            f'<a href="{unsubscribe_url}" style="font-family: {font}; font-size: 12px; color: {muted}; text-decoration: underline;">退订 / Unsubscribe</a>'
+        )
         links_html = " &nbsp;|&nbsp; ".join(links_parts)
 
         return f"""
@@ -510,22 +540,48 @@ def validate_config(config):
     valid_layouts = {"single-column", "two-column", "hero", "digest"}
     layout = config.get("layout", "single-column")
     if layout not in valid_layouts:
-        errors.append(f"Invalid layout '{layout}'. Must be one of: {', '.join(sorted(valid_layouts))}")
+        errors.append(
+            f"Invalid layout '{layout}'. Must be one of: {', '.join(sorted(valid_layouts))}"
+        )
 
-    valid_section_types = {"hero_banner", "text", "image_text", "cta", "divider", "quote", "article_card", "two_column"}
+    valid_section_types = {
+        "hero_banner",
+        "text",
+        "image_text",
+        "cta",
+        "divider",
+        "quote",
+        "article_card",
+        "two_column",
+    }
     for i, section in enumerate(config.get("sections", [])):
         st = section.get("type", "text")
         if st not in valid_section_types:
-            errors.append(f"Section {i}: invalid type '{st}'. Must be one of: {', '.join(sorted(valid_section_types))}")
+            errors.append(
+                f"Section {i}: invalid type '{st}'. Must be one of: {', '.join(sorted(valid_section_types))}"
+            )
 
     return errors
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate email-compatible HTML newsletter")
-    parser.add_argument("--input", "-i", required=True, help="Path to JSON configuration file")
-    parser.add_argument("--output", "-o", default=None, help="Output HTML file path (defaults to stdout)")
-    parser.add_argument("--validate-only", action="store_true", help="Only validate config without generating")
+    parser = argparse.ArgumentParser(
+        description="Generate email-compatible HTML newsletter"
+    )
+    parser.add_argument(
+        "--input", "-i", required=True, help="Path to JSON configuration file"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Output HTML file path (defaults to stdout)",
+    )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Only validate config without generating",
+    )
     args = parser.parse_args()
 
     input_path = os.path.expanduser(args.input)

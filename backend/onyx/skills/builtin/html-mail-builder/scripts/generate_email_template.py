@@ -89,7 +89,7 @@ def render_cta_button(text, url, theme, align="center"):
         f'xmlns:w="urn:schemas-microsoft-com:office:word" '
         f'href="{safe_url}" style="height:44px;v-text-anchor:middle;width:200px;" '
         f'arcsize="18%" strokecolor="{pc}" fillcolor="{pc}">\n'
-        f'<w:anchorlock/>\n'
+        f"<w:anchorlock/>\n"
         f'<center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;'
         f'font-weight:bold;">{safe_text}</center>\n'
         f"</v:roundrect>\n"
@@ -118,7 +118,7 @@ def render_cta_button(text, url, theme, align="center"):
     )
 
 
-def render_divider(theme, spacing=20):
+def render_divider(_theme, spacing=20):
     return (
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">\n'
         f"<tr>\n"
@@ -141,16 +141,15 @@ def render_footer(footer, theme):
 
     links_html = ""
     if extra_links:
-        link_parts = []
-        for link in extra_links:
-            link_parts.append(
-                f'<a href="{escape(link["url"])}" target="_blank" '
-                f'style="color:{mc};text-decoration:underline;">'
-                f'{escape(link["text"])}</a>'
-            )
+        link_parts = [
+            f'<a href="{escape(link["url"])}" target="_blank" '
+            f'style="color:{mc};text-decoration:underline;">'
+            f"{escape(link['text'])}</a>"
+            for link in extra_links
+        ]
         links_html = (
             f'<p style="margin:0 0 8px;font-size:13px;color:{mc};font-family:{ff};">'
-            f'{" &bull; ".join(link_parts)}'
+            f"{' &bull; '.join(link_parts)}"
             f"</p>\n"
         )
 
@@ -185,7 +184,7 @@ def render_footer(footer, theme):
 def render_responsive_style(theme):
     mw = theme["max_width"]
     return (
-        f"<style type=\"text/css\">\n"
+        f'<style type="text/css">\n'
         f"  @media only screen and (max-width: {mw + 40}px) {{\n"
         f"    .email-container {{ width: 100% !important; max-width: 100% !important; }}\n"
         f"    .fluid {{ width: 100% !important; max-width: 100% !important; height: auto !important; }}\n"
@@ -210,7 +209,7 @@ def wrap_document(body_html, theme, preheader_text=""):
     responsive = render_responsive_style(theme)
 
     return (
-        f'<!DOCTYPE html>\n'
+        f"<!DOCTYPE html>\n"
         f'<html lang="zh" xmlns="http://www.w3.org/1999/xhtml" '
         f'xmlns:v="urn:schemas-microsoft-com:vml" '
         f'xmlns:o="urn:schemas-microsoft-com:office:office">\n'
@@ -270,7 +269,7 @@ def build_welcome(config, theme):
     ff = theme["font_family"]
     tc = theme["text_color"]
     mc = theme["muted_text_color"]
-    pc = theme["primary_color"]
+    theme["primary_color"]
 
     user_name = escape(content.get("user_name", ""))
     greeting = escape(content.get("greeting", "欢迎！"))
@@ -349,7 +348,7 @@ def build_promotional(config, theme):
     ff = theme["font_family"]
     tc = theme["text_color"]
     mc = theme["muted_text_color"]
-    pc = theme["primary_color"]
+    theme["primary_color"]
     ac = theme["accent_color"]
 
     headline = escape(content.get("headline", ""))
@@ -425,7 +424,7 @@ def build_promotional(config, theme):
                         f'<p style="margin:0;font-size:14px;color:{ac};font-weight:bold;'
                         f'font-family:{ff};">{sale}</p>\n'
                     )
-                cols += f"</a>\n</td>\n"
+                cols += "</a>\n</td>\n"
 
             parts.append(
                 f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">\n'
@@ -569,7 +568,7 @@ def build_notification(config, theme):
     ff = theme["font_family"]
     tc = theme["text_color"]
     mc = theme["muted_text_color"]
-    pc = theme["primary_color"]
+    theme["primary_color"]
 
     title = escape(content.get("title", "通知"))
     message = escape(content.get("message", ""))

@@ -14,7 +14,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-
 DEFAULT_EXTENSIONS = {
     ".pdf",
     ".jpg",
@@ -163,7 +162,9 @@ def scan_files(source: Path, include_all: bool) -> list[Path]:
     return sorted(paths)
 
 
-def build_entries(source: Path, copy_to: Optional[Path], include_all: bool) -> list[BillEntry]:
+def build_entries(
+    source: Path, copy_to: Optional[Path], include_all: bool
+) -> list[BillEntry]:
     entries: list[tuple[BillEntry, Path]] = []
     for path in scan_files(source, include_all):
         digest = sha256_file(path)
@@ -178,7 +179,9 @@ def build_entries(source: Path, copy_to: Optional[Path], include_all: bool) -> l
             文件名=path.name,
             扩展名=path.suffix.lower(),
             大小字节=stat.st_size,
-            修改时间=datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            修改时间=datetime.fromtimestamp(stat.st_mtime).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
             推断日期=inferred_date,
             资料类别=category,
             来源平台=infer_platform(category),
@@ -218,11 +221,19 @@ def write_index(entries: list[BillEntry], out: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="扫描账单和凭证目录，生成中文资料索引，并可选复制归档副本。")
+    parser = argparse.ArgumentParser(
+        description="扫描账单和凭证目录，生成中文资料索引，并可选复制归档副本。"
+    )
     parser.add_argument("--source", required=True, type=Path, help="原始资料目录。")
     parser.add_argument("--out", required=True, type=Path, help="输出的账单索引 CSV。")
-    parser.add_argument("--copy-to", type=Path, help="可选：复制归档到指定目录，不删除原文件。")
-    parser.add_argument("--include-all", action="store_true", help="包含所有扩展名；默认只扫描常见账单/凭证格式。")
+    parser.add_argument(
+        "--copy-to", type=Path, help="可选：复制归档到指定目录，不删除原文件。"
+    )
+    parser.add_argument(
+        "--include-all",
+        action="store_true",
+        help="包含所有扩展名；默认只扫描常见账单/凭证格式。",
+    )
     args = parser.parse_args()
 
     if not args.source.exists() or not args.source.is_dir():

@@ -18,9 +18,7 @@ def test_playbook_keeps_unknown_keys_and_drops_empty_lists() -> None:
     dumped = playbook_as_dict(playbook)
     assert dumped["domain"] == "biomed"
     assert dumped["objective"] == "Reach a cited decision"
-    assert dumped["phases"] == [
-        {"id": "collect", "done_when": "outputs/a; outputs/b"}
-    ]
+    assert dumped["phases"] == [{"id": "collect", "done_when": "outputs/a; outputs/b"}]
     assert dumped["custom_hint"] == "keep-me"
     assert "required_inputs" not in dumped
 

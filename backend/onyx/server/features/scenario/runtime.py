@@ -19,9 +19,7 @@ logger = setup_logger()
 
 
 class _WorkspaceWriter(Protocol):
-    def write_sandbox_file(
-        self, sandbox_id: UUID, path: str, content: str
-    ) -> None: ...
+    def write_sandbox_file(self, sandbox_id: UUID, path: str, content: str) -> None: ...
 
 
 def _scenario_header(name: str, description: str) -> list[str]:
@@ -277,7 +275,9 @@ def apply_scenario_to_turn(
 ) -> list[str]:
     """Merge resolved scenario skills and rewrite SCENARIO.md for this prompt."""
     scenario = get_scenario_for_user(db_session, scenario_id, user)
-    resolved = [str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, query)]
+    resolved = [
+        str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, query)
+    ]
     merged = merge_skill_id_strings(resolved, selected_skill_ids)
     if (
         sandbox_manager is not None
@@ -290,9 +290,7 @@ def apply_scenario_to_turn(
                 sandbox_id, f"sessions/{session_id}/SCENARIO.md", content
             )
         except Exception:
-            logger.exception(
-                "Failed to rewrite SCENARIO.md for session %s", session_id
-            )
+            logger.exception("Failed to rewrite SCENARIO.md for session %s", session_id)
     return merged
 
 
@@ -313,7 +311,9 @@ def write_scenario_md_to_session(
         sandbox_id, f"sessions/{session_id}/SCENARIO.md", content
     )
     if push_template:
-        _push_scenario_report_template(db_session, sandbox_manager, sandbox_id, scenario)
+        _push_scenario_report_template(
+            db_session, sandbox_manager, sandbox_id, scenario
+        )
 
 
 def _push_scenario_report_template(

@@ -306,7 +306,8 @@ def main() -> None:
     leftover = result["leftover"]
     if leftover:
         raise ValueError(
-            "unfilled placeholders remain: " + ", ".join(f"{{{{{n}}}}}" for n in leftover)
+            "unfilled placeholders remain: "
+            + ", ".join(f"{{{{{n}}}}}" for n in leftover)
         )
     document.save(str(output_path))
     print(

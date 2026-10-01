@@ -6,13 +6,13 @@ Citation Formatter — APA / MLA / IEEE / Harvard 参考文献格式转换工具
 仅依赖 Python 标准库，无需外部包或 API Key。
 """
 
-import sys
+import argparse
 import json
 import re
-import argparse
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Tuple, Optional
+import sys
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 STYLES = ("apa", "mla", "ieee", "harvard")
 
@@ -20,6 +20,7 @@ STYLES = ("apa", "mla", "ieee", "harvard")
 # ═══════════════════════════════════════════════════════
 #  Data Model
 # ═══════════════════════════════════════════════════════
+
 
 @dataclass
 class Citation:
@@ -51,6 +52,7 @@ class Citation:
 # ═══════════════════════════════════════════════════════
 #  Author helpers
 # ═══════════════════════════════════════════════════════
+
 
 def _initials(first_names: str) -> List[str]:
     return re.findall(r"[A-ZÀ-Ú]", first_names)
@@ -108,6 +110,7 @@ def _join_authors(parts: List[str], sep: str = ",", conj: str = "and") -> str:
 # ═══════════════════════════════════════════════════════
 #  Formatters
 # ═══════════════════════════════════════════════════════
+
 
 def format_apa(c: Citation) -> str:
     authors = _join_authors([_author_apa(a) for a in c.authors], ",", "&")
@@ -246,7 +249,11 @@ def _doi_suffix_mla(c: Citation) -> str:
 
 def _doi_suffix_ieee(c: Citation) -> str:
     if c.doi:
-        bare = c.doi if not c.doi.startswith("http") else c.doi.replace("https://doi.org/", "")
+        bare = (
+            c.doi
+            if not c.doi.startswith("http")
+            else c.doi.replace("https://doi.org/", "")
+        )
         return f" doi: {bare}."
     return ""
 
@@ -274,6 +281,7 @@ FORMATTERS = {
 # ═══════════════════════════════════════════════════════
 #  Parsers
 # ═══════════════════════════════════════════════════════
+
 
 def _extract_doi(text: str) -> Tuple[str, str]:
     m = re.search(r"(?:https?://doi\.org/|doi:\s*)(10\.\d{4,}/[^\s,;]+)", text)
@@ -433,10 +441,14 @@ def parse_mla(text: str) -> Citation:
 
     if ", and " in author_part:
         first, second = author_part.split(", and ", 1)
-        c.authors = [a for a in [_normalize_author(first), _normalize_author(second)] if a]
+        c.authors = [
+            a for a in [_normalize_author(first), _normalize_author(second)] if a
+        ]
     elif " and " in author_part:
         first, second = author_part.split(" and ", 1)
-        c.authors = [a for a in [_normalize_author(first), _normalize_author(second)] if a]
+        c.authors = [
+            a for a in [_normalize_author(first), _normalize_author(second)] if a
+        ]
     else:
         a = author_part.replace(", et al.", "").replace(" et al.", "")
         c.authors = [_normalize_author(a)] if a else []
@@ -563,50 +575,95 @@ def parse_auto(text: str) -> Tuple[Citation, str]:
 #  Error Checker
 # ═══════════════════════════════════════════════════════
 
+
 def check_citation(c: Citation, style: str) -> List[Dict[str, str]]:
     errors: List[Dict[str, str]] = []
 
     if not c.authors:
-        errors.append({"field": "authors", "severity": "error", "message": "缺少作者信息"})
+        errors.append(
+            {"field": "authors", "severity": "error", "message": "缺少作者信息"}
+        )
     if not c.title:
         errors.append({"field": "title", "severity": "error", "message": "缺少标题"})
     if not c.year:
         errors.append({"field": "year", "severity": "error", "message": "缺少出版年份"})
     elif not re.match(r"^\d{4}[a-z]?$", c.year):
-        errors.append({"field": "year", "severity": "error", "message": f"年份格式不正确: {c.year}"})
+        errors.append(
+            {
+                "field": "year",
+                "severity": "error",
+                "message": f"年份格式不正确: {c.year}",
+            }
+        )
 
     if c.entry_type == "article":
         if not c.journal:
-            errors.append({"field": "journal", "severity": "warning", "message": "期刊文章缺少期刊名称"})
+            errors.append(
+                {
+                    "field": "journal",
+                    "severity": "warning",
+                    "message": "期刊文章缺少期刊名称",
+                }
+            )
         if not c.volume:
-            errors.append({"field": "volume", "severity": "warning", "message": "缺少卷号 (volume)"})
+            errors.append(
+                {
+                    "field": "volume",
+                    "severity": "warning",
+                    "message": "缺少卷号 (volume)",
+                }
+            )
         if not c.pages:
-            errors.append({"field": "pages", "severity": "warning", "message": "缺少页码"})
+            errors.append(
+                {"field": "pages", "severity": "warning", "message": "缺少页码"}
+            )
     elif c.entry_type == "book":
         if not c.publisher:
-            errors.append({"field": "publisher", "severity": "warning", "message": "书籍缺少出版社信息"})
+            errors.append(
+                {
+                    "field": "publisher",
+                    "severity": "warning",
+                    "message": "书籍缺少出版社信息",
+                }
+            )
 
     if c.pages and not re.match(r"^\d+[\-\u2013]\d+$|^\d+$", c.pages):
-        errors.append({"field": "pages", "severity": "warning", "message": f"页码格式可能不正确: {c.pages}"})
+        errors.append(
+            {
+                "field": "pages",
+                "severity": "warning",
+                "message": f"页码格式可能不正确: {c.pages}",
+            }
+        )
 
     if c.doi and not re.match(r"^(https?://doi\.org/)?10\.\d{4,}/", c.doi):
-        errors.append({"field": "doi", "severity": "warning", "message": f"DOI 格式可能不正确: {c.doi}"})
+        errors.append(
+            {
+                "field": "doi",
+                "severity": "warning",
+                "message": f"DOI 格式可能不正确: {c.doi}",
+            }
+        )
 
     for i, author in enumerate(c.authors):
         if "," not in author and len(author.split()) < 2:
-            errors.append({
-                "field": f"authors[{i}]",
-                "severity": "warning",
-                "message": f"作者姓名格式可能不完整: {author}",
-            })
+            errors.append(
+                {
+                    "field": f"authors[{i}]",
+                    "severity": "warning",
+                    "message": f"作者姓名格式可能不完整: {author}",
+                }
+            )
 
     if style == "apa":
         if c.title and c.title[0].islower():
-            errors.append({
-                "field": "title",
-                "severity": "warning",
-                "message": "APA 格式标题首字母应大写 (sentence case)",
-            })
+            errors.append(
+                {
+                    "field": "title",
+                    "severity": "warning",
+                    "message": "APA 格式标题首字母应大写 (sentence case)",
+                }
+            )
 
     return errors
 
@@ -617,20 +674,56 @@ def check_text(text: str, style: str) -> List[Dict[str, str]]:
 
     if style == "apa":
         if not re.search(r"\(\d{4}", text):
-            errors.append({"field": "format", "severity": "error", "message": "APA 格式缺少括号内的年份，如 (2023)"})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "error",
+                    "message": "APA 格式缺少括号内的年份，如 (2023)",
+                }
+            )
         if not re.search(r"\)\.", text):
-            errors.append({"field": "format", "severity": "warning", "message": "APA 格式年份后应有句号: (2023)."})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "warning",
+                    "message": "APA 格式年份后应有句号: (2023).",
+                }
+            )
     elif style == "mla":
         if not re.search(r'"[^"]+"', text) and not re.search(r"\d{4}\.", text):
-            errors.append({"field": "format", "severity": "warning", "message": "MLA 期刊文章标题应用双引号包围"})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "warning",
+                    "message": "MLA 期刊文章标题应用双引号包围",
+                }
+            )
     elif style == "ieee":
         if not re.match(r"^\[\d+\]", text):
-            errors.append({"field": "format", "severity": "error", "message": "IEEE 格式应以 [编号] 开头，如 [1]"})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "error",
+                    "message": "IEEE 格式应以 [编号] 开头，如 [1]",
+                }
+            )
         if not re.search(r'"[^"]+"', text):
-            errors.append({"field": "format", "severity": "warning", "message": "IEEE 格式标题应用双引号包围"})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "warning",
+                    "message": "IEEE 格式标题应用双引号包围",
+                }
+            )
     elif style == "harvard":
         if not re.search(r"\(\d{4}\)", text):
-            errors.append({"field": "format", "severity": "error", "message": "Harvard 格式缺少括号内的年份"})
+            errors.append(
+                {
+                    "field": "format",
+                    "severity": "error",
+                    "message": "Harvard 格式缺少括号内的年份",
+                }
+            )
 
     return errors
 
@@ -639,11 +732,15 @@ def check_text(text: str, style: str) -> List[Dict[str, str]]:
 #  Batch Processing
 # ═══════════════════════════════════════════════════════
 
+
 def read_input(input_path: Optional[str]) -> List[str]:
     if input_path:
         p = Path(input_path)
         if not p.exists():
-            print(json.dumps({"error": f"文件不存在: {input_path}"}, ensure_ascii=False), file=sys.stderr)
+            print(
+                json.dumps({"error": f"文件不存在: {input_path}"}, ensure_ascii=False),
+                file=sys.stderr,
+            )
             sys.exit(1)
         content = p.read_text(encoding="utf-8")
     else:
@@ -656,7 +753,12 @@ def read_input(input_path: Optional[str]) -> List[str]:
     try:
         data = json.loads(content)
         if isinstance(data, list):
-            return [json.dumps(item, ensure_ascii=False) if isinstance(item, dict) else str(item) for item in data]
+            return [
+                json.dumps(item, ensure_ascii=False)
+                if isinstance(item, dict)
+                else str(item)
+                for item in data
+            ]
         if isinstance(data, dict):
             return [content]
     except (json.JSONDecodeError, ValueError):
@@ -668,6 +770,7 @@ def read_input(input_path: Optional[str]) -> List[str]:
 # ═══════════════════════════════════════════════════════
 #  CLI
 # ═══════════════════════════════════════════════════════
+
 
 def cmd_format(args):
     lines = read_input(args.input)
@@ -712,14 +815,20 @@ def cmd_parse(args):
             detected = args.style
         else:
             c, detected = parse_auto(text)
-        results.append({
-            "index": i,
-            "detected_style": detected,
-            "citation": c.to_dict(),
-            "original": text,
-        })
+        results.append(
+            {
+                "index": i,
+                "detected_style": detected,
+                "citation": c.to_dict(),
+                "original": text,
+            }
+        )
 
-    print(json.dumps(results if len(results) > 1 else results[0], ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            results if len(results) > 1 else results[0], ensure_ascii=False, indent=2
+        )
+    )
 
 
 def cmd_convert(args):
@@ -841,13 +950,24 @@ def main():
     # parse
     p_parse = sub.add_parser("parse", help="将引用文本解析为结构化 JSON")
     p_parse.add_argument("citation", nargs="?", help="引用文本")
-    p_parse.add_argument("--style", choices=STYLES + ("auto",), default="auto", help="指定源格式（默认自动检测）")
+    p_parse.add_argument(
+        "--style",
+        choices=STYLES + ("auto",),
+        default="auto",
+        help="指定源格式（默认自动检测）",
+    )
     p_parse.add_argument("--input", help="输入文件路径")
 
     # convert
     p_conv = sub.add_parser("convert", help="在不同引用格式之间转换")
     p_conv.add_argument("citation", nargs="?", help="引用文本")
-    p_conv.add_argument("--from", dest="source", choices=STYLES + ("auto",), default="auto", help="源格式")
+    p_conv.add_argument(
+        "--from",
+        dest="source",
+        choices=STYLES + ("auto",),
+        default="auto",
+        help="源格式",
+    )
     p_conv.add_argument("--to", required=True, choices=STYLES, help="目标格式")
     p_conv.add_argument("--input", help="输入文件路径")
     p_conv.add_argument("--json", action="store_true", help="JSON 格式输出")

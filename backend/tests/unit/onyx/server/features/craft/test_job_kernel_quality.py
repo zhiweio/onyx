@@ -31,11 +31,7 @@ def test_coverage_uses_question_text_not_prefix() -> None:
         "Answer: several composition claims remain open. [1]\n"
     )
     assert _answered_questions(text, [question]) == 1
-    unanswered = (
-        "# Findings\n\n"
-        "## Unanswered\n"
-        f"{question}\n"
-    )
+    unanswered = f"# Findings\n\n## Unanswered\n{question}\n"
     assert _answered_questions(unanswered, [question]) == 0
 
 

@@ -165,18 +165,14 @@ def create_scenario(
     db_session.flush()
     for i, skill_id in enumerate(skill_ids):
         db_session.add(
-            Scenario__Skill(
-                scenario_id=scenario.id, skill_id=skill_id, sort_order=i
-            )
+            Scenario__Skill(scenario_id=scenario.id, skill_id=skill_id, sort_order=i)
         )
     db_session.commit()
     db_session.refresh(scenario)
     return get_scenario_for_user(db_session, scenario.id, user)
 
 
-def duplicate_scenario(
-    db_session: Session, scenario: Scenario, user: User
-) -> Scenario:
+def duplicate_scenario(db_session: Session, scenario: Scenario, user: User) -> Scenario:
     skill_ids = [
         link.skill_id
         for link in sorted(scenario.skill_links, key=lambda row: row.sort_order)

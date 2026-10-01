@@ -210,7 +210,11 @@ def audit_query_history(
     start_at = _parse_when(start, days_default=30)
     end_at = _parse_when(end, days_default=36500) if end else None
 
-    stmt = select(SearchQuery, User.email).join(User, SearchQuery.user_id == User.id)
+    # fastapi-users types User.email/id as plain values under TYPE_CHECKING;
+    # at runtime they are mapped columns.
+    stmt = select(  # ty: ignore[no-matching-overload]
+        SearchQuery, User.email
+    ).join(User, SearchQuery.user_id == User.id)
     count_stmt = (
         select(func.count())
         .select_from(SearchQuery)
@@ -224,12 +228,14 @@ def audit_query_history(
         count_stmt = count_stmt.where(SearchQuery.created_at >= start_at)
     if user_email:
         stmt = stmt.where(User.email == user_email)
-        count_stmt = count_stmt.where(User.email == user_email)
+        count_stmt = count_stmt.where(
+            User.email == user_email  # ty: ignore[invalid-argument-type]
+        )
     if q:
         pattern = f"%{q}%"
         fuzzy = or_(
             SearchQuery.query.ilike(pattern),
-            User.email.ilike(pattern),
+            User.email.ilike(pattern),  # ty: ignore[unresolved-attribute]
         )
         stmt = stmt.where(fuzzy)
         count_stmt = count_stmt.where(fuzzy)

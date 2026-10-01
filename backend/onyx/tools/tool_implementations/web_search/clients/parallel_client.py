@@ -88,7 +88,12 @@ class ParallelClient(WebSearchProvider):
         except (ValueError, parallel.APIStatusError) as exc:
             error_msg = str(exc)
             lower = error_msg.lower()
-            if "401" in lower or "403" in lower or "api key" in lower or "auth" in lower:
+            if (
+                "401" in lower
+                or "403" in lower
+                or "api key" in lower
+                or "auth" in lower
+            ):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid Parallel API key: {error_msg}",

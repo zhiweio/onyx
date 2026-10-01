@@ -13,9 +13,7 @@ def test_sanitize_project_path_keeps_chinese_report_names() -> None:
         sanitize_project_path("君禾股份_财报解读_2026H1.html")
         == "/君禾股份_财报解读_2026H1.html"
     )
-    assert (
-        sanitize_project_path("charts/营收趋势.png") == "/charts/营收趋势.png"
-    )
+    assert sanitize_project_path("charts/营收趋势.png") == "/charts/营收趋势.png"
 
 
 def test_sanitize_project_path_strips_traversal_and_empty_segments() -> None:
@@ -29,4 +27,7 @@ def test_sanitize_project_path_strips_traversal_and_empty_segments() -> None:
 def test_content_disposition_uses_rfc5987_for_chinese_names() -> None:
     assert content_disposition("rates.xlsx") == 'attachment; filename="rates.xlsx"'
     name = "君禾股份_财报解读_2026H1.html"
-    assert content_disposition(name) == f"attachment; filename*=UTF-8''{quote(name, safe='')}"
+    assert (
+        content_disposition(name)
+        == f"attachment; filename*=UTF-8''{quote(name, safe='')}"
+    )

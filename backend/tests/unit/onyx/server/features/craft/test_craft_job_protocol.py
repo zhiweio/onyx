@@ -24,7 +24,9 @@ def test_default_phases_are_domain_agnostic_skeleton() -> None:
 
 def test_phase_helpers() -> None:
     phases = default_phases_for_domain("tax")
-    assert current_phase(phases, 0)["id"] == "plan"
+    first = current_phase(phases, 0)
+    assert first is not None
+    assert first["id"] == "plan"
     assert current_phase(phases, 99) is None
     assert phase_index_by_id(phases, "compose") is None
     assert compose_phase_index(phases) == 0
@@ -63,7 +65,11 @@ def test_job_turn_budgets_respect_phase_cap(monkeypatch) -> None:
     monkeypatch.setattr(
         "onyx.server.features.build.configs.CRAFT_DEEP_JOB_RESOURCES", False
     )
-    soft, hard = continuation_mod.job_turn_budgets(job)
+    budgets = continuation_mod.job_turn_budgets(
+        job  # ty: ignore[invalid-argument-type]
+    )
+    assert budgets is not None
+    soft, hard = budgets
     assert hard == 1500
     assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
     assert 0 < soft < hard
@@ -82,7 +88,11 @@ def test_job_turn_budgets_use_deep_job_soft_fraction(monkeypatch) -> None:
         "onyx.server.features.build.configs.CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION",
         0.75,
     )
-    soft, hard = continuation_mod.job_turn_budgets(job)
+    budgets = continuation_mod.job_turn_budgets(
+        job  # ty: ignore[invalid-argument-type]
+    )
+    assert budgets is not None
+    soft, hard = budgets
     assert hard == 1500
     assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
     assert soft == 1125
@@ -96,9 +106,7 @@ def test_deep_job_inactivity_default_uses_long_tool_window() -> None:
 
     approval = 200.0
     assert (
-        compute_opencode_inactivity_default(
-            deep_job=False, approval_default=approval
-        )
+        compute_opencode_inactivity_default(deep_job=False, approval_default=approval)
         == approval
     )
     assert compute_opencode_inactivity_default(

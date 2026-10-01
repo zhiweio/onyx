@@ -206,7 +206,9 @@ def _install_soft_tool_validation(session: ClientSession) -> None:
     async def _soft_validate(name: str, result: CallToolResult) -> None:
         await _soft_validate_tool_result(session, name, result)
 
-    session._validate_tool_result = _soft_validate
+    # The SDK calls the patch through instance-dict lookup, so a plain
+    # function is what the monkeypatch needs; the method type trips ty.
+    session._validate_tool_result = _soft_validate  # ty: ignore[invalid-assignment]
 
 
 def log_exception_group(e: ExceptionGroup) -> Exception | None:

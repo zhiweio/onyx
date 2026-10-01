@@ -7,10 +7,13 @@
     setup_style()  # 初始化学术风格
     heatmap(corr_matrix, output='figures/fig_heatmap.pdf')
 """
+
 import os
-import sys
 import platform
+import sys
+
 import numpy as np
+
 try:
     from . import vivid_config as vc
 except ImportError:
@@ -20,20 +23,25 @@ except ImportError:
 _plt = None
 _sns = None
 
+
 def _get_plt():
     global _plt
     if _plt is None:
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         _plt = plt
     return _plt
+
 
 def _get_sns():
     global _sns
     if _sns is None:
         try:
             import seaborn as sns
+
             _sns = sns
         except ImportError:
             _sns = None
@@ -45,33 +53,33 @@ def _get_sns():
 # ============================================================
 # All user palette definitions are maintained in palettes.json.
 _registry = vc.registry()
-PALETTES = {k: vc.categorical_colors({'palette': k}) for k in _registry['palettes']}
+PALETTES = {k: vc.categorical_colors({"palette": k}) for k in _registry["palettes"]}
 PALETTE = vc.categorical_colors()
 PALETTE_LIGHT = None  # 延迟初始化，在 _lighten 定义后赋值
 
 COLORS = {
-    'primary': PALETTE[0] if len(PALETTE)>0 else PALETTE[0],
-    'secondary': PALETTE[1] if len(PALETTE)>1 else PALETTE[0],
-    'accent': PALETTE[2] if len(PALETTE)>2 else PALETTE[0],
-    'gray': '#B8B8B8',
-    'light': '#F5F7FA',
-    'dark': '#2D2D2D',
+    "primary": PALETTE[0] if len(PALETTE) > 0 else PALETTE[0],
+    "secondary": PALETTE[1] if len(PALETTE) > 1 else PALETTE[0],
+    "accent": PALETTE[2] if len(PALETTE) > 2 else PALETTE[0],
+    "gray": "#B8B8B8",
+    "light": "#F5F7FA",
+    "dark": "#2D2D2D",
     # 语义颜色
-    'up': PALETTE[2] if len(PALETTE)>2 else PALETTE[0],
-    'down': PALETTE[1] if len(PALETTE)>1 else PALETTE[0],
-    'neutral': '#B8B8B8',     # 中性
-    'highlight': PALETTE[4] if len(PALETTE)>4 else PALETTE[0],
-    'ref_line': '#AAAAAA',    # 参考线
-    'grid': '#E0E0E0',        # 网格线（很淡）
-    'text': '#4A4A4A',        # 标注文字
-    'bg_box': '#F5F7FA',      # 标注框背景
-    'bg_fill': None,
-    'bg_fill2': None,
+    "up": PALETTE[2] if len(PALETTE) > 2 else PALETTE[0],
+    "down": PALETTE[1] if len(PALETTE) > 1 else PALETTE[0],
+    "neutral": "#B8B8B8",  # 中性
+    "highlight": PALETTE[4] if len(PALETTE) > 4 else PALETTE[0],
+    "ref_line": "#AAAAAA",  # 参考线
+    "grid": "#E0E0E0",  # 网格线（很淡）
+    "text": "#4A4A4A",  # 标注文字
+    "bg_box": "#F5F7FA",  # 标注框背景
+    "bg_fill": None,
+    "bg_fill2": None,
 }
 
 
 def _read_palette_marker():
-    return vc.load_config()['palette']
+    return vc.load_config()["palette"]
 
 
 def _read_custom_colors():
@@ -79,34 +87,36 @@ def _read_custom_colors():
 
 
 def _read_style_marker():
-    style = vc.load_config()['style']
+    style = vc.load_config()["style"]
     if style not in STYLE_FAMILIES:
-        raise ValueError(f'Unknown Vivid layout: {style}')
+        raise ValueError(f"Unknown Vivid layout: {style}")
     return style
 
 
 # 「高级自定义版式」约束档位 —— 每个维度只给几个安全值(取自 STYLE_FAMILIES 验证过的值域),
 # 用户任意组合都不会配出丑图。前端/后端/本文件三处的档位键必须一致。
 _STYLE_CUSTOM_DIMS = {
-    'frame': ('open', 'journal'),          # 边框:极简左下 / 期刊四面
-    'grid': ('none', 'y', 'both'),         # 网格:无 / 横向淡 / 全网格淡
-    'lw': ('thin', 'mid', 'thick'),        # 线宽:细 / 中 / 粗
-    'font': ('small', 'medium', 'large'),  # 字号:小 / 中 / 大(全局 rcParams,必生效)
-    'legend': ('noframe', 'framed'),       # 图例:无框 / 有框
-    'bg': ('white', 'graytint'),           # 背景:纯白 / 淡灰底
+    "frame": ("open", "journal"),  # 边框:极简左下 / 期刊四面
+    "grid": ("none", "y", "both"),  # 网格:无 / 横向淡 / 全网格淡
+    "lw": ("thin", "mid", "thick"),  # 线宽:细 / 中 / 粗
+    "font": ("small", "medium", "large"),  # 字号:小 / 中 / 大(全局 rcParams,必生效)
+    "legend": ("noframe", "framed"),  # 图例:无框 / 有框
+    "bg": ("white", "graytint"),  # 背景:纯白 / 淡灰底
 }
 
 
 def _read_style_custom_marker():
-    spec = vc.load_config().get('style_custom')
+    spec = vc.load_config().get("style_custom")
     if spec is None:
         return None
     if not isinstance(spec, dict):
-        raise ValueError('style_custom must be an object')
+        raise ValueError("style_custom must be an object")
     for key, value in spec.items():
         if key not in _STYLE_CUSTOM_DIMS or value not in _STYLE_CUSTOM_DIMS[key]:
-            raise ValueError(f'Invalid layout setting: {key}={value}')
-    return {key: spec.get(key, allowed[0]) for key, allowed in _STYLE_CUSTOM_DIMS.items()}
+            raise ValueError(f"Invalid layout setting: {key}={value}")
+    return {
+        key: spec.get(key, allowed[0]) for key, allowed in _STYLE_CUSTOM_DIMS.items()
+    }
 
 
 # ============================================================
@@ -115,28 +125,74 @@ def _read_style_custom_marker():
 # 关键：每套都【显式控制刻度四面】，tick_tr=False 时关掉上/右刻度 = 消灭“上右黑点点”。
 # ============================================================
 STYLE_FAMILIES = {
-    'clean_open':     {'spines': ('left', 'bottom'), 'tick_dir': 'out', 'tick_tr': False,
-                       'grid': None, 'legend_frame': False, 'patch_edge': 'white',
-                       'lw': 1.8, 'ms': 5, 'axis_color': '#666666'},
-    'soft_grid':      {'spines': ('left', 'bottom'), 'tick_dir': 'out', 'tick_tr': False,
-                       'grid': {'axis': 'y', 'ls': '--', 'alpha': 0.30, 'color': '#CCCCCC'},
-                       'legend_frame': False, 'patch_edge': 'white', 'lw': 1.9, 'ms': 5, 'axis_color': '#666666'},
-    'framed_journal': {'spines': ('left', 'bottom', 'top', 'right'), 'tick_dir': 'in', 'tick_tr': True,
-                       'grid': {'axis': 'both', 'ls': '-', 'alpha': 0.15, 'color': '#DDDDDD'},
-                       'legend_frame': True, 'patch_edge': 'white', 'lw': 1.7, 'ms': 4.5, 'axis_color': '#444444'},
-    'minimal_bare':   {'spines': ('left', 'bottom'), 'tick_dir': 'out', 'tick_tr': False,
-                       'grid': None, 'legend_frame': False, 'patch_edge': 'none',
-                       'lw': 2.0, 'ms': 6, 'axis_color': '#888888'},
-    'bold_edge':      {'spines': ('left', 'bottom'), 'tick_dir': 'out', 'tick_tr': False,
-                       'grid': None, 'legend_frame': False, 'patch_edge': 'white_bold',
-                       'lw': 2.1, 'ms': 6, 'axis_color': '#555555'},
-    'crisp_dark':     {'spines': ('left', 'bottom', 'top', 'right'), 'tick_dir': 'in', 'tick_tr': True,
-                       'grid': None, 'legend_frame': True, 'patch_edge': 'white',
-                       'lw': 1.8, 'ms': 5, 'axis_color': '#333333'},
+    "clean_open": {
+        "spines": ("left", "bottom"),
+        "tick_dir": "out",
+        "tick_tr": False,
+        "grid": None,
+        "legend_frame": False,
+        "patch_edge": "white",
+        "lw": 1.8,
+        "ms": 5,
+        "axis_color": "#666666",
+    },
+    "soft_grid": {
+        "spines": ("left", "bottom"),
+        "tick_dir": "out",
+        "tick_tr": False,
+        "grid": {"axis": "y", "ls": "--", "alpha": 0.30, "color": "#CCCCCC"},
+        "legend_frame": False,
+        "patch_edge": "white",
+        "lw": 1.9,
+        "ms": 5,
+        "axis_color": "#666666",
+    },
+    "framed_journal": {
+        "spines": ("left", "bottom", "top", "right"),
+        "tick_dir": "in",
+        "tick_tr": True,
+        "grid": {"axis": "both", "ls": "-", "alpha": 0.15, "color": "#DDDDDD"},
+        "legend_frame": True,
+        "patch_edge": "white",
+        "lw": 1.7,
+        "ms": 4.5,
+        "axis_color": "#444444",
+    },
+    "minimal_bare": {
+        "spines": ("left", "bottom"),
+        "tick_dir": "out",
+        "tick_tr": False,
+        "grid": None,
+        "legend_frame": False,
+        "patch_edge": "none",
+        "lw": 2.0,
+        "ms": 6,
+        "axis_color": "#888888",
+    },
+    "bold_edge": {
+        "spines": ("left", "bottom"),
+        "tick_dir": "out",
+        "tick_tr": False,
+        "grid": None,
+        "legend_frame": False,
+        "patch_edge": "white_bold",
+        "lw": 2.1,
+        "ms": 6,
+        "axis_color": "#555555",
+    },
+    "crisp_dark": {
+        "spines": ("left", "bottom", "top", "right"),
+        "tick_dir": "in",
+        "tick_tr": True,
+        "grid": None,
+        "legend_frame": True,
+        "patch_edge": "white",
+        "lw": 1.8,
+        "ms": 5,
+        "axis_color": "#333333",
+    },
 }
 _STYLE_FAMILY_NAMES = list(STYLE_FAMILIES.keys())
-
-
 
 
 def _knobs_from_custom(spec):
@@ -145,48 +201,83 @@ def _knobs_from_custom(spec):
     所有取值来自 STYLE_FAMILIES 验证过的值域，任意组合都自洽好看。
     未开放的维度（描边等）用安全固定值。"""
     _frame = {
-        'open':    {'spines': ('left', 'bottom'),               'tick_dir': 'out', 'tick_tr': False,
-                    'legend_frame': False, 'axis_color': '#666666'},
-        'journal': {'spines': ('left', 'bottom', 'top', 'right'), 'tick_dir': 'in',  'tick_tr': True,
-                    'legend_frame': True,  'axis_color': '#444444'},
+        "open": {
+            "spines": ("left", "bottom"),
+            "tick_dir": "out",
+            "tick_tr": False,
+            "legend_frame": False,
+            "axis_color": "#666666",
+        },
+        "journal": {
+            "spines": ("left", "bottom", "top", "right"),
+            "tick_dir": "in",
+            "tick_tr": True,
+            "legend_frame": True,
+            "axis_color": "#444444",
+        },
     }
     _grid = {
-        'none': None,
-        'y':    {'axis': 'y',    'ls': '--', 'alpha': 0.30, 'color': '#CCCCCC'},
-        'both': {'axis': 'both', 'ls': '-',  'alpha': 0.15, 'color': '#DDDDDD'},
+        "none": None,
+        "y": {"axis": "y", "ls": "--", "alpha": 0.30, "color": "#CCCCCC"},
+        "both": {"axis": "both", "ls": "-", "alpha": 0.15, "color": "#DDDDDD"},
     }
-    _lw = {'thin': (1.7, 4.5), 'mid': (1.9, 5.0), 'thick': (2.1, 6.0)}
+    _lw = {"thin": (1.7, 4.5), "mid": (1.9, 5.0), "thick": (2.1, 6.0)}
     # 字号:(基准 font.size, label, title, tick) —— 全局 rcParams,必生效
-    _font = {'small': (9, 10, 11, 8), 'medium': (11, 12, 13, 10), 'large': (13, 14, 16, 12)}
-    _bg = {'white': 'white', 'graytint': '#F7F8FA'}
+    _font = {
+        "small": (9, 10, 11, 8),
+        "medium": (11, 12, 13, 10),
+        "large": (13, 14, 16, 12),
+    }
+    _bg = {"white": "white", "graytint": "#F7F8FA"}
     # 缺失/非法档位回落到第一档（与 _read_style_custom_marker 的补默认一致）
-    f = _frame.get(spec.get('frame'), _frame['open'])
-    g = _grid.get(spec.get('grid', 'none'), None) if spec.get('grid') != 'none' else None
-    lw, ms = _lw.get(spec.get('lw'), _lw['mid'])
-    fs = _font.get(spec.get('font'), _font['medium'])
-    facecolor = _bg.get(spec.get('bg'), 'white')
+    f = _frame.get(spec.get("frame"), _frame["open"])
+    g = (
+        _grid.get(spec.get("grid", "none"), None)
+        if spec.get("grid") != "none"
+        else None
+    )
+    lw, ms = _lw.get(spec.get("lw"), _lw["mid"])
+    fs = _font.get(spec.get("font"), _font["medium"])
+    facecolor = _bg.get(spec.get("bg"), "white")
     # legend 维显式选了就覆盖 frame 带的默认；没选则跟随 frame
-    _leg = spec.get('legend')
-    legend_frame = (_leg == 'framed') if _leg in ('framed', 'noframe') else f['legend_frame']
+    _leg = spec.get("legend")
+    legend_frame = (
+        (_leg == "framed") if _leg in ("framed", "noframe") else f["legend_frame"]
+    )
     return {
-        'spines': f['spines'], 'tick_dir': f['tick_dir'], 'tick_tr': f['tick_tr'],
-        'legend_frame': legend_frame, 'axis_color': f['axis_color'],
-        'grid': g, 'patch_edge': 'white', 'lw': lw, 'ms': ms,
-        'font_size': fs, 'facecolor': facecolor,   # ★ 新维(setup_style 用 .get 消费,预设路径无此键不受影响)
-        '_name': f"custom({spec.get('frame','open')}/{spec.get('grid','none')}/{spec.get('lw','mid')}"
-                 f"/{spec.get('font','medium')}/{spec.get('legend','-')}/{spec.get('bg','white')})",
+        "spines": f["spines"],
+        "tick_dir": f["tick_dir"],
+        "tick_tr": f["tick_tr"],
+        "legend_frame": legend_frame,
+        "axis_color": f["axis_color"],
+        "grid": g,
+        "patch_edge": "white",
+        "lw": lw,
+        "ms": ms,
+        "font_size": fs,
+        "facecolor": facecolor,  # ★ 新维(setup_style 用 .get 消费,预设路径无此键不受影响)
+        "_name": f"custom({spec.get('frame', 'open')}/{spec.get('grid', 'none')}/{spec.get('lw', 'mid')}"
+        f"/{spec.get('font', 'medium')}/{spec.get('legend', '-')}/{spec.get('bg', 'white')})",
     }
 
 
-def setup_style(palette='auto'):
+def setup_style(palette="auto"):
     """Load project palette and layout; explicit palette arguments remain supported."""
-    plt = _get_plt()
+    _get_plt()
     import matplotlib
+
     sns = _get_sns()
-    _project_mode = palette == 'auto' or palette is None
+    _project_mode = palette == "auto" or palette is None
     _custom_spec = _read_style_custom_marker() if _project_mode else None
-    _knobs = (_knobs_from_custom(_custom_spec) if _custom_spec else
-              dict(STYLE_FAMILIES[_read_style_marker()])) if _project_mode else None
+    _knobs = (
+        (
+            _knobs_from_custom(_custom_spec)
+            if _custom_spec
+            else dict(STYLE_FAMILIES[_read_style_marker()])
+        )
+        if _project_mode
+        else None
+    )
     if isinstance(palette, list):
         colors = palette
     elif _project_mode:
@@ -194,69 +285,95 @@ def setup_style(palette='auto'):
     elif palette in PALETTES:
         colors = list(PALETTES[palette])
     else:
-        raise ValueError(f'Unknown palette: {palette}')
+        raise ValueError(f"Unknown palette: {palette}")
 
     # 更新全局 PALETTE 供其他函数使用
     global PALETTE, PALETTE_LIGHT, COLORS
     PALETTE[:] = colors
     PALETTE_LIGHT[:] = [_lighten(c, 0.4) for c in colors]
-    COLORS['primary'] = colors[0]
-    COLORS['secondary'] = colors[1] if len(colors) > 1 else colors[0]
-    COLORS['accent'] = colors[2] if len(colors) > 2 else colors[0]
+    COLORS["primary"] = colors[0]
+    COLORS["secondary"] = colors[1] if len(colors) > 1 else colors[0]
+    COLORS["accent"] = colors[2] if len(colors) > 2 else colors[0]
     # 语义颜色跟随配色方案
-    COLORS['up'] = colors[2] if len(colors) > 2 else colors[0]       # 上升 = accent 色
-    COLORS['down'] = colors[1] if len(colors) > 1 else colors[0]     # 下降 = secondary 色
-    COLORS['highlight'] = colors[4] if len(colors) > 4 else colors[0]  # 高亮
-    COLORS['bg_fill'] = _lighten(colors[0], 0.8)
-    COLORS['bg_fill2'] = _lighten(colors[1] if len(colors)>1 else colors[0], 0.8)
+    COLORS["up"] = colors[2] if len(colors) > 2 else colors[0]  # 上升 = accent 色
+    COLORS["down"] = colors[1] if len(colors) > 1 else colors[0]  # 下降 = secondary 色
+    COLORS["highlight"] = colors[4] if len(colors) > 4 else colors[0]  # 高亮
+    COLORS["bg_fill"] = _lighten(colors[0], 0.8)
+    COLORS["bg_fill2"] = _lighten(colors[1] if len(colors) > 1 else colors[0], 0.8)
 
     # 保持既有导出边界设置。
-    matplotlib.rcParams['savefig.bbox'] = 'standard'
-    matplotlib.rcParams['savefig.pad_inches'] = 0.1
+    matplotlib.rcParams["savefig.bbox"] = "standard"
+    matplotlib.rcParams["savefig.pad_inches"] = 0.1
 
     # 用 seaborn 主题（如果可用）
     if sns:
-        sns.set_theme(style='ticks', font_scale=1.0, rc={
-            'axes.edgecolor': '#333333',
-            'axes.linewidth': 0.8,
-        })
+        sns.set_theme(
+            style="ticks",
+            font_scale=1.0,
+            rc={
+                "axes.edgecolor": "#333333",
+                "axes.linewidth": 0.8,
+            },
+        )
     if sns:
         sns.set_palette(colors)
 
     # 中文字体（带可用性检测，避免小方框□）
     from matplotlib.font_manager import fontManager
+
     available_fonts = {f.name for f in fontManager.ttflist}
 
-    if platform.system() == 'Windows':
-        zh_candidates = ['Microsoft YaHei', 'SimHei', 'SimSun', 'KaiTi', 'FangSong']
-    elif platform.system() == 'Darwin':
-        zh_candidates = ['PingFang SC', 'Heiti SC', 'STHeiti', 'STSong', 'Arial Unicode MS']
+    if platform.system() == "Windows":
+        zh_candidates = ["Microsoft YaHei", "SimHei", "SimSun", "KaiTi", "FangSong"]
+    elif platform.system() == "Darwin":
+        zh_candidates = [
+            "PingFang SC",
+            "Heiti SC",
+            "STHeiti",
+            "STSong",
+            "Arial Unicode MS",
+        ]
     else:
-        zh_candidates = ['Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'WenQuanYi Zen Hei',
-                         'Droid Sans Fallback', 'SimHei', 'AR PL UMing CN']
+        zh_candidates = [
+            "Noto Sans CJK SC",
+            "WenQuanYi Micro Hei",
+            "WenQuanYi Zen Hei",
+            "Droid Sans Fallback",
+            "SimHei",
+            "AR PL UMing CN",
+        ]
 
     zh_fonts = [f for f in zh_candidates if f in available_fonts]
 
     if not zh_fonts:
         # 没有任何中文字体——尝试加载内置字体文件
         _bundled_font = None
-        for search_dir in ['_utils', 'skills/shared-scripts', '../skills/shared-scripts']:
-            font_path = os.path.join(search_dir, 'NotoSansSC-Regular.ttf')
+        for search_dir in [
+            "_utils",
+            "skills/shared-scripts",
+            "../skills/shared-scripts",
+        ]:
+            font_path = os.path.join(search_dir, "NotoSansSC-Regular.ttf")
             if os.path.isfile(font_path):
                 _bundled_font = os.path.abspath(font_path)
                 break
         if _bundled_font:
             from matplotlib.font_manager import FontProperties
+
             fontManager.addfont(_bundled_font)
             fp = FontProperties(fname=_bundled_font)
             zh_fonts = [fp.get_name()]
             print(f"Using bundled Chinese font: {_bundled_font}")
-        elif platform.system() == 'Linux':
+        elif platform.system() == "Linux":
             # Linux 上尝试自动安装
             try:
                 import subprocess
-                subprocess.run(['apt-get', 'install', '-y', 'fonts-noto-cjk-extra'],
-                               capture_output=True, timeout=30)
+
+                subprocess.run(
+                    ["apt-get", "install", "-y", "fonts-noto-cjk-extra"],
+                    capture_output=True,
+                    timeout=30,
+                )
                 fontManager.__init__()
                 available_fonts = {f.name for f in fontManager.ttflist}
                 zh_fonts = [f for f in zh_candidates if f in available_fonts]
@@ -265,95 +382,116 @@ def setup_style(palette='auto'):
         if not zh_fonts:
             print("WARNING: No Chinese fonts found — Chinese text will show as □")
             print("  Fix: place NotoSansSC-Regular.ttf in skills/shared-scripts/")
-            print("  Or install: Windows=SimHei, Linux=fonts-noto-cjk-extra, macOS=built-in")
-            zh_fonts = ['DejaVu Sans']
+            print(
+                "  Or install: Windows=SimHei, Linux=fonts-noto-cjk-extra, macOS=built-in"
+            )
+            zh_fonts = ["DejaVu Sans"]
 
-    matplotlib.rcParams.update({
-        'font.size': 11,
-        'font.family': 'sans-serif',
-        'font.sans-serif': zh_fonts + ['Arial', 'Helvetica', 'DejaVu Sans'],
-        'axes.unicode_minus': False,
-        'axes.labelsize': 12,
-        'axes.titlesize': 13,
-        'axes.linewidth': 0.8,
-        'xtick.labelsize': 10,
-        'ytick.labelsize': 10,
-        'legend.fontsize': 10,
-        'legend.frameon': False,
-        'figure.dpi': 300,
-        'savefig.dpi': 350,
-        'savefig.bbox': 'standard',       # ★ 不用 'tight' — 否则 axes 外文字会撑爆 mediabox
-        'savefig.pad_inches': 0.1,        # ★ 配合 standard，留窄边距
-        'axes.grid': False,
-        'axes.spines.top': False,
-        'axes.spines.right': False,
-        'axes.facecolor': 'white',
-        'figure.facecolor': 'white',
-        'text.usetex': False,
-        'mathtext.fontset': 'stix',
-        'lines.linewidth': 1.8,
-        'lines.markersize': 6,
-        'patch.edgecolor': 'white',       # 饼图/柱状图块之间白色分隔线
-        'patch.linewidth': 1.0,
-    })
+    matplotlib.rcParams.update(
+        {
+            "font.size": 11,
+            "font.family": "sans-serif",
+            "font.sans-serif": zh_fonts + ["Arial", "Helvetica", "DejaVu Sans"],
+            "axes.unicode_minus": False,
+            "axes.labelsize": 12,
+            "axes.titlesize": 13,
+            "axes.linewidth": 0.8,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 10,
+            "legend.frameon": False,
+            "figure.dpi": 300,
+            "savefig.dpi": 350,
+            "savefig.bbox": "standard",  # ★ 不用 'tight' — 否则 axes 外文字会撑爆 mediabox
+            "savefig.pad_inches": 0.1,  # ★ 配合 standard，留窄边距
+            "axes.grid": False,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.facecolor": "white",
+            "figure.facecolor": "white",
+            "text.usetex": False,
+            "mathtext.fontset": "stix",
+            "lines.linewidth": 1.8,
+            "lines.markersize": 6,
+            "patch.edgecolor": "white",  # 饼图/柱状图块之间白色分隔线
+            "patch.linewidth": 1.0,
+        }
+    )
 
     # 设置颜色循环 — 这是关键，防止 matplotlib 用默认丑蓝色
-    matplotlib.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=colors)
+    matplotlib.rcParams["axes.prop_cycle"] = matplotlib.cycler(color=colors)
 
     # ★ 随机模式：按【成品风格族】整套应用版式（自洽、好看；显式控制刻度四面 = 消灭上右黑点）
     if _project_mode and _knobs:
         _f = _knobs
-        _ac = _f['axis_color']
-        _sp = _f['spines']
-        _pe = _f['patch_edge']
-        _grid = _f['grid']
-        matplotlib.rcParams.update({
-            'legend.frameon': bool(_f['legend_frame']),
-            'lines.linewidth': _f['lw'],
-            'lines.markersize': _f['ms'],
-            # 边框：只显示 spines 里列出的面
-            'axes.spines.left': ('left' in _sp),
-            'axes.spines.bottom': ('bottom' in _sp),
-            'axes.spines.top': ('top' in _sp),
-            'axes.spines.right': ('right' in _sp),
-            'axes.edgecolor': _ac,
-            # 刻度：方向 + 是否上/右也画刻度（False=关掉上右刻度=去黑点）+ 颜色 + 长度
-            'xtick.direction': _f['tick_dir'], 'ytick.direction': _f['tick_dir'],
-            'xtick.top': _f['tick_tr'], 'ytick.right': _f['tick_tr'],
-            'xtick.color': _ac, 'ytick.color': _ac,
-            'xtick.major.size': 3.5 if _f['tick_dir'] == 'out' else 3,
-            'ytick.major.size': 3.5 if _f['tick_dir'] == 'out' else 3,
-            # 全局网格：仅 grid.axis=='both' 时全开；'y' 交给制图时按需（gax）。这里设默认样式
-            'axes.grid': bool(_grid and _grid.get('axis') == 'both'),
-            'grid.linestyle': (_grid or {}).get('ls', '--'),
-            'grid.alpha': (_grid or {}).get('alpha', 0.3),
-            'grid.color': (_grid or {}).get('color', '#DDDDDD'),
-            # 描边：白/加粗白/无
-            'patch.edgecolor': {'white': 'white', 'white_bold': 'white', 'none': 'none'}.get(_pe, 'white'),
-            'patch.linewidth': {'white': 1.0, 'white_bold': 1.5, 'none': 0.0}.get(_pe, 1.0),
-        })
+        _ac = _f["axis_color"]
+        _sp = _f["spines"]
+        _pe = _f["patch_edge"]
+        _grid = _f["grid"]
+        matplotlib.rcParams.update(
+            {
+                "legend.frameon": bool(_f["legend_frame"]),
+                "lines.linewidth": _f["lw"],
+                "lines.markersize": _f["ms"],
+                # 边框：只显示 spines 里列出的面
+                "axes.spines.left": ("left" in _sp),
+                "axes.spines.bottom": ("bottom" in _sp),
+                "axes.spines.top": ("top" in _sp),
+                "axes.spines.right": ("right" in _sp),
+                "axes.edgecolor": _ac,
+                # 刻度：方向 + 是否上/右也画刻度（False=关掉上右刻度=去黑点）+ 颜色 + 长度
+                "xtick.direction": _f["tick_dir"],
+                "ytick.direction": _f["tick_dir"],
+                "xtick.top": _f["tick_tr"],
+                "ytick.right": _f["tick_tr"],
+                "xtick.color": _ac,
+                "ytick.color": _ac,
+                "xtick.major.size": 3.5 if _f["tick_dir"] == "out" else 3,
+                "ytick.major.size": 3.5 if _f["tick_dir"] == "out" else 3,
+                # 全局网格：仅 grid.axis=='both' 时全开；'y' 交给制图时按需（gax）。这里设默认样式
+                "axes.grid": bool(_grid and _grid.get("axis") == "both"),
+                "grid.linestyle": (_grid or {}).get("ls", "--"),
+                "grid.alpha": (_grid or {}).get("alpha", 0.3),
+                "grid.color": (_grid or {}).get("color", "#DDDDDD"),
+                # 描边：白/加粗白/无
+                "patch.edgecolor": {
+                    "white": "white",
+                    "white_bold": "white",
+                    "none": "none",
+                }.get(_pe, "white"),
+                "patch.linewidth": {"white": 1.0, "white_bold": 1.5, "none": 0.0}.get(
+                    _pe, 1.0
+                ),
+            }
+        )
         # ★ 高级自定义新维（字号/背景）——仅 custom 路径的 knobs 有这两键，用 .get 兜底，
         #   预设路径无此键时不覆盖上面设过的默认值（font.size=11 / facecolor=white）。
-        _fsz = _f.get('font_size')
+        _fsz = _f.get("font_size")
         if _fsz:
             _base, _lbl, _ttl, _tk = _fsz
-            matplotlib.rcParams.update({
-                'font.size': _base, 'axes.labelsize': _lbl, 'axes.titlesize': _ttl,
-                'xtick.labelsize': _tk, 'ytick.labelsize': _tk, 'legend.fontsize': _tk,
-            })
-        _fc = _f.get('facecolor')
+            matplotlib.rcParams.update(
+                {
+                    "font.size": _base,
+                    "axes.labelsize": _lbl,
+                    "axes.titlesize": _ttl,
+                    "xtick.labelsize": _tk,
+                    "ytick.labelsize": _tk,
+                    "legend.fontsize": _tk,
+                }
+            )
+        _fc = _f.get("facecolor")
         if _fc:
-            matplotlib.rcParams['axes.facecolor'] = _fc
+            matplotlib.rcParams["axes.facecolor"] = _fc
 
     # ★ Hook plt.savefig — 即使不用 save_fig()，也能自动防遮挡
     # Preserve author layout: do not install automatic savefig mutation hooks.
 
 
-def _hook_savefig(plt):
+def _hook_savefig(_plt):
     """Hook plt.savefig 和 Figure.savefig，在保存前强制修复子图尺寸和文字重叠。"""
     import matplotlib.figure
 
-    if getattr(matplotlib.figure.Figure, '_overlap_hooked', False):
+    if getattr(matplotlib.figure.Figure, "_overlap_hooked", False):
         return  # 已经 hook 过了
 
     _original_savefig = matplotlib.figure.Figure.savefig
@@ -395,7 +533,7 @@ def _has_3d_axes(fig):
     """
     try:
         for ax in fig.get_axes():
-            if getattr(ax, 'name', '') == '3d' or hasattr(ax, 'get_zlim'):
+            if getattr(ax, "name", "") == "3d" or hasattr(ax, "get_zlim"):
                 return True
     except Exception:
         pass
@@ -404,12 +542,12 @@ def _has_3d_axes(fig):
 
 def _lighten(hex_color, amount=0.4):
     """将颜色变浅（用于填充区域）。amount=0 不变，amount=1 变白。"""
-    hex_color = hex_color.lstrip('#')
+    hex_color = hex_color.lstrip("#")
     r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
     r = int(r + (255 - r) * amount)
     g = int(g + (255 - g) * amount)
     b = int(b + (255 - b) * amount)
-    return f'#{r:02x}{g:02x}{b:02x}'
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 # 初始化 PALETTE_LIGHT（必须在 _lighten 定义之后）
@@ -421,7 +559,7 @@ COLORS["bg_fill2"] = _lighten(PALETTE[1], 0.8)
 def _pull_back_outside_transaxes_text(fig):
     """无条件检测：ax.text(transAxes, y<0 or y>1) 这种 axes 外子图标题，
     转换成 fig.text(figure coords) 钉在画布底部/顶部，且改写到 figure 坐标系。
-    
+
     理由：science 样式默认 savefig.bbox='tight' 会把 axes 外文字算进 PDF mediabox，
     导致页面被异常拉长。即便我们已经全局关掉 savefig.bbox='tight'，AI 代码仍可能
     显式传 bbox_inches='tight'。把这种文本拉到 axes 内或转 figure 坐标都能解决。
@@ -429,7 +567,7 @@ def _pull_back_outside_transaxes_text(fig):
     try:
         axes = [ax for ax in fig.get_axes() if ax.get_visible()]
         for ax in axes:
-            ax_pos = ax.get_position()
+            ax.get_position()
             for t in list(ax.texts):
                 try:
                     if t.get_transform() is not ax.transAxes:
@@ -438,11 +576,11 @@ def _pull_back_outside_transaxes_text(fig):
                     if y > 1.0:
                         # 拉回 axes 内顶端
                         t.set_position((x, 0.97))
-                        t.set_va('top')
+                        t.set_va("top")
                     elif y < 0.0:
                         # 拉回 axes 内底端
                         t.set_position((x, 0.03))
-                        t.set_va('bottom')
+                        t.set_va("bottom")
                 except Exception:
                     pass
     except Exception:
@@ -451,17 +589,17 @@ def _pull_back_outside_transaxes_text(fig):
 
 def _auto_shrink_figsize_if_sparse(fig):
     """检测所有 axes 占 figure 总面积比例，过低时强制重排 + 收缩 figsize。
-    
+
     场景：AI 写了 figsize=(10, 12) 但实际只画 2 个小 panel 在底部/顶部，
     剩下大块白边 → 用户看到的就是"图很小，整页白"。
-    
+
     三阶段策略：
     1. subplots_adjust（对 plt.subplots / add_subplot 创建的 axes 有效）
     2. ★ 直接 set_position 强制重排（对 add_axes / GridSpec 手动布局也有效）
        — 按原始相对位置等比例缩放到撑满 figure 80%
        — 同时把 ax.text(transAxes, y>1.0) 反模式拉回 axes 内部
     3. 仍稀疏 → 收缩 figsize
-    
+
     副作用：触发任一阶段修复时，在 fig 上设 `_layout_fixed_by_plot_utils=True`，
     让 _save 用 bbox_inches=None 防止 transAxes 高位标注异常扩展 PDF mediabox。
     """
@@ -470,8 +608,11 @@ def _auto_shrink_figsize_if_sparse(fig):
         if _has_3d_axes(fig):
             return
 
-        axes = [ax for ax in fig.get_axes()
-                if ax.get_visible() and not ax.get_label().startswith('_')]
+        axes = [
+            ax
+            for ax in fig.get_axes()
+            if ax.get_visible() and not ax.get_label().startswith("_")
+        ]
         if not axes:
             return
 
@@ -502,8 +643,9 @@ def _auto_shrink_figsize_if_sparse(fig):
 
         # ★ 阶段 1：先试 subplots_adjust（对 plt.subplots 创建的 axes 有效）
         try:
-            fig.subplots_adjust(left=0.10, right=0.96, top=0.93, bottom=0.10,
-                                hspace=0.3, wspace=0.3)
+            fig.subplots_adjust(
+                left=0.10, right=0.96, top=0.93, bottom=0.10, hspace=0.3, wspace=0.3
+            )
             x0_min, y0_min, x1_max, y1_max = _compute_union()
             new_ratio = (x1_max - x0_min) * (y1_max - y0_min)
             if new_ratio >= 0.50:
@@ -559,10 +701,10 @@ def _auto_shrink_figsize_if_sparse(fig):
                             x, y = t.get_position()
                             if y > 1.0:
                                 t.set_position((x, 0.95))
-                                t.set_va('top')
+                                t.set_va("top")
                             elif y < 0.0:
                                 t.set_position((x, 0.05))
-                                t.set_va('bottom')
+                                t.set_va("bottom")
                     except Exception:
                         pass
 
@@ -602,8 +744,11 @@ def _warn_if_wasted_margin(fig, output):
     if _has_3d_axes(fig):
         return  # 3D 轴刻度在投影平面上，边距语义不同
     try:
-        axes = [ax for ax in fig.get_axes()
-                if ax.get_visible() and not ax.get_label().startswith('_')]
+        axes = [
+            ax
+            for ax in fig.get_axes()
+            if ax.get_visible() and not ax.get_label().startswith("_")
+        ]
         if not axes:
             return
         fig_w_px = fig.get_size_inches()[0] * fig.dpi
@@ -616,7 +761,7 @@ def _warn_if_wasted_margin(fig, output):
         # y 刻度标签 + y 轴标题 实际占用的宽度
         need_px = 0.0
         for ax in axes:
-            for t in _onscreen_tick_labels(ax, which='y'):
+            for t in _onscreen_tick_labels(ax, which="y"):
                 if t.get_visible() and t.get_text().strip():
                     need_px = max(need_px, t.get_window_extent(renderer=renderer).width)
             lbl = ax.yaxis.label
@@ -625,9 +770,11 @@ def _warn_if_wasted_margin(fig, output):
         need_px += 0.02 * fig_w_px  # 刻度线 + 呼吸余量
         # 只在"绝对富余够大"且"相对富余明显"时提示，避免误报刷屏
         if left_px - need_px > 0.06 * fig_w_px and left_px > need_px * 1.6:
-            print(f"[plot_utils] WARNING {os.path.basename(str(output))} 左边距偏大: "
-                  f"实测 {left_px / fig_w_px * 100:.1f}% 图宽，y 标签实际只需 "
-                  f"{need_px / fig_w_px * 100:.1f}% —— 疑似空白浪费，检查坐标轴范围与刻度")
+            print(
+                f"[plot_utils] WARNING {os.path.basename(str(output))} 左边距偏大: "
+                f"实测 {left_px / fig_w_px * 100:.1f}% 图宽，y 标签实际只需 "
+                f"{need_px / fig_w_px * 100:.1f}% —— 疑似空白浪费，检查坐标轴范围与刻度"
+            )
     except Exception:
         pass  # 自检永不影响出图
 
@@ -647,7 +794,7 @@ def _warn_if_data_clipped(fig, output):
         for ax in fig.get_axes():
             if not ax.get_visible():
                 continue
-            is3d = getattr(ax, 'name', '') == '3d' or hasattr(ax, 'get_zlim')
+            is3d = getattr(ax, "name", "") == "3d" or hasattr(ax, "get_zlim")
             P = _data_points_in_data_space(ax, is3d)
             if P is None or P.shape[0] < 4:
                 continue
@@ -656,17 +803,21 @@ def _warn_if_data_clipped(fig, output):
             # 固定 seed 保证同一张图重复跑结论一致（不引入随机抖动）。
             if P.shape[0] > 50000:
                 P = P[np.random.default_rng(0).choice(P.shape[0], 50000, replace=False)]
-            axinfo = [(ax.get_xlim(), ax.get_xscale()), (ax.get_ylim(), ax.get_yscale())]
+            axinfo = [
+                (ax.get_xlim(), ax.get_xscale()),
+                (ax.get_ylim(), ax.get_yscale()),
+            ]
             if is3d:
-                axinfo.append((ax.get_zlim(),
-                               getattr(ax, 'get_zscale', lambda: 'linear')()))
+                axinfo.append(
+                    (ax.get_zlim(), getattr(ax, "get_zscale", lambda: "linear")())
+                )
             for k, ((lo, hi), scale) in enumerate(axinfo):
                 if k >= P.shape[1]:
                     break
                 v = P[:, k]
                 v = v[np.isfinite(v)]
-                if scale == 'log':
-                    v = v[v > 0]      # log 轴上非正值 matplotlib 本就不画，不算被裁
+                if scale == "log":
+                    v = v[v > 0]  # log 轴上非正值 matplotlib 本就不画，不算被裁
                 if v.size < 4:
                     continue
                 lo, hi = min(lo, hi), max(lo, hi)
@@ -674,15 +825,26 @@ def _warn_if_data_clipped(fig, output):
                 if n_out / v.size > 0.20:
                     msgs.append(
                         f"{'xyz'[k]} 轴: {n_out}/{v.size} ({n_out / v.size:.0%}) 个点落在 "
-                        f"[{lo:.4g}, {hi:.4g}] 之外，数据实际范围 [{v.min():.4g}, {v.max():.4g}]")
+                        f"[{lo:.4g}, {hi:.4g}] 之外，数据实际范围 [{v.min():.4g}, {v.max():.4g}]"
+                    )
         if msgs:
-            print(f"[plot_utils] ⛔ {os.path.basename(str(output))} 有数据被坐标轴裁掉：")
+            print(
+                f"[plot_utils] ⛔ {os.path.basename(str(output))} 有数据被坐标轴裁掉："
+            )
             for m in msgs[:6]:
                 print(f"    {m}")
-            print("    这几乎总是 set_xlim/set_ylim/set_zlim 写错。最常见的坑：把「边长/总长 L」")
-            print("    当成坐标上界写了 (0, L)，而数据坐标系以原点为中心，应为 (-L/2, +L/2)。")
-            print("    先打印数据真实 min/max 再定轴范围；别用 figsize / view_init 掩盖 ——")
-            print("    被裁的点是真的没画出来。（若确为有意放大局部 inset，可忽略本条）")
+            print(
+                "    这几乎总是 set_xlim/set_ylim/set_zlim 写错。最常见的坑：把「边长/总长 L」"
+            )
+            print(
+                "    当成坐标上界写了 (0, L)，而数据坐标系以原点为中心，应为 (-L/2, +L/2)。"
+            )
+            print(
+                "    先打印数据真实 min/max 再定轴范围；别用 figsize / view_init 掩盖 ——"
+            )
+            print(
+                "    被裁的点是真的没画出来。（若确为有意放大局部 inset，可忽略本条）"
+            )
     except Exception:
         pass  # 自检永不影响出图
 
@@ -718,40 +880,44 @@ def _data_points_in_data_space(ax, is3d):
     它们的顶点常含 baseline / 示意平面，位置由代码指定而非数据，算进去会误报。
     """
     pts = []
-    for l in getattr(ax, 'lines', []):
+    for ln in getattr(ax, "lines", []):
         try:
-            if is3d and hasattr(l, 'get_data_3d'):
-                pts.append(np.asarray(l.get_data_3d(), dtype=float).T)
-            elif not is3d and l.get_transform() is ax.transData:
-                pts.append(np.asarray(l.get_xydata(), dtype=float))
+            if is3d and hasattr(ln, "get_data_3d"):
+                pts.append(np.asarray(ln.get_data_3d(), dtype=float).T)
+            elif not is3d and ln.get_transform() is ax.transData:
+                pts.append(np.asarray(ln.get_xydata(), dtype=float))
         except Exception:
             pass
-    for c in getattr(ax, 'collections', []):
+    for c in getattr(ax, "collections", []):
         try:
             if is3d:
-                s3 = getattr(c, '_segments3d', None)
+                s3 = getattr(c, "_segments3d", None)
                 if s3 is not None and len(s3):
                     pts.append(_flatten_segments(s3))
                     continue
-                o3 = getattr(c, '_offsets3d', None)
+                o3 = getattr(c, "_offsets3d", None)
                 if o3 is not None and len(o3) == 3:
                     pts.append(np.asarray(o3, dtype=float).T)
                 continue
             hit = False
-            if hasattr(c, 'get_offsets') and hasattr(c, 'get_offset_transform'):
+            if hasattr(c, "get_offsets") and hasattr(c, "get_offset_transform"):
                 if c.get_offset_transform() is ax.transData:
                     o = np.asarray(c.get_offsets(), dtype=float)
                     if o.size:
                         pts.append(o)
                         hit = True
-            if not hit and hasattr(c, 'get_segments') and c.get_transform() is ax.transData:
+            if (
+                not hit
+                and hasattr(c, "get_segments")
+                and c.get_transform() is ax.transData
+            ):
                 sg = c.get_segments()
                 if len(sg):
                     pts.append(_flatten_segments(sg))
         except Exception:
             pass
     try:
-        pts = [p.reshape(-1, p.shape[-1]) for p in pts if getattr(p, 'size', 0)]
+        pts = [p.reshape(-1, p.shape[-1]) for p in pts if getattr(p, "size", 0)]
         want = 3 if is3d else 2
         pts = [p for p in pts if p.shape[-1] == want]
         return np.vstack(pts) if pts else None
@@ -765,35 +931,48 @@ def _save(fig, output):
     if not output or not str(output).strip():
         raise ValueError("save_fig: output path is empty")
     output = str(output)  # 容 pathlib.Path
-    os.makedirs(os.path.dirname(output) if os.path.dirname(output) else '.', exist_ok=True)
+    os.makedirs(
+        os.path.dirname(output) if os.path.dirname(output) else ".", exist_ok=True
+    )
     # ★ 扩展名兜底：matplotlib.savefig 拿到未知 format（如 'fig_lollipop'）会 raise ValueError。
     # 历史配方里有大量 save_fig(fig, 'figures/fig_xxx') 不带扩展名的写法 —— 自动追加 .pdf（论文场景首选矢量格式）。
-    _SUPPORTED_FMTS = ('pdf', 'png', 'svg', 'jpg', 'jpeg', 'eps', 'ps', 'tif', 'tiff', 'webp')
+    _SUPPORTED_FMTS = (
+        "pdf",
+        "png",
+        "svg",
+        "jpg",
+        "jpeg",
+        "eps",
+        "ps",
+        "tif",
+        "tiff",
+        "webp",
+    )
     _basename = os.path.basename(output)
-    _maybe_ext = _basename.rsplit('.', 1)[-1].lower() if '.' in _basename else ''
+    _maybe_ext = _basename.rsplit(".", 1)[-1].lower() if "." in _basename else ""
     if _maybe_ext in _SUPPORTED_FMTS:
         _ext = _maybe_ext
     else:
         # 无扩展名 / 不是图像格式（如 'fig.v2'）→ 追加 .pdf
-        _ext = 'pdf'
-        output = output + '.pdf'
-    _save_kwargs = {'format': _ext, 'pad_inches': 0.15}
+        _ext = "pdf"
+        output = output + ".pdf"
+    _save_kwargs = {"format": _ext, "pad_inches": 0.15}
     # ★ 默认不用 bbox_inches='tight' —— 防止 ax.text(transAxes, y<0 or y>1) 这种
     # axes 外标注让 tight 包围盒爆炸（用户实测过 1496×23966 px 超长条 PNG）。
     # Preserve the requested canvas size; layout is owned by the generator.
-    _save_kwargs['bbox_inches'] = None
-    if _ext in ('png', 'jpg', 'jpeg'):
-        _save_kwargs['dpi'] = 350  # 防中文标签糊（与 docx_export PDF→PNG 兜底链路一致）
+    _save_kwargs["bbox_inches"] = None
+    if _ext in ("png", "jpg", "jpeg"):
+        _save_kwargs["dpi"] = 350  # 防中文标签糊（与 docx_export PDF→PNG 兜底链路一致）
     # ★ 成品自检：静态闸扫不出的"边距被撑爆"，在这里实测拦一道（只提示，不阻塞）
     _warn_if_wasted_margin(fig, output)
     # ★ 成品自检：数据被轴范围裁掉（坐标系约定写错，静态扫不出来），同样实测拦一道
     _warn_if_data_clipped(fig, output)
     fig.savefig(output, **_save_kwargs)
     _get_plt().close(fig)
-    print(f'Saved: {output}')
+    print(f"Saved: {output}")
 
 
-def _onscreen_tick_labels(ax, which='both'):
+def _onscreen_tick_labels(ax, which="both"):
     """返回该 axes 上真正落在轴范围内的主刻度标签（Text 对象列表）。
 
     which: 'both' | 'x' | 'y'，只取对应轴的刻度。
@@ -811,16 +990,16 @@ def _onscreen_tick_labels(ax, which='both'):
     #   比对无意义（实测越界量会算出上千万像素的垃圾值）。调用方本就豁免 3D，
     #   这里再兜一层，防止将来别处误用。
     try:
-        if getattr(ax, 'name', '') == '3d' or hasattr(ax, 'get_zlim'):
+        if getattr(ax, "name", "") == "3d" or hasattr(ax, "get_zlim"):
             return []
     except Exception:
         pass
 
     out = []
     pairs = ((ax.xaxis, True), (ax.yaxis, False))
-    if which == 'x':
+    if which == "x":
         pairs = pairs[:1]
-    elif which == 'y':
+    elif which == "y":
         pairs = pairs[1:]
     for axis, is_x in pairs:
         try:
@@ -887,8 +1066,11 @@ def _ensure_ticklabels_visible(fig):
     if fig_w_px <= 0 or fig_h_px <= 0:
         return
 
-    axes = [ax for ax in fig.get_axes()
-            if ax.get_visible() and not ax.get_label().startswith('_')]
+    axes = [
+        ax
+        for ax in fig.get_axes()
+        if ax.get_visible() and not ax.get_label().startswith("_")
+    ]
     if not axes:
         return
 
@@ -927,10 +1109,12 @@ def _ensure_ticklabels_visible(fig):
     # 说明测量被污染了（历史真实案例：对数轴外的幽灵刻度被算成越界 457px）。
     # 不静默放过，打一行提示便于定位。
     if sp.left + extra_left > 0.40 or sp.bottom + extra_bottom > 0.45:
-        print(f"[plot_utils] WARNING 标签越界兜底撞到封顶: "
-              f"left {sp.left:.3f}+{extra_left:.3f} bottom {sp.bottom:.3f}+{extra_bottom:.3f} "
-              f"(越界实测 左{overflow_left_px:.0f}px 下{overflow_bottom_px:.0f}px) "
-              f"—— 若图上出现大片空白，检查是否有轴外刻度/离屏文字污染测量")
+        print(
+            f"[plot_utils] WARNING 标签越界兜底撞到封顶: "
+            f"left {sp.left:.3f}+{extra_left:.3f} bottom {sp.bottom:.3f}+{extra_bottom:.3f} "
+            f"(越界实测 左{overflow_left_px:.0f}px 下{overflow_bottom_px:.0f}px) "
+            f"—— 若图上出现大片空白，检查是否有轴外刻度/离屏文字污染测量"
+        )
     # 保证 bottom < top、left < right，避免非法布局
     new_bottom = min(new_bottom, sp.top - 0.15)
     new_left = min(new_left, sp.right - 0.15)
@@ -969,29 +1153,35 @@ def _ensure_ticklabels_visible(fig):
                 pos = ax.get_position()
                 dy = still_bottom / fig_h_px + 0.01 if still_bottom > 1 else 0.0
                 dx = still_left / fig_w_px + 0.01 if still_left > 1 else 0.0
-                ax.set_position([
-                    pos.x0 + dx,
-                    pos.y0 + dy,
-                    max(0.1, pos.width - dx),
-                    max(0.1, pos.height - dy),
-                ])
+                ax.set_position(
+                    [
+                        pos.x0 + dx,
+                        pos.y0 + dy,
+                        max(0.1, pos.width - dx),
+                        max(0.1, pos.height - dy),
+                    ]
+                )
             except Exception:
                 pass
 
 
 def _guard_subplot_size(fig):
     """防护：检测子图是否被压缩得过小，如果是则强制修复布局。
-    
+
     常见原因：subplot margins 过紧、tight_layout(pad) 过大、
     ax.text(transAxes) 标签被算入空间分配。
-    
+
     强制修复策略：检测到问题 → 重置 margins → 重新 tight_layout(pad=0.3) → 再验证。
     """
     # ★ 3D 轴豁免：3D 曲面 + 窄 colorbar 会被误判"子图过窄"而挤塌，直接跳过
     if _has_3d_axes(fig):
         return
 
-    axes = [ax for ax in fig.get_axes() if ax.get_visible() and not ax.get_label().startswith('_')]
+    axes = [
+        ax
+        for ax in fig.get_axes()
+        if ax.get_visible() and not ax.get_label().startswith("_")
+    ]
     if not axes:
         return
 
@@ -1015,34 +1205,37 @@ def _guard_subplot_size(fig):
             if ax_w_inch < 2.0:
                 return True
         return False
-    
+
     if not _is_too_small():
         return
-    
+
     # ★ 强制修复第一步：重置 subplot margins
     n_axes = len(axes)
     if n_axes == 1:
         fig.subplots_adjust(left=0.12, right=0.95, top=0.92, bottom=0.12)
     else:
-        fig.subplots_adjust(left=0.10, right=0.95, top=0.93, bottom=0.10,
-                            hspace=0.3, wspace=0.3)
-    
+        fig.subplots_adjust(
+            left=0.10, right=0.95, top=0.93, bottom=0.10, hspace=0.3, wspace=0.3
+        )
+
     # ★ 强制修复第二步：用小 pad 重新 tight_layout 覆盖之前的大 pad
     try:
         fig.tight_layout(pad=0.3)
     except Exception:
         pass
-    
+
     # ★ 强制修复第三步：如果还是太小，直接放弃 tight_layout，手动设置合理布局
     if _is_too_small():
         if n_axes == 1:
             fig.subplots_adjust(left=0.12, right=0.95, top=0.92, bottom=0.12)
         elif n_axes <= 4:
-            fig.subplots_adjust(left=0.08, right=0.96, top=0.94, bottom=0.08,
-                                hspace=0.25, wspace=0.25)
+            fig.subplots_adjust(
+                left=0.08, right=0.96, top=0.94, bottom=0.08, hspace=0.25, wspace=0.25
+            )
         else:
-            fig.subplots_adjust(left=0.06, right=0.97, top=0.95, bottom=0.06,
-                                hspace=0.2, wspace=0.2)
+            fig.subplots_adjust(
+                left=0.06, right=0.97, top=0.95, bottom=0.06, hspace=0.2, wspace=0.2
+            )
 
 
 def _clamp_texts_to_axes(ax, texts, renderer):
@@ -1172,10 +1365,14 @@ def _auto_fix_overlaps(fig):
         adjust_text = _ensure_adjustText()
         if adjust_text:
             try:
-                adjust_text(user_texts, ax=ax,
-                            force_points=0.3, force_text=0.5,
-                            expand_points=(1.5, 1.5),
-                            arrowprops=dict(arrowstyle='', lw=0))
+                adjust_text(
+                    user_texts,
+                    ax=ax,
+                    force_points=0.3,
+                    force_text=0.5,
+                    expand_points=(1.5, 1.5),
+                    arrowprops=dict(arrowstyle="", lw=0),
+                )
             except Exception:
                 # adjustText 失败，尝试简易修复
                 _simple_spread(ax, user_texts, bboxes, renderer)
@@ -1196,7 +1393,7 @@ def _auto_fix_overlaps(fig):
             _user_fixed = True
             try:
                 # _loc == 0 表示 'best'（含未显式传 loc 的默认情形）→ 视为"作者没指定"
-                _user_fixed = getattr(legend, '_loc', 0) != 0
+                _user_fixed = getattr(legend, "_loc", 0) != 0
             except Exception:
                 _user_fixed = False
             if not _user_fixed:
@@ -1206,9 +1403,12 @@ def _auto_fix_overlaps(fig):
                 except (AttributeError, Exception):
                     try:
                         legend._loc = {
-                            'upper right': 1, 'upper left': 2,
-                            'lower left': 3, 'lower right': 4,
-                            'center right': 7, 'center left': 6,
+                            "upper right": 1,
+                            "upper left": 2,
+                            "lower left": 3,
+                            "lower right": 4,
+                            "center right": 7,
+                            "center left": 6,
                         }.get(check_legend_overlap(ax), 1)
                     except Exception:
                         pass
@@ -1242,8 +1442,12 @@ def _auto_fix_overlaps(fig):
 
     # ★ 也处理 annotate 创建的标注（ax.texts 不包含 annotate 的文本部分）
     for ax in fig.get_axes():
-        annots = [child for child in ax.get_children()
-                  if hasattr(child, 'xyann') or (hasattr(child, 'anncoords') and hasattr(child, 'get_text'))]
+        annots = [
+            child
+            for child in ax.get_children()
+            if hasattr(child, "xyann")
+            or (hasattr(child, "anncoords") and hasattr(child, "get_text"))
+        ]
         if not annots:
             # annotate 创建的对象在 ax.texts 中（matplotlib 3.x），已经处理过
             # 但也检查 ax.patches 中的 FancyArrowPatch
@@ -1255,7 +1459,7 @@ def _auto_fix_overlaps(fig):
 
 def _fix_ylabel_overlap(fig, renderer):
     """检测并修复 y 轴标签被相邻 axes 遮挡的问题（如聚类热力图的左侧色条）。
-    
+
     三阶段策略：
     1. 检测 y label 是否被左侧 axes（色条/树状图）覆盖 → 把左侧 axes 往左推
     2. 推到 figure 边缘还不够 → 自动截断超长 y label 文本（保留前 N 字 + …）
@@ -1268,7 +1472,7 @@ def _fix_ylabel_overlap(fig, renderer):
             _truncate_ylabels_if_overflow(ax, fig, renderer)
         return
     for ax in all_axes:
-        ytick_labels = _onscreen_tick_labels(ax, which='y')  # 排除轴外幽灵刻度
+        ytick_labels = _onscreen_tick_labels(ax, which="y")  # 排除轴外幽灵刻度
         if not ytick_labels:
             continue
         # 获取 y 轴标签的最左边界（display coords）
@@ -1286,7 +1490,6 @@ def _fix_ylabel_overlap(fig, renderer):
             continue
         # 检查是否有其他 axes 的区域覆盖了这些标签
         ax_bbox_disp = ax.get_window_extent(renderer=renderer)
-        pushed = False
         for other_ax in all_axes:
             if other_ax is ax:
                 continue
@@ -1311,9 +1514,12 @@ def _fix_ylabel_overlap(fig, renderer):
                 # 把遮挡的 axes 往左推（但不能推到 figure 外）
                 pos = other_ax.get_position()
                 new_x0 = max(0.01, pos.x0 - shift)
-                new_width = pos.width - (pos.x0 - new_x0) if new_x0 < pos.x0 else pos.width
-                other_ax.set_position([new_x0, pos.y0, max(0.01, new_width), pos.height])
-                pushed = True
+                new_width = (
+                    pos.width - (pos.x0 - new_x0) if new_x0 < pos.x0 else pos.width
+                )
+                other_ax.set_position(
+                    [new_x0, pos.y0, max(0.01, new_width), pos.height]
+                )
         # ★ 推完仍可能溢出 figure 左边界 → 触发截断/缩字号兜底
         _truncate_ylabels_if_overflow(ax, fig, renderer)
 
@@ -1327,8 +1533,11 @@ def _truncate_ylabels_if_overflow(ax, fig, renderer):
 
     # 只看真正会绘制的刻度：轴外的"幽灵刻度"（log 轴常见）位置远在画布左侧，
     # 会被误判成溢出，进而把本来放得下的 y 标签截断成省略号并缩小字号
-    ytick_labels = [t for t in _onscreen_tick_labels(ax, which='y')
-                    if t.get_visible() and t.get_text().strip()]
+    ytick_labels = [
+        t
+        for t in _onscreen_tick_labels(ax, which="y")
+        if t.get_visible() and t.get_text().strip()
+    ]
     if not ytick_labels:
         return
 
@@ -1362,14 +1571,14 @@ def _truncate_ylabels_if_overflow(ax, fig, renderer):
             for lbl in ytick_labels:
                 txt = lbl.get_text()
                 if len(txt) > new_max_len:
-                    new_texts.append(txt[: new_max_len - 1] + '…')
+                    new_texts.append(txt[: new_max_len - 1] + "…")
                 else:
                     new_texts.append(txt)
             try:
                 ax.set_yticks(ax.get_yticks())
                 ax.set_yticklabels(new_texts, fontsize=current_fontsize)
             except Exception:
-                for lbl, new_txt in zip(ytick_labels, new_texts):
+                for lbl, new_txt in zip(ytick_labels, new_texts, strict=False):
                     lbl.set_text(new_txt)
         except Exception:
             pass
@@ -1391,16 +1600,16 @@ def _truncate_ylabels_if_overflow(ax, fig, renderer):
         pass
 
 
-def auto_truncate_yticklabels(ax, max_chars=20, suffix='…'):
+def auto_truncate_yticklabels(ax, max_chars=20, suffix="…"):
     """公开 API：主动截断超长 y tick labels（配方代码可调用，防止 y 轴遮挡）。
-    
+
     用法：
         ax.set_yticklabels(long_method_names, fontsize=10)
         auto_truncate_yticklabels(ax, max_chars=18)  # 超过 18 字符的截断
-    
+
     适用场景：聚类热力图、SHAP 图、特征重要性图 — 这些图 y 轴标签是变量名/方法名，
     遇到长字符串（"average_silhouette_coefficient_2024" 等）会溢出 figure 左边界。
-    
+
     注意：matplotlib 在重绘时可能用 formatter 覆盖单个 Text，所以这里整批 set_yticklabels。
     """
     labels = ax.get_yticklabels()
@@ -1423,7 +1632,7 @@ def auto_truncate_yticklabels(ax, max_chars=20, suffix='…'):
             ax.set_yticklabels(new_texts)
     except Exception:
         # 兜底：单个 set_text
-        for lbl, new_txt in zip(labels, new_texts):
+        for lbl, new_txt in zip(labels, new_texts, strict=False):
             lbl.set_text(new_txt)
 
 
@@ -1461,6 +1670,7 @@ def _simple_spread(ax, texts, bboxes, renderer):
             except Exception:
                 pass
 
+
 # 公开别名，供外部脚本调用
 save_fig = _save
 
@@ -1469,27 +1679,48 @@ save_fig = _save
 # 标签防遮挡工具
 # ============================================================
 
+
 def _ensure_adjustText():
     """确保 adjustText 库可用，不可用时自动安装。"""
     try:
         from adjustText import adjust_text
+
         return adjust_text
     except ImportError:
         try:
             import subprocess
+
             subprocess.check_call(
-                [sys.executable, '-m', 'pip', 'install', 'adjustText', '-q'],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                [sys.executable, "-m", "pip", "install", "adjustText", "-q"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             from adjustText import adjust_text
+
             return adjust_text
         except Exception:
             return None
 
 
-def smart_labels(ax, xs, ys, texts, colors=None, fontsize=9, fontweight='normal',
-                 offset=(8, 0), fmt=None, ha='left', va='center',
-                 force_points=0.3, force_text=0.5, avoid_self=True,
-                 bbox=None, arrowprops=None, max_labels=50):
+def smart_labels(
+    ax,
+    xs,
+    ys,
+    texts,
+    colors=None,
+    fontsize=9,
+    fontweight="normal",
+    offset=(8, 0),
+    fmt=None,
+    ha="left",
+    va="center",
+    force_points=0.3,
+    force_text=0.5,
+    avoid_self=True,
+    bbox=None,
+    arrowprops=None,
+    max_labels=50,
+):
     """智能标签标注 — 自动检测并推开重叠标签。
 
     优先使用 adjustText 库做物理模拟推开；如果不可用，退化为
@@ -1529,7 +1760,7 @@ def smart_labels(ax, xs, ys, texts, colors=None, fontsize=9, fontweight='normal'
     if len(xs) > max_labels:
         return []
 
-    plt = _get_plt()
+    _get_plt()
     text_objs = []
 
     # 格式化文本
@@ -1538,28 +1769,42 @@ def smart_labels(ax, xs, ys, texts, colors=None, fontsize=9, fontweight='normal'
     else:
         display_texts = [str(t) for t in texts]
 
-    default_color = '#333333'
+    default_color = "#333333"
 
     # 创建 Text 对象
-    for i, (x, y, txt) in enumerate(zip(xs, ys, display_texts)):
+    for i, (x, y, txt) in enumerate(zip(xs, ys, display_texts, strict=False)):
         c = colors[i] if colors and i < len(colors) else default_color
-        fw = fontweight if isinstance(fontweight, str) else (
-            fontweight[i] if i < len(fontweight) else 'normal')
-        t = ax.text(x, y, txt, fontsize=fontsize, fontweight=fw,
-                    color=c, ha=ha, va=va,
-                    bbox=bbox if bbox else None)
+        fw = (
+            fontweight
+            if isinstance(fontweight, str)
+            else (fontweight[i] if i < len(fontweight) else "normal")
+        )
+        t = ax.text(
+            x,
+            y,
+            txt,
+            fontsize=fontsize,
+            fontweight=fw,
+            color=c,
+            ha=ha,
+            va=va,
+            bbox=bbox if bbox else None,
+        )
         text_objs.append(t)
 
     # 尝试用 adjustText 自动推开
     adjust_text = _ensure_adjustText()
     if adjust_text and avoid_self and len(text_objs) > 1:
         try:
-            arrow_kw = arrowprops or dict(arrowstyle='-', color='#cccccc', lw=0.3)
-            adjust_text(text_objs, ax=ax,
-                        force_points=force_points,
-                        force_text=force_text,
-                        expand_points=(1.5, 1.5),
-                        arrowprops=arrow_kw)
+            arrow_kw = arrowprops or dict(arrowstyle="-", color="#cccccc", lw=0.3)
+            adjust_text(
+                text_objs,
+                ax=ax,
+                force_points=force_points,
+                force_text=force_text,
+                expand_points=(1.5, 1.5),
+                arrowprops=arrow_kw,
+            )
         except Exception:
             # adjustText 失败时退化为手动偏移
             _fallback_offset(ax, text_objs, xs, ys, offset)
@@ -1576,7 +1821,7 @@ def _fallback_offset(ax, text_objs, xs, ys, offset):
         return
 
     fig = ax.get_figure()
-    renderer = fig.canvas.get_renderer() if hasattr(fig.canvas, 'get_renderer') else None
+    fig.canvas.get_renderer() if hasattr(fig.canvas, "get_renderer") else None
 
     # 获取数据坐标范围
     xlim = ax.get_xlim()
@@ -1623,8 +1868,14 @@ def check_legend_overlap(ax, preferred_locs=None):
         最佳位置字符串（可直接传给 ax.legend(loc=...)）
     """
     if preferred_locs is None:
-        preferred_locs = ['upper right', 'upper left', 'lower right',
-                          'lower left', 'center right', 'center left']
+        preferred_locs = [
+            "upper right",
+            "upper left",
+            "lower right",
+            "lower left",
+            "center right",
+            "center left",
+        ]
 
     # 收集所有数据点
     all_x, all_y = [], []
@@ -1649,27 +1900,30 @@ def check_legend_overlap(ax, preferred_locs=None):
 
     # 统计每个象限的数据点密度
     quadrant_counts = {
-        'upper right': 0, 'upper left': 0,
-        'lower right': 0, 'lower left': 0,
-        'center right': 0, 'center left': 0,
+        "upper right": 0,
+        "upper left": 0,
+        "lower right": 0,
+        "lower left": 0,
+        "center right": 0,
+        "center left": 0,
     }
-    for x, y in zip(all_x, all_y):
+    for x, y in zip(all_x, all_y, strict=False):
         if y >= ymid:
             if x >= xmid:
-                quadrant_counts['upper right'] += 1
+                quadrant_counts["upper right"] += 1
             else:
-                quadrant_counts['upper left'] += 1
+                quadrant_counts["upper left"] += 1
         else:
             if x >= xmid:
-                quadrant_counts['lower right'] += 1
+                quadrant_counts["lower right"] += 1
             else:
-                quadrant_counts['lower left'] += 1
+                quadrant_counts["lower left"] += 1
         # center 区域
         if abs(y - ymid) < (ylim[1] - ylim[0]) * 0.25:
             if x >= xmid:
-                quadrant_counts['center right'] += 1
+                quadrant_counts["center right"] += 1
             else:
-                quadrant_counts['center left'] += 1
+                quadrant_counts["center left"] += 1
 
     # 在 preferred_locs 中选密度最低的
     best_loc = min(preferred_locs, key=lambda loc: quadrant_counts.get(loc, 999))
@@ -1689,10 +1943,17 @@ def auto_legend(ax, **kwargs):
     # ⛔ 默认去框：实证对比 94 张真实竞赛图，带灰框图例是"显土"的主要来源之一
     #    （高分图去框率 37% vs 平庸图 0%）。收紧 labelspacing/handlelength 让图例更紧凑。
     #    调用方仍可用 auto_legend(ax, frameon=True) 覆盖。
-    defaults = dict(frameon=False, fontsize=9, labelspacing=0.35, handlelength=1.6,
-                    borderpad=0.3, fancybox=False, shadow=False)
+    defaults = dict(
+        frameon=False,
+        fontsize=9,
+        labelspacing=0.35,
+        handlelength=1.6,
+        borderpad=0.3,
+        fancybox=False,
+        shadow=False,
+    )
     defaults.update(kwargs)
-    defaults['loc'] = loc
+    defaults["loc"] = loc
     return ax.legend(**defaults)
 
 
@@ -1700,10 +1961,20 @@ def auto_legend(ax, **kwargs):
 # 图表函数
 # ============================================================
 
-def heatmap(data, labels=None, output='figures/fig_heatmap.pdf', title=None,
-            annot=True, fmt='.2f', cmap=None, figsize=(8, 6)):
+
+# Generated figure scripts may pass title= by keyword, so the name must stay.
+def heatmap(
+    data,
+    labels=None,
+    output="figures/fig_heatmap.pdf",
+    title=None,  # noqa: ARG001
+    annot=True,
+    fmt=".2f",
+    cmap=None,
+    figsize=(8, 6),
+):
     """相关性热力图（带数值标注）。
-    
+
     Args:
         data: 2D array 或 DataFrame（相关系数矩阵）
         labels: 行列标签
@@ -1715,26 +1986,37 @@ def heatmap(data, labels=None, output='figures/fig_heatmap.pdf', title=None,
     sns = _get_sns()
     setup_style()
     try:
-        from .palette_maps import palette_cmap, contrast_text
+        from .palette_maps import contrast_text, palette_cmap
     except ImportError:
-        from palette_maps import palette_cmap, contrast_text
+        from palette_maps import contrast_text, palette_cmap
     if cmap is None:
-        cmap = palette_cmap('diverging')
+        cmap = palette_cmap("diverging")
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     if sns:
         mask = np.triu(np.ones_like(data, dtype=bool), k=1)
-        hm = sns.heatmap(data, mask=mask, annot=annot, fmt=fmt, cmap=cmap,
-                    center=0, square=True, linewidths=0.5,
-                    xticklabels=labels, yticklabels=labels, ax=ax,
-                    cbar_kws={'shrink': 0.8})
+        hm = sns.heatmap(
+            data,
+            mask=mask,
+            annot=annot,
+            fmt=fmt,
+            cmap=cmap,
+            center=0,
+            square=True,
+            linewidths=0.5,
+            xticklabels=labels,
+            yticklabels=labels,
+            ax=ax,
+            cbar_kws={"shrink": 0.8},
+        )
         # 文字颜色自适应：深色格子用白字，浅色格子用黑字
-        if annot and hasattr(hm, 'texts'):
+        if annot and hasattr(hm, "texts"):
             from matplotlib.colors import Normalize
+
             flat = np.array(data).flatten()
             flat = flat[~np.isnan(flat)]
             if len(flat) > 0:
-                norm = Normalize(vmin=flat.min(), vmax=flat.max())
+                Normalize(vmin=flat.min(), vmax=flat.max())
                 for text in hm.texts:
                     try:
                         val = float(text.get_text())
@@ -1743,7 +2025,7 @@ def heatmap(data, labels=None, output='figures/fig_heatmap.pdf', title=None,
                     except (ValueError, TypeError):
                         pass
     else:
-        im = ax.imshow(data, cmap=cmap, aspect='auto', vmin=-1, vmax=1)
+        im = ax.imshow(data, cmap=cmap, aspect="auto", vmin=-1, vmax=1)
         fig.colorbar(im, ax=ax, shrink=0.8)
         if annot:
             for i in range(data.shape[0]):
@@ -1751,20 +2033,35 @@ def heatmap(data, labels=None, output='figures/fig_heatmap.pdf', title=None,
                     if j <= i:
                         val = data[i, j]
                         color = contrast_text(im.cmap(im.norm(val)))
-                        ax.text(j, i, f'{val:{fmt}}', ha='center', va='center', fontsize=8, color=color)
+                        ax.text(
+                            j,
+                            i,
+                            f"{val:{fmt}}",
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            color=color,
+                        )
         if labels is not None:
             ax.set_xticks(range(len(labels)))
-            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.set_xticklabels(labels, rotation=45, ha="right")
             ax.set_yticks(range(len(labels)))
             ax.set_yticklabels(labels)
 
     _save(fig, output)
 
 
-def forest_plot(coefs, ci_lower, ci_upper, labels, output='figures/fig_forest.pdf',
-                figsize=(6, None), xlabel='Coefficient'):
+def forest_plot(
+    coefs,
+    ci_lower,
+    ci_upper,
+    labels,
+    output="figures/fig_forest.pdf",
+    figsize=(6, None),
+    xlabel="Coefficient",
+):
     """回归系数森林图（带置信区间）。
-    
+
     Args:
         coefs: 系数数组
         ci_lower: 置信区间下界
@@ -1782,9 +2079,18 @@ def forest_plot(coefs, ci_lower, ci_upper, labels, output='figures/fig_forest.pd
     y_pos = np.arange(n)
     xerr = [np.array(coefs) - np.array(ci_lower), np.array(ci_upper) - np.array(coefs)]
 
-    ax.errorbar(coefs, y_pos, xerr=xerr, fmt='o', color=COLORS['primary'],
-                ecolor=COLORS['gray'], elinewidth=1.5, capsize=3, markersize=5)
-    ax.axvline(x=0, color=COLORS['accent'], linestyle='--', linewidth=0.8, alpha=0.7)
+    ax.errorbar(
+        coefs,
+        y_pos,
+        xerr=xerr,
+        fmt="o",
+        color=COLORS["primary"],
+        ecolor=COLORS["gray"],
+        elinewidth=1.5,
+        capsize=3,
+        markersize=5,
+    )
+    ax.axvline(x=0, color=COLORS["accent"], linestyle="--", linewidth=0.8, alpha=0.7)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels)
     ax.set_xlabel(xlabel)
@@ -1793,10 +2099,18 @@ def forest_plot(coefs, ci_lower, ci_upper, labels, output='figures/fig_forest.pd
     _save(fig, output)
 
 
-def trend_plot(x, y, output='figures/fig_trend.pdf', ci=None,
-               xlabel='', ylabel='', label=None, figsize=(7, 4)):
+def trend_plot(
+    x,
+    y,
+    output="figures/fig_trend.pdf",
+    ci=None,
+    xlabel="",
+    ylabel="",
+    label=None,
+    figsize=(7, 4),
+):
     """时间趋势图（可选置信带）。
-    
+
     Args:
         x: x 轴数据
         y: y 轴数据
@@ -1807,9 +2121,9 @@ def trend_plot(x, y, output='figures/fig_trend.pdf', ci=None,
     setup_style()
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    ax.plot(x, y, color=COLORS['primary'], linewidth=1.5, label=label)
+    ax.plot(x, y, color=COLORS["primary"], linewidth=1.5, label=label)
     if ci is not None:
-        ax.fill_between(x, ci[0], ci[1], alpha=0.15, color=COLORS['secondary'])
+        ax.fill_between(x, ci[0], ci[1], alpha=0.15, color=COLORS["secondary"])
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if label:
@@ -1818,10 +2132,16 @@ def trend_plot(x, y, output='figures/fig_trend.pdf', ci=None,
     _save(fig, output)
 
 
-def bar_compare(categories, values_dict, output='figures/fig_bar.pdf',
-                ylabel='', figsize=(7, 4), show_values=True):
+def bar_compare(
+    categories,
+    values_dict,
+    output="figures/fig_bar.pdf",
+    ylabel="",
+    figsize=(7, 4),
+    show_values=True,
+):
     """分组柱状图（带误差棒，多组对比）。
-    
+
     Args:
         categories: 类别列表 ['A', 'B', 'C']
         values_dict: {'方法1': [v1, v2, v3], '方法2': [v1, v2, v3]}
@@ -1839,19 +2159,32 @@ def bar_compare(categories, values_dict, output='figures/fig_bar.pdf',
 
     for i, (name, data) in enumerate(values_dict.items()):
         if isinstance(data, dict):
-            vals = data['values']
-            errs = data.get('errors', None)
+            vals = data["values"]
+            errs = data.get("errors", None)
         else:
             vals = data
             errs = None
         offset = (i - n_bars / 2 + 0.5) * bar_width
-        bars = ax.bar(x + offset, vals, bar_width, label=name,
-                       color=PALETTE[i % len(PALETTE)], yerr=errs,
-                       capsize=3, error_kw={'linewidth': 0.8})
+        bars = ax.bar(
+            x + offset,
+            vals,
+            bar_width,
+            label=name,
+            color=PALETTE[i % len(PALETTE)],
+            yerr=errs,
+            capsize=3,
+            error_kw={"linewidth": 0.8},
+        )
         if show_values:
-            for bar, val in zip(bars, vals):
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01 * max(vals),
-                        f'{val:.2f}', ha='center', va='bottom', fontsize=7)
+            for bar, val in zip(bars, vals, strict=False):
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 0.01 * max(vals),
+                    f"{val:.2f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                )
 
     ax.set_xticks(x)
     ax.set_xticklabels(categories)
@@ -1861,7 +2194,9 @@ def bar_compare(categories, values_dict, output='figures/fig_bar.pdf',
     _save(fig, output)
 
 
-def distribution_plot(data, output='figures/fig_dist.pdf', xlabel='', bins=30, figsize=(6, 4)):
+def distribution_plot(
+    data, output="figures/fig_dist.pdf", xlabel="", bins=30, figsize=(6, 4)
+):
     """核密度 + 直方图。"""
     plt = _get_plt()
     sns = _get_sns()
@@ -1869,19 +2204,41 @@ def distribution_plot(data, output='figures/fig_dist.pdf', xlabel='', bins=30, f
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     if sns:
-        sns.histplot(data, bins=bins, kde=True, color=COLORS['secondary'], ax=ax,
-                     edgecolor='white', linewidth=0.5)
+        sns.histplot(
+            data,
+            bins=bins,
+            kde=True,
+            color=COLORS["secondary"],
+            ax=ax,
+            edgecolor="white",
+            linewidth=0.5,
+        )
     else:
-        ax.hist(data, bins=bins, density=True, color=COLORS['secondary'],
-                edgecolor='white', linewidth=0.5, alpha=0.7)
+        ax.hist(
+            data,
+            bins=bins,
+            density=True,
+            color=COLORS["secondary"],
+            edgecolor="white",
+            linewidth=0.5,
+            alpha=0.7,
+        )
     ax.set_xlabel(xlabel)
-    ax.set_ylabel('Density')
+    ax.set_ylabel("Density")
 
     _save(fig, output)
 
 
-def scatter_plot(x, y, output='figures/fig_scatter.pdf', xlabel='', ylabel='',
-                 hue=None, fit_line=True, figsize=(6, 5)):
+def scatter_plot(
+    x,
+    y,
+    output="figures/fig_scatter.pdf",
+    xlabel="",
+    ylabel="",
+    hue=None,
+    fit_line=True,
+    figsize=(6, 5),
+):
     """散点图（可选回归线）。"""
     plt = _get_plt()
     setup_style()
@@ -1889,17 +2246,23 @@ def scatter_plot(x, y, output='figures/fig_scatter.pdf', xlabel='', ylabel='',
 
     if hue is not None:
         for i, (name, mask) in enumerate(hue.items()):
-            ax.scatter(np.array(x)[mask], np.array(y)[mask], s=20, alpha=0.6,
-                       color=PALETTE[i % len(PALETTE)], label=name)
+            ax.scatter(
+                np.array(x)[mask],
+                np.array(y)[mask],
+                s=20,
+                alpha=0.6,
+                color=PALETTE[i % len(PALETTE)],
+                label=name,
+            )
         ax.legend()
     else:
-        ax.scatter(x, y, s=20, alpha=0.6, color=COLORS['secondary'])
+        ax.scatter(x, y, s=20, alpha=0.6, color=COLORS["secondary"])
 
     if fit_line:
         z = np.polyfit(x, y, 1)
         p = np.poly1d(z)
         x_line = np.linspace(min(x), max(x), 100)
-        ax.plot(x_line, p(x_line), color=COLORS['accent'], linewidth=1, linestyle='--')
+        ax.plot(x_line, p(x_line), color=COLORS["accent"], linewidth=1, linestyle="--")
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -1907,7 +2270,9 @@ def scatter_plot(x, y, output='figures/fig_scatter.pdf', xlabel='', ylabel='',
     _save(fig, output)
 
 
-def residual_diagnostic(y_true, y_pred, output='figures/fig_residual.pdf', figsize=(10, 8)):
+def residual_diagnostic(
+    y_true, y_pred, output="figures/fig_residual.pdf", figsize=(10, 8)
+):
     """残差诊断四图（QQ图、残差散点、残差直方图、拟合值vs残差）。"""
     plt = _get_plt()
     setup_style()
@@ -1917,33 +2282,44 @@ def residual_diagnostic(y_true, y_pred, output='figures/fig_residual.pdf', figsi
 
     # 1. 残差 vs 拟合值
     ax = axes[0, 0]
-    ax.scatter(y_pred, residuals, s=15, alpha=0.5, color=COLORS['secondary'])
-    ax.axhline(y=0, color=COLORS['accent'], linestyle='--', linewidth=0.8)
-    ax.set_xlabel('Fitted Values')
-    ax.set_ylabel('Residuals')
+    ax.scatter(y_pred, residuals, s=15, alpha=0.5, color=COLORS["secondary"])
+    ax.axhline(y=0, color=COLORS["accent"], linestyle="--", linewidth=0.8)
+    ax.set_xlabel("Fitted Values")
+    ax.set_ylabel("Residuals")
 
     # 2. QQ 图
     ax = axes[0, 1]
     sorted_resid = np.sort(std_resid)
     n = len(sorted_resid)
     theoretical = np.array([_norm_ppf((i + 0.5) / n) for i in range(n)])
-    ax.scatter(theoretical, sorted_resid, s=15, alpha=0.5, color=COLORS['secondary'])
+    ax.scatter(theoretical, sorted_resid, s=15, alpha=0.5, color=COLORS["secondary"])
     lim = max(abs(theoretical.min()), abs(theoretical.max())) * 1.1
-    ax.plot([-lim, lim], [-lim, lim], color=COLORS['accent'], linestyle='--', linewidth=0.8)
-    ax.set_xlabel('Theoretical Quantiles')
-    ax.set_ylabel('Standardized Residuals')
+    ax.plot(
+        [-lim, lim], [-lim, lim], color=COLORS["accent"], linestyle="--", linewidth=0.8
+    )
+    ax.set_xlabel("Theoretical Quantiles")
+    ax.set_ylabel("Standardized Residuals")
 
     # 3. 残差直方图
     ax = axes[1, 0]
-    ax.hist(residuals, bins=25, color=COLORS['secondary'], edgecolor='white', linewidth=0.5, density=True)
-    ax.set_xlabel('Residuals')
-    ax.set_ylabel('Density')
+    ax.hist(
+        residuals,
+        bins=25,
+        color=COLORS["secondary"],
+        edgecolor="white",
+        linewidth=0.5,
+        density=True,
+    )
+    ax.set_xlabel("Residuals")
+    ax.set_ylabel("Density")
 
     # 4. Scale-Location
     ax = axes[1, 1]
-    ax.scatter(y_pred, np.sqrt(np.abs(std_resid)), s=15, alpha=0.5, color=COLORS['secondary'])
-    ax.set_xlabel('Fitted Values')
-    ax.set_ylabel('sqrt(|Standardized Residuals|)')
+    ax.scatter(
+        y_pred, np.sqrt(np.abs(std_resid)), s=15, alpha=0.5, color=COLORS["secondary"]
+    )
+    ax.set_xlabel("Fitted Values")
+    ax.set_ylabel("sqrt(|Standardized Residuals|)")
 
     fig.tight_layout()
     _save(fig, output)
@@ -1963,11 +2339,18 @@ def _norm_ppf(p):
     t = np.sqrt(-2 * np.log(p))
     c0, c1, c2 = 2.515517, 0.802853, 0.010328
     d1, d2, d3 = 1.432788, 0.189269, 0.001308
-    return -(t - (c0 + c1 * t + c2 * t ** 2) / (1 + d1 * t + d2 * t ** 2 + d3 * t ** 3))
+    return -(t - (c0 + c1 * t + c2 * t**2) / (1 + d1 * t + d2 * t**2 + d3 * t**3))
 
 
-def multi_line_plot(x, ys, labels, output='figures/fig_multi_line.pdf',
-                    xlabel='', ylabel='', figsize=(7, 4)):
+def multi_line_plot(
+    x,
+    ys,
+    labels,
+    output="figures/fig_multi_line.pdf",
+    xlabel="",
+    ylabel="",
+    figsize=(7, 4),
+):
     """多条线对比图（训练曲线、消融实验等）。
 
     Args:
@@ -1980,7 +2363,7 @@ def multi_line_plot(x, ys, labels, output='figures/fig_multi_line.pdf',
     setup_style()
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    for i, (y, label) in enumerate(zip(ys, labels)):
+    for i, (y, label) in enumerate(zip(ys, labels, strict=False)):
         ax.plot(x, y, color=PALETTE[i % len(PALETTE)], linewidth=1.5, label=label)
 
     ax.set_xlabel(xlabel)
@@ -1989,7 +2372,7 @@ def multi_line_plot(x, ys, labels, output='figures/fig_multi_line.pdf',
     _save(fig, output)
 
 
-def box_plot(data_dict, output='figures/fig_box.pdf', ylabel='', figsize=(7, 4)):
+def box_plot(data_dict, output="figures/fig_box.pdf", ylabel="", figsize=(7, 4)):
     """箱线图（分布对比）。
 
     Args:
@@ -2003,9 +2386,14 @@ def box_plot(data_dict, output='figures/fig_box.pdf', ylabel='', figsize=(7, 4))
     labels = list(data_dict.keys())
     data = list(data_dict.values())
 
-    bp = ax.boxplot(data, labels=labels, patch_artist=True, widths=0.5,
-                    medianprops={'color': COLORS['dark'], 'linewidth': 1.5})
-    for i, patch in enumerate(bp['boxes']):
+    bp = ax.boxplot(
+        data,
+        labels=labels,
+        patch_artist=True,
+        widths=0.5,
+        medianprops={"color": COLORS["dark"], "linewidth": 1.5},
+    )
+    for i, patch in enumerate(bp["boxes"]):
         patch.set_facecolor(PALETTE_LIGHT[i % len(PALETTE_LIGHT)])
         patch.set_edgecolor(PALETTE[i % len(PALETTE)])
 
@@ -2013,7 +2401,7 @@ def box_plot(data_dict, output='figures/fig_box.pdf', ylabel='', figsize=(7, 4))
     _save(fig, output)
 
 
-def radar_plot(categories, values_dict, output='figures/fig_radar.pdf', figsize=(6, 6)):
+def radar_plot(categories, values_dict, output="figures/fig_radar.pdf", figsize=(6, 6)):
     """雷达图（多维度对比）。
 
     Args:
@@ -2031,17 +2419,25 @@ def radar_plot(categories, values_dict, output='figures/fig_radar.pdf', figsize=
 
     for i, (name, vals) in enumerate(values_dict.items()):
         values = list(vals) + [vals[0]]  # 闭合
-        ax.plot(angles, values, 'o-', linewidth=1.5, color=PALETTE[i % len(PALETTE)], label=name)
+        ax.plot(
+            angles,
+            values,
+            "o-",
+            linewidth=1.5,
+            color=PALETTE[i % len(PALETTE)],
+            label=name,
+        )
         ax.fill(angles, values, alpha=0.1, color=PALETTE[i % len(PALETTE)])
 
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(categories)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
     _save(fig, output)
 
 
-def subplot_grid(plot_funcs, nrows, ncols, output='figures/fig_grid.pdf',
-                 figsize=None, titles=None):
+def subplot_grid(
+    plot_funcs, nrows, ncols, output="figures/fig_grid.pdf", figsize=None, titles=None
+):
     """多面板子图网格。
 
     Args:

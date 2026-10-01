@@ -49,6 +49,7 @@ from onyx.db.models import (
     SystemScenario,
     SystemSkill,
 )
+from onyx.db.system_catalog.constants import normalize_tags
 from onyx.db.system_catalog.publish import (
     find_projected_skill,
     publish_system_report_template,
@@ -58,7 +59,6 @@ from onyx.db.system_catalog.publish import (
     unpublish_system_scenario,
     unpublish_system_skill,
 )
-from onyx.db.system_catalog.constants import normalize_tags
 from onyx.db.system_catalog.report_template import (
     attach_catalog_docx_asset,
     create_system_report_template,
@@ -95,9 +95,7 @@ logger = setup_logger()
 
 SHIPPED_CHANGELOG = "Shipped with Onyx."
 _PATCH_GRACE = datetime.timedelta(seconds=2)
-_CatalogRow = TypeVar(
-    "_CatalogRow", SystemSkill, SystemScenario, SystemReportTemplate
-)
+_CatalogRow = TypeVar("_CatalogRow", SystemSkill, SystemScenario, SystemReportTemplate)
 
 
 def sync_builtin_system_catalog(db_session: Session) -> None:
@@ -284,9 +282,7 @@ def _sync_skills(db_session: Session) -> None:
         )
 
 
-def _skill_needs_refresh(
-    catalog_entry: SystemSkill, entry: BuiltInSkillEntry
-) -> bool:
+def _skill_needs_refresh(catalog_entry: SystemSkill, entry: BuiltInSkillEntry) -> bool:
     if catalog_entry.publish_status is SystemCatalogPublishStatus.DRAFT:
         return True
     if catalog_entry.name != entry.name:
@@ -495,7 +491,8 @@ def _scenario_needs_refresh(
         or catalog_entry.description != entry.description
         or catalog_entry.category != entry.category
         or list(catalog_entry.tags) != normalize_tags(list(entry.tags))
-        or list(catalog_entry.skill_slugs) != normalize_skill_slugs(list(entry.skill_slugs))
+        or list(catalog_entry.skill_slugs)
+        != normalize_skill_slugs(list(entry.skill_slugs))
         or catalog_entry.report_template_slug != entry.report_template_slug
         or dict(catalog_entry.rules or {}) != entry.read_rules()
     )

@@ -35,11 +35,13 @@ falsifiable_check（可证伪断言，方向无关，comp-code 据此生成 vali
     - CV 分割："输出为逐像素 mask 且 IoU 在留出集>阈值；只输出分类标签则判不成立"
   semantic 项 + 非 delivery 的 machine 项必填（降维高发区）；delivery 项可不填。
 """
+
 from __future__ import annotations
-import sys
-import re
-import json
+
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -71,8 +73,18 @@ def _detect_n_subproblems(analysis_path: Path):
     s = m.group(1)
     if s.isdigit():
         return int(s)
-    cn = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
-          "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+    cn = {
+        "一": 1,
+        "二": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+        "十": 10,
+    }
     return cn.get(s)
 
 
@@ -112,8 +124,10 @@ def _validate(data: dict, analysis_path: Path):
     hard, warn = [], []
     caps = data.get("capabilities")
     if not isinstance(caps, list) or not caps:
-        return ["CAPABILITY_CHECKLIST.json 缺 capabilities 列表或为空——"
-                "至少要把每个子问题拆出 1 条可判定能力项。"], []
+        return [
+            "CAPABILITY_CHECKLIST.json 缺 capabilities 列表或为空——"
+            "至少要把每个子问题拆出 1 条可判定能力项。"
+        ], []
 
     seen_ids = set()
     subs_covered = set()
@@ -123,9 +137,11 @@ def _validate(data: dict, analysis_path: Path):
             hard.append(f"能力项 {tag} 不是对象")
             continue
         # 必填字段
-        for f in ("id", "subproblem", "name", "judge", "criterion"):
-            if not c.get(f) and c.get(f) != 0:
-                hard.append(f"能力项 {tag} 缺必填字段「{f}」")
+        hard.extend(
+            f"能力项 {tag} 缺必填字段「{f}」"
+            for f in ("id", "subproblem", "name", "judge", "criterion")
+            if not c.get(f) and c.get(f) != 0
+        )
         # id 唯一
         cid = c.get("id")
         if cid in seen_ids:
@@ -134,24 +150,33 @@ def _validate(data: dict, analysis_path: Path):
         # judge 合法
         judge = c.get("judge")
         if judge not in _VALID_JUDGE:
-            hard.append(f"能力项 {tag} 的 judge=「{judge}」非法，只能是 machine/semantic")
+            hard.append(
+                f"能力项 {tag} 的 judge=「{judge}」非法，只能是 machine/semantic"
+            )
         # machine 项必须指明挂哪个闸 + 交付产物
         mc = None
         if judge == "machine":
             mc = c.get("machine_check")
             if mc not in _VALID_CHECK:
-                hard.append(f"能力项 {tag} 标了 machine 却没写合法 machine_check"
-                            f"（{'/'.join(sorted(_VALID_CHECK))}），无法挂到确定性闸")
+                hard.append(
+                    f"能力项 {tag} 标了 machine 却没写合法 machine_check"
+                    f"（{'/'.join(sorted(_VALID_CHECK))}），无法挂到确定性闸"
+                )
             if mc == "delivery" and not c.get("required_output"):
-                hard.append(f"能力项 {tag} 用 delivery 闸核，必须写 required_output（产物路径）")
+                hard.append(
+                    f"能力项 {tag} 用 delivery 闸核，必须写 required_output（产物路径）"
+                )
         # falsifiable_check：可证伪断言（方向无关，comp-code 据此生成 validate_capability）。
         #   semantic 项 + 非 delivery 的 machine 项必须有——它们靠"判断/算法"验，是降维冒充高发区；
         #   delivery 项（产物存在性已够硬）可不填。缺失即 FAIL，逼"何为真做到"在源头写死。
-        if (judge == "semantic" or (judge == "machine" and mc != "delivery")) \
-                and not c.get("falsifiable_check"):
-            hard.append(f"能力项 {tag} 缺 falsifiable_check（可证伪断言）——"
-                        "这类能力最易被代理指标/降维冒充，必须写清'代码里怎样算真做到、"
-                        "什么情况判不成立'，供 comp-code 生成 validate_capability 运行时硬断言。")
+        if (
+            judge == "semantic" or (judge == "machine" and mc != "delivery")
+        ) and not c.get("falsifiable_check"):
+            hard.append(
+                f"能力项 {tag} 缺 falsifiable_check（可证伪断言）——"
+                "这类能力最易被代理指标/降维冒充，必须写清'代码里怎样算真做到、"
+                "什么情况判不成立'，供 comp-code 生成 validate_capability 运行时硬断言。"
+            )
         # subproblem 归一化：必填校验接受字符串"1"，覆盖统计也必须接受，否则 "1"(字符串)
         # 必填过关却不计入覆盖 → 误报"子问题一条能力项都没有" HARD FAIL，且 AI 看必填没问题查不出原因（死循环）。
         sp = c.get("subproblem")
@@ -162,13 +187,13 @@ def _validate(data: dict, analysis_path: Path):
         elif isinstance(sp, float) and sp.is_integer():
             subs_covered.add(int(sp))
         elif isinstance(sp, str):
-            m = re.search(r"\d+", sp)     # "1" / "问题1" / "S1" / "子问题3" 都能归一
+            m = re.search(r"\d+", sp)  # "1" / "问题1" / "S1" / "子问题3" 都能归一
             if m:
                 subs_covered.add(int(m.group()))
 
     # 逐句认领核对：Step 5.6 里"决策/目标/机制"类句子必须被能力清单 source_sentence 认领
     deliver_sents = _parse_deliver_sentences(analysis_path)
-    if deliver_sents:                       # 抓到了逐句拆解表且有要出活的句子才核（宁漏勿误）
+    if deliver_sents:  # 抓到了逐句拆解表且有要出活的句子才核（宁漏勿误）
         claimed = set()
         for c in caps:
             if not isinstance(c, dict):
@@ -186,7 +211,8 @@ def _validate(data: dict, analysis_path: Path):
                 f"题面逐句拆解里这些'决策/目标/机制'句 {orphan} 没有任何能力项认领"
                 "（能力项的 source_sentence 没引用它们）——意味着题目明确要出活的要求漏进了能力清单，"
                 "正是'任务降维/漏做'的源头。请为每个漏认领的句子补出对应能力项，"
-                "或在该句确属背景时把逐句表里的类型改对。")
+                "或在该句确属背景时把逐句表里的类型改对。"
+            )
 
     # 与 PROBLEM_ANALYSIS 声明的子问题数交叉核对（能抓到才校验）
     n_decl = data.get("n_subproblems")
@@ -195,11 +221,15 @@ def _validate(data: dict, analysis_path: Path):
     if isinstance(n_expected, int) and n_expected > 0:
         missing = [k for k in range(1, n_expected + 1) if k not in subs_covered]
         if missing:
-            hard.append(f"子问题 {missing} 在能力清单里一条能力项都没有——"
-                        f"题目共 {n_expected} 个子问题，每个都必须至少拆出 1 条可判定能力。"
-                        "漏拆的子问题下游无法验收，极易被做成'最小演示'蒙混。")
+            hard.append(
+                f"子问题 {missing} 在能力清单里一条能力项都没有——"
+                f"题目共 {n_expected} 个子问题，每个都必须至少拆出 1 条可判定能力。"
+                "漏拆的子问题下游无法验收，极易被做成'最小演示'蒙混。"
+            )
     if n_from_analysis and n_decl and n_from_analysis != n_decl:
-        warn.append(f"清单 n_subproblems={n_decl} 与 PROBLEM_ANALYSIS 声明的 {n_from_analysis} 不一致，请核对。")
+        warn.append(
+            f"清单 n_subproblems={n_decl} 与 PROBLEM_ANALYSIS 声明的 {n_from_analysis} 不一致，请核对。"
+        )
     return hard, warn
 
 
@@ -211,8 +241,10 @@ def main() -> int:
 
     clpath = Path(args.checklist)
     if not clpath.is_file():
-        print(f"[capability_check] 无 {clpath.name} —— 建议题目解析阶段产出能力清单，"
-              "否则验收退化成只查图/页/文件数，看不见'题目要的能力做没做'。跳过（不阻断）")
+        print(
+            f"[capability_check] 无 {clpath.name} —— 建议题目解析阶段产出能力清单，"
+            "否则验收退化成只查图/页/文件数，看不见'题目要的能力做没做'。跳过（不阻断）"
+        )
         return 2
     try:
         data = json.loads(_read(clpath))
@@ -225,8 +257,11 @@ def main() -> int:
 
     hard, warn = _validate(data, Path(args.analysis))
     n_caps = len(data.get("capabilities", []))
-    n_machine = sum(1 for c in data.get("capabilities", [])
-                    if isinstance(c, dict) and c.get("judge") == "machine")
+    n_machine = sum(
+        1
+        for c in data.get("capabilities", [])
+        if isinstance(c, dict) and c.get("judge") == "machine"
+    )
 
     for w in warn:
         print(f"  [WARN] {w}")
@@ -234,10 +269,14 @@ def main() -> int:
         print(f"❌ HARD FAIL {len(hard)} 条 —— 能力清单结构不合格：")
         for h in hard:
             print(f"  ✗ {h}")
-        print("  修复后重跑本闸直到 0。能力清单是题型无关验收的契约，结构不合格下游没法逐项验收。")
+        print(
+            "  修复后重跑本闸直到 0。能力清单是题型无关验收的契约，结构不合格下游没法逐项验收。"
+        )
         return 1
-    print(f"✅ 能力清单结构合格：{n_caps} 条能力项（machine {n_machine} / semantic {n_caps - n_machine}），"
-          "每个子问题都有覆盖。machine 项将由确定性闸自动核，semantic 项交严格模式考官逐条判。")
+    print(
+        f"✅ 能力清单结构合格：{n_caps} 条能力项（machine {n_machine} / semantic {n_caps - n_machine}），"
+        "每个子问题都有覆盖。machine 项将由确定性闸自动核，semantic 项交严格模式考官逐条判。"
+    )
     return 0
 
 

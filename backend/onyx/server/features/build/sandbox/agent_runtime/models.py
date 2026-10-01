@@ -49,7 +49,9 @@ class AgentModelSpec:
     tags: frozenset[str] = field(default_factory=frozenset)
 
 
-_CATALOG: tuple[AgentModelSpec, ...] = (    # ── Zhipu GLM (bigmodel) ─────────────────────────────────────────────
+_CATALOG: tuple[
+    AgentModelSpec, ...
+] = (  # ── Zhipu GLM (bigmodel) ─────────────────────────────────────────────
     AgentModelSpec(
         model_id="glm-4.7",
         provider="bigmodel",
@@ -221,10 +223,11 @@ def _default_secret() -> bytes:
     fingerprints stay comparable within one process either way.
     """
     try:
-        from shared_configs.configs.base_configs import SECRET_KEY
+        # CE equivalent of the upstream EE SECRET_KEY.
+        from onyx.configs.app_configs import USER_AUTH_SECRET
 
-        if SECRET_KEY:
-            return hashlib.sha256(SECRET_KEY.encode("utf-8")).digest()
+        if USER_AUTH_SECRET:
+            return hashlib.sha256(USER_AUTH_SECRET.encode("utf-8")).digest()
     except Exception:
         pass
     return hashlib.sha256(b"onyx-agent-model-registry-dev").digest()
@@ -299,7 +302,11 @@ def overlay_spec(
     explicit overlay values replace. Unknown templates are rejected
     (None) — an overlay cannot invent a provider the catalog lacks.
     """
-    spec = template if template is not None else get_model_spec(overlay_row.template_model_id)
+    spec = (
+        template
+        if template is not None
+        else get_model_spec(overlay_row.template_model_id)
+    )
     if spec is None:
         return None
     return AgentModelSpec(
@@ -318,9 +325,8 @@ def overlay_spec(
         ),
         runtimes=spec.runtimes,
         is_default=False,
-        notes=f"overlay of {spec.model_id}" + (
-            f"; base_url={overlay_row.base_url}" if overlay_row.base_url else ""
-        ),
+        notes=f"overlay of {spec.model_id}"
+        + (f"; base_url={overlay_row.base_url}" if overlay_row.base_url else ""),
         tags=spec.tags,
     )
 

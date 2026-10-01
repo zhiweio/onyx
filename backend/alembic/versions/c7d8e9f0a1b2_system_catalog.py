@@ -54,9 +54,7 @@ def _catalog_columns() -> list[sa.Column]:
             "origin", sa.String(length=32), nullable=False, server_default="ADMIN"
         ),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "published_by_user_id", postgresql.UUID(as_uuid=True), nullable=True
-        ),
+        sa.Column("published_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -138,7 +136,9 @@ def upgrade() -> None:
         "skill",
         sa.Column("system_skill_id", postgresql.UUID(as_uuid=True), nullable=True),
     )
-    op.add_column("skill", sa.Column("system_skill_version", sa.Integer(), nullable=True))
+    op.add_column(
+        "skill", sa.Column("system_skill_version", sa.Integer(), nullable=True)
+    )
     op.create_foreign_key(
         "fk_skill_system_skill_id",
         "skill",
@@ -164,7 +164,9 @@ def upgrade() -> None:
         ["id"],
         ondelete="SET NULL",
     )
-    op.create_index("ix_scenario_system_scenario_id", "scenario", ["system_scenario_id"])
+    op.create_index(
+        "ix_scenario_system_scenario_id", "scenario", ["system_scenario_id"]
+    )
 
     op.add_column(
         "report_template",
@@ -204,9 +206,7 @@ def downgrade() -> None:
     op.drop_column("report_template", "system_report_template_id")
 
     op.drop_index("ix_scenario_system_scenario_id", table_name="scenario")
-    op.drop_constraint(
-        "fk_scenario_system_scenario_id", "scenario", type_="foreignkey"
-    )
+    op.drop_constraint("fk_scenario_system_scenario_id", "scenario", type_="foreignkey")
     op.drop_column("scenario", "system_scenario_version")
     op.drop_column("scenario", "system_scenario_id")
 

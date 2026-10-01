@@ -237,7 +237,11 @@ class McpCallTool:
     def __init__(self, call_fn: McpCallFn | None = None) -> None:
         self._call_fn = call_fn
 
-    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+    def execute(
+        self,
+        invocation: ToolInvocation,
+        ctx: ToolContext,  # noqa: ARG002
+    ) -> ToolResult:
         server = str(invocation.arguments.get("server", "")).strip()
         tool = str(invocation.arguments.get("tool", "")).strip()
         if not server or not tool:
@@ -279,7 +283,11 @@ class WebSearchTool:
     def __init__(self, search_fn: WebSearchFn | None = None) -> None:
         self._search_fn = search_fn
 
-    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+    def execute(
+        self,
+        invocation: ToolInvocation,
+        ctx: ToolContext,  # noqa: ARG002
+    ) -> ToolResult:
         query = str(invocation.arguments.get("query", "")).strip()
         if not query:
             return text_result("[web_search] argument 'query' is required")
@@ -320,7 +328,11 @@ class CrawlTool:
     def __init__(self, crawl_fn: CrawlFn | None = None) -> None:
         self._crawl_fn = crawl_fn
 
-    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+    def execute(
+        self,
+        invocation: ToolInvocation,
+        ctx: ToolContext,  # noqa: ARG002
+    ) -> ToolResult:
         url = str(invocation.arguments.get("url", "")).strip()
         if not url:
             return text_result("[crawl] argument 'url' is required")
@@ -339,13 +351,19 @@ class CrawlTool:
 class _DeferredTool:
     """Placeholder keeping the schema stable until its milestone binds it."""
 
-    def __init__(self, name: str, description: str, parameters: dict[str, Any], milestone: str) -> None:
+    def __init__(
+        self, name: str, description: str, parameters: dict[str, Any], milestone: str
+    ) -> None:
         self.name = name
         self.description = description
         self.parameters = parameters
         self._milestone = milestone
 
-    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+    def execute(
+        self,
+        invocation: ToolInvocation,  # noqa: ARG002
+        ctx: ToolContext,  # noqa: ARG002
+    ) -> ToolResult:
         return unavailable(self.name, f"lands with milestone {self._milestone}")
 
 

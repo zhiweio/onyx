@@ -43,7 +43,9 @@ _TOOLS_CACHE_TTL_SECONDS = 900
 
 TENANT_SCOPE_KEY = "onyx_tenant_id"
 USER_EMAIL_SCOPE_KEY = "onyx_user_email"
-_USER_EMAIL: ContextVar[str | None] = ContextVar("onyx_gateway_user_email", default=None)
+_USER_EMAIL: ContextVar[str | None] = ContextVar(
+    "onyx_gateway_user_email", default=None
+)
 
 
 def _tools_cache_key(slug: str) -> str:

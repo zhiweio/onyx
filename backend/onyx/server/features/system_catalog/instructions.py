@@ -30,7 +30,9 @@ def read_catalog_skill_instructions(
         return read_builtin_skill_instructions(definition)
     if entry.bundle_file_id is not None:
         try:
-            bundle_bytes = get_default_file_store().read_file(entry.bundle_file_id).read()
+            bundle_bytes = (
+                get_default_file_store().read_file(entry.bundle_file_id).read()
+            )
             return read_custom_bundle_instructions(bundle_bytes)
         except Exception:
             return None

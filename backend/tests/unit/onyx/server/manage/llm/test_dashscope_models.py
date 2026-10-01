@@ -12,8 +12,8 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from onyx.error_handling.exceptions import OnyxError
 from onyx.db.models import User
+from onyx.error_handling.exceptions import OnyxError
 from onyx.server.manage.llm.api import (
     _get_dashscope_models_url,
     get_dashscope_available_models,
@@ -97,7 +97,9 @@ def test_only_non_chat_models_raises() -> None:
         ),
         patch(
             "onyx.server.manage.llm.api._get_openai_compatible_models_response",
-            return_value={"data": [{"id": "qwen-image-3.0"}, {"id": "wanx2.1-t2i-turbo"}]},
+            return_value={
+                "data": [{"id": "qwen-image-3.0"}, {"id": "wanx2.1-t2i-turbo"}]
+            },
         ),
     ):
         with pytest.raises(OnyxError):
@@ -110,9 +112,9 @@ def test_only_non_chat_models_raises() -> None:
 
 def test_models_url_accepts_all_base_shapes() -> None:
     expected = "https://ws1.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/models"
-    assert _get_dashscope_models_url("https://ws1.ap-southeast-1.maas.aliyuncs.com") == (
-        expected
-    )
+    assert _get_dashscope_models_url(
+        "https://ws1.ap-southeast-1.maas.aliyuncs.com"
+    ) == (expected)
     assert (
         _get_dashscope_models_url(
             "https://ws1.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"

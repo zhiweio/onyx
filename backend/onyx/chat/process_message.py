@@ -134,17 +134,17 @@ from onyx.server.query_and_chat.streaming_models import (
     AgentResponseDelta,
     AgentResponseStart,
     CitationInfo,
-    OverallStop,
     ContextUsage,
+    OverallStop,
     Packet,
     heartbeat_packet,
 )
 from onyx.server.settings.store import load_settings
 from onyx.server.usage_limits import check_llm_cost_limit_for_provider
 from onyx.server.utils import get_json_line
+from onyx.skills.prompt import build_selected_skill_prompt
 from onyx.tools.constants import FILE_READER_TOOL_ID, SEARCH_TOOL_ID
 from onyx.tools.models import ChatFile, SearchToolUsage
-from onyx.skills.prompt import build_selected_skill_prompt
 from onyx.tools.tool_constructor import (
     CustomToolConfig,
     FileReaderToolConfig,
@@ -868,9 +868,7 @@ def build_chat_turn(
         )
         from onyx.memory.long_term import maybe_retain_after_chat_turn
 
-        maybe_retain_after_chat_turn(
-            db_session, user, message_text, user_message_count
-        )
+        maybe_retain_after_chat_turn(db_session, user, message_text, user_message_count)
 
     # This prompt may come from the Agent or Project. Fetched here (before run_llm_loop)
     # because the inner loop shouldn't need to access the DB-form chat history, but we

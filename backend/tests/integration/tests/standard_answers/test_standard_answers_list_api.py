@@ -58,7 +58,10 @@ def _cleanup(_db_access: None) -> Generator[None, None, None]:
 
 
 def _create_answer(
-    admin_user: DATestUser, keyword: str, answer: str, category_ids: list[int] = None
+    admin_user: DATestUser,
+    keyword: str,
+    answer: str,
+    category_ids: list[int] | None = None,
 ) -> dict:
     if category_ids is None:
         category_ids = []

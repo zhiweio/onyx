@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-
 from onyx.server.features.build.sandbox.agent_runtime import models as reg
 
 
@@ -31,8 +30,10 @@ def test_overlay_inherits_and_overrides_template() -> None:
     assert spec is not None
     assert spec.model_id == "glm-4.7-private"
     assert spec.context_window == 128_000  # overridden
-    assert spec.max_output_tokens == reg.get_model_spec("glm-4.7").max_output_tokens
-    assert spec.runtimes == reg.get_model_spec("glm-4.7").runtimes  # inherited
+    template = reg.get_model_spec("glm-4.7")
+    assert template is not None
+    assert spec.max_output_tokens == template.max_output_tokens
+    assert spec.runtimes == template.runtimes  # inherited
     assert "llm.customer.cn" in spec.notes
 
 

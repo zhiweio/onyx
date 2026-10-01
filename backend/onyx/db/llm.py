@@ -1686,9 +1686,7 @@ def _update_default_model__no_commit(
     model: str,
     flow_type: LLMModelFlowType,
 ) -> None:
-    _ensure_model_configuration_for_default(
-        db_session, provider_id, model, flow_type
-    )
+    _ensure_model_configuration_for_default(db_session, provider_id, model, flow_type)
     result = db_session.execute(
         select(ModelConfiguration, LLMModelFlow)
         .join(

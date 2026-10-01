@@ -30,7 +30,13 @@ def exceeds_ceiling(size_bytes: int, policy: CachePolicySpec) -> bool:
     return size_bytes > min(policy.max_response_bytes, MCP_RESULT_MAX_BYTES)
 
 
-def _to_stored(record_payload: dict[str, Any], *, blob_id: str, size_bytes: int, digest: dict[str, Any]) -> StoredResult:
+def _to_stored(
+    record_payload: dict[str, Any],
+    *,
+    blob_id: str,
+    size_bytes: int,
+    digest: dict[str, Any],
+) -> StoredResult:
     return StoredResult(
         blob_id=blob_id,
         content_hash=blob_id,

@@ -34,18 +34,12 @@ def upgrade() -> None:
         ),
         sa.Column("name", sa.String(length=256), nullable=False),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column(
-            "playbook", postgresql.JSONB(), nullable=False, server_default="{}"
-        ),
-        sa.Column(
-            "policy_version", sa.Integer(), nullable=False, server_default="1"
-        ),
+        sa.Column("playbook", postgresql.JSONB(), nullable=False, server_default="{}"),
+        sa.Column("policy_version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column(
             "ship_actions", postgresql.JSONB(), nullable=False, server_default="[]"
         ),
-        sa.Column(
-            "success_condition", sa.Text(), nullable=False, server_default=""
-        ),
+        sa.Column("success_condition", sa.Text(), nullable=False, server_default=""),
         sa.Column("caps", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column(
             "state",
@@ -130,9 +124,7 @@ def upgrade() -> None:
         ),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("guidance", sa.Text(), nullable=True),
-        sa.Column(
-            "proposal", postgresql.JSONB(), nullable=False, server_default="{}"
-        ),
+        sa.Column("proposal", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column("claim_token", sa.String(length=64), nullable=True),
         sa.Column("claim_expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("decision_token", sa.String(length=64), nullable=True),

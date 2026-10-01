@@ -44,10 +44,18 @@ _ALLOWED_TRANSITIONS: dict[CraftLoopItemStatus, frozenset[CraftLoopItemStatus]] 
         {CraftLoopItemStatus.IN_PROGRESS, CraftLoopItemStatus.SKIPPED}
     ),
     CraftLoopItemStatus.IN_PROGRESS: frozenset(
-        {CraftLoopItemStatus.READY, CraftLoopItemStatus.QUEUED, CraftLoopItemStatus.FAILED}
+        {
+            CraftLoopItemStatus.READY,
+            CraftLoopItemStatus.QUEUED,
+            CraftLoopItemStatus.FAILED,
+        }
     ),
     CraftLoopItemStatus.READY: frozenset(
-        {CraftLoopItemStatus.SHIPPED, CraftLoopItemStatus.QUEUED, CraftLoopItemStatus.FAILED}
+        {
+            CraftLoopItemStatus.SHIPPED,
+            CraftLoopItemStatus.QUEUED,
+            CraftLoopItemStatus.FAILED,
+        }
     ),
     CraftLoopItemStatus.FAILED: frozenset({CraftLoopItemStatus.QUEUED}),
     CraftLoopItemStatus.SHIPPED: frozenset(),
@@ -65,9 +73,7 @@ def assert_transition(
         )
 
 
-def claim_item(
-    item: CraftLoopItem, *, now: datetime | None = None
-) -> str:
+def claim_item(item: CraftLoopItem, *, now: datetime | None = None) -> str:
     """queued → in_progress under a fresh claim lease.
 
     Raises when the item is not queued. A stale in-progress claim is
@@ -150,19 +156,18 @@ def mark_ready(
     item.status = CraftLoopItemStatus.READY
     item.claim_token = None
     item.claim_expires_at = None
-    staged: list[CraftLoopOutput] = []
-    for output in outputs:
-        staged.append(
-            CraftLoopOutput(
-                loop_id=item.loop_id,
-                item_id=item.id,
-                ship_action=str(output.get("ship_action") or "save_artifacts"),
-                label=output.get("label"),
-                title=str(output.get("title") or ""),
-                summary=str(output.get("summary") or ""),
-                state=CraftLoopOutputState.STAGED,
-            )
+    staged = [
+        CraftLoopOutput(
+            loop_id=item.loop_id,
+            item_id=item.id,
+            ship_action=str(output.get("ship_action") or "save_artifacts"),
+            label=output.get("label"),
+            title=str(output.get("title") or ""),
+            summary=str(output.get("summary") or ""),
+            state=CraftLoopOutputState.STAGED,
         )
+        for output in outputs
+    ]
     return staged
 
 

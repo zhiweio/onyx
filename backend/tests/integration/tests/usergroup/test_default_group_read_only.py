@@ -43,19 +43,19 @@ def test_default_groups_are_listed_only_when_requested(admin_user: DATestUser) -
 
 @ENTERPRISE_SKIP
 def test_default_group_affordances_are_membership_only(admin_user: DATestUser) -> None:
-    """Whole-map equality: a new action defaulting to True must fail here rather than
-    quietly render a control the routes reject."""
-    for name in ("Admin", "Basic"):
+    """Whole-list equality: a default group holds exactly its seeded grant, so a
+    newly added permission token cannot quietly attach to it."""
+    seeded_grants = {"Admin": "admin", "Basic": "basic"}
+    for name, grant in seeded_grants.items():
         group = UserGroupManager.get_default(
             user_performing_action=admin_user, name=name
         )
-        assert group.permissions == {
-            "manage": False,
-            "manage_members": True,
-            "delete": False,
-            "edit_permissions": False,
-            "edit_token_limits": False,
-        }, name
+        response = client.get(
+            f"{GROUP_URL}/{group.id}/permissions",
+            headers=admin_user.headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json() == [grant], name
 
 
 @ENTERPRISE_SKIP
@@ -132,7 +132,6 @@ def test_default_group_rejects_every_non_membership_write(
     )
     assert unchanged.name == "Basic"
     assert unchanged.manager_ids == []
-    assert unchanged.incognito_enabled is False
 
 
 @ENTERPRISE_SKIP

@@ -25,7 +25,9 @@ def upgrade() -> None:
             server_default=sa.text("'{}'::jsonb"),
         ),
     )
-    op.add_column("craft_job", sa.Column("lease_owner", sa.String(length=64), nullable=True))
+    op.add_column(
+        "craft_job", sa.Column("lease_owner", sa.String(length=64), nullable=True)
+    )
     op.add_column(
         "craft_job",
         sa.Column("lease_expires_at", sa.DateTime(timezone=True), nullable=True),

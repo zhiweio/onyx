@@ -39,19 +39,15 @@ Usage (CLI):
 import argparse
 import base64
 import json
-import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-
-
-
-
 # ============================================================
 # Chart rendering & embedding
 # ============================================================
+
 
 def _run_chart_generator(chart_type, data, output_path, currency="$", unit="B"):
     """
@@ -65,11 +61,16 @@ def _run_chart_generator(chart_type, data, output_path, currency="$", unit="B"):
     cmd = [
         sys.executable,
         str(script),
-        "--chart_type", chart_type,
-        "--data", json.dumps(data, ensure_ascii=False),
-        "--output", str(output_path),
-        "--currency", currency,
-        "--unit", unit,
+        "--chart_type",
+        chart_type,
+        "--data",
+        json.dumps(data, ensure_ascii=False),
+        "--output",
+        str(output_path),
+        "--currency",
+        currency,
+        "--unit",
+        unit,
     ]
 
     try:
@@ -82,8 +83,7 @@ def _run_chart_generator(chart_type, data, output_path, currency="$", unit="B"):
         )
     except subprocess.CalledProcessError as e:
         raise RuntimeError(
-            f"chart_generator.py failed for {chart_type}: "
-            f"stderr={e.stderr.strip()}"
+            f"chart_generator.py failed for {chart_type}: stderr={e.stderr.strip()}"
         )
 
     if not Path(output_path).exists():
@@ -120,14 +120,14 @@ def build_exhibit_block(exhibit_number, title, b64_string, source_label):
         f'<div class="exhibit-label">\n'
         f'  <span class="exhibit-number">Exhibit {exhibit_number}:</span>\n'
         f'  <span class="exhibit-desc">{title}</span>\n'
-        f'</div>\n'
+        f"</div>\n"
         f'<div class="chart-container" style="text-align:center; margin:12px 0;">\n'
-        f'  {build_img_tag(b64_string, alt=title)}\n'
-        f'</div>\n'
+        f"  {build_img_tag(b64_string, alt=title)}\n"
+        f"</div>\n"
         f'<p class="chart-source" style="font-size:8pt;color:#999;'
         f'text-align:right;margin-top:4px;">\n'
-        f'  Source: {source_label}\n'
-        f'</p>'
+        f"  Source: {source_label}\n"
+        f"</p>"
     )
 
 
@@ -156,7 +156,7 @@ def render_and_embed(specs, out_dir, currency="$", unit="B"):
     manifest = []
 
     for i, spec in enumerate(specs):
-        chart_id = spec.get("id", f"C{i+1}")
+        chart_id = spec.get("id", f"C{i + 1}")
         chart_type = spec["chart_type"]
         data = spec["data"]
         cur = spec.get("currency", currency)
@@ -227,6 +227,7 @@ def count_embedded_charts(html_path):
 # CLI
 # ============================================================
 
+
 def _cli_render(args):
     with open(args.specs, "r", encoding="utf-8") as f:
         specs = json.load(f)
@@ -235,7 +236,11 @@ def _cli_render(args):
     )
     # Print a compact summary (not the full base64)
     summary = [
-        {k: v for k, v in r.items() if k not in ("base64", "html_img_tag", "html_exhibit")}
+        {
+            k: v
+            for k, v in r.items()
+            if k not in ("base64", "html_img_tag", "html_exhibit")
+        }
         for r in results
     ]
     print(json.dumps(summary, indent=2, ensure_ascii=False))

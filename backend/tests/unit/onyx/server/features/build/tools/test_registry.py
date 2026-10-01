@@ -15,7 +15,7 @@ CTX = ToolContext(user_id="u1")
 
 def _registry_with_search() -> PlatformToolRegistry:
     def fake_search(
-        query: str, sets: list[str], limit: int, ctx: ToolContext
+        query: str, _sets: list[str], limit: int, _ctx: ToolContext
     ) -> list[dict[str, Any]]:
         return [
             {"title": "Q3 财务制度", "blurb": f"关于 {query}", "link": "/d/1"},
@@ -38,9 +38,7 @@ def test_catalog_shape_is_stable() -> None:
         "connector_query",
     }
     defs = registry.definitions()
-    assert all(
-        {"name", "description", "inputSchema"} <= set(d) for d in defs
-    )
+    assert all({"name", "description", "inputSchema"} <= set(d) for d in defs)
 
 
 def test_rag_search_formats_hits() -> None:
@@ -85,7 +83,7 @@ def test_journal_receives_capped_entries() -> None:
     registry = PlatformToolRegistry.build(
         ToolBindings(
             journal=entries.append,
-            search_fn=lambda q, s, l, c: [{"title": "t", "blurb": "x" * 300}],
+            search_fn=lambda _q, _s, _l, _c: [{"title": "t", "blurb": "x" * 300}],
         )
     )
     registry.call(
@@ -100,13 +98,17 @@ def test_journal_receives_capped_entries() -> None:
 
 
 def test_tool_exception_becomes_error_result_not_crash() -> None:
-    def exploding(query: str, sets: list[str], limit: int, ctx: ToolContext) -> list[dict[str, Any]]:
+    def exploding(
+        _query: str, _sets: list[str], _limit: int, _ctx: ToolContext
+    ) -> list[dict[str, Any]]:
         raise RuntimeError("boom")
 
     registry = PlatformToolRegistry.build(ToolBindings(search_fn=exploding))
     # rag_search catches its search backend errors and reports them as a
     # tool-level result; the turn must not crash either way.
-    result = registry.call(ToolInvocation(tool="rag_search", arguments={"query": "q"}), CTX)
+    result = registry.call(
+        ToolInvocation(tool="rag_search", arguments={"query": "q"}), CTX
+    )
     assert "search failed" in result.text()
 
 

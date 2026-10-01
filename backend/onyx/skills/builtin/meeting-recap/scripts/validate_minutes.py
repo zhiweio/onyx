@@ -13,7 +13,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REQUIRED_META_FIELDS = ["日期", "时间", "地点", "主持人", "记录人", "参会人"]
 
 REQUIRED_SECTIONS = [
@@ -25,9 +24,7 @@ REQUIRED_SECTIONS = [
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 TOPIC_HEADER_PATTERN = re.compile(r"^###\s+议题\s*\d+[：:]\s*\S+", re.MULTILINE)
 TOPIC_OVERVIEW_ROW = re.compile(r"\|\s*议题\s*\d+[：:].+\|")
-ACTION_TABLE_ROW = re.compile(
-    r"\|\s*\d+\s*\|[^|]+\|[^|]+\|[^|]+\|[^|]+\|"
-)
+ACTION_TABLE_ROW = re.compile(r"\|\s*\d+\s*\|[^|]+\|[^|]+\|[^|]+\|[^|]+\|")
 
 
 class ValidationResult:
@@ -57,20 +54,17 @@ class ValidationResult:
         lines.append("")
 
         if self.info:
-            for item in self.info:
-                lines.append(f"  ℹ️  {item}")
+            lines.extend(f"  ℹ️  {item}" for item in self.info)
             lines.append("")
 
         if self.errors:
             lines.append(f"❌ 错误 ({len(self.errors)}):")
-            for item in self.errors:
-                lines.append(f"   • {item}")
+            lines.extend(f"   • {item}" for item in self.errors)
             lines.append("")
 
         if self.warnings:
             lines.append(f"⚠️  警告 ({len(self.warnings)}):")
-            for item in self.warnings:
-                lines.append(f"   • {item}")
+            lines.extend(f"   • {item}" for item in self.warnings)
             lines.append("")
 
         if self.passed:
@@ -87,7 +81,7 @@ def read_file(path: str) -> str:
     if not file_path.exists():
         print(f"错误：文件不存在 - {path}", file=sys.stderr)
         sys.exit(1)
-    if not file_path.suffix.lower() in (".md", ".markdown", ".txt"):
+    if file_path.suffix.lower() not in (".md", ".markdown", ".txt"):
         print(f"警告：文件不是 Markdown 格式 - {path}", file=sys.stderr)
     return file_path.read_text(encoding="utf-8")
 
@@ -149,9 +143,7 @@ def check_topic_consistency(content: str, result: ValidationResult):
 
 
 def check_action_items(content: str, result: ValidationResult):
-    summary_match = re.search(
-        r"##\s*行动项汇总(.*?)(?=\n##|\Z)", content, re.DOTALL
-    )
+    summary_match = re.search(r"##\s*行动项汇总(.*?)(?=\n##|\Z)", content, re.DOTALL)
     if not summary_match:
         result.warn("未找到行动项汇总章节")
         return
@@ -167,7 +159,9 @@ def check_action_items(content: str, result: ValidationResult):
     for i, row in enumerate(action_rows, 1):
         cells = [c.strip() for c in row.split("|") if c.strip()]
         if len(cells) < 4:
-            result.error(f"行动项第 {i} 行列数不足（需至少 4 列：序号、任务、负责人、截止日期）")
+            result.error(
+                f"行动项第 {i} 行列数不足（需至少 4 列：序号、任务、负责人、截止日期）"
+            )
             continue
 
         task_desc = cells[1] if len(cells) > 1 else ""
@@ -196,22 +190,16 @@ def check_action_count_consistency(content: str, result: ValidationResult):
 
     detail_block = detail_section.group(1)
     detail_action_rows = ACTION_TABLE_ROW.findall(detail_block)
-    detail_count = sum(
-        1 for r in detail_action_rows
-        if not re.match(r"\|\s*\.\.\.", r)
-    )
+    detail_count = sum(1 for r in detail_action_rows if not re.match(r"\|\s*\.\.\.", r))
 
-    summary_match = re.search(
-        r"##\s*行动项汇总(.*?)(?=\n##|\Z)", content, re.DOTALL
-    )
+    summary_match = re.search(r"##\s*行动项汇总(.*?)(?=\n##|\Z)", content, re.DOTALL)
     if not summary_match:
         return
 
     summary_block = summary_match.group(1)
     summary_action_rows = ACTION_TABLE_ROW.findall(summary_block)
     summary_count = sum(
-        1 for r in summary_action_rows
-        if not re.match(r"\|\s*\.\.\.", r)
+        1 for r in summary_action_rows if not re.match(r"\|\s*\.\.\.", r)
     )
 
     if detail_count > 0 and summary_count > 0 and detail_count != summary_count:
@@ -221,19 +209,12 @@ def check_action_count_consistency(content: str, result: ValidationResult):
 
 
 def check_dates_format(content: str, result: ValidationResult):
-    date_candidates = re.findall(
-        r"\d{1,4}[/\-.年]\d{1,2}[/\-.月]\d{1,4}[日]?", content
-    )
-    non_standard = []
-    for d in date_candidates:
-        if not DATE_PATTERN.fullmatch(d):
-            non_standard.append(d)
+    date_candidates = re.findall(r"\d{1,4}[/\-.年]\d{1,2}[/\-.月]\d{1,4}[日]?", content)
+    non_standard = [d for d in date_candidates if not DATE_PATTERN.fullmatch(d)]
 
     if non_standard:
         unique = list(set(non_standard))[:5]
-        result.warn(
-            f"发现非标准日期格式：{', '.join(unique)}（建议统一为 YYYY-MM-DD）"
-        )
+        result.warn(f"发现非标准日期格式：{', '.join(unique)}（建议统一为 YYYY-MM-DD）")
 
 
 def validate(content: str) -> ValidationResult:

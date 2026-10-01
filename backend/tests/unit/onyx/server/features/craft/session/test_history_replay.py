@@ -1,24 +1,33 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+from typing import cast
 
 from onyx.configs.constants import MessageType
 from onyx.server.features.build.session.history_replay import (
     REPLAY_CHAR_BUDGET,
+    _ReplayMessage,
     apply_replay_preamble,
     format_replay_preamble,
     message_after_session_replace,
 )
 
 
-def _msg(message_type: MessageType, meta_type: str, text: str) -> SimpleNamespace:
-    return SimpleNamespace(
-        type=message_type,
-        message_metadata={
+class _FakeReplayMessage:
+    """Structurally satisfies the ``_ReplayMessage`` protocol."""
+
+    type: MessageType
+    message_metadata: dict[str, object]
+
+    def __init__(self, message_type: MessageType, meta_type: str, text: str) -> None:
+        self.type = message_type
+        self.message_metadata = {
             "type": meta_type,
             "content": {"type": "text", "text": text},
-        },
-    )
+        }
+
+
+def _msg(message_type: MessageType, meta_type: str, text: str) -> _ReplayMessage:
+    return cast(_ReplayMessage, _FakeReplayMessage(message_type, meta_type, text))
 
 
 def test_format_replay_preamble_skips_current_user_and_non_text() -> None:

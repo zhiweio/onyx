@@ -12,13 +12,15 @@
   python _utils/data_profile.py [--datadir user_data] [--out DATA_PROFILE.json]
 退出码：0=建档成功（含无数据文件的情形） 1=有文件全部读取失败
 """
+
 from __future__ import annotations
-import sys
-import os
-import json
+
+import argparse
 import glob
 import hashlib
-import argparse
+import json
+import os
+import sys
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -32,7 +34,7 @@ except ImportError:
     sys.exit(0)
 
 CSV_ENCODINGS = ["utf-8", "utf-8-sig", "gbk", "gb2312", "latin-1"]
-CHUNK = 100_000          # CSV 分块行数，控内存
+CHUNK = 100_000  # CSV 分块行数，控内存
 
 
 def _sha256(path: str) -> str:
@@ -65,13 +67,25 @@ def _profile_csv(path: str) -> dict:
                     null_acc = {c: 0 for c in cols}
                 total += len(chunk)
                 for c in chunk.columns:
-                    null_acc[str(c)] = null_acc.get(str(c), 0) + int(chunk[c].isnull().sum())
-            miss = {c: round(v / total, 4) for c, v in null_acc.items() if v} if total else {}
-            return {"encoding": enc, "sheets": {"__csv__": {"rows": total, "cols": cols or [], "null_rate": miss}},
-                    "total_rows": total, "n_sheets": 1}
+                    null_acc[str(c)] = null_acc.get(str(c), 0) + int(
+                        chunk[c].isnull().sum()
+                    )
+            miss = (
+                {c: round(v / total, 4) for c, v in null_acc.items() if v}
+                if total
+                else {}
+            )
+            return {
+                "encoding": enc,
+                "sheets": {
+                    "__csv__": {"rows": total, "cols": cols or [], "null_rate": miss}
+                },
+                "total_rows": total,
+                "n_sheets": 1,
+            }
         except UnicodeDecodeError:
             continue
-        except Exception as e:                       # 编码对了但解析炸 → 记错误、别再换编码
+        except Exception as e:  # 编码对了但解析炸 → 记错误、别再换编码
             return {"error": f"{type(e).__name__}: {e}"}
     return {"error": "所有编码均无法解码"}
 
@@ -101,8 +115,12 @@ def main() -> int:
     if not files:
         print(f"[data_profile] {args.datadir}/ 下无 csv/xlsx/xls，无需建档（纯建模题）")
         # 仍写一份空档，让下游"有没有数据"这件事也有据可查
-        json.dump({"_meta": {"n_files": 0}, "files": {}},
-                  open(args.out, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        json.dump(
+            {"_meta": {"n_files": 0}, "files": {}},
+            open(args.out, "w", encoding="utf-8"),
+            ensure_ascii=False,
+            indent=2,
+        )
         return 0
 
     profile, n_err = {}, 0
@@ -135,7 +153,9 @@ def main() -> int:
         return 1
     if n_err:
         print(f"⚠ {n_err} 个文件读取失败，其余已建档；确认失败文件是否建模必需。")
-    print("→ 后续所有'该有多少行/几张 sheet'的核对，一律读 DATA_PROFILE.json，勿凭记忆。")
+    print(
+        "→ 后续所有'该有多少行/几张 sheet'的核对，一律读 DATA_PROFILE.json，勿凭记忆。"
+    )
     return 0
 
 

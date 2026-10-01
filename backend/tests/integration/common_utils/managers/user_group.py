@@ -11,6 +11,7 @@ from tests.integration.common_utils.test_models import DATestUser, DATestUserGro
 
 class _UserGroupUser(BaseModel):
     id: str
+    email: str
 
 
 class _UserGroupCCPair(BaseModel):

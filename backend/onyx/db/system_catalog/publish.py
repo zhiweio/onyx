@@ -186,9 +186,7 @@ def publish_system_scenario(
     bound_skills = _resolve_bound_skills(db_session, entry)
     extra_conditional = _resolve_conditional_skills(db_session, entry, bound_skills)
     _assert_report_template_binding_is_shared(db_session, entry)
-    bound_skills = _ensure_docx_skill_for_word_template(
-        db_session, entry, bound_skills
-    )
+    bound_skills = _ensure_docx_skill_for_word_template(db_session, entry, bound_skills)
     _mark_published(entry, publisher=publisher, changelog=changelog)
 
     projection = find_projected_scenario(db_session, entry)
@@ -332,7 +330,10 @@ def _conditional_slugs_from_rules(rules: dict[str, object] | None) -> list[str]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        for slug in item.get("add_skill_slugs") or []:
+        values = item.get("add_skill_slugs")
+        if not isinstance(values, list):
+            continue
+        for slug in values:
             text = str(slug).strip()
             if text:
                 slugs.append(text)
@@ -368,7 +369,7 @@ def _resolve_skills_for_slugs(
 
 
 def _resolve_conditional_skills(
-    db_session: Session, entry: SystemScenario, bound_skills: list[Skill]
+    db_session: Session, entry: SystemScenario, _bound_skills: list[Skill]
 ) -> dict[str, Skill]:
     bound_slugs = set(entry.skill_slugs)
     extra = [
@@ -394,7 +395,8 @@ def _materialize_rules(
     rules = dict(entry.rules or {})
     rules["always_skill_ids"] = [str(skill.id) for skill in bound_skills]
     slug_to_id = {
-        slug: str(skill.id) for slug, skill in zip(entry.skill_slugs, bound_skills)
+        slug: str(skill.id)
+        for slug, skill in zip(entry.skill_slugs, bound_skills, strict=False)
     }
     if extra_conditional:
         for slug, skill in extra_conditional.items():

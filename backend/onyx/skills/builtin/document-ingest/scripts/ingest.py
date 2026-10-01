@@ -171,10 +171,16 @@ def _pdf_has_text(path: Path) -> tuple[bool, str, int]:
             if text.strip():
                 chunks.append(text)
     joined = "\n".join(chunks)
-    return len(joined.strip()) >= PDF_TEXT_MIN_CHARS, joined[:TEXT_PREVIEW_CHARS], page_count
+    return (
+        len(joined.strip()) >= PDF_TEXT_MIN_CHARS,
+        joined[:TEXT_PREVIEW_CHARS],
+        page_count,
+    )
 
 
-def _extract_digital_pdf(path: Path, text_preview: str, page_count: int) -> dict[str, Any]:
+def _extract_digital_pdf(
+    path: Path, text_preview: str, page_count: int
+) -> dict[str, Any]:
     import pdfplumber
 
     tables: list[list[list[str | None]]] = []
@@ -262,9 +268,7 @@ def ingest_file(path: Path, out_dir: Path) -> ManifestEntry:
             if has_text:
                 payload = _extract_digital_pdf(path, preview, page_count)
             else:
-                page_paths = _rasterize_pdf(
-                    path, out_dir / "ingest" / "pages", file_id
-                )
+                page_paths = _rasterize_pdf(path, out_dir / "ingest" / "pages", file_id)
                 payload = {
                     "kind": "pdf_scan",
                     "page_count": page_count,

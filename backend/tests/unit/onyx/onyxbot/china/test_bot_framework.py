@@ -4,19 +4,15 @@ import base64
 import hashlib
 import json
 import struct
-from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from onyx.onyxbot.china import adapters, crypto
-from onyx.onyxbot.china.adapters import CallbackResult
 from onyx.onyxbot.china.framework import (
     CallbackRejected,
-    InboundMessage,
     deterministic_email,
 )
-
 
 # ── envelope helpers (mirror the platform construction) ───────────────────
 
@@ -33,7 +29,9 @@ def _aes_encrypt(key: bytes, plaintext: bytes) -> bytes:
 
 def _envelope(msg: str, suffix: str, random_block: bytes = b"R" * 16) -> bytes:
     msg_bytes = msg.encode("utf-8")
-    return random_block + struct.pack(">I", len(msg_bytes)) + msg_bytes + suffix.encode()
+    return (
+        random_block + struct.pack(">I", len(msg_bytes)) + msg_bytes + suffix.encode()
+    )
 
 
 # 43-char EncodingAESKey (base64 of a 32-byte key without padding)
@@ -97,9 +95,7 @@ def test_wecom_roundtrip_and_signature() -> None:
 
 def test_dingtalk_echo_roundtrip() -> None:
     key = base64.b64decode(DING_AES_KEY)
-    encrypted = base64.b64encode(
-        _aes_encrypt(key, _envelope("success", ""))
-    ).decode()
+    encrypted = base64.b64encode(_aes_encrypt(key, _envelope("success", ""))).decode()
     echo = crypto.dingtalk_verify_echo(DING_AES_KEY, encrypted)
     # the echoed cipher decrypts back to success
     assert crypto.dingtalk_decrypt(DING_AES_KEY, echo) == "success"
@@ -131,7 +127,7 @@ class _WeComCfg:
     corp_secret = "s"
     agent_id = "1000002"
     email_domain = "corp.example.cn"
-    bot_token = "tok"
+    bot_token: str | None = "tok"
     bot_encoding_aes_key = WECOM_AES_KEY
 
 
@@ -200,9 +196,7 @@ def test_dingtalk_adapter_message_and_echo() -> None:
     assert result.message.text == "What is the leave policy"
     assert result.message.sender_name == "李四"
 
-    echo_enc = base64.b64encode(
-        _aes_encrypt(key, _envelope("success", ""))
-    ).decode()
+    echo_enc = base64.b64encode(_aes_encrypt(key, _envelope("success", ""))).decode()
     echo = adapters.dingtalk_handle(_DingCfg(), {}, {"encrypt": echo_enc}, {})
     assert echo.body is not None and "encrypt" in echo.body
 
@@ -230,7 +224,9 @@ def test_feishu_adapter_url_verification_and_message() -> None:
                 "message_id": "om_1",
                 "chat_id": "oc_1",
                 "message_type": "text",
-                "content": json.dumps({"text": "Q3 financial risk control"}, ensure_ascii=False),
+                "content": json.dumps(
+                    {"text": "Q3 financial risk control"}, ensure_ascii=False
+                ),
             },
         },
     }

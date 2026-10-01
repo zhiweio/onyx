@@ -618,19 +618,18 @@ def create_org_servers_from_pack_family(
             "This pack has no default URL. Set upstream_url.",
         )
     credentials = normalize_pack_credentials(pack, request.credentials)
-    created: list[tuple[MCPServer, MCPCatalogEntry, str | None]] = []
-    for endpoint in endpoints:
-        created.append(
-            _upsert_endpoint_server(
-                db_session,
-                user,
-                pack,
-                endpoint,
-                request,
-                apply_access,
-                credentials,
-                discover_tools=discover_tools,
-            )
+    created = [
+        _upsert_endpoint_server(
+            db_session,
+            user,
+            pack,
+            endpoint,
+            request,
+            apply_access,
+            credentials,
+            discover_tools=discover_tools,
         )
+        for endpoint in endpoints
+    ]
     db_session.commit()
     return created

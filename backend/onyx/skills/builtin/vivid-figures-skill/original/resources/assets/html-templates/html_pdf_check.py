@@ -24,6 +24,7 @@ render_html.py 用 Chrome printToPDF 出 PDF。本脚本对产出的 PDF 做
   1 = 有问题（打印 FAIL 明细，skill 端据此修复重出）
   2 = 无法检查（文件不存在/非 PDF/解析失败）→ skill 端跳过，不阻塞
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,7 +87,7 @@ def _count_pages(raw: bytes, blobs: list[bytes]) -> int | None:
     for hs in haystacks:
         for pm in re.finditer(rb"/Type\s*/Pages\b", hs):
             # 在该对象附近(前后 400 字节)找 /Count N
-            window = hs[max(0, pm.start() - 400): pm.end() + 400]
+            window = hs[max(0, pm.start() - 400) : pm.end() + 400]
             cm = re.search(rb"/Count\s+(\d+)", window)
             if cm:
                 counts.append(int(cm.group(1)))
@@ -143,11 +144,19 @@ def _page_size_pt(raw: bytes) -> tuple[float, float] | None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="HTML→PDF 产物专属质检（单页/矢量/裁切/宽高比）")
+    ap = argparse.ArgumentParser(
+        description="HTML→PDF 产物专属质检（单页/矢量/裁切/宽高比）"
+    )
     ap.add_argument("pdf", help="待检查的 PDF 路径")
-    ap.add_argument("--expect-w", type=float, default=None, help="HTML 声明内容宽(px)，辅助裁切判断")
-    ap.add_argument("--expect-h", type=float, default=None, help="HTML 声明内容高(px)，辅助裁切判断")
-    ap.add_argument("--aspect-warn", type=float, default=8.0, help="宽高比告警阈值(默认 8)")
+    ap.add_argument(
+        "--expect-w", type=float, default=None, help="HTML 声明内容宽(px)，辅助裁切判断"
+    )
+    ap.add_argument(
+        "--expect-h", type=float, default=None, help="HTML 声明内容高(px)，辅助裁切判断"
+    )
+    ap.add_argument(
+        "--aspect-warn", type=float, default=8.0, help="宽高比告警阈值(默认 8)"
+    )
     args = ap.parse_args()
 
     path = Path(args.pdf)
@@ -172,7 +181,9 @@ def main() -> None:
     # —— 检查 1：单页检测（最关键）——
     pages = _count_pages(raw, blobs)
     if pages is None:
-        warns.append("页数无法判定（未找到 /Count 或 /Type /Page）— 建议人工确认是否单页")
+        warns.append(
+            "页数无法判定（未找到 /Count 或 /Type /Page）— 建议人工确认是否单页"
+        )
     elif pages > 1:
         fails.append(
             f"多页 PDF（{pages} 页）！LaTeX \\includegraphics 只显示第 1 页 → 图会被截断。"
@@ -191,7 +202,9 @@ def main() -> None:
                 "→ 检查 HTML 是否用了 <img>/canvas/背景图代替文字，改成纯文本+CSS 重画。"
             )
         else:
-            warns.append("PDF 内未检测到字体对象 — 若图中本应有文字，请人工确认文字是否丢失")
+            warns.append(
+                "PDF 内未检测到字体对象 — 若图中本应有文字，请人工确认文字是否丢失"
+            )
     else:
         infos.append("含字体对象（矢量文字）✓")
 
@@ -201,7 +214,9 @@ def main() -> None:
         warns.append("未取到 /MediaBox 页面尺寸 — 跳过裁切与宽高比检查")
     else:
         w_pt, h_pt = size
-        infos.append(f"页面尺寸 {w_pt:.0f}×{h_pt:.0f} pt（≈{w_pt/_PX_TO_PT:.0f}×{h_pt/_PX_TO_PT:.0f} px）")
+        infos.append(
+            f"页面尺寸 {w_pt:.0f}×{h_pt:.0f} pt（≈{w_pt / _PX_TO_PT:.0f}×{h_pt / _PX_TO_PT:.0f} px）"
+        )
 
         # 检查 3：内容裁切 —— 异常小
         if w_pt < _MIN_PAGE_PT or h_pt < _MIN_PAGE_PT:

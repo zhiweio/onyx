@@ -31,6 +31,7 @@ from onyx.connectors.interfaces import (
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
+    HierarchyNode,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -39,7 +40,17 @@ logger = setup_logger()
 
 WECOM_BASE = "https://qyapi.weixin.qq.com/cgi-bin"
 _TEXT_SUFFIXES = (
-    ".txt", ".md", ".csv", ".json", ".xml", ".log", ".yml", ".yaml", ".html", ".py", ".js"
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".xml",
+    ".log",
+    ".yml",
+    ".yaml",
+    ".html",
+    ".py",
+    ".js",
 )
 
 
@@ -79,9 +90,7 @@ class WeComConnector(LoadConnector, PollConnector):
             body: dict[str, Any] = {"filter": 0}
             if cursor:
                 body["cursor"] = cursor
-            resp = session.post(
-                f"{WECOM_BASE}/wedrive/list", json=body, timeout=30
-            )
+            resp = session.post(f"{WECOM_BASE}/wedrive/list", json=body, timeout=30)
             resp.raise_for_status()
             data = resp.json()
             if data.get("errcode") not in (0, None):
@@ -100,9 +109,13 @@ class WeComConnector(LoadConnector, PollConnector):
             return None
         return resp.content
 
-    def _load(self, start: float | None = None, end: float | None = None) -> GenerateDocumentsOutput:
+    def _load(
+        self, start: float | None = None, end: float | None = None
+    ) -> GenerateDocumentsOutput:
         session = self._session()
-        batch: list[Document] = []
+        # list is invariant: the batch must match the declared
+        # `Iterator[list[Document | HierarchyNode]]` yield type.
+        batch: list[Document | HierarchyNode] = []
         for item in self._list_files(session):
             name = str(item.get("file_name") or "")
             if not name.lower().endswith(_TEXT_SUFFIXES):
@@ -126,7 +139,6 @@ class WeComConnector(LoadConnector, PollConnector):
                     source=DocumentSource.WECOM,
                     semantic_identifier=title,
                     title=title,
-                    text=text,
                     sections=[TextSection(text=text)],
                     metadata={"wedrive_file": name},
                     doc_updated_at=updated or None,

@@ -17,9 +17,7 @@ def test_exclusive_utc_end_keeps_utc_midnight() -> None:
 def test_exclusive_utc_end_snaps_local_end_of_day() -> None:
     # Default picker in UTC+8: end of UTC calendar day 12 Sep.
     local_end = datetime(2026, 9, 12, 15, 59, 59, 999000, tzinfo=timezone.utc)
-    assert _exclusive_utc_end(local_end) == datetime(
-        2026, 9, 13, tzinfo=timezone.utc
-    )
+    assert _exclusive_utc_end(local_end) == datetime(2026, 9, 13, tzinfo=timezone.utc)
 
 
 def test_parse_window_includes_late_utc_calls() -> None:

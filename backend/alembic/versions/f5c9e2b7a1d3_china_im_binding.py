@@ -33,7 +33,9 @@ def upgrade() -> None:
         sa.Column("platform", sa.String(length=16), nullable=False),
         sa.Column("platform_user_id", sa.String(length=256), nullable=False),
         sa.Column("chat_id", sa.String(length=256), nullable=False),
-        sa.Column("display_name", sa.String(length=256), nullable=False, server_default=""),
+        sa.Column(
+            "display_name", sa.String(length=256), nullable=False, server_default=""
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

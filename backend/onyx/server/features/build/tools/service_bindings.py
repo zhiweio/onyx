@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from onyx.db.engine.sql_engine import get_session
 from onyx.db.models import User
 from onyx.server.features.build.tools.base import ToolContext
 from onyx.utils.logger import setup_logger
@@ -30,17 +29,22 @@ def make_user_scoped_search_fn(user: User) -> Callable[..., list[dict[str, Any]]
         query: str,
         document_sets: list[str],
         limit: int,
-        ctx: ToolContext,
+        _ctx: ToolContext,
     ) -> list[dict[str, Any]]:
         from sqlalchemy import select
 
         from onyx.context.search.models import ChunkSearchRequest, PersonaSearchInfo
         from onyx.context.search.pipeline import search_pipeline
+        from onyx.db.engine.sql_engine import get_session_with_current_tenant
+        from onyx.db.search_settings import get_current_search_settings
         from onyx.document_index.factory import get_default_document_index
 
-        with get_session() as db_session:
+        # get_session is a FastAPI Depends generator, not a context manager.
+        with get_session_with_current_tenant() as db_session:
             fresh = db_session.execute(
-                select(User).where(User.id == user.id)
+                # fastapi-users types User.id as plain UUID under TYPE_CHECKING;
+                # at runtime it is a mapped column.
+                select(User).where(User.id == user.id)  # ty: ignore[invalid-argument-type]
             ).scalar_one_or_none()
             if fresh is None:
                 raise RuntimeError("requesting user no longer exists")
@@ -55,7 +59,9 @@ def make_user_scoped_search_fn(user: User) -> Callable[..., list[dict[str, Any]]
                     query=query,
                     limit=limit,
                 ),
-                document_index=get_default_document_index(),
+                document_index=get_default_document_index(
+                    get_current_search_settings(db_session), None, db_session
+                ),
                 user=fresh,
                 persona_search_info=persona_info,
                 db_session=db_session,

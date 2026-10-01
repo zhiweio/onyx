@@ -52,9 +52,7 @@ def load_skill_mcp_spec(skill_id: str) -> SkillMcpSpec | None:
     source_path = definition.source_dir / source_name
     if not source_path.is_file():
         return None
-    document = parse_skill_document(
-        source_path.read_bytes(), directory_name=skill_id
-    )
+    document = parse_skill_document(source_path.read_bytes(), directory_name=skill_id)
     return _metadata_to_spec(document.metadata)
 
 

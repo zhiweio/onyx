@@ -19,7 +19,15 @@ def _convert_with_soffice(source: Path, out_dir: Path, fmt: str) -> Path:
     if soffice is None:
         raise RuntimeError("LibreOffice writer is not installed")
     subprocess.run(
-        [soffice, "--headless", "--convert-to", fmt, "--outdir", str(out_dir), str(source)],
+        [
+            soffice,
+            "--headless",
+            "--convert-to",
+            fmt,
+            "--outdir",
+            str(out_dir),
+            str(source),
+        ],
         check=True,
         capture_output=True,
         text=True,

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import Permission
-from onyx.db.models import User, UserGroup, User__UserGroup
+from onyx.db.models import User, User__UserGroup, UserGroup
 from onyx.db.user_group_ce import (
     add_users_to_group,
     assign_user_to_groups_by_name,
@@ -40,7 +40,9 @@ def test_create_list_rename_delete_roundtrip(db_session: Session) -> None:
         assert fetch_user_group(db_session, group.id) is not None
         assert any(g.id == group.id for g in fetch_user_groups(db_session))
 
-        renamed = update_user_group_name(db_session, group.id, f"组改-{uuid4().hex[:6]}")
+        renamed = update_user_group_name(
+            db_session, group.id, f"组改-{uuid4().hex[:6]}"
+        )
         assert renamed.name.startswith("组改-")
     finally:
         delete_user_group(db_session, group.id)
@@ -62,7 +64,7 @@ def test_membership_add_remove_idempotent(db_session: Session) -> None:
     group = create_user_group(db_session, name=f"成员组-{uuid4().hex[:6]}")
     try:
         group = add_users_to_group(db_session, group.id, [user.id])
-        assert {str(u.user.id) for u in group.users} == {str(user.id)}
+        assert {str(u.id) for u in group.users} == {str(user.id)}
         # adding again is a no-op
         group = add_users_to_group(db_session, group.id, [user.id])
         assert len(group.users) == 1
@@ -78,14 +80,10 @@ def test_permissions_replace_and_resolve(db_session: Session) -> None:
         db_session, name=f"权限组-{uuid4().hex[:6]}", user_ids=[user.id]
     )
     try:
-        set_group_permissions(
-            db_session, group.id, [Permission.QUESTION_ANSWERING]
-        )
-        assert get_group_permissions(db_session, group.id) == [
-            Permission.QUESTION_ANSWERING
-        ]
+        set_group_permissions(db_session, group.id, [Permission.MANAGE_LLMS])
+        assert get_group_permissions(db_session, group.id) == [Permission.MANAGE_LLMS]
         effective = effective_permissions_for_user(db_session, user)
-        assert Permission.QUESTION_ANSWERING in effective
+        assert Permission.MANAGE_LLMS in effective
 
         set_group_permissions(db_session, group.id, [])
         assert get_group_permissions(db_session, group.id) == []

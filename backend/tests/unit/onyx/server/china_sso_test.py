@@ -3,18 +3,14 @@ config models, and the identity email fallback."""
 
 import httpx
 import pytest
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
+from pydantic import ValidationError
 
 from onyx.db.enums import SSOProviderType
 from onyx.db.sso_provider import (
     DingTalkProviderConfig,
     FeishuProviderConfig,
-    WPS365ProviderConfig,
     WeComProviderConfig,
+    WPS365ProviderConfig,
 )
 from onyx.server.china_sso import (
     ChinaSsoError,
@@ -22,11 +18,17 @@ from onyx.server.china_sso import (
     dingtalk_exchange,
     feishu_authorize_url,
     feishu_exchange,
-    wps365_authorize_url,
-    wps365_exchange,
     wecom_authorize_url,
     wecom_exchange,
+    wps365_authorize_url,
+    wps365_exchange,
 )
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
 
 WECOM = WeComProviderConfig(
     corp_id="ww123",
@@ -43,18 +45,6 @@ FEISHU = FeishuProviderConfig(
 WPS = WPS365ProviderConfig(
     client_id="wps-key", client_secret="wps-secret", email_domain="corp.example.cn"
 )
-
-
-def _handler(requests: list[httpx.Request]):
-    """Build a MockTransport handler from an ordered list of responders."""
-
-    def route(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        responder = responders.pop(0)
-        return responder(request)
-
-    responders = list(requests)
-    return route
 
 
 def test_authorize_urls_contain_required_params() -> None:
@@ -201,7 +191,7 @@ async def test_wps365_exchange_uses_configured_base() -> None:
 
 def test_config_models_reject_unknown_keys_and_hide_secrets() -> None:
     # unknown key → loud failure on write
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         WeComProviderConfig.model_validate(
             {
                 "corp_id": "a",
@@ -219,12 +209,17 @@ def test_config_models_reject_unknown_keys_and_hide_secrets() -> None:
     }
     assert secret_fields == {"corp_secret", "bot_encoding_aes_key"}
     # email_domain is required (identity stability)
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         DingTalkProviderConfig.model_validate({"client_id": "a", "client_secret": "b"})
 
 
 def test_china_types_in_provider_type_enum() -> None:
     from onyx.db.sso_provider import _CONFIG_MODEL_BY_TYPE
 
-    for ptype in (SSOProviderType.WECOM, SSOProviderType.DINGTALK, SSOProviderType.FEISHU, SSOProviderType.WPS365):
+    for ptype in (
+        SSOProviderType.WECOM,
+        SSOProviderType.DINGTALK,
+        SSOProviderType.FEISHU,
+        SSOProviderType.WPS365,
+    ):
         assert ptype in _CONFIG_MODEL_BY_TYPE

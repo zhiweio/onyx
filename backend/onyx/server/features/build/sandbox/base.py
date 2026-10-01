@@ -751,9 +751,7 @@ class SandboxManager(_ServeMixin, ABC):
         """Incremental output read; raises if the process is unknown."""
         raise NotImplementedError
 
-    def write_process_input(
-        self, sandbox_id: UUID, process_id: str, data: str
-    ) -> None:
+    def write_process_input(self, sandbox_id: UUID, process_id: str, data: str) -> None:
         raise NotImplementedError
 
     def stop_process(

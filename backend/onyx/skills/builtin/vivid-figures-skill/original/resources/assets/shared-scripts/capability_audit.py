@@ -25,10 +25,12 @@ CAPABILITY_VERDICT.json 约定（考官 AI 严格模式下填）：
   {"P1-C2": {"verdict":"PASS","evidence":"code/coref.py:40-88 用指代消解模型","note":"抽检20条正确"},
    "P4-C1": {"verdict":"FAIL","evidence":"problem4.py 按新闻行预警","note":"未按事件簇,需返工"}}
 """
+
 from __future__ import annotations
-import sys
-import json
+
 import argparse
+import json
+import sys
 from pathlib import Path
 
 try:
@@ -78,19 +80,25 @@ def _audit_one(cap: dict, verdicts: dict):
         return "PENDING", f"缺{kind}：CAPABILITY_VERDICT.json 里没有 {cid} 的 verdict"
     vd = str(v.get("verdict", "")).upper()
     if vd == "PASS":
-        return "PASS", f"结论 PASS —— {v.get('evidence','(无证据)')}"
-    return "FAIL", f"结论 {vd} —— {v.get('evidence','')} / {v.get('note','')}"
+        return "PASS", f"结论 PASS —— {v.get('evidence', '(无证据)')}"
+    return "FAIL", f"结论 {vd} —— {v.get('evidence', '')} / {v.get('note', '')}"
 
 
 def _write_todo(pendings, caps_by_id):
     """把待考官逐条判的项写成任务单。"""
-    lines = ["# 语义验收待办（考官 AI 严格模式逐条判，结论写进 CAPABILITY_VERDICT.json）", "",
-             "> 铁律：不许问自己'我做了吗'（会自证）。拿客观证据当锚——指出哪几行代码/哪个产物支撑，",
-             "> 对照判定标准逐条给 verdict(PASS/FAIL) + evidence(代码位置/产物) + note。", ""]
+    lines = [
+        "# 语义验收待办（考官 AI 严格模式逐条判，结论写进 CAPABILITY_VERDICT.json）",
+        "",
+        "> 铁律：不许问自己'我做了吗'（会自证）。拿客观证据当锚——指出哪几行代码/哪个产物支撑，",
+        "> 对照判定标准逐条给 verdict(PASS/FAIL) + evidence(代码位置/产物) + note。",
+        "",
+    ]
     for cid in pendings:
         c = caps_by_id.get(cid, {})
-        lines.append(f"- [ ] **{cid}** 子问题{c.get('subproblem','?')} · {c.get('name','')}")
-        lines.append(f"      判定标准：{c.get('criterion','(未写)')}")
+        lines.append(
+            f"- [ ] **{cid}** 子问题{c.get('subproblem', '?')} · {c.get('name', '')}"
+        )
+        lines.append(f"      判定标准：{c.get('criterion', '(未写)')}")
         if c.get("required_output"):
             lines.append(f"      相关产物：{c['required_output']}")
     Path("SEMANTIC_REVIEW_TODO.md").write_text("\n".join(lines), encoding="utf-8")
@@ -106,10 +114,18 @@ def main() -> int:
 
     data = _load_json(Path(args.checklist))
     if data is None:
-        print(f"[capability_audit] 无 {args.checklist}，跳过（不阻断）。建议题目解析阶段产出能力清单。")
+        print(
+            f"[capability_audit] 无 {args.checklist}，跳过（不阻断）。建议题目解析阶段产出能力清单。"
+        )
         return 2
-    if data == "ERR" or not isinstance(data, dict) or not isinstance(data.get("capabilities"), list):
-        print(f"❌ {args.checklist} 非法或缺 capabilities（先跑 capability_check.py 修结构）")
+    if (
+        data == "ERR"
+        or not isinstance(data, dict)
+        or not isinstance(data.get("capabilities"), list)
+    ):
+        print(
+            f"❌ {args.checklist} 非法或缺 capabilities（先跑 capability_check.py 修结构）"
+        )
         return 1
 
     verdicts = _load_json(Path(args.verdict))
@@ -139,21 +155,29 @@ def main() -> int:
 
     n = len(rows)
     n_pass = sum(1 for r in rows if r[2] == "PASS")
-    print(f"[capability_audit] {n} 条能力项：PASS {n_pass} / FAIL {len(fails)} / PENDING {len(pendings)}")
+    print(
+        f"[capability_audit] {n} 条能力项：PASS {n_pass} / FAIL {len(fails)} / PENDING {len(pendings)}"
+    )
     print("  逐项总账见 CAPABILITY_AUDIT.md")
 
     if fails:
-        print(f"❌ HARD FAIL —— {len(fails)} 条能力项未达标（题目要求的能力没做到/做降维了）：")
+        print(
+            f"❌ HARD FAIL —— {len(fails)} 条能力项未达标（题目要求的能力没做到/做降维了）："
+        )
         for cid, reason in fails:
             print(f"  ✗ {cid}: {reason}")
 
     if pendings:
         if fast:
-            print(f"⚠ 快速模式：{len(pendings)} 条能力项缺结论（见 SEMANTIC_REVIEW_TODO.md），"
-                  "快速模式降级为提示、不阻断；但强烈建议严格模式补判，否则可能带降维交付。")
+            print(
+                f"⚠ 快速模式：{len(pendings)} 条能力项缺结论（见 SEMANTIC_REVIEW_TODO.md），"
+                "快速模式降级为提示、不阻断；但强烈建议严格模式补判，否则可能带降维交付。"
+            )
         else:
-            print(f"❌ 严格模式：{len(pendings)} 条能力项缺考官/闸结论（见 SEMANTIC_REVIEW_TODO.md）——"
-                  "考官 AI 必须逐条判、把 verdict 写进 CAPABILITY_VERDICT.json，再重跑本闸。")
+            print(
+                f"❌ 严格模式：{len(pendings)} 条能力项缺考官/闸结论（见 SEMANTIC_REVIEW_TODO.md）——"
+                "考官 AI 必须逐条判、把 verdict 写进 CAPABILITY_VERDICT.json，再重跑本闸。"
+            )
 
     if fails:
         return 1
@@ -161,7 +185,9 @@ def main() -> int:
         return 1
     if pendings and fast:
         return 0
-    print("✅ 所有能力项达标：题目要求的每项能力都已验收通过（machine 自动核 + semantic 考官判）。")
+    print(
+        "✅ 所有能力项达标：题目要求的每项能力都已验收通过（machine 自动核 + semantic 考官判）。"
+    )
     return 0
 
 

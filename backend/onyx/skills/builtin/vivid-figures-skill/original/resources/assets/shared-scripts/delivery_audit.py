@@ -23,11 +23,13 @@ DELIVERABLES.json 约定格式：
      {"path": "output/predictions_test.csv",    "desc": "测试集预测产物"}
   ]}
 """
+
 from __future__ import annotations
-import sys
-import re
-import json
+
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -44,9 +46,7 @@ def _read(p: Path) -> str:
 
 
 def _strip_comment_lines(src: str) -> str:
-    out = []
-    for line in src.splitlines():
-        out.append("" if line.strip().startswith("#") else line)
+    out = ["" if line.strip().startswith("#") else line for line in src.splitlines()]
     return "\n".join(out)
 
 
@@ -54,18 +54,24 @@ def _strip_comment_lines(src: str) -> str:
 # ⛔ 只抓"用部分数据冒充全量"的真降采样/截断。刻意排除两类合法写法（否则几乎每个 ML 竞赛题都误 HARD FAIL 空转）：
 #   1. train_test_split —— 训练/测试划分，全量都用了只是切分，不是"冒充全量"，不该抓
 #   2. df.sample(frac=1) / frac=1.0 —— 全量洗牌(shuffle)，一行不丢，由下方 _SHUFFLE_OK_RE 二次豁免
-_SAMPLE_RE = re.compile(r"\.sample\s*\(|\bnrows\s*=\s*\d|\.head\s*\(\s*\d{3,}|\[\s*:\s*\d{3,}\s*\]|\.iloc\s*\[\s*:\s*\d{3,}")
+_SAMPLE_RE = re.compile(
+    r"\.sample\s*\(|\bnrows\s*=\s*\d|\.head\s*\(\s*\d{3,}|\[\s*:\s*\d{3,}\s*\]|\.iloc\s*\[\s*:\s*\d{3,}"
+)
 # 全量洗牌豁免：frac=1 / frac=1.0 / frac=1.00（不匹配 frac=0.1 等真降采样；sample 的 frac 不会 >1）
 _SHUFFLE_OK_RE = re.compile(r"frac\s*=\s*1(?:\.0+)?(?![\.\d])")
 # RESULTS 里的抽样声明（命中任一即"如实声明了"）
-_DECLARE_RE = re.compile(r"抽样|采样|仅用|只用|子集|subset|sampl|抽取了|随机选|N\s*of\s*M|总量|全量的|占比|部分数据|下采样|降采样")
+_DECLARE_RE = re.compile(
+    r"抽样|采样|仅用|只用|子集|subset|sampl|抽取了|随机选|N\s*of\s*M|总量|全量的|占比|部分数据|下采样|降采样"
+)
 
 
 def _audit_deliverables(deliv_path: Path):
     """A) 交付对账：DELIVERABLES.json 里每个声称产物必须真实存在且非空。"""
     if not deliv_path.is_file():
-        return None, [f"缺 {deliv_path.name} —— 结果汇总阶段应产出机器可读的交付清单，"
-                      "否则'声称的产物是否都真产出'无从对账（退化成人工肉眼查）。"]
+        return None, [
+            f"缺 {deliv_path.name} —— 结果汇总阶段应产出机器可读的交付清单，"
+            "否则'声称的产物是否都真产出'无从对账（退化成人工肉眼查）。"
+        ]
     try:
         data = json.loads(_read(deliv_path))
         items = data.get("deliverables", data) if isinstance(data, dict) else data
@@ -82,10 +88,14 @@ def _audit_deliverables(deliv_path: Path):
             continue
         p = Path(rel)
         if not p.exists():
-            hard.append(f"声称产出「{rel}」({desc}) —— 但工作区里根本不存在。声称与产物不符，"
-                        "要么把它真产出来，要么从 DELIVERABLES.json 删掉这条声称。")
+            hard.append(
+                f"声称产出「{rel}」({desc}) —— 但工作区里根本不存在。声称与产物不符，"
+                "要么把它真产出来，要么从 DELIVERABLES.json 删掉这条声称。"
+            )
         elif p.is_file() and p.stat().st_size == 0:
-            hard.append(f"声称产出「{rel}」({desc}) —— 文件存在但为空(0 字节)，等于没产出。")
+            hard.append(
+                f"声称产出「{rel}」({desc}) —— 文件存在但为空(0 字节)，等于没产出。"
+            )
     return hard, warn
 
 
@@ -101,23 +111,37 @@ def _audit_sampling(codedir: Path, results_path: Path):
             ln = src.count("\n", 0, m.start()) + 1
             # .sample( 命中但同行是全量洗牌 frac=1 → 豁免（不是降采样）
             line_txt = lines[ln - 1] if 0 <= ln - 1 < len(lines) else ""
-            if m.group().lstrip().startswith(".sample") and _SHUFFLE_OK_RE.search(line_txt):
+            if m.group().lstrip().startswith(".sample") and _SHUFFLE_OK_RE.search(
+                line_txt
+            ):
                 continue
             sampling_hits.append(f"{f.as_posix()}:{ln}")
     if not sampling_hits:
         return [], []
     results_txt = _read(results_path)
     if not results_txt.strip():
-        return ([f"代码里有 {len(sampling_hits)} 处抽样/截断（{sampling_hits[0]} 等），"
-                 "但没有 RESULTS.md 可核对声明——抽样必须在结果里如实降级声明"
-                 "（'抽样 N / 总量 M'），否则等于暗中抽样冒充全量。"], [])
+        return (
+            [
+                f"代码里有 {len(sampling_hits)} 处抽样/截断（{sampling_hits[0]} 等），"
+                "但没有 RESULTS.md 可核对声明——抽样必须在结果里如实降级声明"
+                "（'抽样 N / 总量 M'），否则等于暗中抽样冒充全量。"
+            ],
+            [],
+        )
     if not _DECLARE_RE.search(results_txt):
-        return ([f"代码里有 {len(sampling_hits)} 处抽样/截断（{sampling_hits[0]} 等），"
-                 "但 RESULTS.md 里找不到任何抽样声明（'抽样/仅用/子集/总量'…）。"
-                 "暗中抽样冒充全量是重大失真——请在 RESULTS.md 显式写明"
-                 "'仅用 N 行 / 总量 M 行、为什么、对结论的影响'。"], [])
-    return [], [f"检测到 {len(sampling_hits)} 处抽样/截断，RESULTS.md 已有抽样声明（通过）——"
-                "仍请自查声明的 N/M 数值与 DATA_PROFILE.json 的总量一致。"]
+        return (
+            [
+                f"代码里有 {len(sampling_hits)} 处抽样/截断（{sampling_hits[0]} 等），"
+                "但 RESULTS.md 里找不到任何抽样声明（'抽样/仅用/子集/总量'…）。"
+                "暗中抽样冒充全量是重大失真——请在 RESULTS.md 显式写明"
+                "'仅用 N 行 / 总量 M 行、为什么、对结论的影响'。"
+            ],
+            [],
+        )
+    return [], [
+        f"检测到 {len(sampling_hits)} 处抽样/截断，RESULTS.md 已有抽样声明（通过）——"
+        "仍请自查声明的 N/M 数值与 DATA_PROFILE.json 的总量一致。"
+    ]
 
 
 def main() -> int:
@@ -132,7 +156,7 @@ def main() -> int:
 
     # 交付清单缺失：本闸核心输入没有 → 跳过不阻断（但抽样检查仍可独立跑）
     skip_deliv = d_hard is None
-    hard = (s_hard or [])
+    hard = s_hard or []
     if not skip_deliv:
         hard = (d_hard or []) + hard
     warn = (d_warn or []) + (s_warn or [])
@@ -146,8 +170,10 @@ def main() -> int:
         print("  修复后重跑本闸直到 0。")
         return 1
     if skip_deliv:
-        print("[delivery_audit] 无 DELIVERABLES.json，只跑了抽样透明检查（通过）；"
-              "建议结果汇总阶段补交付清单以启用交付对账。")
+        print(
+            "[delivery_audit] 无 DELIVERABLES.json，只跑了抽样透明检查（通过）；"
+            "建议结果汇总阶段补交付清单以启用交付对账。"
+        )
         return 2
     print("✅ 交付真实性检查通过：声称产物都真实存在且非空，抽样（如有）已如实声明。")
     return 0

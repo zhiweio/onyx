@@ -104,10 +104,10 @@ def _tools_call(
         raise McpJsonRpcError(_MCP_INVALID_REQUEST, "params.name is required")
     arguments = params.get("arguments") or {}
     if not isinstance(arguments, dict):
-        raise McpJsonRpcError(_MCP_INVALID_REQUEST, "params.arguments must be an object")
-    invocation = ToolInvocation(
-        tool=name, arguments=arguments, session_id=session_id
-    )
+        raise McpJsonRpcError(
+            _MCP_INVALID_REQUEST, "params.arguments must be an object"
+        )
+    invocation = ToolInvocation(tool=name, arguments=arguments, session_id=session_id)
     result = registry.call(invocation, ctx)
     payload: dict[str, Any] = {"content": result.content, "isError": False}
     if result.terminate:

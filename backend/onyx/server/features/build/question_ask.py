@@ -81,7 +81,9 @@ def pop_announcement(
     try:
         return QuestionAskRequest.model_validate_json(value)
     except ValidationError:
-        logger.warning("question_ask: unparseable announce %r for %s", value, session_id)
+        logger.warning(
+            "question_ask: unparseable announce %r for %s", value, session_id
+        )
         return None
 
 

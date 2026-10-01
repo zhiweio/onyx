@@ -24,14 +24,20 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         import cairosvg
+
         cairosvg.svg2png(url=str(source), write_to=str(output), scale=args.scale)
     except Exception:
         chrome = resolve().get("chrome")
         if not chrome:
             raise SystemExit("Neither CairoSVG nor Chrome is available")
         command = [
-            chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
-            f"--window-size={args.width},{args.height}", f"--screenshot={output}", source.as_uri(),
+            chrome,
+            "--headless=new",
+            "--disable-gpu",
+            "--hide-scrollbars",
+            f"--window-size={args.width},{args.height}",
+            f"--screenshot={output}",
+            source.as_uri(),
         ]
         proc = subprocess.run(command, capture_output=True, text=True, timeout=60)
         if proc.returncode != 0 and not output.exists():
@@ -44,4 +50,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

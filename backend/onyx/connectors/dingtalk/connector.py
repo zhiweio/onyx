@@ -29,6 +29,7 @@ from onyx.connectors.interfaces import (
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
+    HierarchyNode,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -103,9 +104,7 @@ class DingTalkConnector(LoadConnector, PollConnector):
             cursor = int(next_token)
         return nodes
 
-    def _page_content(
-        self, session: requests.Session, node_id: str
-    ) -> str | None:
+    def _page_content(self, session: requests.Session, node_id: str) -> str | None:
         resp = session.get(
             f"{DING_BASE}/v1.0/kb/nodes/{node_id}/content",
             timeout=30,
@@ -117,9 +116,13 @@ class DingTalkConnector(LoadConnector, PollConnector):
         content = data.get("content") or (data.get("result") or {}).get("content")
         return str(content) if content else None
 
-    def _load(self, start: float | None = None, end: float | None = None) -> GenerateDocumentsOutput:
+    def _load(
+        self, start: float | None = None, end: float | None = None
+    ) -> GenerateDocumentsOutput:
         session = self._session()
-        batch: list[Document] = []
+        # list is invariant, so the batch must match the declared
+        # `Iterator[list[Document | HierarchyNode]]` yield type.
+        batch: list[Document | HierarchyNode] = []
         for kb in self._knowledge_bases(session):
             kb_id = str(kb.get("knowledgeBaseId") or kb.get("id") or "")
             if not kb_id:
@@ -145,7 +148,6 @@ class DingTalkConnector(LoadConnector, PollConnector):
                         source=DocumentSource.DINGTALK,
                         semantic_identifier=f"{kb_name}/{title}",
                         title=title,
-                        text=text,
                         sections=[TextSection(text=text)],
                         metadata={"knowledge_base": kb_name},
                         doc_updated_at=updated or None,

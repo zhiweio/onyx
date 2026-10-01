@@ -90,7 +90,8 @@ def _wrap_envelope(msg: str, suffix: str) -> bytes:
 
 def wecom_signature(token: str, timestamp: str, nonce: str, encrypt: str) -> str:
     items = sorted([token, timestamp, nonce, encrypt])
-    return hashlib.sha1("".join(items).encode("utf-8")).hexdigest()
+    # SHA-1 is mandated by the platform callback signature protocol.
+    return hashlib.sha1("".join(items).encode("utf-8")).hexdigest()  # noqa: S324
 
 
 def wecom_decrypt(encoding_aes_key: str, encrypted_b64: str) -> tuple[str, str]:
@@ -103,8 +104,14 @@ def wecom_decrypt(encoding_aes_key: str, encrypted_b64: str) -> tuple[str, str]:
 
 
 def wecom_verify_echo(
-    *, token: str, encoding_aes_key: str, signature: str, timestamp: str, nonce: str,
-    encrypted_b64: str, corp_id: str,
+    *,
+    token: str,
+    encoding_aes_key: str,
+    signature: str,
+    timestamp: str,
+    nonce: str,
+    encrypted_b64: str,
+    corp_id: str,
 ) -> str:
     """URL verification: check signature, decrypt, confirm corp, return
     the plaintext to echo."""

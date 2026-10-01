@@ -3,6 +3,7 @@
 
 Exit codes: 0=pass/review, 1=hard failure, 2=not auditable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,9 +18,7 @@ INCLUDE_RE = re.compile(r"\\includegraphics(?:\[([^\]]*)\])?\{([^}]+)\}")
 WIDTH_RE = re.compile(
     r"width\s*=\s*([0-9]*\.?[0-9]*)\s*\\(textwidth|linewidth|columnwidth)", re.I
 )
-HEIGHT_RE = re.compile(
-    r"height\s*=\s*([0-9]*\.?[0-9]*)\s*\\textheight", re.I
-)
+HEIGHT_RE = re.compile(r"height\s*=\s*([0-9]*\.?[0-9]*)\s*\\textheight", re.I)
 
 
 def coefficient(raw: str) -> float:
@@ -98,7 +97,9 @@ def pdf_metrics(pdf: Path) -> dict:
     return result
 
 
-def target_scale(place: dict | None, metrics: dict, args) -> tuple[float | None, float | None, str | None]:
+def target_scale(
+    place: dict | None, metrics: dict, args
+) -> tuple[float | None, float | None, str | None]:
     if args.target_width_mm is not None:
         width_mm = args.target_width_mm
     elif place is not None:
@@ -174,7 +175,11 @@ def audit(pdf: Path, place: dict | None, args) -> dict:
         warnings.append(
             f"content uses only {metrics['content_width_ratio']:.0%} of source canvas width"
         )
-    verdict = "FAIL" if failures or (args.strict and warnings) else ("REVIEW" if warnings else "PASS")
+    verdict = (
+        "FAIL"
+        if failures or (args.strict and warnings)
+        else ("REVIEW" if warnings else "PASS")
+    )
     item.update(
         {
             "target_width_mm": round(width_mm, 2),
@@ -193,10 +198,14 @@ def audit(pdf: Path, place: dict | None, args) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Audit PDF text after final LaTeX scaling")
+    parser = argparse.ArgumentParser(
+        description="Audit PDF text after final LaTeX scaling"
+    )
     parser.add_argument("pdfs", nargs="+", type=Path)
     parser.add_argument("--tex-root", type=Path)
-    parser.add_argument("--profile", choices=["auto", "modeling", "research"], default="auto")
+    parser.add_argument(
+        "--profile", choices=["auto", "modeling", "research"], default="auto"
+    )
     parser.add_argument("--target-width-mm", type=float)
     parser.add_argument("--textwidth-mm", type=float)
     parser.add_argument("--columnwidth-mm", type=float)
@@ -213,22 +222,36 @@ def main() -> int:
     profile = detect_profile(Path(__file__)) if args.profile == "auto" else args.profile
     hard, recommended = profile_defaults(profile)
     args.hard_min_pt = hard if args.hard_min_pt is None else args.hard_min_pt
-    args.recommended_min_pt = recommended if args.recommended_min_pt is None else args.recommended_min_pt
+    args.recommended_min_pt = (
+        recommended if args.recommended_min_pt is None else args.recommended_min_pt
+    )
     by_name = placements(args.tex_root)
     results = []
     for pdf in args.pdfs:
         if not pdf.is_file():
-            results.append({"figure": str(pdf), "verdict": "NOT_AUDITABLE", "reason": "file not found"})
+            results.append(
+                {
+                    "figure": str(pdf),
+                    "verdict": "NOT_AUDITABLE",
+                    "reason": "file not found",
+                }
+            )
             continue
         matches = by_name.get(pdf.name.lower(), [None])
         for place in matches:
             try:
                 results.append(audit(pdf, place, args))
             except Exception as exc:
-                results.append({"figure": str(pdf), "verdict": "NOT_AUDITABLE", "reason": str(exc)})
+                results.append(
+                    {"figure": str(pdf), "verdict": "NOT_AUDITABLE", "reason": str(exc)}
+                )
 
     print(f"=== final-size figure audit ({profile}) ===")
-    print(f"hard minimum={args.hard_min_pt:g} pt; recommended median={args.recommended_min_pt:g} pt" if args.hard_min_pt > 0 else f"no hard font minimum; recommended median={args.recommended_min_pt:g} pt (review only)")
+    print(
+        f"hard minimum={args.hard_min_pt:g} pt; recommended median={args.recommended_min_pt:g} pt"
+        if args.hard_min_pt > 0
+        else f"no hard font minimum; recommended median={args.recommended_min_pt:g} pt (review only)"
+    )
     for item in results:
         print(f"[{item['verdict']}] {item['figure']}")
         if "scale" in item and "effective_text_min_pt" in item:
@@ -246,7 +269,10 @@ def main() -> int:
     if args.json_path:
         args.json_path.parent.mkdir(parents=True, exist_ok=True)
         args.json_path.write_text(
-            json.dumps({"profile": profile, "results": results}, ensure_ascii=False, indent=2) + "\n",
+            json.dumps(
+                {"profile": profile, "results": results}, ensure_ascii=False, indent=2
+            )
+            + "\n",
             encoding="utf-8",
         )
     if any(item["verdict"] == "FAIL" for item in results):

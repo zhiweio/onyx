@@ -27,24 +27,37 @@ def first_existing(candidates):
 def resolve():
     local = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local"))
     program_files = Path(os.environ.get("PROGRAMFILES", "C:/Program Files"))
-    program_files_x86 = Path(os.environ.get("PROGRAMFILES(X86)", "C:/Program Files (x86)"))
-    chrome = first_existing([
-        os.environ.get("PUPPETEER_EXECUTABLE_PATH"),
-        os.environ.get("CHROME_PATH"),
-        program_files / "Google/Chrome/Application/chrome.exe",
-        program_files_x86 / "Google/Chrome/Application/chrome.exe",
-        local / "Google/Chrome/Application/chrome.exe",
-        "chrome", "google-chrome", "chromium", "chromium-browser",
-    ])
-    drawio = first_existing([
-        os.environ.get("DRAWIO_PATH"),
-        local / "Programs/draw.io/draw.io.exe",
-        program_files / "draw.io/draw.io.exe",
-        "draw.io.exe", "drawio", "draw.io",
-    ])
-    managed_python = first_existing([
-        os.environ.get("VIVID_PYTHON"),
-    ])
+    program_files_x86 = Path(
+        os.environ.get("PROGRAMFILES(X86)", "C:/Program Files (x86)")
+    )
+    chrome = first_existing(
+        [
+            os.environ.get("PUPPETEER_EXECUTABLE_PATH"),
+            os.environ.get("CHROME_PATH"),
+            program_files / "Google/Chrome/Application/chrome.exe",
+            program_files_x86 / "Google/Chrome/Application/chrome.exe",
+            local / "Google/Chrome/Application/chrome.exe",
+            "chrome",
+            "google-chrome",
+            "chromium",
+            "chromium-browser",
+        ]
+    )
+    drawio = first_existing(
+        [
+            os.environ.get("DRAWIO_PATH"),
+            local / "Programs/draw.io/draw.io.exe",
+            program_files / "draw.io/draw.io.exe",
+            "draw.io.exe",
+            "drawio",
+            "draw.io",
+        ]
+    )
+    managed_python = first_existing(
+        [
+            os.environ.get("VIVID_PYTHON"),
+        ]
+    )
     return {
         "python": str(Path(sys.executable).resolve()),
         "configured_python": managed_python,
@@ -53,7 +66,14 @@ def resolve():
         "mmdc": first_existing(["mmdc.cmd", "mmdc"]),
         "node": first_existing(["node.exe", "node"]),
         "xelatex": first_existing(["xelatex.exe", "xelatex"]),
-        "bash": first_existing([os.environ.get("VIVID_BASH"), program_files / "Git/bin/bash.exe", program_files / "Git/usr/bin/bash.exe", "bash"]),
+        "bash": first_existing(
+            [
+                os.environ.get("VIVID_BASH"),
+                program_files / "Git/bin/bash.exe",
+                program_files / "Git/usr/bin/bash.exe",
+                "bash",
+            ]
+        ),
     }
 
 
@@ -76,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

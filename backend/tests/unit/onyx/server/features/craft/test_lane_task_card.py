@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from onyx.server.features.build.jobs.kernel import _emit_lane_task_card
 from onyx.server.features.build.jobs.lane_task import (
     LANE_TASK_JOB_KEY,
     LANE_TASK_NODE_KEY,
@@ -10,7 +11,6 @@ from onyx.server.features.build.jobs.lane_task import (
     lane_task_upsert_action,
     patch_open_lane_task_status,
 )
-from onyx.server.features.build.jobs.kernel import _emit_lane_task_card
 
 
 def test_lane_task_tool_id_is_stable() -> None:
@@ -148,7 +148,7 @@ def test_emit_lane_task_card_updates_existing(monkeypatch) -> None:
         specialist_session_id=specialist_id,
         role="literature",
     )
-    updated: list[object] = []
+    updated: list[tuple[object, dict]] = []
     created: list[object] = []
 
     monkeypatch.setattr(
@@ -161,7 +161,7 @@ def test_emit_lane_task_card_updates_existing(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "onyx.server.features.build.db.build_session.update_message",
-        lambda message_id, metadata, db_session: updated.append(
+        lambda message_id, metadata, _db_session: updated.append(
             (message_id, metadata)
         ),
     )
@@ -171,7 +171,7 @@ def test_emit_lane_task_card_updates_existing(monkeypatch) -> None:
     )
 
     _emit_lane_task_card(
-        type("Db", (), {})(),  # type: ignore[arg-type]
+        type("Db", (), {})(),  # type: ignore[arg-type] # ty: ignore[invalid-argument-type]
         session_id=uuid4(),
         node_id="lane:literature",
         name="Literature",

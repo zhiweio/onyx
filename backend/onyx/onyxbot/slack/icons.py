@@ -63,6 +63,13 @@ _SOURCE_IMAGE_FILENAMES: Mapping[DocumentSource, str] = {
     DocumentSource.BRAINTRUST: "Braintrust.png",
     # LumApps ships only as an inline SVG in web; no PNG asset exists
     DocumentSource.LUMAPPS: _DEFAULT_SOURCE_IMAGE_FILENAME,
+    # China-workplace and SAP connectors reuse the generic file icon until
+    # dedicated assets are added to web/public/slackbot-source-icons/
+    DocumentSource.WECOM: _DEFAULT_SOURCE_IMAGE_FILENAME,
+    DocumentSource.DINGTALK: _DEFAULT_SOURCE_IMAGE_FILENAME,
+    DocumentSource.FEISHU: _DEFAULT_SOURCE_IMAGE_FILENAME,
+    DocumentSource.WPS365: _DEFAULT_SOURCE_IMAGE_FILENAME,
+    DocumentSource.SAP_ODATA: _DEFAULT_SOURCE_IMAGE_FILENAME,
     DocumentSource.MOCK_CONNECTOR: _DEFAULT_SOURCE_IMAGE_FILENAME,
     DocumentSource.USER_FILE: _DEFAULT_SOURCE_IMAGE_FILENAME,
     DocumentSource.CRAFT_FILE: _DEFAULT_SOURCE_IMAGE_FILENAME,

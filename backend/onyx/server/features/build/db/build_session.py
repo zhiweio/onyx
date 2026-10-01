@@ -395,15 +395,11 @@ def count_user_messages(session_id: UUID, db_session: Session) -> int:
 
 
 def _lane_task_id_match(node_id: str) -> list[Any]:
-    id_match = [
-        BuildMessage.message_metadata.contains({LANE_TASK_NODE_KEY: node_id})
-    ]
-    for tool_id in lane_task_lookup_ids(node_id):
-        id_match.append(
-            BuildMessage.message_metadata.contains(
-                {"streamItems": [{"id": tool_id}]}
-            )
-        )
+    id_match = [BuildMessage.message_metadata.contains({LANE_TASK_NODE_KEY: node_id})]
+    id_match.extend(
+        BuildMessage.message_metadata.contains({"streamItems": [{"id": tool_id}]})
+        for tool_id in lane_task_lookup_ids(node_id)
+    )
     return id_match
 
 
@@ -495,10 +491,11 @@ def latest_assistant_metadata_for_sessions(
         .distinct(BuildMessage.session_id)
         .order_by(BuildMessage.session_id, BuildMessage.created_at.desc())
     ).all()
-    result: dict[UUID, dict[str, Any]] = {}
-    for session_id, metadata in rows:
-        if isinstance(metadata, dict):
-            result[session_id] = metadata
+    result: dict[UUID, dict[str, Any]] = {
+        session_id: metadata
+        for session_id, metadata in rows
+        if isinstance(metadata, dict)
+    }
     return result
 
 

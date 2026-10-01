@@ -22,7 +22,8 @@ def canonical_json(value: Any) -> str:
 
 def cache_key(tool: str, arguments: dict[str, Any]) -> str:
     payload = f"{tool}\n{canonical_json(arguments)}"
-    return hashlib.md5(payload.encode("utf-8")).hexdigest()
+    # MD5 is used only as a cache-key fingerprint, not for security.
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()  # noqa: S324
 
 
 def store_root(report_id: str, base: Path | None = None) -> Path:
@@ -74,7 +75,9 @@ def read_capture(
     *,
     base: Path | None = None,
 ) -> dict[str, Any] | None:
-    path = store_root(report_id, base) / "captures" / f"{cache_key(tool, arguments)}.json"
+    path = (
+        store_root(report_id, base) / "captures" / f"{cache_key(tool, arguments)}.json"
+    )
     if not path.is_file():
         return None
     loaded = json.loads(path.read_text(encoding="utf-8"))
@@ -133,9 +136,7 @@ def main() -> None:
         if not parsed.body_file:
             raise SystemExit("--body-file is required for write")
         body = json.loads(Path(parsed.body_file).read_text(encoding="utf-8"))
-        path = write_capture(
-            parsed.report_id, parsed.tool, arguments, body, base=base
-        )
+        path = write_capture(parsed.report_id, parsed.tool, arguments, body, base=base)
         print(path)
         return
     record = read_capture(parsed.report_id, parsed.tool, arguments, base=base)

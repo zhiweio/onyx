@@ -1,6 +1,6 @@
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from onyx.llm.model_capabilities import (
     find_model_obj,
@@ -62,9 +62,7 @@ def _capability_model_name(
     return model.name
 
 
-_GATEWAY_INPUT_MODALITIES: frozenset[str] = frozenset(
-    {"text", "image", "video", "pdf"}
-)
+_GATEWAY_INPUT_MODALITIES: frozenset[str] = frozenset({"text", "image", "video", "pdf"})
 _GATEWAY_OUTPUT_MODALITIES: frozenset[str] = frozenset({"text"})
 
 
@@ -72,7 +70,11 @@ def _as_gateway_modalities(
     values: list[str],
     allowed: frozenset[str],
 ) -> tuple[GatewayModality, ...]:
-    return tuple(value for value in values if value in allowed)  # type: ignore[misc]
+    """``allowed`` only ever holds GatewayModality literal values."""
+    return cast(
+        "tuple[GatewayModality, ...]",
+        tuple(value for value in values if value in allowed),
+    )
 
 
 def _gateway_input_modalities(
@@ -101,7 +103,9 @@ def _gateway_token_limits(
     model: ModelConfigurationView,
 ) -> tuple[int | None, int | None]:
     capability_model_name = _capability_model_name(model_map, provider, model)
-    known = find_model_obj(model_map, provider.provider, capability_model_name) is not None
+    known = (
+        find_model_obj(model_map, provider.provider, capability_model_name) is not None
+    )
     max_input_tokens = model.configured_max_input_tokens
     if max_input_tokens is None and known:
         max_input_tokens = llm_max_input_tokens(

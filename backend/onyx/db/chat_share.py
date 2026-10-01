@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import ChatSessionSharePermission, ChatSessionSharedStatus
+from onyx.db.enums import ChatSessionSharedStatus, ChatSessionSharePermission
 from onyx.db.models import (
     ChatSession,
     ChatSession__User,

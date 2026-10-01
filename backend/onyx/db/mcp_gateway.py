@@ -9,9 +9,11 @@ hash across every caller that got the same answer.
 import datetime
 from datetime import timezone
 from typing import Any
+from typing import cast as typing_cast
 
-from sqlalchemy import Integer, cast, delete, desc, func, select, update
+from sqlalchemy import Delete, Integer, cast, delete, desc, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import MCPGatewayCallOutcome, MCPResultStorage
@@ -721,6 +723,12 @@ def upsert_daily_call_stats(db_session: Session, *, day: datetime.date) -> int:
     return written
 
 
+def _execute_row_count(db_session: Session, stmt: Delete) -> int:
+    """Run a DELETE and return its rowcount (CursorResult always provides one)."""
+    result = typing_cast(CursorResult, db_session.execute(stmt))
+    return result.rowcount or 0
+
+
 def prune_call_logs(
     db_session: Session, *, older_than: datetime.datetime, limit: int = 5000
 ) -> int:
@@ -734,11 +742,11 @@ def prune_call_logs(
     )
     if not ids:
         return 0
-    result = db_session.execute(
-        delete(MCPGatewayCallLog).where(MCPGatewayCallLog.id.in_(ids))
+    deleted = _execute_row_count(
+        db_session, delete(MCPGatewayCallLog).where(MCPGatewayCallLog.id.in_(ids))
     )
     db_session.commit()
-    return result.rowcount or 0  # ty: ignore[unresolved-attribute]
+    return deleted
 
 
 def clear_gateway_history(
@@ -753,13 +761,11 @@ def clear_gateway_history(
     deleted_stats = 0
     deleted_blobs = 0
     if cache:
-        deleted_cache = db_session.execute(delete(MCPGatewayCacheEntry)).rowcount or 0
-        deleted_blobs = db_session.execute(delete(MCPResultBlob)).rowcount or 0
+        deleted_cache = _execute_row_count(db_session, delete(MCPGatewayCacheEntry))
+        deleted_blobs = _execute_row_count(db_session, delete(MCPResultBlob))
     if calls:
-        deleted_logs = db_session.execute(delete(MCPGatewayCallLog)).rowcount or 0
-        deleted_stats = (
-            db_session.execute(delete(MCPGatewayCallStatsDaily)).rowcount or 0
-        )
+        deleted_logs = _execute_row_count(db_session, delete(MCPGatewayCallLog))
+        deleted_stats = _execute_row_count(db_session, delete(MCPGatewayCallStatsDaily))
     db_session.commit()
     return {
         "cache_entries": int(deleted_cache),

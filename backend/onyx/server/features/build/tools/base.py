@@ -51,9 +51,7 @@ class ToolResult:
 
 
 def text_result(text: str, *, terminate: bool = False) -> ToolResult:
-    return ToolResult(
-        content=[{"type": "text", "text": text}], terminate=terminate
-    )
+    return ToolResult(content=[{"type": "text", "text": text}], terminate=terminate)
 
 
 def unavailable(tool_name: str, reason: str) -> ToolResult:
@@ -76,5 +74,4 @@ class PlatformTool(Protocol):
     description: str
     parameters: dict[str, Any]
 
-    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
-        ...
+    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult: ...

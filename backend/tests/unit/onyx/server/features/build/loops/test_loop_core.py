@@ -1,7 +1,7 @@
 """Unit tests for the craft loop core: ledger machine, ship gate, governor."""
 
 from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 
@@ -28,16 +28,13 @@ from onyx.server.features.build.loops.core import (
     return_to_work,
     set_autopilot,
     ship_gate_for_action,
-    verify_claim,
 )
 
 NOW = datetime(2026, 9, 30, tzinfo=timezone.utc)
 USER = UUID(int=1)
 
 
-def _loop(
-    ship_actions: list[dict] | None = None, policy_version: int = 1
-) -> CraftLoop:
+def _loop(ship_actions: list[dict] | None = None, policy_version: int = 1) -> CraftLoop:
     return CraftLoop(
         user_id=USER,
         name="季度风控扫描",
@@ -63,7 +60,9 @@ def _item(status: CraftLoopItemStatus = CraftLoopItemStatus.QUEUED) -> CraftLoop
     )
 
 
-def _output(action: str = "save_artifacts", label: str | None = None) -> CraftLoopOutput:
+def _output(
+    action: str = "save_artifacts", label: str | None = None
+) -> CraftLoopOutput:
     return CraftLoopOutput(
         loop_id=UUID(int=2),
         item_id=UUID(int=3),
@@ -171,9 +170,7 @@ def test_gate_hold_without_grant() -> None:
 
 
 def test_gate_auto_by_policy() -> None:
-    loop = _loop(
-        ship_actions=[{"action": "save_artifacts", "gate": "auto"}]
-    )
+    loop = _loop(ship_actions=[{"action": "save_artifacts", "gate": "auto"}])
     assert ship_gate_for_action(loop, "save_artifacts") is ShipGate.AUTO
     decision = decide_ship(loop, _output(), grants=[])
     assert decision.auto is True
@@ -203,7 +200,9 @@ def test_grant_covering_rules() -> None:
     # label scoping
     scoped = _grant("notify_im", policy_version=1, label="财务群")
     assert grant_covers(scoped, action="notify_im", label="财务群", policy_version=1)
-    assert not grant_covers(scoped, action="notify_im", label="管理层群", policy_version=1)
+    assert not grant_covers(
+        scoped, action="notify_im", label="管理层群", policy_version=1
+    )
     # unlabeled output covered by any grant on the action
     assert grant_covers(scoped, action="notify_im", label=None, policy_version=1)
 
@@ -255,9 +254,7 @@ def test_governor_escalates_and_recovers() -> None:
     loop = _loop()
     assert evaluate_governor(loop, fire_failed=True) is CraftLoopHealth.HEALTHY
     assert evaluate_governor(loop, fire_failed=True) is CraftLoopHealth.FAILING
-    assert (
-        evaluate_governor(loop, fire_failed=True) is CraftLoopHealth.QUARANTINED
-    )
+    assert evaluate_governor(loop, fire_failed=True) is CraftLoopHealth.QUARANTINED
     assert loop.state is CraftLoopState.QUARANTINED
     assert not loop.state.is_runnable()
 

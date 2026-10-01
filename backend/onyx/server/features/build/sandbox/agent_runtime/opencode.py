@@ -77,7 +77,7 @@ class OpenCodeRuntime(AgentRuntime):
         prompt: str,
         attachments: list[PromptAttachment] | None = None,
         model: str | None = None,
-        reasoning_effort: ReasoningEffort = ReasoningEffort.AUTO,
+        reasoning_effort: ReasoningEffort = ReasoningEffort.AUTO,  # noqa: ARG002
     ) -> Any:
         provider: str | None = None
         model_id: str | None = None

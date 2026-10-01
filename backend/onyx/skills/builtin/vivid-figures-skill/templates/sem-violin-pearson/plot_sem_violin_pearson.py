@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-
 DEFAULT_ORDER = ["USE", "ATT", "PBC", "BI", "EVA", "AWA", "SN", "ETH"]
 PREFIX_GROUPS = {
     "AWA": ("10\u3001", "@10\u3001"),
@@ -34,7 +33,9 @@ def load_data(path: Path) -> pd.DataFrame:
         try:
             import pyreadstat
         except ImportError as exc:
-            raise SystemExit("Reading .sav requires pyreadstat. Install it or use an XLSX source.") from exc
+            raise SystemExit(
+                "Reading .sav requires pyreadstat. Install it or use an XLSX source."
+            ) from exc
         df, _meta = pyreadstat.read_sav(str(path), apply_value_formats=False)
         return df
     if suffix == ".csv":
@@ -54,7 +55,9 @@ def parse_json_arg(value: str | None, default):
     return json.loads(value)
 
 
-def auto_construct_map(columns: list[str], exclude: dict[str, list[int]]) -> dict[str, list[str]]:
+def auto_construct_map(
+    columns: list[str], exclude: dict[str, list[int]]
+) -> dict[str, list[str]]:
     mapping: dict[str, list[str]] = {}
     for construct, prefixes in PREFIX_GROUPS.items():
         selected = [c for c in columns if str(c).startswith(prefixes)]
@@ -65,7 +68,9 @@ def auto_construct_map(columns: list[str], exclude: dict[str, list[int]]) -> dic
     return mapping
 
 
-def build_scores(df: pd.DataFrame, mapping: dict[str, list[str]], order: list[str]) -> pd.DataFrame:
+def build_scores(
+    df: pd.DataFrame, mapping: dict[str, list[str]], order: list[str]
+) -> pd.DataFrame:
     missing = [c for cols in mapping.values() for c in cols if c not in df.columns]
     if missing:
         raise SystemExit(f"Construct map references missing columns: {missing[:8]}")
@@ -127,7 +132,9 @@ def available_times_font() -> str | None:
     return next((str(p) for p in candidates if p.exists()), None)
 
 
-def paper_comparison(corr: pd.DataFrame, paper: dict | None, order: list[str]) -> pd.DataFrame:
+def paper_comparison(
+    corr: pd.DataFrame, paper: dict | None, order: list[str]
+) -> pd.DataFrame:
     if not paper:
         return pd.DataFrame()
     rows = []
@@ -143,13 +150,15 @@ def paper_comparison(corr: pd.DataFrame, paper: dict | None, order: list[str]) -
             target = paper[f"{b},{a}"]
         if target is None:
             continue
-        rows.append({
-            "var1": a,
-            "var2": b,
-            "computed": float(corr.loc[a, b]),
-            "paper": float(target),
-            "abs_diff": abs(float(corr.loc[a, b]) - float(target)),
-        })
+        rows.append(
+            {
+                "var1": a,
+                "var2": b,
+                "computed": float(corr.loc[a, b]),
+                "paper": float(target),
+                "abs_diff": abs(float(corr.loc[a, b]) - float(target)),
+            }
+        )
     return pd.DataFrame(rows).sort_values("abs_diff", ascending=False)
 
 
@@ -163,35 +172,41 @@ def draw_plots(
     prefix: str,
 ) -> dict[str, str]:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import seaborn as sns
     from matplotlib import font_manager
     from matplotlib.cm import ScalarMappable
     from matplotlib.colors import LinearSegmentedColormap, Normalize
     from matplotlib.ticker import FuncFormatter
-    import seaborn as sns
     from PIL import Image
 
     font_path = available_times_font()
     if font_path:
         font_manager.fontManager.addfont(font_path)
-    plt.rcParams.update({
-        "font.family": "Times New Roman",
-        "font.size": 24,
-        "axes.labelsize": 30,
-        "xtick.labelsize": 24,
-        "ytick.labelsize": 24,
-        "axes.unicode_minus": False,
-        "figure.dpi": 180,
-        "savefig.dpi": 300,
-    })
-    sns.set_theme(style="whitegrid", rc={
-        "font.family": "Times New Roman",
-        "axes.edgecolor": "#AEB7C4",
-        "grid.color": "#E5EAF0",
-        "axes.facecolor": "#FFFFFF",
-        "figure.facecolor": "#FFFFFF",
-    })
+    plt.rcParams.update(
+        {
+            "font.family": "Times New Roman",
+            "font.size": 24,
+            "axes.labelsize": 30,
+            "xtick.labelsize": 24,
+            "ytick.labelsize": 24,
+            "axes.unicode_minus": False,
+            "figure.dpi": 180,
+            "savefig.dpi": 300,
+        }
+    )
+    sns.set_theme(
+        style="whitegrid",
+        rc={
+            "font.family": "Times New Roman",
+            "axes.edgecolor": "#AEB7C4",
+            "grid.color": "#E5EAF0",
+            "axes.facecolor": "#FFFFFF",
+            "figure.facecolor": "#FFFFFF",
+        },
+    )
 
     fill = "#87DED7"
     line = "#3049A1"
@@ -223,7 +238,15 @@ def draw_plots(
     rng = np.random.default_rng(20260626)
     for yi, var in enumerate(order):
         vals = long.loc[long["Variable"] == var, "Residual"].dropna().to_numpy()
-        ax.scatter(vals, rng.normal(yi, 0.055, len(vals)), s=11, color=dot, alpha=0.28, edgecolors="none", zorder=3)
+        ax.scatter(
+            vals,
+            rng.normal(yi, 0.055, len(vals)),
+            s=11,
+            color=dot,
+            alpha=0.28,
+            edgecolors="none",
+            zorder=3,
+        )
     ax.axvline(0, color="#6E7785", linestyle=":", linewidth=1.4)
     ax.set_xlim(-2.8, 2.8)
     ax.set_xlabel("Residual", fontsize=30)
@@ -233,7 +256,16 @@ def draw_plots(
     ax.grid(axis="x", color="#E5EAF0", linewidth=1)
     ax.grid(axis="y", visible=False)
     sns.despine(ax=ax, top=False, right=False)
-    ax.text(-0.02, 1.02, "(a)", transform=ax.transAxes, fontsize=34, fontweight="bold", ha="left", va="bottom")
+    ax.text(
+        -0.02,
+        1.02,
+        "(a)",
+        transform=ax.transAxes,
+        fontsize=34,
+        fontweight="bold",
+        ha="left",
+        va="bottom",
+    )
     fig.tight_layout(pad=1.2)
     violin_png = out_dir / f"{prefix}_residual_violin.png"
     violin_svg = out_dir / f"{prefix}_residual_violin.svg"
@@ -254,7 +286,13 @@ def draw_plots(
             ax.tick_params(length=0, pad=3)
             if i == j:
                 vals = scored[row].dropna()
-                ax.hist(vals, bins=np.arange(1, 8.5, 0.5), color="#CBEFC9", edgecolor="#6FAB74", linewidth=1.0)
+                ax.hist(
+                    vals,
+                    bins=np.arange(1, 8.5, 0.5),
+                    color="#CBEFC9",
+                    edgecolor="#6FAB74",
+                    linewidth=1.0,
+                )
                 try:
                     sns.kdeplot(x=vals, ax=ax, color=line, linewidth=1.6, bw_adjust=0.9)
                 except Exception:
@@ -264,13 +302,29 @@ def draw_plots(
                 ax.set_xlabel("")
                 ax.set_ylabel("")
             elif i > j:
-                ax.scatter(scored[col], scored[row], s=10, color="#2BB8C6", alpha=0.34, edgecolors="none")
+                ax.scatter(
+                    scored[col],
+                    scored[row],
+                    s=10,
+                    color="#2BB8C6",
+                    alpha=0.34,
+                    edgecolors="none",
+                )
                 ax.set_xlim(0.8, 7.2)
                 ax.set_ylim(0.8, 7.2)
             else:
                 value = corr.loc[row, col]
                 ax.set_facecolor(cmap(norm(value)))
-                ax.text(0.5, 0.57, f"{value:.3f}", transform=ax.transAxes, ha="center", va="center", fontsize=24, color="#202633")
+                ax.text(
+                    0.5,
+                    0.57,
+                    f"{value:.3f}",
+                    transform=ax.transAxes,
+                    ha="center",
+                    va="center",
+                    fontsize=24,
+                    color="#202633",
+                )
                 ax.text(
                     0.5,
                     0.38,
@@ -297,7 +351,9 @@ def draw_plots(
     cax = fig.add_axes([0.92, 0.13, 0.025, 0.75])
     cb = fig.colorbar(ScalarMappable(norm=norm, cmap=cmap), cax=cax)
     cb.set_ticks([-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1])
-    cb.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _pos: "0.00" if abs(x) < 0.0005 else f"{x:.2f}"))
+    cb.ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda x, _pos: "0.00" if abs(x) < 0.0005 else f"{x:.2f}")
+    )
     cb.ax.tick_params(labelsize=24)
     cb.outline.set_edgecolor("#AEB7C4")
     fig.subplots_adjust(left=0.08, right=0.89, top=0.93, bottom=0.08)
@@ -337,14 +393,19 @@ def write_audit(
     comparison: pd.DataFrame,
 ) -> Path:
     out = out_dir / f"{prefix}_plot_audit.xlsx"
-    rows = [{"construct": k, "items_used": " | ".join(map(str, mapping[k]))} for k in mapping]
+    rows = [
+        {"construct": k, "items_used": " | ".join(map(str, mapping[k]))}
+        for k in mapping
+    ]
     with pd.ExcelWriter(out, engine="openpyxl") as writer:
         pd.DataFrame(rows).to_excel(writer, sheet_name="item_mapping", index=False)
         scored.to_excel(writer, sheet_name="construct_scores", index=False)
         residuals.to_excel(writer, sheet_name="residuals_z", index=False)
         corr.round(6).to_excel(writer, sheet_name="computed_corr")
         if not comparison.empty:
-            comparison.round(6).to_excel(writer, sheet_name="paper_comparison", index=False)
+            comparison.round(6).to_excel(
+                writer, sheet_name="paper_comparison", index=False
+            )
     return out
 
 
@@ -353,9 +414,21 @@ def main() -> None:
     parser.add_argument("--data", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--order", default=",".join(DEFAULT_ORDER))
-    parser.add_argument("--exclude-json", default=None, help='JSON such as {"AWA":[0,2]} using zero-based item positions after auto-detection.')
-    parser.add_argument("--construct-map-json", default=None, help="JSON string or file path mapping constructs to exact column names.")
-    parser.add_argument("--paper-corr-json", default=None, help="Optional JSON string or file path with paper correlations for comparison.")
+    parser.add_argument(
+        "--exclude-json",
+        default=None,
+        help='JSON such as {"AWA":[0,2]} using zero-based item positions after auto-detection.',
+    )
+    parser.add_argument(
+        "--construct-map-json",
+        default=None,
+        help="JSON string or file path mapping constructs to exact column names.",
+    )
+    parser.add_argument(
+        "--paper-corr-json",
+        default=None,
+        help="Optional JSON string or file path with paper correlations for comparison.",
+    )
     parser.add_argument("--prefix", default="sem")
     args = parser.parse_args()
 
@@ -364,7 +437,9 @@ def main() -> None:
     order = [x.strip() for x in args.order.split(",") if x.strip()]
     exclude = parse_json_arg(args.exclude_json, {})
     data = load_data(args.data)
-    mapping = parse_json_arg(args.construct_map_json, None) or auto_construct_map(list(data.columns), exclude)
+    mapping = parse_json_arg(args.construct_map_json, None) or auto_construct_map(
+        list(data.columns), exclude
+    )
     scored = build_scores(data, mapping, order)
     corr = scored[order].corr()
     pmat = p_values(scored, order)
@@ -372,7 +447,9 @@ def main() -> None:
     paper = parse_json_arg(args.paper_corr_json, None)
     comparison = paper_comparison(corr, paper, order)
     figures = draw_plots(scored, residuals, corr, pmat, order, out_dir, args.prefix)
-    audit = write_audit(out_dir, args.prefix, mapping, scored[order], residuals[order], corr, comparison)
+    audit = write_audit(
+        out_dir, args.prefix, mapping, scored[order], residuals[order], corr, comparison
+    )
     summary = {
         "source_data": str(args.data),
         "n_rows": int(data.shape[0]),
@@ -386,7 +463,9 @@ def main() -> None:
         summary["mean_abs_diff_vs_paper_corr"] = float(comparison["abs_diff"].mean())
         summary["max_abs_diff_vs_paper_corr"] = float(comparison["abs_diff"].max())
     summary_path = out_dir / f"{args.prefix}_plot_summary.json"
-    summary_path.write_text(json.dumps(summary, ensure_ascii=True, indent=2), encoding="utf-8")
+    summary_path.write_text(
+        json.dumps(summary, ensure_ascii=True, indent=2), encoding="utf-8"
+    )
     print(json.dumps(summary, ensure_ascii=True, indent=2))
 
 

@@ -130,9 +130,7 @@ def insert_memory(
     return memory
 
 
-def set_embedding(
-    db_session: Session, memory_id: int, embedding: list[float]
-) -> None:
+def set_embedding(db_session: Session, memory_id: int, embedding: list[float]) -> None:
     db_session.execute(
         text(
             """
@@ -280,7 +278,7 @@ def get_owned_active(
     )
 
 
-def soft_delete(db_session: Session, memory: LongTermMemory) -> None:
+def soft_delete(_db_session: Session, memory: LongTermMemory) -> None:
     memory.deleted_at = datetime.datetime.now(datetime.timezone.utc)
 
 

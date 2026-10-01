@@ -178,9 +178,7 @@ def test_reset_replaces_sandbox_and_migrates_project_chats(
     stub_sandbox_manager.write_sandbox_file_silent = True
     stub_sandbox_manager.write_files_to_sandbox_silent = True
 
-    new = session_manager_with_stub.reset_sandbox(
-        test_user.id, project_id=project.id
-    )
+    new = session_manager_with_stub.reset_sandbox(test_user.id, project_id=project.id)
 
     assert new.id != old_id
     assert new.status == SandboxStatus.RUNNING
@@ -189,8 +187,9 @@ def test_reset_replaces_sandbox_and_migrates_project_chats(
     assert stub_sandbox_manager.last_terminate_sandbox_id == old_id
     assert stub_sandbox_manager.last_provision_payload is not None
     assert stub_sandbox_manager.last_provision_payload["sandbox_id"] == new.id
-    assert get_sandbox_by_user_id(db_session, test_user.id) is not None
-    assert get_sandbox_by_user_id(db_session, test_user.id).id == new.id
+    fetched_sandbox = get_sandbox_by_user_id(db_session, test_user.id)
+    assert fetched_sandbox is not None
+    assert fetched_sandbox.id == new.id
     assert list_snapshots_for_project(db_session, project.id) == []
     leftover = list_snapshots_for_project(db_session, other.id)
     assert [row.session_id for row in leftover] == [other_session.id]

@@ -329,10 +329,10 @@ To embed: copy each `\begin{figure}...\end{figure}` block that references a `tik
 4. **⛔ 子图标注 (a)(b)(c)(d) 必须用 `ax.set_title()` 而不是 `ax.text(transAxes)`：**
    ```python
    # ✅ 正确：紧贴子图顶部，不受 aspect ratio 影响
-   ax.set_title('(a)', fontsize=12, fontweight='bold', loc='left', pad=3)
-   
+   ax.set_title("(a)", fontsize=12, fontweight="bold", loc="left", pad=3)
+
    # ❌ 错误：set_aspect('equal') 时标注会远离子图
-   ax.text(-0.08, 1.05, '(a)', transform=ax.transAxes, fontsize=12, fontweight='bold')
+   ax.text(-0.08, 1.05, "(a)", transform=ax.transAxes, fontsize=12, fontweight="bold")
    ```
    原因：`transAxes` 坐标相对于 axes 逻辑区域，但 `set_aspect('equal')` 或 `constrained_layout` 会让实际绘图区域缩小，导致 `y=1.05` 看起来离图很远。`set_title(loc='left', pad=3)` 自动贴着实际渲染的 axes 边框。
 
@@ -355,15 +355,22 @@ To embed: copy each `\begin{figure}...\end{figure}` block that references a `tik
 **⛔ 热力图数字必须可读**：`sns.heatmap()` 的 `annot=True` 默认用黑色文字，深色格子上完全看不清。必须加 `annot_kws` 或用自适应文字颜色：
 ```python
 # 方法：用 seaborn 内置的自适应（推荐）
-sns.heatmap(data, annot=True, fmt='.2f', cmap='YlOrRd',
-            linewidths=0.5, linecolor='white',
-            annot_kws={'fontsize': 9, 'fontweight': 'bold'})
+sns.heatmap(
+    data,
+    annot=True,
+    fmt=".2f",
+    cmap="YlOrRd",
+    linewidths=0.5,
+    linecolor="white",
+    annot_kws={"fontsize": 9, "fontweight": "bold"},
+)
 # 手动设置阈值：深色格子用白字，浅色格子用黑字
 from matplotlib.colors import Normalize
+
 norm = Normalize(vmin=data.min().min(), vmax=data.max().max())
 for text in ax.texts:
     val = float(text.get_text())
-    text.set_color('white' if norm(val) > 0.6 else 'black')
+    text.set_color("white" if norm(val) > 0.6 else "black")
 ```
 不要只用 `annot=True` 就完事——必须确保所有格子上的数字都清晰可读。
 10. **聚类热力图 + 树状图** — **⛔ 必须严格按照 recipe:advanced.cluster_heatmap 配方的 `fig.add_axes()` 布局代码，不要用 gridspec 自己发挥。** 只保留顶部树状图，不用左侧树状图（会遮挡 y 轴标签）。树状图高度占比不超过 15%（`add_axes([0.22, 0.85, 0.56, 0.12])`）。热力图左边界 `_left` 必须 ≥ 0.22（给 y 轴标签+左侧色条留足空间）。如果有左侧分组色条，色条放在 `_left - 0.05` 处（宽度 0.025），色条和热力图之间至少留 0.025 的间距给 y 轴标签。**⛔ 禁止让色条和 y 轴标签区域重叠 — 这是最常见的遮挡 bug。**

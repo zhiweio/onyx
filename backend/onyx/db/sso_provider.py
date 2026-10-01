@@ -103,9 +103,7 @@ class DingTalkProviderConfig(_ChinaProviderConfig):
     client_secret: str = Field(json_schema_extra={"secret": True})
     # IM bot (enterprise internal robot) callback + replies
     robot_code: str | None = None
-    bot_aes_key: str | None = Field(
-        default=None, json_schema_extra={"secret": True}
-    )
+    bot_aes_key: str | None = Field(default=None, json_schema_extra={"secret": True})
 
 
 class FeishuProviderConfig(_ChinaProviderConfig):

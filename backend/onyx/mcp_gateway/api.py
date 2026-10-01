@@ -35,10 +35,8 @@ from onyx.server.metrics.prometheus_setup import (
     expose_prometheus_metrics,
 )
 from onyx.utils.logger import setup_logger
-from onyx.utils.variable_functionality import set_is_ee_based_on_env_variable
 
 logger = setup_logger()
-set_is_ee_based_on_env_variable()
 
 _apps: dict[str, ProviderASGIApp] = {}
 _started_slugs: set[str] = set()

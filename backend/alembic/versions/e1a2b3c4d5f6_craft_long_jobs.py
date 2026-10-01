@@ -170,10 +170,14 @@ def upgrade() -> None:
         sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("scenario_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("name", sa.String(length=256), nullable=False),
-        sa.Column("domain", sa.String(length=32), nullable=False, server_default="general"),
+        sa.Column(
+            "domain", sa.String(length=32), nullable=False, server_default="general"
+        ),
         sa.Column("status", sa.String(), nullable=False, server_default="pending"),
         sa.Column("phases", postgresql.JSONB(), nullable=False),
-        sa.Column("current_phase_index", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column(
+            "current_phase_index", sa.Integer(), nullable=False, server_default="0"
+        ),
         sa.Column("total_budget_seconds", sa.Integer(), nullable=False),
         sa.Column("phase_budget_seconds", sa.Integer(), nullable=False),
         sa.Column("error_detail", sa.Text(), nullable=True),
@@ -192,8 +196,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["session_id"], ["build_session.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["project_id"], ["craft_project.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["session_id"], ["build_session.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["craft_project.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(["scenario_id"], ["scenario.id"], ondelete="SET NULL"),
     )
     op.create_index("ix_craft_job_user_created", "craft_job", ["user_id", "created_at"])

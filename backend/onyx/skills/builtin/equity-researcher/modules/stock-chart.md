@@ -67,6 +67,7 @@ If CSV data is unavailable, **skip the stock chart module entirely** and add a d
 # 重试逻辑 — iFind API可能不稳定，必须执行最多3次重试
 import time
 
+
 def get_price_with_retry(ticker, start_date, end_date, file_path, max_retries=3):
     """获取股价数据，带重试逻辑"""
     for attempt in range(1, max_retries + 1):
@@ -79,16 +80,17 @@ def get_price_with_retry(ticker, start_date, end_date, file_path, max_retries=3)
                     "start_date": start_date,
                     "end_date": end_date,
                     "file_path": file_path,
-                    "adjust": "forward"
-                }
+                    "adjust": "forward",
+                },
             )
             # 验证返回数据非空
             import os
+
             if os.path.exists(file_path) and os.path.getsize(file_path) > 100:
                 return True, f"Success on attempt {attempt}"
         except Exception as e:
             if attempt < max_retries:
-                wait_time = 2 ** attempt  # 指数退避: 2s, 4s, 8s
+                wait_time = 2**attempt  # 指数退避: 2s, 4s, 8s
                 time.sleep(wait_time)
             else:
                 return False, f"Failed after {max_retries} attempts: {str(e)}"
@@ -117,7 +119,7 @@ NEVER: Generate mock/simulated/random data
 get_data_source(
     data_source_name="yahoo_finance",
     api_name="get_historical_stock_prices",
-    params={"ticker": "{TICKER_YAHOO_FORMAT}", "period": "1y", "interval": "1d"}
+    params={"ticker": "{TICKER_YAHOO_FORMAT}", "period": "1y", "interval": "1d"},
 )
 # Save returned data to CSV; ensure the "Adj Close" column is present
 # (Yahoo's adjusted close is the equivalent of iFind's forward-adjusted price).
@@ -138,11 +140,14 @@ get_data_source(
 
 ```python
 import os
+
 # Both files must exist AND contain real data — never call the script otherwise
-assert os.path.exists(stock_csv) and os.path.getsize(stock_csv) > 100, \
+assert os.path.exists(stock_csv) and os.path.getsize(stock_csv) > 100, (
     "Stock CSV missing or empty — skip module, do NOT generate mock data"
-assert os.path.exists(benchmark_csv) and os.path.getsize(benchmark_csv) > 100, \
+)
+assert os.path.exists(benchmark_csv) and os.path.getsize(benchmark_csv) > 100, (
     "Benchmark CSV missing or empty — skip module, do NOT generate mock data"
+)
 ```
 
 #### Step 3: Adjustment Verification

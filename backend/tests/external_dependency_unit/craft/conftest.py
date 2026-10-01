@@ -116,7 +116,10 @@ def _retire_helper_users(user_ids: list[UUID]) -> None:
                 session.execute(
                     delete(User__UserGroup).where(User__UserGroup.user_id.in_(user_ids))
                 )
-                session.execute(delete(User).where(User.id.in_(user_ids)))
+                session.execute(
+                    # ty resolves User.id (Mapped via fastapi_users) to UUID on class access.
+                    delete(User).where(User.id.in_(user_ids))  # ty: ignore[unresolved-attribute]
+                )
                 session.commit()
         finally:
             CURRENT_TENANT_ID_CONTEXTVAR.reset(token)

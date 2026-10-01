@@ -41,11 +41,11 @@ def _bot_configs(db_session: Any, platform: str) -> list[Any]:
     provider_type = _PLATFORM_TYPES.get(platform)
     if provider_type is None:
         return []
-    configs = []
-    for provider in fetch_sso_providers(db_session, enabled_only=True):
-        if provider.provider_type is provider_type:
-            configs.append(_config_for(provider, dict(provider.config or {})))
-    return configs
+    return [
+        _config_for(provider, dict(provider.config or {}))
+        for provider in fetch_sso_providers(db_session, enabled_only=True)
+        if provider.provider_type is provider_type
+    ]
 
 
 @router.post("/{platform}/callback")
@@ -56,7 +56,7 @@ async def china_bot_callback(platform: str, request: Request) -> JSONResponse:
         body = await request.json()
         if not isinstance(body, dict):
             raise CallbackRejected("body must be an object")
-    except Exception as exc:
+    except Exception:
         return JSONResponse({"error": "bad body"}, status_code=400)
 
     query = {k: v for k, v in request.query_params.items()}

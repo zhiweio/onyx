@@ -38,7 +38,6 @@ from onyx.db.enums import (
     CraftLoopOutputState,
     SessionOrigin,
 )
-from onyx.db.models import Sandbox
 from onyx.db.notification import create_notification
 from onyx.server.features.build.db.build_session import create_message
 from onyx.server.features.build.db.sandbox import update_sandbox_heartbeat
@@ -101,7 +100,8 @@ def loops_fire_sweep_logic(*, tenant_id: str | None = None) -> list[dict[str, An
             items = list_loop_items(db_session, loop.id)
             release_expired_claims(items, now=now)  # crash recovery
             cap = int(
-                (loop.caps or {}).get("max_items_per_fire") or MAX_ITEMS_PER_FIRE_DEFAULT
+                (loop.caps or {}).get("max_items_per_fire")
+                or MAX_ITEMS_PER_FIRE_DEFAULT
             )
             claimed = 0
             for item in items:
@@ -222,7 +222,9 @@ def _execute_item(item_id: UUID, claim_token: str, budget_seconds: int) -> None:
             return
 
         # Success: stage declared outputs from the sandbox.
-        outputs = _collect_outputs(session_manager, session_id, sandbox_id, owner_id, loop)
+        outputs = _collect_outputs(
+            session_manager, session_id, sandbox_id, owner_id, loop
+        )
         if outputs:
             staged = mark_ready(item, claim_token=claim_token, outputs=outputs)
             for row in staged:
@@ -260,7 +262,11 @@ def _execute_item(item_id: UUID, claim_token: str, budget_seconds: int) -> None:
                 )
         evaluate_governor(loop, fire_failed=False)
         db_session.commit()
-        logger.info("Loop item %s completed (held=%d)", item_id, sum(1 for r in staged if r.state is CraftLoopOutputState.READY))
+        logger.info(
+            "Loop item %s completed (held=%d)",
+            item_id,
+            sum(1 for r in staged if r.state is CraftLoopOutputState.READY),
+        )
 
 
 def _drive_item_turn(
@@ -350,9 +356,7 @@ def _collect_outputs(
 ) -> list[dict[str, Any]]:
     """Read declared deliverables from the sandbox outputs/ manifest."""
     deliverables = (loop.playbook or {}).get("deliverables") or []
-    artifacts = (
-        session_manager.list_artifacts(session_id, user_id) or []
-    )
+    artifacts = session_manager.list_artifacts(session_id, user_id) or []
     by_path = {str(a.get("path") or a.get("name") or ""): a for a in artifacts}
     outputs: list[dict[str, Any]] = []
     for declared in deliverables:
@@ -360,8 +364,10 @@ def _collect_outputs(
         path = declared
         if not path.startswith("outputs/"):
             path = f"outputs/{path.split('/')[-1]}"
-        match = by_path.get(declared) or by_path.get(path) or by_path.get(
-            path.removeprefix("outputs/")
+        match = (
+            by_path.get(declared)
+            or by_path.get(path)
+            or by_path.get(path.removeprefix("outputs/"))
         )
         if match is None:
             continue
@@ -374,14 +380,14 @@ def _collect_outputs(
         )
     # Without declared deliverables, any artifact counts (agent-declared).
     if not outputs and artifacts:
-        for artifact in artifacts[:10]:
-            outputs.append(
-                {
-                    "ship_action": "save_artifacts",
-                    "title": str(artifact.get("name") or "artifact"),
-                    "summary": f"artifact at {artifact.get('path') or artifact.get('name')}",
-                }
-            )
+        outputs.extend(
+            {
+                "ship_action": "save_artifacts",
+                "title": str(artifact.get("name") or "artifact"),
+                "summary": f"artifact at {artifact.get('path') or artifact.get('name')}",
+            }
+            for artifact in artifacts[:10]
+        )
     del sandbox_id
     return outputs
 
@@ -439,9 +445,7 @@ def _notify(
         # durable channel, this is the reach channel.
         from onyx.onyxbot.china.framework import dispatch_im_notification
 
-        dispatch_im_notification(
-            user_id=user_id, title=title, description=description
-        )
+        dispatch_im_notification(user_id=user_id, title=title, description=description)
     except Exception:
         logger.exception("loop notification failed")
 

@@ -1,9 +1,12 @@
 """Iceberg lake for MCP gateway facts and dimensions."""
 
-from onyx.mcp_gateway.lake.catalog import ensure_mcp_iceberg_tables, reset_lake_for_tests
+from onyx.mcp_gateway.lake.catalog import (
+    ensure_mcp_iceberg_tables,
+    reset_lake_for_tests,
+)
 from onyx.mcp_gateway.lake.io import (
-    CallRecord,
     CacheEventRecord,
+    CallRecord,
     ResultRecord,
     SeriesPoint,
     append_cache_event,
@@ -18,8 +21,8 @@ from onyx.mcp_gateway.lake.io import (
     result_exists,
     snapshot_catalog,
     snapshot_tool,
-    stats_windowed,
     stats_series,
+    stats_windowed,
 )
 
 __all__ = [

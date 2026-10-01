@@ -823,9 +823,14 @@ class DockerSandboxManager(SandboxManager):
                 break
         if not ip:
             raise RuntimeError(f"no IP for sandbox {sandbox_id}")
+        from onyx.server.features.build.sandbox.kubernetes.sidecar_client import (
+            _sign_sidecar_request,
+        )
         from onyx.server.features.build.sandbox.process_client import ProcessClient
 
-        return ProcessClient(host=lambda _sid: ip)
+        # The sandbox daemon verifies Ed25519 push signatures; the signer is
+        # shared with the Kubernetes sidecar client.
+        return ProcessClient(host=lambda _sid: ip, signer=_sign_sidecar_request)
 
     def start_process(
         self,
@@ -846,9 +851,7 @@ class DockerSandboxManager(SandboxManager):
             sandbox_id, process_id, cursor=cursor, max_bytes=64 * 1024
         )
 
-    def write_process_input(
-        self, sandbox_id: UUID, process_id: str, data: str
-    ) -> None:
+    def write_process_input(self, sandbox_id: UUID, process_id: str, data: str) -> None:
         return self._process_client(sandbox_id).write_input(
             sandbox_id, process_id, data
         )
@@ -870,7 +873,9 @@ class DockerSandboxManager(SandboxManager):
         try:
             container.update(
                 mem_limit=CRAFT_DEEP_JOB_DOCKER_MEMORY_LIMIT,
-                nano_cpus=int(CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT * 1_000_000_000),
+                # docker-py forwards this to the Docker API; it is just absent
+                # from the update() docstring ty reads for **kwargs.
+                nano_cpus=int(CRAFT_DEEP_JOB_DOCKER_CPU_LIMIT * 1_000_000_000),  # ty: ignore[unknown-argument]
             )
         except Exception:
             logger.exception(

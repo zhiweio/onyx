@@ -86,9 +86,24 @@ def _job() -> Any:
     return job
 
 
+class _NoRowsQuery:
+    def filter(self, *_args: object, **_kwargs: object) -> "_NoRowsQuery":
+        return self
+
+    def first(self) -> None:
+        return None
+
+
 def _db() -> Session:
     return cast(
-        Session, SimpleNamespace(commit=lambda: None, add=lambda *_a, **_k: None)
+        Session,
+        SimpleNamespace(
+            commit=lambda: None,
+            add=lambda *_a, **_k: None,
+            # fetch_user_by_id resolves no rows, so long-term-memory recall
+            # returns nothing — the default for users with memory disabled.
+            query=lambda *_a, **_k: _NoRowsQuery(),
+        ),
     )
 
 

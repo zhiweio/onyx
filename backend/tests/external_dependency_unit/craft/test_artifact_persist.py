@@ -472,7 +472,7 @@ def test_unchanged_hash_skips_filestore_write(
 
     def _count_save(*args: object, **kwargs: object) -> str:
         writes["n"] += 1
-        return original(*args, **kwargs)
+        return original(*args, **kwargs)  # ty: ignore[invalid-argument-type]
 
     monkeypatch.setattr(store, "save_file", _count_save)
     persist_session_workspace_files(

@@ -56,7 +56,6 @@ from onyx.utils.logger import setup_logger
 from onyx.utils.platform_utils import is_running_in_container
 from onyx.utils.variable_functionality import (
     fetch_versioned_implementation_with_fallback,
-    global_version,
 )
 from shared_configs.configs import MULTI_TENANT
 
@@ -73,12 +72,9 @@ def admin_patch_settings(
         require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)
     ),
 ) -> Settings:
-    if global_version.is_ee_version():
-        from ee.onyx.utils.tier import get_tier
-
-        current_tier = get_tier()
-    else:
-        current_tier = Tier.COMMUNITY
+    # CE-only build: the EE tier resolver is physically absent, so every
+    # workspace runs at the community tier.
+    current_tier = Tier.COMMUNITY
 
     # Serialize the read-modify-write so two concurrent partial patches cannot
     # each merge onto a stale snapshot and drop the other's field.

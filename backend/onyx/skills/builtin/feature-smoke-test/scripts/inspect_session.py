@@ -15,8 +15,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Locate and summarize a Kimi CLI session for smoke-test review."
     )
-    parser.add_argument("--share-dir", type=Path, help="Share dir that contains sessions/")
-    parser.add_argument("--session-dir", type=Path, help="Explicit session directory to inspect")
+    parser.add_argument(
+        "--share-dir", type=Path, help="Share dir that contains sessions/"
+    )
+    parser.add_argument(
+        "--session-dir", type=Path, help="Explicit session directory to inspect"
+    )
     parser.add_argument(
         "--tail-lines", type=int, default=12, help="How many recent records to show"
     )
@@ -206,7 +210,10 @@ def print_jsonl_summary(title: str, path: Path, tail_lines: int, max_text: int) 
 
     if path.name == "context.jsonl":
         counter = Counter(record.get("role", "<raw>") for record in records)
-        print("roles:", ", ".join(f"{key}={value}" for key, value in sorted(counter.items())))
+        print(
+            "roles:",
+            ", ".join(f"{key}={value}" for key, value in sorted(counter.items())),
+        )
         tail = records[-tail_lines:]
         for idx, record in enumerate(tail, start=max(1, len(records) - len(tail) + 1)):
             print(f"[{idx}] {summarize_context_record(record, max_text)}")
@@ -217,7 +224,10 @@ def print_jsonl_summary(title: str, path: Path, tail_lines: int, max_text: int) 
             else "<raw>"
             for record in records
         )
-        print("types:", ", ".join(f"{key}={value}" for key, value in sorted(counter.items())))
+        print(
+            "types:",
+            ", ".join(f"{key}={value}" for key, value in sorted(counter.items())),
+        )
         tail = records[-tail_lines:]
         for idx, record in enumerate(tail, start=max(1, len(records) - len(tail) + 1)):
             print(f"[{idx}] {summarize_wire_record(record, max_text)}")
@@ -309,13 +319,19 @@ def main() -> int:
         return 1
 
     if not session_dir.is_dir():
-        print(f"error: session directory does not exist: {session_dir}", file=sys.stderr)
+        print(
+            f"error: session directory does not exist: {session_dir}", file=sys.stderr
+        )
         return 1
 
     print(f"Session dir: {session_dir}")
     print_file_inventory(session_dir)
-    print_jsonl_summary("Context", session_dir / "context.jsonl", args.tail_lines, args.max_text)
-    print_jsonl_summary("Wire", session_dir / "wire.jsonl", args.tail_lines, args.max_text)
+    print_jsonl_summary(
+        "Context", session_dir / "context.jsonl", args.tail_lines, args.max_text
+    )
+    print_jsonl_summary(
+        "Wire", session_dir / "wire.jsonl", args.tail_lines, args.max_text
+    )
     print_task_summary(session_dir, args.tail_lines, args.max_text)
     return 0
 

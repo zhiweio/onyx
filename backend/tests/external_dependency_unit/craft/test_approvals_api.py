@@ -429,6 +429,7 @@ def test_submit_session_grant_approves_matching_pending_rows(
         kind=GatedAppKind.EXTERNAL_APP,
         target_id=app.id,
         action_types=["slack.chat.post"],
+        policy_version=1,
         cache=cache,
     )
     assert not approval_cache.cached_session_grants_cover(
@@ -436,6 +437,7 @@ def test_submit_session_grant_approves_matching_pending_rows(
         kind=GatedAppKind.EXTERNAL_APP,
         target_id=app.id,
         action_types=["slack.files.upload"],
+        policy_version=1,
         cache=cache,
     )
 

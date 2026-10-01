@@ -18,6 +18,14 @@ from onyx.server.features.build.session import streaming
 from onyx.server.features.build.session.streaming import BuildStreamingState
 
 
+class _NoRecallDb:
+    """Bare db stub: maybe_craft_recall_prompt looks the session up and
+    disables recall when it finds nothing."""
+
+    def get(self, _model: Any, _key: Any) -> None:
+        return None
+
+
 class _FakeStreamingSandboxManager:
     supports_opencode_history_persistence = True
 
@@ -90,6 +98,10 @@ class _FakePreflightSandboxManager:
 class _PreflightDb:
     commit_count = 0
 
+    def get(self, _model: Any, _key: Any) -> None:
+        # maybe_craft_recall_prompt looks the session up; None disables recall.
+        return None
+
     def commit(self) -> None:
         self.commit_count += 1
 
@@ -109,6 +121,10 @@ class _FakePersistDb:
     def __init__(self, build_session: BuildSession | None) -> None:
         self.build_session = build_session
         self.commit_count = 0
+
+    def get(self, _model: Any, _key: Any) -> None:
+        # maybe_craft_recall_prompt looks the session up; None disables recall.
+        return None
 
     def query(self, _model: Any) -> _FakeQuery:
         return _FakeQuery(self.build_session)
@@ -274,13 +290,13 @@ def test_persist_sandbox_event_splits_chunks_by_routing_meta(
     )
 
     streaming.persist_sandbox_event(
-        cast(Any, object()), session_id, state, parent_first
+        cast(Any, _NoRecallDb()), session_id, state, parent_first
     )
-    streaming.persist_sandbox_event(cast(Any, object()), session_id, state, child)
+    streaming.persist_sandbox_event(cast(Any, _NoRecallDb()), session_id, state, child)
     streaming.persist_sandbox_event(
-        cast(Any, object()), session_id, state, parent_second
+        cast(Any, _NoRecallDb()), session_id, state, parent_second
     )
-    streaming.finalize_persist(cast(Any, object()), session_id, state)
+    streaming.finalize_persist(cast(Any, _NoRecallDb()), session_id, state)
 
     assert persisted == [
         {
@@ -309,7 +325,7 @@ def test_yield_sandbox_events_passes_existing_opencode_id() -> None:
 
     events = list(
         streaming.yield_sandbox_events(
-            cast(Any, object()),
+            cast(Any, _NoRecallDb()),
             cast(Any, sandbox_manager),
             sandbox_id,
             session_id,
@@ -375,7 +391,7 @@ def test_yield_sandbox_events_allows_non_empty_session_without_opencode_id() -> 
 
     events = list(
         streaming.yield_sandbox_events(
-            cast(Any, object()),
+            cast(Any, _NoRecallDb()),
             cast(Any, sandbox_manager),
             uuid4(),
             uuid4(),
@@ -396,7 +412,7 @@ def test_yield_sandbox_events_compact_drives_compact_session() -> None:
 
     events = list(
         streaming.yield_sandbox_events(
-            cast(Any, object()),
+            cast(Any, _NoRecallDb()),
             cast(Any, sandbox_manager),
             uuid4(),
             uuid4(),
@@ -438,7 +454,7 @@ def test_persist_context_usage_and_compaction(
             }
         )
 
-    fake_db = cast(Any, object())
+    fake_db = cast(Any, _NoRecallDb())
     streaming.persist_sandbox_event(fake_db, session_id, state, chunk("hello "))
     # Usage in the middle must NOT flush the pending chunks.
     streaming.persist_sandbox_event(

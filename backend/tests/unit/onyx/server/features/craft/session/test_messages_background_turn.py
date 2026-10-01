@@ -101,7 +101,7 @@ def test_send_message_starts_background_turn(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     db_session = _FakeDbSession(user_message_count=2)
     persisted: list[tuple[int, str, list[dict[str, str]]]] = []
     start_runner = MagicMock()
@@ -212,7 +212,7 @@ def test_send_message_preserves_legacy_provider_selection(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     db_session = _FakeDbSession(user_message_count=0)
 
     monkeypatch.setattr(messages_api, "get_cache_backend", lambda: cache)
@@ -244,7 +244,7 @@ def test_send_message_prefers_provider_id_over_legacy_provider(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     db_session = _FakeDbSession(user_message_count=0)
 
     monkeypatch.setattr(messages_api, "get_cache_backend", lambda: cache)
@@ -277,7 +277,7 @@ def test_send_message_rejects_second_active_turn(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
 
     def get_session_stub(*_: object, **__: object) -> SimpleNamespace:
         return session
@@ -312,7 +312,7 @@ def test_send_message_reloads_stale_skills(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     session_manager = MagicMock()
 
     monkeypatch.setattr(messages_api, "get_cache_backend", lambda: cache)
@@ -340,7 +340,7 @@ def test_send_message_is_idempotent_for_same_client_request(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     persisted: list[tuple[int, str]] = []
     start_runner = MagicMock()
     token_rate_limit_check = MagicMock()
@@ -397,7 +397,7 @@ def test_send_message_leaves_turn_active_if_runner_cannot_start(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
 
     def get_session_stub(*_: object, **__: object) -> SimpleNamespace:
         return session
@@ -441,7 +441,7 @@ def test_send_message_blocked_when_over_token_budget(
     cache = FakeCache()
     session_id = uuid4()
     user_id = uuid4()
-    session = SimpleNamespace(id=session_id)
+    session = SimpleNamespace(id=session_id, scenario_id=None)
     start_runner = MagicMock()
 
     monkeypatch.setattr(messages_api, "get_cache_backend", lambda: cache)

@@ -19,8 +19,9 @@ def test_skeleton_graph_is_plan_only() -> None:
     for domain in ("biomed", "tax", "general", ""):
         kinds = [node.kind for node in compile_graph(domain).nodes]
         assert kinds == ["plan"]
-        assert compile_graph(domain).get("plan") is not None
-        assert compile_graph(domain).get("plan").hitl == "none"
+        plan_node = compile_graph(domain).get("plan")
+        assert plan_node is not None
+        assert plan_node.hitl == "none"
 
 
 def test_goal_only_plan_compiles_to_work() -> None:
@@ -76,9 +77,7 @@ def test_compile_graph_compose_review_skips_default_work() -> None:
     plan = parse_plan(
         {
             "goal": "GLP-1 initiation",
-            "lanes": [
-                {"role": "literature", "output_dir": "outputs/lanes/literature"}
-            ],
+            "lanes": [{"role": "literature", "output_dir": "outputs/lanes/literature"}],
             "phases": [
                 {"id": "plan", "kind": "plan"},
                 {
@@ -149,8 +148,9 @@ def test_compile_graph_uses_model_phases() -> None:
     )
     graph = compile_graph("", plan)
     assert [node.id for node in graph.nodes] == ["plan", "implement", "test"]
-    assert graph.get("test") is not None
-    assert graph.get("test").kind == "work"
+    test_node = graph.get("test")
+    assert test_node is not None
+    assert test_node.kind == "work"
     assert graph.get("compose") is None
     assert graph.get("review") is None
 
@@ -175,8 +175,9 @@ def test_compile_graph_tax_lanes() -> None:
         "reconcile",
         "work",
     ]
-    assert graph.get("lane:xlsx_parser") is not None
-    assert graph.get("lane:xlsx_parser").skill_id == "tax-recon-supplier"
+    lane_node = graph.get("lane:xlsx_parser")
+    assert lane_node is not None
+    assert lane_node.skill_id == "tax-recon-supplier"
 
 
 def test_compile_graph_adds_ingest_when_plan_has_inputs() -> None:
@@ -206,8 +207,7 @@ def test_rejects_too_many_lanes() -> None:
 def test_infer_job_domain_is_explicit_only() -> None:
     assert infer_job_domain("", "biomed") == "biomed"
     assert (
-        infer_job_domain("撰写一份 GLP-1 受体激动剂创新药立项深度研究报告")
-        == "general"
+        infer_job_domain("撰写一份 GLP-1 受体激动剂创新药立项深度研究报告") == "general"
     )
     assert infer_job_domain("Analyze my dashboard") == "general"
     assert infer_job_domain("税务对账", None) == "general"
@@ -377,9 +377,7 @@ def test_lane_done_when_sets_required_paths() -> None:
     )
     assert plan.lanes[0].output_dir == "outputs/research/literature"
     assert plan.lanes[0].skill_id == "biomed-literature"
-    assert plan.lanes[0].required_paths() == [
-        "outputs/research/literature/NOTES.md"
-    ]
+    assert plan.lanes[0].required_paths() == ["outputs/research/literature/NOTES.md"]
     graph = compile_graph("", plan)
     literature = graph.get("lane:biomed-literature")
     assert literature is not None
@@ -423,9 +421,7 @@ def test_coerces_phase_shaped_lanes_without_role() -> None:
                     "done_when": ["outputs/normalized/pipeline.csv"],
                 },
             ],
-            "ask_delivery": {
-                "path": "outputs/markdown/clinical-initiation-report.md"
-            },
+            "ask_delivery": {"path": "outputs/markdown/clinical-initiation-report.md"},
         }
     )
     assert [lane.role for lane in plan.lanes] == ["epi-soc", "competitors"]

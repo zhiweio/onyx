@@ -181,7 +181,7 @@ def update_personal_server_simple(
     from onyx.server.features.mcp.api import _validate_mcp_server_url
 
     _require_personal_enabled()
-    server = _personal_server_or_404(server_id, user, db)
+    _personal_server_or_404(server_id, user, db)
     _validate_mcp_server_url(request.server_url, "server_url", require_https=False)
     updated = update_mcp_server__no_commit(
         server_id=server_id,
@@ -323,7 +323,7 @@ def personal_tools_snapshots(
     user: User = Depends(_BASIC),
 ) -> list[ToolSnapshot]:
     _require_personal_enabled()
-    server = _personal_server_or_404(server_id, user, db)
+    _personal_server_or_404(server_id, user, db)
     if source == ToolSnapshotSource.MCP:
         try:
             _list_mcp_tools_by_id(server_id, db, False, user)

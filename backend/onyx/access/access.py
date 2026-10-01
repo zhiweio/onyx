@@ -13,7 +13,6 @@ from onyx.db.document import get_access_info_for_document, get_access_info_for_d
 from onyx.db.models import (
     ChatMessage,
     ChatSession,
-    ChatSessionSharedStatus,
     Connector,
     Document,
     DocumentByConnectorCredentialPair,

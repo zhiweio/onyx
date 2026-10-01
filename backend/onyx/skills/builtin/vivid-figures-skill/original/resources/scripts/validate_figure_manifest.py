@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Validate a manifest-compatible FIGURE_MANIFEST and print its execution plan."""
+
 from __future__ import annotations
 
 import argparse
@@ -46,7 +47,7 @@ def parse_manifest(path: Path):
     start, end = text.find(BEGIN), text.find(END)
     if start < 0 or end < 0 or end <= start:
         raise ValueError("missing or invalid FIGURE_MANIFEST anchors")
-    block = text[start + len(BEGIN):end]
+    block = text[start + len(BEGIN) : end]
     entries = []
     category = None
     for number, line in enumerate(block.splitlines(), 1):
@@ -84,14 +85,21 @@ def validate(entries: list[dict], profile: str, full_paper: bool):
             errors.append(f"{name}: missing fields {', '.join(missing)}")
         if category == "TIKZ" and not name.startswith("tikz_"):
             errors.append(f"{name}: TikZ basename must start with tikz_")
-        elif category != "TIKZ" and not (name.startswith("fig_") or name.startswith("TABLE_")):
+        elif category != "TIKZ" and not (
+            name.startswith("fig_") or name.startswith("TABLE_")
+        ):
             errors.append(f"{name}: basename must start with fig_ or TABLE_")
         if category == "OPTIONAL" and not any(
-            token in fields.get("format", "").lower() for token in ("html", "mmd", "mermaid")
+            token in fields.get("format", "").lower()
+            for token in ("html", "mmd", "mermaid")
         ):
-            warnings.append(f"{name}: optional entry should identify HTML or Mermaid format")
+            warnings.append(
+                f"{name}: optional entry should identify HTML or Mermaid format"
+            )
     if full_paper and profile == "modeling":
-        drawio_names = {item["name"] for item in entries if item["category"] == "DRAWIO"}
+        drawio_names = {
+            item["name"] for item in entries if item["category"] == "DRAWIO"
+        }
         if "fig_roadmap" not in drawio_names:
             errors.append("full modeling paper requires DRAWIO entry fig_roadmap")
     if not entries:
@@ -100,7 +108,9 @@ def validate(entries: list[dict], profile: str, full_paper: bool):
 
 
 def execution_plan(entries: list[dict]):
-    grouped = {key: [] for key in ("DATA", "DRAWIO", "TIKZ", "ILLUSTRATION", "OPTIONAL")}
+    grouped = {
+        key: [] for key in ("DATA", "DRAWIO", "TIKZ", "ILLUSTRATION", "OPTIONAL")
+    }
     for item in entries:
         if item["category"] in grouped:
             grouped[item["category"]].append(item["name"])
@@ -116,14 +126,20 @@ def execution_plan(entries: list[dict]):
             "classes": ["ILLUSTRATION"],
             "items": grouped["ILLUSTRATION"],
         },
-        {"workflow": "explicit-html-or-mermaid", "classes": ["OPTIONAL"], "items": grouped["OPTIONAL"]},
+        {
+            "workflow": "explicit-html-or-mermaid",
+            "classes": ["OPTIONAL"],
+            "items": grouped["OPTIONAL"],
+        },
     ]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True, type=Path)
-    parser.add_argument("--profile", choices=["research", "modeling"], default="modeling")
+    parser.add_argument(
+        "--profile", choices=["research", "modeling"], default="modeling"
+    )
     parser.add_argument("--full-paper", action="store_true")
     parser.add_argument("--json", dest="json_path", type=Path)
     args = parser.parse_args()
@@ -134,7 +150,13 @@ def main() -> int:
         print(f"FAIL: {exc}")
         return 1
     plan = execution_plan(entries)
-    payload = {"manifest": str(args.manifest), "entries": entries, "plan": plan, "errors": errors, "warnings": warnings}
+    payload = {
+        "manifest": str(args.manifest),
+        "entries": entries,
+        "plan": plan,
+        "errors": errors,
+        "warnings": warnings,
+    }
     print("=== FIGURE_MANIFEST routing audit ===")
     for step in plan:
         if step["items"]:
@@ -145,10 +167,11 @@ def main() -> int:
         print(f"FAIL: {error}")
     if args.json_path:
         args.json_path.parent.mkdir(parents=True, exist_ok=True)
-        args.json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        args.json_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
     return 1 if errors else 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

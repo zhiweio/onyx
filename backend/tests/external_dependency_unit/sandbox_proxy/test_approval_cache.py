@@ -132,6 +132,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post"],
+        policy_version=1,
         cache=cache,
     )
 
@@ -141,6 +142,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         target_id=target_id,
         action_types=["slack.chat.post"],
         source_approval_id=approval_id,
+        policy_version=1,
         cache=cache,
     )
 
@@ -149,6 +151,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post"],
+        policy_version=1,
         cache=cache,
     )
     assert not cached_session_grants_cover(
@@ -156,6 +159,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=kind,
         target_id=target_id,
         action_types=["slack.chat.post", "slack.files.upload"],
+        policy_version=1,
         cache=cache,
     )
     # A different catalog (MCP) at the same numeric id must not satisfy the grant.
@@ -164,6 +168,7 @@ def test_cached_session_grants_cover_requires_every_action() -> None:
         kind=GatedAppKind.MCP_SERVER,
         target_id=target_id,
         action_types=["slack.chat.post"],
+        policy_version=1,
         cache=cache,
     )
 

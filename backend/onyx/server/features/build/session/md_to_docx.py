@@ -34,6 +34,8 @@ from docx.styles.style import ParagraphStyle
 from docx.table import _Cell
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
+
+# ty: ignore[unresolved-import]: lxml.etree is a compiled extension with no stubs.
 from lxml import etree
 
 from onyx.server.features.build.session.md_document import (
@@ -264,9 +266,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
         heading.font.size = Pt(size)
         heading.font.color.rgb = _HEADING_COLOR
         heading.font.bold = True
-        _set_exact_line_spacing(
-            heading.paragraph_format, word_heading_line_pt(level)
-        )
+        _set_exact_line_spacing(heading.paragraph_format, word_heading_line_pt(level))
         heading.paragraph_format.space_before = Pt(HEADING_SPACE_BEFORE_PT[level])
         heading.paragraph_format.space_after = Pt(HEADING_SPACE_AFTER_PT[level])
         heading.paragraph_format.keep_with_next = True

@@ -584,16 +584,16 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, numbers
 wb = openpyxl.Workbook()
 
 # Color conventions
-BLUE_FONT = Font(color="0000FF")        # Hardcoded inputs
-BLACK_FONT = Font(color="000000")        # Formulas
-GREEN_FONT = Font(color="008000")        # Cross-sheet links
+BLUE_FONT = Font(color="0000FF")  # Hardcoded inputs
+BLACK_FONT = Font(color="000000")  # Formulas
+GREEN_FONT = Font(color="008000")  # Cross-sheet links
 HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
 SECTION_FILL = PatternFill("solid", fgColor="F2F2F2")
 
 # Number formats
-PCT_FORMAT = '0.0%'
-NUM_FORMAT = '#,##0'
-DECIMAL_FORMAT = '#,##0.00'
+PCT_FORMAT = "0.0%"
+NUM_FORMAT = "#,##0"
+DECIMAL_FORMAT = "#,##0.00"
 ```
 
 ### Formula Patterns

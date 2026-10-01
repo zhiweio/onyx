@@ -11,8 +11,8 @@ Usage:
     python3 analyze_codebase.py /path/to/project --type architecture --format svg
 """
 
-import ast
 import argparse
+import ast
 import json
 import os
 import re
@@ -24,10 +24,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-
 # ---------------------------------------------------------------------------
 # Language-specific import parsers
 # ---------------------------------------------------------------------------
+
 
 class PythonImportParser:
     def parse(self, filepath: str) -> List[str]:
@@ -39,8 +39,7 @@ class PythonImportParser:
         imports: List[str] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
+                imports.extend(alias.name for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imports.append(node.module)
@@ -117,17 +116,37 @@ LANGUAGE_MAP: Dict[str, tuple] = {
     ".java": ("java", _JAVA_PARSER),
 }
 
-IGNORE_DIRS = frozenset({
-    "node_modules", ".git", "__pycache__", ".venv", "venv",
-    "dist", "build", ".next", ".nuxt", "vendor", ".tox",
-    "env", ".env", ".idea", ".vscode", "coverage", ".cache",
-    ".mypy_cache", ".pytest_cache", "target", "out",
-})
+IGNORE_DIRS = frozenset(
+    {
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".next",
+        ".nuxt",
+        "vendor",
+        ".tox",
+        "env",
+        ".env",
+        ".idea",
+        ".vscode",
+        "coverage",
+        ".cache",
+        ".mypy_cache",
+        ".pytest_cache",
+        "target",
+        "out",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Scanning & Dependency Resolution
 # ---------------------------------------------------------------------------
+
 
 def scan_codebase(root_dir: str, max_files: int = 500) -> Dict:
     root = Path(root_dir).resolve()
@@ -174,7 +193,17 @@ def resolve_internal_imports(scan_result: Dict) -> Dict[str, Set[str]]:
     module_to_file: Dict[str, str] = {}
     for f in all_files:
         mod = f.replace("/", ".").replace("\\", ".")
-        for ext in (".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".go", ".java"):
+        for ext in (
+            ".py",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".mjs",
+            ".cjs",
+            ".go",
+            ".java",
+        ):
             if mod.endswith(ext):
                 mod = mod[: -len(ext)]
                 break
@@ -208,6 +237,7 @@ def resolve_internal_imports(scan_result: Dict) -> Dict[str, Set[str]]:
 # Mermaid ID helper
 # ---------------------------------------------------------------------------
 
+
 def _mid(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
@@ -216,8 +246,9 @@ def _mid(name: str) -> str:
 # Diagram generators
 # ---------------------------------------------------------------------------
 
+
 def generate_architecture_diagram(
-    scan_result: Dict, internal_deps: Dict[str, Set[str]]
+    _scan_result: Dict, internal_deps: Dict[str, Set[str]]
 ) -> str:
     lines = ["graph TD"]
 
@@ -281,9 +312,7 @@ def generate_architecture_diagram(
     return "\n".join(lines)
 
 
-def generate_flowchart(
-    scan_result: Dict, internal_deps: Dict[str, Set[str]]
-) -> str:
+def generate_flowchart(_scan_result: Dict, internal_deps: Dict[str, Set[str]]) -> str:
     lines = ["flowchart LR"]
 
     if not internal_deps:
@@ -347,9 +376,7 @@ def generate_org_chart(root_dir: str, max_depth: int = 4) -> str:
                 lines.append(f'    {child_id}["{d}/"]')
                 lines.append(f"    {parent_id} --> {child_id}")
 
-        code_files = [
-            f for f in filenames if Path(f).suffix.lower() in LANGUAGE_MAP
-        ]
+        code_files = [f for f in filenames if Path(f).suffix.lower() in LANGUAGE_MAP]
         if code_files and len(code_files) <= 10:
             for f in sorted(code_files):
                 file_rel = rel / f if str(rel) != "." else Path(f)
@@ -366,6 +393,7 @@ def generate_org_chart(root_dir: str, max_depth: int = 4) -> str:
 # ---------------------------------------------------------------------------
 # SVG rendering (optional, needs mmdc)
 # ---------------------------------------------------------------------------
+
 
 def render_svg(mermaid_text: str, output_path: str) -> bool:
     mmdc = shutil.which("mmdc")
@@ -396,23 +424,27 @@ def render_svg(mermaid_text: str, output_path: str) -> bool:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Analyze codebase imports and generate Mermaid/SVG diagrams"
     )
     parser.add_argument("directory", help="Root directory of the codebase")
     parser.add_argument(
-        "--type", "-t",
+        "--type",
+        "-t",
         choices=["architecture", "flowchart", "org", "all"],
         default="all",
         help="Diagram type (default: all)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output directory (default: current directory)",
     )
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["mermaid", "svg", "both"],
         default="mermaid",
         help="Output format (default: mermaid)",
@@ -475,7 +507,9 @@ def main() -> None:
     # --- generate diagrams ---
     diagrams: Dict[str, str] = {}
     if args.type in ("architecture", "all"):
-        diagrams["architecture"] = generate_architecture_diagram(scan_result, internal_deps)
+        diagrams["architecture"] = generate_architecture_diagram(
+            scan_result, internal_deps
+        )
     if args.type in ("flowchart", "all"):
         diagrams["flowchart"] = generate_flowchart(scan_result, internal_deps)
     if args.type in ("org", "all"):

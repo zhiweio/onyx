@@ -270,7 +270,7 @@ html_template = """<div class="chart-container-free">
 </div>"""
 
 # Step 2: Replace placeholder with actual base64 (in Python/IPython)
-html_content = html_template.replace('${CHAIN_BASE64}', actual_base64_string)
+html_content = html_template.replace("${CHAIN_BASE64}", actual_base64_string)
 # Then write html_content to file
 ```
 

@@ -60,9 +60,7 @@ class CrawlerClient:
         self._max_wait = max_wait
 
     def submit(self, url: str) -> str:
-        resp = self._session.post(
-            f"{self._base}/crawl", json={"url": url}, timeout=30
-        )
+        resp = self._session.post(f"{self._base}/crawl", json={"url": url}, timeout=30)
         if resp.status_code != 200:
             raise CrawlerError(f"submit failed: HTTP {resp.status_code}")
         data: dict[str, Any] = resp.json()
@@ -80,11 +78,7 @@ class CrawlerClient:
             url=str(data.get("url") or ""),
             status=str(data.get("status") or "unknown"),
             content=str(data.get("content") or data.get("markdown") or ""),
-            error=(
-                str(data["error"])
-                if data.get("error")
-                else None
-            ),
+            error=(str(data["error"]) if data.get("error") else None),
         )
 
     def crawl_sync(self, url: str) -> CrawlResult:

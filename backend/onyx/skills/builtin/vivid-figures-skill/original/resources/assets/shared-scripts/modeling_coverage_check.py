@@ -14,11 +14,13 @@ MODELING_REPORT.md 必须为 CAPABILITY_CHECKLIST.json 的每条能力项 id 给
   python _utils/modeling_coverage_check.py [--checklist CAPABILITY_CHECKLIST.json] [--modeling MODELING_REPORT.md]
 退出码：0=每条能力项都被建模报告认领 1=有能力项无着落(阻断) 2=无清单/无报告(跳过不阻断)
 """
+
 from __future__ import annotations
-import sys
-import re
-import json
+
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -42,14 +44,18 @@ def main() -> int:
 
     clpath, mdpath = Path(args.checklist), Path(args.modeling)
     if not clpath.is_file() or not mdpath.is_file():
-        print("[modeling_coverage] 缺 CAPABILITY_CHECKLIST.json 或 MODELING_REPORT.md，跳过（不阻断）")
+        print(
+            "[modeling_coverage] 缺 CAPABILITY_CHECKLIST.json 或 MODELING_REPORT.md，跳过（不阻断）"
+        )
         return 2
     try:
         data = json.loads(_read(clpath))
     except (json.JSONDecodeError, ValueError):
         print("[modeling_coverage] 能力清单非法（先跑 capability_check.py），跳过")
         return 2
-    caps = [c for c in data.get("capabilities", []) if isinstance(c, dict) and c.get("id")]
+    caps = [
+        c for c in data.get("capabilities", []) if isinstance(c, dict) and c.get("id")
+    ]
     if not caps:
         print("[modeling_coverage] 能力清单无有效能力项，跳过")
         return 2
@@ -65,14 +71,20 @@ def main() -> int:
     n = len(caps)
     print(f"[modeling_coverage] 能力项 {n} 条，建模报告已认领 {n - len(missing)} 条")
     if missing:
-        print(f"❌ HARD FAIL —— {len(missing)} 条能力项在 MODELING_REPORT.md 里找不到着落（建模阶段被整条无视）：")
+        print(
+            f"❌ HARD FAIL —— {len(missing)} 条能力项在 MODELING_REPORT.md 里找不到着落（建模阶段被整条无视）："
+        )
         for cid, name in missing:
             print(f"  ✗ {cid} {name}")
-        print("  修复：在建模报告里为每条能力项写清对应的模型/方法，并标注其能力 id（如"
-              "『针对能力 P1-C1 事件五元组抽取，采用……模型』）。禁止在建模阶段把题目要求的能力"
-              "悄悄简化或跳过——那会一路歪到编码和论文。补全后重跑本闸直到 0。")
+        print(
+            "  修复：在建模报告里为每条能力项写清对应的模型/方法，并标注其能力 id（如"
+            "『针对能力 P1-C1 事件五元组抽取，采用……模型』）。禁止在建模阶段把题目要求的能力"
+            "悄悄简化或跳过——那会一路歪到编码和论文。补全后重跑本闸直到 0。"
+        )
         return 1
-    print("✅ 建模覆盖核对通过：每条能力项都在建模报告里有对应建模方案（承接了赛题分析的合同）。")
+    print(
+        "✅ 建模覆盖核对通过：每条能力项都在建模报告里有对应建模方案（承接了赛题分析的合同）。"
+    )
     return 0
 
 

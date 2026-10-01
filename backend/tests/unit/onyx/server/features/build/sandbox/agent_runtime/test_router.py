@@ -58,7 +58,9 @@ def test_explicit_request_beats_scenario_and_default() -> None:
 
 def test_scenario_pins_runtime_and_model() -> None:
     choice = _router().resolve(
-        RuntimeResolutionRequest(scenario_runtime="opencode", scenario_model="qwen3-plus")
+        RuntimeResolutionRequest(
+            scenario_runtime="opencode", scenario_model="qwen3-plus"
+        )
     )
     assert choice.origin == "scenario"
     assert choice.model_id == "qwen3-plus"
@@ -78,7 +80,9 @@ def test_unapproved_runtime_scenario_falls_back_to_org_default() -> None:
 def test_unsupported_explicit_model_raises() -> None:
     with pytest.raises(NonRetryableRuntimeError, match="not supported"):
         _router().resolve(
-            RuntimeResolutionRequest(requested_runtime="opencode", requested_model="nope")
+            RuntimeResolutionRequest(
+                requested_runtime="opencode", requested_model="nope"
+            )
         )
 
 
@@ -119,7 +123,9 @@ def test_finalize_never_returns_unapproved_runtime() -> None:
     assert final.runtime_id in router.approved_runtimes
 
 
-def test_build_router_from_env_always_includes_primary(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_router_from_env_always_includes_primary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("SANDBOX_APPROVED_RUNTIMES", "opencode,codex")
     monkeypatch.setenv("SANDBOX_AGENT_RUNTIME", "opencode")
     router = build_router_from_env()

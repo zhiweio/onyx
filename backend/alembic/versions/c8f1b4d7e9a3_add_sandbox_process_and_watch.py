@@ -12,7 +12,6 @@ exits.
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 revision = "c8f1b4d7e9a3"
 down_revision = "b6f0d3a8e2c5"
@@ -37,12 +36,8 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("command_redacted", sa.Text(), nullable=False),
-        sa.Column(
-            "kind", sa.String(32), nullable=False, server_default="background"
-        ),
-        sa.Column(
-            "status", sa.String(16), nullable=False, server_default="running"
-        ),
+        sa.Column("kind", sa.String(32), nullable=False, server_default="background"),
+        sa.Column("status", sa.String(16), nullable=False, server_default="running"),
         sa.Column("exit_code", sa.Integer(), nullable=True),
         sa.Column(
             "started_at",
@@ -52,9 +47,7 @@ def upgrade() -> None:
         ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index(
-        "ix_sandbox_process_session", "sandbox_process", ["session_id"]
-    )
+    op.create_index("ix_sandbox_process_session", "sandbox_process", ["session_id"])
     op.create_table(
         "process_watch",
         sa.Column("id", sa.UUID(), primary_key=True),
@@ -87,9 +80,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    op.create_index(
-        "ix_process_watch_process", "process_watch", ["process_id"]
-    )
+    op.create_index("ix_process_watch_process", "process_watch", ["process_id"])
 
 
 def downgrade() -> None:

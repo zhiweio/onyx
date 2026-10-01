@@ -34,17 +34,36 @@ def main():
     if not runtime.get("chrome"):
         raise SystemExit("Chrome not found")
 
-    output = Path(args.output).resolve() if args.output else source.with_suffix("." + args.format)
+    output = (
+        Path(args.output).resolve()
+        if args.output
+        else source.with_suffix("." + args.format)
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     profile = tempfile.TemporaryDirectory(prefix="vivid-mermaid-")
-    config = {"executablePath": runtime["chrome"], "headless": True,
-              "userDataDir": profile.name, "args": ["--disable-gpu"]}
-    with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8", delete=False) as handle:
+    config = {
+        "executablePath": runtime["chrome"],
+        "headless": True,
+        "userDataDir": profile.name,
+        "args": ["--disable-gpu"],
+    }
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".json", encoding="utf-8", delete=False
+    ) as handle:
         json.dump(config, handle)
         config_path = handle.name
     command = [
-        runtime["mmdc"], "-p", config_path, "-i", str(source), "-o", str(output),
-        "-b", args.background, "-s", str(args.scale),
+        runtime["mmdc"],
+        "-p",
+        config_path,
+        "-i",
+        str(source),
+        "-o",
+        str(output),
+        "-b",
+        args.background,
+        "-s",
+        str(args.scale),
     ]
     if args.width:
         command += ["-w", str(args.width)]
@@ -53,8 +72,15 @@ def main():
     env = os.environ.copy()
     env["PUPPETEER_EXECUTABLE_PATH"] = runtime["chrome"]
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=args.timeout, env=env)
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=args.timeout,
+            env=env,
+        )
     finally:
         Path(config_path).unlink(missing_ok=True)
         profile.cleanup()

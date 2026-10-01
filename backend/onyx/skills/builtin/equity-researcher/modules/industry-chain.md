@@ -138,13 +138,16 @@ These tools are unavailable. The most reliable rendering method is **Playwright*
 ```python
 import base64
 
-def render_mermaid_via_playwright(mermaid_code: str, output_path: str = '/tmp/chain_render.html') -> str:
+
+def render_mermaid_via_playwright(
+    mermaid_code: str, output_path: str = "/tmp/chain_render.html"
+) -> str:
     """
     Render Mermaid code to a base64 PNG using Playwright (sandbox browser toolkit).
     Returns: base64-encoded PNG string.
     """
     # Step 1: Build a standalone HTML file with Mermaid CDN
-    html_content = f'''<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -182,10 +185,10 @@ body {{ margin: 0; padding: 20px; background: white; }}
 {mermaid_code}
 </pre>
 </body>
-</html>'''
+</html>"""
 
     # Step 2: Write to temp file
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     # Step 3: Open with browser_visit, screenshot, read and encode
@@ -201,35 +204,36 @@ body {{ margin: 0; padding: 20px; background: white; }}
 from playwright.sync_api import sync_playwright
 import base64
 
+
 def render_mermaid_to_png(mermaid_code: str) -> str:
     """Render Mermaid code to base64 PNG. Call this in IPython."""
-    html = f'''<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({{startOnLoad:true,theme:'base',themeVariables:{{primaryColor:'#F5F8FC',primaryTextColor:'#1a1a1a',primaryBorderColor:'#003366',lineColor:'#1E3A5F',secondaryColor:'#FFF8E1',tertiaryColor:'#F1F8E9',quaternaryColor:'#FFEBEE'}},flowchart:{{htmlLabels:true,curve:'basis',padding:6,nodeSpacing:30,rankSpacing:70,useMaxWidth:true}}}});</script>
 <style>body{{margin:0;padding:20px;background:white;}}</style>
-</head><body><pre class="mermaid">{mermaid_code}</pre></body></html>'''
+</head><body><pre class="mermaid">{mermaid_code}</pre></body></html>"""
 
-    with open('/tmp/mermaid_render.html', 'w', encoding='utf-8') as f:
+    with open("/tmp/mermaid_render.html", "w", encoding="utf-8") as f:
         f.write(html)
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={'width': 1200, 'height': 800})
-        page.goto('file:///tmp/mermaid_render.html')
+        page = browser.new_page(viewport={"width": 1200, "height": 800})
+        page.goto("file:///tmp/mermaid_render.html")
         # Wait for Mermaid render: max 10 seconds
         page.wait_for_timeout(3000)  # minimum 3s for CDN load + render
         # Check if SVG rendered
-        svg = page.query_selector('.mermaid svg')
+        svg = page.query_selector(".mermaid svg")
         if svg:
             # Capture SVG element only
-            png_bytes = svg.screenshot(type='png')
+            png_bytes = svg.screenshot(type="png")
         else:
             # Fallback: screenshot full page
-            png_bytes = page.screenshot(type='png', full_page=True)
+            png_bytes = page.screenshot(type="png", full_page=True)
         browser.close()
 
-    return base64.b64encode(png_bytes).decode('utf-8')
+    return base64.b64encode(png_bytes).decode("utf-8")
 ```
 
 > **⚠️ Important Notes for Playwright Rendering**:
@@ -581,14 +585,15 @@ flowchart LR
 ```python
 import base64
 
+
 def verify_rendered_image(png_base64: str) -> bool:
     """Verify Playwright-rendered image is valid."""
     try:
         img_bytes = base64.b64decode(png_base64)
         checks = {
-            'is_png': img_bytes[:8] == b'\x89PNG\r\n\x1a\n',
-            'has_content': len(img_bytes) > 1000,  # minimal PNG with content
-            'not_empty': len(img_bytes) > 100,     # not a blank/1x1 image
+            "is_png": img_bytes[:8] == b"\x89PNG\r\n\x1a\n",
+            "has_content": len(img_bytes) > 1000,  # minimal PNG with content
+            "not_empty": len(img_bytes) > 100,  # not a blank/1x1 image
         }
         return all(checks.values())
     except Exception:

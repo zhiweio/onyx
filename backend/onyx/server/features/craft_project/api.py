@@ -288,11 +288,15 @@ def delete_craft_project_file_endpoint(
     return Response(status_code=204)
 
 
+# Shared, read-only default for the optional reset body.
+_DEFAULT_SANDBOX_RESET_REQUEST = CraftProjectSandboxResetRequest()
+
+
 @router.post("/{project_id}/sandbox/reset")
 def reset_craft_project_sandbox(
     project_id: UUID,
     request: CraftProjectSandboxResetRequest = Body(
-        default=CraftProjectSandboxResetRequest()
+        default=_DEFAULT_SANDBOX_RESET_REQUEST
     ),
     user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),

@@ -29,6 +29,7 @@ from onyx.connectors.interfaces import (
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
+    HierarchyNode,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -37,7 +38,15 @@ logger = setup_logger()
 
 DEFAULT_BASE = "https://open.wps.cn"
 _TEXT_SUFFIXES = (
-    ".txt", ".md", ".csv", ".json", ".xml", ".log", ".html", ".docx", ".pdf"
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".xml",
+    ".log",
+    ".html",
+    ".docx",
+    ".pdf",
 )
 
 
@@ -52,9 +61,7 @@ class WPS365Connector(LoadConnector, PollConnector):
     def load_credentials(self, credentials: dict[str, Any]) -> dict[str, Any] | None:
         self._client_id = credentials["wps365_client_id"]
         self._client_secret = credentials["wps365_client_secret"]
-        self._base = str(
-            credentials.get("wps365_base_url") or DEFAULT_BASE
-        ).rstrip("/")
+        self._base = str(credentials.get("wps365_base_url") or DEFAULT_BASE).rstrip("/")
         self._token = AppTokenManager(self._fetch_token)
         return None
 
@@ -110,9 +117,13 @@ class WPS365Connector(LoadConnector, PollConnector):
             return None
         return resp.content
 
-    def _load(self, start: float | None = None, end: float | None = None) -> GenerateDocumentsOutput:
+    def _load(
+        self, start: float | None = None, end: float | None = None
+    ) -> GenerateDocumentsOutput:
         session = self._session()
-        batch: list[Document] = []
+        # list is invariant: the batch must match the declared
+        # `Iterator[list[Document | HierarchyNode]]` yield type.
+        batch: list[Document | HierarchyNode] = []
         for item in self._list_files(session):
             name = str(item.get("name") or item.get("file_name") or "")
             file_id = str(item.get("file_id") or item.get("id") or "")
@@ -147,7 +158,6 @@ class WPS365Connector(LoadConnector, PollConnector):
                     source=DocumentSource.WPS365,
                     semantic_identifier=title,
                     title=title,
-                    text=text,
                     sections=[TextSection(text=text)],
                     metadata={"wps365_file": name},
                     doc_updated_at=updated or None,

@@ -426,7 +426,10 @@ def test_scenario_write_rejects_unknown_skill_slug(
 
 
 def test_scenario_publish_rewrites_conditional_slugs_to_ids(
-    db_session: Session, catalog_skill: SystemSkill, catalog_user: User, unique_slug: str
+    db_session: Session,
+    catalog_skill: SystemSkill,
+    catalog_user: User,
+    unique_slug: str,
 ) -> None:
     extra = create_system_skill(
         db_session,
@@ -459,13 +462,9 @@ def test_scenario_publish_rewrites_conditional_slugs_to_ids(
     )
     db_session.commit()
     try:
-        always = publish_system_skill(
-            db_session, catalog_skill, publisher=catalog_user
-        )
+        always = publish_system_skill(db_session, catalog_skill, publisher=catalog_user)
         optional = publish_system_skill(db_session, extra, publisher=catalog_user)
-        projection = publish_system_scenario(
-            db_session, entry, publisher=catalog_user
-        )
+        projection = publish_system_scenario(db_session, entry, publisher=catalog_user)
         db_session.commit()
         assert projection.rules["always_skill_ids"] == [str(always.id)]
         assert projection.rules["conditional"] == [

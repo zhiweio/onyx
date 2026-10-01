@@ -53,9 +53,7 @@ def get_org_mcp_servers(db_session: Session) -> list[MCPServer]:
     )
 
 
-def get_personal_mcp_servers(
-    db_session: Session, owner_email: str
-) -> list[MCPServer]:
+def get_personal_mcp_servers(db_session: Session, owner_email: str) -> list[MCPServer]:
     """MCP servers this user created for themselves."""
     return list(
         db_session.scalars(
@@ -124,9 +122,7 @@ def get_craft_enabled_mcp_servers(
 
     Eager-loads ``admin_connection_config`` so credential resolution across the
     returned set doesn't lazy-load one row per admin-managed server."""
-    stmt = select(MCPServer).options(
-        selectinload(MCPServer.admin_connection_config)
-    )
+    stmt = select(MCPServer).options(selectinload(MCPServer.admin_connection_config))
     if user is not None:
         stmt = _add_mcp_server_access_filter(stmt, user)
         stmt = stmt.where(

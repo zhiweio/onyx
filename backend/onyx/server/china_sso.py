@@ -22,14 +22,16 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, Generator
 from urllib.parse import quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
+from httpx_oauth.oauth2 import BaseOAuth2, OAuth2Token
 from sqlalchemy.orm import Session
 
+from onyx.auth.sso_tenant_token import SSO_TENANT_TOKEN_PARAM, decode_sso_tenant_token
 from onyx.auth.users import (
     CSRF_TOKEN_COOKIE_NAME,
     CSRF_TOKEN_KEY,
@@ -41,7 +43,7 @@ from onyx.auth.users import (
     generate_state_token,
     get_user_manager,
 )
-from onyx.configs.app_configs import WEB_DOMAIN, MULTI_TENANT, USER_AUTH_SECRET
+from onyx.configs.app_configs import MULTI_TENANT, USER_AUTH_SECRET, WEB_DOMAIN
 from onyx.db.engine.sql_engine import (
     get_session_with_current_tenant,
     get_session_with_tenant,
@@ -51,16 +53,14 @@ from onyx.db.models import SSOProvider
 from onyx.db.sso_provider import (
     DingTalkProviderConfig,
     FeishuProviderConfig,
-    WPS365ProviderConfig,
     WeComProviderConfig,
+    WPS365ProviderConfig,
     fetch_sso_providers,
 )
-from onyx.auth.sso_tenant_token import SSO_TENANT_TOKEN_PARAM, decode_sso_tenant_token
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.utils.logger import setup_logger
 from onyx.utils.url import sanitize_next_url
-
 from shared_configs.contextvars import (
     CURRENT_TENANT_ID_CONTEXTVAR,
     SESSION_TENANT_OVERRIDE_CONTEXTVAR,
@@ -134,7 +134,9 @@ def _config_for(provider: SSOProvider, config: dict[str, Any]) -> Any:
 # ── authorize URL builders (pure, unit-tested) ────────────────────────────
 
 
-def wecom_authorize_url(config: WeComProviderConfig, state: str, redirect_uri: str) -> str:
+def wecom_authorize_url(
+    config: WeComProviderConfig, state: str, redirect_uri: str
+) -> str:
     return (
         "https://login.work.weixin.qq.com/wwlogin/sso/login"
         "?login_type=CorpApp"
@@ -251,9 +253,7 @@ async def wecom_exchange(
             item.get("id"): item.get("name")
             for item in dept_list.get("department") or []
         }
-        departments = tuple(
-            str(name_by_id[d]) for d in dept_ids if name_by_id.get(d)
-        )
+        departments = tuple(str(name_by_id[d]) for d in dept_ids if name_by_id.get(d))
     email = detail.get("biz_mail") or detail.get("email")
     return ChinaIdentity(
         account_id=f"wecom:{config.corp_id}:{userid}",
@@ -376,12 +376,11 @@ _EXCHANGERS = {
 # ── adapter satisfying complete_login_flow's oauth_client interface ───────
 
 
-class ChinaOAuthClient:
-    """Duck-typed stand-in for authlib's ``BaseOAuth2``.
+class ChinaOAuthClient(BaseOAuth2[Any]):
+    """``complete_login_flow`` client adapter.
 
-    ``complete_login_flow`` needs ``name`` and an async
-    ``get_id_email(access_token)``; the identity is already resolved by the
-    platform exchange, so the adapter returns it.
+    The identity is already resolved by the platform exchange, so
+    ``get_id_email`` returns it without a provider round-trip.
     """
 
     def __init__(self, oauth_name: str, identity: ChinaIdentity) -> None:
@@ -484,13 +483,15 @@ async def china_sso_callback(
     user_manager: UserManager = Depends(get_user_manager),
 ) -> Response:
     if error is not None:
-        raise OnyxError(
-            OnyxErrorCode.VALIDATION_ERROR, f"SSO provider error: {error}"
-        )
+        raise OnyxError(OnyxErrorCode.VALIDATION_ERROR, f"SSO provider error: {error}")
     if state is None or code is None:
         raise OnyxError(OnyxErrorCode.VALIDATION_ERROR, "Missing code or state")
 
-    state_data = decode_and_validate_oauth_state(state, USER_AUTH_SECRET)
+    state_data = decode_and_validate_oauth_state(
+        request=request,
+        state_value=state,
+        state_secret=USER_AUTH_SECRET,
+    )
     provider_name = str(state_data.get("provider_name") or "")
     if not provider_name:
         raise OnyxError(OnyxErrorCode.VALIDATION_ERROR, "State carries no provider")
@@ -508,17 +509,19 @@ async def china_sso_callback(
         with _pinned_workspace(tenant_id):
             redirect_response = await complete_login_flow(
                 oauth_client=oauth_client,
-                token={"access_token": identity.access_token},
+                token=OAuth2Token({"access_token": identity.access_token}),
                 state_data=state_data,
                 request=request,
                 user_manager=user_manager,
                 backend=auth_backend,
-                strategy=strategy,
+                strategy=strategy,  # ty: ignore[invalid-argument-type]
                 associate_by_email=True,
                 is_verified_by_default=True,
             )
             if identity.departments:
-                _sync_departments_best_effort(db_session, identity.email, identity.departments)
+                _sync_departments_best_effort(
+                    db_session, identity.email, identity.departments
+                )
     return redirect_response
 
 

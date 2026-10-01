@@ -44,10 +44,12 @@ def test_classify_provider_error_codes() -> None:
     import httpx
 
     assert reg.classify_provider_error(TimeoutError()) == reg.PROBE_FAILURE_TIMEOUT
-    assert (
-        reg.classify_provider_error(httpx.HTTPStatusError("401", request=None, response=None))
-        == reg.PROBE_FAILURE_ACCESS_DENIED
+    unauthorized = httpx.HTTPStatusError(
+        "401",
+        request=httpx.Request("GET", "https://provider.example/v1/models"),
+        response=httpx.Response(401),
     )
+    assert reg.classify_provider_error(unauthorized) == reg.PROBE_FAILURE_ACCESS_DENIED
     assert reg.classify_provider_error(RuntimeError("rate limit exceeded")) == (
         reg.PROBE_FAILURE_QUOTA
     )
@@ -63,7 +65,9 @@ def test_probe_model_success_and_failure() -> None:
     ok, failure = reg.probe_model("glm-4.7", lambda: "OK")
     assert ok and failure is None
 
-    ok, failure = reg.probe_model("glm-4.7", lambda: (_ for _ in ()).throw(RuntimeError("401")))
+    ok, failure = reg.probe_model(
+        "glm-4.7", lambda: (_ for _ in ()).throw(RuntimeError("401"))
+    )
     assert not ok
     assert failure == reg.PROBE_FAILURE_ACCESS_DENIED
 

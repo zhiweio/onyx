@@ -63,7 +63,7 @@ def _cleanup(_db_access: None) -> Generator[None, None, None]:
     _CREATED_SESSION_IDS.clear()
 
 
-def _seed_tool_call(user_id: UUID, tool: str, ok: bool, excerpt: str = "") -> None:
+def _seed_tool_call(user_id: str, tool: str, ok: bool, excerpt: str = "") -> None:
     with get_session_with_current_tenant() as db_session:
         row = PlatformToolLog(
             user_id=user_id,
@@ -77,7 +77,7 @@ def _seed_tool_call(user_id: UUID, tool: str, ok: bool, excerpt: str = "") -> No
         _CREATED_LOG_IDS.append(row.id)
 
 
-def _seed_query(user_id: UUID, query: str) -> None:
+def _seed_query(user_id: str, query: str) -> None:
     with get_session_with_current_tenant() as db_session:
         row = SearchQuery(user_id=user_id, query=query)
         db_session.add(row)
@@ -86,7 +86,7 @@ def _seed_query(user_id: UUID, query: str) -> None:
         _CREATED_QUERY_IDS.append(row.id)
 
 
-def _seed_approval(user_id: UUID, app_name: str) -> None:
+def _seed_approval(user_id: str, app_name: str) -> None:
     with get_session_with_current_tenant() as db_session:
         session = BuildSession(user_id=user_id, name=f"audit-test-{uuid4()}")
         db_session.add(session)

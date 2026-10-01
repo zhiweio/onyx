@@ -60,7 +60,7 @@ async def test_async_client_unwraps_task_group(
     monkeypatch.setattr(
         client,
         "_create_mcp_client_function_runner",
-        lambda *args, **kwargs: raise_group,
+        lambda *_args, **_kwargs: raise_group,
     )
 
     async def operation(_session: ClientSession) -> None:
@@ -79,9 +79,7 @@ async def test_async_client_unwraps_task_group(
 async def test_soft_validate_keeps_payload_when_schema_rejects(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def reject(
-        _session: ClientSession, _name: str, _result: object
-    ) -> None:
+    async def reject(_session: ClientSession, _name: str, _result: object) -> None:
         raise RuntimeError("None is not of type 'string'")
 
     monkeypatch.setattr(ClientSession, "_validate_tool_result", reject)

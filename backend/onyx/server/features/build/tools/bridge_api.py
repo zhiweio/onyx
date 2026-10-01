@@ -104,9 +104,7 @@ def _request_registry(user: User) -> PlatformToolRegistry:
                 arguments=entry.arguments,
                 ok=entry.ok,
                 result_excerpt=entry.result_text,
-                session_id=(
-                    UUID(entry.session_id) if entry.session_id else None
-                ),
+                session_id=(UUID(entry.session_id) if entry.session_id else None),
             )
 
     search_provider = build_search_provider()
@@ -172,7 +170,9 @@ def _bridge_ctx(user: User) -> ToolContext:
 
 
 @router.get("/definitions")
-def tool_definitions(user: User = Depends(require_permission(Permission.BASIC_ACCESS))) -> dict[str, Any]:
+def tool_definitions(
+    _user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+) -> dict[str, Any]:
     registry = get_platform_tool_registry()
     return {"tools": registry.definitions()}
 

@@ -6,7 +6,6 @@ error mapping — all with httpx mocked.
 """
 
 import base64
-from typing import cast
 from unittest.mock import patch
 
 import httpx
@@ -23,15 +22,13 @@ DASHSCOPE_PROVIDER = "dashscope"
 WORKSPACE_BASE = "https://ws1.cn-beijing.maas.aliyuncs.com"
 
 
-def _success_response(image_url: str = "https://result.example.com/img.png") -> httpx.Response:
+def _success_response(
+    image_url: str = "https://result.example.com/img.png",
+) -> httpx.Response:
     return httpx.Response(
         200,
         json={
-            "output": {
-                "choices": [
-                    {"message": {"content": [{"image": image_url}]}}
-                ]
-            },
+            "output": {"choices": [{"message": {"content": [{"image": image_url}]}}]},
             "usage": {"image_count": 1},
             "request_id": "req-1",
         },
@@ -64,7 +61,9 @@ def test_build_provider_requires_key_and_base() -> None:
         )
         setattr(credentials, missing, None)
 
-        assert DashScopeImageGenerationProvider.validate_credentials(credentials) is False
+        assert (
+            DashScopeImageGenerationProvider.validate_credentials(credentials) is False
+        )
         with pytest.raises(ImageProviderCredentialsError):
             get_image_generation_provider(DASHSCOPE_PROVIDER, credentials)
 
@@ -99,6 +98,7 @@ def test_generate_image_text_to_image_request_shape() -> None:
 
     # Result URL downloaded and inlined as base64.
     assert mock_get.call_args.args[0] == "https://result.example.com/img.png"
+    assert response.data is not None
     assert response.data[0].b64_json == base64.b64encode(b"img-data").decode()
     assert response.data[0].revised_prompt == "a mountain at sunset"
 
@@ -127,8 +127,12 @@ def test_generate_image_with_reference_images() -> None:
     payload = mock_post.call_args.kwargs["json"]
     content = payload["input"]["messages"][0]["content"]
     # Reference images become data-URL entries ahead of the prompt.
-    assert content[0] == {"image": "data:image/png;base64," + base64.b64encode(b"img-1").decode()}
-    assert content[1] == {"image": "data:image/jpeg;base64," + base64.b64encode(b"img-2").decode()}
+    assert content[0] == {
+        "image": "data:image/png;base64," + base64.b64encode(b"img-1").decode()
+    }
+    assert content[1] == {
+        "image": "data:image/jpeg;base64," + base64.b64encode(b"img-2").decode()
+    }
     assert content[2] == {"text": "make this watercolor"}
     # n>1 is sent explicitly.
     assert payload["parameters"]["n"] == 2
@@ -158,7 +162,11 @@ def test_generate_image_maps_error_body() -> None:
     )
     error_response = httpx.Response(
         200,
-        json={"code": "InvalidParameter", "message": "size not supported", "request_id": "req-2"},
+        json={
+            "code": "InvalidParameter",
+            "message": "size not supported",
+            "request_id": "req-2",
+        },
     )
 
     with (

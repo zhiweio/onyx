@@ -3,9 +3,7 @@ from pathlib import Path
 
 from onyx.skills.built_in import BUILT_IN_SKILLS
 
-_SCRIPT = (
-    BUILT_IN_SKILLS["zhihuiya"].source_dir / "scripts" / "replay_store.py"
-)
+_SCRIPT = BUILT_IN_SKILLS["zhihuiya"].source_dir / "scripts" / "replay_store.py"
 _SPEC = importlib.util.spec_from_file_location("zhihuiya_replay_store", _SCRIPT)
 assert _SPEC is not None and _SPEC.loader is not None
 replay_store = importlib.util.module_from_spec(_SPEC)

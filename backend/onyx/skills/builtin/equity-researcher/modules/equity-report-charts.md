@@ -246,21 +246,21 @@ python scripts/chart_generator.py \
 
 ```python
 CHART_STYLE = {
-    'figure.facecolor': 'white',
-    'axes.facecolor': 'white',
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Helvetica Neue', 'Arial', 'DejaVu Sans'],
-    'font.size': 10,
-    'axes.titlesize': 12,
-    'axes.labelsize': 10,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'legend.fontsize': 9,
-    'axes.spines.top': False,
-    'axes.spines.right': False,
-    'axes.grid': True,
-    'grid.alpha': 0.3,
-    'grid.color': '#E8E8E8',
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica Neue", "Arial", "DejaVu Sans"],
+    "font.size": 10,
+    "axes.titlesize": 12,
+    "axes.labelsize": 10,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 9,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.grid": True,
+    "grid.alpha": 0.3,
+    "grid.color": "#E8E8E8",
 }
 ```
 
@@ -300,6 +300,7 @@ The command writes a real SVG file to `outputs/<name>.svg`. **Do NOT rely on `--
 
 ```python
 import base64, pathlib
+
 svg_bytes = pathlib.Path("outputs/<name>.svg").read_bytes()
 b64 = base64.b64encode(svg_bytes).decode("ascii")
 ```

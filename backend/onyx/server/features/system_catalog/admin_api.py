@@ -43,7 +43,6 @@ from onyx.db.system_catalog.report_template import (
     read_catalog_docx_asset,
     update_system_report_template,
 )
-from onyx.report_templates.docx_template import DOCX_CONTENT_TYPE
 from onyx.db.system_catalog.scenario import (
     create_system_scenario,
     delete_system_scenario,
@@ -61,6 +60,7 @@ from onyx.db.system_catalog.skill import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
+from onyx.report_templates.docx_template import DOCX_CONTENT_TYPE
 from onyx.server.features.scenario.playbook import playbook_as_dict
 from onyx.server.features.system_catalog.instructions import (
     read_catalog_skill_instructions,
@@ -85,6 +85,7 @@ from onyx.server.features.system_catalog.models import (
 from onyx.skills.built_in import BUILT_IN_SKILLS
 from onyx.skills.bundle import read_bundle_file
 from onyx.skills.ingest import ingested_skill_bundle
+
 
 def _catalog_scenario_response(
     db_session: Session,
@@ -125,7 +126,9 @@ def _catalog_scenario_response(
             )
             report_template = CatalogBoundTemplate(
                 slug=entry.report_template_slug,
-                name=template.name if template is not None else entry.report_template_slug,
+                name=template.name
+                if template is not None
+                else entry.report_template_slug,
             )
     return SystemScenarioResponse.from_scenario(
         entry, bound_skills=bound_skills, report_template=report_template
@@ -530,9 +533,7 @@ def download_catalog_report_template_docx(
     return StreamingResponse(
         io.BytesIO(payload),
         media_type=DOCX_CONTENT_TYPE,
-        headers={
-            "Content-Disposition": f'attachment; filename="{quote(filename)}"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{quote(filename)}"'},
     )
 
 

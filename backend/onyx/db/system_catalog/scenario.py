@@ -106,8 +106,9 @@ def _referenced_skill_slugs(
     skill_slugs: list[str], rules: dict[str, Any] | None
 ) -> list[str]:
     combined = list(skill_slugs)
-    for slug in _conditional_skill_slugs(rules):
-        combined.append(normalize_catalog_slug(slug))
+    combined.extend(
+        normalize_catalog_slug(slug) for slug in _conditional_skill_slugs(rules)
+    )
     return combined
 
 

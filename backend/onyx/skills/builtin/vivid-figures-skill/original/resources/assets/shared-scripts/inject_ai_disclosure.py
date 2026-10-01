@@ -17,9 +17,11 @@ preamble、不动模板结构。开关不开时本脚本根本不被调用 = 对
 用法：python _utils/inject_ai_disclosure.py --main paper/main.tex --mode used|none
       [--disclosure Z_ai_disclosure] [--detail B_ai_detail]
 """
+
 from __future__ import annotations
-import sys
+
 import argparse
+import sys
 from pathlib import Path
 
 try:
@@ -41,12 +43,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--main", default="paper/main.tex", help="主文件路径")
     ap.add_argument("--mode", choices=["used", "none"], required=True)
-    ap.add_argument("--disclosure", default="Z_ai_disclosure",
-                    help="声明章节文件名（不含 sections/ 前缀和 .tex 后缀）")
-    ap.add_argument("--detail", default="B_ai_detail",
-                    help="附录详情文件名（同上，仅 used 模式插入）")
-    ap.add_argument("--detail-dir", default="appendix",
-                    help="附录详情所在目录前缀（默认 appendix/，不计入正文页数预检）")
+    ap.add_argument(
+        "--disclosure",
+        default="Z_ai_disclosure",
+        help="声明章节文件名（不含 sections/ 前缀和 .tex 后缀）",
+    )
+    ap.add_argument(
+        "--detail",
+        default="B_ai_detail",
+        help="附录详情文件名（同上，仅 used 模式插入）",
+    )
+    ap.add_argument(
+        "--detail-dir",
+        default="appendix",
+        help="附录详情所在目录前缀（默认 appendix/，不计入正文页数预检）",
+    )
     args = ap.parse_args()
 
     mp = Path(args.main)
@@ -63,7 +74,7 @@ def main():
     lines = text.split(nl)
 
     # 声明章节在正文流（参考文献前），归 sections/；附录详情是附录内容，归 appendix/
-    #（appendix/ 不计入正文页数预检，与模板附录约定一致）。
+    # （appendix/ 不计入正文页数预检，与模板附录约定一致）。
     disc_input = "\\input{sections/%s}" % args.disclosure
     detail_input = "\\input{%s/%s}" % (args.detail_dir, args.detail)
     changed = False
@@ -92,7 +103,9 @@ def main():
             print("[SKIP] detail input already present")
         else:
             # 主锚点：标准 appendices / 华数杯自定义 appendixx / \appendix 命令
-            aidx = _find_line(lines, ["\\begin{appendices}", "\\begin{appendixx}", "\\appendix"])
+            aidx = _find_line(
+                lines, ["\\begin{appendices}", "\\begin{appendixx}", "\\appendix"]
+            )
             if aidx >= 0:
                 lines.insert(aidx + 1, detail_input)
                 changed = True
@@ -105,7 +118,9 @@ def main():
                     changed = True
                     print(f"[OK] inserted detail after A_code input at line {cidx + 2}")
                 else:
-                    warns.append("未找到附录锚点（appendices/appendixx/\\appendix/A_code），跳过附录详情插入")
+                    warns.append(
+                        "未找到附录锚点（appendices/appendixx/\\appendix/A_code），跳过附录详情插入"
+                    )
 
     if changed:
         try:
@@ -123,4 +138,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

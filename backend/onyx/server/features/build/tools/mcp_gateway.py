@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import os
-
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -70,9 +69,7 @@ def load_gateway_servers(
     for entry in entries:
         if not isinstance(entry, dict) or not entry.get("name") or not entry.get("url"):
             continue
-        headers = {
-            str(k): str(v) for k, v in (entry.get("headers") or {}).items()
-        }
+        headers = {str(k): str(v) for k, v in (entry.get("headers") or {}).items()}
         config = GatewayServerConfig(
             name=str(entry["name"]), url=str(entry["url"]), headers=headers
         )
@@ -96,7 +93,9 @@ class McpGatewayService:
     def servers(self) -> dict[str, GatewayServerConfig]:
         return self._servers
 
-    def _check_allowed(self, server: str, allowed: set[str] | None) -> GatewayServerConfig:
+    def _check_allowed(
+        self, server: str, allowed: set[str] | None
+    ) -> GatewayServerConfig:
         config = self._servers.get(server)
         if config is None:
             raise McpGatewayError(
@@ -104,9 +103,7 @@ class McpGatewayService:
                 f"configured: {sorted(self._servers)}"
             )
         if allowed is not None and server not in allowed:
-            raise McpGatewayError(
-                f"MCP server {server!r} is not granted for this task"
-            )
+            raise McpGatewayError(f"MCP server {server!r} is not granted for this task")
         return config
 
     async def call_tool(

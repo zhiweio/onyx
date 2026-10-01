@@ -17,10 +17,12 @@ latex_includes.tex（竖长条流程图窄、横图宽）；但 comp-paper 把�
 退出码：0=一致  1=检出被改(必修)  2=无据可查(跳过，不阻塞)
 用法：python _utils/fig_size_consistency_check.py [--latex figures/latex_includes.tex] [--paperdir paper]
 """
+
 from __future__ import annotations
-import sys
-import re
+
 import argparse
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -29,14 +31,14 @@ except Exception:
     pass
 
 # 匹配一条 \includegraphics[opts]{path}，捕获 opts 与 path（与 fig_include_size 同源口径）
-_INC_RE = re.compile(r'\\includegraphics(\[[^\]]*\])?(\{[^}]*\})')
+_INC_RE = re.compile(r"\\includegraphics(\[[^\]]*\])?(\{[^}]*\})")
 # 从 opts 里取 width= / height= 的系数（\textwidth/\textheight 前的数字；允许无数字如纯 \textwidth）
-_W_RE = re.compile(r'width\s*=\s*([\d.]*)\s*\\(?:text|line|column)?width', re.I)
-_H_RE = re.compile(r'height\s*=\s*([\d.]*)\s*\\(?:text)?height', re.I)
+_W_RE = re.compile(r"width\s*=\s*([\d.]*)\s*\\(?:text|line|column)?width", re.I)
+_H_RE = re.compile(r"height\s*=\s*([\d.]*)\s*\\(?:text)?height", re.I)
 
 
 def _strip_braces(s: str) -> str:
-    return s[1:-1] if len(s) >= 2 and s[0] in '[{' and s[-1] in ']}' else s
+    return s[1:-1] if len(s) >= 2 and s[0] in "[{" and s[-1] in "]}" else s
 
 
 def _norm(coef) -> str:
@@ -97,7 +99,9 @@ def main() -> int:
 
     base = _parse_sizes(base_text)
     if not base:
-        print("⚠ 尺寸一致性闸：latex_includes 里没有 .pdf 的 \\includegraphics，无可比，跳过。")
+        print(
+            "⚠ 尺寸一致性闸：latex_includes 里没有 .pdf 的 \\includegraphics，无可比，跳过。"
+        )
         return 2
 
     body, body_where = {}, {}
@@ -129,11 +133,12 @@ def main() -> int:
     print(f"❌ 检出 {len(fails)} 处尺寸被改(必修)：")
     for name, dim, bv, pv, where in fails:
         print(f"   · {name} 的 {dim}：latex_includes={bv} 但正文={pv}（{where}）")
-    print("⛔ 正文必须照抄 latex_includes.tex 的 width/height(按真实长宽比算好的)；改回基准值。"
-          "竖长条流程图/TikZ 图改大会 keepaspectratio 撑满整页。")
+    print(
+        "⛔ 正文必须照抄 latex_includes.tex 的 width/height(按真实长宽比算好的)；改回基准值。"
+        "竖长条流程图/TikZ 图改大会 keepaspectratio 撑满整页。"
+    )
     return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

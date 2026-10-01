@@ -54,7 +54,6 @@ from onyx.server.features.build.sandbox.user_library import (
     USER_LIBRARY_MOUNT_PATH,
     build_user_library_fileset,
 )
-from onyx.skills.push import TEAM_SKILLS_MOUNT_PATH
 from onyx.server.features.build.sandbox.util.mcp_config import (
     craft_mcp_fingerprint,
     resolve_craft_mcp_servers,
@@ -76,7 +75,7 @@ from onyx.server.features.build.session.sandbox_lifecycle import (
     record_managed_content_hashes__no_commit,
     refresh_mcp_config_hashes_for_users,
 )
-from onyx.skills.push import compute_skill_runtime_hash
+from onyx.skills.push import TEAM_SKILLS_MOUNT_PATH, compute_skill_runtime_hash
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE
 from tests.common.craft.stubs import StubSandboxManager
 
@@ -237,7 +236,9 @@ def test_list_projects_hides_implicit_untitled(
         instructions="Be brief.",
     )
     visible = create_project(db_session, user=test_user, name="Tax pack")
-    listed_ids = {project.id for project in list_projects_for_user(db_session, test_user)}
+    listed_ids = {
+        project.id for project in list_projects_for_user(db_session, test_user)
+    }
     assert hidden.id not in listed_ids
     assert instructed.id in listed_ids
     assert visible.id in listed_ids

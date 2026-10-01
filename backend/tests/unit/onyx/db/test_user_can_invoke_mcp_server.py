@@ -40,8 +40,10 @@ def test_org_gallery_list_drops_personal_servers(
     org = _server(MCPServerScope.USER, "admin@example.com")
     monkeypatch.setattr(
         "onyx.db.mcp.get_mcp_servers_accessible_to_user",
-        lambda user, db, include_system=None: [personal, org],
+        lambda _user, _db, include_system=None: [personal, org],  # noqa: ARG005
     )
-    assert get_org_mcp_servers_accessible_to_user(_user("owner@example.com"), None) == [
-        org
-    ]
+    # The inner lookup is monkeypatched, so the session is never used.
+    assert get_org_mcp_servers_accessible_to_user(
+        _user("owner@example.com"),
+        None,  # ty: ignore[invalid-argument-type]
+    ) == [org]

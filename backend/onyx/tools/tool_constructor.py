@@ -31,6 +31,8 @@ from onyx.server.features.mcp.credentials import (
     MCPCredentialsError,
     resolve_mcp_credentials,
 )
+from onyx.server.features.mcp.gateway_bind import discover_and_store_bound_tools
+from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.tools.built_in_tools import get_built_in_tool_by_id
 from onyx.tools.interface import Tool
 from onyx.tools.models import DynamicSchemaInfo, SearchToolUsage
@@ -44,8 +46,6 @@ from onyx.tools.tool_implementations.file_reader.file_reader_tool import FileRea
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     ImageGenerationTool,
 )
-from onyx.server.features.mcp.gateway_bind import discover_and_store_bound_tools
-from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 from onyx.tools.tool_implementations.mcp.mcp_tool import MCPTool
 from onyx.tools.tool_implementations.memory.memory_tool import MemoryTool
 from onyx.tools.tool_implementations.open_url.open_url_tool import OpenURLTool
@@ -547,9 +547,7 @@ def _construct_tools_impl(
         if not user_can_invoke_mcp_server(user, extra_server):
             continue
         try:
-            extra_credentials = resolve_mcp_credentials(
-                extra_server, user, db_session
-            )
+            extra_credentials = resolve_mcp_credentials(extra_server, user, db_session)
         except MCPCredentialsError as error:
             logger.warning(str(error))
             continue

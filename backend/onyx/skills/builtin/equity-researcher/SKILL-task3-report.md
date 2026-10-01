@@ -127,7 +127,8 @@ Use Python to read key data from the Excel file:
 
 ```python
 import openpyxl
-wb = openpyxl.load_workbook('{model_path}', data_only=True)
+
+wb = openpyxl.load_workbook("{model_path}", data_only=True)
 
 # Extract data needed for report modules:
 # 1. Income Statement tab → Financial Analysis module tables
@@ -184,7 +185,7 @@ Read `output/report-layout.md` NOW and follow it exactly.
 **For tables from Excel** (Financial statements, DCF, Comps, Sensitivity):
 ```python
 # Read the Excel tab and convert to HTML table
-ws = wb['Income Statement']
+ws = wb["Income Statement"]
 # Read headers from row 3
 # Read data from rows 5+
 # Generate <table class="report-table"> HTML with proper formatting
@@ -261,13 +262,14 @@ Read `output/report.css` and inject into HTML `<style>` block. Use the `css_cont
 ```python
 # WeasyPrint approach
 from weasyprint import HTML
-html_content = open('report.html').read()
-HTML(string=html_content).write_pdf('report.pdf')
+
+html_content = open("report.html").read()
+HTML(string=html_content).write_pdf("report.pdf")
 ```
 
 Or Playwright approach:
 ```python
-page.emulate_media(media='print')
+page.emulate_media(media="print")
 # Inject: .report-container { padding: 0 !important; }
 # @page { margin: 18mm 20mm; }
 ```

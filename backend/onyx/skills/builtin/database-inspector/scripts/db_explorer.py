@@ -56,9 +56,7 @@ def _validate_sql(sql: str):
     if not stripped:
         raise ValueError("SQL 语句不能为空")
     if not ALLOWED_START.match(stripped):
-        raise ValueError(
-            "只允许 SELECT / WITH / EXPLAIN / PRAGMA / SHOW 语句"
-        )
+        raise ValueError("只允许 SELECT / WITH / EXPLAIN / PRAGMA / SHOW 语句")
     clean = re.sub(r"'[^']*'", "''", stripped)
     clean = re.sub(r'"[^"]*"', '""', clean)
     if DANGEROUS_KW.search(clean):
@@ -84,15 +82,14 @@ class SQLiteExplorer:
     def _check_table(self, table: str):
         names = [t["name"] for t in self._tables()]
         if table not in names:
-            raise ValueError(
-                f"表 '{table}' 不存在。可用的表: {', '.join(names)}"
-            )
+            raise ValueError(f"表 '{table}' 不存在。可用的表: {', '.join(names)}")
 
     def list_tables(self):
         tables = self._tables()
         for t in tables:
             cur = self.conn.execute(
-                f"SELECT COUNT(*) AS cnt FROM {_quote_id(t['name'])}"
+                # Queries a local sqlite file the script controls; the identifier is quoted.
+                f"SELECT COUNT(*) AS cnt FROM {_quote_id(t['name'])}"  # noqa: S608
             )
             t["row_count"] = cur.fetchone()["cnt"]
         return tables
@@ -102,29 +99,27 @@ class SQLiteExplorer:
         qid = _quote_id(table)
 
         cur = self.conn.execute(f"PRAGMA table_info({qid})")
-        columns = []
-        for r in cur:
-            columns.append(
-                {
-                    "cid": r["cid"],
-                    "name": r["name"],
-                    "type": r["type"] or "TEXT",
-                    "notnull": bool(r["notnull"]),
-                    "default": r["dflt_value"],
-                    "primary_key": bool(r["pk"]),
-                }
-            )
+        columns = [
+            {
+                "cid": r["cid"],
+                "name": r["name"],
+                "type": r["type"] or "TEXT",
+                "notnull": bool(r["notnull"]),
+                "default": r["dflt_value"],
+                "primary_key": bool(r["pk"]),
+            }
+            for r in cur
+        ]
 
         cur = self.conn.execute(f"PRAGMA foreign_key_list({qid})")
-        fks = []
-        for r in cur:
-            fks.append(
-                {
-                    "from": r["from"],
-                    "to_table": r["table"],
-                    "to_column": r["to"],
-                }
-            )
+        fks = [
+            {
+                "from": r["from"],
+                "to_table": r["table"],
+                "to_column": r["to"],
+            }
+            for r in cur
+        ]
 
         cur = self.conn.execute(f"PRAGMA index_list({qid})")
         indexes = []
@@ -139,7 +134,10 @@ class SQLiteExplorer:
                 }
             )
 
-        cur = self.conn.execute(f"SELECT COUNT(*) AS cnt FROM {qid}")
+        cur = self.conn.execute(
+            # Queries a local sqlite file the script controls; the identifier is quoted.
+            f"SELECT COUNT(*) AS cnt FROM {qid}"  # noqa: S608
+        )
         row_count = cur.fetchone()["cnt"]
 
         return {
@@ -152,9 +150,9 @@ class SQLiteExplorer:
 
     def preview(self, table: str, limit: int = 20):
         self._check_table(table)
-        cur = self.conn.execute(
-            f"SELECT * FROM {_quote_id(table)} LIMIT ?", (limit,)
-        )
+        # Queries a local sqlite file the script controls; the identifier is quoted.
+        sql = f"SELECT * FROM {_quote_id(table)} LIMIT ?"  # noqa: S608
+        cur = self.conn.execute(sql, (limit,))
         cols = [d[0] for d in cur.description]
         rows = [dict(r) for r in cur]
         return {"table": table, "columns": cols, "rows": rows, "count": len(rows)}
@@ -178,10 +176,10 @@ class SQLiteExplorer:
                 lines.append(f"        {ct} {col['name']}{markers}")
             lines.append("    }")
 
-            for fk in desc["foreign_keys"]:
-                lines.append(
-                    f'    {fk["to_table"]} ||--o{{ {t["name"]} : "{fk["from"]}"'
-                )
+            lines.extend(
+                f'    {fk["to_table"]} ||--o{{ {t["name"]} : "{fk["from"]}"'
+                for fk in desc["foreign_keys"]
+            )
 
         return "\n".join(lines)
 
@@ -229,18 +227,14 @@ class PostgreSQLExplorer:
     def _check_table(self, table: str):
         names = [t["name"] for t in self._tables()]
         if table not in names:
-            raise ValueError(
-                f"表 '{table}' 不存在。可用的表: {', '.join(names)}"
-            )
+            raise ValueError(f"表 '{table}' 不存在。可用的表: {', '.join(names)}")
 
     def list_tables(self):
         tables = self._tables()
         with self._cursor() as cur:
             for t in tables:
                 qid = pgsql.Identifier(t["name"])
-                cur.execute(
-                    pgsql.SQL("SELECT COUNT(*) AS cnt FROM {}").format(qid)
-                )
+                cur.execute(pgsql.SQL("SELECT COUNT(*) AS cnt FROM {}").format(qid))
                 t["row_count"] = cur.fetchone()["cnt"]
         return tables
 
@@ -312,9 +306,7 @@ class PostgreSQLExplorer:
             indexes = [dict(r) for r in cur]
 
             qid = pgsql.Identifier(table)
-            cur.execute(
-                pgsql.SQL("SELECT COUNT(*) AS cnt FROM {}").format(qid)
-            )
+            cur.execute(pgsql.SQL("SELECT COUNT(*) AS cnt FROM {}").format(qid))
             row_count = cur.fetchone()["cnt"]
 
         return {
@@ -359,9 +351,7 @@ class PostgreSQLExplorer:
 
             for fk in desc["foreign_keys"]:
                 to_safe = fk["to_table"].replace(" ", "_")
-                lines.append(
-                    f'    {to_safe} ||--o{{ {safe_name} : "{fk["from"]}"'
-                )
+                lines.append(f'    {to_safe} ||--o{{ {safe_name} : "{fk["from"]}"')
 
         return "\n".join(lines)
 
@@ -380,9 +370,7 @@ class PostgreSQLExplorer:
 
 
 def build_parser():
-    p = argparse.ArgumentParser(
-        description="SQLite / PostgreSQL 只读数据库探索工具"
-    )
+    p = argparse.ArgumentParser(description="SQLite / PostgreSQL 只读数据库探索工具")
     p.add_argument(
         "--db-type",
         choices=["sqlite", "postgres"],

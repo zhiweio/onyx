@@ -80,12 +80,14 @@ pip install PyMuPDF pdfplumber python-docx beautifulsoup4 requests
 ```python
 # PDF 文本提取
 import fitz  # PyMuPDF
+
 doc = fitz.open("/path/to/file.pdf")
 for page in doc:
     text = page.get_text()
 
 # DOCX 文本提取
 from docx import Document
+
 doc = Document("/path/to/file.docx")
 for para in doc.paragraphs:
     text = para.text

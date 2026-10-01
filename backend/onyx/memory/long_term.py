@@ -8,7 +8,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from shared_configs.configs import MODEL_SERVER_HOST, MODEL_SERVER_PORT
 from onyx.db.enums import ChatMemoryMode
 from onyx.db.long_term_memory import (
     LONG_TERM_MEMORY_EXTRACT_CAP,
@@ -35,6 +34,7 @@ from onyx.db.users import fetch_user_by_id
 from onyx.memory.filters import reject_reason
 from onyx.natural_language_processing.search_nlp_models import EmbeddingModel
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import MODEL_SERVER_HOST, MODEL_SERVER_PORT
 from shared_configs.enums import EmbedTextType
 
 logger = setup_logger()
@@ -148,9 +148,7 @@ def upsert_facts(
 
     try:
         _model, model_name, dims = _embedding_model(db_session)
-        embeddings = embed_texts(
-            db_session, [fact.text for fact in kept], query=False
-        )
+        embeddings = embed_texts(db_session, [fact.text for fact in kept], query=False)
     except Exception:
         logger.exception("Long-term memory embed failed on write")
         model_name = None
@@ -165,9 +163,7 @@ def upsert_facts(
             ids.append(existing.id)
             continue
         if embedding is not None and model_name is not None:
-            neighbor = nearest_neighbor(
-                db_session, user_id, embedding, model_name
-            )
+            neighbor = nearest_neighbor(db_session, user_id, embedding, model_name)
             if neighbor is not None and neighbor[1] <= NEAR_DUP_DISTANCE:
                 memory, _distance = neighbor
                 memory.text = fact.text
@@ -179,7 +175,9 @@ def upsert_facts(
                 ids.append(memory.id)
                 continue
         if source == "extract":
-            while count_extract_rows(db_session, user_id) >= LONG_TERM_MEMORY_EXTRACT_CAP:
+            while (
+                count_extract_rows(db_session, user_id) >= LONG_TERM_MEMORY_EXTRACT_CAP
+            ):
                 evict_oldest_extract(db_session, user_id)
         memory = insert_memory(
             db_session,
@@ -241,8 +239,7 @@ def recall_texts_for_craft_job(
     if user is None or not user.craft_use_long_term_memory:
         return []
     return [
-        item.text
-        for item in recall(db_session, user_id, query, project_id=project_id)
+        item.text for item in recall(db_session, user_id, query, project_id=project_id)
     ]
 
 
@@ -299,9 +296,7 @@ def extract_facts_from_user_text(user_message: str) -> list[MemoryFact]:
 
         llm = get_default_llm(timeout=30, temperature=0.0)
         response = llm.invoke(
-            UserMessage(
-                content=f"{_EXTRACT_PROMPT}\n\nUser message:\n{user_message}"
-            )
+            UserMessage(content=f"{_EXTRACT_PROMPT}\n\nUser message:\n{user_message}")
         )
         raw = response.choice.message.content or ""
         payload = parse_llm_json_response(raw) or {}
@@ -335,9 +330,7 @@ def _reembed_stale_best_effort(
     if not stale:
         return
     try:
-        embeddings = embed_texts(
-            db_session, [row.text for row in stale], query=False
-        )
+        embeddings = embed_texts(db_session, [row.text for row in stale], query=False)
         _model, model_name, dims = _embedding_model(db_session)
     except Exception:
         logger.exception("Stale long-term memory re-embed failed")
@@ -390,4 +383,3 @@ def delete_owned(db_session: Session, user_id: UUID, memory_id: int) -> None:
 
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Memory not found")
     soft_delete(db_session, memory)
-

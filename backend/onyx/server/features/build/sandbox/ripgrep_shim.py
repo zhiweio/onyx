@@ -109,7 +109,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("ripgrep 14.1.1 (onyx-shim)\n")
         return 0
     include, exclude = _split_globs([*args.glob, *args.iglob])
-    rest = list(args.rest)
+    # argparse's nargs="*" is not modeled by the Namespace stub, so pin the
+    # element type to keep re.compile's overloads resolvable.
+    rest: list[str] = list(args.rest)
     pattern = ""
     targets: list[str] = ["."]
     if args.files:

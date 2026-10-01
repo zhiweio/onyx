@@ -28,7 +28,9 @@ class CallbackResult:
 WECOM_XML_TEXT_FIELD = "<Content><![CDATA["
 
 
-def wecom_handle(config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]) -> CallbackResult:
+def wecom_handle(
+    config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]
+) -> CallbackResult:
     del headers
     """WeCom callback: GET query carries msg_signature/timestamp/nonce,
     body carries Encrypt; the decrypted payload is XML."""
@@ -97,7 +99,9 @@ def _wecom_parse_xml(xml: str) -> tuple[str, dict[str, str]]:
 # ── DingTalk ──────────────────────────────────────────────────────────────
 
 
-def dingtalk_handle(config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]) -> CallbackResult:
+def dingtalk_handle(
+    config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]
+) -> CallbackResult:
     del query
     """DingTalk enterprise robot: body {encrypt}; URL verification carries
     the literal 'success' plaintext, normal events carry a JSON payload."""
@@ -113,7 +117,9 @@ def dingtalk_handle(config: Any, query: dict[str, str], body: dict[str, Any], he
         raise CallbackRejected(str(exc)) from exc
 
     if plaintext.strip().strip('"') == "success":
-        return CallbackResult(body={"encrypt": crypto.dingtalk_encrypt(config.bot_aes_key, "success")})
+        return CallbackResult(
+            body={"encrypt": crypto.dingtalk_encrypt(config.bot_aes_key, "success")}
+        )
 
     try:
         payload = json.loads(plaintext)
@@ -126,7 +132,11 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
     # conversation + sender may be nested (1.0) or flat (stream-less robots)
     conversation = payload.get("conversationId") or ""
     sender = payload.get("senderStaffId") or payload.get("senderId") or ""
-    text = payload.get("text", {}).get("content", "") if isinstance(payload.get("text"), dict) else str(payload.get("text") or "")
+    text = (
+        payload.get("text", {}).get("content", "")
+        if isinstance(payload.get("text"), dict)
+        else str(payload.get("text") or "")
+    )
     msg_id = str(payload.get("msgId") or payload.get("messageId") or "")
     if not (sender and text):
         return CallbackResult()
@@ -145,7 +155,9 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
 # ── Feishu ────────────────────────────────────────────────────────────────
 
 
-def feishu_handle(config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]) -> CallbackResult:
+def feishu_handle(
+    config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]
+) -> CallbackResult:
     del query, headers
     """Feishu event subscription: optional encrypt envelope; url
     verification echoes the challenge; im.message.receive_v1 carries text."""
@@ -183,7 +195,9 @@ def feishu_handle(config: Any, query: dict[str, str], body: dict[str, Any], head
         content = json.loads(message.get("content") or "{}").get("text", "")
     except json.JSONDecodeError:
         content = ""
-    sender_id = ((event.get("sender") or {}).get("sender_id") or {}).get("open_id") or ""
+    sender_id = ((event.get("sender") or {}).get("sender_id") or {}).get(
+        "open_id"
+    ) or ""
     if not (sender_id and content):
         return CallbackResult()
     return CallbackResult(

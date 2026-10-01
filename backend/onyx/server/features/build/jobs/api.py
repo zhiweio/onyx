@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -54,20 +55,23 @@ from onyx.server.features.build.jobs.models import (
     CraftJobStartResponse,
     QuestionAskDecisionRequest,
 )
+from onyx.server.features.build.jobs.plan import JobPlan
 from onyx.server.features.build.jobs.protocol import default_phases_for_domain
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.query_and_chat.token_limit import check_token_rate_limits
 from shared_configs.contextvars import get_current_tenant_id
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/jobs")
 
 
-def _phases_from_plan(domain: str, plan: object) -> list[dict[str, Any]]:
+def _phases_from_plan(domain: str, plan: JobPlan | None) -> list[dict[str, Any]]:
     """Snapshot a compiled scenario plan into the job's phase list."""
     from onyx.server.features.build.jobs.graph import compile_graph
 
-    return compile_graph(domain, plan=plan).to_phase_list()  # type: ignore[arg-type]
+    return compile_graph(domain, plan=plan).to_phase_list()
 
 
 @router.post("")

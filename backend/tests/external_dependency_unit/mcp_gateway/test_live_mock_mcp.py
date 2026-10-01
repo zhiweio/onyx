@@ -42,7 +42,7 @@ MCP_SERVER_SCRIPT = (
 def allow_loopback_mock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "onyx.server.features.mcp.ssrf.validate_mcp_outbound_url",
-        lambda url, resolve_dns=True: url,
+        lambda url, _resolve_dns=True: url,
     )
 
 

@@ -686,7 +686,8 @@ def _table_flowable(
         repeatRows=1,
     )
     commands: list[Any] = [
-        ("FONTNAME", (0, 0), (-1, -1), styles["cell"].fontName),
+        # reportlab styles keep attributes in a dynamic defaults dict.
+        ("FONTNAME", (0, 0), (-1, -1), styles["cell"].fontName),  # ty: ignore[unresolved-attribute]
         ("FONTSIZE", (0, 0), (-1, -1), CELL_SIZE_PT),
         ("GRID", (0, 0), (-1, -1), 0.4, HexColor(f"#{TABLE_BORDER}")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),

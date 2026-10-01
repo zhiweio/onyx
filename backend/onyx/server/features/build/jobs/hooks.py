@@ -6,7 +6,10 @@ from uuid import UUID
 
 from onyx.server.features.build.jobs.blackboard import scan_artifacts
 from onyx.server.features.build.jobs.channels import ArtifactRecord
-from onyx.server.features.build.jobs.gates import ContractGateResult, evaluate_contract_gate
+from onyx.server.features.build.jobs.gates import (
+    ContractGateResult,
+    evaluate_contract_gate,
+)
 from onyx.server.features.build.jobs.graph import GraphNode
 
 LARGE_OUTPUT_HINT = (

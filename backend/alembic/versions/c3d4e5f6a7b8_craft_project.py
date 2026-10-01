@@ -108,7 +108,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_build_session_project_id", table_name="build_session")
-    op.drop_constraint("fk_build_session_project_id", "build_session", type_="foreignkey")
+    op.drop_constraint(
+        "fk_build_session_project_id", "build_session", type_="foreignkey"
+    )
     op.drop_column("build_session", "project_id")
     op.drop_index("ix_craft_project_file_project_id", table_name="craft_project_file")
     op.drop_index("uq_craft_project_file_path", table_name="craft_project_file")

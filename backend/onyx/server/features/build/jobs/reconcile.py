@@ -14,6 +14,7 @@ from onyx.server.features.build.jobs.channels import (
 )
 from onyx.server.features.build.jobs.graph import GraphNode
 from onyx.server.features.build.jobs.plan import JobPlanLane
+from onyx.server.features.build.sandbox.base import SandboxManager
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 
 RECONCILE_PATH = "outputs/reconcile/RECONCILE.json"
@@ -216,11 +217,13 @@ def _renumber(
     return numbered
 
 
-def _read_text(manager: object, sandbox_id: UUID, session_id: UUID, path: str) -> str:
+def _read_text(
+    manager: SandboxManager, sandbox_id: UUID, session_id: UUID, path: str
+) -> str:
     if not path:
         return ""
     try:
-        raw = manager.read_file(sandbox_id, session_id, path)  # type: ignore[attr-defined]
+        raw = manager.read_file(sandbox_id, session_id, path)
     except Exception:
         return ""
     if not isinstance(raw, (bytes, bytearray)):

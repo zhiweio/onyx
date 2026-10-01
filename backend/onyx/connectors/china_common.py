@@ -86,14 +86,20 @@ def get_json(session: requests.Session, url: str, **kwargs: Any) -> dict[str, An
 
 
 def post_json(
-    session: requests.Session, url: str, *, json_body: dict[str, Any] | None = None, **kwargs: Any
+    session: requests.Session,
+    url: str,
+    *,
+    json_body: dict[str, Any] | None = None,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     resp = session.post(url, json=json_body, timeout=30, **kwargs)
     resp.raise_for_status()
     return resp.json()
 
 
-def fetch_text_or_none(session: requests.Session, url: str, **kwargs: Any) -> str | None:
+def fetch_text_or_none(
+    session: requests.Session, url: str, **kwargs: Any
+) -> str | None:
     """Fetch a text export, returning None (and logging) on any failure so
     one bad document never sinks the indexing batch."""
     try:

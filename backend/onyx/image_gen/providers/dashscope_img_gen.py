@@ -77,9 +77,9 @@ class DashScopeImageGenerationProvider(ImageGenerationProvider):
         model: str,
         size: str,
         n: int,
-        quality: str | None = None,
+        quality: str | None = None,  # noqa: ARG002
         reference_images: list[ReferenceImage] | None = None,
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ARG002
     ) -> ImageGenerationResponse:
         # quality / response_format are OpenAI-isms the qwen-image API rejects.
         model_name = model.rsplit("/", 1)[-1]
@@ -123,8 +123,7 @@ class DashScopeImageGenerationProvider(ImageGenerationProvider):
         return ImageResponse(
             created=int(datetime.now().timestamp()),
             data=[
-                ImageObject(b64_json=b64, revised_prompt=prompt)
-                for b64 in b64_images
+                ImageObject(b64_json=b64, revised_prompt=prompt) for b64 in b64_images
             ],
         )
 
@@ -223,8 +222,7 @@ def _download_images_as_b64(image_urls: list[str]) -> list[str]:
             raise RuntimeError(f"Failed to download the generated image: {e}") from e
         if response.status_code != 200:
             raise RuntimeError(
-                f"Failed to download the generated image "
-                f"(HTTP {response.status_code})"
+                f"Failed to download the generated image (HTTP {response.status_code})"
             )
         b64_images.append(base64.b64encode(response.content).decode("utf-8"))
     return b64_images

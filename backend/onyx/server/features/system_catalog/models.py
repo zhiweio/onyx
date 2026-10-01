@@ -14,8 +14,6 @@ from onyx.db.enums import (
     SystemCatalogOrigin,
     SystemCatalogPublishStatus,
 )
-from onyx.db.system_catalog.constants import normalize_tags
-from onyx.error_handling.exceptions import OnyxError
 from onyx.db.models import (
     ReportTemplate,
     Scenario,
@@ -24,7 +22,6 @@ from onyx.db.models import (
     SystemScenario,
     SystemSkill,
 )
-from onyx.server.features.scenario.playbook import ScenarioPlaybook
 from onyx.db.system_catalog.constants import (
     BODY_MAX,
     CHANGELOG_MAX,
@@ -32,7 +29,10 @@ from onyx.db.system_catalog.constants import (
     NAME_MAX,
     SKILL_NAME_MAX,
     SLUG_MAX,
+    normalize_tags,
 )
+from onyx.error_handling.exceptions import OnyxError
+from onyx.server.features.scenario.playbook import ScenarioPlaybook
 
 CatalogEntry = SystemSkill | SystemScenario | SystemReportTemplate
 

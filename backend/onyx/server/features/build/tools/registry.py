@@ -111,9 +111,7 @@ class PlatformToolRegistry:
             result = tool.execute(invocation, ctx)
         except Exception as exc:
             logger.exception("Platform tool %s failed", invocation.tool)
-            result = text_result(
-                f"[{invocation.tool}] internal error: {exc}"
-            )
+            result = text_result(f"[{invocation.tool}] internal error: {exc}")
         # Cap before journaling or returning so transcripts stay bounded.
         for block in result.content:
             if block.get("type") == "text":

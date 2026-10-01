@@ -20,11 +20,13 @@
   python bib_authenticity_check.py [--bib paper/references.bib] [--log _tmp/refs_raw.jsonl] [--online auto|0|1] [--sample N]
 退出码：0=通过(可能WARN) 1=HARD FAIL(检索留档对不上/DOI确证不存在) 2=无 .bib 可查(跳过不阻断)
 """
+
 from __future__ import annotations
-import sys
-import re
-import json
+
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -44,8 +46,8 @@ def _read(p: Path) -> str:
 
 def _norm_title(s: str) -> str:
     """标题归一化：去 LaTeX 花括号/命令、小写、压空白、去标点，供模糊匹配。"""
-    s = re.sub(r"\\[a-zA-Z]+", " ", s)          # 去 \command
-    s = re.sub(r"[{}\\$]", "", s)                # 去 { } \ $
+    s = re.sub(r"\\[a-zA-Z]+", " ", s)  # 去 \command
+    s = re.sub(r"[{}\\$]", "", s)  # 去 { } \ $
     s = s.lower()
     s = re.sub(r"[^a-z0-9一-鿿]+", " ", s)  # 只留字母数字汉字
     return re.sub(r"\s+", " ", s).strip()
@@ -56,7 +58,7 @@ def _title_tokens(s: str) -> set:
     # 英文按词、中文按 2-gram
     toks = {t for t in n.split() if len(t) >= 2 and not t.isdigit()}
     han = re.findall(r"[一-鿿]", n)
-    toks |= {"".join(han[i:i+2]) for i in range(len(han) - 1)}
+    toks |= {"".join(han[i : i + 2]) for i in range(len(han) - 1)}
     return toks
 
 
@@ -88,8 +90,8 @@ def parse_bib(text: str) -> list:
         brace_start = at + m.end() - 1
         depth = 0
         j = brace_start
-        entry_end = -1        # 命中配平的右括号下标
-        recovered = False     # 括号未配平但撞到下一条，提前收尾
+        entry_end = -1  # 命中配平的右括号下标
+        recovered = False  # 括号未配平但撞到下一条，提前收尾
         while j < n:
             c = text[j]
             if c == "{":
@@ -99,30 +101,37 @@ def parse_bib(text: str) -> list:
                 if depth == 0:
                     entry_end = j
                     break
-            elif c == "@" and depth > 0 and (j == 0 or text[j - 1] in "\r\n") \
-                    and re.match(r"@\w+\s*\{", text[j:]):
+            elif (
+                c == "@"
+                and depth > 0
+                and (j == 0 or text[j - 1] in "\r\n")
+                and re.match(r"@\w+\s*\{", text[j:])
+            ):
                 recovered = True
                 break
             j += 1
         if recovered:
-            raw = text[at:j]      # 到下一条 @ 之前
-            i = j                 # 下一轮从这条新 @ 继续
+            raw = text[at:j]  # 到下一条 @ 之前
+            i = j  # 下一轮从这条新 @ 继续
         elif entry_end != -1:
-            raw = text[at:entry_end + 1]
+            raw = text[at : entry_end + 1]
             i = entry_end + 1
         else:
-            raw = text[at:n]      # 到文末仍未配平：吃到文末即止
+            raw = text[at:n]  # 到文末仍未配平：吃到文末即止
             i = n
-        inner = raw[m.end():]  # key, fields...
-        key = inner.split(",", 1)[0].strip() if "," in inner else inner.strip().rstrip("}")
+        inner = raw[m.end() :]  # key, fields...
+        key = (
+            inner.split(",", 1)[0].strip()
+            if "," in inner
+            else inner.strip().rstrip("}")
+        )
 
-        def field(name):
+        def field(name, raw=raw):
             fm = re.search(rf"\b{name}\s*=\s*[{{\"]", raw, re.IGNORECASE)
             if not fm:
                 return ""
             st = fm.end() - 1
             open_ch = raw[st]
-            close_ch = "}" if open_ch == "{" else '"'
             if open_ch == "{":
                 d = 0
                 k = st
@@ -132,7 +141,7 @@ def parse_bib(text: str) -> list:
                     elif raw[k] == "}":
                         d -= 1
                         if d == 0:
-                            return raw[st + 1:k].strip()
+                            return raw[st + 1 : k].strip()
                     k += 1
                 return ""
             else:
@@ -149,7 +158,7 @@ def parse_bib(text: str) -> list:
                     elif ch == "}":
                         d = max(0, d - 1)
                     elif ch == '"' and d == 0:
-                        return raw[st + 1:k].strip()
+                        return raw[st + 1 : k].strip()
                     k += 1
                 return ""
 
@@ -161,16 +170,27 @@ def parse_bib(text: str) -> list:
         note = field("note")
         journal = (field("journal") + " " + field("booktitle")).lower()
         arxiv = ""
-        if eprint and ("arxiv" in archive.lower() or re.match(r"\d{4}\.\d{4,5}", eprint)):
+        if eprint and (
+            "arxiv" in archive.lower() or re.match(r"\d{4}\.\d{4,5}", eprint)
+        ):
             arxiv = eprint
         elif "arxiv" in (doi + url + journal).lower():
             am = re.search(r"(\d{4}\.\d{4,5})", doi + " " + url + " " + eprint)
             arxiv = am.group(1) if am else ""
-        has_verify = "[verify]" in note.lower() or "待补充出处" in note or "待核实" in note
-        entries.append({
-            "type": etype, "key": key, "title": title, "doi": doi.strip(),
-            "arxiv": arxiv, "url": url.strip(), "has_verify": has_verify,
-        })
+        has_verify = (
+            "[verify]" in note.lower() or "待补充出处" in note or "待核实" in note
+        )
+        entries.append(
+            {
+                "type": etype,
+                "key": key,
+                "title": title,
+                "doi": doi.strip(),
+                "arxiv": arxiv,
+                "url": url.strip(),
+                "has_verify": has_verify,
+            }
+        )
     return entries
 
 
@@ -193,24 +213,32 @@ def load_retrieval_log(paths: list) -> list:
             except (json.JSONDecodeError, ValueError):
                 continue
             objs = obj if isinstance(obj, list) else [obj]
-            for o in objs:
-                if isinstance(o, dict) and o.get("title"):
-                    titles.append(str(o["title"]))
+            titles.extend(
+                str(o["title"]) for o in objs if isinstance(o, dict) and o.get("title")
+            )
         # 整体数组兜底
         try:
             data = json.loads(txt)
             if isinstance(data, list):
-                for o in data:
-                    if isinstance(o, dict) and o.get("title"):
-                        titles.append(str(o["title"]))
+                titles.extend(
+                    str(o["title"])
+                    for o in data
+                    if isinstance(o, dict) and o.get("title")
+                )
         except (json.JSONDecodeError, ValueError):
             pass
         # ⛔ 正则兜底（最鲁棒）：不管留档是 jsonl / 多次 append 的拼接数组 / bibtex title= 字段，
         #    直接扫所有 "title": "..." 与 title = {...}，保证多次调用追加的留档也能被读出标题。
-        for m in re.finditer(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"', txt):
-            titles.append(m.group(1).replace('\\"', '"'))
-        for m in re.finditer(r'\btitle\s*=\s*[{"]([^}"]{4,})[}"]', txt, re.IGNORECASE):
-            titles.append(m.group(1))
+        titles.extend(
+            m.group(1).replace('\\"', '"')
+            for m in re.finditer(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"', txt)
+        )
+        titles.extend(
+            m.group(1)
+            for m in re.finditer(
+                r'\btitle\s*=\s*[{"]([^}"]{4,})[}"]', txt, re.IGNORECASE
+            )
+        )
     # 去重后转 token 集
     seen = set()
     out = []
@@ -226,10 +254,14 @@ def _net_probe() -> bool:
     """联网探针：用一个确定存在的 DOI 探 doi.org。通=返回 True，否则 False（离线跳过在线核验）。"""
     try:
         import urllib.request
+
         req = urllib.request.Request(
-            "https://doi.org/10.1038/nphys1170", method="HEAD",
-            headers={"User-Agent": "bib-auth-check/1.0"})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+            "https://doi.org/10.1038/nphys1170",
+            method="HEAD",
+            headers={"User-Agent": "bib-auth-check/1.0"},
+        )
+        # Probes a known official DOI resolver by design.
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:  # noqa: S310
             return r.status < 500
     except Exception:
         return False
@@ -238,18 +270,22 @@ def _net_probe() -> bool:
 def _doi_status(doi: str):
     """返回 ('ok'|'notfound'|'unknown')。只有明确 404/410 才算 notfound（确证不存在）。"""
     try:
-        import urllib.request
         import urllib.error
+        import urllib.request
+
         req = urllib.request.Request(
-            f"https://doi.org/{doi}", method="HEAD",
-            headers={"User-Agent": "bib-auth-check/1.0"})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+            f"https://doi.org/{doi}",
+            method="HEAD",
+            headers={"User-Agent": "bib-auth-check/1.0"},
+        )
+        # Probes a known official DOI resolver by design.
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:  # noqa: S310
             return "ok" if r.status < 400 else "unknown"
     except Exception as e:
         code = getattr(e, "code", None)
         if code in (404, 410):
             return "notfound"
-        return "unknown"      # 超时/403/网络错 → 不确证，不硬拦
+        return "unknown"  # 超时/403/网络错 → 不确证，不硬拦
 
 
 def main() -> int:
@@ -272,10 +308,17 @@ def main() -> int:
     print(f"[bib_authenticity] 共 {len(entries)} 条文献")
 
     # 检索留档路径（显式 --log 优先，否则扫常见位置）
-    log_paths = [args.log] if args.log else [
-        "_tmp/refs_raw.jsonl", "_tmp/refs_raw.json", "_tmp/scholar_raw.jsonl",
-        "figures/refs_raw.jsonl", "refs_raw.jsonl",
-    ]
+    log_paths = (
+        [args.log]
+        if args.log
+        else [
+            "_tmp/refs_raw.jsonl",
+            "_tmp/refs_raw.json",
+            "_tmp/scholar_raw.jsonl",
+            "figures/refs_raw.jsonl",
+            "refs_raw.jsonl",
+        ]
+    )
     log_titles = load_retrieval_log(log_paths)
     has_log = len(log_titles) > 0
 
@@ -304,34 +347,47 @@ def main() -> int:
                     best = s
                     if best >= 0.6:
                         break
-            if best < 0.6:   # 整体相似度与覆盖率都不足 → 检索留档里找不到近似 → 声称检索实则编造
-                hard.append(f"[{e['key']}] 标题未出现在检索留档中且无 DOI/arXiv（疑似编造）：{e['title'][:60]}")
+            if (
+                best < 0.6
+            ):  # 整体相似度与覆盖率都不足 → 检索留档里找不到近似 → 声称检索实则编造
+                hard.append(
+                    f"[{e['key']}] 标题未出现在检索留档中且无 DOI/arXiv（疑似编造）：{e['title'][:60]}"
+                )
     else:
-        print("  ℹ 未找到检索留档（_tmp/refs_raw.jsonl 等）→ 跳过交叉核对（不误伤未留档工作流）")
+        print(
+            "  ℹ 未找到检索留档（_tmp/refs_raw.jsonl 等）→ 跳过交叉核对（不误伤未留档工作流）"
+        )
 
     # ---- B) DOI 可解析性抽查（仅联网探针通过时）----
     online = args.online
     do_online = (online == "1") or (online == "auto" and _net_probe())
     if do_online:
-        doi_entries = [e for e in entries if e["doi"]][:args.sample]
+        doi_entries = [e for e in entries if e["doi"]][: args.sample]
         if doi_entries:
             print(f"  ✓ 联网核验：抽查 {len(doi_entries)} 个 DOI")
             for e in doi_entries:
                 st = _doi_status(e["doi"])
                 if st == "notfound":
-                    hard.append(f"[{e['key']}] DOI 确证不存在（404/410）：{e['doi']}（编造 DOI 的典型特征）")
+                    hard.append(
+                        f"[{e['key']}] DOI 确证不存在（404/410）：{e['doi']}（编造 DOI 的典型特征）"
+                    )
                 elif st == "unknown":
                     warn.append(f"[{e['key']}] DOI 未能核实（超时/网络）：{e['doi']}")
     else:
         print("  ℹ 离线（联网探针未通过）→ 跳过 DOI 在线核验")
 
     # ---- C) 结构核验（离线，始终跑，只 WARN）----
-    naked = [e for e in entries
-             if not e["doi"] and not e["arxiv"] and not e["url"] and not e["has_verify"]]
+    naked = [
+        e
+        for e in entries
+        if not e["doi"] and not e["arxiv"] and not e["url"] and not e["has_verify"]
+    ]
     if naked:
-        warn.append(f"{len(naked)} 条无任何可核实标识（DOI/arXiv/URL）且未标 [VERIFY]："
-                    f"{[e['key'] for e in naked][:8]} — 老书/会议摘要合法无 DOI，但请确认非编造，"
-                    f"真实但查不到出处的请在 note 里标 [VERIFY]。")
+        warn.append(
+            f"{len(naked)} 条无任何可核实标识（DOI/arXiv/URL）且未标 [VERIFY]："
+            f"{[e['key'] for e in naked][:8]} — 老书/会议摘要合法无 DOI，但请确认非编造，"
+            f"真实但查不到出处的请在 note 里标 [VERIFY]。"
+        )
 
     # ---- 汇总 ----
     print("=" * 56)
@@ -341,14 +397,21 @@ def main() -> int:
         print(f"❌ HARD FAIL {len(hard)} 条 —— 疑似编造文献（高置信度铁证）：")
         for h in hard:
             print(f"  ✗ {h}")
-        print("  修复：用 $SCHOLAR_SCRIPT 真实检索补齐这些条目，或删除；真查不到的标 note={[VERIFY] ...}。")
+        print(
+            "  修复：用 $SCHOLAR_SCRIPT 真实检索补齐这些条目，或删除；真查不到的标 note={[VERIFY] ...}。"
+        )
         return 1
-    print("✅ 文献真实性核验通过（无检索留档对不上、无确证不存在的 DOI）。"
-          + ("" if has_log else " 注：本次无检索留档，仅做了结构+DOI核验；"
-             "让核验更强可在检索时把 scholar_fetch 输出存到 _tmp/refs_raw.jsonl。"))
+    print(
+        "✅ 文献真实性核验通过（无检索留档对不上、无确证不存在的 DOI）。"
+        + (
+            ""
+            if has_log
+            else " 注：本次无检索留档，仅做了结构+DOI核验；"
+            "让核验更强可在检索时把 scholar_fetch 输出存到 _tmp/refs_raw.jsonl。"
+        )
+    )
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

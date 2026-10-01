@@ -263,7 +263,9 @@ class JobPlan(BaseModel):
     def wants_ingest(self) -> bool:
         if self.inputs:
             return True
-        return any(phase.kind == "ingest" or phase.id == "ingest" for phase in self.phases)
+        return any(
+            phase.kind == "ingest" or phase.id == "ingest" for phase in self.phases
+        )
 
 
 def parse_plan(raw: Any) -> JobPlan:

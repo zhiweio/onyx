@@ -50,20 +50,32 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from quarterly_trend import (  # noqa: E402  复用季度序列的趋势特征与 HTML 渲染
-    arrow_cls, cell_hint, esc, fmt, html_table, md_table, trend_features,
+    arrow_cls,
+    cell_hint,
+    esc,
+    fmt,
+    html_table,
+    md_table,
+    trend_features,
 )
 
 # 公式求值环境：只暴露必要的内建函数，禁止一切副作用
 SAFE_GLOBALS = {
     "__builtins__": {},
-    "abs": abs, "min": min, "max": max, "sum": sum, "round": round,
-    "float": float, "int": int,
+    "abs": abs,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "round": round,
+    "float": float,
+    "int": int,
 }
 
 PERIOD_RE = re.compile(r"(\d{4})\D*Q?(\d)")
 
 
 # ---------------------------------------------------------------- 输入解析
+
 
 def load_input(path, derived_path=None):
     """返回 (meta, periods, series, derived_defs)。"""
@@ -77,7 +89,7 @@ def load_input(path, derived_path=None):
         for r in rows[1:]:
             if not r or not r[0].strip():
                 continue
-            series[r[0].strip()] = [parse_cell(c) for c in r[1:len(periods) + 1]]
+            series[r[0].strip()] = [parse_cell(c) for c in r[1 : len(periods) + 1]]
         meta = {"公司": os.path.splitext(os.path.basename(path))[0], "行业": "未指定"}
         derived = []
         if derived_path:
@@ -114,6 +126,7 @@ def parse_cell(v):
 
 # ---------------------------------------------------------------- 派生指标
 
+
 def _substitute(expr, series):
     """把中文指标名替换为 __v0.. 变量（长名优先，避免子串误替换）。"""
     mapping = {}
@@ -132,8 +145,10 @@ def eval_derived(expr, series, n):
     used = set(re.findall(r"__v\d+", sub))
     unknown = [v for v in used if v not in mapping]
     if unknown:
-        raise SystemExit("派生公式引用了不存在的指标：%s\n  公式：%s\n  可用指标：%s"
-                         % (unknown, expr, "、".join(series.keys())))
+        raise SystemExit(
+            "派生公式引用了不存在的指标：%s\n  公式：%s\n  可用指标：%s"
+            % (unknown, expr, "、".join(series.keys()))
+        )
     try:
         code = compile(sub, "<kpi>", "eval")
     except SyntaxError as e:
@@ -154,7 +169,8 @@ def eval_derived(expr, series, n):
             out.append(None)
             continue
         try:
-            out.append(float(eval(code, SAFE_GLOBALS, env)))
+            # Evaluates skill-defined arithmetic KPI formulas over report values in a restricted namespace.
+            out.append(float(eval(code, SAFE_GLOBALS, env)))  # noqa: S307
         except ZeroDivisionError:
             out.append(None)
         except Exception as e:
@@ -163,6 +179,7 @@ def eval_derived(expr, series, n):
 
 
 # ---------------------------------------------------------------- 同比环比
+
 
 def _pq(label):
     m = PERIOD_RE.search(str(label))
@@ -175,12 +192,15 @@ def yoy(vals, periods):
     out = []
     if all(parsed):
         for i, (y, q) in enumerate(parsed):
-            prev = next((j for j, pp in enumerate(parsed)
-                         if pp[0] == y - 1 and pp[1] == q), None)
+            prev = next(
+                (j for j, pp in enumerate(parsed) if pp[0] == y - 1 and pp[1] == q),
+                None,
+            )
             out.append(_pct(vals[i], vals[prev]) if prev is not None else None)
     else:
-        for i in range(len(vals)):
-            out.append(_pct(vals[i], vals[i - 4]) if i >= 4 else None)
+        out.extend(
+            _pct(vals[i], vals[i - 4]) if i >= 4 else None for i in range(len(vals))
+        )
     return out
 
 
@@ -230,6 +250,7 @@ def cell_pct(v):
 
 # ---------------------------------------------------------------- 主流程
 
+
 def analyze(meta, periods, series, derived_defs):
     n = len(periods)
     warnings = []
@@ -272,8 +293,10 @@ def analyze(meta, periods, series, derived_defs):
 def render_md(r):
     L, out = r["periods"], []
     out.append("### 行业与公司关键经营指标（KPI 季度序列）\n")
-    out.append("> 公司：%s ｜ 行业：%s ｜ 报告期：%s ~ %s\n"
-               % (r["meta"].get("公司", "—"), r["meta"].get("行业", "—"), L[0], L[-1]))
+    out.append(
+        "> 公司：%s ｜ 行业：%s ｜ 报告期：%s ~ %s\n"
+        % (r["meta"].get("公司", "—"), r["meta"].get("行业", "—"), L[0], L[-1])
+    )
 
     def block(title, mapping, pct_mode=False):
         rows = []
@@ -291,8 +314,12 @@ def render_md(r):
     block("原始经营指标", r["raw"])
     if r["derived"]:
         block("派生指标（公式计算，非手填）", r["derived"])
-        out.append("> 派生公式为：%s\n" % "；".join(
-            "%s = %s" % (k, r["derived_expr"].get(k, "—")) for k in r["derived"]))
+        out.append(
+            "> 派生公式为：%s\n"
+            % "；".join(
+                "%s = %s" % (k, r["derived_expr"].get(k, "—")) for k in r["derived"]
+            )
+        )
     block("同比 YoY（%）", r["yoy"], pct_mode=True)
     block("环比 QoQ（%）", r["qoq"], pct_mode=True)
 
@@ -301,22 +328,40 @@ def render_md(r):
     for name, t in r["trend"].items():
         if not t:
             continue
-        rows.append([
-            name, t["direction"], t["last_step"],
-            fmt(t["slope_ann_pct"], pct_=True, digits=1),
-            "%d 期" % t["streak"] if t["streak"] else "—",
-            fmt(t["cv"], digits=3),
-            t["turning_point"] or "—",
-        ])
-    out.append(md_table(
-        ["指标", "方向(按斜率)", "最近一步", "近4季斜率(年化)", "连续同向", "变异系数CV", "拐点"],
-        rows) + "\n")
+        rows.append(
+            [
+                name,
+                t["direction"],
+                t["last_step"],
+                fmt(t["slope_ann_pct"], pct_=True, digits=1),
+                "%d 期" % t["streak"] if t["streak"] else "—",
+                fmt(t["cv"], digits=3),
+                t["turning_point"] or "—",
+            ]
+        )
+    out.append(
+        md_table(
+            [
+                "指标",
+                "方向(按斜率)",
+                "最近一步",
+                "近4季斜率(年化)",
+                "连续同向",
+                "变异系数CV",
+                "拐点",
+            ],
+            rows,
+        )
+        + "\n"
+    )
 
     if r["warnings"]:
         out.append("**⚠️ 数据校验提示**\n")
         out += ["- " + w for w in r["warnings"]]
         out.append("")
-    out.append("> 数据缺口填「—」，严禁插值或臆造。派生指标由 `scripts/operating_kpi.py` 按公式计算。")
+    out.append(
+        "> 数据缺口填「—」，严禁插值或臆造。派生指标由 `scripts/operating_kpi.py` 按公式计算。"
+    )
     return "\n".join(out)
 
 
@@ -339,8 +384,10 @@ def render_html(r):
     emit("原始经营指标", r["raw"])
     if r["derived"]:
         emit("派生指标（公式计算，非手填）", r["derived"])
-        formulas = "<br>".join("%s = <code>%s</code>" % (esc(k), esc(r["derived_expr"].get(k, "—")))
-                               for k in r["derived"])
+        formulas = "<br>".join(
+            "%s = <code>%s</code>" % (esc(k), esc(r["derived_expr"].get(k, "—")))
+            for k in r["derived"]
+        )
         parts.append('<p class="note"><b>派生公式</b>：<br>%s</p>' % formulas)
     emit("同比 YoY（%）", r["yoy"], pct_mode=True)
     emit("环比 QoQ（%）", r["qoq"], pct_mode=True)
@@ -349,33 +396,53 @@ def render_html(r):
     for name, t in r["trend"].items():
         if not t:
             continue
-        tr.append([
-            name,
-            (t["direction"], arrow_cls(t["direction"])),
-            (t["last_step"], arrow_cls(t["last_step"])),
-            (fmt(t["slope_ann_pct"], pct_=True, digits=1), cell_hint(t["slope_ann_pct"])),
-            ("%d 期" % t["streak"] if t["streak"] else "—", None),
-            (fmt(t["cv"], digits=3), None),
-            (t["turning_point"] or "—", None),
-        ])
+        tr.append(
+            [
+                name,
+                (t["direction"], arrow_cls(t["direction"])),
+                (t["last_step"], arrow_cls(t["last_step"])),
+                (
+                    fmt(t["slope_ann_pct"], pct_=True, digits=1),
+                    cell_hint(t["slope_ann_pct"]),
+                ),
+                ("%d 期" % t["streak"] if t["streak"] else "—", None),
+                (fmt(t["cv"], digits=3), None),
+                (t["turning_point"] or "—", None),
+            ]
+        )
     if tr:
-        parts.append(html_table(
-            ["指标", "方向（按斜率）", "最近一步", "近4季斜率（年化）",
-             "连续同向", "变异系数 CV", "拐点"],
-            tr, caption="经营指标趋势特征"))
+        parts.append(
+            html_table(
+                [
+                    "指标",
+                    "方向（按斜率）",
+                    "最近一步",
+                    "近4季斜率（年化）",
+                    "连续同向",
+                    "变异系数 CV",
+                    "拐点",
+                ],
+                tr,
+                caption="经营指标趋势特征",
+            )
+        )
 
     if r["warnings"]:
         w = ['<div class="warn-box"><b>数据校验提示</b><ul>']
         w += ["<li>%s</li>" % esc(x) for x in r["warnings"]]
         w.append("</ul></div>")
         parts.append("\n".join(w))
-    parts.append('<p class="note">数据缺口填「—」，严禁插值或臆造；'
-                 '派生指标由 <code>scripts/operating_kpi.py</code> 按公式计算，可复算。</p>')
+    parts.append(
+        '<p class="note">数据缺口填「—」，严禁插值或臆造；'
+        "派生指标由 <code>scripts/operating_kpi.py</code> 按公式计算，可复算。</p>"
+    )
     return "\n\n".join(parts)
 
 
 def main():
-    ap = argparse.ArgumentParser(description="行业与公司关键经营指标（KPI）季度序列工具")
+    ap = argparse.ArgumentParser(
+        description="行业与公司关键经营指标（KPI）季度序列工具"
+    )
     ap.add_argument("--input", required=True, help="KPI 数据文件（.json 或 .csv）")
     ap.add_argument("--derived", help="派生指标定义 JSON 文件（CSV 输入时使用）")
     ap.add_argument("--out", default="md", choices=["md", "html", "json"])

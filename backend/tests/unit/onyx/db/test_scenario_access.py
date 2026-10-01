@@ -29,7 +29,11 @@ def test_admin_owns_workspace_pack(monkeypatch: pytest.MonkeyPatch) -> None:
     db_session = MagicMock()
 
     assert (
-        access_level_for_scenario(db_session, scenario, user)
+        access_level_for_scenario(
+            db_session,
+            scenario,  # ty: ignore[invalid-argument-type]
+            user,  # ty: ignore[invalid-argument-type]
+        )
         == ScenarioAccessLevel.OWNER
     )
     db_session.scalar.assert_not_called()
@@ -51,7 +55,11 @@ def test_non_admin_views_workspace_pack(monkeypatch: pytest.MonkeyPatch) -> None
     db_session.scalars.return_value.all.return_value = []
 
     assert (
-        access_level_for_scenario(db_session, scenario, user)
+        access_level_for_scenario(
+            db_session,
+            scenario,  # ty: ignore[invalid-argument-type]
+            user,  # ty: ignore[invalid-argument-type]
+        )
         == ScenarioAccessLevel.VIEWER
     )
 
@@ -66,6 +74,10 @@ def test_author_remains_owner(monkeypatch: pytest.MonkeyPatch) -> None:
     user = SimpleNamespace(id=user_id)
 
     assert (
-        access_level_for_scenario(MagicMock(), scenario, user)
+        access_level_for_scenario(
+            MagicMock(),
+            scenario,  # ty: ignore[invalid-argument-type]
+            user,  # ty: ignore[invalid-argument-type]
+        )
         == ScenarioAccessLevel.OWNER
     )

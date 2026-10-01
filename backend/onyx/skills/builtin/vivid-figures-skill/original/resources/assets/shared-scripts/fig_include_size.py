@@ -22,10 +22,12 @@ r"""按图的真实长宽比，自动为 latex_includes.tex 里每张图定 \inc
 退出码：0=已按长宽比规整  1=(保留,当前不产生)  2=无文件可处理/依赖缺失(跳过)
 用法：python _utils/fig_include_size.py [--figdir figures] [--latex figures/latex_includes.tex] [--dry-run]
 """
+
 from __future__ import annotations
-import sys
-import re
+
 import argparse
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -39,8 +41,8 @@ _BUCKETS = [
     (1.20, 0.70),
     (1.60, 0.50),
 ]
-_WIDTH_TALL = 0.42          # r > 1.60 瘦高图
-_HEIGHT_CAP = 0.80          # height 上限(\textheight)
+_WIDTH_TALL = 0.42  # r > 1.60 瘦高图
+_HEIGHT_CAP = 0.80  # height 上限(\textheight)
 
 
 def _pdf_aspect(pdf_path: Path):
@@ -72,31 +74,35 @@ def _width_for(r: float) -> float:
 
 
 # 匹配一条 \includegraphics[可选opts]{路径}，捕获 opts 与 path
-_INC_RE = re.compile(r'(\\includegraphics)(\[[^\]]*\])?(\{[^}]*\})')
+_INC_RE = re.compile(r"(\\includegraphics)(\[[^\]]*\])?(\{[^}]*\})")
 
 
 def _rewrite_opts(opts: str, w_coef: float) -> str:
     """把 opts([...] 含中括号)里的 width/height 改成按长宽比算的值，keepaspectratio 保留。
     opts 可能为空('' 或 None)→ 生成一份新的。"""
-    body = opts[1:-1] if (opts and opts.startswith('[') and opts.endswith(']')) else ''
-    parts = [p.strip() for p in body.split(',') if p.strip()]
+    body = opts[1:-1] if (opts and opts.startswith("[") and opts.endswith("]")) else ""
+    parts = [p.strip() for p in body.split(",") if p.strip()]
     kept = []
     has_keep = False
     for p in parts:
-        low = p.lower().replace(' ', '')
-        if low.startswith('width=') or low.startswith('height='):
+        low = p.lower().replace(" ", "")
+        if low.startswith("width=") or low.startswith("height="):
             continue  # 丢弃旧的 width/height，稍后统一加
-        if low == 'keepaspectratio':
+        if low == "keepaspectratio":
             has_keep = True
             continue
         kept.append(p)  # 其它选项(如 trim/clip/angle)原样保留
-    new = [f"width={w_coef:g}\\textwidth", f"height={_HEIGHT_CAP:g}\\textheight", "keepaspectratio"]
+    new = [
+        f"width={w_coef:g}\\textwidth",
+        f"height={_HEIGHT_CAP:g}\\textheight",
+        "keepaspectratio",
+    ]
     _ = has_keep  # keepaspectratio 无论原来有无都补上(必须有)
-    return '[' + ','.join(new + kept) + ']'
+    return "[" + ",".join(new + kept) + "]"
 
 
 def process(latex_path: Path, fig_dir: Path, dry_run: bool):
-    text = latex_path.read_text(encoding='utf-8', errors='ignore')
+    text = latex_path.read_text(encoding="utf-8", errors="ignore")
     changes = []
     skips = []
 
@@ -104,8 +110,8 @@ def process(latex_path: Path, fig_dir: Path, dry_run: bool):
         cmd, opts, pathbrace = m.group(1), m.group(2), m.group(3)
         inner = pathbrace[1:-1].strip()  # 去 {}
         # 只处理 .pdf 图；取文件名去 figures/ 前缀，在 fig_dir 找
-        name = inner.split('/')[-1].split('\\')[-1]
-        if not name.lower().endswith('.pdf'):
+        name = inner.split("/")[-1].split("\\")[-1]
+        if not name.lower().endswith(".pdf"):
             return m.group(0)
         pdf = fig_dir / name
         r = _pdf_aspect(pdf)
@@ -113,15 +119,21 @@ def process(latex_path: Path, fig_dir: Path, dry_run: bool):
             skips.append(name)
             return m.group(0)  # 软失败：该块原样不动
         wc = _width_for(r)
-        new_opts = _rewrite_opts(opts or '', wc)
+        new_opts = _rewrite_opts(opts or "", wc)
         changes.append((name, round(r, 2), wc))
         return cmd + new_opts + pathbrace
 
     new_text = _INC_RE.sub(_sub, text)
     print("=== fig_include_size：按长宽比规整 \\includegraphics 宽度 ===")
     for name, r, wc in changes:
-        tag = "横/方" if r <= 0.8 else ("近方" if r <= 1.2 else ("偏竖" if r <= 1.6 else "瘦高"))
-        print(f"  {name}: 高/宽={r} ({tag}) -> width={wc:g}\\textwidth, height<={_HEIGHT_CAP:g}\\textheight")
+        tag = (
+            "横/方"
+            if r <= 0.8
+            else ("近方" if r <= 1.2 else ("偏竖" if r <= 1.6 else "瘦高"))
+        )
+        print(
+            f"  {name}: 高/宽={r} ({tag}) -> width={wc:g}\\textwidth, height<={_HEIGHT_CAP:g}\\textheight"
+        )
     for name in skips:
         print(f"  ⚠ {name}: PDF 读不到/无 PyMuPDF，保持原样(软跳过)")
     if not changes and not skips:
@@ -130,7 +142,7 @@ def process(latex_path: Path, fig_dir: Path, dry_run: bool):
         print("  [dry-run] 未写盘。去掉 --dry-run 才实际写入。")
         return 0
     if new_text != text:
-        latex_path.write_text(new_text, encoding='utf-8')
+        latex_path.write_text(new_text, encoding="utf-8")
         print(f"  ✅ 已更新 {latex_path}（{len(changes)} 张按长宽比规整）")
     else:
         print("  尺寸已符合，无需改动。")

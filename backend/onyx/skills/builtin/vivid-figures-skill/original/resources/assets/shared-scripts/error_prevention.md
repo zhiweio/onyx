@@ -162,10 +162,14 @@ def analyze_constraint_activity(solution, constraints, tol=1e-4):
     report = []
     for name, (func, bound, direction) in constraints.items():
         value = func(solution)
-        slack = abs(value - bound) if direction == 'eq' else (value - bound if direction == 'ge' else bound - value)
-        status = 'ACTIVE' if abs(slack) < tol else f'slack={slack:.4f}'
+        slack = (
+            abs(value - bound)
+            if direction == "eq"
+            else (value - bound if direction == "ge" else bound - value)
+        )
+        status = "ACTIVE" if abs(slack) < tol else f"slack={slack:.4f}"
         report.append(f"  {name}: value={value:.4f}, bound={bound}, status={status}")
-    return '\n'.join(report)
+    return "\n".join(report)
 ```
 
 **⑬ 时间窗/前驱约束的可行性预验证（VRP/调度类必做）**
@@ -638,7 +642,7 @@ TSP/VRP 的 MIP 建模中，如果不加子回路消除约束，求解器会返�
     - 编码阶段必须输出对偶信息报告：
     ```python
     # LP/MIP 求解后提取对偶信息
-    if hasattr(result, 'dual') or hasattr(prob, 'constraints'):
+    if hasattr(result, "dual") or hasattr(prob, "constraints"):
         print("=== 对偶信息（影子价格）===")
         for name, constraint in prob.constraints.items():
             shadow_price = constraint.pi  # PuLP
@@ -668,12 +672,13 @@ TSP/VRP 的 MIP 建模中，如果不加子回路消除约束，求解器会返�
                     new_obj = objective_func(perturbed)
                     feasible = all(c(perturbed) for c in constraints)
                     change_pct = abs(new_obj - base_obj) / abs(base_obj) * 100
-                    results[f"{name}_{'+' if direction>0 else '-'}{perturbation*100:.0f}%"] = {
-                        "obj_change_pct": change_pct,
-                        "feasible": feasible
-                    }
+                    results[
+                        f"{name}_{'+' if direction > 0 else '-'}{perturbation * 100:.0f}%"
+                    ] = {"obj_change_pct": change_pct, "feasible": feasible}
                 except:
-                    results[f"{name}_{'+' if direction>0 else '-'}{perturbation*100:.0f}%"] = {"error": True}
+                    results[
+                        f"{name}_{'+' if direction > 0 else '-'}{perturbation * 100:.0f}%"
+                    ] = {"error": True}
         return results
     ```
     - 鲁棒性分析结果写入 `figures/robustness_results.json`，供论文灵敏度分析章节使用
@@ -689,6 +694,7 @@ TSP/VRP 的 MIP 建模中，如果不加子回路消除约束，求解器会返�
     - 编码阶段必须在涉及矩阵运算的代码中加入：
     ```python
     import numpy as np
+
     cond = np.linalg.cond(A)
     print(f"矩阵条件数: {cond:.2e}")
     if cond > 1e4:
@@ -840,6 +846,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def audit_solution(solution_path: str, hard_constraints: list[dict]) -> dict:
     """
     solution_path: 待审计的 results.json 路径
@@ -847,11 +854,11 @@ def audit_solution(solution_path: str, hard_constraints: list[dict]) -> dict:
         {'name': str, 'check': callable(sol) -> (ok: bool, reason: str)}
     返回 {audit_pass, fails, rechecked_at, source_json, n_constraints}
     """
-    sol = json.loads(Path(solution_path).read_text(encoding='utf-8'))
+    sol = json.loads(Path(solution_path).read_text(encoding="utf-8"))
     fails = []
     for c in hard_constraints:
-        name = c['name']
-        check = c['check']
+        name = c["name"]
+        check = c["check"]
         try:
             ok, reason = check(sol)
             if not ok:
@@ -859,58 +866,74 @@ def audit_solution(solution_path: str, hard_constraints: list[dict]) -> dict:
         except Exception as e:
             fails.append(f"⚠ {name}: 审计代码异常 {e}")
     import time
+
     return {
-        'audit_pass': len(fails) == 0,
-        'fails': fails,
-        'rechecked_at': time.time(),
-        'source_json': str(Path(solution_path).resolve()),
-        'n_constraints': len(hard_constraints),
+        "audit_pass": len(fails) == 0,
+        "fails": fails,
+        "rechecked_at": time.time(),
+        "source_json": str(Path(solution_path).resolve()),
+        "n_constraints": len(hard_constraints),
     }
 
 
 # === 约束登记的四种通用模式（按本题题面挑选并改写）===
 
+
 def make_box_constraint(field, lo, hi, name=None):
     """模式 1：决策变量边界（变量域）。"""
     return {
-        'name': name or f'{field} ∈ [{lo}, {hi}]',
-        'check': lambda s: (
-            lo <= s[field] <= hi,
-            f"{field}={s[field]} 越界"
-        ),
+        "name": name or f"{field} ∈ [{lo}, {hi}]",
+        "check": lambda s: (lo <= s[field] <= hi, f"{field}={s[field]} 越界"),
     }
+
 
 def make_distance_constraint(a_field, b_field, lo, hi, name=None):
     """模式 2：实体间距上下界。a_field 和 b_field 是含 x/y 的 dict。"""
+
     def check(s):
         a, b = s[a_field], s[b_field]
-        d = ((a['x']-b['x'])**2 + (a['y']-b['y'])**2) ** 0.5
+        d = ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5
         return (lo <= d <= hi, f"{a_field}-{b_field} 距离 {d:.2f} 越界 [{lo},{hi}]")
-    return {'name': name or f'{a_field}-{b_field} ∈ [{lo},{hi}]', 'check': check}
+
+    return {"name": name or f"{a_field}-{b_field} ∈ [{lo},{hi}]", "check": check}
+
 
 def make_pairwise_min_constraint(list_field, min_dist, name=None):
     """模式 3：列表内任意两元素的最小间距下界（部署 / 选址类常用）。"""
+
     def check(s):
         items = s[list_field]
         for i in range(len(items)):
-            for j in range(i+1, len(items)):
-                d = ((items[i]['x']-items[j]['x'])**2 + (items[i]['y']-items[j]['y'])**2) ** 0.5
+            for j in range(i + 1, len(items)):
+                d = (
+                    (items[i]["x"] - items[j]["x"]) ** 2
+                    + (items[i]["y"] - items[j]["y"]) ** 2
+                ) ** 0.5
                 if d < min_dist:
-                    return (False, f"{list_field}[{i}]-{list_field}[{j}] 间距 {d:.2f} < {min_dist}")
-        return (True, '')
-    return {'name': name or f'{list_field} 两两间距 ≥ {min_dist}', 'check': check}
+                    return (
+                        False,
+                        f"{list_field}[{i}]-{list_field}[{j}] 间距 {d:.2f} < {min_dist}",
+                    )
+        return (True, "")
+
+    return {"name": name or f"{list_field} 两两间距 ≥ {min_dist}", "check": check}
+
 
 def make_attribution_constraint(list_field, allowed_platforms, name=None):
     """模式 4：派生属性归属正确（动态 vs 静态归属校验）。
     例如：能力 / 资源 / 武器 / 任务 必须挂在合法载体上，而不是错挂到静态参考点。"""
+
     def check(s):
-        bad = [x for x in s[list_field] if x.get('platform_type') not in allowed_platforms]
+        bad = [
+            x for x in s[list_field] if x.get("platform_type") not in allowed_platforms
+        ]
         return (len(bad) == 0, f"非法归属: {bad[:3]}")
-    return {'name': name or f'{list_field} 归属 ∈ {allowed_platforms}', 'check': check}
+
+    return {"name": name or f"{list_field} 归属 ∈ {allowed_platforms}", "check": check}
 
 
-if __name__ == '__main__':
-    solution_path = sys.argv[1] if len(sys.argv) > 1 else 'results.json'
+if __name__ == "__main__":
+    solution_path = sys.argv[1] if len(sys.argv) > 1 else "results.json"
     # ★ 按本题题面登记硬约束（删掉示例，按本题真实约束改写）
     constraints = [
         # make_box_constraint('x', 0, 100),
@@ -919,15 +942,21 @@ if __name__ == '__main__':
         # make_attribution_constraint('actions', ['agent', 'controller']),
     ]
     if not constraints:
-        print("⚠ 本题未登记任何硬约束。如果题目确实无约束（纯回归 / 纯统计 / 纯描述），")
-        print("  在 RESULTS.md 末尾凭证里写 n_constraints=0；否则请补全 constraints 列表。")
+        print(
+            "⚠ 本题未登记任何硬约束。如果题目确实无约束（纯回归 / 纯统计 / 纯描述），"
+        )
+        print(
+            "  在 RESULTS.md 末尾凭证里写 n_constraints=0；否则请补全 constraints 列表。"
+        )
         sys.exit(0)
     result = audit_solution(solution_path, constraints)
-    if result['audit_pass']:
-        print(f"✅ AUDIT PASS  n={result['n_constraints']}  源: {result['source_json']}")
+    if result["audit_pass"]:
+        print(
+            f"✅ AUDIT PASS  n={result['n_constraints']}  源: {result['source_json']}"
+        )
     else:
         print(f"❌ AUDIT FAIL — {len(result['fails'])} 项")
-        for f in result['fails']:
+        for f in result["fails"]:
             print(f"   {f}")
         sys.exit(1)  # 非零退出码，让上游脚本知道审计未过，不允许继续写稿
 ```
@@ -1033,14 +1062,17 @@ if __name__ == '__main__':
 import json, re
 from pathlib import Path
 
-def audit_units(problem_analysis_md: str, results_json: dict, code_files: list[Path]) -> dict:
+
+def audit_units(
+    problem_analysis_md: str, results_json: dict, code_files: list[Path]
+) -> dict:
     """
     1. 提取 PROBLEM_ANALYSIS.md 里的变量-单位登记表
     2. 检查 results.json 里每个数值字段是否在登记表里
     3. 扫描代码常数，警告未注释单位的数字字面量
     """
     # 1. 解析登记表（约定 markdown 表格格式）
-    table_pat = re.compile(r'\|\s*([\w_]+)\s*\|[^|]*\|\s*([^|]+?)\s*\|', re.M)
+    table_pat = re.compile(r"\|\s*([\w_]+)\s*\|[^|]*\|\s*([^|]+?)\s*\|", re.M)
     registered = dict(table_pat.findall(problem_analysis_md))
 
     fails = []
@@ -1053,36 +1085,47 @@ def audit_units(problem_analysis_md: str, results_json: dict, code_files: list[P
     suspicious_lines = []
     for f in code_files:
         try:
-            for i, line in enumerate(f.read_text(encoding='utf-8').splitlines(), 1):
+            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
                 # 数字字面量且无单位注释（粗筛）
-                if re.search(r'=\s*[-+]?\d+\.?\d*\s*$', line):  # = 数字 行尾
-                    if '#' not in line or not re.search(r'#.*[a-zA-Z]+/?[a-zA-Z]*', line):
+                if re.search(r"=\s*[-+]?\d+\.?\d*\s*$", line):  # = 数字 行尾
+                    if "#" not in line or not re.search(
+                        r"#.*[a-zA-Z]+/?[a-zA-Z]*", line
+                    ):
                         suspicious_lines.append(f"{f.name}:{i}  {line.strip()}")
         except Exception:
             pass
 
     return {
-        'registered_vars': len(registered),
-        'unregistered_fields_in_results': fails,
-        'suspicious_unit_free_constants': suspicious_lines[:20],
-        'audit_pass': len(fails) == 0,
+        "registered_vars": len(registered),
+        "unregistered_fields_in_results": fails,
+        "suspicious_unit_free_constants": suspicious_lines[:20],
+        "audit_pass": len(fails) == 0,
     }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    pa = Path('PROBLEM_ANALYSIS.md').read_text(encoding='utf-8') if Path('PROBLEM_ANALYSIS.md').exists() else ''
-    rs = json.loads(Path('results.json').read_text(encoding='utf-8')) if Path('results.json').exists() else {}
-    code = list(Path('code').glob('*.py')) if Path('code').exists() else []
+
+    pa = (
+        Path("PROBLEM_ANALYSIS.md").read_text(encoding="utf-8")
+        if Path("PROBLEM_ANALYSIS.md").exists()
+        else ""
+    )
+    rs = (
+        json.loads(Path("results.json").read_text(encoding="utf-8"))
+        if Path("results.json").exists()
+        else {}
+    )
+    code = list(Path("code").glob("*.py")) if Path("code").exists() else []
     r = audit_units(pa, rs, code)
     print(f"已登记变量数: {r['registered_vars']}")
     print(f"未登记字段: {len(r['unregistered_fields_in_results'])}")
-    for x in r['unregistered_fields_in_results'][:5]:
+    for x in r["unregistered_fields_in_results"][:5]:
         print(f"  ⚠ {x}")
     print(f"可疑无单位常数: {len(r['suspicious_unit_free_constants'])}")
-    for x in r['suspicious_unit_free_constants'][:5]:
+    for x in r["suspicious_unit_free_constants"][:5]:
         print(f"  ⚠ {x}")
-    sys.exit(0 if r['audit_pass'] else 1)
+    sys.exit(0 if r["audit_pass"] else 1)
 ```
 
 ## 10.4 真实案例
@@ -1134,32 +1177,37 @@ if __name__ == '__main__':
 import json, os, sys, subprocess
 from pathlib import Path
 
+
 def set_all_seeds(seed: int = 42) -> dict:
     """统一 seed 函数，所有代码入口必须先调用此函数。返回设置详情供日志。"""
     import random
+
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    info = {'seed': seed, 'python_hashseed': str(seed)}
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    info = {"seed": seed, "python_hashseed": str(seed)}
     try:
         import numpy as np
+
         np.random.seed(seed)
-        info['numpy_seed'] = seed
+        info["numpy_seed"] = seed
     except ImportError:
         pass
     try:
         import torch
+
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
-        info['torch_seed'] = seed
+        info["torch_seed"] = seed
     except ImportError:
         pass
     try:
         import tensorflow as tf
+
         tf.random.set_seed(seed)
-        info['tf_seed'] = seed
+        info["tf_seed"] = seed
     except ImportError:
         pass
     return info
@@ -1168,58 +1216,61 @@ def set_all_seeds(seed: int = 42) -> dict:
 def collect_run_metadata(seed: int) -> dict:
     """收集复现元信息：环境 + 时间戳 + 依赖版本。"""
     import platform, time
+
     meta = {
-        'seed': seed,
-        'run_id': time.strftime('%Y%m%dT%H%M%S'),
-        'python': platform.python_version(),
-        'platform': platform.platform(),
+        "seed": seed,
+        "run_id": time.strftime("%Y%m%dT%H%M%S"),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
     }
     # 关键依赖版本
-    for pkg in ('numpy', 'scipy', 'pandas', 'torch', 'sklearn', 'matplotlib'):
+    for pkg in ("numpy", "scipy", "pandas", "torch", "sklearn", "matplotlib"):
         try:
-            mod = __import__(pkg if pkg != 'sklearn' else 'sklearn')
-            meta[pkg] = getattr(mod, '__version__', 'unknown')
+            mod = __import__(pkg if pkg != "sklearn" else "sklearn")
+            meta[pkg] = getattr(mod, "__version__", "unknown")
         except ImportError:
             pass
     return meta
 
 
-def audit_reproducibility(results_json_path: str, figures_dir: str = 'figures') -> dict:
+def audit_reproducibility(results_json_path: str, figures_dir: str = "figures") -> dict:
     """检查 results.json 是否有完整的复现元信息，所有 figures/*.json 是否一致。"""
-    results = json.loads(Path(results_json_path).read_text(encoding='utf-8'))
+    results = json.loads(Path(results_json_path).read_text(encoding="utf-8"))
     fails = []
-    required = ['seed', 'run_id', 'python']
+    required = ["seed", "run_id", "python"]
     for k in required:
         if k not in results:
             fails.append(f"results.json 缺少元信息字段: {k}")
     # 比对 figures/*.json 的 seed 是否与 results 一致
     fig_dir = Path(figures_dir)
     if fig_dir.exists():
-        ref_seed = results.get('seed')
-        for fj in fig_dir.glob('*.json'):
+        ref_seed = results.get("seed")
+        for fj in fig_dir.glob("*.json"):
             try:
-                fd = json.loads(fj.read_text(encoding='utf-8'))
-                if 'seed' in fd and fd['seed'] != ref_seed:
-                    fails.append(f"{fj.name}: seed={fd['seed']} 与 results.json seed={ref_seed} 不一致")
+                fd = json.loads(fj.read_text(encoding="utf-8"))
+                if "seed" in fd and fd["seed"] != ref_seed:
+                    fails.append(
+                        f"{fj.name}: seed={fd['seed']} 与 results.json seed={ref_seed} 不一致"
+                    )
             except Exception:
                 pass
-    return {'audit_pass': len(fails) == 0, 'fails': fails}
+    return {"audit_pass": len(fails) == 0, "fails": fails}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 42
     info = set_all_seeds(seed)
     meta = collect_run_metadata(seed)
     print(f"[seed 设置] {info}")
     print(f"[运行元信息] {meta}")
     # 如果 results.json 已存在，做一致性审计
-    if Path('results.json').exists():
-        r = audit_reproducibility('results.json')
-        if r['audit_pass']:
+    if Path("results.json").exists():
+        r = audit_reproducibility("results.json")
+        if r["audit_pass"]:
             print("✅ 复现元信息完整一致")
         else:
             print(f"❌ {len(r['fails'])} 项不一致:")
-            for f in r['fails']:
+            for f in r["fails"]:
                 print(f"   {f}")
             sys.exit(1)
 ```
@@ -1275,6 +1326,7 @@ import numpy as np
 from pathlib import Path
 import json, sys
 
+
 def audit_split(X_train, X_test, y_train, y_test, time_col=None) -> dict:
     """
     检查训练/测试切分是否存在常见泄露。
@@ -1283,9 +1335,12 @@ def audit_split(X_train, X_test, y_train, y_test, time_col=None) -> dict:
     # 1. 分布大幅偏移（KS 检验 p < 0.001 警告）
     try:
         from scipy.stats import ks_2samp
-        for col in X_train.columns if hasattr(X_train, 'columns') else range(X_train.shape[1]):
-            tr = X_train[col] if hasattr(X_train, 'columns') else X_train[:, col]
-            te = X_test[col] if hasattr(X_test, 'columns') else X_test[:, col]
+
+        for col in (
+            X_train.columns if hasattr(X_train, "columns") else range(X_train.shape[1])
+        ):
+            tr = X_train[col] if hasattr(X_train, "columns") else X_train[:, col]
+            te = X_test[col] if hasattr(X_test, "columns") else X_test[:, col]
             if pd.api.types.is_numeric_dtype(tr):
                 _, p = ks_2samp(tr, te)
                 if p < 1e-3:
@@ -1298,23 +1353,32 @@ def audit_split(X_train, X_test, y_train, y_test, time_col=None) -> dict:
         max_train_time = X_train[time_col].max()
         min_test_time = X_test[time_col].min()
         if min_test_time < max_train_time:
-            fails.append(f"时序穿越：训练集最晚 {max_train_time}，测试集最早 {min_test_time}")
+            fails.append(
+                f"时序穿越：训练集最晚 {max_train_time}，测试集最早 {min_test_time}"
+            )
 
     # 3. 特征-标签泄露（训练集相关性 > 0.99 警告）
-    if hasattr(X_train, 'columns'):
+    if hasattr(X_train, "columns"):
         for col in X_train.columns:
             if pd.api.types.is_numeric_dtype(X_train[col]):
                 corr = np.corrcoef(X_train[col], y_train)[0, 1]
                 if abs(corr) > 0.99:
-                    fails.append(f"特征 {col}: 与标签相关性 {corr:.4f} > 0.99（疑似标签泄露）")
+                    fails.append(
+                        f"特征 {col}: 与标签相关性 {corr:.4f} > 0.99（疑似标签泄露）"
+                    )
 
     # 4. 索引重叠检查
-    if hasattr(X_train, 'index'):
+    if hasattr(X_train, "index"):
         overlap = set(X_train.index) & set(X_test.index)
         if overlap:
             fails.append(f"train/test 索引重叠 {len(overlap)} 条")
 
-    return {'audit_pass': len(fails) == 0, 'fails': fails, 'n_train': len(X_train), 'n_test': len(X_test)}
+    return {
+        "audit_pass": len(fails) == 0,
+        "fails": fails,
+        "n_train": len(X_train),
+        "n_test": len(X_test),
+    }
 
 
 def check_future_features(df, target_col, time_col):
@@ -1322,8 +1386,10 @@ def check_future_features(df, target_col, time_col):
     df_sorted = df.sort_values(time_col)
     fails = []
     for col in df_sorted.columns:
-        if col in (target_col, time_col): continue
-        if not pd.api.types.is_numeric_dtype(df_sorted[col]): continue
+        if col in (target_col, time_col):
+            continue
+        if not pd.api.types.is_numeric_dtype(df_sorted[col]):
+            continue
         # 当前特征 vs 下一时刻标签的相关性
         next_y = df_sorted[target_col].shift(-1)
         corr = df_sorted[col].corr(next_y)
@@ -1331,23 +1397,30 @@ def check_future_features(df, target_col, time_col):
         cur_corr = df_sorted[col].corr(df_sorted[target_col])
         # 如果"未来相关性" 显著高于"当前相关性"，可疑
         if abs(corr) > abs(cur_corr) + 0.2 and abs(corr) > 0.5:
-            fails.append(f"特征 {col}: 与未来标签相关性 {corr:.3f} > 当前 {cur_corr:.3f}（疑似未来信息）")
+            fails.append(
+                f"特征 {col}: 与未来标签相关性 {corr:.3f} > 当前 {cur_corr:.3f}（疑似未来信息）"
+            )
     return fails
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 示例使用：本题需提供 X_train.csv / X_test.csv / y_train.csv / y_test.csv
-    if not all(Path(f).exists() for f in ('X_train.csv', 'X_test.csv', 'y_train.csv', 'y_test.csv')):
+    if not all(
+        Path(f).exists()
+        for f in ("X_train.csv", "X_test.csv", "y_train.csv", "y_test.csv")
+    ):
         print("⚠ 未找到 X_train/X_test/y_train/y_test CSV，跳过审计")
         sys.exit(0)
-    X_tr = pd.read_csv('X_train.csv'); X_te = pd.read_csv('X_test.csv')
-    y_tr = pd.read_csv('y_train.csv').iloc[:, 0]; y_te = pd.read_csv('y_test.csv').iloc[:, 0]
+    X_tr = pd.read_csv("X_train.csv")
+    X_te = pd.read_csv("X_test.csv")
+    y_tr = pd.read_csv("y_train.csv").iloc[:, 0]
+    y_te = pd.read_csv("y_test.csv").iloc[:, 0]
     r = audit_split(X_tr, X_te, y_tr, y_te)
-    if r['audit_pass']:
+    if r["audit_pass"]:
         print(f"✅ 数据切分审计通过  train={r['n_train']} test={r['n_test']}")
     else:
         print(f"❌ {len(r['fails'])} 项泄露/穿越:")
-        for f in r['fails']:
+        for f in r["fails"]:
             print(f"   {f}")
         sys.exit(1)
 ```
@@ -1402,46 +1475,63 @@ import numpy as np
 import json, sys
 from pathlib import Path
 
+
 def audit_continuous_optimum(result, tol_grad=1e-4, tol_eq=1e-6) -> dict:
     """
     审计 scipy.optimize / cvxpy / similar 结果。
     result 至少含: success, fun, x, (optional) jac, status
     """
     fails = []
-    if not result.get('success', False):
-        fails.append(f"求解器报告失败: status={result.get('status')}, message={result.get('message')}")
+    if not result.get("success", False):
+        fails.append(
+            f"求解器报告失败: status={result.get('status')}, message={result.get('message')}"
+        )
     # 梯度范数
-    if 'jac' in result and result['jac'] is not None:
-        g = np.array(result['jac'])
+    if "jac" in result and result["jac"] is not None:
+        g = np.array(result["jac"])
         if np.linalg.norm(g) > tol_grad:
-            fails.append(f"梯度范数 {np.linalg.norm(g):.2e} > {tol_grad}（疑似未真正收敛）")
+            fails.append(
+                f"梯度范数 {np.linalg.norm(g):.2e} > {tol_grad}（疑似未真正收敛）"
+            )
     # 目标函数值是否爆炸
-    if abs(result.get('fun', 0)) > 1e10:
+    if abs(result.get("fun", 0)) > 1e10:
         fails.append(f"目标函数值 {result['fun']:.2e} 异常大（可能数值爆炸）")
-    return {'audit_pass': len(fails) == 0, 'fails': fails}
+    return {"audit_pass": len(fails) == 0, "fails": fails}
 
 
 def audit_multistart(results_list, rel_tol=0.05) -> dict:
     """审计 multistart 结果：方差应远小于最优值，否则提示陷入不同局部最优。"""
     if len(results_list) < 5:
-        return {'audit_pass': False, 'fails': [f"multistart 仅 {len(results_list)} 次，< 5"]}
-    fvals = [r['fun'] for r in results_list if r.get('success')]
+        return {
+            "audit_pass": False,
+            "fails": [f"multistart 仅 {len(results_list)} 次，< 5"],
+        }
+    fvals = [r["fun"] for r in results_list if r.get("success")]
     if not fvals:
-        return {'audit_pass': False, 'fails': ['全部 multistart 失败']}
+        return {"audit_pass": False, "fails": ["全部 multistart 失败"]}
     f_min, f_max = min(fvals), max(fvals)
     rel_spread = (f_max - f_min) / max(abs(f_min), 1e-10)
     fails = []
     if rel_spread > rel_tol:
-        fails.append(f"multistart 相对方差 {rel_spread:.1%} > {rel_tol:.0%}（疑似多个不同局部最优）")
-    return {'audit_pass': len(fails) == 0, 'fails': fails,
-            'f_min': f_min, 'f_max': f_max, 'rel_spread': rel_spread}
+        fails.append(
+            f"multistart 相对方差 {rel_spread:.1%} > {rel_tol:.0%}（疑似多个不同局部最优）"
+        )
+    return {
+        "audit_pass": len(fails) == 0,
+        "fails": fails,
+        "f_min": f_min,
+        "f_max": f_max,
+        "rel_spread": rel_spread,
+    }
 
 
-def audit_heuristic_convergence(history: list[dict], window_frac=0.1, tol_rel=1e-3) -> dict:
+def audit_heuristic_convergence(
+    history: list[dict], window_frac=0.1, tol_rel=1e-3
+) -> dict:
     """启发式（GA/SA/PSO）收敛曲线审计：最后 X% 代的相对下降应 < tol。"""
     if len(history) < 20:
-        return {'audit_pass': False, 'fails': [f"收敛历史仅 {len(history)} 代，太短"]}
-    fbest = [h['best'] for h in history]
+        return {"audit_pass": False, "fails": [f"收敛历史仅 {len(history)} 代，太短"]}
+    fbest = [h["best"] for h in history]
     n = len(fbest)
     window = max(1, int(n * window_frac))
     recent = fbest[-window:]
@@ -1449,14 +1539,14 @@ def audit_heuristic_convergence(history: list[dict], window_frac=0.1, tol_rel=1e
     fails = []
     if rel > tol_rel:
         fails.append(f"最后 {window_frac:.0%} 代仍下降 {rel:.2%}（可能过早终止）")
-    return {'audit_pass': len(fails) == 0, 'fails': fails, 'final_rel_drop': rel}
+    return {"audit_pass": len(fails) == 0, "fails": fails, "final_rel_drop": rel}
 
 
 def audit_mcmc_chain(samples_per_chain: list[np.ndarray]) -> dict:
     """MCMC 多链 Gelman-Rubin R̂ 审计（应 < 1.1）。"""
     m = len(samples_per_chain)
     if m < 2:
-        return {'audit_pass': False, 'fails': ['MCMC 必须至少 2 条独立链']}
+        return {"audit_pass": False, "fails": ["MCMC 必须至少 2 条独立链"]}
     n = min(len(c) for c in samples_per_chain)
     chains = np.array([c[:n] for c in samples_per_chain])  # (m, n)
     if chains.ndim == 2:
@@ -1472,27 +1562,32 @@ def audit_mcmc_chain(samples_per_chain: list[np.ndarray]) -> dict:
         R_hat = np.sqrt(var_hat / W) if W > 0 else np.inf
         if R_hat > 1.1:
             fails.append(f"维度 {d}: R̂={R_hat:.3f} > 1.1（链未充分混合）")
-    return {'audit_pass': len(fails) == 0, 'fails': fails}
+    return {"audit_pass": len(fails) == 0, "fails": fails}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 示例：从 results.json 读求解器输出做审计
-    if not Path('results.json').exists():
+    if not Path("results.json").exists():
         print("⚠ 未找到 results.json")
         sys.exit(0)
-    r = json.loads(Path('results.json').read_text(encoding='utf-8'))
-    if 'solver_result' in r:
-        a = audit_continuous_optimum(r['solver_result'])
+    r = json.loads(Path("results.json").read_text(encoding="utf-8"))
+    if "solver_result" in r:
+        a = audit_continuous_optimum(r["solver_result"])
         print(f"连续优化审计: {'✅' if a['audit_pass'] else '❌'}")
-        for f in a['fails']: print(f"   {f}")
-    if 'multistart_results' in r:
-        a = audit_multistart(r['multistart_results'])
-        print(f"multistart 审计: {'✅' if a['audit_pass'] else '❌'}  rel_spread={a.get('rel_spread')}")
-        for f in a['fails']: print(f"   {f}")
-    if 'convergence_history' in r:
-        a = audit_heuristic_convergence(r['convergence_history'])
+        for f in a["fails"]:
+            print(f"   {f}")
+    if "multistart_results" in r:
+        a = audit_multistart(r["multistart_results"])
+        print(
+            f"multistart 审计: {'✅' if a['audit_pass'] else '❌'}  rel_spread={a.get('rel_spread')}"
+        )
+        for f in a["fails"]:
+            print(f"   {f}")
+    if "convergence_history" in r:
+        a = audit_heuristic_convergence(r["convergence_history"])
         print(f"启发式收敛审计: {'✅' if a['audit_pass'] else '❌'}")
-        for f in a['fails']: print(f"   {f}")
+        for f in a["fails"]:
+            print(f"   {f}")
 ```
 
 ## 13.4 真实案例
@@ -1640,26 +1735,26 @@ import json, re, sys
 from pathlib import Path
 
 
-def load_facts(path: str = 'PROBLEM_FACTS.json') -> dict:
+def load_facts(path: str = "PROBLEM_FACTS.json") -> dict:
     """加载题面参数权威源。"""
     p = Path(path)
     if not p.exists():
         return {}
-    return json.loads(p.read_text(encoding='utf-8'))
+    return json.loads(p.read_text(encoding="utf-8"))
 
 
-def collect_facts_values(facts: dict, prefix: str = '') -> dict:
+def collect_facts_values(facts: dict, prefix: str = "") -> dict:
     """递归把 PROBLEM_FACTS.json 里所有数值字段展平成 {dotted.key: value}。"""
     out = {}
     if isinstance(facts, dict):
         for k, v in facts.items():
-            if k.startswith('_') or k == 'source' or k == 'machine_check':
+            if k.startswith("_") or k == "source" or k == "machine_check":
                 continue
-            key = f'{prefix}.{k}' if prefix else k
+            key = f"{prefix}.{k}" if prefix else k
             out.update(collect_facts_values(v, key))
     elif isinstance(facts, list):
         for i, v in enumerate(facts):
-            out.update(collect_facts_values(v, f'{prefix}[{i}]'))
+            out.update(collect_facts_values(v, f"{prefix}[{i}]"))
     elif isinstance(facts, (int, float)):
         out[prefix] = facts
     return out
@@ -1676,18 +1771,18 @@ def audit_code_against_facts(code_files: list, facts: dict, tol: float = 1e-9) -
         except (TypeError, ValueError):
             pass
 
-    NUM_RE = re.compile(r'(?<![\w.])([-+]?\d+\.\d+|\d+)(?![\w])')
+    NUM_RE = re.compile(r"(?<![\w.])([-+]?\d+\.\d+|\d+)(?![\w])")
     WHITELIST = {0, 1, 2, 3, 4, 5, 10, 100, 1000, 60, 24, 0.5, 1.5, -1}
     suspicious = []
     for f in code_files:
         try:
-            for i, line in enumerate(f.read_text(encoding='utf-8').splitlines(), 1):
+            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
                 # 忽略注释行
                 stripped = line.strip()
-                if stripped.startswith('#') or stripped.startswith('//'):
+                if stripped.startswith("#") or stripped.startswith("//"):
                     continue
                 # 忽略 import 行
-                if stripped.startswith('import') or stripped.startswith('from'):
+                if stripped.startswith("import") or stripped.startswith("from"):
                     continue
                 for m in NUM_RE.finditer(line):
                     try:
@@ -1699,9 +1794,14 @@ def audit_code_against_facts(code_files: list, facts: dict, tol: float = 1e-9) -
                     # 容差查找（处理浮点抖动）
                     if any(abs(v - fv) < tol for fv in fact_values):
                         continue
-                    suspicious.append({
-                        'file': f.name, 'line': i, 'value': v, 'context': line.strip()[:100]
-                    })
+                    suspicious.append(
+                        {
+                            "file": f.name,
+                            "line": i,
+                            "value": v,
+                            "context": line.strip()[:100],
+                        }
+                    )
                     if len(suspicious) >= 50:
                         break
         except Exception:
@@ -1709,7 +1809,9 @@ def audit_code_against_facts(code_files: list, facts: dict, tol: float = 1e-9) -
     return suspicious
 
 
-def audit_paper_against_facts(paper_text: str, facts: dict, results: dict = None) -> dict:
+def audit_paper_against_facts(
+    paper_text: str, facts: dict, results: dict = None
+) -> dict:
     """
     扫描正文里的数字，验证每个数字都能在 (facts ∪ results) 中找到来源。
     """
@@ -1727,7 +1829,7 @@ def audit_paper_against_facts(paper_text: str, facts: dict, results: dict = None
                 pass
 
     # 抽取正文里的浮点数（保留 2 位以上小数的，避免抓到章节号）
-    NUM_RE = re.compile(r'(?<![\w.])([-+]?\d+\.\d{2,}|\d+\.\d)(?![\w])')
+    NUM_RE = re.compile(r"(?<![\w.])([-+]?\d+\.\d{2,}|\d+\.\d)(?![\w])")
     miss = []
     for m in NUM_RE.finditer(paper_text):
         try:
@@ -1746,70 +1848,84 @@ def audit_paper_against_facts(paper_text: str, facts: dict, results: dict = None
 def audit_meta(facts: dict) -> list:
     """检查 PROBLEM_FACTS.json 元信息完整性。"""
     fails = []
-    meta = facts.get('_meta', {})
+    meta = facts.get("_meta", {})
     # 客观判定：必须声明 source_files（来自 workflow_engine Vision OCR 自动产出）
-    if not meta.get('source_files'):
-        fails.append('⚠ _meta.source_files 为空，无法机器追溯到 OCR 原文')
-    if not meta.get('source_pages'):
-        fails.append('⚠ _meta.source_pages 为空，无法追溯页码')
+    if not meta.get("source_files"):
+        fails.append("⚠ _meta.source_files 为空，无法机器追溯到 OCR 原文")
+    if not meta.get("source_pages"):
+        fails.append("⚠ _meta.source_pages 为空，无法追溯页码")
     # 检查每条 rule 是否带 machine_check
-    for r in facts.get('rules', []):
-        if not r.get('machine_check'):
-            fails.append(f"⚠ rule {r.get('id', '?')} 缺 machine_check 字段（无法机器验证）")
-        if not r.get('source'):
+    for r in facts.get("rules", []):
+        if not r.get("machine_check"):
+            fails.append(
+                f"⚠ rule {r.get('id', '?')} 缺 machine_check 字段（无法机器验证）"
+            )
+        if not r.get("source"):
             fails.append(f"⚠ rule {r.get('id', '?')} 缺 source 字段（无法溯源）")
     return fails
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     facts = load_facts()
     if not facts:
         print("⚠ PROBLEM_FACTS.json 不存在，跳过参数保真度审计")
         sys.exit(0)
-    print(f"已加载 PROBLEM_FACTS.json，含 {len(collect_facts_values(facts))} 个数值字段")
+    print(
+        f"已加载 PROBLEM_FACTS.json，含 {len(collect_facts_values(facts))} 个数值字段"
+    )
 
     # 1. 元信息检查
     meta_fails = audit_meta(facts)
     for f in meta_fails:
         print(f)
-    if any('source_files 为空' in f for f in meta_fails):
-        print("⛔ PROBLEM_FACTS.json 必须在 _meta.source_files 列出 user_data/*_extracted.txt（OCR 原文），并附 sha256")
+    if any("source_files 为空" in f for f in meta_fails):
+        print(
+            "⛔ PROBLEM_FACTS.json 必须在 _meta.source_files 列出 user_data/*_extracted.txt（OCR 原文），并附 sha256"
+        )
         sys.exit(1)
 
     # 2. 代码端审计
-    code_dir = Path('code')
+    code_dir = Path("code")
     if code_dir.exists():
-        code_files = list(code_dir.glob('**/*.py'))
+        code_files = list(code_dir.glob("**/*.py"))
         susp = audit_code_against_facts(code_files, facts)
-        print('')
-        print('=== 代码端审计 ===')
-        print(f"扫描 {len(code_files)} 个 .py 文件，发现 {len(susp)} 处可疑数字（无法在 facts 中找到来源）：")
+        print("")
+        print("=== 代码端审计 ===")
+        print(
+            f"扫描 {len(code_files)} 个 .py 文件，发现 {len(susp)} 处可疑数字（无法在 facts 中找到来源）："
+        )
         for s in susp[:10]:
-            print(f"  {s['file']}:{s['line']}  值={s['value']}  上下文: {s['context'][:80]}")
+            print(
+                f"  {s['file']}:{s['line']}  值={s['value']}  上下文: {s['context'][:80]}"
+            )
         if len(susp) > 10:
-            print(f"  ...还有 {len(susp)-10} 处，详见完整输出")
+            print(f"  ...还有 {len(susp) - 10} 处，详见完整输出")
 
     # 3. 正文端审计（如果 paper/main.md 或 RESULTS.md 存在）
     paper_path = None
-    for p in ('paper/main.md', 'paper/main.tex', 'RESULTS.md', 'main.md'):
+    for p in ("paper/main.md", "paper/main.tex", "RESULTS.md", "main.md"):
         if Path(p).exists():
             paper_path = p
             break
     if paper_path:
-        print('')
+        print("")
         print(f"=== 正文端审计（{paper_path}）===")
         results = {}
-        if Path('results.json').exists():
+        if Path("results.json").exists():
             try:
-                results = json.loads(Path('results.json').read_text(encoding='utf-8'))
+                results = json.loads(Path("results.json").read_text(encoding="utf-8"))
             except Exception:
                 pass
-        miss = audit_paper_against_facts(Path(paper_path).read_text(encoding='utf-8'), facts, results)
+        miss = audit_paper_against_facts(
+            Path(paper_path).read_text(encoding="utf-8"), facts, results
+        )
         print(f"找不到来源的数字数量: {len(miss)}")
         for v in miss[:10]:
             print(f"  {v}")
         if miss:
-            print("⛔ 这些数字无法在 PROBLEM_FACTS.json 或 results.json 中找到——可能是虚构或抄错")
+            print(
+                "⛔ 这些数字无法在 PROBLEM_FACTS.json 或 results.json 中找到——可能是虚构或抄错"
+            )
 ```
 
 ## 14.5 真实案例
@@ -1850,10 +1966,11 @@ if __name__ == '__main__':
   # code/params.py — 自动生成，禁止手改
   import json
   from pathlib import Path
-  _FACTS = json.loads(Path('PROBLEM_FACTS.json').read_text(encoding='utf-8'))
+
+  _FACTS = json.loads(Path("PROBLEM_FACTS.json").read_text(encoding="utf-8"))
   # 命名常数（按 facts 结构展开）
-  BIG_LASER_RANGE_KM = _FACTS['weapons'][0]['range_km']
-  BIG_LASER_VS_MISSILE_P_DETECT = _FACTS['weapons'][0]['targets'][0]['p_detect']
+  BIG_LASER_RANGE_KM = _FACTS["weapons"][0]["range_km"]
+  BIG_LASER_VS_MISSILE_P_DETECT = _FACTS["weapons"][0]["targets"][0]["p_detect"]
   # ... 等等所有数值
   ```
   之后任何代码文件 `from params import *`，不允许出现裸数字字面量（除白名单 0/1/2/-1 等）。
@@ -1875,35 +1992,38 @@ if __name__ == '__main__':
 ```python
 # facts_audit_v2.py — 加固版（14.4 基础上补 6 个边缘漏洞防护）
 
+
 def validate_schema(facts: dict) -> list:
     """漏洞 13：检查 JSON Schema 必填字段。"""
     fails = []
     # _meta
-    meta = facts.get('_meta', {})
-    for k in ('problem_id', 'source_pages', 'source_files'):
+    meta = facts.get("_meta", {})
+    for k in ("problem_id", "source_pages", "source_files"):
         if k not in meta:
             fails.append(f"⚠ _meta 缺必填字段: {k}")
     # source_files 必须是非空列表，且每项含 path + sha256
-    if 'source_files' in meta:
-        if not isinstance(meta['source_files'], list) or not meta['source_files']:
-            fails.append("⚠ _meta.source_files 必须是非空列表（指向 user_data/*_extracted.txt）")
+    if "source_files" in meta:
+        if not isinstance(meta["source_files"], list) or not meta["source_files"]:
+            fails.append(
+                "⚠ _meta.source_files 必须是非空列表（指向 user_data/*_extracted.txt）"
+            )
         else:
-            for i, s in enumerate(meta['source_files']):
-                if not s.get('path'):
+            for i, s in enumerate(meta["source_files"]):
+                if not s.get("path"):
                     fails.append(f"⚠ _meta.source_files[{i}] 缺 path")
-                if not s.get('sha256'):
+                if not s.get("sha256"):
                     fails.append(f"⚠ _meta.source_files[{i}] 缺 sha256")
     # weapons[].targets[]
-    for i, w in enumerate(facts.get('weapons', [])):
-        if not w.get('id'):
+    for i, w in enumerate(facts.get("weapons", [])):
+        if not w.get("id"):
             fails.append(f"⚠ weapons[{i}] 缺 id")
-        for j, t in enumerate(w.get('targets', [])):
-            for pk in ('target_type', 'p_detect', 'p_hit', 'p_damage'):
+        for j, t in enumerate(w.get("targets", [])):
+            for pk in ("target_type", "p_detect", "p_hit", "p_damage"):
                 if pk not in t:
                     fails.append(f"⚠ weapons[{i}].targets[{j}] 缺 {pk}")
     # rules[]
-    for i, r in enumerate(facts.get('rules', [])):
-        for k in ('id', 'natural_language', 'source', 'machine_check'):
+    for i, r in enumerate(facts.get("rules", [])):
+        for k in ("id", "natural_language", "source", "machine_check"):
             if k not in r:
                 fails.append(f"⚠ rules[{i}] 缺必填字段: {k}")
     return fails
@@ -1912,20 +2032,27 @@ def validate_schema(facts: dict) -> list:
 def validate_derivations(facts: dict) -> list:
     """漏洞 2：按 factor 字符串验算 unit_conversions 派生值。"""
     fails = []
-    for conv in facts.get('unit_conversions', []):
-        raw, si_value, factor = conv.get('raw'), conv.get('si_value'), conv.get('factor')
+    for conv in facts.get("unit_conversions", []):
+        raw, si_value, factor = (
+            conv.get("raw"),
+            conv.get("si_value"),
+            conv.get("factor"),
+        )
         if not (raw and si_value is not None and factor):
             fails.append(f"⚠ unit_conversion 不完整: {conv}")
             continue
         # 简化：从 raw 抽数 × factor 抽因子，验算 si_value
         import re
-        m_raw = re.search(r'([-+]?\d+\.?\d*)', raw)
-        m_fac = re.search(r'=\s*([-+]?\d+\.?\d*)', factor)
+
+        m_raw = re.search(r"([-+]?\d+\.?\d*)", raw)
+        m_fac = re.search(r"=\s*([-+]?\d+\.?\d*)", factor)
         if m_raw and m_fac:
             try:
                 expected = float(m_raw.group(1)) * float(m_fac.group(1))
                 if abs(expected - float(si_value)) > 1e-3:
-                    fails.append(f"⚠ unit_conversion 验算失败: {raw} × {factor} = {expected:.4f}, 但 si_value={si_value}")
+                    fails.append(
+                        f"⚠ unit_conversion 验算失败: {raw} × {factor} = {expected:.4f}, 但 si_value={si_value}"
+                    )
             except ValueError:
                 pass
     return fails
@@ -1935,22 +2062,31 @@ def audit_dual_source(facts: dict, params_raw_md: str) -> list:
     """漏洞 1：PARAMS_RAW.md 与 PROBLEM_FACTS.json 数字集合对比。
     防止 AI 抄题面时就抄错（自抄自审循环）。"""
     import re
+
     facts_nums = set()
+
     def walk(o):
         if isinstance(o, dict):
             for k, v in o.items():
-                if k.startswith('_') or k in ('source', 'raw_quote', 'machine_check', 'factor'):
+                if k.startswith("_") or k in (
+                    "source",
+                    "raw_quote",
+                    "machine_check",
+                    "factor",
+                ):
                     continue
                 walk(v)
         elif isinstance(o, list):
-            for v in o: walk(v)
+            for v in o:
+                walk(v)
         elif isinstance(o, (int, float)):
             facts_nums.add(round(float(o), 4))
+
     walk(facts)
 
     # 从 PARAMS_RAW.md 提取所有数字
     raw_nums = set()
-    for m in re.finditer(r'(?<![\w.])([-+]?\d+\.?\d*)(?![\w])', params_raw_md):
+    for m in re.finditer(r"(?<![\w.])([-+]?\d+\.?\d*)(?![\w])", params_raw_md):
         try:
             raw_nums.add(round(float(m.group(1)), 4))
         except ValueError:
@@ -1960,34 +2096,53 @@ def audit_dual_source(facts: dict, params_raw_md: str) -> list:
     # facts 里有但 PARAMS_RAW.md 没有 → AI 可能添油加醋
     facts_only = facts_nums - raw_nums - {0, 1, 2, 3, 4, 5, 10, 100}
     if facts_only:
-        fails.append(f"⚠ PROBLEM_FACTS.json 含 PARAMS_RAW.md 未提及的数字（疑似 AI 添油加醋）: {sorted(facts_only)[:10]}")
+        fails.append(
+            f"⚠ PROBLEM_FACTS.json 含 PARAMS_RAW.md 未提及的数字（疑似 AI 添油加醋）: {sorted(facts_only)[:10]}"
+        )
     # PARAMS_RAW.md 里有但 facts 里没 → 漏抄
     raw_only = raw_nums - facts_nums - {0, 1, 2, 3, 4, 5, 10, 100}
     if raw_only:
-        fails.append(f"⚠ PARAMS_RAW.md 含 PROBLEM_FACTS.json 未登记的数字（疑似漏抄）: {sorted(raw_only)[:10]}")
+        fails.append(
+            f"⚠ PARAMS_RAW.md 含 PROBLEM_FACTS.json 未登记的数字（疑似漏抄）: {sorted(raw_only)[:10]}"
+        )
     return fails
 
 
-def audit_figure_scripts(fig_dir: str = 'figures') -> list:
+def audit_figure_scripts(fig_dir: str = "figures") -> list:
     """漏洞 9：扫 figures/*.py 中 ≥3 元素的数字数组（疑似硬编码数据）。"""
     import re
     from pathlib import Path
+
     fails = []
     p = Path(fig_dir)
-    if not p.exists(): return fails
+    if not p.exists():
+        return fails
     # 匹配 [num, num, num, ...] 形式（≥3 个数字元素）
-    ARR_RE = re.compile(r'\[\s*([-+]?\d+\.?\d*\s*,\s*){2,}[-+]?\d+\.?\d*\s*\]')
-    for f in p.glob('*.py'):
+    ARR_RE = re.compile(r"\[\s*([-+]?\d+\.?\d*\s*,\s*){2,}[-+]?\d+\.?\d*\s*\]")
+    for f in p.glob("*.py"):
         try:
-            txt = f.read_text(encoding='utf-8')
+            txt = f.read_text(encoding="utf-8")
             for i, line in enumerate(txt.splitlines(), 1):
                 stripped = line.strip()
-                if stripped.startswith('#'): continue
+                if stripped.startswith("#"):
+                    continue
                 # 排除明显的坐标网格/loc 参数
-                if any(k in line for k in ('xticks', 'yticks', 'xlim', 'ylim', 'colors=', 'bbox_to_anchor')):
+                if any(
+                    k in line
+                    for k in (
+                        "xticks",
+                        "yticks",
+                        "xlim",
+                        "ylim",
+                        "colors=",
+                        "bbox_to_anchor",
+                    )
+                ):
                     continue
                 if ARR_RE.search(line):
-                    fails.append(f"⚠ {f.name}:{i} 含硬编码多元素数字数组（应从 figures/all_results.json 读取）: {stripped[:80]}")
+                    fails.append(
+                        f"⚠ {f.name}:{i} 含硬编码多元素数字数组（应从 figures/all_results.json 读取）: {stripped[:80]}"
+                    )
                     if len(fails) >= 20:
                         return fails
         except Exception:
@@ -1999,9 +2154,10 @@ def compute_source_hash(file_path) -> str:
     """计算 OCR 原文的 sha256，作为防篡改证据。"""
     import hashlib
     from pathlib import Path
+
     p = Path(file_path)
     if not p.exists():
-        return ''
+        return ""
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
@@ -2009,12 +2165,13 @@ def extract_numbers_from_ocr(ocr_files) -> set:
     """从 OCR 提取的赛题原文中自动抽出所有数字（去重 + 规整精度）。"""
     import re
     from pathlib import Path
+
     nums = set()
     # 数字后面允许跟字母（单位 km/s/min/kn 等）但禁止跟 . 或 数字（避免抓章节号）
-    NUM_RE = re.compile(r'(?<![\w.])([-+]?\d+\.\d+|\d+)(?![\.\d])')
+    NUM_RE = re.compile(r"(?<![\w.])([-+]?\d+\.\d+|\d+)(?![\.\d])")
     for fp in ocr_files:
         try:
-            text = Path(fp).read_text(encoding='utf-8')
+            text = Path(fp).read_text(encoding="utf-8")
             for m in NUM_RE.finditer(text):
                 try:
                     v = float(m.group(1))
@@ -2026,43 +2183,50 @@ def extract_numbers_from_ocr(ocr_files) -> set:
     return nums
 
 
-def audit_facts_against_ocr(facts: dict, ocr_dir='user_data') -> list:
+def audit_facts_against_ocr(facts: dict, ocr_dir="user_data") -> list:
     """漏洞 1 终极防护：自动比对 PROBLEM_FACTS.json 与 OCR 原文的数字集合。
-    
+
     OCR 原文（user_data/*_extracted.txt）是 workflow_engine Vision OCR 在 AI 介入前
     自动产出的客观证据，AI 改不了（改了 sha256 就变）。
-    
+
     流程：
     1. 验证 facts._meta.source_files 中声明的 sha256 与文件实际 sha256 一致（防 OCR 篡改）
     2. 自动从 OCR 抽数字集合
     3. 比对 facts 抽出的数字集合
     """
     from pathlib import Path
+
     fails = []
-    meta = facts.get('_meta', {})
-    declared = meta.get('source_files', [])
+    meta = facts.get("_meta", {})
+    declared = meta.get("source_files", [])
 
     if not declared:
-        fails.append('⛔ _meta.source_files 为空，无法做 OCR 客观比对（必须列出 user_data/*_extracted.txt）')
+        fails.append(
+            "⛔ _meta.source_files 为空，无法做 OCR 客观比对（必须列出 user_data/*_extracted.txt）"
+        )
         return fails
 
     # 1. 哈希校验，防 OCR 文件被 AI 篡改
     ocr_files = []
     for src in declared:
-        path = src.get('path', '')
-        declared_hash = src.get('sha256', '')
+        path = src.get("path", "")
+        declared_hash = src.get("sha256", "")
         if not Path(path).exists():
-            fails.append(f'⛔ source_files 声明的 {path} 不存在（OCR 文件路径错误或被删除）')
+            fails.append(
+                f"⛔ source_files 声明的 {path} 不存在（OCR 文件路径错误或被删除）"
+            )
             continue
         actual = compute_source_hash(path)
         if declared_hash and actual != declared_hash:
-            fails.append(f'⛔ {path} sha256 不一致：声明 {declared_hash[:16]} vs 实际 {actual[:16]} '
-                         f'（OCR 原文可能被篡改，或 facts 抄完后 OCR 又重跑了）')
+            fails.append(
+                f"⛔ {path} sha256 不一致：声明 {declared_hash[:16]} vs 实际 {actual[:16]} "
+                f"（OCR 原文可能被篡改，或 facts 抄完后 OCR 又重跑了）"
+            )
             continue
         ocr_files.append(path)
 
     if not ocr_files:
-        fails.append('⛔ 没有任何 source_files 通过哈希校验，无法继续 OCR 对比')
+        fails.append("⛔ 没有任何 source_files 通过哈希校验，无法继续 OCR 对比")
         return fails
 
     # 2. 从 OCR 文本抽数字集合
@@ -2070,10 +2234,18 @@ def audit_facts_against_ocr(facts: dict, ocr_dir='user_data') -> list:
 
     # 3. 从 facts 数值字段抽集合
     facts_nums = set()
+
     def walk(o):
         if isinstance(o, dict):
             for k, v in o.items():
-                if k.startswith('_') or k in ('source', 'raw_quote', 'machine_check', 'factor', 'sha256', 'path'):
+                if k.startswith("_") or k in (
+                    "source",
+                    "raw_quote",
+                    "machine_check",
+                    "factor",
+                    "sha256",
+                    "path",
+                ):
                     continue
                 walk(v)
         elif isinstance(o, list):
@@ -2084,19 +2256,26 @@ def audit_facts_against_ocr(facts: dict, ocr_dir='user_data') -> list:
                 facts_nums.add(round(float(o), 4))
             except (TypeError, ValueError):
                 pass
+
     walk(facts)
 
     # 4. 集合比对（白名单：常用辅助值）
     WHITELIST = {0, 1, 2, 3, 4, 5, 10, 100, 1000, 0.5, -1}
     facts_only = facts_nums - ocr_nums - WHITELIST  # facts 有但 OCR 没有 → 虚构
-    ocr_only = ocr_nums - facts_nums - WHITELIST    # OCR 有但 facts 没有 → 漏抄（容忍范围）
+    ocr_only = (
+        ocr_nums - facts_nums - WHITELIST
+    )  # OCR 有但 facts 没有 → 漏抄（容忍范围）
 
     if facts_only:
-        fails.append(f'⛔ PROBLEM_FACTS.json 含 {len(facts_only)} 个 OCR 原文中找不到的数字（疑似 AI 虚构）：'
-                     f'{sorted(facts_only)[:15]}')
+        fails.append(
+            f"⛔ PROBLEM_FACTS.json 含 {len(facts_only)} 个 OCR 原文中找不到的数字（疑似 AI 虚构）："
+            f"{sorted(facts_only)[:15]}"
+        )
     # 漏抄是 WARN（OCR 里有数字但 facts 没用到，可能是题目背景值/章节号/页码，不一定要全抄）
     if len(ocr_only) > 50:
-        fails.append(f'⚠ OCR 原文中有 {len(ocr_only)} 个数字未登记到 facts（可能存在漏抄，请人工抽检）')
+        fails.append(
+            f"⚠ OCR 原文中有 {len(ocr_only)} 个数字未登记到 facts（可能存在漏抄，请人工抽检）"
+        )
 
     return fails
 
@@ -2105,24 +2284,29 @@ def audit_subproblem_isolation(facts: dict, code_file, current_sub: str) -> list
     """漏洞 6：检查代码是否引用了非本子问题的 given 字段。
     code_file: pathlib.Path 对象。"""
     fails = []
-    subs = facts.get('sub_problems', [])
+    subs = facts.get("sub_problems", [])
     if not subs:
         return fails  # 无 sub_problems 段，跳过
     # 本子问题允许使用的字段集合
-    this_sub = next((s for s in subs if s.get('id') == current_sub), None)
+    this_sub = next((s for s in subs if s.get("id") == current_sub), None)
     if not this_sub:
         return fails
-    allowed_fields = set(this_sub.get('given_fields', []) + this_sub.get('inherited_fields', []))
+    allowed_fields = set(
+        this_sub.get("given_fields", []) + this_sub.get("inherited_fields", [])
+    )
     if not allowed_fields:
         return fails
     # 扫代码里 facts['xxx'] 访问的 key
     import re
+
     try:
-        txt = code_file.read_text(encoding='utf-8')
+        txt = code_file.read_text(encoding="utf-8")
         for m in re.finditer(r"facts\[['\"](\w+)['\"]", txt):
             field = m.group(1)
             if field not in allowed_fields:
-                fails.append(f"⚠ {code_file.name} 引用了非本子问题（{current_sub}）允许的字段: {field}")
+                fails.append(
+                    f"⚠ {code_file.name} 引用了非本子问题（{current_sub}）允许的字段: {field}"
+                )
     except Exception:
         pass
     return fails
@@ -2193,8 +2377,9 @@ grep -qE '<!-- AUDIT_OK source=.*n_suspicious_numbers=0' RESULTS.md && echo "OK"
 
 ```python
 # event_breakdown_audit.py — 事件源分类反推校验（与具体业务无关）
-def audit_event_breakdown(events: list, total_value: float,
-                           source_unit_value: dict, tol: float = 1e-3) -> list:
+def audit_event_breakdown(
+    events: list, total_value: float, source_unit_value: dict, tol: float = 1e-3
+) -> list:
     """
     events: 离散事件列表，每条形如 {'source': str, 'value_per_event': float, ...}
     total_value: 系统声称的累计量（如总伤害 / 总成本 / 总人数）
@@ -2203,81 +2388,89 @@ def audit_event_breakdown(events: list, total_value: float,
     """
     fails = []
     # 1. 事件总和 = 声称总量
-    event_total = sum(e['value_per_event'] for e in events)
+    event_total = sum(e["value_per_event"] for e in events)
     if abs(event_total - total_value) > tol:
         fails.append(
-            f'⛔ 反推失败：事件总和 {event_total:.4f} ≠ 声称总量 {total_value:.4f}'
-            f'（差 {event_total - total_value:+.4f}）'
+            f"⛔ 反推失败：事件总和 {event_total:.4f} ≠ 声称总量 {total_value:.4f}"
+            f"（差 {event_total - total_value:+.4f}）"
         )
 
     # 2. 按 source 分组，每源 次数×理论单次 ≈ 实际累加
     by_source = {}
     for e in events:
-        by_source.setdefault(e['source'], []).append(e['value_per_event'])
+        by_source.setdefault(e["source"], []).append(e["value_per_event"])
     for src, vals in by_source.items():
         if src not in source_unit_value:
-            fails.append(f'⚠ 事件 source={src!r} 未在 source_unit_value 中登记理论值')
+            fails.append(f"⚠ 事件 source={src!r} 未在 source_unit_value 中登记理论值")
             continue
         expected = source_unit_value[src] * len(vals)
         actual = sum(vals)
         if abs(expected - actual) > tol * max(len(vals), 1):
             fails.append(
-                f'⛔ source={src} 反推不一致：'
-                f'{len(vals)} 次 × 单次 {source_unit_value[src]:.4f} = {expected:.4f}, '
-                f'实际累加 {actual:.4f}'
+                f"⛔ source={src} 反推不一致："
+                f"{len(vals)} 次 × 单次 {source_unit_value[src]:.4f} = {expected:.4f}, "
+                f"实际累加 {actual:.4f}"
             )
 
     return fails
 
 
-def audit_narrative_against_events(narrative_text: str, events: list,
-                                    source_unit_value: dict,
-                                    verb_to_sources: dict) -> list:
+def audit_narrative_against_events(
+    narrative_text: str, events: list, source_unit_value: dict, verb_to_sources: dict
+) -> list:
     """检查中间产物（如 RESULTS.md）的指向性陈述是否对应独立 source。
 
     verb_to_sources: 由用户按本题定义的"动词→合法 source 集合"映射，例如：
         {'伤害源动词A': ('source_A',), '伤害源动词B': ('source_B', 'source_C'), ...}
     """
     import re
+
     fails = []
     # 通用模式：支持中文双语序「数字+量词?+动词」和「动词+数字+量词?」
-    QUANT = r'(?:艘|个|架|枚|次|条|台|株|人|位|份|起|例|条|名)?'
+    QUANT = r"(?:艘|个|架|枚|次|条|台|株|人|位|份|起|例|条|名)?"
     for verb, valid_sources in verb_to_sources.items():
         v_esc = re.escape(verb)
         # 模式 A: 数字在前（如"4 例社区传播"）
-        pat_a = re.compile(rf'(\d+)\s*{QUANT}\s*{v_esc}')
+        pat_a = re.compile(rf"(\d+)\s*{QUANT}\s*{v_esc}")
         # 模式 B: 动词在前（如"社区传播 4 例"）
-        pat_b = re.compile(rf'{v_esc}\s*(\d+)\s*{QUANT}')
+        pat_b = re.compile(rf"{v_esc}\s*(\d+)\s*{QUANT}")
         seen = set()
-        for m in list(pat_a.finditer(narrative_text)) + list(pat_b.finditer(narrative_text)):
+        for m in list(pat_a.finditer(narrative_text)) + list(
+            pat_b.finditer(narrative_text)
+        ):
             key = (m.start(), m.end())
             if key in seen:
                 continue
             seen.add(key)
             claimed = int(m.group(1))
-            actual = sum(1 for e in events if e.get('source') in valid_sources)
+            actual = sum(1 for e in events if e.get("source") in valid_sources)
             if claimed != actual:
                 fails.append(
                     f'⛔ 陈述 "{verb} ... {claimed}" 与事件流不符：'
-                    f'source ∈ {valid_sources} 的事件数 = {actual}'
+                    f"source ∈ {valid_sources} 的事件数 = {actual}"
                 )
     return fails
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import json, sys
     from pathlib import Path
-    if not Path('results.json').exists():
+
+    if not Path("results.json").exists():
         sys.exit(0)
-    results = json.loads(Path('results.json').read_text(encoding='utf-8'))
-    events = results.get('events') or results.get('damage_events') or []
-    totals = results.get('totals') or {}
-    source_unit = results.get('source_unit_value') or results.get('source_unit_damage') or {}
-    verb_map = results.get('verb_to_sources') or {}
+    results = json.loads(Path("results.json").read_text(encoding="utf-8"))
+    events = results.get("events") or results.get("damage_events") or []
+    totals = results.get("totals") or {}
+    source_unit = (
+        results.get("source_unit_value") or results.get("source_unit_damage") or {}
+    )
+    verb_map = results.get("verb_to_sources") or {}
 
     if not events or not source_unit:
-        print('⚠ results.json 缺 events 或 source_unit_value 字段，跳过事件源反推审计')
-        print('  按第十五章规则 2/3，仿真器必须落 events 详细元组 + source_unit_value 字典')
+        print("⚠ results.json 缺 events 或 source_unit_value 字段，跳过事件源反推审计")
+        print(
+            "  按第十五章规则 2/3，仿真器必须落 events 详细元组 + source_unit_value 字典"
+        )
         sys.exit(2)
 
     all_fails = []
@@ -2285,9 +2478,12 @@ if __name__ == '__main__':
         # 总量字段可能对应所有事件，也可能按 target 子集
         all_fails += audit_event_breakdown(events, total_value, source_unit)
 
-    if Path('RESULTS.md').exists() and verb_map:
+    if Path("RESULTS.md").exists() and verb_map:
         all_fails += audit_narrative_against_events(
-            Path('RESULTS.md').read_text(encoding='utf-8'), events, source_unit, verb_map
+            Path("RESULTS.md").read_text(encoding="utf-8"),
+            events,
+            source_unit,
+            verb_map,
         )
 
     for f in all_fails:

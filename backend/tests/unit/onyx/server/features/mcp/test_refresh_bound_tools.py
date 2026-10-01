@@ -15,7 +15,7 @@ def test_refresh_uses_upstream_for_gateway_bound_servers(
     discovered: list[int] = []
 
     def fake_discover(
-        db_session: object, entry: object, mcp_server_id: int
+        _db_session: object, _entry: object, mcp_server_id: int
     ) -> str | None:
         discovered.append(mcp_server_id)
         return None
@@ -24,9 +24,9 @@ def test_refresh_uses_upstream_for_gateway_bound_servers(
 
     def fake_list(
         server_id: int,
-        db: object,
-        is_admin: bool,
-        user: object,
+        _db: object,
+        _is_admin: bool,
+        _user: object,
     ) -> None:
         listed.append(server_id)
 
@@ -61,7 +61,7 @@ def test_refresh_surfaces_upstream_discovery_errors(
 ) -> None:
     monkeypatch.setattr(
         "onyx.server.features.mcp.api.discover_and_store_bound_tools",
-        lambda *args, **kwargs: "upstream timeout",
+        lambda *_args, **_kwargs: "upstream timeout",
     )
     server = cast(
         DbMCPServer,

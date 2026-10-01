@@ -16,7 +16,11 @@ from sqlalchemy.orm import Session
 from onyx.auth.permissions import require_permission
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
-from onyx.db.models import TokenRateLimit, User, User__UserGroup
+from onyx.db.models import (
+    TokenRateLimit,
+    TokenRateLimit__UserGroup,
+    User,
+)
 from onyx.db.token_limit import (
     delete_token_rate_limit,
     fetch_all_global_token_rate_limits,
@@ -25,7 +29,6 @@ from onyx.db.token_limit import (
     insert_user_token_rate_limit,
     update_token_rate_limit,
 )
-from onyx.db.models import TokenRateLimit__UserGroup
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.token_rate_limits.models import (
@@ -68,12 +71,10 @@ def list_user_group(
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),  # noqa: ARG001
     db_session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    rows = db_session.scalars(
-        select(TokenRateLimit__UserGroup)
-    ).all()
+    rows = db_session.scalars(select(TokenRateLimit__UserGroup)).all()
     return [
         {
-            "token_id": row.token_rate_limit_id,
+            "token_id": row.rate_limit_id,
             "group_id": row.user_group_id,
         }
         for row in rows
@@ -88,7 +89,10 @@ def list_for_group(
 ) -> list[TokenRateLimitDisplay]:
     rows = db_session.scalars(
         select(TokenRateLimit)
-        .join(TokenRateLimit__UserGroup, TokenRateLimit__UserGroup.token_rate_limit_id == TokenRateLimit.id)
+        .join(
+            TokenRateLimit__UserGroup,
+            TokenRateLimit__UserGroup.rate_limit_id == TokenRateLimit.id,
+        )
         .where(TokenRateLimit__UserGroup.user_group_id == group_id)
     ).all()
     return [_display(row) for row in rows]
@@ -121,9 +125,7 @@ def create_user_group(
 ) -> TokenRateLimitDisplay:
     row = insert_user_token_rate_limit(db_session, args)
     db_session.add(
-        TokenRateLimit__UserGroup(
-            token_rate_limit_id=row.id, user_group_id=group_id
-        )
+        TokenRateLimit__UserGroup(rate_limit_id=row.id, user_group_id=group_id)
     )
     db_session.commit()
     return _display(row)

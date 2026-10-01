@@ -3,8 +3,8 @@
 
 import argparse
 import json
-import sys
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -40,7 +40,9 @@ def pearson_matrix(df: pd.DataFrame) -> dict:
 
     return {
         "columns": cols,
-        "correlation": [[round(float(corr[i, j]), 6) for j in range(n)] for i in range(n)],
+        "correlation": [
+            [round(float(corr[i, j]), 6) for j in range(n)] for i in range(n)
+        ],
         "p_values": [[round(float(pval[i, j]), 6) for j in range(n)] for i in range(n)],
     }
 
@@ -60,7 +62,9 @@ def spearman_matrix(df: pd.DataFrame) -> dict:
 
     return {
         "columns": cols,
-        "correlation": [[round(float(corr[i, j]), 6) for j in range(n)] for i in range(n)],
+        "correlation": [
+            [round(float(corr[i, j]), 6) for j in range(n)] for i in range(n)
+        ],
         "p_values": [[round(float(pval[i, j]), 6) for j in range(n)] for i in range(n)],
     }
 
@@ -111,14 +115,20 @@ def partial_correlation_matrix(df: pd.DataFrame) -> dict:
 
     return {
         "columns": cols,
-        "partial_correlation": [[round(float(partial[i, j]), 6) for j in range(n)] for i in range(n)],
+        "partial_correlation": [
+            [round(float(partial[i, j]), 6) for j in range(n)] for i in range(n)
+        ],
         "p_values": [[round(float(pval[i, j]), 6) for j in range(n)] for i in range(n)],
         "df": df_val,
     }
 
 
-def detect_spurious(pearson_result: dict, partial_result: dict,
-                    alpha: float = 0.05, drop_threshold: float = 0.5) -> list:
+def detect_spurious(
+    pearson_result: dict,
+    partial_result: dict,
+    alpha: float = 0.05,
+    drop_threshold: float = 0.5,
+) -> list:
     """
     Flag pairs where bivariate correlation is significant
     but partial correlation either loses significance or drops substantially.
@@ -148,18 +158,22 @@ def detect_spurious(pearson_result: dict, partial_result: dict,
                     reasons.append(f"相关系数下降 {drop_ratio * 100:.1f}%")
 
             if reasons:
-                spurious.append({
-                    "var_x": cols[i],
-                    "var_y": cols[j],
-                    "pearson_r": round(float(r_bi), 6),
-                    "pearson_p": round(float(p_bi), 6),
-                    "partial_r": round(float(r_pa), 6),
-                    "partial_p": round(float(p_pa), 6) if not np.isnan(p_pa) else None,
-                    "drop_pct": round(
-                        (1.0 - abs(r_pa) / abs(r_bi)) * 100, 1
-                    ) if abs(r_bi) > 1e-10 else 0.0,
-                    "reasons": reasons,
-                })
+                spurious.append(
+                    {
+                        "var_x": cols[i],
+                        "var_y": cols[j],
+                        "pearson_r": round(float(r_bi), 6),
+                        "pearson_p": round(float(p_bi), 6),
+                        "partial_r": round(float(r_pa), 6),
+                        "partial_p": round(float(p_pa), 6)
+                        if not np.isnan(p_pa)
+                        else None,
+                        "drop_pct": round((1.0 - abs(r_pa) / abs(r_bi)) * 100, 1)
+                        if abs(r_bi) > 1e-10
+                        else 0.0,
+                        "reasons": reasons,
+                    }
+                )
 
     return spurious
 
@@ -199,14 +213,16 @@ def interpret(pearson: dict, partial: dict, spurious: list) -> dict:
 
     summary = [f"分析了 {n} 个变量的相关性：{', '.join(cols)}"]
 
-    pairs = []
-    for i in range(n):
-        for j in range(i + 1, n):
-            pairs.append((
-                cols[i], cols[j],
-                pearson["correlation"][i][j],
-                pearson["p_values"][i][j],
-            ))
+    pairs = [
+        (
+            cols[i],
+            cols[j],
+            pearson["correlation"][i][j],
+            pearson["p_values"][i][j],
+        )
+        for i in range(n)
+        for j in range(i + 1, n)
+    ]
     pairs.sort(key=lambda x: abs(x[2]), reverse=True)
 
     top_correlations = []
@@ -244,13 +260,13 @@ def interpret(pearson: dict, partial: dict, spurious: list) -> dict:
     spurious_summary = []
     if spurious:
         spurious_summary.append(f"发现 {len(spurious)} 对疑似伪相关：")
-        for s in spurious:
-            spurious_summary.append(
-                f"  {s['var_x']} <-> {s['var_y']}："
-                f"Pearson r = {s['pearson_r']:.4f} -> 偏相关 r = {s['partial_r']:.4f}"
-                f"（{'、'.join(s['reasons'])}）"
-                f"——两变量的相关性很可能是由其他混淆变量导致的"
-            )
+        spurious_summary.extend(
+            f"  {s['var_x']} <-> {s['var_y']}："
+            f"Pearson r = {s['pearson_r']:.4f} -> 偏相关 r = {s['partial_r']:.4f}"
+            f"（{'、'.join(s['reasons'])}）"
+            f"——两变量的相关性很可能是由其他混淆变量导致的"
+            for s in spurious
+        )
     else:
         spurious_summary.append(
             "未发现明显的伪相关——各变量对的相关性在控制其他变量后仍然基本成立。"
@@ -270,23 +286,36 @@ def main():
     )
     parser.add_argument("input", help="输入数据文件路径（CSV/TSV/Excel/JSON）")
     parser.add_argument(
-        "--features", "-f", default=None,
+        "--features",
+        "-f",
+        default=None,
         help="要分析的列名，逗号分隔。省略则使用所有数值列",
     )
     parser.add_argument(
-        "--method", "-m", choices=["all", "pearson", "spearman"], default="all",
+        "--method",
+        "-m",
+        choices=["all", "pearson", "spearman"],
+        default="all",
         help="相关系数类型：all（全部，默认）、pearson、spearman",
     )
     parser.add_argument(
-        "--alpha", "-a", type=float, default=0.05,
+        "--alpha",
+        "-a",
+        type=float,
+        default=0.05,
         help="显著性水平（默认 0.05）",
     )
     parser.add_argument(
-        "--drop-threshold", "-d", type=float, default=0.5,
+        "--drop-threshold",
+        "-d",
+        type=float,
+        default=0.5,
         help="伪相关判定的下降阈值（默认 0.5，即 50%%）",
     )
     parser.add_argument(
-        "--output", "-o", default=None,
+        "--output",
+        "-o",
+        default=None,
         help="输出 JSON 文件路径（省略则打印到标准输出）",
     )
 

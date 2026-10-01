@@ -78,6 +78,7 @@ from onyx.db.chat import (
     update_chat_session,
 )
 from onyx.db.chat_search import search_chat_sessions
+from onyx.db.chat_share import list_chat_session_shares, replace_chat_session_shares
 from onyx.db.engine.sql_engine import get_session, get_session_with_current_tenant
 from onyx.db.enums import Permission, record_mode_persists_content
 from onyx.db.feedback import create_chat_message_feedback, remove_chat_message_feedback
@@ -112,7 +113,6 @@ from onyx.server.query_and_chat.chat_utils import (
     is_spreadsheet_mime_type,
     parse_spreadsheet_for_preview,
 )
-from onyx.db.chat_share import list_chat_session_shares, replace_chat_session_shares
 from onyx.server.query_and_chat.models import (
     ChatFeedbackRequest,
     ChatMessageIdentifier,
@@ -122,8 +122,8 @@ from onyx.server.query_and_chat.models import (
     ChatSessionDetailResponse,
     ChatSessionDetails,
     ChatSessionGroup,
-    ChatSessionsResponse,
     ChatSessionShareResponse,
+    ChatSessionsResponse,
     ChatSessionSummary,
     ChatSessionUpdateRequest,
     CurrentRunInfo,

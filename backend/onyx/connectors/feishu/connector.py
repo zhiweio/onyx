@@ -34,6 +34,7 @@ from onyx.connectors.interfaces import (
 from onyx.connectors.models import (
     ConnectorMissingCredentialError,
     Document,
+    HierarchyNode,
     TextSection,
 )
 from onyx.utils.logger import setup_logger
@@ -69,9 +70,7 @@ class FeishuConnector(LoadConnector, PollConnector):
             json_body={"app_id": self._app_id, "app_secret": self._app_secret},
         )
         if data.get("code") not in (0, None):
-            raise ChinaConnectorError(
-                f"Feishu token error: {data.get('msg')}"
-            )
+            raise ChinaConnectorError(f"Feishu token error: {data.get('msg')}")
         return str(data["tenant_access_token"]), int(data.get("expire", 7200))
 
     def _session(self) -> requests.Session:
@@ -132,7 +131,9 @@ class FeishuConnector(LoadConnector, PollConnector):
         self, start: float | None = None, end: float | None = None
     ) -> GenerateDocumentsOutput:
         session = self._session()
-        doc_batch: list[Document] = []
+        # list is invariant: the batch must match the declared
+        # `Iterator[list[Document | HierarchyNode]]` yield type.
+        doc_batch: list[Document | HierarchyNode] = []
 
         for space in self._wiki_spaces(session):
             space_name = clean_identifier(str(space.get("name", "")), "space")
@@ -161,17 +162,15 @@ class FeishuConnector(LoadConnector, PollConnector):
         title = clean_identifier(str(node.get("title", "")), str(node["obj_token"]))
         doc_id = f"feishu-wiki-{node['obj_token']}"
         text = f"{title}\n\n{_strip_html(content).strip()}"
+        node_edit_time = node.get("node_edit_time")
         return Document(
             id=doc_id,
             source=DocumentSource.FEISHU,
             semantic_identifier=f"{space_name}/{title}",
             title=title,
-            text=text,
             sections=[TextSection(text=text, link=node.get("url"))],
             metadata={"space": space_name, "obj_type": "docx"},
-            doc_updated_at=float(node.get("node_edit_time") or None)
-            if node.get("node_edit_time")
-            else None,
+            doc_updated_at=float(node_edit_time) if node_edit_time else None,
         )
 
     def load_from_state(self) -> GenerateDocumentsOutput:
