@@ -183,6 +183,9 @@ from onyx.server.middleware.rate_limiting import (
 )
 from onyx.server.oidc_multi import router as oidc_multi_router
 from onyx.server.onyx_api.ingestion import router as onyx_api_router
+from onyx.server.onyxbot_china_admin_api import (
+    admin_router as onyxbot_china_admin_router,
+)
 from onyx.server.onyxbot_china_api import router as onyxbot_china_router
 from onyx.server.pat.api import router as pat_router
 from onyx.server.query_and_chat.chat_backend import router as chat_router
@@ -630,6 +633,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, settings_admin_router)
     include_router_with_global_prefix_prepended(application, security_admin_router)
     include_router_with_global_prefix_prepended(application, sso_admin_router)
+    include_router_with_global_prefix_prepended(application, onyxbot_china_admin_router)
     include_router_with_global_prefix_prepended(application, agent_models_admin_router)
     include_router_with_global_prefix_prepended(application, audit_report_admin_router)
     include_router_with_global_prefix_prepended(

@@ -131,6 +131,9 @@ export const SWR_KEYS = {
   adminAgentModels: "/api/admin/agent-models",
   adminStandardAnswerCategories: "/api/admin/standard-answers/categories",
 
+  // ── China IM bots ─────────────────────────────────────────────────────────
+  adminOnyxbotChinaStatus: "/api/admin/onyxbot-china/status",
+
   // ── Groups ────────────────────────────────────────────────────────────────
   adminUserGroups: "/api/manage/admin/user-group",
   adminUserGroupsWithDefault:

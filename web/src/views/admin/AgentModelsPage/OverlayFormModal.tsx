@@ -113,7 +113,7 @@ export default function OverlayFormModal({
     >
       <Modal.Content width="md">
         <Modal.Header
-          icon={ADMIN_ROUTES.AGENT_MODELS.icon}
+          icon={ADMIN_ROUTES.LLM_MODELS.icon}
           title={t("form.title")}
           description={t("form.description")}
           onClose={() => {

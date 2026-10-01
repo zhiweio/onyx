@@ -108,6 +108,11 @@ export interface Settings {
   // toggle itself; mcp_gateway_enabled gates the module.
   mcp_gateway_available?: boolean;
 
+  // Sidebar visibility of the international IM bot integrations, toggled on
+  // the IM Bots admin page. Off by default for China-only deployments.
+  slack_integration_visible?: boolean;
+  discord_integration_visible?: boolean;
+
   // Application version from the ONYX_VERSION env var on the server.
   version?: string | null;
   // Hard ceiling for user_file_max_upload_size_mb, derived from env var.

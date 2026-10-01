@@ -65,6 +65,8 @@ export default function AdminSidebar() {
     craftAvailable: settings?.onyx_craft_available ?? false,
     mcpGatewayAvailable: settings?.mcp_gateway_available ?? false,
     mcpGatewayEnabled: settings?.mcp_gateway_enabled ?? false,
+    slackIntegrationVisible: settings?.slack_integration_visible ?? false,
+    discordIntegrationVisible: settings?.discord_integration_visible ?? false,
   };
 
   const allItems = buildItems(adminCapabilities, flags, settings);

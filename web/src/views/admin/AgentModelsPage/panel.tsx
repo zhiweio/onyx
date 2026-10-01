@@ -14,12 +14,10 @@ import {
 import {
   ConfirmationModalLayout,
   IllustrationContent,
-  SettingsLayouts,
   toast,
 } from "@opal/layouts";
 import SvgNoResult from "@opal/illustrations/no-result";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
-import { useAdminRouteTitle } from "@/lib/adminNavLabels";
 import { SWR_KEYS } from "@/lib/swr-keys";
 import { TruncatedTextCell } from "@/components/admin/TableCells";
 import {
@@ -34,10 +32,12 @@ const PAGE_SIZE = 10;
 
 const tc = createTableColumns<AgentModelView>();
 
-export default function AgentModelsPage() {
+/**
+ * Embeddable agent-runtime model registry. Lives as a tab on the Language
+ * Models page — the agent-models route redirects there.
+ */
+export default function AgentModelsPanel() {
   const t = useTranslations("admin.agentModels");
-  const adminRouteTitle = useAdminRouteTitle();
-  const route = ADMIN_ROUTES.AGENT_MODELS;
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -192,68 +192,57 @@ export default function AgentModelsPage() {
   );
 
   return (
-    <SettingsLayouts.Root width="lg" data-testid="agent-models-page">
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={adminRouteTitle(route)}
-        description={t("subtitle")}
-        divider
-        rightChildren={
-          <Button
-            icon={ADMIN_ROUTES.AGENT_MODELS.icon}
-            onClick={() => setFormOpen(true)}
-            data-testid="agent-models-add"
-          >
-            {t("addOverlay")}
-          </Button>
-        }
-      />
-      <SettingsLayouts.Body>
-        <div className="flex flex-col gap-3">
-          <div className="max-w-sm">
-            <InputTypeIn
-              searchIcon
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchPlaceholder")}
-              data-testid="agent-models-search"
-            />
-          </div>
-          <Table
-            data={models}
-            columns={columns}
-            getRowId={(row) => row.model_id}
-            pageSize={PAGE_SIZE}
-            variant="cards"
-            searchTerm={searchTerm}
-            footer={{ units: t("footerUnits") }}
-            emptyState={
-              <IllustrationContent
-                illustration={SvgNoResult}
-                title={
-                  isLoading
-                    ? t("loading")
-                    : error
-                      ? t("loadFailed")
-                      : t("empty")
-                }
-              />
+    <div className="flex flex-col gap-3" data-testid="agent-models-page">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Text as="p" color="text-03">
+          {t("subtitle")}
+        </Text>
+        <Button
+          icon={ADMIN_ROUTES.LLM_MODELS.icon}
+          onClick={() => setFormOpen(true)}
+          data-testid="agent-models-add"
+        >
+          {t("addOverlay")}
+        </Button>
+      </div>
+      <div className="max-w-sm">
+        <InputTypeIn
+          searchIcon
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
+          data-testid="agent-models-search"
+        />
+      </div>
+      <Table
+        data={models}
+        columns={columns}
+        getRowId={(row) => row.model_id}
+        pageSize={PAGE_SIZE}
+        variant="cards"
+        searchTerm={searchTerm}
+        footer={{ units: t("footerUnits") }}
+        emptyState={
+          <IllustrationContent
+            illustration={SvgNoResult}
+            title={
+              isLoading ? t("loading") : error ? t("loadFailed") : t("empty")
             }
           />
-        </div>
-      </SettingsLayouts.Body>
+        }
+      />
 
       <OverlayFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={mutate}
+        onSaved={() => void mutate()}
         catalog={catalog}
       />
 
       {pendingDelete?.overlay ? (
         <ConfirmationModalLayout
-          icon={route.icon}
+          icon={ADMIN_ROUTES.LLM_MODELS.icon}
           title={t("deleteTitle")}
           onClose={() => setPendingDelete(null)}
           submit={
@@ -280,6 +269,6 @@ export default function AgentModelsPage() {
           </Text>
         </ConfirmationModalLayout>
       ) : null}
-    </SettingsLayouts.Root>
+    </div>
   );
 }

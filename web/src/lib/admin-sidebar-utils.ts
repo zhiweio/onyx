@@ -18,7 +18,6 @@ export type { FeatureFlags } from "@/lib/admin-routes";
  */
 export type AdminNavItemId =
   | "languageModels"
-  | "agentModels"
   | "auditReport"
   | "tokenRateLimits"
   | "standardAnswers"
@@ -42,6 +41,7 @@ export type AdminNavItemId =
   | "serviceAccounts"
   | "slackIntegration"
   | "discordIntegration"
+  | "imBots"
   | "users"
   | "groups"
   | "plansAndBilling"
@@ -72,7 +72,6 @@ export const NAV_ITEM_IDS: Record<
   AdminNavItemId | null
 > = {
   LLM_MODELS: "languageModels",
-  AGENT_MODELS: "agentModels",
   AUDIT: "auditReport",
   TOKEN_RATE_LIMITS: "tokenRateLimits",
   STANDARD_ANSWERS: "standardAnswers",
@@ -99,6 +98,7 @@ export const NAV_ITEM_IDS: Record<
   API_KEYS: "serviceAccounts",
   SLACK_BOTS: "slackIntegration",
   DISCORD_BOTS: "discordIntegration",
+  IM_BOTS: "imBots",
   USERS: "users",
   GROUPS: "groups",
   OAUTH_TEST: null,

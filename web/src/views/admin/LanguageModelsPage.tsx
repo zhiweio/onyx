@@ -1,8 +1,9 @@
 "use client";
 
 import { useAdminRouteTitle } from "@/lib/adminNavLabels";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { useAdminLLMProviders } from "@/lib/languageModels/hooks";
 import { PageLoader } from "@opal/layouts";
@@ -13,6 +14,7 @@ import {
   MessageCard,
   SelectCard,
   Switch,
+  Tabs,
   Text,
   Card,
 } from "@opal/components";
@@ -39,8 +41,19 @@ import { Section } from "@/layouts/general-layouts";
 import { markdown } from "@opal/utils";
 import { usePHFeatureFlag, PHFeatureFlag } from "@/lib/analytics/hooks";
 import CostOverridesPanel from "@/views/admin/CostOverridesPanel";
+import AgentModelsPanel from "@/views/admin/AgentModelsPage/panel";
 
 const route = ADMIN_ROUTES.LLM_MODELS;
+
+const AGENT_MODELS_TAB = "agent-models";
+const PROVIDERS_TAB = "providers";
+
+function useLanguageModelsTab(): [string, (tab: string) => void] {
+  const urlTab = useSearchParams().get("tab") ?? PROVIDERS_TAB;
+  const [tab, setTab] = useState(urlTab);
+  useEffect(() => setTab(urlTab), [urlTab]);
+  return [tab, setTab];
+}
 
 function providerDisplayName(provider: LLMProviderView): string {
   return provider.name || getProvider(provider.provider, provider).productName;
@@ -328,6 +341,7 @@ function NewCustomProviderCard({
 export default function LanguageModelsPage() {
   const t = useTranslations("admin.languageModels");
   const adminRouteTitle = useAdminRouteTitle();
+  const [tab, setTab] = useLanguageModelsTab();
   const { mutate } = useSWRConfig();
   const settings = useSettings();
   // Optimistic value while the save is in flight. It also locks the switch so
@@ -468,142 +482,163 @@ export default function LanguageModelsPage() {
       />
 
       <SettingsLayouts.Body>
-        {hasProviders ? (
-          <Card border="solid" rounding={4}>
-            <Section alignItems="stretch">
-              <InputHorizontal
-                title={t("defaultModel.title")}
-                description={t("defaultModel.description")}
-                center
-                withLabel
-              >
-                <ModelSelector
-                  value={defaultModelConfigId}
-                  onChange={(opt) => {
-                    const provider = existingLlmProviders?.find(
-                      (p) =>
-                        p.provider === opt.provider &&
-                        (p.name === opt.name || (!p.name && !opt.name))
-                    );
-                    if (provider) {
-                      void handleDefaultModelChange(
-                        `${provider.id}:${opt.modelName}`
-                      );
-                    }
-                  }}
-                  side="bottom"
-                />
-              </InputHorizontal>
-              {hasProviderGrouping && (
-                <InputHorizontal
-                  title={t("hideProviderGrouping.title")}
-                  description={t("hideProviderGrouping.description")}
-                  withLabel
-                >
-                  <Switch
-                    checked={
-                      pendingHideGrouping ??
-                      settings.hide_provider_grouping ??
-                      false
-                    }
-                    disabled={pendingHideGrouping !== null}
-                    onCheckedChange={(checked) => {
-                      void handleHideProviderGroupingChange(checked);
-                    }}
-                  />
-                </InputHorizontal>
+        <Tabs value={tab} onValueChange={setTab}>
+          <Tabs.List>
+            <Tabs.Trigger value={PROVIDERS_TAB}>
+              {t("tabs.providers")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value={AGENT_MODELS_TAB}>
+              {t("tabs.agentModels")}
+            </Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value={PROVIDERS_TAB}>
+            <div className="flex flex-col gap-2">
+              {hasProviders ? (
+                <Card border="solid" rounding={4}>
+                  <Section alignItems="stretch">
+                    <InputHorizontal
+                      title={t("defaultModel.title")}
+                      description={t("defaultModel.description")}
+                      center
+                      withLabel
+                    >
+                      <ModelSelector
+                        value={defaultModelConfigId}
+                        onChange={(opt) => {
+                          const provider = existingLlmProviders?.find(
+                            (p) =>
+                              p.provider === opt.provider &&
+                              (p.name === opt.name || (!p.name && !opt.name))
+                          );
+                          if (provider) {
+                            void handleDefaultModelChange(
+                              `${provider.id}:${opt.modelName}`
+                            );
+                          }
+                        }}
+                        side="bottom"
+                      />
+                    </InputHorizontal>
+                    {hasProviderGrouping && (
+                      <InputHorizontal
+                        title={t("hideProviderGrouping.title")}
+                        description={t("hideProviderGrouping.description")}
+                        withLabel
+                      >
+                        <Switch
+                          checked={
+                            pendingHideGrouping ??
+                            settings.hide_provider_grouping ??
+                            false
+                          }
+                          disabled={pendingHideGrouping !== null}
+                          onCheckedChange={(checked) => {
+                            void handleHideProviderGroupingChange(checked);
+                          }}
+                        />
+                      </InputHorizontal>
+                    )}
+                  </Section>
+                </Card>
+              ) : (
+                <MessageCard variant="info" title={t("noProviders.title")} />
               )}
-            </Section>
-          </Card>
-        ) : (
-          <MessageCard variant="info" title={t("noProviders.title")} />
-        )}
 
-        {/* ── Available Providers (only when providers exist) ── */}
-        {hasProviders && (
-          <>
-            <GeneralLayouts.Section
-              gap={3}
-              height="fit"
-              alignItems="stretch"
-              justifyContent="start"
-            >
-              <Content
-                title={t("availableProviders.title")}
-                sizePreset="main-content"
-                variant="section"
-              />
-
-              <div className="flex flex-col gap-2">
-                {sortedProviders.map((provider) => (
-                  <ExistingProviderCard
-                    key={provider.id}
-                    provider={provider}
-                    isDefault={defaultText?.provider_id === provider.id}
-                    isLastProvider={sortedProviders.length === 1}
-                  />
-                ))}
-              </div>
-            </GeneralLayouts.Section>
-
-            <Divider paddingParallel={0} paddingPerpendicular={0} />
-          </>
-        )}
-
-        {/* ── LLM configuration disablement notice ── */}
-        {isConfigurationDisabled && (
-          <MessageCard
-            title={t("configurationDisabled.title")}
-            description={t("configurationDisabled.description")}
-            headerPadding={1}
-          />
-        )}
-
-        {/* ── Add Provider groups (always visible) ── */}
-        <Disabled disabled={isConfigurationDisabled}>
-          <div className="@container/providercards flex flex-col gap-8">
-            {providerGroups.map((group) => (
-              <GeneralLayouts.Section
-                key={group.id}
-                gap={3}
-                height="fit"
-                alignItems="stretch"
-                justifyContent="start"
-              >
-                {group.emphasis ? (
-                  <Content
-                    title={group.title}
-                    description={group.description}
-                    sizePreset="main-content"
-                    variant="section"
-                  />
-                ) : (
-                  <Text font="main-ui-action" color="text-03">
-                    {group.title}
-                  </Text>
-                )}
-
-                <div className="grid grid-cols-1 @xl/providercards:grid-cols-2 gap-2">
-                  {group.providerNames.map((name) => (
-                    <NewProviderCard
-                      key={name}
-                      providerName={name}
-                      isFirstProvider={isFirstProvider}
+              {/* ── Available Providers (only when providers exist) ── */}
+              {hasProviders && (
+                <>
+                  <GeneralLayouts.Section
+                    gap={3}
+                    height="fit"
+                    alignItems="stretch"
+                    justifyContent="start"
+                  >
+                    <Content
+                      title={t("availableProviders.title")}
+                      sizePreset="main-content"
+                      variant="section"
                     />
+
+                    <div className="flex flex-col gap-2">
+                      {sortedProviders.map((provider) => (
+                        <ExistingProviderCard
+                          key={provider.id}
+                          provider={provider}
+                          isDefault={defaultText?.provider_id === provider.id}
+                          isLastProvider={sortedProviders.length === 1}
+                        />
+                      ))}
+                    </div>
+                  </GeneralLayouts.Section>
+
+                  <Divider paddingParallel={0} paddingPerpendicular={0} />
+                </>
+              )}
+
+              {/* ── LLM configuration disablement notice ── */}
+              {isConfigurationDisabled && (
+                <MessageCard
+                  title={t("configurationDisabled.title")}
+                  description={t("configurationDisabled.description")}
+                  headerPadding={1}
+                />
+              )}
+
+              {/* ── Add Provider groups (always visible) ── */}
+              <Disabled disabled={isConfigurationDisabled}>
+                <div className="@container/providercards flex flex-col gap-8">
+                  {providerGroups.map((group) => (
+                    <GeneralLayouts.Section
+                      key={group.id}
+                      gap={3}
+                      height="fit"
+                      alignItems="stretch"
+                      justifyContent="start"
+                    >
+                      {group.emphasis ? (
+                        <Content
+                          title={group.title}
+                          description={group.description}
+                          sizePreset="main-content"
+                          variant="section"
+                        />
+                      ) : (
+                        <Text font="main-ui-action" color="text-03">
+                          {group.title}
+                        </Text>
+                      )}
+
+                      <div className="grid grid-cols-1 @xl/providercards:grid-cols-2 gap-2">
+                        {group.providerNames.map((name) => (
+                          <NewProviderCard
+                            key={name}
+                            providerName={name}
+                            isFirstProvider={isFirstProvider}
+                          />
+                        ))}
+                        {group.includeCustom && (
+                          <NewCustomProviderCard
+                            isFirstProvider={isFirstProvider}
+                          />
+                        )}
+                      </div>
+                    </GeneralLayouts.Section>
                   ))}
-                  {group.includeCustom && (
-                    <NewCustomProviderCard isFirstProvider={isFirstProvider} />
-                  )}
                 </div>
-              </GeneralLayouts.Section>
-            ))}
-          </div>
-        </Disabled>
+              </Disabled>
 
-        <Divider paddingParallel={0} paddingPerpendicular={0} />
+              <Divider paddingParallel={0} paddingPerpendicular={0} />
 
-        {/* ── Cost Overrides — negotiated per-model rates for usage costing ── */}
-        <CostOverridesPanel />
+              {/* ── Cost Overrides — negotiated per-model rates for usage costing ── */}
+              <CostOverridesPanel />
+            </div>
+          </Tabs.Content>
+
+          <Tabs.Content value={AGENT_MODELS_TAB}>
+            <AgentModelsPanel />
+          </Tabs.Content>
+        </Tabs>
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

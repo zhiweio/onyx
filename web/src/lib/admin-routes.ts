@@ -53,6 +53,8 @@ export interface FeatureFlags {
   craftAvailable: boolean;
   mcpGatewayAvailable: boolean;
   mcpGatewayEnabled: boolean;
+  slackIntegrationVisible: boolean;
+  discordIntegrationVisible: boolean;
 }
 
 /**
@@ -133,16 +135,6 @@ export const ADMIN_ROUTES = {
     title: "Audit Report",
     sidebarLabel: "Audit Report",
     requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
-    section: "",
-    requiredTier: null,
-    visibleWhen: null,
-  },
-  AGENT_MODELS: {
-    path: "/admin/agent-models",
-    icon: SvgCpu,
-    title: "Agent Models",
-    sidebarLabel: "Agent Models",
-    requiredPermission: Permission.MANAGE_LLMS,
     section: "",
     requiredTier: null,
     visibleWhen: null,
@@ -371,13 +363,23 @@ export const ADMIN_ROUTES = {
     requiredPermission: Permission.MANAGE_BOTS,
     section: "Integrations",
     requiredTier: null,
-    visibleWhen: null,
+    visibleWhen: (f: FeatureFlags) => f.slackIntegrationVisible,
   },
   DISCORD_BOTS: {
     path: "/admin/discord-bot",
     icon: SvgDiscord,
     title: "Discord Integration",
     sidebarLabel: "Discord Integration",
+    requiredPermission: Permission.MANAGE_BOTS,
+    section: "Integrations",
+    requiredTier: null,
+    visibleWhen: (f: FeatureFlags) => f.discordIntegrationVisible,
+  },
+  IM_BOTS: {
+    path: "/admin/im-bots",
+    icon: SvgBubbleText,
+    title: "IM Bots",
+    sidebarLabel: "IM Bots",
     requiredPermission: Permission.MANAGE_BOTS,
     section: "Integrations",
     requiredTier: null,
@@ -502,7 +504,7 @@ export const VECTOR_DB_REQUIRED_ROUTE_PREFIXES: readonly string[] = [
 
 export function isVectorDbRequiredRoute(pathname: string): boolean {
   return VECTOR_DB_REQUIRED_ROUTE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix),
+    pathname.startsWith(prefix)
   );
 }
 

@@ -16,7 +16,6 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
   return useMemo<Record<AdminNavItemId, string>>(
     () => ({
       languageModels: t("adminNav.items.languageModels.label"),
-      agentModels: t("adminNav.items.agentModels.label"),
       auditReport: t("adminNav.items.auditReport.label"),
       tokenRateLimits: t("adminNav.items.tokenRateLimits.label"),
       standardAnswers: t("adminNav.items.standardAnswers.label"),
@@ -40,6 +39,7 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       serviceAccounts: t("adminNav.items.serviceAccounts.label"),
       slackIntegration: t("adminNav.items.slackIntegration.label"),
       discordIntegration: t("adminNav.items.discordIntegration.label"),
+      imBots: t("adminNav.items.imBots.label"),
       users: t("adminNav.items.users.label"),
       groups: t("adminNav.items.groups.label"),
       plansAndBilling: t("adminNav.items.plansAndBilling.label"),

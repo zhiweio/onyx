@@ -109,6 +109,11 @@ class Settings(BaseModel):
     # Users may create personal MCP servers. Default on.
     personal_mcp_enabled: bool = True
 
+    # Sidebar visibility of the international IM bot integrations. Off by
+    # default for China-only deployments; the routes stay deep-link reachable.
+    slack_integration_visible: bool = False
+    discord_integration_visible: bool = False
+
     # Seat usage - populated by license enforcement when seat limit is exceeded
     seat_count: int | None = None
     used_seats: int | None = None
