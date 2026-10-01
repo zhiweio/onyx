@@ -93,12 +93,17 @@ interface ChatPromptEditorProps {
   toolbarTrailing?: ReactNode;
   submitControl?: ReactNode;
 
+  /** Collapse large pastes into editable tiles (the paste_as_tile pref). */
+  pasteTilesEnabled?: boolean;
+
   /** External-file drag overlay; requires onDropFiles. */
   dragOverlayHint?: string;
   onDropFiles?: (files: File[]) => void;
   onPasteFiles?: (files: File[]) => void;
 
   inputTestId?: string;
+  /** DOM id for the editable element (e2e continuity). */
+  inputId?: string;
   /** DOM id for the primary-action button (e2e continuity). */
   submitButtonId?: string;
   editorRef?: RefObject<LexicalPromptInputHandle | null>;
@@ -142,7 +147,9 @@ function ChatPromptEditor({
   onDropFiles,
   onPasteFiles,
   inputTestId,
+  inputId,
   submitButtonId,
+  pasteTilesEnabled = false,
   editorRef,
   initialValue,
   className,
@@ -476,6 +483,8 @@ function ChatPromptEditor({
           onMentionsChange={onMentionsChange}
           onFocus={onFocus}
           inputTestId={inputTestId}
+          inputId={inputId}
+          pasteTilesEnabled={pasteTilesEnabled}
           editorApiRef={resolvedEditorRef}
           promptHistory={effectiveHistory}
           slashTrigger={slashTrigger}
