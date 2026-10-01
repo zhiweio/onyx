@@ -666,6 +666,11 @@ class ExternalAppType(str, PyEnum):
     GITHUB = "GITHUB"
     HUBSPOT = "HUBSPOT"
     NOTION = "NOTION"
+    # China workplace platforms
+    FEISHU = "FEISHU"
+    DINGTALK = "DINGTALK"
+    WECOM = "WECOM"
+    WPS365 = "WPS365"
     CUSTOM = "CUSTOM"
 
     @property

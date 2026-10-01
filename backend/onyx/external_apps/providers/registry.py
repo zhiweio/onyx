@@ -10,6 +10,8 @@ from onyx.external_apps.models import (
 )
 from onyx.external_apps.providers.actions import EndpointSpec
 from onyx.external_apps.providers.base import ExternalAppProvider, OnyxManagedExtApp
+from onyx.external_apps.providers.dingtalk import DingTalkProvider
+from onyx.external_apps.providers.feishu import FeishuProvider
 from onyx.external_apps.providers.github import GitHubProvider
 from onyx.external_apps.providers.gmail import GmailProvider
 from onyx.external_apps.providers.google_calendar import GoogleCalendarProvider
@@ -18,6 +20,8 @@ from onyx.external_apps.providers.hubspot import HubspotProvider
 from onyx.external_apps.providers.linear import LinearProvider
 from onyx.external_apps.providers.notion import NotionProvider
 from onyx.external_apps.providers.slack import SlackProvider
+from onyx.external_apps.providers.wecom import WeComProvider
+from onyx.external_apps.providers.wps365 import WPS365Provider
 from shared_configs.configs import MULTI_TENANT
 
 _PROVIDER_CLASSES: list[type[ExternalAppProvider]] = [
@@ -29,6 +33,10 @@ _PROVIDER_CLASSES: list[type[ExternalAppProvider]] = [
     GitHubProvider,
     HubspotProvider,
     NotionProvider,
+    FeishuProvider,
+    DingTalkProvider,
+    WeComProvider,
+    WPS365Provider,
 ]
 
 
