@@ -218,7 +218,7 @@ def test_wrapped_creation_failure_records_the_original_exception(
     assert check_result["error_type"] == "RuntimeError"
 
 
-@pytest.mark.usefixtures("tenant_context", "enable_ee")
+@pytest.mark.usefixtures("tenant_context")
 def test_sync_success_mirrors_the_outcome_onto_perm_sync(
     db_session: Session,
     blocking_validation: tuple[ConnectorCredentialPair, MagicMock],

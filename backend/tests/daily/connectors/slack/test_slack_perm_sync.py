@@ -22,7 +22,6 @@ PRIVATE_CHANNEL_USERS = [
 OLDEST_TS_2016 = datetime(2016, 1, 1, tzinfo=timezone.utc).timestamp()
 
 pytestmark = [
-    pytest.mark.usefixtures("enable_ee"),
     pytest.mark.secrets(TestSecret.SLACK_BOT_TOKEN),
 ]
 

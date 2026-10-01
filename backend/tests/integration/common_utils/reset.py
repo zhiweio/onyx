@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import psycopg2
 from alembic import command
 from alembic.config import Config
-from sqlalchemy.orm import Session
 
 from onyx.configs.app_configs import (
     POSTGRES_HOST,
@@ -293,28 +292,12 @@ def reset_postgres(
         logger.info("Setting up Postgres...")
         with get_session_with_current_tenant() as db_session:
             setup_postgres(db_session)
-            _seed_dev_license_if_set(db_session)
             # Promote the FUTURE search-settings row (danswer_chunk_<model>) to
             # PRESENT so secondary_search_settings is None and the api_server
             # doesn't have to perform the swap mid-request. Previously this
             # lived in reset_vespa(); when Vespa was deprecated the swap call
             # needs to stay.
             check_and_perform_index_swap(db_session)
-
-
-def _seed_dev_license_if_set(db_session: Session) -> None:
-    """Seed the ONYX_DEV_LICENSE blob into the License table.
-
-    This build ships Community Edition only; the license machinery belongs
-    to the Enterprise Edition and is not present. No-op in all cases.
-    """
-    blob = os.environ.get("ONYX_DEV_LICENSE", "").strip()
-    if not blob:
-        return
-    logger.warning(
-        "ONYX_DEV_LICENSE is set but this build has no Enterprise Edition; "
-        "dev license seeding is skipped."
-    )
 
 
 def reset_postgres_multitenant() -> None:

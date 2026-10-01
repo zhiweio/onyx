@@ -9,11 +9,8 @@ port copy -- not a connector re-fetch -- can land them in the new index. Reindex
 current model always creates a new ALT index, so a changed index_name is proof the swap ran.
 """
 
-import os
 import time
 from uuid import uuid4
-
-import pytest
 
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
 from onyx.db.enums import AccessType, SwitchoverType
@@ -29,11 +26,6 @@ from tests.integration.common_utils.test_models import (
     DATestAPIKey,
     DATestLLMProvider,
     DATestUser,
-)
-
-_EE_ONLY = pytest.mark.skipif(
-    os.environ.get("ENABLE_PAID_ENTERPRISE_EDITION_FEATURES", "").lower() != "true",
-    reason="User group permissions are Enterprise-only",
 )
 
 
@@ -81,7 +73,6 @@ def test_reindex_port_happy_path(
         assert _search_finds(content, admin_user)
 
 
-@_EE_ONLY
 def test_reindex_port_preserves_acls(
     reset: None,  # noqa: ARG001
     admin_user: DATestUser,

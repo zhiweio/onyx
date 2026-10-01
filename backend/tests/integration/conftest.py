@@ -88,7 +88,6 @@ from tests.integration.common_utils.managers.user_group import (  # noqa: E402
     UserGroupManager,
 )
 from tests.integration.common_utils.reset import (  # noqa: E402
-    _seed_dev_license_if_set,
     reset_all,
     reset_all_multitenant,
 )
@@ -321,20 +320,6 @@ def _test_client(
             yield test_client
         finally:
             http_client.set_test_client(None)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def seed_dev_license_for_session(initialize_db: None) -> None:  # noqa: ARG001
-    # ``reset_postgres`` re-seeds the dev license after every wipe, but tests
-    # that don't take the ``reset`` fixture would otherwise hit Business-tier
-    # endpoints (e.g. /admin/api-key) with no License row and 402. Seed once at
-    # session start; no-op when ONYX_DEV_LICENSE is unset. Skip in multi-tenant
-    # mode: License rows live in tenant schemas, and the public-schema session
-    # here would seed into the wrong place.
-    if MULTI_TENANT:
-        return
-    with get_session_with_current_tenant() as db_session:
-        _seed_dev_license_if_set(db_session)
 
 
 """NOTE: for some reason using this seems to lead to misc

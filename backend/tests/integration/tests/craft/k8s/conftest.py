@@ -87,12 +87,6 @@ def _test_client() -> Generator[httpx.Client, None, None]:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def seed_dev_license_for_session() -> None:
-    """No-op override; no API routes requiring a dev license are called."""
-    return None
-
-
-@pytest.fixture(scope="session", autouse=True)
 def _module_reset_and_seed(  # noqa: ARG001
     _test_client: httpx.Client,
 ) -> Generator[DATestUser, None, None]:

@@ -30,24 +30,9 @@ from onyx.server.query_and_chat.streaming_models import (
     Packet,
     ReasoningStart,
 )
-from onyx.utils.variable_functionality import global_version
 
 MODEL_REFUSAL_ERROR_CODE = "MODEL_REFUSAL"
 CONTENT_FILTER_FINISH_REASON = "content_filter"
-
-
-@pytest.fixture(autouse=True)
-def _restore_ee_version() -> Generator[None, None, None]:
-    """Reset EE global state after each test.
-
-    Importing onyx.chat.process_message triggers set_is_ee_based_on_env_variable()
-    (via the celery client import chain).  Without this fixture, the EE flag stays
-    True for the rest of the session and breaks unrelated tests that mock Confluence
-    or other connectors and assume EE is disabled.
-    """
-    original = global_version._is_ee
-    yield
-    global_version._is_ee = original
 
 
 # ---------------------------------------------------------------------------

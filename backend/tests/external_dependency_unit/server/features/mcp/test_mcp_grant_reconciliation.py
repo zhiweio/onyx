@@ -13,7 +13,6 @@ from tests.external_dependency_unit.conftest import create_test_user
 
 def test_omitted_mcp_grant_dimensions_are_preserved(
     db_session: Session,
-    enable_ee: None,  # noqa: ARG001
 ) -> None:
     user = create_test_user(db_session, "mcp_grant_reconcile", is_admin=True)
     group = UserGroup(name=f"mcp_grant_{uuid4().hex[:8]}", is_up_to_date=True)
