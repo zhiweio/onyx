@@ -6,10 +6,7 @@ import { BuildFile } from "@/app/craft/contexts/UploadFilesContext";
 import { useVideoBackgroundToggleClick } from "@/app/craft/components/video-background/useVideoBackgroundToggleClick";
 import Text from "@/refresh-components/texts/Text";
 import { Logo } from "@/lib/app/components";
-import CraftInputBar, {
-  CraftInputBarHandle,
-  type CraftInputBarProps,
-} from "@/app/craft/components/CraftInputBar";
+import CraftComposer from "@/app/craft/components/composer/CraftComposer";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import SuggestedPrompts from "@/app/craft/components/SuggestedPrompts";
 import ConnectDataBanner from "@/app/craft/components/ConnectDataBanner";
@@ -26,6 +23,9 @@ import { resolveToolHints } from "@/lib/skills/toolHints";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
+import { defaultEntryToMention } from "@/sections/input/lexical";
+import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
+import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
 import type { ExamplePromptSelection } from "@/app/craft/constants/exampleBuildPrompts";
 
 interface BuildWelcomeProps {
@@ -33,18 +33,25 @@ interface BuildWelcomeProps {
     message: string,
     files: BuildFile[],
     selection: SlashSelection,
-    model?: BuildLlmSelection | null
+    model?: BuildLlmSelection | null,
   ) => void;
   isRunning: boolean;
-  /** When true, shows spinner on send button with "Initializing sandbox..." tooltip */
+  /** When true, the composer is disabled while the sandbox starts. */
   sandboxInitializing?: boolean;
-  thoughtLevel?: CraftInputBarProps["thoughtLevel"];
+  thoughtLevel?: {
+    value: ReasoningEffortOverride | null;
+    onChange: (effort: ReasoningEffortOverride) => void;
+    supportsReasoning: boolean;
+    supportedEfforts?: ReasoningEffortOverride[];
+    effortMax?: ReasoningEffortOverride | null;
+    fallback?: ReasoningEffortOverride | null;
+  } | null;
 }
 
 /**
  * BuildWelcome - Welcome screen shown when no session exists
  *
- * Displays a centered welcome message and input bar to start a new build.
+ * Displays a centered welcome message and composer to start a new build.
  */
 export default function BuildWelcome({
   onSubmit,
@@ -53,9 +60,9 @@ export default function BuildWelcome({
   thoughtLevel,
 }: BuildWelcomeProps) {
   const t = useTranslations("craft.welcome");
-  const inputBarRef = useRef<CraftInputBarHandle>(null);
+  const editorRef = useRef<LexicalPromptInputHandle | null>(null);
   const [selectedModel, setSelectedModel] = useState<BuildLlmSelection | null>(
-    null
+    null,
   );
   const handleWordmarkClick = useVideoBackgroundToggleClick();
   const { isAdmin, hasAnyProvider, isLoading } = useOnboarding();
@@ -65,7 +72,7 @@ export default function BuildWelcome({
   const { data: craftMcpData } = useCraftMcpServers();
   const pickerSections = useMemo(
     () => toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
-    [skillsData, appsData, craftMcpData]
+    [skillsData, appsData, craftMcpData],
   );
 
   // Craft can't build without a supported provider: inputs stay gated until
@@ -74,23 +81,27 @@ export default function BuildWelcome({
   const setupPending = !isLoading && !hasAnyProvider;
 
   const handlePromptClick = (prompt: ExamplePromptSelection) => {
-    inputBarRef.current?.setMessage(prompt.fullText);
+    const handle = editorRef.current;
+    if (!handle) {
+      return;
+    }
+    handle.setText(prompt.fullText);
     const resolved = resolveToolHints(
       prompt.toolHints,
       pickerSections.skills,
-      pickerSections.mcpServers
+      pickerSections.mcpServers,
     );
     const entries = pickerEntriesFromSelection(pickerSections, {
       skillIds: resolved.skillIds,
       mcpServerIds: resolved.mcpServerIds,
     });
-    if (entries.length > 0) {
-      inputBarRef.current?.setEntries(entries);
+    for (const entry of entries) {
+      handle.insertMention(defaultEntryToMention(entry, "/"));
     }
   };
 
   return (
-    // Mirror the main app's empty-state grid (`1fr auto 1fr`) so the input bar
+    // Mirror the main app's empty-state grid (`1fr auto 1fr`) so the composer
     // centers vertically at the same position: wordmark pinned above it, the
     // supporting content below.
     <div
@@ -136,16 +147,18 @@ export default function BuildWelcome({
 
       <div className="row-start-2 w-full flex flex-col items-center">
         <div className="w-full max-w-(--app-page-main-content-width)">
-          <CraftInputBar
-            ref={inputBarRef}
+          <CraftComposer
+            sessionId={null}
+            editorHandleRef={editorRef}
             onSubmit={(message, files, selection) =>
               onSubmit(message, files, selection, selectedModel)
             }
             isRunning={isRunning}
             placeholder={t("input.placeholder")}
-            sandboxInitializing={sandboxInitializing}
-            disabled={!hasAnyProvider}
+            disabled={!hasAnyProvider || sandboxInitializing}
             thoughtLevel={thoughtLevel}
+            modelSelection={null}
+            onModelChange={() => undefined}
           />
         </div>
       </div>

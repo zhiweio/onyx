@@ -64,7 +64,8 @@ interface CraftComposerProps {
     files: BuildFile[],
     selection: SlashSelection,
   ) => void;
-  onQueueMessage: (
+  /** Absent on the welcome screen, where there is no session to queue into. */
+  onQueueMessage?: (
     message: string,
     files: BuildFile[],
     selection: SlashSelection,
@@ -304,6 +305,9 @@ function CraftComposer({
 
   const handleQueueMessage = useCallback(
     (text: string): boolean => {
+      if (!onQueueMessage) {
+        return false;
+      }
       const mentions = editorRef.current?.getMentions() ?? [];
       const selection = selectionFromMentions(mentions);
       onQueueMessage(text, currentMessageFiles, selection);
