@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "Tools suchen..."
+        },
+        "pagination": {
+          "units": "Einträge"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "Die Einstellungen konnten nicht aktualisiert werden",
         "settingsUpdated": "Einstellungen aktualisiert",
         "unknownError": "Unbekannter Fehler"
+      },
+      "tabs": {
+        "providers": "Modellanbieter",
+        "agentModels": "Agent-Sandbox-Modelle"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "Als Standard festlegen"
         }
+      },
+      "pagination": {
+        "units": "Einträge"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "Query"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "Status und Callback-URLs der DingTalk-, WeCom- und Feishu-Bots."
+      },
+      "status": {
+        "noProvider": "Kein aktiver Anbieter",
+        "ready": "Bot bereit",
+        "notReady": "Bot-Zugangsdaten fehlen",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, =1 {# gebundener Nutzer} other {# gebundene Nutzer}}"
+      },
+      "verify": {
+        "button": "Prüfen",
+        "buttonRunning": "Prüfen…",
+        "ok": "Zugangsdaten gültig",
+        "failed": "Prüfung fehlgeschlagen"
+      },
+      "configureButton": "Konfigurieren",
+      "callbackUrl": {
+        "copyButton": "URL kopieren",
+        "copied": "Callback-URL kopiert",
+        "copyFailed": "Kopieren fehlgeschlagen",
+        "hint": "Diese URL beim Abonnieren von Bot-Ereignissen in der offenen Konsole der Plattform eintragen."
+      },
+      "visibility": {
+        "title": "Sidebar-Integrationen",
+        "slack": {
+          "title": "Slack-Integration",
+          "description": "Die Slack-Bot-Seiten in der Admin-Sidebar anzeigen."
+        },
+        "discord": {
+          "title": "Discord-Integration",
+          "description": "Die Discord-Bot-Seiten in der Admin-Sidebar anzeigen."
+        },
+        "saved": "Sidebar aktualisiert",
+        "saveFailed": "Aktualisierung fehlgeschlagen"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "Durchsuchen Sie das Web nach Echtzeitinformationen und aktuellen Ergebnissen.",
           "title": "Websuche"
+        },
+        "pagination": {
+          "units": "Einträge"
         }
       },
       "advanced": {
@@ -12178,6 +12229,9 @@
           "notAvailable": "Für dein Konto nicht verfügbar: Frag einen Admin",
           "skillWarningAriaLabel": "Skill-Einrichtung erforderlich",
           "skillWarningTooltip": "Nicht alle verknüpften Skills sind aktiviert. Diese App funktioniert möglicherweise nicht richtig."
+        },
+        "pagination": {
+          "units": "Einträge"
         }
       },
       "policyEditor": {
@@ -12913,16 +12967,101 @@
         "ariaLabel": "Close suggestions"
       },
       "engineering": {
-        "label": "Technik"
+        "label": "Technik",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "On-Call-Rotationen verfolgen und den Wochenplan in Slack posten",
+            "fullText": "Richte aus PagerDuty und Slack einen On-Call-Planer ein und poste jede Woche in Slack, wer eingeteilt ist."
+          },
+          "eng-sprint-health": {
+            "summary": "Ein Sprint-Health-Dashboard aus den Linear-Zyklen bauen",
+            "fullText": "Erstelle ein Sprint-Health-Dashboard aus unseren Linear-Zyklusdaten."
+          },
+          "eng-release-notes": {
+            "summary": "Release Notes aus den gemergten PRs eines Meilensteins erzeugen",
+            "fullText": "Erstelle Release Notes aus den gemergten PRs dieses Meilensteins."
+          }
+        }
       },
       "marketing": {
-        "label": "Marketing"
+        "label": "Marketing",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "Vertrieb-Call-Transkripte in einen SEO-Keyword-Report verwandeln",
+            "fullText": "Verwandle die Transkripte der Verkaufscalls in einen SEO-Keyword-Research-Report."
+          },
+          "marketing-customer-story": {
+            "summary": "Aus Interview-Transkripten ein einseitiges Kundenzusammenfassung bauen",
+            "fullText": "Erstelle aus den Interview-Transkripten eine einseitige Customer-Story."
+          },
+          "marketing-social-posts": {
+            "summary": "Markenkonforme Social-Posts aus diesem Launch-Dokument entwerfen",
+            "fullText": "Entwirf aus diesem Launch-Dokument markenkonforme Social-Media-Posts."
+          }
+        }
       },
       "product": {
-        "label": "Produkt"
+        "label": "Produkt",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "Fasse mir alles zusammen, was heute in meinen Projekten passiert ist",
+            "fullText": "Gib mir ein Tages-Briefing: Was ist heute in jedem meiner Projekte passiert?"
+          },
+          "product-prototype": {
+            "summary": "Dieses PRD in einen klickbaren Prototypen für Nutzertests verwandeln",
+            "fullText": "Verwandle dieses PRD in einen klickbaren Prototypen für Nutzertests."
+          },
+          "product-roadmap": {
+            "summary": "Einen Roadmap-Tracker aus den Linear-Projekten aufsetzen",
+            "fullText": "Richte aus unseren Linear-Projekten einen Roadmap-Tracker ein."
+          },
+          "product-feature-matrix": {
+            "summary": "Eine Wettbewerber-Funktionsvergleichsmatrix erstellen",
+            "fullText": "Erstelle eine Funktionsvergleichsmatrix mit den Wettbewerbern."
+          }
+        }
       },
       "sales": {
-        "label": "Vertrieb"
+        "label": "Vertrieb",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "Vor jedem Call eine einseitige Account-Briefing aus Salesforce, Slack und Gong",
+            "fullText": "Erstelle vor jedem Kundenanruf ein einseitiges Account-Briefing aus Salesforce, Slack und Gong."
+          },
+          "sales-winloss": {
+            "summary": "Die gewonnenen Deals dieses Quartals in ein Win/Loss-Dashboard überführen",
+            "fullText": "Verwandle die gewonnenen Deals dieses Quartals in ein Win/Loss-Dashboard."
+          },
+          "sales-battlecard": {
+            "summary": "Eine Wettbewerber-Battlecard aus aktuellen Verlust-Call-Transkripten erstellen",
+            "fullText": "Erstelle aus den Transkripten kürzlich verlorener Calls eine Wettbewerber-Battlecard."
+          },
+          "sales-pipeline-tracker": {
+            "summary": "Einen Pipeline-Tracker aufsetzen, der Deals ohne Aktivität seit 14 Tagen markiert",
+            "fullText": "Richte einen Pipeline-Tracker ein, der Deals ohne Aktivität in den letzten 14 Tagen markiert."
+          }
+        }
+      },
+      "financeTax": {
+        "label": "Finanzen & Steuern",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "Die drei Monatesabschlüsse zu einer Management-Präsentation machen",
+            "fullText": "Erstelle aus der hochgeladenen Gewinn- und Verlustrechnung, Bilanz und Kostenaufstellung ein monatliches Finanz- und Steuerverriebsdeck: Umsatz- und Gewinntwicklung, Kostenabweichungen, Steuerlast und Cashflow, Risiken und Maßnahmen."
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "Die neueste Steuerpolitik als Präsentationsdeck erklären",
+            "fullText": "Erläutere dieses aktuelle Steuerdokument und erstelle ein Deck für die Fachabteilungen: Kernpunkte, Vorher-Nachher-Vergleich, Auswirkungen auf uns, Maßnahmen und Zeitplan."
+          },
+          "finance-compliance-check": {
+            "summary": "Eine Steuer-Compliance-Bestandsaufnahme für das Unternehmen durchführen",
+            "fullText": "Führe eine Steuer-Compliance-Prüfung für unser Unternehmen durch: Konsistenz der Erklärungen, Angemessenheit der Steuerlast, Wirksamkeit der internen Kontrolle, Betrugswarnsignale und Beantragung von Vergünstigungen — mit Bericht und Maßnahmenliste."
+          },
+          "finance-vat-workpaper": {
+            "summary": "Umsatzsteuer-Arbeitspapiere und Vorab-Checkliste erstellen",
+            "fullText": "Erstelle aus dem Rechnungsjournal und den Büchern dieses Monats die Umsatzsteuer-Arbeitspapiere: Vor-/Ich-Steuer-Abgleich, Steuerberechnung, Prüfung der anzuwendenden Sätze sowie eine Checkliste vor der Abgabe."
+          }
+        }
       }
     },
     "tasks": {
@@ -15574,11 +15713,11 @@
         "standardAnswers": {
           "label": "Standard Answers"
         },
-        "agentModels": {
-          "label": "Agent Models"
-        },
         "auditReport": {
           "label": "Audit Report"
+        },
+        "imBots": {
+          "label": "IM-Bots"
         }
       },
       "sections": {

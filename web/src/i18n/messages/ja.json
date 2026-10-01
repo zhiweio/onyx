@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "ツールを検索..."
+        },
+        "pagination": {
+          "units": "件"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "設定の更新に失敗しました",
         "settingsUpdated": "設定を更新しました",
         "unknownError": "不明なエラー"
+      },
+      "tabs": {
+        "providers": "モデルプロバイダー",
+        "agentModels": "エージェントサンドボックスモデル"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "デフォルトに設定"
         }
+      },
+      "pagination": {
+        "units": "件"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "Query"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "DingTalk・WeCom・Feishu ボットの状態とコールバック URL。"
+      },
+      "status": {
+        "noProvider": "有効なプロバイダーなし",
+        "ready": "ボット準備完了",
+        "notReady": "ボット資格情報が不足",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, other {バインド済みユーザー # 名}}"
+      },
+      "verify": {
+        "button": "検証",
+        "buttonRunning": "検証中…",
+        "ok": "資格情報は有効です",
+        "failed": "検証に失敗しました"
+      },
+      "configureButton": "設定する",
+      "callbackUrl": {
+        "copyButton": "URL をコピー",
+        "copied": "コールバック URL をコピーしました",
+        "copyFailed": "コピーできませんでした",
+        "hint": "プラットフォームのオープンコンソールでボットイベントを購読する際にこの URL を設定してください。"
+      },
+      "visibility": {
+        "title": "サイドバーの統合",
+        "slack": {
+          "title": "Slack 連携",
+          "description": "管理サイドバーに Slack ボットページを表示します。"
+        },
+        "discord": {
+          "title": "Discord 連携",
+          "description": "管理サイドバーに Discord ボットページを表示します。"
+        },
+        "saved": "サイドバーを更新しました",
+        "saveFailed": "更新に失敗しました"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "リアルタイムの情報と最新の結果をウェブで検索します。",
           "title": "ウェブ検索"
+        },
+        "pagination": {
+          "units": "件"
         }
       },
       "advanced": {
@@ -12178,6 +12229,9 @@
           "notAvailable": "お使いのアカウントでは利用できません。管理者にお問い合わせください",
           "skillWarningAriaLabel": "スキルの設定が必要です",
           "skillWarningTooltip": "一部の関連スキルが無効です。このアプリは正しく動作しない可能性があります。"
+        },
+        "pagination": {
+          "units": "件"
         }
       },
       "policyEditor": {
@@ -12913,16 +12967,101 @@
         "ariaLabel": "Close suggestions"
       },
       "engineering": {
-        "label": "エンジニアリング"
+        "label": "エンジニアリング",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "オンコール当番を追跡し毎週の表を Slack に投稿",
+            "fullText": "PagerDuty と Slack からオンコール当番トラッカーを作成し、毎週 Slack に今週の当番を通知する。"
+          },
+          "eng-sprint-health": {
+            "summary": "Linear のサイクルデータからスプリント健全性ダッシュボードを作成",
+            "fullText": "Linear のサイクルデータからスプリント健全性ダッシュボードを作成してください。"
+          },
+          "eng-release-notes": {
+            "summary": "マイルストーンのマージ済み PR からリリースノートを作成",
+            "fullText": "このマイルストーンのマージ済み PR からリリースノートを生成してください。"
+          }
+        }
       },
       "marketing": {
-        "label": "マーケティング"
+        "label": "マーケティング",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "営業通話の書き起こしからSEOキーワード調査レポートを作成",
+            "fullText": "営業通話の書き起こしからSEOキーワード調査レポートを作成してください。"
+          },
+          "marketing-customer-story": {
+            "summary": "インタビュー記録から顧客ストーリーの1枚資料を作成",
+            "fullText": "インタビューの書き起こしから顧客ストーリーの1枚資料を作成してください。"
+          },
+          "marketing-social-posts": {
+            "summary": "製品発表資料からブランドトーンに合ったSNS投稿を作成",
+            "fullText": "この製品発表資料から、ブランドトーンに合ったSNS投稿を草案してください。"
+          }
+        }
       },
       "product": {
-        "label": "プロダクト"
+        "label": "プロダクト",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "今日の全プロジェクトの出来事をブリーフィング",
+            "fullText": "今日のブリーフィングをしてください：私が関わっているすべてのプロジェクトで起きたことを教えてください。"
+          },
+          "product-prototype": {
+            "summary": "このPRDをクリック可能なプロトタイプに変換してユーザーテストに使う",
+            "fullText": "このPRDをクリック可能なプロトタイプに変換し、ユーザーテストに使えるようにしてください。"
+          },
+          "product-roadmap": {
+            "summary": "Linearプロジェクトからロードマップトラッカーを作成",
+            "fullText": "Linearのプロジェクトからロードマップトラッカーを作成してください。"
+          },
+          "product-feature-matrix": {
+            "summary": "競合機能比較マトリクスを作成",
+            "fullText": "競合他社との機能比較マトリクスを作成してください。"
+          }
+        }
       },
       "sales": {
-        "label": "セールス"
+        "label": "セールス",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "毎回のコール前に Salesforce・Slack・Gong から1ページの顧客概要を作成",
+            "fullText": "顧客コールの前に、Salesforce・Slack・Gong から1ページの顧客概要を作成してください。"
+          },
+          "sales-winloss": {
+            "summary": "今四半期の受注案件を勝敗ダッシュボードにまとめる",
+            "fullText": "今四半期の受注案件を勝敗ダッシュボードにまとめてください。"
+          },
+          "sales-battlecard": {
+            "summary": "最近の失注商談の通話記録から競合バトルカードを作成",
+            "fullText": "最近の失注商談の通話記録から競合バトルカードを作成してください。"
+          },
+          "sales-pipeline-tracker": {
+            "summary": "14日間活動のない商談を検知するパイプライントラッカーを作成",
+            "fullText": "14日間活動がない商談を検知するパイプライントラッカーを作成してください。"
+          }
+        }
+      },
+      "financeTax": {
+        "label": "財務・税務",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "今月の三つの財務諸表を経営層向け資料に",
+            "fullText": "アップロードした今月の損益計算書・貸借対照表・費用明細から、月次の経営・財税報告資料を作成してください：収益と利益の概要、費用変動の要因、税負担とキャッシュフロー、リスクとアクション項目。"
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "最新の税制改正を読み解き啓発資料を作成",
+            "fullText": "この最新の税制改正文書を解説し、事業部門向けの啓発資料を作成してください：ポイント、改正前後の比較、当社への影響、対応策とスケジュール。"
+          },
+          "finance-compliance-check": {
+            "summary": "会社の税務コンプライアンス診断を実施",
+            "fullText": "当社の税務コンプライアンス診断を行ってください：申告の一貫性、税負担の妥当性、内部統制の有効性、不正の危険信号、優遇措置の届出状況の5項目を確認し、診断レポートと改善リストを作成する。"
+          },
+          "finance-vat-workpaper": {
+            "summary": "増値税申告の作業底稿とチェックリストを作成",
+            "fullText": "請求書台帳と今月の帳簿から、増値税申告の作業底稿を準備してください：仕入・売上の突合、税額計算、適用税率の確認、并提出前チェックリストを作成する。"
+          }
+        }
       }
     },
     "tasks": {
@@ -15574,11 +15713,11 @@
         "standardAnswers": {
           "label": "Standard Answers"
         },
-        "agentModels": {
-          "label": "Agent Models"
-        },
         "auditReport": {
           "label": "Audit Report"
+        },
+        "imBots": {
+          "label": "IM ボット"
         }
       },
       "sections": {

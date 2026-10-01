@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "도구 검색..."
+        },
+        "pagination": {
+          "units": "개"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "설정을 업데이트하지 못했습니다",
         "settingsUpdated": "설정을 업데이트했습니다",
         "unknownError": "알 수 없는 오류"
+      },
+      "tabs": {
+        "providers": "모델 공급자",
+        "agentModels": "에이전트 샌드박스 모델"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "기본값으로 설정"
         }
+      },
+      "pagination": {
+        "units": "개"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "Query"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "DingTalk·WeCom·Feishu 봇 상태와 콜백 URL."
+      },
+      "status": {
+        "noProvider": "활성화된 공급자 없음",
+        "ready": "봇 준비됨",
+        "notReady": "봇 자격 증명 누락",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, other {바인딩된 사용자 #명}}"
+      },
+      "verify": {
+        "button": "확인",
+        "buttonRunning": "확인 중…",
+        "ok": "자격 증명 유효",
+        "failed": "확인 실패"
+      },
+      "configureButton": "구성",
+      "callbackUrl": {
+        "copyButton": "URL 복사",
+        "copied": "콜백 URL 복사됨",
+        "copyFailed": "복사할 수 없습니다",
+        "hint": "플랫폼 오픈 콘솔에서 봇 이벤트를 구독할 때 이 URL을 입력하세요."
+      },
+      "visibility": {
+        "title": "사이드바 통합",
+        "slack": {
+          "title": "Slack 연동",
+          "description": "관리 사이드바에 Slack 봇 페이지를 표시합니다."
+        },
+        "discord": {
+          "title": "Discord 연동",
+          "description": "관리 사이드바에 Discord 봇 페이지를 표시합니다."
+        },
+        "saved": "사이드바 업데이트됨",
+        "saveFailed": "업데이트 실패"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "웹에서 실시간 정보와 최신 결과를 검색합니다.",
           "title": "웹 검색"
+        },
+        "pagination": {
+          "units": "개"
         }
       },
       "advanced": {
@@ -12178,6 +12229,9 @@
           "notAvailable": "회원님 계정에서는 사용할 수 없습니다. 관리자에게 문의하세요",
           "skillWarningAriaLabel": "스킬 설정 필요",
           "skillWarningTooltip": "일부 연결된 스킬이 비활성화되어 있습니다. 이 앱이 올바르게 작동하지 않을 수 있습니다."
+        },
+        "pagination": {
+          "units": "개"
         }
       },
       "policyEditor": {
@@ -12913,16 +12967,101 @@
         "ariaLabel": "Close suggestions"
       },
       "engineering": {
-        "label": "엔지니어링"
+        "label": "엔지니어링",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "온콜 순번을 추적하고 매주 일정을 Slack에 게시",
+            "fullText": "PagerDuty와 Slack으로 온콜 순번 트래커를 만들고, 매주 Slack에 이번 주 담당자를 알려 주세요."
+          },
+          "eng-sprint-health": {
+            "summary": "Linear 사이클 데이터로 스프린트 건전성 대시보드 구축",
+            "fullText": "Linear 사이클 데이터로 스프린트 건전성 대시보드를 만들어 주세요."
+          },
+          "eng-release-notes": {
+            "summary": "마일스톤의 병합된 PR에서 릴리스 노트 생성",
+            "fullText": "이 마일스톤의 병합된 PR에서 릴리스 노트를 생성해 주세요."
+          }
+        }
       },
       "marketing": {
-        "label": "마케팅"
+        "label": "마케팅",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "영업 통화 기록을 SEO 키워드 조사 보고서로 정리",
+            "fullText": "영업 통화 기록을 SEO 키워드 조사 보고서로 정리해 주세요."
+          },
+          "marketing-customer-story": {
+            "summary": "인터뷰 기록에서 한 장짜리 고객 스토리 작성",
+            "fullText": "인터뷰 기록에서 한 장짜리 고객 스토리를 만들어 주세요."
+          },
+          "marketing-social-posts": {
+            "summary": "제품 출시 문서에서 브랜드 톤에 맞는 소셜 게시물 초안 작성",
+            "fullText": "이 제품 출시 문서에서 브랜드 톤에 맞는 소셜 게시물 초안을 작성해 주세요."
+          }
+        }
       },
       "product": {
-        "label": "제품"
+        "label": "제품",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "오늘 내 모든 프로젝트에서 일어난 일 브리핑",
+            "fullText": "오늘의 브리핑을 해 주세요: 제가 참여 중인 모든 프로젝트에서 일어난 일을 알려 주세요."
+          },
+          "product-prototype": {
+            "summary": "이 PRD를 클릭 가능한 프로토타입으로 변환해 사용자 테스트에 활용",
+            "fullText": "이 PRD를 클릭 가능한 프로토타입으로 변환해 사용자 테스트에 쓸 수 있게 해 주세요."
+          },
+          "product-roadmap": {
+            "summary": "Linear 프로젝트로 로드맵 트래커 구축",
+            "fullText": "Linear 프로젝트로 로드맵 트래커를 만들어 주세요."
+          },
+          "product-feature-matrix": {
+            "summary": "경쟁사 기능 비교 매트릭스 작성",
+            "fullText": "경쟁사와의 기능 비교 매트릭스를 만들어 주세요."
+          }
+        }
       },
       "sales": {
-        "label": "영업"
+        "label": "영업",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "통화 전에 Salesforce·Slack·Gong으로 한 장 고객 브리프 작성",
+            "fullText": "고객 통화 전에 Salesforce·Slack·Gong에서 한 장짜리 고객 브리프를 만들어 주세요."
+          },
+          "sales-winloss": {
+            "summary": "이번 분기 수주 건을 승/패 대시보드로 정리",
+            "fullText": "이번 분기 수주 건을 승/패 대시보드로 정리해 주세요."
+          },
+          "sales-battlecard": {
+            "summary": "최근 실패 거래 통화 기록에서 경쟁사 배틀카드 작성",
+            "fullText": "최근 실패한 거래의 통화 기록으로 경쟁사 배틀카드를 만들어 주세요."
+          },
+          "sales-pipeline-tracker": {
+            "summary": "14일간 활동 없는 거래를 표시하는 파이프라인 트래커 구축",
+            "fullText": "14일 동안 활동이 없는 거래를 표시하는 파이프라인 트래커를 만들어 주세요."
+          }
+        }
+      },
+      "financeTax": {
+        "label": "재무·세무",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "이번 달 3대 재무제표를 경영진 보고 자료로",
+            "fullText": "제가 업로드한 이번 달 손익계산서·대차대조표·비용 명세를 바탕으로 월간 경영 재무세무 보고 자료를 만들어 주세요: 수익·이익 개요, 비용 변동 분석, 세부담과 현금흐름, 리스크 및 실행 항목."
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "최신 재무세무 정책을 해설하는 발표 자료 작성",
+            "fullText": "이 최신 재무세무 정책 문서를 해설하고 사업 팀 대상 발표 자료를 만들어 주세요: 정책 요점, 전후 비교, 당사에 미치는 영향, 대응 조치와 일정."
+          },
+          "finance-compliance-check": {
+            "summary": "회사 세무 컴플라이언스 점검 수행",
+            "fullText": "당사의 세무 컴플라이언스 점검을 수행해 주세요: 신고 일관성, 세부담 합리성, 내부통제 유효성, 부정 위험 신호, 세제혜택 신고 현황을 항목별로 확인하고 점검 보고서와 시정 목록을 작성."
+          },
+          "finance-vat-workpaper": {
+            "summary": "부가세 신고 작업문서와 체크리스트 준비",
+            "fullText": "세금계산서 대장과 이번 달 장부를 바탕으로 부가세 신고 작업문서를 준비해 주세요: 매입·매출 대사, 세액 계산, 적용 세율 검증, 제출 전 체크리스트 작성."
+          }
+        }
       }
     },
     "tasks": {
@@ -15574,11 +15713,11 @@
         "standardAnswers": {
           "label": "Standard Answers"
         },
-        "agentModels": {
-          "label": "Agent Models"
-        },
         "auditReport": {
           "label": "Audit Report"
+        },
+        "imBots": {
+          "label": "IM 봇"
         }
       },
       "sections": {

@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "Search tools..."
+        },
+        "pagination": {
+          "units": "items"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "Failed to update settings",
         "settingsUpdated": "Settings updated",
         "unknownError": "Unknown error"
+      },
+      "tabs": {
+        "providers": "Model Providers",
+        "agentModels": "Agent Sandbox Models"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "Set as Default"
         }
+      },
+      "pagination": {
+        "units": "items"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "Query"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "Status and callback URLs for the DingTalk, WeCom, and Feishu bots."
+      },
+      "status": {
+        "noProvider": "No enabled provider",
+        "ready": "Bot ready",
+        "notReady": "Bot credentials missing",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, =1 {# bound user} other {# bound users}}"
+      },
+      "verify": {
+        "button": "Verify",
+        "buttonRunning": "Verifying…",
+        "ok": "Credentials valid",
+        "failed": "Verification failed"
+      },
+      "configureButton": "Configure",
+      "callbackUrl": {
+        "copyButton": "Copy URL",
+        "copied": "Callback URL copied",
+        "copyFailed": "Could not copy",
+        "hint": "Paste this URL into the platform's open console when subscribing to bot events."
+      },
+      "visibility": {
+        "title": "Sidebar integrations",
+        "slack": {
+          "title": "Slack Integration",
+          "description": "Show the Slack bot pages in the admin sidebar."
+        },
+        "discord": {
+          "title": "Discord Integration",
+          "description": "Show the Discord bot pages in the admin sidebar."
+        },
+        "saved": "Sidebar updated",
+        "saveFailed": "Failed to update"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "Search the web for real-time information and up-to-date results.",
           "title": "Web Search"
+        },
+        "pagination": {
+          "units": "items"
         }
       },
       "advanced": {
@@ -12184,6 +12235,9 @@
           "notAvailable": "Not available for your account — ask an admin",
           "skillWarningAriaLabel": "Skill setup required",
           "skillWarningTooltip": "Not all associated skills are enabled. This app may not work correctly."
+        },
+        "pagination": {
+          "units": "items"
         }
       },
       "policyEditor": {
@@ -12919,16 +12973,101 @@
         "ariaLabel": "Close suggestions"
       },
       "engineering": {
-        "label": "Engineering"
+        "label": "Engineering",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "Track on-call rotations and post each week's schedule to Slack",
+            "fullText": "Spin up an on-call rotation tracker from PagerDuty and Slack. Every week send a message in Slack for who is on-call for the week."
+          },
+          "eng-sprint-health": {
+            "summary": "Build a sprint health dashboard from your Linear cycle data",
+            "fullText": "Build a sprint health dashboard from your Linear cycle data."
+          },
+          "eng-release-notes": {
+            "summary": "Generate release notes from a milestone's merged PRs",
+            "fullText": "Generate release notes from this milestone's merged PRs."
+          }
+        }
       },
       "marketing": {
-        "label": "Marketing"
+        "label": "Marketing",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "Turn sales-call transcripts into an SEO keyword research report",
+            "fullText": "Turn sales-call transcripts into an SEO keyword research report."
+          },
+          "marketing-customer-story": {
+            "summary": "Assemble a customer-story one-pager from interview transcripts",
+            "fullText": "Assemble a customer-story one-pager from interview transcripts."
+          },
+          "marketing-social-posts": {
+            "summary": "Draft on-brand social posts from this product launch doc",
+            "fullText": "Draft on-brand social posts from this product launch doc."
+          }
+        }
       },
       "product": {
-        "label": "Product"
+        "label": "Product",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "Brief me on everything that happened across my projects today",
+            "fullText": "Brief me for the day — tell me everything that happened for every project I was working on."
+          },
+          "product-prototype": {
+            "summary": "Turn this PRD into a clickable prototype to test with users",
+            "fullText": "Turn this PRD into a clickable prototype to test with users."
+          },
+          "product-roadmap": {
+            "summary": "Spin up a roadmap tracker from your Linear projects",
+            "fullText": "Spin up a roadmap tracker from your Linear projects."
+          },
+          "product-feature-matrix": {
+            "summary": "Build a competitor feature-comparison matrix",
+            "fullText": "Build a competitor feature-comparison matrix."
+          }
+        }
       },
       "sales": {
-        "label": "Sales"
+        "label": "Sales",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "Build a one-page account brief before every call from Salesforce, Slack, and Gong",
+            "fullText": "Build a one-page account brief before every call — from Salesforce, Slack, and Gong."
+          },
+          "sales-winloss": {
+            "summary": "Turn this quarter's closed-won deals into a win/loss dashboard",
+            "fullText": "Turn this quarter's closed-won deals into a win/loss dashboard."
+          },
+          "sales-battlecard": {
+            "summary": "Build a competitor battlecard from recent lost-deal call transcripts",
+            "fullText": "Build a competitor battlecard from recent lost-deal call transcripts."
+          },
+          "sales-pipeline-tracker": {
+            "summary": "Spin up a pipeline tracker that flags deals with no activity in 14 days",
+            "fullText": "Spin up a pipeline tracker that flags deals with no activity in 14 days."
+          }
+        }
+      },
+      "financeTax": {
+        "label": "Finance & Tax",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "Turn this month's three statements into a management deck",
+            "fullText": "From the income statement, balance sheet, and expense detail I uploaded, build a monthly finance-and-tax briefing deck: revenue and profit overview, expense variance drivers, tax burden and cash flow, risk flags, and action items."
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "Brief the latest tax policy as a rollout deck",
+            "fullText": "Explain this latest tax-policy document and build a rollout deck for business teams: key points, before-and-after comparison, impact on us, response actions, and a timeline."
+          },
+          "finance-compliance-check": {
+            "summary": "Run a tax compliance health check on the company",
+            "fullText": "Run a tax compliance health check for our company: filing consistency, tax-burden reasonableness, internal-control effectiveness, fraud red flags, and incentive-filing status — then produce a report and remediation list."
+          },
+          "finance-vat-workpaper": {
+            "summary": "Prepare the VAT filing workpapers and a pre-submit checklist",
+            "fullText": "From the invoice ledger and this month's books, prepare VAT filing workpapers: input/output cross-check, tax computation, and applicable-rate verification, plus a pre-submission checklist."
+          }
+        }
       }
     },
     "tasks": {
@@ -15568,9 +15707,6 @@
         "craftCatalog": {
           "label": "Gallery"
         },
-        "agentModels": {
-          "label": "Agent Models"
-        },
         "auditReport": {
           "label": "Audit Report"
         },
@@ -15579,6 +15715,9 @@
         },
         "standardAnswers": {
           "label": "Standard Answers"
+        },
+        "imBots": {
+          "label": "IM Bots"
         }
       },
       "sections": {

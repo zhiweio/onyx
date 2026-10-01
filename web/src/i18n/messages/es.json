@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "Buscar herramientas..."
+        },
+        "pagination": {
+          "units": "elementos"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "No se pudo actualizar la configuración",
         "settingsUpdated": "Configuración actualizada",
         "unknownError": "Error desconocido"
+      },
+      "tabs": {
+        "providers": "Proveedores de modelos",
+        "agentModels": "Modelos del sandbox de agentes"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "Establecer como predeterminado"
         }
+      },
+      "pagination": {
+        "units": "elementos"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "Query"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "Estado y URLs de callback de los bots de DingTalk, WeCom y Feishu."
+      },
+      "status": {
+        "noProvider": "Sin proveedor habilitado",
+        "ready": "Bot listo",
+        "notReady": "Faltan credenciales del bot",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, =1 {# usuario vinculado} other {# usuarios vinculados}}"
+      },
+      "verify": {
+        "button": "Verificar",
+        "buttonRunning": "Verificando…",
+        "ok": "Credenciales válidas",
+        "failed": "Verificación fallida"
+      },
+      "configureButton": "Configurar",
+      "callbackUrl": {
+        "copyButton": "Copiar URL",
+        "copied": "URL de callback copiada",
+        "copyFailed": "No se pudo copiar",
+        "hint": "Introduce esta URL en la consola abierta de la plataforma al suscribir eventos del bot."
+      },
+      "visibility": {
+        "title": "Integraciones de la barra lateral",
+        "slack": {
+          "title": "Integración de Slack",
+          "description": "Mostrar las páginas del bot de Slack en la barra lateral de administración."
+        },
+        "discord": {
+          "title": "Integración de Discord",
+          "description": "Mostrar las páginas del bot de Discord en la barra lateral de administración."
+        },
+        "saved": "Barra lateral actualizada",
+        "saveFailed": "Error al actualizar"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "Busca en la web información en tiempo real y resultados actualizados.",
           "title": "Búsqueda web"
+        },
+        "pagination": {
+          "units": "elementos"
         }
       },
       "advanced": {
@@ -12178,6 +12229,9 @@
           "notAvailable": "No disponible para tu cuenta: consulta a un administrador",
           "skillWarningAriaLabel": "Se requiere configurar las habilidades",
           "skillWarningTooltip": "No todas las habilidades asociadas están habilitadas. Puede que esta app no funcione correctamente."
+        },
+        "pagination": {
+          "units": "elementos"
         }
       },
       "policyEditor": {
@@ -12913,16 +12967,101 @@
         "ariaLabel": "Close suggestions"
       },
       "engineering": {
-        "label": "Ingeniería"
+        "label": "Ingeniería",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "Seguir los turnos de guardia y publicar el horario semanal en Slack",
+            "fullText": "Crea un seguimiento de guardias desde PagerDuty y Slack, y envía cada semana un mensaje a Slack con quién está de guardia."
+          },
+          "eng-sprint-health": {
+            "summary": "Crear un panel de salud del sprint con datos de Linear",
+            "fullText": "Crea un panel de salud del sprint a partir de nuestros datos de ciclos de Linear."
+          },
+          "eng-release-notes": {
+            "summary": "Generar notas de versión con los PR fusionados del hito",
+            "fullText": "Genera notas de versión a partir de los PR fusionados de este hito."
+          }
+        }
       },
       "marketing": {
-        "label": "Marketing"
+        "label": "Marketing",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "Convertir transcripciones de llamadas de ventas en un informe de palabras clave SEO",
+            "fullText": "Convierte las transcripciones de llamadas de ventas en un informe de investigación de palabras clave SEO."
+          },
+          "marketing-customer-story": {
+            "summary": "Ensamblar una historia de cliente de una página a partir de transcripciones de entrevistas",
+            "fullText": "Ensambla una historia de cliente de una página a partir de las transcripciones de las entrevistas."
+          },
+          "marketing-social-posts": {
+            "summary": "Redactar publicaciones sociales de marca a partir del documento de lanzamiento",
+            "fullText": "Redacta publicaciones en redes sociales alineadas con la marca a partir de este documento de lanzamiento."
+          }
+        }
       },
       "product": {
-        "label": "Producto"
+        "label": "Producto",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "Resúmeme todo lo que pasó hoy en mis proyectos",
+            "fullText": "Dame un resumen del día: cuéntame todo lo que ocurrió en cada proyecto en el que trabajo."
+          },
+          "product-prototype": {
+            "summary": "Convertir este PRD en un prototipo clicable para probar con usuarios",
+            "fullText": "Convierte este PRD en un prototipo clicable para probar con usuarios."
+          },
+          "product-roadmap": {
+            "summary": "Crear un seguimiento de hoja de ruta desde tus proyectos de Linear",
+            "fullText": "Crea un seguimiento de hoja de ruta a partir de nuestros proyectos de Linear."
+          },
+          "product-feature-matrix": {
+            "summary": "Crear una matriz comparativa de funcionalidades de la competencia",
+            "fullText": "Crea una matriz comparativa de funcionalidades con la competencia."
+          }
+        }
       },
       "sales": {
-        "label": "Ventas"
+        "label": "Ventas",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "Crear un resumen de cuenta de una página antes de cada llamada con Salesforce, Slack y Gong",
+            "fullText": "Antes de cada llamada, crea un resumen de cuenta de una página con Salesforce, Slack y Gong."
+          },
+          "sales-winloss": {
+            "summary": "Convertir las ventas cerradas del trimestre en un panel de éxitos/pérdidas",
+            "fullText": "Convierte las ventas cerradas de este trimestre en un panel de éxitos y pérdidas."
+          },
+          "sales-battlecard": {
+            "summary": "Crear una battlecard de competidores a partir de transcripciones de llamadas perdidas",
+            "fullText": "Crea una battlecard de competidores a partir de las transcripciones recientes de llamadas perdidas."
+          },
+          "sales-pipeline-tracker": {
+            "summary": "Crear un seguimiento de pipeline que marque operaciones sin actividad en 14 días",
+            "fullText": "Crea un seguimiento de pipeline que marque las operaciones sin actividad en 14 días."
+          }
+        }
+      },
+      "financeTax": {
+        "label": "Finanzas e impuestos",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "Convertir los tres estados de este mes en una presentación para la dirección",
+            "fullText": "A partir del estado de resultados, el balance y el detalle de gastos que subí, crea una presentación mensual de finanzas e impuestos: resumen de ingresos y beneficios, causas de las desviaciones de gastos, carga fiscal y flujo de caja, riesgos y acciones."
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "Explicar la última política fiscal en una presentación",
+            "fullText": "Explica este documento de política fiscal y crea una presentación para los equipos de negocio: puntos clave, comparación antes/después, impacto para nosotros, acciones de respuesta y calendario."
+          },
+          "finance-compliance-check": {
+            "summary": "Realizar una revisión de cumplimiento fiscal de la empresa",
+            "fullText": "Realiza una revisión de cumplimiento fiscal para nuestra empresa: consistencia de las declaraciones, razonabilidad de la carga fiscal, eficacia del control interno, señales de fraude y state de beneficios fiscales; entrega un informe y una lista de correcciones."
+          },
+          "finance-vat-workpaper": {
+            "summary": "Preparar los papeles de trabajo del IVA y una lista de verificación",
+            "fullText": "Con el libro de facturas y la contabilidad del mes, prepara los papeles de trabajo de la declaración de IVA: cruce de soportada/repercutida, cálculo del impuesto y verificación de tipos, más una lista de comprobación antes de presentar."
+          }
+        }
       }
     },
     "tasks": {
@@ -15574,11 +15713,11 @@
         "standardAnswers": {
           "label": "Standard Answers"
         },
-        "agentModels": {
-          "label": "Agent Models"
-        },
         "auditReport": {
           "label": "Audit Report"
+        },
+        "imBots": {
+          "label": "Bots de MI"
         }
       },
       "sections": {

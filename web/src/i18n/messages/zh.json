@@ -1656,6 +1656,9 @@
         },
         "search": {
           "placeholder": "搜索工具..."
+        },
+        "pagination": {
+          "units": "项"
         }
       },
       "multiModel": {
@@ -5828,6 +5831,10 @@
         "settingsUpdateFailed": "更新设置失败",
         "settingsUpdated": "设置已更新",
         "unknownError": "未知错误"
+      },
+      "tabs": {
+        "providers": "模型供应商",
+        "agentModels": "Agent 沙箱模型"
       }
     },
     "mcpActions": {
@@ -6623,6 +6630,9 @@
         "setDefaultButton": {
           "label": "设为默认"
         }
+      },
+      "pagination": {
+        "units": "项"
       }
     },
     "slackBots": {
@@ -8743,6 +8753,44 @@
           "query": "查询"
         }
       }
+    },
+    "imBots": {
+      "header": {
+        "description": "钉钉、企业微信、飞书机器人的运行状态与回调地址。"
+      },
+      "status": {
+        "noProvider": "未启用对应供应商",
+        "ready": "机器人就绪",
+        "notReady": "缺少机器人凭据",
+        "appId": "App ID: {appId}",
+        "boundUsers": "{count, plural, other {已绑定 # 名用户}}"
+      },
+      "verify": {
+        "button": "验证",
+        "buttonRunning": "验证中…",
+        "ok": "凭据有效",
+        "failed": "验证失败"
+      },
+      "configureButton": "去配置",
+      "callbackUrl": {
+        "copyButton": "复制地址",
+        "copied": "回调地址已复制",
+        "copyFailed": "复制失败",
+        "hint": "在平台开放平台订阅机器人事件时填入该地址。"
+      },
+      "visibility": {
+        "title": "侧边栏集成入口",
+        "slack": {
+          "title": "Slack 集成",
+          "description": "在管理侧边栏显示 Slack 机器人页面。"
+        },
+        "discord": {
+          "title": "Discord 集成",
+          "description": "在管理侧边栏显示 Discord 机器人页面。"
+        },
+        "saved": "侧边栏已更新",
+        "saveFailed": "更新失败"
+      }
     }
   },
   "agents": {
@@ -8795,6 +8843,9 @@
         "webSearch": {
           "description": "在网络上搜索实时信息和最新结果。",
           "title": "网络搜索"
+        },
+        "pagination": {
+          "units": "项"
         }
       },
       "advanced": {
@@ -12178,6 +12229,9 @@
           "notAvailable": "您的账户不可用，请咨询管理员",
           "skillWarningAriaLabel": "需要设置技能",
           "skillWarningTooltip": "并非所有关联技能都已启用。此应用可能无法正常工作。"
+        },
+        "pagination": {
+          "units": "项"
         }
       },
       "policyEditor": {
@@ -12913,16 +12967,101 @@
         "ariaLabel": "关闭建议"
       },
       "engineering": {
-        "label": "工程"
+        "label": "工程",
+        "prompts": {
+          "eng-oncall": {
+            "summary": "跟踪值班排班，每周把值班表发到 Slack",
+            "fullText": "接入 PagerDuty 和 Slack 建一个值班轮换跟踪器，每周在 Slack 里播报本周值班人。"
+          },
+          "eng-sprint-health": {
+            "summary": "用 Linear 迭代数据搭一个迭代健康度看板",
+            "fullText": "根据我们的 Linear 迭代数据，搭建一个迭代健康度看板。"
+          },
+          "eng-release-notes": {
+            "summary": "根据里程碑已合并的 PR 生成发布说明",
+            "fullText": "根据本里程碑已合并的 PR，生成一份发布说明。"
+          }
+        }
       },
       "marketing": {
-        "label": "市场"
+        "label": "市场",
+        "prompts": {
+          "marketing-seo": {
+            "summary": "把销售通话转写整理成 SEO 关键词研究报告",
+            "fullText": "把销售通话的转写内容整理成一份 SEO 关键词研究报告。"
+          },
+          "marketing-customer-story": {
+            "summary": "用访谈记录拼出一页式客户故事",
+            "fullText": "根据客户访谈的转写记录，整理一页式客户成功故事。"
+          },
+          "marketing-social-posts": {
+            "summary": "根据产品发布文档撰写品牌调性一致社交帖子",
+            "fullText": "根据这份产品发布文档，撰写一组符合品牌调性的社交媒体帖子。"
+          }
+        }
       },
       "product": {
-        "label": "产品"
+        "label": "产品",
+        "prompts": {
+          "product-daily-brief": {
+            "summary": "简要汇报今天我所有项目的全部进展",
+            "fullText": "给我一份今日简报：我今天参与的每个项目都发生了什么。"
+          },
+          "product-prototype": {
+            "summary": "把这份 PRD 变成可点击原型用于用户测试",
+            "fullText": "把这份产品需求文档转换成可点击的原型，方便拿去给用户做测试。"
+          },
+          "product-roadmap": {
+            "summary": "用 Linear 项目生成路线图跟踪器",
+            "fullText": "根据我们的 Linear 项目，生成一个产品路线图跟踪器。"
+          },
+          "product-feature-matrix": {
+            "summary": "做一份竞品功能对比矩阵",
+            "fullText": "做一份与竞品的功能对比矩阵。"
+          }
+        }
       },
       "sales": {
-        "label": "销售"
+        "label": "销售",
+        "prompts": {
+          "sales-account-brief": {
+            "summary": "每次通话前用 Salesforce、Slack、Gong 生成一页客户简报",
+            "fullText": "每次客户通话前，从 Salesforce、Slack 和 Gong 汇总生成一页式客户简报。"
+          },
+          "sales-winloss": {
+            "summary": "把本季度赢单做成赢率分析看板",
+            "fullText": "把本季度的赢单交易整理成赢/输分析看板。"
+          },
+          "sales-battlecard": {
+            "summary": "从近期丢单通话录音整理竞品作战卡",
+            "fullText": "根据近期丢单通话的转写记录，整理一份竞品作战卡。"
+          },
+          "sales-pipeline-tracker": {
+            "summary": "搭一个商机管道跟踪器，标记 14 天无动态的商机",
+            "fullText": "搭建一个商机管道跟踪器，自动标记超过 14 天没有动态的交易。"
+          }
+        }
+      },
+      "financeTax": {
+        "label": "财税",
+        "prompts": {
+          "finance-monthly-review-deck": {
+            "summary": "把本月三大报表做成管理层汇报演示",
+            "fullText": "根据我上传的本月利润表、资产负债表和费用明细，做一份月度经营财税汇报演示：收入利润概览、费用异动归因、税负与现金流、风险提示和行动项。"
+          },
+          "finance-policy-briefing-deck": {
+            "summary": "解读最新财税新政，产出宣讲演示",
+            "fullText": "解读这份最新财税政策文件，做一份面向业务团队的宣讲演示：政策要点、前后对照、对我们的影响、应对动作和时间表。"
+          },
+          "finance-compliance-check": {
+            "summary": "给公司做一次税务合规体检",
+            "fullText": "为我们公司做一次税务合规体检：申报一致性、税负合理性、内控有效性、舞弊红旗、税收优惠备案五块逐项检查，出具体检报告和整改清单。"
+          },
+          "finance-vat-workpaper": {
+            "summary": "准备增值税申报底稿和检查清单",
+            "fullText": "根据发票台账和本月账簿，准备增值税申报底稿：进销项勾稽、税额计算、适用税率核验，并生成提交前检查清单。"
+          }
+        }
       }
     },
     "tasks": {
@@ -15568,9 +15707,6 @@
         "craftCatalog": {
           "label": "广场"
         },
-        "agentModels": {
-          "label": "Agent 模型"
-        },
         "auditReport": {
           "label": "审计报表"
         },
@@ -15579,6 +15715,9 @@
         },
         "standardAnswers": {
           "label": "标准答案"
+        },
+        "imBots": {
+          "label": "IM 机器人"
         }
       },
       "sections": {
