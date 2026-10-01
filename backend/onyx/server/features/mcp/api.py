@@ -55,9 +55,9 @@ from onyx.db.mcp import (
     get_craft_enabled_mcp_servers,
     get_mcp_server_by_id,
     get_mcp_servers_accessible_to_user,
-    get_org_mcp_servers_accessible_to_user,
     get_mcp_servers_for_persona,
     get_org_mcp_servers,
+    get_org_mcp_servers_accessible_to_user,
     get_user_connection_config,
     get_user_connection_configs,
     update_connection_config,
@@ -108,6 +108,7 @@ from onyx.server.features.mcp.models import (
     MCPApiKeyResponse,
     MCPAuthTemplate,
     MCPConnectionData,
+    MCPDiscoverEmptyResponse,
     MCPFromPackRequest,
     MCPGatewayBindingRequest,
     MCPOAuthCallbackResponse,
@@ -115,7 +116,6 @@ from onyx.server.features.mcp.models import (
     MCPPackEndpointSummary,
     MCPPackSummary,
     MCPServer,
-    MCPDiscoverEmptyResponse,
     MCPServerCreateResponse,
     MCPServerSimpleCreateRequest,
     MCPServerSimpleUpdateRequest,
@@ -155,7 +155,6 @@ from onyx.utils.logger import setup_logger
 from onyx.utils.url import BLOCKED_HOSTNAMES, SSRFException
 from onyx.utils.variable_functionality import (
     fetch_versioned_implementation,
-    global_version,
 )
 from shared_configs.contextvars import get_current_tenant_id
 
@@ -1301,9 +1300,7 @@ def _db_mcp_server_to_api_mcp_server(
                 required_fields=stored_template.required_fields,
             )
 
-    tool_count = len(
-        get_tools_by_mcp_server_id(db_server.id, db, order_by_id=False)
-    )
+    tool_count = len(get_tools_by_mcp_server_id(db_server.id, db, order_by_id=False))
 
     return MCPServer(
         id=db_server.id,
@@ -1779,12 +1776,6 @@ def _apply_mcp_server_access(
         return
 
     is_public = mcp_server.is_public if is_public is None else is_public
-    if not is_public and not global_version.is_ee_version():
-        raise OnyxError(
-            OnyxErrorCode.EE_REQUIRED,
-            "Restricting MCP servers to specific users or groups requires "
-            "Enterprise Edition.",
-        )
 
     # GATE 2 — reaching here only proves the caller may manage this server, and the
     # creator is its owner, so nothing else stops a scoped manager attaching a group
