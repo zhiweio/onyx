@@ -12570,6 +12570,32 @@
     "timeline": {
       "workingFor": "Working for {duration}"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "Terminal",
+        "edit": "Edit",
+        "write": "Write",
+        "read": "Read",
+        "search": "Search",
+        "webSearch": "Web search",
+        "fetch": "Fetch",
+        "agent": "Agent",
+        "skill": "Skill",
+        "other": "Tool"
+      },
+      "status": {
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed",
+        "cancelled": "Stopped"
+      },
+      "expandDetails": "Show details",
+      "collapseDetails": "Hide details",
+      "copyError": {
+        "label": "Copy error",
+        "copied": "Copied"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "BETA"

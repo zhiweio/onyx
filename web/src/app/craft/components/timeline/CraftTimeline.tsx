@@ -23,8 +23,8 @@ import {
   PlanningNextRow,
   StepSummary,
   ThoughtRow,
-  ToolPhaseRow,
 } from "@/app/craft/components/turn-activity/PhaseRow";
+import { ToolGroupRow } from "@/app/craft/components/tool-blocks/ToolGroupRow";
 import { TurnStatusHeader } from "@/app/craft/components/timeline/TurnStatusHeader";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import CraftMessageAttachments from "@/app/craft/components/CraftMessageAttachments";
@@ -191,7 +191,7 @@ export default function CraftTimeline({
             );
           case "tools":
             return (
-              <ToolPhaseRow
+              <ToolGroupRow
                 key={row.id}
                 phase={row.phase}
                 tools={row.tools}

@@ -12564,6 +12564,32 @@
     "timeline": {
       "workingFor": "{duration} 作業中"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "ターミナル",
+        "edit": "編集",
+        "write": "書き込み",
+        "read": "読み取り",
+        "search": "検索",
+        "webSearch": "ウェブ検索",
+        "fetch": "取得",
+        "agent": "エージェント",
+        "skill": "スキル",
+        "other": "ツール"
+      },
+      "status": {
+        "running": "実行中",
+        "done": "完了",
+        "failed": "失敗",
+        "cancelled": "停止"
+      },
+      "expandDetails": "詳細を表示",
+      "collapseDetails": "詳細を隠す",
+      "copyError": {
+        "label": "エラーをコピー",
+        "copied": "コピーしました"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "BETA"

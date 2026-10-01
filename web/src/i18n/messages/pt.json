@@ -12564,6 +12564,32 @@
     "timeline": {
       "workingFor": "Trabalhando por {duration}"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "Terminal",
+        "edit": "Editar",
+        "write": "Gravar",
+        "read": "Ler",
+        "search": "Buscar",
+        "webSearch": "Pesquisa na web",
+        "fetch": "Obter",
+        "agent": "Agente",
+        "skill": "Skill",
+        "other": "Ferramenta"
+      },
+      "status": {
+        "running": "Executando",
+        "done": "Concluído",
+        "failed": "Falhou",
+        "cancelled": "Parado"
+      },
+      "expandDetails": "Mostrar detalhes",
+      "collapseDetails": "Ocultar detalhes",
+      "copyError": {
+        "label": "Copiar erro",
+        "copied": "Copiado"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "BETA"

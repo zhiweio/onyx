@@ -86,7 +86,7 @@ const THINKING_MARKDOWN_OVERRIDES = {
 function rowTriggerClass(expandable: boolean): string {
   return cn(
     "group flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden py-0.5 text-left",
-    expandable && "rounded-sm hover:bg-background-tint-02"
+    expandable && "rounded-sm hover:bg-background-tint-02",
   );
 }
 
@@ -145,6 +145,32 @@ export function ThoughtRow({
 }) {
   const t = useTranslations("craft.turnActivity");
   const [isOpen, setIsOpen] = useState(false);
+  const userToggledRef = useRef(false);
+  const wasStreamingRef = useRef(isStreaming);
+  const streamBodyRef = useRef<HTMLDivElement | null>(null);
+
+  // ZCode reasoning behavior: collapse on the streaming→done edge unless the
+  // user interacted with the row; a finished thought defaults to its summary.
+  useEffect(() => {
+    const wasStreaming = wasStreamingRef.current;
+    wasStreamingRef.current = isStreaming;
+    if (wasStreaming && !isStreaming && !userToggledRef.current) {
+      setIsOpen(false);
+    }
+  }, [isStreaming]);
+
+  // While streaming with the row open, keep the reasoning scrolled to the
+  // tail so the latest thought is visible without manual scrolling.
+  useEffect(() => {
+    if (!isStreaming || !isOpen) {
+      return;
+    }
+    const body = streamBodyRef.current;
+    if (body) {
+      body.scrollTop = body.scrollHeight;
+    }
+  });
+
   if (!content) return null;
 
   const seconds =
@@ -159,7 +185,13 @@ export function ThoughtRow({
 
   return (
     <div className="min-w-0 max-w-full">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible
+        open={isOpen}
+        onOpenChange={(open) => {
+          userToggledRef.current = true;
+          setIsOpen(open);
+        }}
+      >
         <CollapsibleTrigger asChild>
           <button type="button" className={rowTriggerClass(true)}>
             <ThoughtActivityIcon isStreaming={isStreaming} />
@@ -173,7 +205,10 @@ export function ThoughtRow({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="max-h-48 overflow-y-auto py-1 ps-6">
+          <div
+            ref={streamBodyRef}
+            className="max-h-48 overflow-y-auto py-1 ps-6"
+          >
             <MinimalMarkdown
               content={normalizeThinking(content)}
               className="text-text-03 prose-sm"
@@ -245,7 +280,7 @@ function phaseLabel({
     if (
       tools.length > 0 &&
       tools.every(
-        (tool) => tool.status === "cancelled" || tool.status === "failed"
+        (tool) => tool.status === "cancelled" || tool.status === "failed",
       )
     ) {
       return t("taskCancelled");
@@ -285,7 +320,7 @@ export function ToolPhaseRow({
         ? "execute"
         : phase === "task"
           ? "task"
-          : "edit"
+          : "edit",
   );
 
   return (
@@ -302,7 +337,7 @@ export function ToolPhaseRow({
             <SvgChevronDown
               className={cn(
                 "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-                !isOpen && "-rotate-90"
+                !isOpen && "-rotate-90",
               )}
             />
           </button>

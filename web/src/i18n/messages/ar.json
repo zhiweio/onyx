@@ -12564,6 +12564,32 @@
     "timeline": {
       "workingFor": "يعمل لمدة {duration}"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "الطرفية",
+        "edit": "تحرير",
+        "write": "كتابة",
+        "read": "قراءة",
+        "search": "بحث",
+        "webSearch": "بحث في الويب",
+        "fetch": "جلب",
+        "agent": "وكيل",
+        "skill": "مهارة",
+        "other": "أداة"
+      },
+      "status": {
+        "running": "قيد التشغيل",
+        "done": "تم",
+        "failed": "فشل",
+        "cancelled": "متوقف"
+      },
+      "expandDetails": "إظهار التفاصيل",
+      "collapseDetails": "إخفاء التفاصيل",
+      "copyError": {
+        "label": "نسخ الخطأ",
+        "copied": "تم النسخ"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "تجريبي"

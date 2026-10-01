@@ -50,18 +50,26 @@ function getStatusIcon(status: TodoStatus) {
  * Single todo item row
  */
 function TodoItemRow({ todo }: { todo: TodoItem }) {
+  const inProgress = todo.status === "in_progress";
   return (
     <div className="flex items-start gap-2 py-1">
       {/* Status indicator */}
       {getStatusIcon(todo.status)}
 
-      {/* Task text - show activeForm when in_progress, otherwise content */}
-      <span className={cn(todo.status === "completed" && "line-through")}>
+      {/* Task text - show activeForm when in_progress, otherwise content.
+          The active step reads bold; completed steps strike through and
+          recede (ZCode todo styling). */}
+      <span
+        className={cn(
+          todo.status === "completed" && "line-through",
+          inProgress && "font-medium",
+        )}
+      >
         <Text
-          font="main-ui-body"
+          font={inProgress ? "main-ui-action" : "main-ui-body"}
           color={todo.status === "completed" ? "text-03" : "text-04"}
         >
-          {todo.status === "in_progress" ? todo.activeForm : todo.content}
+          {inProgress ? todo.activeForm : todo.content}
         </Text>
       </span>
     </div>
@@ -92,7 +100,7 @@ export default function TodoListCard({
   // Calculate progress stats
   const total = todoList.todos.length;
   const completed = todoList.todos.filter(
-    (t) => t.status === "completed"
+    (t) => t.status === "completed",
   ).length;
 
   // Determine background color based on state
@@ -106,14 +114,14 @@ export default function TodoListCard({
           "w-full border-[0.5px] rounded-lg overflow-hidden",
           allCompleted
             ? "bg-status-success-01 border-status-success-01"
-            : "bg-background-neutral-01 border-border-01"
+            : "bg-background-neutral-01 border-border-01",
         )}
       >
         <CollapsibleTrigger asChild>
           <button
             className={cn(
               "w-full flex items-center justify-between px-3 py-2",
-              "hover:bg-background-tint-02 transition-colors text-start"
+              "hover:bg-background-tint-02 transition-colors text-start",
             )}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -141,7 +149,7 @@ export default function TodoListCard({
             <SvgChevronDown
               className={cn(
                 "size-4 stroke-text-03 transition-transform duration-150 shrink-0",
-                !isOpen && "-rotate-90"
+                !isOpen && "-rotate-90",
               )}
             />
           </button>

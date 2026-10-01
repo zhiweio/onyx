@@ -12564,6 +12564,32 @@
     "timeline": {
       "workingFor": "{duration} 동안 작업 중"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "터미널",
+        "edit": "편집",
+        "write": "쓰기",
+        "read": "읽기",
+        "search": "검색",
+        "webSearch": "웹 검색",
+        "fetch": "가져오기",
+        "agent": "에이전트",
+        "skill": "스킬",
+        "other": "도구"
+      },
+      "status": {
+        "running": "실행 중",
+        "done": "완료",
+        "failed": "실패",
+        "cancelled": "중지됨"
+      },
+      "expandDetails": "세부 정보 표시",
+      "collapseDetails": "세부 정보 숨기기",
+      "copyError": {
+        "label": "오류 복사",
+        "copied": "복사됨"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "BETA"

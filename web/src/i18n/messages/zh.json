@@ -12564,6 +12564,32 @@
     "timeline": {
       "workingFor": "已工作 {duration}"
     },
+    "toolBlocks": {
+      "kind": {
+        "terminal": "终端",
+        "edit": "编辑",
+        "write": "写入",
+        "read": "读取",
+        "search": "搜索",
+        "webSearch": "网页搜索",
+        "fetch": "抓取",
+        "agent": "子代理",
+        "skill": "技能",
+        "other": "工具"
+      },
+      "status": {
+        "running": "运行中",
+        "done": "完成",
+        "failed": "失败",
+        "cancelled": "已停止"
+      },
+      "expandDetails": "显示详情",
+      "collapseDetails": "隐藏详情",
+      "copyError": {
+        "label": "复制错误",
+        "copied": "已复制"
+      }
+    },
     "intro": {
       "beta": {
         "badge": "BETA"
