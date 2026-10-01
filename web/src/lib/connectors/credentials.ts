@@ -318,6 +318,34 @@ export interface TestRailCredentialJson {
   testrail_api_key: string;
 }
 
+export interface FeishuCredentialJson {
+  feishu_app_id: string;
+  feishu_app_secret: string;
+}
+
+export interface WeComCredentialJson {
+  wecom_corp_id: string;
+  wecom_corp_secret: string;
+}
+
+export interface DingTalkCredentialJson {
+  dingtalk_client_id: string;
+  dingtalk_client_secret: string;
+}
+
+export interface WPS365CredentialJson {
+  wps365_client_id: string;
+  wps365_client_secret: string;
+  wps365_base_url?: string;
+}
+
+export interface SapODataCredentialJson {
+  sap_odata_base_url: string;
+  sap_odata_user?: string;
+  sap_odata_password?: string;
+  sap_odata_apikey?: string;
+}
+
 export const credentialTemplates: Record<ValidSources, any> = {
   github: {
     github_access_token: "",
@@ -546,6 +574,25 @@ export const credentialTemplates: Record<ValidSources, any> = {
     testrail_username: "",
     testrail_api_key: "",
   } as TestRailCredentialJson,
+  feishu: {
+    feishu_app_id: "",
+    feishu_app_secret: "",
+  } as FeishuCredentialJson,
+  wecom: {
+    wecom_corp_id: "",
+    wecom_corp_secret: "",
+  } as WeComCredentialJson,
+  dingtalk: {
+    dingtalk_client_id: "",
+    dingtalk_client_secret: "",
+  } as DingTalkCredentialJson,
+  wps365: {
+    wps365_client_id: "",
+    wps365_client_secret: "",
+  } as WPS365CredentialJson,
+  sap_odata: {
+    sap_odata_base_url: "",
+  } as SapODataCredentialJson,
 };
 
 export const credentialDisplayNames: Record<string, string> = {

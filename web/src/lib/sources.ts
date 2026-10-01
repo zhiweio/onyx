@@ -10,7 +10,13 @@ import { SourceCategory, SourceMetadata } from "@/lib/search/interfaces";
 import { Agent } from "@/lib/agents/types";
 import React from "react";
 import { DOCS_ADMINS_PATH, DOCS_BASE_URL } from "@/lib/constants";
-import { SvgFileText, SvgGlobe, SvgUploadCloud, SvgMail } from "@opal/icons";
+import {
+  SvgFileText,
+  SvgGlobe,
+  SvgServer,
+  SvgUploadCloud,
+  SvgMail,
+} from "@opal/icons";
 import {
   SvgAirtable,
   SvgAsana,
@@ -21,12 +27,14 @@ import {
   SvgClickup,
   SvgCoda,
   SvgConfluence,
+  SvgDingTalk,
   SvgDiscord,
   SvgDiscourse,
   SvgDocument360,
   SvgDropbox,
   SvgDrupal,
   SvgEgnyte,
+  SvgFeishu,
   SvgFireflies,
   SvgFreshdesk,
   SvgGitbook,
@@ -54,7 +62,9 @@ import {
   SvgSlab,
   SvgTeams,
   SvgTestrail,
+  SvgWeCom,
   SvgWikipedia,
+  SvgWps365,
   SvgXenforo,
   SvgZendesk,
   SvgZulip,
@@ -450,6 +460,33 @@ export const SOURCE_METADATA_MAP: SourceMap = {
   ingestion_api: {
     icon: SvgGlobe,
     displayName: "Ingestion",
+    category: SourceCategory.Other,
+  },
+
+  // China workplace platforms + enterprise systems
+  feishu: {
+    icon: SvgFeishu,
+    displayName: "Feishu",
+    category: SourceCategory.Wiki,
+  },
+  wecom: {
+    icon: SvgWeCom,
+    displayName: "WeCom",
+    category: SourceCategory.Storage,
+  },
+  dingtalk: {
+    icon: SvgDingTalk,
+    displayName: "DingTalk",
+    category: SourceCategory.Wiki,
+  },
+  wps365: {
+    icon: SvgWps365,
+    displayName: "WPS 365",
+    category: SourceCategory.Storage,
+  },
+  sap_odata: {
+    icon: SvgServer,
+    displayName: "SAP (OData)",
     category: SourceCategory.Other,
   },
 

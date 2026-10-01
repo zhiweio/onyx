@@ -1,5 +1,11 @@
-import { SvgBlocks, SvgGlobe, SvgLink, SvgUserCheck, SvgUserKey } from "@opal/icons";
-import { SvgGoogle } from "@opal/logos";
+import { SvgGlobe, SvgUserKey } from "@opal/icons";
+import {
+  SvgDingTalk,
+  SvgFeishu,
+  SvgGoogle,
+  SvgWeCom,
+  SvgWps365,
+} from "@opal/logos";
 import type { IconFunctionComponent } from "@opal/types";
 import { toast } from "@opal/layouts";
 import { SSOProviderType } from "@/lib/sso/interfaces";
@@ -29,22 +35,22 @@ export const SSO_PROVIDER_DETAILS: Record<SSOProviderType, SSOProviderDetail> =
     },
     WECOM: {
       label: "WeCom",
-      icon: SvgUserCheck,
+      icon: SvgWeCom,
       description: "WeCom (企业微信) QR-code login and org-structure sync.",
     },
     DINGTALK: {
       label: "DingTalk",
-      icon: SvgLink,
+      icon: SvgDingTalk,
       description: "DingTalk (钉钉) QR-code login and org-structure sync.",
     },
     FEISHU: {
       label: "Feishu",
-      icon: SvgBlocks,
+      icon: SvgFeishu,
       description: "Feishu (飞书) auth-code login and org-structure sync.",
     },
     WPS365: {
       label: "WPS365",
-      icon: SvgGlobe,
+      icon: SvgWps365,
       description: "WPS 365 OAuth2 login on the regional account endpoint.",
     },
   };

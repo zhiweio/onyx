@@ -1994,6 +1994,144 @@ For example, specifying .*-alerts as a "channel to exclude" will cause the conne
     ],
     advanced_values: [],
   },
+
+  // China workplace platforms + enterprise systems
+  feishu: {
+    description: "Configure Feishu connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the Feishu App ID:",
+        label: "App ID",
+        name: "feishu_app_id",
+        optional: false,
+        description: "The enterprise self-built app's App ID (应用 App ID).",
+      },
+      {
+        type: "text",
+        query: "Enter the Feishu App Secret:",
+        label: "App Secret",
+        name: "feishu_app_secret",
+        optional: false,
+        description: "The app's App Secret from the developer console.",
+      },
+    ],
+    advanced_values: [],
+  },
+  wecom: {
+    description: "Configure WeCom connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the WeCom Corp ID:",
+        label: "Corp ID",
+        name: "wecom_corp_id",
+        optional: false,
+        description: "WeCom enterprise ID (企业ID), from the admin console.",
+      },
+      {
+        type: "text",
+        query: "Enter the WeCom Corp Secret:",
+        label: "Corp Secret",
+        name: "wecom_corp_secret",
+        optional: false,
+        description: "The self-built app's secret for WeDrive access.",
+      },
+    ],
+    advanced_values: [],
+  },
+  dingtalk: {
+    description: "Configure DingTalk connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the DingTalk AppKey:",
+        label: "Client ID (AppKey)",
+        name: "dingtalk_client_id",
+        optional: false,
+        description: "The enterprise app's AppKey from the developer console.",
+      },
+      {
+        type: "text",
+        query: "Enter the DingTalk AppSecret:",
+        label: "Client Secret (AppSecret)",
+        name: "dingtalk_client_secret",
+        optional: false,
+        description: "The enterprise app's AppSecret.",
+      },
+    ],
+    advanced_values: [],
+  },
+  wps365: {
+    description: "Configure WPS 365 connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the WPS 365 Client ID:",
+        label: "Client ID",
+        name: "wps365_client_id",
+        optional: false,
+        description: "The OAuth client ID from the WPS 365 open platform.",
+      },
+      {
+        type: "text",
+        query: "Enter the WPS 365 Client Secret:",
+        label: "Client Secret",
+        name: "wps365_client_secret",
+        optional: false,
+        description: "The OAuth client secret.",
+      },
+      {
+        type: "text",
+        query: "Enter the WPS 365 base URL:",
+        label: "Base URL",
+        name: "wps365_base_url",
+        optional: true,
+        description:
+          "The regional account-service base URL. Leave empty for the cn default.",
+      },
+    ],
+    advanced_values: [],
+  },
+  sap_odata: {
+    description: "Configure SAP (OData) connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the OData service base URL:",
+        label: "Base URL",
+        name: "sap_odata_base_url",
+        optional: false,
+        description:
+          "The OData service root, e.g. https://sap.example.com/sap/opu/odata/sap/API_SRV.",
+      },
+      {
+        type: "text",
+        query: "Enter the basic-auth user:",
+        label: "User",
+        name: "sap_odata_user",
+        optional: true,
+        description: "Basic-auth user, if the service uses basic auth.",
+      },
+      {
+        type: "text",
+        query: "Enter the basic-auth password:",
+        label: "Password",
+        name: "sap_odata_password",
+        optional: true,
+        description: "Basic-auth password, if the service uses basic auth.",
+      },
+      {
+        type: "text",
+        query: "Enter the API key:",
+        label: "API Key",
+        name: "sap_odata_apikey",
+        optional: true,
+        description: "API key header value, if the service uses key auth.",
+      },
+    ],
+    advanced_values: [],
+  },
 };
 type ConnectorField = ConnectionConfiguration["values"][number];
 

@@ -673,6 +673,13 @@ export enum ValidSources {
   Lumapps = "lumapps",
   Canvas = "canvas",
 
+  // China workplace platforms + enterprise systems
+  Feishu = "feishu",
+  WeCom = "wecom",
+  DingTalk = "dingtalk",
+  WPS365 = "wps365",
+  SapOData = "sap_odata",
+
   // Craft-specific sources
   CraftFile = "craft_file",
 
