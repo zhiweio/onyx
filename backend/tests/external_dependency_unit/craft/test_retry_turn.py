@@ -14,13 +14,13 @@ a stub sandbox manager whose rewind behavior is configured per test:
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Callable
 
 import pytest
 from sqlalchemy.orm import Session
 
-from onyx.db.enums import SandboxStatus
 from onyx.configs.constants import MessageType
+from onyx.db.enums import SandboxStatus
 from onyx.db.models import BuildMessage, BuildSession, Sandbox, User
 from onyx.server.features.build.db.build_session import get_session_messages
 from onyx.server.features.build.session import messages as messages_module
@@ -44,27 +44,27 @@ class _FakeTurn:
 @pytest.fixture()
 def retry_machinery(monkeypatch: pytest.MonkeyPatch) -> StubSandboxManager:
     """Strip the cache/runner plumbing; keep DB + sandbox-manager real calls."""
-    monkeypatch.setattr(messages_module, "acquire_active_turn_lock", lambda *a, **k: _FakeLock())
-    monkeypatch.setattr(messages_module, "get_active_turn", lambda *a, **k: None)
+    monkeypatch.setattr(messages_module, "acquire_active_turn_lock", lambda *_a, **_k: _FakeLock())
+    monkeypatch.setattr(messages_module, "get_active_turn", lambda *_a, **_k: None)
     monkeypatch.setattr(
         messages_module,
         "create_interactive_turn",
-        lambda *a, **k: _FakeTurn(),
+        lambda *_a, **_k: _FakeTurn(),
     )
     monkeypatch.setattr(
-        messages_module, "start_interactive_turn_runner", lambda *a, **k: None
+        messages_module, "start_interactive_turn_runner", lambda *_a, **_k: None
     )
-    monkeypatch.setattr(messages_module, "check_token_rate_limits", lambda *a, **k: None)
+    monkeypatch.setattr(messages_module, "check_token_rate_limits", lambda *_a, **_k: None)
     monkeypatch.setattr(
-        messages_module, "session_runtime_stale", lambda *a, **k: False
+        messages_module, "session_runtime_stale", lambda *_a, **_k: False
     )
     monkeypatch.setattr(
-        messages_module.SessionManager, "reload_session_skills", lambda *a, **k: None
+        messages_module.SessionManager, "reload_session_skills", lambda *_a, **_k: None
     )
     # The endpoint only uses the manager for the (stubbed) skills reload;
     # constructing the real one would reach for Kubernetes config.
     monkeypatch.setattr(
-        messages_module.SessionManager, "__init__", lambda self, *a, **k: None
+        messages_module.SessionManager, "__init__", lambda _self, *_a, **_k: None
     )
 
     stub = StubSandboxManager()
@@ -126,11 +126,11 @@ def test_retry_with_rewind_deletes_old_turn_and_reruns(
 
     # Rewind-capable runtime: the harness rewind succeeds.
     monkeypatch_list = {
-        "list_opencode_messages": lambda *a, **k: [
+        "list_opencode_messages": lambda *_a, **_k: [
             {"id": "msg_1", "role": "user"},
             {"id": "msg_2", "role": "assistant"},
         ],
-        "rewind_opencode_session": lambda *a, **k: True,
+        "rewind_opencode_session": lambda *_a, **_k: True,
     }
     for name, impl in monkeypatch_list.items():
         setattr(retry_machinery, name, impl)
@@ -167,7 +167,7 @@ def test_retry_without_rewind_keeps_history_and_annotates(
     db_session.commit()
 
     # Runtime without TURN_REWIND: the rewind reports False.
-    retry_machinery.rewind_opencode_session = lambda *a, **k: False
+    retry_machinery.rewind_opencode_session = lambda *_a, **_k: False
 
     retry_turn(
         build_session.id,
@@ -197,7 +197,7 @@ def test_retry_with_content_edits_original_when_not_rewound(
     build_session.opencode_session_id = "ses_retry_3"
     db_session.commit()
 
-    retry_machinery.rewind_opencode_session = lambda *a, **k: False
+    retry_machinery.rewind_opencode_session = lambda *_a, **_k: False
 
     retry_turn(
         build_session.id,
@@ -224,7 +224,7 @@ def test_retry_without_any_turn_is_bad_request(
     db_session: Session,
     test_user: User,
     build_session_with_user: Callable[..., BuildSession],
-    retry_machinery: StubSandboxManager,
+    retry_machinery: StubSandboxManager,  # noqa: ARG001
 ) -> None:
     from onyx.error_handling.exceptions import OnyxError
 
