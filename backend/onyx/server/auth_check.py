@@ -96,6 +96,14 @@ PUBLIC_ENDPOINT_SPECS = [
     # craft webapp proxy — access enforced per-session via sharing_scope in handler
     ("/build/sessions/{session_id}/webapp", {"GET"}),
     ("/build/sessions/{session_id}/webapp/{path:path}", {"GET"}),
+    # China workplace SSO (WeCom/DingTalk/Feishu/WPS365) — provider rows are
+    # db-driven; authorize/callback run before any session exists, exactly like
+    # the oidc_multi routes above.
+    ("/auth/china/{provider_name}/authorize", {"GET"}),
+    ("/auth/china/callback", {"GET"}),
+    # China IM bot callbacks — mounted without the /api prefix; per-platform
+    # signature verification is the authentication (no session by design).
+    ("/onyxbot/{platform}/callback", {"POST"}),
 ]
 
 
