@@ -736,6 +736,7 @@ function LexicalChatInput({
       id={inputId}
       className="w-full min-h-[44px] max-h-40 overflow-y-auto bg-transparent px-3 pb-2 pt-3 whitespace-pre-wrap wrap-break-word outline-hidden overscroll-contain"
       data-testid={inputTestId}
+      data-placeholder={placeholder ?? undefined}
       aria-disabled={disabled}
       onFocus={onFocus}
       {...contentEditableProps}

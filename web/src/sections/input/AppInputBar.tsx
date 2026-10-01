@@ -9,22 +9,14 @@ import React, {
 } from "react";
 import { useTranslations } from "next-intl";
 import { MinimalAgent } from "@/lib/agents/types";
-import { InputPrompt } from "@/app/app/interfaces";
 import { LlmManager } from "@/lib/hooks";
+import { ChatState } from "@/app/app/interfaces";
 import usePromptShortcuts from "@/hooks/usePromptShortcuts";
-import { useContentEditable } from "@/hooks/useContentEditable";
-import useFilter from "@/hooks/useFilter";
 import { useAvailableSources } from "@/lib/connectors/hooks";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
-import { ChatState, MAX_QUEUED_MESSAGES } from "@/app/app/interfaces";
-import { useQueuedMessageNavigation } from "@/hooks/useQueuedMessageNavigation";
 import type { ToolConfigurationHandle } from "@/lib/tools/hooks";
 import { useAppPosition } from "@/lib/position/hooks";
-import { useDraft, draftKey } from "@/hooks/useDraft";
-import { getPastedFilesIfNoText } from "@/lib/clipboard";
-import PasteTilePopover from "@/sections/input/PasteTilePopover";
 import { cn } from "@opal/utils";
-import { firstStrongTextDir } from "@/lib/rehypeDirection";
 import { Disabled } from "@opal/core";
 import { useUser } from "@/providers/UserProvider";
 import { useSettings } from "@/lib/settings/hooks";
@@ -38,27 +30,16 @@ import {
   hasSearchToolsAvailable,
 } from "@/app/app/services/actionUtils";
 import {
-  SvgArrowUp,
   SvgGlobe,
   SvgHourglass,
   SvgMicrophone,
-  SvgPaperclip,
-  SvgPlus,
   SvgSearch,
-  SvgStop,
   SvgX,
   SvgSimpleLoader,
 } from "@opal/icons";
-import {
-  Button,
-  LineItemButton,
-  Popover,
-  SelectButton,
-  Spacer,
-  Text,
-} from "@opal/components";
+import { Button, SelectButton, Spacer, Text } from "@opal/components";
+import { Section as LayoutSection } from "@/layouts/general-layouts";
 import { useQueryController } from "@/providers/QueryControllerProvider";
-import { Section } from "@/layouts/general-layouts";
 import { useIncognito } from "@/providers/IncognitoProvider";
 import MicrophoneButton from "@/sections/input/MicrophoneButton";
 import Waveform from "@/components/voice/Waveform";
@@ -74,27 +55,22 @@ import { findModelConfiguration } from "@/lib/languageModels/utils";
 import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
 import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
 import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
-import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
-import InterruptHint from "@/sections/input/InterruptHint";
-import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
-import { resolveComposerPrimaryAction } from "@/sections/input/composerPrimaryAction";
-import { useEscapeInterrupt } from "@/hooks/useEscapeInterrupt";
-import useSlashPicker from "@/hooks/useSlashPicker";
+import {
+  ChatPromptEditor,
+  clearComposerDraft,
+  defaultEntryToMention,
+  type ComposerMention,
+  type LexicalPromptInputHandle,
+} from "@/sections/input/lexical";
 import useUserSkills from "@/hooks/useUserSkills";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
-import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
-import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import {
   pickerEntryConnectionPath,
-  pickerEntryKey,
-  slashSelectionFromEntries,
   toPickerSections,
   type PickerEntry,
   type SlashSelection,
 } from "@/lib/skills/picker";
 import { uniqueMcpServerIds } from "@/lib/tools/mcpSelection";
-import type { BaseInputBarHandle } from "@/sections/input/BaseInputBar";
-import { deleteTokenBeforeCursor, getTextContent } from "@/lib/contentEditable";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -133,6 +109,22 @@ export interface AppInputBarProps {
   onToggleTabReading?: () => void;
 }
 
+/** Slash selection derived from the editor's chips. */
+function selectionFromMentions(
+  mentions: readonly ComposerMention[],
+): SlashSelection {
+  const skillIds: string[] = [];
+  const mcpServerIds: number[] = [];
+  for (const mention of mentions) {
+    if (mention.category === "skills") {
+      skillIds.push(mention.value);
+    } else if (mention.category === "mcp" && /^\d+$/.test(mention.value)) {
+      mcpServerIds.push(Number(mention.value));
+    }
+  }
+  return { skillIds, mcpServerIds };
+}
+
 const AppInputBar = React.memo(
   ({
     initialMessage = "",
@@ -162,148 +154,88 @@ const AppInputBar = React.memo(
     const [isMuted, setIsMuted] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(
-      null
+      null,
     );
     const setMutedRef = useRef<((muted: boolean) => void) | null>(null);
     const queuedMessages = useCurrentQueuedMessages();
     const latestMessageRenderComplete = useCurrentLatestMessageRenderComplete();
     const enqueueCurrentMessage = useChatSessionStore(
-      (state) => state.enqueueCurrentMessage
+      (state) => state.enqueueCurrentMessage,
     );
     const removeCurrentQueuedMessage = useChatSessionStore(
-      (state) => state.removeCurrentQueuedMessage
+      (state) => state.removeCurrentQueuedMessage,
     );
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
-    const inputWrapperRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const {
-      ref: inputRef,
-      message,
-      setMessage,
-      clearMessage,
-      handleInput,
-      handleCompositionStart,
-      handleCompositionEnd,
-      pasteText,
-      handleCopy,
-      handleCut,
-      setCursorToEnd,
-      handleTileMouseDown,
-      handleTileClick,
-      handleTileKeyDown,
-      tilePopover,
-      dismissTilePopover,
-      updateTileText,
-      expandTile,
-    } = useContentEditable({
-      initialContent: initialMessage,
-      wrapperRef: inputWrapperRef,
-      pasteTilesEnabled: user?.preferences?.paste_as_tile ?? false,
-    });
+
+    const editorRef = useRef<LexicalPromptInputHandle | null>(null);
+    // Mirror of the editor markdown for placeholder/search gating and the
+    // mic flow; the submit path always reads the live editor text.
+    const [message, setMessage] = useState(initialMessage);
+    const isRecordingRef = useRef(isRecording);
 
     const { data: skillsData } = useUserSkills();
     const { data: craftMcpData } = useCraftMcpServers();
     const pickerSections = useMemo(
       () => toPickerSections(skillsData, undefined, craftMcpData?.mcp_servers),
-      [skillsData, craftMcpData]
+      [skillsData, craftMcpData],
     );
-    const [activeEntries, setActiveEntries] = useState<PickerEntry[]>([]);
-    const slashInputRef = useRef<BaseInputBarHandle | null>(null);
-    React.useImperativeHandle(slashInputRef, () => ({
-      reset: () => {},
-      focus: () => inputRef.current?.focus(),
-      setMessage,
-      pasteText,
-      getTextBeforeCursor: () => {
-        const el = inputRef.current;
-        if (!el) return null;
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return null;
-        const range = sel.getRangeAt(0);
-        if (!el.contains(range.startContainer)) return null;
-        const cloned = range.cloneRange();
-        cloned.selectNodeContents(el);
-        cloned.setEnd(range.startContainer, range.startOffset);
-        const tmp = document.createElement("div");
-        tmp.appendChild(cloned.cloneContents());
-        return getTextContent(tmp);
-      },
-      getCaretRect: () => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return null;
-        const range = sel.getRangeAt(0).cloneRange();
-        range.collapse(true);
-        const rect = range.getBoundingClientRect();
-        if (
-          rect.top === 0 &&
-          rect.left === 0 &&
-          rect.width === 0 &&
-          rect.height === 0
-        ) {
-          return inputRef.current?.getBoundingClientRect() ?? null;
-        }
-        return rect;
-      },
-      getInputRect: () => containerRef.current?.getBoundingClientRect() ?? null,
-      deleteBeforeToken: (token: string) => {
-        const el = inputRef.current;
-        if (!el) return false;
-        return deleteTokenBeforeCursor(el, token);
-      },
-    }));
-    const addEntry = useCallback(
-      (entry: PickerEntry) => {
-        const connectionPath = pickerEntryConnectionPath(entry);
-        if (connectionPath) {
-          window.location.assign(connectionPath);
-          return;
-        }
-        if (entry.kind === "mcp") {
-          toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
-        }
-        setActiveEntries((prev) =>
-          prev.some(
-            (candidate) => pickerEntryKey(candidate) === pickerEntryKey(entry)
-          )
-            ? prev
-            : [...prev, entry]
-        );
-      },
-      [toolConfiguration]
+
+    const { activePromptShortcuts } = usePromptShortcuts();
+    const shortcutsEnabled = user?.preferences?.shortcut_enabled ?? false;
+    // Custom prompt shortcuts ride the shared slash menu as commands: typing
+    // "/" lists skills, MCP servers, and the user's saved prompts together.
+    const promptCommands = useMemo(() => {
+      if (!shortcutsEnabled) {
+        return [];
+      }
+      return activePromptShortcuts.map((prompt) => ({
+        kind: "command" as const,
+        slug: prompt.prompt,
+        name: prompt.prompt,
+        description: prompt.content?.trim() ?? "",
+      }));
+    }, [activePromptShortcuts, shortcutsEnabled]);
+
+    const slashTrigger = useMemo(
+      () => ({
+        id: "app-slash",
+        triggerChars: ["/"] as const,
+        sections: {
+          ...pickerSections,
+          commands: promptCommands,
+        },
+        onPick: (entry: PickerEntry): boolean => {
+          if (entry.kind === "command") {
+            const prompt = activePromptShortcuts.find(
+              (candidate) => candidate.prompt === entry.slug,
+            );
+            const content = prompt?.content ?? "";
+            editorRef.current?.setText(content);
+            setMessage(content);
+            return true;
+          }
+          const connectionPath = pickerEntryConnectionPath(entry);
+          if (connectionPath) {
+            window.location.assign(connectionPath);
+            return true;
+          }
+          if (entry.kind === "mcp") {
+            // Picking an MCP server both inserts the chip and enables the
+            // server for the next message, matching the tools toggle.
+            toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
+          }
+          return false;
+        },
+      }),
+      [
+        pickerSections,
+        promptCommands,
+        activePromptShortcuts,
+        toolConfiguration,
+      ],
     );
-    const removeEntry = useCallback((entryKey: string) => {
-      setActiveEntries((prev) =>
-        prev.filter((entry) => pickerEntryKey(entry) !== entryKey)
-      );
-    }, []);
 
-    useEffect(() => {
-      const selected = new Set(toolConfiguration.selectedMcpServerIds);
-      setActiveEntries((prev) => {
-        const next = prev.filter(
-          (entry) => entry.kind !== "mcp" || selected.has(entry.mcpServerId)
-        );
-        return next.length === prev.length ? prev : next;
-      });
-    }, [toolConfiguration.selectedMcpServerIds]);
-    const slashPicker = useSlashPicker({
-      inputRef: slashInputRef,
-      onSelect: addEntry,
-    });
-
-    // Keyboard navigation + highlight state for the queued-message bar
-    // (shared with the Craft input bar).
-    const queueNav = useQueuedMessageNavigation({
-      messages: queuedMessages,
-      inputIsEmpty: !message,
-      onRemove: removeCurrentQueuedMessage,
-      onEdit: setMessage,
-    });
-
-    const filesWrapperRef = useRef<HTMLDivElement>(null);
-    const filesContentRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { state } = useQueryController();
     const isClassifying = state.phase === "classifying";
     const isSearchActive =
@@ -341,58 +273,13 @@ const AppInputBar = React.memo(
               ? t("appInputBar.input.searchPlaceholder")
               : t("appInputBar.input.placeholder");
 
-    // Keyed by chat session id, or "new" until the session is created.
     const chatSessionId = appPosition.chat();
-    const chatDraftStorageKey = draftKey("chat", chatSessionId ?? "new");
-    const {
-      draft: chatDraft,
-      loaded: chatDraftLoaded,
-      save: saveChatDraft,
-      clear: clearChatDraft,
-    } = useDraft<string>({ key: chatDraftStorageKey });
-    const draftSeededRef = useRef(false);
-    const skipNextDraftSaveRef = useRef(false);
-    const prevDraftKeyRef = useRef(chatDraftStorageKey);
-    // Snapshot of message, read non-reactively in the restore effect so seeding
-    // doesn't re-run on every keystroke.
-    const messageRef = useRef(message);
-    const isRecordingRef = useRef(isRecording);
+    const draftScope = chatSessionId ?? "new";
+    const prevDraftScopeRef = useRef(draftScope);
 
     useEffect(() => {
-      messageRef.current = message;
-    }, [message]);
-
-    useEffect(() => {
-      draftSeededRef.current = false;
-      // Clear the previous session's leftover text instead of leaking it into
-      // this one.
-      if (prevDraftKeyRef.current !== chatDraftStorageKey) {
-        prevDraftKeyRef.current = chatDraftStorageKey;
-        clearMessage();
-      }
-    }, [chatDraftStorageKey, clearMessage]);
-
-    // Restore once read: a URL prompt wins and a non-empty input is never
-    // clobbered.
-    useEffect(() => {
-      if (!chatDraftLoaded || draftSeededRef.current) return;
-      draftSeededRef.current = true;
-      if (chatDraft && !initialMessage && !messageRef.current) {
-        // Skip the save effect's next run; it would fire with the stale empty
-        // message and wipe what we just seeded.
-        skipNextDraftSaveRef.current = true;
-        setMessage(chatDraft);
-      }
-    }, [chatDraftLoaded, chatDraft, initialMessage, setMessage]);
-
-    useEffect(() => {
-      if (!chatDraftLoaded || !draftSeededRef.current) return;
-      if (skipNextDraftSaveRef.current) {
-        skipNextDraftSaveRef.current = false;
-        return;
-      }
-      saveChatDraft(message);
-    }, [message, chatDraftLoaded, saveChatDraft]);
+      isRecordingRef.current = isRecording;
+    }, [isRecording]);
 
     const handleRecordingChange = useCallback((nextIsRecording: boolean) => {
       const wasRecording = isRecordingRef.current;
@@ -403,74 +290,88 @@ const AppInputBar = React.memo(
       setIsRecording(nextIsRecording);
     }, []);
 
-    // Wrapper for onSubmit that stops TTS first to prevent overlapping voices
+    // Submit wrapper: stops TTS first to prevent overlapping voices.
     const handleSubmit = useCallback(
-      (text: string) => {
+      (text: string): boolean => {
+        if (!text.trim()) {
+          return false;
+        }
         stopTTS();
-        const slash = slashSelectionFromEntries(activeEntries);
+        const slash = selectionFromMentions(
+          editorRef.current?.getMentions() ?? [],
+        );
         onSubmit(text, {
           skillIds: slash.skillIds,
           mcpServerIds: uniqueMcpServerIds(
             slash.mcpServerIds,
-            toolConfiguration.selectedMcpServerIds
+            toolConfiguration.selectedMcpServerIds,
           ),
         });
-        setActiveEntries([]);
+        clearComposerDraft("chat", draftScope);
+        return true;
       },
-      [stopTTS, onSubmit, activeEntries, toolConfiguration.selectedMcpServerIds]
+      [stopTTS, onSubmit, toolConfiguration.selectedMcpServerIds, draftScope],
     );
-    const submitMessage = useCallback(
-      (text: string) => {
-        if (!text.trim()) {
-          return;
-        }
-        handleSubmit(text);
-        clearChatDraft();
+
+    const handleQueueMessage = useCallback(
+      (text: string): boolean => {
+        enqueueCurrentMessage(text.trim());
+        // Drop the draft now; a reload could outrace the debounced empty-save.
+        clearComposerDraft("chat", draftScope);
+        return true;
       },
-      [handleSubmit, clearChatDraft]
+      [enqueueCurrentMessage, draftScope],
     );
+
+    const handleEditorChange = useCallback((text: string) => {
+      setMessage(text);
+    }, []);
+
+    // Sync non-empty prop changes into the editor (e.g. NRFPage reads URL
+    // params after mount). Clearing is handled via the imperative reset().
+    useEffect(() => {
+      if (initialMessage) {
+        editorRef.current?.setText(initialMessage);
+        setMessage(initialMessage);
+      }
+    }, [initialMessage]);
+
+    // Session switch: clear leftover text so the previous chat's draft cannot
+    // leak into the new one.
+    useEffect(() => {
+      if (prevDraftScopeRef.current !== draftScope) {
+        prevDraftScopeRef.current = draftScope;
+        editorRef.current?.clear();
+        setMessage("");
+      }
+    }, [draftScope]);
 
     // Expose reset and focus methods to parent via ref
     React.useImperativeHandle(ref, () => ({
       reset: () => {
         if (!isAutoSending.current) {
-          clearMessage();
-          clearChatDraft();
-          setActiveEntries([]);
-          slashPicker.reset();
+          editorRef.current?.clear();
+          setMessage("");
+          clearComposerDraft("chat", draftScope);
         }
       },
       focus: () => {
-        inputRef.current?.focus();
-        setCursorToEnd();
+        editorRef.current?.focus();
       },
-      setMessage: (message: string) => {
-        setMessage(message);
-        inputRef.current?.focus();
+      setMessage: (nextMessage: string) => {
+        editorRef.current?.setText(nextMessage);
+        setMessage(nextMessage);
+        editorRef.current?.focus();
       },
       setEntries: (entries: PickerEntry[]) => {
-        setActiveEntries(entries);
+        for (const entry of entries) {
+          if (entry.kind === "mcp") {
+            toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
+          }
+          editorRef.current?.insertMention(defaultEntryToMention(entry, "/"));
+        }
       },
     }));
-
-    // Sync non-empty prop changes to internal state (e.g. NRFPage reads URL params
-    // after mount). Intentionally skips empty strings — clearing is handled via the
-    // imperative ref.reset() method, not by passing initialMessage="".
-    useEffect(() => {
-      if (initialMessage) {
-        setMessage(initialMessage);
-      }
-    }, [initialMessage]); // eslint-disable-line react-hooks/exhaustive-deps
-    const shouldShowRecordingWaveformBelow =
-      isRecording &&
-      !isVoicePlaybackActive &&
-      (isNewSession || recordingCycleCount === 1);
-
-    useEffect(() => {
-      if (isNewSession && !initialMessage) {
-        clearMessage();
-      }
-    }, [isNewSession, initialMessage]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const { forcedToolId, clearForcedTool } = toolConfiguration;
     const { currentMessageFiles, setCurrentMessageFiles } =
@@ -480,13 +381,13 @@ const AppInputBar = React.memo(
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
-        (file) => file.status === UserFileStatus.PROCESSING
+        (file) => file.status === UserFileStatus.PROCESSING,
       );
     }, [currentMessageFiles]);
 
     const hasUploadingFiles = useMemo(() => {
       return currentMessageFiles.some(
-        (file) => file.status === UserFileStatus.UPLOADING
+        (file) => file.status === UserFileStatus.UPLOADING,
       );
     }, [currentMessageFiles]);
 
@@ -505,17 +406,14 @@ const AppInputBar = React.memo(
 
         setPresentingDocument(documentForViewer);
       },
-      [setPresentingDocument]
+      [setPresentingDocument],
     );
 
-    const handleUploadChange = useCallback(
-      async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        handleFileUpload(Array.from(files));
-        e.target.value = "";
+    const handleRemoveMessageFile = useCallback(
+      (fileId: string) => {
+        setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
-      [handleFileUpload]
+      [setCurrentMessageFiles],
     );
 
     const combinedSettingsData = useSettings();
@@ -552,49 +450,6 @@ const AppInputBar = React.memo(
       onSubmit,
     ]);
 
-    // Animate attached files wrapper to its content height so CSS transitions
-    // can interpolate between concrete pixel values (0px ↔ Npx).
-    const showFiles = !isSearchMode && currentMessageFiles.length > 0;
-    useEffect(() => {
-      const wrapper = filesWrapperRef.current;
-      const content = filesContentRef.current;
-      if (!wrapper || !content) return;
-
-      if (showFiles) {
-        // Measure the inner content's actual height, then add padding (p-1 = 8px total)
-        const PADDING = 8;
-        wrapper.style.height = `${content.offsetHeight + PADDING}px`;
-      } else {
-        wrapper.style.height = "0px";
-      }
-    }, [showFiles, currentMessageFiles]);
-
-    function handlePaste(event: React.ClipboardEvent) {
-      if (disabled) return;
-      const pastedFiles = getPastedFilesIfNoText(event.clipboardData);
-      if (pastedFiles.length > 0) {
-        event.preventDefault();
-        handleFileUpload(pastedFiles);
-        return;
-      }
-
-      event.preventDefault();
-      const text = event.clipboardData.getData("text/plain");
-      if (!text) return;
-
-      pasteText(text);
-    }
-
-    const handleRemoveMessageFile = useCallback(
-      (fileId: string) => {
-        setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
-      },
-      [setCurrentMessageFiles]
-    );
-
-    const { activePromptShortcuts } = usePromptShortcuts();
-    // The list itself belongs to ToolsPopover, which reads it directly; only
-    // the loading flag is wanted here, to hold the controls back.
     const { isLoading: sourcesLoading } = useAvailableSources();
 
     // Bottom controls are hidden until all data is loaded
@@ -606,7 +461,7 @@ const AppInputBar = React.memo(
       if (modelConfigurationId != null) {
         for (const provider of providers) {
           const model = provider.model_configurations.find(
-            (candidate) => candidate.id === modelConfigurationId
+            (candidate) => candidate.id === modelConfigurationId,
           );
           if (model) return model;
         }
@@ -622,18 +477,9 @@ const AppInputBar = React.memo(
       llmManager.currentLlm.name,
     ]);
     const contextTokensUsed = useCurrentContextTokensUsed();
-    const [showPrompts, setShowPrompts] = useState(false);
 
-    const hasComposerText = message.trim().length > 0;
     const isGenerating = chatState !== "input";
     const canStopGeneration = isGenerating || isVoicePlaybackControllable;
-    const primaryAction = resolveComposerPrimaryAction({
-      isRunning: canStopGeneration,
-      hasText: hasComposerText,
-      canQueue: queuedMessages.length < MAX_QUEUED_MESSAGES,
-      isBusy: isClassifying,
-      canStop: canStopGeneration,
-    });
 
     const handleStopGeneration = useCallback(() => {
       stopTTS({ manual: true });
@@ -642,54 +488,10 @@ const AppInputBar = React.memo(
       }
     }, [chatState, stopGenerating, stopTTS]);
 
-    useEscapeInterrupt({
-      enabled:
-        canStopGeneration && !slashPicker.open && !showPrompts && !disabled,
-      onInterrupt: handleStopGeneration,
-    });
-
-    const [tabbingIconIndex, setTabbingIconIndex] = useState(0);
-
-    const hidePrompts = useCallback(() => {
-      setTimeout(() => {
-        setShowPrompts(false);
-      }, 50);
-      setTabbingIconIndex(0);
-    }, []);
-
-    function updateInputPrompt(prompt: InputPrompt) {
-      hidePrompts();
-      setMessage(prompt.content);
-    }
-
-    const { filtered: filteredPrompts, setQuery: setPromptFilterQuery } =
-      useFilter(activePromptShortcuts, (prompt) => prompt.prompt);
-
-    // Memoize sorted prompts to avoid re-sorting on every render
-    const sortedFilteredPrompts = useMemo(
-      () => [...filteredPrompts].sort((a, b) => a.id - b.id),
-      [filteredPrompts]
-    );
-
-    // Reset tabbingIconIndex when filtered prompts change to avoid out-of-bounds
-    useEffect(() => {
-      setTabbingIconIndex(0);
-    }, [filteredPrompts]);
-
-    const handleContentEditableInput = useCallback(
-      (event: React.SyntheticEvent<HTMLDivElement>) => {
-        const text = handleInput(event);
-        slashPicker.onInput();
-        if (text.startsWith("/") && !slashPicker.open) {
-          setShowPrompts(true);
-          setPromptFilterQuery(text.slice(1));
-        } else {
-          hidePrompts();
-          setPromptFilterQuery("");
-        }
-      },
-      [handleInput, hidePrompts, setPromptFilterQuery, slashPicker.onInput]
-    );
+    const shouldShowRecordingWaveformBelow =
+      isRecording &&
+      !isVoicePlaybackActive &&
+      (isNewSession || recordingCycleCount === 1);
 
     // Determine if we should hide processing state based on context limits
     const hideProcessingState = useMemo(() => {
@@ -697,14 +499,14 @@ const AppInputBar = React.memo(
         // token_count is null until indexing finishes; don't hide the
         // processing indicator while a file's size is still unknown.
         const allTokenCountsKnown = currentIndexingFiles.every(
-          (file) => file.token_count !== null
+          (file) => file.token_count !== null,
         );
         if (!allTokenCountsKnown) {
           return false;
         }
         const currentFilesTokenTotal = currentMessageFiles.reduce(
           (acc, file) => acc + (file.token_count || 0),
-          0
+          0,
         );
         const totalTokens =
           (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
@@ -752,277 +554,158 @@ const AppInputBar = React.memo(
       isLoadingProjects,
     ]);
 
-    function handleKeyDownForPromptShortcuts(
-      e: React.KeyboardEvent<HTMLDivElement>
-    ) {
-      if (!user?.preferences?.shortcut_enabled || !showPrompts) return;
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (tabbingIconIndex === sortedFilteredPrompts.length) {
-          // "Create a new prompt" is selected
-          window.open("/app/settings/chat-preferences", "_self");
-        } else {
-          const selectedPrompt = sortedFilteredPrompts[tabbingIconIndex];
-          if (selectedPrompt) {
-            updateInputPrompt(selectedPrompt);
-          }
-        }
-      } else if (e.key === "Tab" && e.shiftKey) {
-        // Shift+Tab: cycle backward
-        e.preventDefault();
-        setTabbingIconIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === "Tab") {
-        // Tab: cycle forward
-        e.preventDefault();
-        setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
-        );
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
-        );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setTabbingIconIndex((prev) => Math.max(prev - 1, 0));
-      }
-    }
-
-    const chatControls = (
-      <div
-        {...(isSearchMode ? { inert: true } : {})}
-        className={cn(
-          "flex justify-between items-center w-full",
-          isSearchMode
-            ? "opacity-0 p-0 h-0 overflow-hidden pointer-events-none"
-            : "opacity-100 p-1 h-11 pointer-events-auto",
-          "transition-all duration-150"
-        )}
-      >
-        {/* Bottom left controls */}
-        <div className="flex flex-row items-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            multiple
-            accept="*/*"
-            onChange={handleUploadChange}
+    const attachedFiles = !isSearchMode && currentMessageFiles.length > 0 && (
+      <div className="flex flex-wrap gap-1 p-1">
+        {currentMessageFiles.map((file) => (
+          <FileCard
+            key={file.id}
+            file={file}
+            removeFile={handleRemoveMessageFile}
+            hideProcessingState={hideProcessingState}
+            onFileClick={handleFileClick}
+            compactImages={shouldCompactImages}
           />
-          <Button
-            disabled={disabled}
-            icon={SvgPaperclip}
-            tooltip={t("appInputBar.attachFilesButton.tooltip")}
-            prominence="tertiary"
-            aria-label={t("appInputBar.attachFilesButton.tooltip")}
-            onClick={() => fileInputRef.current?.click()}
-          />
-
-          {/* Controls that load in when data is ready */}
-          <div
-            data-testid="actions-container"
-            className={cn(
-              "flex flex-row items-center",
-              controlsLoading && "invisible"
-            )}
-          >
-            {activeAgent && (
-              // Keyed, so switching agents starts clean rather than carrying
-              // the previous agent's open panel and search term across.
-              <ToolsPopover
-                key={activeAgent.id}
-                agent={activeAgent}
-                toolConfiguration={toolConfiguration}
-                disabled={disabled}
-              />
-            )}
-            {onToggleTabReading ? (
-              <SelectButton
-                disabled={disabled}
-                icon={SvgGlobe}
-                onClick={onToggleTabReading}
-                state={tabReadingEnabled ? "selected" : "empty"}
-              >
-                {tabReadingEnabled
-                  ? currentTabUrl
-                    ? (() => {
-                        try {
-                          return new URL(currentTabUrl).hostname;
-                        } catch {
-                          return currentTabUrl;
-                        }
-                      })()
-                    : t("appInputBar.tabReadingButton.readingLabel")
-                  : t("appInputBar.tabReadingButton.readLabel")}
-              </SelectButton>
-            ) : (
-              showDeepResearch && (
-                <SelectButton
-                  disabled={disabled || isMultiModelActive}
-                  variant="select-light"
-                  icon={SvgHourglass}
-                  onClick={toggleDeepResearch}
-                  state={deepResearchEnabled ? "selected" : "empty"}
-                  foldable={!deepResearchEnabled}
-                  tooltip={
-                    isMultiModelActive
-                      ? t("appInputBar.deepResearchButton.disabledTooltip")
-                      : undefined
-                  }
-                >
-                  {t("appInputBar.deepResearchButton.label")}
-                </SelectButton>
-              )
-            )}
-
-            {(() => {
-              if (!activeAgent || forcedToolId === null) return null;
-              const tool = activeAgent.tools.find(
-                (tool) => tool.id === forcedToolId
-              );
-              if (!tool) return null;
-              return (
-                <Disabled disabled={disabled}>
-                  <SelectButton
-                    variant="select-light"
-                    icon={getIconForAction(tool)}
-                    onClick={clearForcedTool}
-                    state="selected"
-                  >
-                    {tool.display_name}
-                  </SelectButton>
-                </Disabled>
-              );
-            })()}
-          </div>
-          {canStopGeneration && <InterruptHint interrupting={false} />}
-        </div>
-
-        {/* Bottom right controls */}
-        <div className="flex flex-row items-center gap-1">
-          <ContextUsageMeter
-            usedTokens={contextTokensUsed}
-            contextLimit={currentModel?.max_input_tokens ?? null}
-          />
-          <ThoughtLevelSelect
-            value={llmManager.reasoningEffort}
-            onChange={(effort) => llmManager.updateReasoningEffort(effort)}
-            supportsReasoning={currentModel?.supports_reasoning ?? false}
-            supportedEfforts={currentModel?.supported_reasoning_efforts}
-            effortMax={currentModel?.reasoning_effort_max}
-            fallback={DEFAULT_THOUGHT_LEVEL}
-            disabled={disabled}
-          />
-          {showMicButton &&
-            (sttEnabled ? (
-              <MicrophoneButton
-                onTranscription={(text) => setMessage(text)}
-                disabled={disabled || chatState === "streaming"}
-                autoSend={user?.preferences?.voice_auto_send ?? false}
-                autoListen={user?.preferences?.voice_auto_playback ?? false}
-                isNewSession={isNewSession}
-                chatState={chatState}
-                onRecordingChange={handleRecordingChange}
-                stopRecordingRef={stopRecordingRef}
-                currentMessage={message}
-                onRecordingStart={() => {}}
-                onAutoSend={(text) => {
-                  submitMessage(text);
-                }}
-                onMuteChange={setIsMuted}
-                setMutedRef={setMutedRef}
-                onAudioLevel={setAudioLevel}
-              />
-            ) : (
-              <Button
-                disabled
-                icon={SvgMicrophone}
-                aria-label={t("appInputBar.voiceSetupButton.ariaLabel")}
-                prominence="tertiary"
-                tooltip={t("appInputBar.voiceSetupButton.tooltip")}
-              />
-            ))}
-
-          <Button
-            disabled={
-              primaryAction === "busy" ||
-              hasUploadingFiles ||
-              hasIndexingFiles ||
-              (primaryAction === "send" && (!hasComposerText || isGenerating))
-            }
-            tooltip={
-              hasUploadingFiles || hasIndexingFiles
-                ? t("appInputBar.sendButton.processingFilesTooltip")
-                : primaryAction === "stop"
-                  ? t("baseInputBar.stopButton.tooltip")
-                  : primaryAction === "queue"
-                    ? t("baseInputBar.sendButton.queueLabel")
-                    : t("baseInputBar.sendButton.sendLabel")
-            }
-            id="onyx-chat-input-send-button"
-            icon={
-              primaryAction === "busy"
-                ? SvgSimpleLoader
-                : primaryAction === "stop"
-                  ? SvgStop
-                  : SvgArrowUp
-            }
-            aria-label={
-              primaryAction === "stop"
-                ? t("baseInputBar.stopButton.ariaLabel")
-                : primaryAction === "queue"
-                  ? t("baseInputBar.sendButton.queueLabel")
-                  : t("baseInputBar.sendButton.sendLabel")
-            }
-            onClick={() => {
-              if (primaryAction === "queue") {
-                enqueueCurrentMessage(message.trim());
-                clearMessage();
-                // Drop the draft now; a reload could outrace the debounced
-                // empty-save.
-                clearChatDraft();
-                return;
-              }
-              if (primaryAction === "stop") {
-                handleStopGeneration();
-                return;
-              }
-              if (primaryAction === "send" && hasComposerText) {
-                submitMessage(message);
-              }
-            }}
-          />
-        </div>
+        ))}
       </div>
+    );
+
+    // Toolbar slots keep the existing /app controls; search mode hides the
+    // chat-only ones exactly like the old controls row did.
+    const controlsHiddenClass = cn(
+      "flex flex-row items-center",
+      isSearchMode && "hidden",
+      controlsLoading && "invisible",
+    );
+
+    const toolbarLeading = (
+      <div className={controlsHiddenClass}>
+        {activeAgent && (
+          // Keyed, so switching agents starts clean rather than carrying
+          // the previous agent's open panel and search term across.
+          <ToolsPopover
+            key={activeAgent.id}
+            agent={activeAgent}
+            toolConfiguration={toolConfiguration}
+            disabled={disabled}
+          />
+        )}
+        {onToggleTabReading ? (
+          <SelectButton
+            disabled={disabled}
+            icon={SvgGlobe}
+            onClick={onToggleTabReading}
+            state={tabReadingEnabled ? "selected" : "empty"}
+          >
+            {tabReadingEnabled
+              ? currentTabUrl
+                ? (() => {
+                    try {
+                      return new URL(currentTabUrl).hostname;
+                    } catch {
+                      return currentTabUrl;
+                    }
+                  })()
+                : t("appInputBar.tabReadingButton.readingLabel")
+              : t("appInputBar.tabReadingButton.readLabel")}
+          </SelectButton>
+        ) : (
+          showDeepResearch && (
+            <SelectButton
+              disabled={disabled || isMultiModelActive}
+              variant="select-light"
+              icon={SvgHourglass}
+              onClick={toggleDeepResearch}
+              state={deepResearchEnabled ? "selected" : "empty"}
+              foldable={!deepResearchEnabled}
+              tooltip={
+                isMultiModelActive
+                  ? t("appInputBar.deepResearchButton.disabledTooltip")
+                  : undefined
+              }
+            >
+              {t("appInputBar.deepResearchButton.label")}
+            </SelectButton>
+          )
+        )}
+
+        {(() => {
+          if (!activeAgent || forcedToolId === null) return null;
+          const tool = activeAgent.tools.find(
+            (tool) => tool.id === forcedToolId,
+          );
+          if (!tool) return null;
+          return (
+            <Disabled disabled={disabled}>
+              <SelectButton
+                variant="select-light"
+                icon={getIconForAction(tool)}
+                onClick={clearForcedTool}
+                state="selected"
+              >
+                {tool.display_name}
+              </SelectButton>
+            </Disabled>
+          );
+        })()}
+      </div>
+    );
+
+    const toolbarTrailing = !isSearchMode && (
+      <>
+        <ContextUsageMeter
+          usedTokens={contextTokensUsed}
+          contextLimit={currentModel?.max_input_tokens ?? null}
+        />
+        <ThoughtLevelSelect
+          value={llmManager.reasoningEffort}
+          onChange={(effort) => llmManager.updateReasoningEffort(effort)}
+          supportsReasoning={currentModel?.supports_reasoning ?? false}
+          supportedEfforts={currentModel?.supported_reasoning_efforts}
+          effortMax={currentModel?.reasoning_effort_max}
+          fallback={DEFAULT_THOUGHT_LEVEL}
+          disabled={disabled}
+        />
+        {showMicButton &&
+          (sttEnabled ? (
+            <MicrophoneButton
+              onTranscription={(text) => {
+                editorRef.current?.setText(text);
+                setMessage(text);
+              }}
+              disabled={disabled || chatState === "streaming"}
+              autoSend={user?.preferences?.voice_auto_send ?? false}
+              autoListen={user?.preferences?.voice_auto_playback ?? false}
+              isNewSession={isNewSession}
+              chatState={chatState}
+              onRecordingChange={handleRecordingChange}
+              stopRecordingRef={stopRecordingRef}
+              currentMessage={message}
+              onRecordingStart={() => {}}
+              onAutoSend={(text) => {
+                handleSubmit(text);
+                editorRef.current?.clear();
+                setMessage("");
+              }}
+              onMuteChange={setIsMuted}
+              setMutedRef={setMutedRef}
+              onAudioLevel={setAudioLevel}
+            />
+          ) : (
+            <Button
+              disabled
+              icon={SvgMicrophone}
+              aria-label={t("appInputBar.voiceSetupButton.ariaLabel")}
+              prominence="tertiary"
+              tooltip={t("appInputBar.voiceSetupButton.tooltip")}
+            />
+          ))}
+      </>
     );
 
     return (
       <>
-        <QueuedMessageBar
-          messages={queuedMessages}
-          highlightedIndex={queueNav.highlightedIndex}
-          onDiscard={removeCurrentQueuedMessage}
-          onHighlight={queueNav.setHighlightedIndex}
-        />
         <Disabled disabled={disabled} allowClick>
-          <div
-            ref={containerRef}
-            id="onyx-chat-input"
-            className={cn(
-              "relative w-full flex flex-col shadow-box-01 bg-background-neutral-00 rounded-16"
-              // # Note (from @raunakab):
-              //
-              // `shadow-box-01` extends ~14px below the element (2px offset + 12px blur).
-              // Because the content area in `Root` (app-layouts.tsx) uses `overflow-auto`,
-              // shadows that exceed the container bounds are clipped.
-              //
-              // The 14px breathing room is now applied externally via animated spacer
-              // divs in `AppPage.tsx` (above and below the AppInputBar) so that the
-              // spacing can transition smoothly when switching between search and chat
-              // modes. See the corresponding note there for details.
-            )}
-          >
+          <div id="onyx-chat-input" className="relative w-full">
             {/* Voice waveform overlay (positioned outside normal flow to avoid resizing input) */}
             {isTTSActuallySpeaking ? (
               <div className="absolute bottom-full mb-1 start-1 z-10">
@@ -1049,218 +732,62 @@ const AppInputBar = React.memo(
               </div>
             ) : null}
 
-            <InputChipStrip
-              files={[]}
-              entries={activeEntries}
-              onRemoveFile={() => undefined}
-              onRemoveEntry={removeEntry}
-            />
-            <EntryPickerPopover
-              open={slashPicker.open}
-              anchorRect={slashPicker.anchorRect}
-              query={slashPicker.query}
-              sections={pickerSections}
-              onSelect={slashPicker.onSelect}
-              onClose={slashPicker.onClose}
-            />
-
-            {/* Attached Files */}
-            <div
-              ref={filesWrapperRef}
-              {...(!showFiles ? { inert: true } : {})}
-              className={cn(
-                "transition-all duration-150",
-                showFiles
-                  ? "opacity-100 p-1"
-                  : "opacity-0 p-0 overflow-hidden pointer-events-none"
-              )}
-            >
-              <div ref={filesContentRef} className="flex flex-wrap gap-1">
-                {currentMessageFiles.map((file) => (
-                  <FileCard
-                    key={file.id}
-                    file={file}
-                    removeFile={handleRemoveMessageFile}
-                    hideProcessingState={hideProcessingState}
-                    onFileClick={handleFileClick}
-                    compactImages={shouldCompactImages}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-row items-center w-full">
-              <Popover
-                open={
-                  user?.preferences?.shortcut_enabled &&
-                  showPrompts &&
-                  !slashPicker.open
-                }
-                onOpenChange={setShowPrompts}
-              >
-                <Popover.Anchor asChild>
-                  <div
-                    ref={inputWrapperRef}
-                    className="px-3 py-2 flex-1 flex h-11 overflow-hidden"
-                  >
-                    <div
-                      ref={inputRef}
-                      id="onyx-chat-input-textbox"
-                      role="textbox"
-                      aria-label={t("appInputBar.input.ariaLabel")}
-                      contentEditable={!disabled}
-                      // Direction follows what the user types. While empty
-                      // it follows the placeholder so its punctuation sits
-                      // on the correct side in every locale.
-                      dir={
-                        message
-                          ? "auto"
-                          : (firstStrongTextDir(activePlaceholder) ?? "auto")
-                      }
-                      suppressContentEditableWarning
-                      onPaste={handlePaste}
-                      onCopy={handleCopy}
-                      onCut={handleCut}
-                      onMouseDown={handleTileMouseDown}
-                      onClick={handleTileClick}
-                      onBlur={() => queueNav.setHighlightedIndex(null)}
-                      onKeyDownCapture={handleKeyDownForPromptShortcuts}
-                      onInput={handleContentEditableInput}
-                      onCompositionStart={handleCompositionStart}
-                      onCompositionEnd={handleCompositionEnd}
-                      className="p-[2px] w-full h-full outline-hidden bg-transparent whitespace-pre-wrap wrap-break-word overflow-y-auto"
-                      tabIndex={disabled ? -1 : 0}
-                      style={{
-                        scrollbarWidth: "thin",
-                        scrollbarColor: "var(--border-02) transparent",
+            <ChatPromptEditor
+              placeholder={activePlaceholder}
+              disabled={disabled}
+              submitBlocked={hasUploadingFiles || hasIndexingFiles}
+              isRunning={canStopGeneration}
+              isBusy={isClassifying}
+              onInterrupt={handleStopGeneration}
+              onSubmit={handleSubmit}
+              onQueueMessage={handleQueueMessage}
+              queuedMessages={queuedMessages}
+              onRemoveQueuedMessage={removeCurrentQueuedMessage}
+              historyStorageKey={`onyx-prompt-history:chat:${user?.id ?? "anonymous"}`}
+              draft={{ surface: "chat", scope: draftScope }}
+              slashTrigger={slashTrigger}
+              pasteTilesEnabled={user?.preferences?.paste_as_tile ?? false}
+              topContent={attachedFiles}
+              toolbarLeading={toolbarLeading}
+              toolbarTrailing={toolbarTrailing}
+              submitButtonId="onyx-chat-input-send-button"
+              inputTestId="onyx-chat-input-textbox"
+              inputId="onyx-chat-input-textbox"
+              editorRef={editorRef}
+              initialValue={initialMessage}
+              onPasteFiles={handleFileUpload}
+              submitControl={
+                isSearchMode ? (
+                  <LayoutSection flexDirection="row" width="fit" gap={0}>
+                    <Button
+                      disabled={!message || isClassifying}
+                      icon={SvgX}
+                      onClick={() => {
+                        editorRef.current?.clear();
+                        setMessage("");
                       }}
-                      aria-multiline={true}
-                      aria-disabled={disabled}
-                      aria-placeholder={t("appInputBar.input.placeholder")}
-                      data-placeholder={activePlaceholder}
-                      data-empty={!message ? "" : undefined}
-                      onKeyDown={(event) => {
-                        if (
-                          handleInputNavKeys(event, queueNav, handleTileKeyDown)
-                        )
-                          return;
-
-                        // Enter to submit or queue (Shift+Enter falls through
-                        // to browser default: inserts <br>).
-                        if (
-                          event.key === "Enter" &&
-                          !showPrompts &&
-                          !slashPicker.open &&
-                          !event.shiftKey &&
-                          !(event.nativeEvent as any).isComposing
-                        ) {
-                          event.preventDefault();
-                          const canSubmitNormally = chatState === "input";
-                          if (canSubmitNormally) {
-                            if (
-                              message &&
-                              !disabled &&
-                              !isClassifying &&
-                              !hasUploadingFiles
-                            ) {
-                              submitMessage(message);
-                            }
-                          } else if (
-                            message.trim() &&
-                            !disabled &&
-                            !isClassifying &&
-                            !hasUploadingFiles &&
-                            queuedMessages.length < MAX_QUEUED_MESSAGES
-                          ) {
-                            enqueueCurrentMessage(message.trim());
-                            clearMessage();
-                            // Drop the draft now; a reload could outrace the
-                            // debounced empty-save.
-                            clearChatDraft();
-                          }
-                        }
-                      }}
+                      prominence="tertiary"
                     />
-                  </div>
-                </Popover.Anchor>
-
-                <Popover.Content
-                  side="top"
-                  align="start"
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                  width="xl"
-                >
-                  <Popover.Menu>
-                    {[
-                      ...sortedFilteredPrompts.map((prompt, index) => (
-                        <LineItemButton
-                          sizePreset="main-ui"
-                          rounding={2}
-                          key={prompt.id}
-                          state={
-                            tabbingIconIndex === index ? "selected" : "empty"
-                          }
-                          selectVariant={
-                            tabbingIconIndex === index
-                              ? "select-heavy"
-                              : "select-light"
-                          }
-                          description={prompt.content?.trim()}
-                          onClick={() => updateInputPrompt(prompt)}
-                          title={prompt.prompt}
-                        />
-                      )),
-                      sortedFilteredPrompts.length > 0 ? null : undefined,
-                      <LineItemButton
-                        sizePreset="main-ui"
-                        rounding={2}
-                        key="create-new"
-                        href="/app/settings/chat-preferences"
-                        icon={SvgPlus}
-                        state={
-                          tabbingIconIndex === sortedFilteredPrompts.length
-                            ? "selected"
-                            : "empty"
+                    <Button
+                      disabled={!message || isClassifying || hasUploadingFiles}
+                      id="onyx-chat-input-send-button"
+                      icon={isClassifying ? SvgSimpleLoader : SvgSearch}
+                      onClick={() => {
+                        if (chatState == "streaming") {
+                          stopGenerating();
+                        } else if (message) {
+                          handleSubmit(editorRef.current?.getText() ?? message);
+                          editorRef.current?.clear();
+                          setMessage("");
                         }
-                        selectVariant={
-                          tabbingIconIndex === sortedFilteredPrompts.length
-                            ? "select-heavy"
-                            : "select-light"
-                        }
-                        title={t("appInputBar.createPromptItem.title")}
-                      />,
-                    ]}
-                  </Popover.Menu>
-                </Popover.Content>
-              </Popover>
-
-              {isSearchMode && (
-                <Section flexDirection="row" width="fit" gap={0}>
-                  <Button
-                    disabled={!message || isClassifying}
-                    icon={SvgX}
-                    onClick={() => clearMessage()}
-                    prominence="tertiary"
-                  />
-                  <Button
-                    disabled={!message || isClassifying || hasUploadingFiles}
-                    id="onyx-chat-input-send-button"
-                    icon={isClassifying ? SvgSimpleLoader : SvgSearch}
-                    onClick={() => {
-                      if (chatState == "streaming") {
-                        stopGenerating();
-                      } else if (message) {
-                        submitMessage(message);
-                      }
-                    }}
-                    prominence="tertiary"
-                  />
-                  <Spacer orientation="horizontal" rem={0.25} />
-                </Section>
-              )}
-            </div>
-
-            {chatControls}
+                      }}
+                      prominence="tertiary"
+                    />
+                    <Spacer orientation="horizontal" rem={0.25} />
+                  </LayoutSection>
+                ) : undefined
+              }
+            />
 
             {/* First recording cycle waveform below input */}
             {shouldShowRecordingWaveformBelow && (
@@ -1276,21 +803,12 @@ const AppInputBar = React.memo(
                 />
               </div>
             )}
-            {tilePopover && (
-              <PasteTilePopover
-                text={tilePopover.text}
-                tileElement={tilePopover.tile}
-                onDismiss={dismissTilePopover}
-                onTextChange={updateTileText}
-                onExpand={() => expandTile(tilePopover.tile)}
-              />
-            )}
           </div>
         </Disabled>
         {/* Stays for the whole session: the warning is most relevant
             once the user is actually chatting. */}
         {incognitoEnabled && (
-          <Section
+          <LayoutSection
             flexDirection="column"
             alignItems="center"
             height="fit"
@@ -1303,11 +821,11 @@ const AppInputBar = React.memo(
             <Text font="secondary-body" color="text-02">
               {t("appInputBar.incognitoPolicyNotice.text")}
             </Text>
-          </Section>
+          </LayoutSection>
         )}
       </>
     );
-  }
+  },
 );
 AppInputBar.displayName = "AppInputBar";
 

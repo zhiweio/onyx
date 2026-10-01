@@ -118,7 +118,7 @@ test.describe("Paste Behavior", () => {
   }) => {
     await chatPage.inputBar.pasteHtml(
       "<b>bold</b> <i>italic</i>",
-      "bold italic"
+      "bold italic",
     );
     await chatPage.inputBar.expectText("bold italic");
     await chatPage.inputBar.expectInnerHtmlNotContaining("<b>");
@@ -145,7 +145,7 @@ test.describe("Paste Security", () => {
     await chatPage.inputBar.expectInnerHtmlNotContaining("<script");
     await chatPage.inputBar.expectInnerHtmlNotContaining("</script>");
     const xssFired = await chatPage.page.evaluate(
-      () => (window as any).__xss_fired
+      () => (window as any).__xss_fired,
     );
     expect(xssFired).toBeFalsy();
   });
@@ -157,7 +157,7 @@ test.describe("Paste Security", () => {
     await chatPage.inputBar.expectInnerHtmlNotContaining("<img");
     await chatPage.inputBar.expectInnerHtmlNotContaining("onerror");
     const xssFired = await chatPage.page.evaluate(
-      () => (window as any).__xss_img
+      () => (window as any).__xss_img,
     );
     expect(xssFired).toBeFalsy();
   });
@@ -210,7 +210,7 @@ test.describe("Auto-Resize", () => {
   test("does not exceed max height with many lines", async ({ chatPage }) => {
     const manyLines = Array.from(
       { length: 60 },
-      (_, i) => `line ${i + 1}`
+      (_, i) => `line ${i + 1}`,
     ).join("\n");
     await chatPage.inputBar.paste(manyLines);
     await chatPage.inputBar.expectHeightAtMost(200);
@@ -221,7 +221,7 @@ test.describe("Auto-Resize", () => {
   }) => {
     const manyLines = Array.from(
       { length: 60 },
-      (_, i) => `line ${i + 1}`
+      (_, i) => `line ${i + 1}`,
     ).join("\n");
     await chatPage.inputBar.paste(manyLines);
     await chatPage.inputBar.expectScrollable();
@@ -237,7 +237,7 @@ test.describe("Placeholder", () => {
   test("shows placeholder text on load", async ({ chatPage }) => {
     await expect(chatPage.inputBar.textbox).toHaveAttribute(
       "data-placeholder",
-      /How can I help you today\?/
+      /How can I help you today\?/,
     );
   });
 
@@ -245,7 +245,7 @@ test.describe("Placeholder", () => {
     await chatPage.inputBar.fill("a");
     await expect(chatPage.inputBar.textbox).not.toHaveAttribute(
       "data-empty",
-      ""
+      "",
     );
   });
 
@@ -310,7 +310,7 @@ test.describe("Prompt Shortcuts", () => {
     await chatPage.page.keyboard.type("/");
     await chatPage.page.waitForTimeout(300);
     const popover = chatPage.page.locator(
-      "[data-radix-popper-content-wrapper]"
+      "[data-radix-popper-content-wrapper]",
     );
     const popoverCount = await popover.count();
     expect(popoverCount).toBeGreaterThanOrEqual(0);
@@ -346,11 +346,13 @@ test.describe("Keyboard Edge Cases", () => {
     chatPage,
   }) => {
     await mockChatEndpoint(chatPage.page, buildMockStream("Mock response"));
-    await chatPage.page.evaluate(() => {
-      const el = document.getElementById("onyx-chat-input-textbox")!;
-      el.innerHTML = 'hello <span contenteditable="false">tile</span> world';
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    // Lexical owns the editable DOM, so raw innerHTML injection no longer
+    // reaches the editor state; the same scenario (styled/atomic inline
+    // content in the paste) goes through the clipboard path instead.
+    await chatPage.inputBar.pasteHtml(
+      "hello <span>tile</span> world",
+      "hello tile world",
+    );
     await chatPage.inputBar.send();
     const text = await chatPage.humanMessage().textContent();
     expect(text).toContain("hello tile world");
@@ -433,10 +435,10 @@ test.describe("Paste Tiles", () => {
     await chatPage.inputBar.paste(LARGE_TEXT);
     await chatPage.inputBar.clickTile();
     await chatPage.inputBar.editTileText(
-      "modified text\nline 2\nline 3\nline 4"
+      "modified text\nline 2\nline 3\nline 4",
     );
     await chatPage.inputBar.expectTileData(
-      "modified text\nline 2\nline 3\nline 4"
+      "modified text\nline 2\nline 3\nline 4",
     );
   });
 
@@ -575,7 +577,7 @@ test.describe("Paste Tiles", () => {
     await chatPage.inputBar.paste(LARGE_TEXT);
     await chatPage.inputBar.clickTile();
     await chatPage.inputBar.editTileText(
-      "edited content\nline 2\nline 3\nline 4"
+      "edited content\nline 2\nline 3\nline 4",
     );
     await chatPage.inputBar.dismissPopoverViaEscape();
     await chatPage.inputBar.send();
