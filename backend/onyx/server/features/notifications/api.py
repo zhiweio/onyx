@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
+from onyx.configs.app_configs import ENABLE_RELEASE_NOTES_NOTIFICATIONS
 from onyx.configs.constants import NotificationType
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import NotificationSeverity, Permission
@@ -79,10 +80,13 @@ def _check_for_notifications_to_create(
             "Failed to create permissions_migration_v1 announcement in notifications endpoint"
         )
 
-    try:
-        ensure_release_notes_fresh_and_notify(db_session)
-    except Exception:
-        logger.exception("Failed to check for release notes in notifications endpoint")
+    if ENABLE_RELEASE_NOTES_NOTIFICATIONS:
+        try:
+            ensure_release_notes_fresh_and_notify(db_session)
+        except Exception:
+            logger.exception(
+                "Failed to check for release notes in notifications endpoint"
+            )
 
 
 def _ensure_system_announcement_notification(user: User, db_session: Session) -> bool:

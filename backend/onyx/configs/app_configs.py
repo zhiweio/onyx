@@ -1849,6 +1849,12 @@ USER_DIRECTORY_ADMIN_ONLY = (
     os.environ.get("USER_DIRECTORY_ADMIN_ONLY", "").lower() == "true"
 )
 
+# Push "Onyx vX.Y is available" release-notes notifications. Off by default:
+# this deployment is an internal fork that does not track upstream releases.
+ENABLE_RELEASE_NOTES_NOTIFICATIONS = (
+    os.environ.get("ENABLE_RELEASE_NOTES_NOTIFICATIONS", "").lower() == "true"
+)
+
 # Limit on number of users a free trial tenant can invite (cloud only)
 NUM_FREE_TRIAL_USER_INVITES = int(os.environ.get("NUM_FREE_TRIAL_USER_INVITES", "10"))
 
