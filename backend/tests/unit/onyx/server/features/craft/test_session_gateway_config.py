@@ -864,3 +864,34 @@ def test_workspace_rebuild_claims_a_dispose_the_next_reconcile_honours() -> None
 
     sandbox_manager.dispose_opencode_instance.assert_called_once()
     assert store == {}, "the claim must be cleared once the dispose succeeded"
+
+
+def test_unconfigured_provider_is_never_auto_picked() -> None:
+    """A provider without any stored credential (e.g. a leftover e2e
+    placeholder row) must never become the default even when its model is
+    visible and sorts first."""
+    placeholder = _provider(
+        201,
+        "openai",
+        [_model("fake-mini")],
+    )
+    placeholder = placeholder.model_copy(update={"api_key": None, "api_base": None, "custom_config": None, "is_configured": False})
+    usable = _provider(65, "deepseek", [_model("deepseek-flash")])
+
+    with patch.object(llm_config, "ONYX_SERVER_URL", "https://onyx.test"):
+        config = llm_config.build_onyx_gateway_config([placeholder, usable])
+    assert config is not None
+    assert config.model_name.startswith("65/")
+
+
+def test_api_base_only_provider_stays_pickable() -> None:
+    """Local endpoints ride api_base with no key; they must remain eligible."""
+    local_provider = _provider(300, "openai", [_model("local-model")])
+    local_provider = local_provider.model_copy(
+        update={"api_key": None, "api_base": "http://localhost:1234/v1"}
+    )
+
+    with patch.object(llm_config, "ONYX_SERVER_URL", "https://onyx.test"):
+        config = llm_config.build_onyx_gateway_config([local_provider])
+    assert config is not None
+    assert config.model_name.startswith("300/")

@@ -41,11 +41,17 @@ def make_user_scoped_search_fn(user: User) -> Callable[..., list[dict[str, Any]]
 
         # get_session is a FastAPI Depends generator, not a context manager.
         with get_session_with_current_tenant() as db_session:
-            fresh = db_session.execute(
-                # fastapi-users types User.id as plain UUID under TYPE_CHECKING;
-                # at runtime it is a mapped column.
-                select(User).where(User.id == user.id)  # ty: ignore[invalid-argument-type]
-            ).scalar_one_or_none()
+            fresh = (
+                db_session.execute(
+                    # fastapi-users types User.id as plain UUID under TYPE_CHECKING;
+                    # at runtime it is a mapped column.
+                    # .unique(): User carries joined eager loads against collections,
+                    # so scalar_one_or_none() is only legal on a uniqued Result.
+                    select(User).where(User.id == user.id)  # ty: ignore[invalid-argument-type]
+                )
+                .unique()
+                .scalar_one_or_none()
+            )
             if fresh is None:
                 raise RuntimeError("requesting user no longer exists")
             persona_info = PersonaSearchInfo(
@@ -69,17 +75,18 @@ def make_user_scoped_search_fn(user: User) -> Callable[..., list[dict[str, Any]]
             hits: list[dict[str, Any]] = []
             for chunk in chunks:
                 title = (
-                    getattr(chunk, "semantic_identifier", None)
-                    or getattr(chunk, "document_id", None)
+                    getattr(chunk, "semantic_identifier", None)  # ods: ignore[getattr]
+                    or getattr(chunk, "document_id", None)  # ods: ignore[getattr]
                     or "document"
                 )
                 # document_id is the stable reference the web UI resolves to
                 # a document view; no fabricated URL.
-                doc_id = getattr(chunk, "document_id", None)
+                doc_id = getattr(chunk, "document_id", None)  # ods: ignore[getattr]
+                content = getattr(chunk, "content", None) or ""  # ods: ignore[getattr]
                 hits.append(
                     {
                         "title": f"{title} [id: {doc_id}]" if doc_id else title,
-                        "blurb": (getattr(chunk, "content", "") or "")[:400],
+                        "blurb": content[:400],
                     }
                 )
             return hits

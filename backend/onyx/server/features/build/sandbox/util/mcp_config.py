@@ -17,6 +17,7 @@ from onyx.db.mcp import (
 )
 from onyx.db.models import MCPServer, User
 from onyx.server.features.build.configs import ONYX_SERVER_URL
+from onyx.server.features.build.db.sandbox import get_sandbox_by_user_id
 from onyx.server.features.build.sandbox.models import CraftMCPServerConfig
 from onyx.server.features.mcp.credentials import user_can_authenticate
 from onyx.utils.logger import setup_logger
@@ -32,19 +33,38 @@ PLATFORM_TOOLS_SERVER_KEY = "onyx-platform-tools"
 _PLATFORM_SERVER_ID = -1  # pseudo-entry: not a DB MCPServer row
 
 
-def platform_tools_server() -> CraftMCPServerConfig | None:
+def _sandbox_pat(db_session: Session, user: User) -> str | None:
+    """The user's craft sandbox PAT, if one has been minted.
+
+    The platform-tools bridge must receive it as a literal header: opencode's
+    MCP client does not reliably traverse the egress proxy, so the proxy's
+    credential injection cannot cover it.
+    """
+    sandbox = get_sandbox_by_user_id(db_session, user.id)
+    if sandbox is None or sandbox.encrypted_pat is None:
+        return None
+    try:
+        return sandbox.encrypted_pat.get_value(apply_mask=False)
+    except Exception:
+        logger.warning("platform_tools_pat_unreadable user=%s", user.id)
+        return None
+
+
+def platform_tools_server(pat: str | None = None) -> CraftMCPServerConfig | None:
     """The platform tool catalog as an opencode remote MCP entry.
 
     None when the deployment has not configured ``ONYX_SERVER_URL`` (the
-    sandbox would have no way to reach the bridge).
+    sandbox would have no way to reach the bridge). ``pat`` embeds the
+    sandbox PAT as a bearer header (see _sandbox_pat).
     """
     if not ONYX_SERVER_URL:
         return None
     return CraftMCPServerConfig(
         key=PLATFORM_TOOLS_SERVER_KEY,
-        url=f"{ONYX_SERVER_URL.rstrip('/')}/api/build/agent-tools/mcp",
+        url=f"{ONYX_SERVER_URL.rstrip('/')}/build/agent-tools/mcp",
         disabled_tools=(),
         server_id=_PLATFORM_SERVER_ID,
+        headers={"Authorization": f"Bearer {pat}"} if pat else None,
     )
 
 
@@ -76,7 +96,7 @@ def resolve_craft_mcp_servers(
     if allowed_server_ids is not None and not allowed_server_ids:
         # No external servers granted this turn; the platform catalog is
         # platform-owned and always present.
-        platform = platform_tools_server()
+        platform = platform_tools_server(_sandbox_pat(db_session, user))
         return [platform] if platform else []
     accessible = get_craft_enabled_mcp_servers(db_session, user)
     if allowed_server_ids is not None:
@@ -113,7 +133,7 @@ def resolve_craft_mcp_servers(
     # The platform catalog is appended regardless of the turn allowlist:
     # external servers are granted per task, platform tools are the agent's
     # baseline interface to the deployment.
-    platform = platform_tools_server()
+    platform = platform_tools_server(_sandbox_pat(db_session, user))
     if platform is not None:
         external.append(platform)
     return external
@@ -160,6 +180,7 @@ def craft_mcp_fingerprint(mcp_servers: Sequence[CraftMCPServerConfig]) -> str:
             s.server_id,
             s.url,
             list(s.disabled_tools),
+            sorted(s.headers.items()) if s.headers else [],
         ]
         for s in mcp_servers
     )

@@ -27,7 +27,6 @@ from onyx.server.features.build.scheduled_tasks.api import (
 )
 from onyx.server.features.build.session.api import router as sessions_router
 from onyx.server.features.build.session.messages import router as messages_router
-from onyx.server.features.build.tools.bridge_api import router as agent_tools_router
 from onyx.server.features.build.user_library.api import router as user_library_router
 from onyx.server.features.build.utils import is_craft_enabled_for_user
 from onyx.utils.logger import setup_logger
@@ -80,6 +79,9 @@ router.include_router(jobs_router, tags=["build"])
 router.include_router(loops_router, tags=["build"])
 router.include_router(external_apps_router, tags=["build"])
 router.include_router(external_apps_oauth_router, tags=["build"])
-router.include_router(agent_tools_router, tags=["build-agent-tools"])
+# agent_tools_router is NOT nested here: the parent /build router demands
+# BASIC_ACCESS, which the sandbox's CRAFT_SANDBOX PAT does not imply. The
+# bridge mounts at the app level (same /build/agent-tools path) with its own
+# USE_LLM_GATEWAY gate that the sandbox PAT satisfies.
 router.include_router(debug_router, tags=["build-debug"])
 router.include_router(approvals_router, tags=["build"])

@@ -44,6 +44,11 @@ class CraftMCPServerConfig(BaseModel):
     url: str
     disabled_tools: tuple[str, ...] = ()
     server_id: int
+    # Extra request headers for the opencode MCP client. The platform-tools
+    # entry carries the sandbox PAT directly: opencode's MCP client may bypass
+    # the egress proxy (Node fetch ignores HTTP_PROXY), so credential injection
+    # cannot be relied on for it. Not part of the runtime hash identity.
+    headers: dict[str, str] | None = None
 
 
 class SandboxInfo(BaseModel):

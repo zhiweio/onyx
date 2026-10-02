@@ -38,10 +38,15 @@ def _require_onyx_craft_enabled_bridge() -> None:
 
 
 router = APIRouter(
+    # Full /build/agent-tools path: mounted at the app level, not under the
+    # /build feature router (see features/build/api.py).
     prefix="/build/agent-tools",
     dependencies=[
         Depends(_require_onyx_craft_enabled_bridge),
-        Depends(require_permission(Permission.BASIC_ACCESS)),
+        # The sandbox calls this bridge with a CRAFT_SANDBOX PAT, which does
+        # not imply BASIC_ACCESS; USE_LLM_GATEWAY is the overlap both scopes
+        # share, keeping session-cookie callers working too.
+        Depends(require_permission(Permission.USE_LLM_GATEWAY)),
     ],
 )
 
@@ -171,7 +176,7 @@ def _bridge_ctx(user: User) -> ToolContext:
 
 @router.get("/definitions")
 def tool_definitions(
-    _user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    _user: User = Depends(require_permission(Permission.USE_LLM_GATEWAY)),
 ) -> dict[str, Any]:
     registry = get_platform_tool_registry()
     return {"tools": registry.definitions()}
@@ -180,7 +185,7 @@ def tool_definitions(
 @router.post("/call")
 def call_tool(
     request: ToolCallRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.USE_LLM_GATEWAY)),
 ) -> dict[str, Any]:
     registry = _request_registry(user)
     invocation = ToolInvocation(
@@ -195,7 +200,7 @@ def call_tool(
 @router.post("/mcp")
 async def mcp_endpoint(
     request: Request,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.USE_LLM_GATEWAY)),
 ) -> dict[str, Any]:
     try:
         body = await request.json()

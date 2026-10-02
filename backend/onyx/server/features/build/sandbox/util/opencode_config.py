@@ -190,7 +190,10 @@ def _build_session_mcp_block(
             "url": server.url,
             "enabled": True,
             "oauth": False,
-            "headers": {MCP_SESSION_TAG_HEADER: session_id},
+            "headers": {
+                MCP_SESSION_TAG_HEADER: session_id,
+                **(server.headers or {}),
+            },
         }
         for server in mcp_servers
     }

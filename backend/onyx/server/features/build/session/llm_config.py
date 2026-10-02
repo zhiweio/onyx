@@ -125,8 +125,14 @@ def _select_gateway_default(
     # Auto-pick a default: prefer each provider's recommended default model
     # (recommended-models.json, kept current by the update-recommended-models
     # workflow) in provider order, else the first provider's first visible model.
+    # Providers without any stored credential (e.g. leftover e2e placeholder
+    # rows) can never serve a completion, so they are skipped entirely.
     recommendations = get_recommendations()
-    ordered = ordered_gateway_providers(providers)
+    ordered = [
+        provider
+        for provider in ordered_gateway_providers(providers)
+        if provider.is_configured
+    ]
     fallback: tuple[int, str] | None = None
     for provider in ordered:
         visible = _visible_models_by_name(provider)

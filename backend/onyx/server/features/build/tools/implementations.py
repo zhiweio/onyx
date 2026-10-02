@@ -23,6 +23,9 @@ from onyx.server.features.build.tools.base import (
     text_result,
     unavailable,
 )
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
 
 # ── rag_search ────────────────────────────────────────────────────────────
 
@@ -79,6 +82,14 @@ class RagSearchTool:
         try:
             hits = self._search_fn(query, document_sets, max_hits, ctx)
         except Exception as exc:
+            # Tool output stays agent-facing; the log is the only trace for
+            # env-side failures (empty index, backend down, ...).
+            logger.warning(
+                "rag_search failed query=%r document_sets=%s",
+                query[:120],
+                document_sets,
+                exc_info=True,
+            )
             return text_result(f"[rag_search] search failed: {exc}")
         if not hits:
             return text_result("[rag_search] no matching documents")

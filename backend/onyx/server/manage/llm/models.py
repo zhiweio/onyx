@@ -184,6 +184,26 @@ class LLMProviderView(LLMProvider):
 
     id: int
     model_configurations: list["ModelConfigurationView"]
+    # Credential presence WITHOUT decrypting: any of api_key / custom_config /
+    # api_base makes a provider usable (bedrock rides custom_config, local
+    # endpoints ride api_base). Lets default-picking skip placeholder rows
+    # even when api_key is withheld from the view. Derived automatically from
+    # the sibling fields when not set explicitly.
+    is_configured: bool = False
+
+    @model_validator(mode="after")
+    def _derive_is_configured(self) -> "LLMProviderView":
+        if "is_configured" not in self.__pydantic_fields_set__:
+            object.__setattr__(
+                self,
+                "is_configured",
+                bool(
+                    self.api_key
+                    or self.custom_config
+                    or self.api_base
+                ),
+            )
+        return self
 
     @classmethod
     def from_model(
@@ -232,6 +252,11 @@ class LLMProviderView(LLMProvider):
             api_base=llm_provider_model.api_base,
             api_version=llm_provider_model.api_version,
             custom_config=llm_provider_model.custom_config,
+            is_configured=(
+                llm_provider_model.api_key is not None
+                or llm_provider_model.custom_config is not None
+                or llm_provider_model.api_base is not None
+            ),
             is_public=llm_provider_model.is_public,
             is_auto_mode=llm_provider_model.is_auto_mode,
             groups=groups,
