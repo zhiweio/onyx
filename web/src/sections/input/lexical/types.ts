@@ -72,6 +72,11 @@ export interface TriggerMenuConfig {
   triggerChars: readonly string[];
   /** Entry data snapshot; re-rendered as the integrator's data loads. */
   sections: PickerSections;
+  /** Open the menu even when no entries exist yet (e.g. "@" with an empty
+   * library) so the popover can show its empty state. */
+  showWhenEmpty?: boolean;
+  /** Overrides the popover's empty-state text for this menu. */
+  emptyMessage?: string;
   /**
    * Handle a pick. Return true when the entry is consumed without inserting a
    * chip (e.g. an immediate command such as /compact or a navigation).

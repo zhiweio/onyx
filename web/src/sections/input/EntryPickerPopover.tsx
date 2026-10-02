@@ -26,6 +26,8 @@ interface EntryPickerPopoverProps {
   anchorRect: DOMRect | null;
   query: string;
   sections: PickerSections;
+  /** Overrides the default "no matches" text (e.g. an empty-source hint). */
+  emptyMessage?: string;
   onSelect: (entry: PickerEntry) => void;
   onClose: () => void;
 }
@@ -35,6 +37,7 @@ function EntryPickerPopover({
   anchorRect,
   query,
   sections,
+  emptyMessage,
   onSelect,
   onClose,
 }: EntryPickerPopoverProps) {
@@ -44,7 +47,7 @@ function EntryPickerPopover({
 
   const filtered = useMemo(
     () => filterPickerSections(sections, query),
-    [sections, query],
+    [sections, query]
   );
   const flatEntries = useMemo(() => flattenSections(filtered), [filtered]);
 
@@ -56,7 +59,7 @@ function EntryPickerPopover({
   // doesn't silently fall back to a different row than the one highlighted.
   useEffect(() => {
     setSelectedIndex((i) =>
-      flatEntries.length === 0 ? 0 : Math.min(i, flatEntries.length - 1),
+      flatEntries.length === 0 ? 0 : Math.min(i, flatEntries.length - 1)
     );
   }, [flatEntries.length]);
 
@@ -65,7 +68,7 @@ function EntryPickerPopover({
     const container = scrollContainerRef.current;
     if (!container) return;
     const row = container.querySelector<HTMLElement>(
-      `[data-row-index="${selectedIndex}"]`,
+      `[data-row-index="${selectedIndex}"]`
     );
     row?.scrollIntoView({ block: "nearest" });
   }, [open, selectedIndex]);
@@ -84,7 +87,7 @@ function EntryPickerPopover({
         e.stopPropagation();
         if (flatEntries.length === 0) return;
         setSelectedIndex(
-          (i) => (i - 1 + flatEntries.length) % flatEntries.length,
+          (i) => (i - 1 + flatEntries.length) % flatEntries.length
         );
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
@@ -121,7 +124,7 @@ function EntryPickerPopover({
     files: t("entryPickerPopover.filesGroup.label"),
     connected: t("entryPickerPopover.connectedRow.description"),
     connectionRequired: t(
-      "entryPickerPopover.connectionRequiredRow.description",
+      "entryPickerPopover.connectionRequiredRow.description"
     ),
     connectAction: t("entryPickerPopover.connectAction.label"),
     kindSkill: t("entryPickerPopover.tooltip.kindSkill"),
@@ -173,14 +176,14 @@ function EntryPickerPopover({
               selectedIndex,
               onSelect,
               onHover: setSelectedIndex,
-              emptyMessage: t("entryPickerPopover.empty.text"),
+              emptyMessage: emptyMessage ?? t("entryPickerPopover.empty.text"),
               labels,
             })}
           </Popover.Menu>
         </div>
       </Popover.Content>
     </Popover>,
-    document.body,
+    document.body
   );
 }
 
@@ -255,7 +258,7 @@ function buildMenuChildren({
     if (group.entries.length === 0) continue;
     if (children.length > 0) children.push(null);
     children.push(
-      <SectionHeader key={`${group.key}-header`} label={group.label} />,
+      <SectionHeader key={`${group.key}-header`} label={group.label} />
     );
     for (const entry of group.entries) {
       children.push(
@@ -267,7 +270,7 @@ function buildMenuChildren({
           labels={labels}
           onHover={() => onHover(idx)}
           onPick={() => onSelect(entry)}
-        />,
+        />
       );
       idx += 1;
     }
@@ -301,7 +304,7 @@ function pickerRowTitle(entry: PickerEntry): string {
 
 function pickerRowDescription(
   entry: PickerEntry,
-  labels: PickerLabels,
+  labels: PickerLabels
 ): string {
   switch (entry.kind) {
     case "skill":
@@ -419,7 +422,7 @@ function PickerRow({
         <div
           className={cn(
             "flex w-full min-w-0 items-center gap-2 rounded-08 px-2 py-1",
-            selected ? "line-item-row-main-emphasized" : "line-item-row-main",
+            selected ? "line-item-row-main-emphasized" : "line-item-row-main"
           )}
           data-row-index={rowIndex}
           data-testid={pickerRowTestId(entry)}

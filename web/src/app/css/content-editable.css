@@ -1,15 +1,9 @@
-/* contentEditable placeholder */
+/* contentEditable placeholder: keeps the editable a positioning context for
+   the React placeholder overlay in LexicalChatInput. The placeholder text
+   itself renders only via that overlay — a ::before duplicate here would
+   double-paint the same string. */
 [data-placeholder][data-empty] {
   position: relative;
-}
-[data-placeholder][data-empty]::before {
-  content: attr(data-placeholder);
-  color: var(--text-03);
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  inset-inline-start: 0;
-  padding: inherit;
 }
 
 /* Rich Input Tile — created as raw DOM in richInputTile.ts. Fill/text colors

@@ -161,7 +161,7 @@ function ChatPromptEditor({
   const [text, setText] = useState(initialValue ?? "");
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<readonly string[]>(() =>
-    historyStorageKey ? readStoredPromptHistory(historyStorageKey) : [],
+    historyStorageKey ? readStoredPromptHistory(historyStorageKey) : []
   );
 
   const effectiveHistory = promptHistory ?? historyEntries;
@@ -245,7 +245,7 @@ function ChatPromptEditor({
         });
       }, DRAFT_SAVE_DEBOUNCE_MS);
     },
-    [draft, draftScopeKey, resolvedEditorRef],
+    [draft, draftScopeKey, resolvedEditorRef]
   );
 
   useEffect(() => {
@@ -264,10 +264,10 @@ function ChatPromptEditor({
         return;
       }
       setHistoryEntries(
-        appendStoredPromptHistory(historyStorageKey, submittedText),
+        appendStoredPromptHistory(historyStorageKey, submittedText)
       );
     },
-    [historyStorageKey],
+    [historyStorageKey]
   );
 
   // Reads the live editor text (not React state) so programmatic fills —
@@ -325,7 +325,7 @@ function ChatPromptEditor({
       }
       submitDraft();
     },
-    [actionDisabled, primaryAction, submitDraft],
+    [actionDisabled, primaryAction, submitDraft]
   );
 
   const handlePrimaryAction = useCallback(() => {
@@ -368,7 +368,7 @@ function ChatPromptEditor({
         onInterrupt?.();
       }
     },
-    [interruptible, isInterrupting, onCancel, onInterrupt],
+    [interruptible, isInterrupting, onCancel, onInterrupt]
   );
 
   // ---- Editor callbacks ---------------------------------------------------
@@ -379,7 +379,7 @@ function ChatPromptEditor({
       onChange?.(nextText);
       scheduleDraftSave(nextText);
     },
-    [onChange, scheduleDraftSave],
+    [onChange, scheduleDraftSave]
   );
 
   const handlePaste = useCallback(
@@ -393,7 +393,7 @@ function ChatPromptEditor({
         onPasteFiles(files);
       }
     },
-    [onPasteFiles],
+    [onPasteFiles]
   );
 
   // ---- Drag & drop overlay ------------------------------------------------
@@ -409,7 +409,7 @@ function ChatPromptEditor({
         setIsDraggingOver(true);
       }
     },
-    [onDropFiles],
+    [onDropFiles]
   );
 
   const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
@@ -436,7 +436,7 @@ function ChatPromptEditor({
       event.preventDefault();
       onDropFiles(files);
     },
-    [onDropFiles],
+    [onDropFiles]
   );
 
   const showQueueHint =
@@ -466,7 +466,8 @@ function ChatPromptEditor({
         onDrop={handleDrop}
         className={cn(
           "relative flex w-full flex-col bg-background-neutral-00 shadow-box-01 rounded-16",
-          isDraggingOver && "ring-1 ring-border-03",
+          "focus-within:ring-2 focus-within:ring-action-selection-04",
+          isDraggingOver && "ring-1 ring-border-03"
         )}
       >
         {isDraggingOver && dragOverlayHint ? (

@@ -111,7 +111,7 @@ export interface AppInputBarProps {
 
 /** Slash selection derived from the editor's chips. */
 function selectionFromMentions(
-  mentions: readonly ComposerMention[],
+  mentions: readonly ComposerMention[]
 ): SlashSelection {
   const skillIds: string[] = [];
   const mcpServerIds: number[] = [];
@@ -154,16 +154,16 @@ const AppInputBar = React.memo(
     const [isMuted, setIsMuted] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(
-      null,
+      null
     );
     const setMutedRef = useRef<((muted: boolean) => void) | null>(null);
     const queuedMessages = useCurrentQueuedMessages();
     const latestMessageRenderComplete = useCurrentLatestMessageRenderComplete();
     const enqueueCurrentMessage = useChatSessionStore(
-      (state) => state.enqueueCurrentMessage,
+      (state) => state.enqueueCurrentMessage
     );
     const removeCurrentQueuedMessage = useChatSessionStore(
-      (state) => state.removeCurrentQueuedMessage,
+      (state) => state.removeCurrentQueuedMessage
     );
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
@@ -178,7 +178,7 @@ const AppInputBar = React.memo(
     const { data: craftMcpData } = useCraftMcpServers();
     const pickerSections = useMemo(
       () => toPickerSections(skillsData, undefined, craftMcpData?.mcp_servers),
-      [skillsData, craftMcpData],
+      [skillsData, craftMcpData]
     );
 
     const { activePromptShortcuts } = usePromptShortcuts();
@@ -208,7 +208,7 @@ const AppInputBar = React.memo(
         onPick: (entry: PickerEntry): boolean => {
           if (entry.kind === "command") {
             const prompt = activePromptShortcuts.find(
-              (candidate) => candidate.prompt === entry.slug,
+              (candidate) => candidate.prompt === entry.slug
             );
             const content = prompt?.content ?? "";
             editorRef.current?.setText(content);
@@ -228,12 +228,7 @@ const AppInputBar = React.memo(
           return false;
         },
       }),
-      [
-        pickerSections,
-        promptCommands,
-        activePromptShortcuts,
-        toolConfiguration,
-      ],
+      [pickerSections, promptCommands, activePromptShortcuts, toolConfiguration]
     );
 
     const { state } = useQueryController();
@@ -298,19 +293,19 @@ const AppInputBar = React.memo(
         }
         stopTTS();
         const slash = selectionFromMentions(
-          editorRef.current?.getMentions() ?? [],
+          editorRef.current?.getMentions() ?? []
         );
         onSubmit(text, {
           skillIds: slash.skillIds,
           mcpServerIds: uniqueMcpServerIds(
             slash.mcpServerIds,
-            toolConfiguration.selectedMcpServerIds,
+            toolConfiguration.selectedMcpServerIds
           ),
         });
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [stopTTS, onSubmit, toolConfiguration.selectedMcpServerIds, draftScope],
+      [stopTTS, onSubmit, toolConfiguration.selectedMcpServerIds, draftScope]
     );
 
     const handleQueueMessage = useCallback(
@@ -320,7 +315,7 @@ const AppInputBar = React.memo(
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [enqueueCurrentMessage, draftScope],
+      [enqueueCurrentMessage, draftScope]
     );
 
     const handleEditorChange = useCallback((text: string) => {
@@ -381,13 +376,13 @@ const AppInputBar = React.memo(
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
-        (file) => file.status === UserFileStatus.PROCESSING,
+        (file) => file.status === UserFileStatus.PROCESSING
       );
     }, [currentMessageFiles]);
 
     const hasUploadingFiles = useMemo(() => {
       return currentMessageFiles.some(
-        (file) => file.status === UserFileStatus.UPLOADING,
+        (file) => file.status === UserFileStatus.UPLOADING
       );
     }, [currentMessageFiles]);
 
@@ -406,14 +401,14 @@ const AppInputBar = React.memo(
 
         setPresentingDocument(documentForViewer);
       },
-      [setPresentingDocument],
+      [setPresentingDocument]
     );
 
     const handleRemoveMessageFile = useCallback(
       (fileId: string) => {
         setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
-      [setCurrentMessageFiles],
+      [setCurrentMessageFiles]
     );
 
     const combinedSettingsData = useSettings();
@@ -461,7 +456,7 @@ const AppInputBar = React.memo(
       if (modelConfigurationId != null) {
         for (const provider of providers) {
           const model = provider.model_configurations.find(
-            (candidate) => candidate.id === modelConfigurationId,
+            (candidate) => candidate.id === modelConfigurationId
           );
           if (model) return model;
         }
@@ -499,14 +494,14 @@ const AppInputBar = React.memo(
         // token_count is null until indexing finishes; don't hide the
         // processing indicator while a file's size is still unknown.
         const allTokenCountsKnown = currentIndexingFiles.every(
-          (file) => file.token_count !== null,
+          (file) => file.token_count !== null
         );
         if (!allTokenCountsKnown) {
           return false;
         }
         const currentFilesTokenTotal = currentMessageFiles.reduce(
           (acc, file) => acc + (file.token_count || 0),
-          0,
+          0
         );
         const totalTokens =
           (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
@@ -574,7 +569,7 @@ const AppInputBar = React.memo(
     const controlsHiddenClass = cn(
       "flex flex-row items-center",
       isSearchMode && "hidden",
-      controlsLoading && "invisible",
+      controlsLoading && "invisible"
     );
 
     const toolbarLeading = (
@@ -631,7 +626,7 @@ const AppInputBar = React.memo(
         {(() => {
           if (!activeAgent || forcedToolId === null) return null;
           const tool = activeAgent.tools.find(
-            (tool) => tool.id === forcedToolId,
+            (tool) => tool.id === forcedToolId
           );
           if (!tool) return null;
           return (
@@ -762,6 +757,7 @@ const AppInputBar = React.memo(
                     <Button
                       disabled={!message || isClassifying}
                       icon={SvgX}
+                      aria-label={t("appInputBar.search.clearAriaLabel")}
                       onClick={() => {
                         editorRef.current?.clear();
                         setMessage("");
@@ -771,6 +767,7 @@ const AppInputBar = React.memo(
                     <Button
                       disabled={!message || isClassifying || hasUploadingFiles}
                       id="onyx-chat-input-send-button"
+                      aria-label={t("appInputBar.search.submitAriaLabel")}
                       icon={isClassifying ? SvgSimpleLoader : SvgSearch}
                       onClick={() => {
                         if (chatState == "streaming") {
@@ -825,7 +822,7 @@ const AppInputBar = React.memo(
         )}
       </>
     );
-  },
+  }
 );
 AppInputBar.displayName = "AppInputBar";
 

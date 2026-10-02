@@ -3,9 +3,10 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "@tests/setup/test-utils";
 import { ChatPromptEditor } from "@/sections/input/lexical";
 import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
+import { shouldOpenTriggerMenu } from "@/sections/input/lexical/TriggerMenusPlugin";
 
 function renderEditor(
-  props: Partial<React.ComponentProps<typeof ChatPromptEditor>> = {},
+  props: Partial<React.ComponentProps<typeof ChatPromptEditor>> = {}
 ) {
   const editorRef = createRef<LexicalPromptInputHandle | null>();
   const onSubmit = jest.fn(() => true);
@@ -16,7 +17,7 @@ function renderEditor(
       editorRef={editorRef}
       onSubmit={onSubmit}
       {...props}
-    />,
+    />
   );
   return { editorRef, onSubmit, ...utils };
 }
@@ -29,6 +30,60 @@ describe("ChatPromptEditor", () => {
   it("renders the placeholder", () => {
     renderEditor();
     expect(screen.getByTestId("lexical-input")).toBeInTheDocument();
+  });
+
+  it("opens an empty-source mention menu when showWhenEmpty is set", () => {
+    expect(
+      shouldOpenTriggerMenu({
+        id: "files",
+        triggerChars: ["@"],
+        sections: {
+          commands: [],
+          skills: [],
+          apps: [],
+          mcpServers: [],
+          files: [],
+        },
+        showWhenEmpty: true,
+      })
+    ).toBe(true);
+  });
+
+  it("keeps an empty mention menu closed without showWhenEmpty", () => {
+    expect(
+      shouldOpenTriggerMenu({
+        id: "files",
+        triggerChars: ["@"],
+        sections: {
+          commands: [],
+          skills: [],
+          apps: [],
+          mcpServers: [],
+          files: [],
+        },
+      })
+    ).toBe(false);
+    expect(
+      shouldOpenTriggerMenu({
+        id: "slash",
+        triggerChars: ["/"],
+        sections: {
+          commands: [],
+          skills: [],
+          apps: [],
+          mcpServers: [],
+          files: [
+            {
+              kind: "file",
+              fileId: "a",
+              name: "a.md",
+              path: "a.md",
+              source: "library",
+            },
+          ],
+        },
+      })
+    ).toBe(true);
   });
 
   it("submits the editor text on Enter", () => {
@@ -104,7 +159,7 @@ describe("ChatPromptEditor", () => {
           editorRef.current?.setText("drafted more");
         });
       },
-      { timeout: 800 },
+      { timeout: 800 }
     );
     fireEvent.keyDown(screen.getByTestId("lexical-input"), {
       key: "Enter",
@@ -121,7 +176,7 @@ describe("ChatPromptEditor", () => {
         scopes: {
           s1: { text: "restored draft", updatedAt: 1 },
         },
-      }),
+      })
     );
     const editorRef = createRef<LexicalPromptInputHandle | null>();
     render(
@@ -130,7 +185,7 @@ describe("ChatPromptEditor", () => {
         editorRef={editorRef}
         onSubmit={jest.fn()}
         draft={{ surface: "craft", scope: "s1" }}
-      />,
+      />
     );
     await waitFor(() => {
       expect(editorRef.current?.getText()).toBe("restored draft");

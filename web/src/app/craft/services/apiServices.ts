@@ -39,7 +39,7 @@ import type { BuildLlmSelection } from "@/app/craft/onboarding/constants";
 
 export async function processSSEStream(
   response: Response,
-  onPacket: (packet: StreamPacket) => void,
+  onPacket: (packet: StreamPacket) => void
 ): Promise<void> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No response body");
@@ -113,7 +113,7 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
 }
 
 export async function createSession(
-  options?: CreateSessionOptions,
+  options?: CreateSessionOptions
 ): Promise<ApiDetailedSessionResponse> {
   const res = await fetch(`${BUILD_API_BASE}/sessions`, {
     method: "POST",
@@ -134,7 +134,7 @@ export async function createSession(
 
 export async function fetchSession(
   sessionId: string,
-  options?: { checkWorkspace?: boolean },
+  options?: { checkWorkspace?: boolean }
 ): Promise<ApiDetailedSessionResponse> {
   const params = new URLSearchParams();
   if (options?.checkWorkspace === false) {
@@ -151,11 +151,11 @@ export async function fetchSession(
 }
 
 export async function reloadSessionSkills(
-  sessionId: string,
+  sessionId: string
 ): Promise<ApiSessionSkillsState> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/skills/reload`,
-    { method: "POST" },
+    { method: "POST" }
   );
 
   if (!res.ok) {
@@ -166,10 +166,10 @@ export async function reloadSessionSkills(
 }
 
 export async function fetchSandboxStatus(
-  sessionId: string,
+  sessionId: string
 ): Promise<ApiSandboxStatusResponse> {
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/sandbox-status`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/sandbox-status`
   );
 
   if (!res.ok) {
@@ -197,7 +197,7 @@ export async function fetchSessionHistory(): Promise<SessionHistoryItem[]> {
 
 export async function promoteWorkspacePath(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<void> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/promote-to-project`,
@@ -205,7 +205,7 @@ export async function promoteWorkspacePath(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path }),
-    },
+    }
   );
   if (!res.ok) {
     throw new Error(await errorDetail(res, "Failed to save file to project"));
@@ -218,7 +218,7 @@ export async function generateSessionName(sessionId: string): Promise<string> {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    },
+    }
   );
 
   if (!res.ok) {
@@ -229,9 +229,28 @@ export async function generateSessionName(sessionId: string): Promise<string> {
   return data.name;
 }
 
+export async function updateSessionAgentModel(
+  sessionId: string,
+  providerId: number,
+  model: string
+): Promise<void> {
+  const res = await fetch(
+    `${BUILD_API_BASE}/sessions/${sessionId}/agent-model`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider_id: providerId, model }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to update session model: ${res.status}`);
+  }
+}
+
 export async function updateSessionReasoning(
   sessionId: string,
-  reasoningEffort: string | null,
+  reasoningEffort: string | null
 ): Promise<void> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/reasoning`, {
     method: "PUT",
@@ -246,7 +265,7 @@ export async function updateSessionReasoning(
 
 export async function updateSessionProject(
   sessionId: string,
-  projectId: string | null,
+  projectId: string | null
 ): Promise<ApiSessionResponse> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}`, {
     method: "PATCH",
@@ -263,7 +282,7 @@ export async function updateSessionProject(
 
 export async function updateSessionName(
   sessionId: string,
-  name: string | null,
+  name: string | null
 ): Promise<void> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/name`, {
     method: "PUT",
@@ -278,7 +297,7 @@ export async function updateSessionName(
 
 export async function setSessionSharing(
   sessionId: string,
-  sharingScope: SharingScope,
+  sharingScope: SharingScope
 ): Promise<{ session_id: string; sharing_scope: SharingScope }> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/public`, {
     method: "PATCH",
@@ -311,7 +330,7 @@ const RESTORE_CONFLICT_MAX_RETRIES = 60;
 export async function restoreSession(
   sessionId: string,
   // Overridable for tests; production callers use the module defaults.
-  opts: { retryDelayMs?: number; maxRetries?: number } = {},
+  opts: { retryDelayMs?: number; maxRetries?: number } = {}
 ): Promise<ApiDetailedSessionResponse> {
   const retryDelayMs = opts.retryDelayMs ?? RESTORE_CONFLICT_RETRY_DELAY_MS;
   const maxRetries = opts.maxRetries ?? RESTORE_CONFLICT_MAX_RETRIES;
@@ -335,7 +354,7 @@ export async function restoreSession(
 
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to restore session: ${res.status}`,
+      errorData.detail || `Failed to restore session: ${res.status}`
     );
   }
 }
@@ -348,10 +367,10 @@ export async function restoreSession(
  * @returns { valid: false, session_id: null } if session has messages or doesn't exist
  */
 export async function checkPreProvisionedSession(
-  sessionId: string,
+  sessionId: string
 ): Promise<{ valid: boolean; session_id: string | null }> {
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/pre-provisioned-check`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/pre-provisioned-check`
   );
 
   if (!res.ok) {
@@ -371,7 +390,7 @@ export async function checkPreProvisionedSession(
  * For user_message: {type: "user_message", content: {type: "text", text: "..."}}
  */
 function extractContentFromMetadata(
-  metadata: Record<string, any> | null | undefined,
+  metadata: Record<string, any> | null | undefined
 ): string {
   if (!metadata) return "";
   const content = metadata.content;
@@ -384,7 +403,7 @@ function extractContentFromMetadata(
 }
 
 function extractAttachmentsFromMetadata(
-  metadata: Record<string, any> | null | undefined,
+  metadata: Record<string, any> | null | undefined
 ): BuildMessageAttachment[] {
   if (!Array.isArray(metadata?.attachments)) return [];
 
@@ -413,7 +432,7 @@ function extractAttachmentsFromMetadata(
 }
 
 export async function fetchMessages(
-  sessionId: string,
+  sessionId: string
 ): Promise<BuildMessage[]> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/messages`);
 
@@ -424,8 +443,7 @@ export async function fetchMessages(
   const data = await res.json();
   return data.messages
     .filter(
-      (m: ApiMessageResponse) =>
-        m.message_metadata?.craft_job_continue !== true,
+      (m: ApiMessageResponse) => m.message_metadata?.craft_job_continue !== true
     )
     .map((m: ApiMessageResponse) => ({
       id: m.id,
@@ -472,7 +490,7 @@ export async function createTurn(
   attachments: BuildMessageAttachment[] = [],
   selectedSkillIds: string[] = [],
   selectedMcpServerIds: number[] = [],
-  reasoningEffort?: string | null,
+  reasoningEffort?: string | null
 ): Promise<ApiInteractiveTurnResponse> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/send-message`,
@@ -499,7 +517,7 @@ export async function createTurn(
         ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       }),
       signal,
-    },
+    }
   );
 
   if (!res.ok) {
@@ -514,7 +532,7 @@ export async function createTurn(
             scope: body.scope,
             reset_at: body.reset_at,
             retry_after_seconds: body.retry_after_seconds,
-          },
+          }
         );
       }
       throw new Error(body?.detail || `Failed to create turn: ${res.status}`);
@@ -528,7 +546,7 @@ export async function createTurn(
 export async function createCompactTurn(
   sessionId: string,
   clientRequestId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ApiInteractiveTurnResponse> {
   const res = await fetch(`${BUILD_API_BASE}/sessions/${sessionId}/compact`, {
     method: "POST",
@@ -549,7 +567,7 @@ export async function createCompactTurn(
             scope: body.scope,
             reset_at: body.reset_at,
             retry_after_seconds: body.retry_after_seconds,
-          },
+          }
         );
       }
       throw new Error(body?.detail || `Failed to compact: ${res.status}`);
@@ -562,7 +580,7 @@ export async function createCompactTurn(
 
 export async function retryBuildTurn(
   sessionId: string,
-  content?: string,
+  content?: string
 ): Promise<ApiInteractiveTurnResponse> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/retry-turn`,
@@ -570,7 +588,7 @@ export async function retryBuildTurn(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(content ? { content } : {}),
-    },
+    }
   );
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -580,10 +598,10 @@ export async function retryBuildTurn(
 }
 
 export async function fetchActiveTurn(
-  sessionId: string,
+  sessionId: string
 ): Promise<ApiInteractiveTurnResponse | null> {
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/turns/active`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/turns/active`
   );
 
   if (!res.ok) {
@@ -596,11 +614,11 @@ export async function fetchActiveTurn(
 export async function fetchTurnEventStream(
   sessionId: string,
   turnId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Response | null> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/turns/${turnId}/events`,
-    { headers: { Accept: "text/event-stream" }, signal },
+    { headers: { Accept: "text/event-stream" }, signal }
   );
 
   if (!res.ok) {
@@ -629,11 +647,11 @@ export async function interruptMessageStream(sessionId: string): Promise<void> {
 
 export async function fetchScheduledRunEventStream(
   sessionId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Response> {
   const res = await fetch(
     `${BUILD_API_BASE}/sessions/${sessionId}/scheduled-run-events`,
-    { headers: { Accept: "text/event-stream" }, signal },
+    { headers: { Accept: "text/event-stream" }, signal }
   );
 
   if (res.status === 409) {
@@ -677,10 +695,10 @@ export async function fetchArtifacts(sessionId: string): Promise<Artifact[]> {
 // =============================================================================
 
 export async function fetchWebappInfo(
-  sessionId: string,
+  sessionId: string
 ): Promise<ApiWebappInfoResponse> {
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/webapp-info`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/webapp-info`
   );
 
   if (!res.ok) {
@@ -696,11 +714,11 @@ export async function fetchWebappInfo(
 
 export async function fetchDirectoryListing(
   sessionId: string,
-  path: string = "",
+  path: string = ""
 ): Promise<DirectoryListing> {
   const url = new URL(
     `${BUILD_API_BASE}/sessions/${sessionId}/files`,
-    window.location.origin,
+    window.location.origin
   );
   if (path) {
     url.searchParams.set("path", path);
@@ -767,7 +785,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
  */
 export async function fetchFileContent(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<FileContentResponse> {
   const res = await fetch(buildArtifactUrl(sessionId, path));
 
@@ -845,7 +863,7 @@ export interface UploadFileResponse {
  */
 export async function uploadFile(
   sessionId: string,
-  file: File,
+  file: File
 ): Promise<UploadFileResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -868,7 +886,7 @@ export async function uploadFile(
  */
 export async function deleteFile(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<void> {
   // Encode each path segment individually (spaces, special chars) but preserve slashes
   const encodedPath = path
@@ -880,7 +898,7 @@ export async function deleteFile(
     `${BUILD_API_BASE}/sessions/${sessionId}/files/${encodedPath}`,
     {
       method: "DELETE",
-    },
+    }
   );
 
   if (!res.ok) {
@@ -895,7 +913,7 @@ export async function deleteFile(
  */
 export async function exportDocx(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<Blob> {
   const encodedPath = path
     .split("/")
@@ -903,13 +921,13 @@ export async function exportDocx(
     .join("/");
 
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/export-docx/${encodedPath}`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/export-docx/${encodedPath}`
   );
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to export as DOCX: ${res.status}`,
+      errorData.detail || `Failed to export as DOCX: ${res.status}`
     );
   }
 
@@ -918,7 +936,7 @@ export async function exportDocx(
 
 export async function exportPdf(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<Blob> {
   const encodedPath = path
     .split("/")
@@ -926,13 +944,13 @@ export async function exportPdf(
     .join("/");
 
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/export-pdf/${encodedPath}`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/export-pdf/${encodedPath}`
   );
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to export as PDF: ${res.status}`,
+      errorData.detail || `Failed to export as PDF: ${res.status}`
     );
   }
 
@@ -1024,7 +1042,7 @@ export async function createCraftJob(body: {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to start long job: ${res.status}`,
+      errorData.detail || `Failed to start long job: ${res.status}`
     );
   }
   return res.json();
@@ -1033,7 +1051,7 @@ export async function createCraftJob(body: {
 export async function resumeCraftJob(
   jobId: string,
   action: "approve" | "revise" | "reject" = "approve",
-  note?: string,
+  note?: string
 ): Promise<CraftJobResponse> {
   const res = await fetch(`${BUILD_API_BASE}/jobs/${jobId}/resume`, {
     method: "POST",
@@ -1043,7 +1061,7 @@ export async function resumeCraftJob(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to resume long job: ${res.status}`,
+      errorData.detail || `Failed to resume long job: ${res.status}`
     );
   }
   return res.json();
@@ -1056,7 +1074,7 @@ export async function fetchCraftQuestionAsk(sessionId: string): Promise<{
   questions: { prompt: string; options: string[] }[];
 } | null> {
   const res = await fetch(
-    `${BUILD_API_BASE}/jobs/asks/current?session_id=${encodeURIComponent(sessionId)}`,
+    `${BUILD_API_BASE}/jobs/asks/current?session_id=${encodeURIComponent(sessionId)}`
   );
   if (!res.ok) {
     return null;
@@ -1086,7 +1104,7 @@ export async function fetchCraftQuestionAsk(sessionId: string): Promise<{
 export async function answerCraftQuestionAsk(
   requestId: string,
   allow: boolean,
-  answers?: string[][],
+  answers?: string[][]
 ): Promise<void> {
   const res = await fetch(`${BUILD_API_BASE}/jobs/asks/${requestId}/decision`, {
     method: "POST",
@@ -1100,7 +1118,7 @@ export async function answerCraftQuestionAsk(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to answer question: ${res.status}`,
+      errorData.detail || `Failed to answer question: ${res.status}`
     );
   }
 }
@@ -1113,7 +1131,7 @@ export async function cancelCraftJob(jobId: string): Promise<CraftJobResponse> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to cancel long job: ${res.status}`,
+      errorData.detail || `Failed to cancel long job: ${res.status}`
     );
   }
   return res.json();
@@ -1135,7 +1153,7 @@ export interface PptxPreviewResponse {
  */
 export async function fetchPptxPreview(
   sessionId: string,
-  path: string,
+  path: string
 ): Promise<PptxPreviewResponse> {
   const encodedPath = path
     .split("/")
@@ -1143,13 +1161,13 @@ export async function fetchPptxPreview(
     .join("/");
 
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/pptx-preview/${encodedPath}`,
+    `${BUILD_API_BASE}/sessions/${sessionId}/pptx-preview/${encodedPath}`
   );
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to generate PPTX preview: ${res.status}`,
+      errorData.detail || `Failed to generate PPTX preview: ${res.status}`
     );
   }
 
@@ -1161,10 +1179,10 @@ export async function fetchPptxPreview(
 // =============================================================================
 
 export async function fetchLiveApprovals(
-  sessionId: string,
+  sessionId: string
 ): Promise<ApprovalListResponse> {
   const res = await fetch(
-    `${BUILD_API_BASE}/approvals/sessions/${sessionId}/live`,
+    `${BUILD_API_BASE}/approvals/sessions/${sessionId}/live`
   );
 
   if (!res.ok) {
@@ -1188,7 +1206,7 @@ export class ApprovalConflictError extends Error {
 
 export async function postApprovalDecision(
   approvalId: string,
-  decision: ApprovalSubmitDecision,
+  decision: ApprovalSubmitDecision
 ): Promise<ApprovalView> {
   const res = await fetch(
     `${BUILD_API_BASE}/approvals/${approvalId}/decision`,
@@ -1196,7 +1214,7 @@ export async function postApprovalDecision(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),
-    },
+    }
   );
 
   if (res.status === 409) {
@@ -1206,20 +1224,20 @@ export async function postApprovalDecision(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to post approval decision: ${res.status}`,
+      errorData.detail || `Failed to post approval decision: ${res.status}`
     );
   }
   return res.json();
 }
 
 export async function postApprovalSessionGrant(
-  approvalId: string,
+  approvalId: string
 ): Promise<ApprovalView> {
   const res = await fetch(
     `${BUILD_API_BASE}/approvals/${approvalId}/session-grant`,
     {
       method: "POST",
-    },
+    }
   );
 
   if (res.status === 409) {
@@ -1229,7 +1247,7 @@ export async function postApprovalSessionGrant(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to approve for session: ${res.status}`,
+      errorData.detail || `Failed to approve for session: ${res.status}`
     );
   }
   return res.json();
@@ -1238,7 +1256,7 @@ export async function postApprovalSessionGrant(
 export async function postContentQuarantineDecision(
   quarantineId: string,
   decision: "APPROVED" | "DENIED",
-  scope: "ONCE" | "SESSION" | "HOST" | null,
+  scope: "ONCE" | "SESSION" | "HOST" | null
 ): Promise<ContentQuarantineView> {
   const res = await fetch(
     `${BUILD_API_BASE}/approvals/content-quarantines/${quarantineId}/decision`,
@@ -1246,13 +1264,13 @@ export async function postContentQuarantineDecision(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision, scope }),
-    },
+    }
   );
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to decide content release: ${res.status}`,
+      errorData.detail || `Failed to decide content release: ${res.status}`
     );
   }
   return res.json();
@@ -1288,7 +1306,7 @@ export async function fetchLibraryTree(): Promise<LibraryEntry[]> {
  */
 export async function uploadLibraryFiles(
   path: string,
-  files: File[],
+  files: File[]
 ): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("path", path);
@@ -1304,7 +1322,7 @@ export async function uploadLibraryFiles(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to upload files: ${res.status}`,
+      errorData.detail || `Failed to upload files: ${res.status}`
     );
   }
 
@@ -1316,7 +1334,7 @@ export async function uploadLibraryFiles(
  */
 export async function uploadLibraryZip(
   path: string,
-  file: File,
+  file: File
 ): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("path", path);
@@ -1339,7 +1357,7 @@ export async function uploadLibraryZip(
  * Create a directory in the user library.
  */
 export async function createLibraryDirectory(
-  request: CreateDirectoryRequest,
+  request: CreateDirectoryRequest
 ): Promise<LibraryEntry> {
   const res = await fetch(`${USER_LIBRARY_BASE}/directories`, {
     method: "POST",
@@ -1350,7 +1368,7 @@ export async function createLibraryDirectory(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      errorData.detail || `Failed to create directory: ${res.status}`,
+      errorData.detail || `Failed to create directory: ${res.status}`
     );
   }
 
@@ -1365,7 +1383,7 @@ export async function deleteLibraryFile(documentId: string): Promise<void> {
     `${USER_LIBRARY_BASE}/files/${encodeURIComponent(documentId)}`,
     {
       method: "DELETE",
-    },
+    }
   );
 
   if (!res.ok) {

@@ -102,6 +102,15 @@ function sectionsHaveEntries(config: TriggerMenuConfig): boolean {
   );
 }
 
+/**
+ * Whether typing this menu's trigger char should open the popover. Menus
+ * without entries stay closed unless they opt in with `showWhenEmpty` (e.g.
+ * "@" with an empty library still shows the empty state).
+ */
+export function shouldOpenTriggerMenu(config: TriggerMenuConfig): boolean {
+  return config.showWhenEmpty === true || sectionsHaveEntries(config);
+}
+
 /** Default chip payload for a picked entry; markdown follows the prompt-prefix
  * conventions the agent already understands. */
 export function defaultEntryToMention(
@@ -241,7 +250,7 @@ function TriggerMenusPlugin({
         const config = configsRef.current.find(
           (candidate) => candidate.id === detection.configId,
         );
-        if (!config || !sectionsHaveEntries(config)) {
+        if (!config || !shouldOpenTriggerMenu(config)) {
           if (activeRef.current) {
             setActive(null);
           }
@@ -351,6 +360,7 @@ function TriggerMenusPlugin({
           mcpServers: [],
         }
       }
+      emptyMessage={activeConfig?.emptyMessage}
       onSelect={handleSelect}
       onClose={closeMenu}
     />

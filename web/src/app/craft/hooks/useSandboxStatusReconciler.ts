@@ -20,15 +20,20 @@ export function useSandboxStatusReconciler(): void {
   const loadSession = useBuildSessionStore((state) => state.loadSession);
   const runtimeStatus = session?.sandbox?.status ?? null;
   const reconcilingSessionIdRef = useRef<string | null>(null);
+  // A loaded session with no sandbox data never hydrated its runtime state
+  // (e.g. the session GET raced a backend restart). Keep polling so the
+  // status endpoint can drive the hydration below.
   const shouldPoll =
-    runtimeStatus === "running" || runtimeStatus === "provisioning";
+    runtimeStatus === "running" ||
+    runtimeStatus === "provisioning" ||
+    (session?.isLoaded === true && runtimeStatus === null);
 
   useSWR<ApiSandboxStatusResponse, unknown, [string, string] | null>(
     sessionId && shouldPoll ? ["sandbox-status", sessionId] : null,
     ([, id]) => fetchSandboxStatus(id),
     {
       refreshInterval:
-        runtimeStatus === "provisioning"
+        runtimeStatus === "provisioning" || runtimeStatus === null
           ? SANDBOX_PROVISIONING_POLL_INTERVAL_MS
           : SANDBOX_STATUS_POLL_INTERVAL_MS,
       onSuccess: (data) => {
@@ -39,7 +44,18 @@ export function useSandboxStatusReconciler(): void {
         const sandbox = useBuildSessionStore
           .getState()
           .sessions.get(sessionId)?.sandbox;
-        if (!sandbox) return;
+        if (!sandbox) {
+          // The session never hydrated its sandbox (backend was down during
+          // loadSession); the workspace-aware loader refetches it whole.
+          if (reconcilingSessionIdRef.current === sessionId) return;
+          reconcilingSessionIdRef.current = sessionId;
+          void loadSession(sessionId, { force: true }).finally(() => {
+            if (reconcilingSessionIdRef.current === sessionId) {
+              reconcilingSessionIdRef.current = null;
+            }
+          });
+          return;
+        }
 
         // loadSession owns the client-only restoring state until workspace and
         // preview readiness have both been reconciled.

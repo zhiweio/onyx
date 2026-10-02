@@ -70,6 +70,7 @@ import {
   fetchCraftQuestionAsk,
   resumeCraftJob,
   retryBuildTurn,
+  updateSessionAgentModel,
   updateSessionReasoning,
 } from "@/app/craft/services/apiServices";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
@@ -117,7 +118,7 @@ function toMessageAttachments(files: BuildFile[]): BuildMessageAttachment[] {
             mimeType: file.file_type,
           },
         ]
-      : [],
+      : []
   );
 }
 
@@ -151,16 +152,16 @@ export default function BuildChatPanel({
   const shouldStreamScheduledRun = scheduledRunContext?.status === "RUNNING";
   const jobSessionId = sessionId ?? existingSessionId ?? null;
   const { data: craftJob, mutate: mutateCraftJob } = useCraftJob(
-    session?.origin === "SCHEDULED" ? null : jobSessionId,
+    session?.origin === "SCHEDULED" ? null : jobSessionId
   );
   const displayTranscript = useMemo(
     () =>
       settleTranscriptForJobStatus(
         session?.messages ?? [],
         session?.streamItems ?? [],
-        craftJob?.status,
+        craftJob?.status
       ),
-    [session?.messages, session?.streamItems, craftJob?.status],
+    [session?.messages, session?.streamItems, craftJob?.status]
   );
   const jobInFlight = isCraftJobInFlight(craftJob);
   const pendingQuestion = useMemo(() => {
@@ -201,7 +202,7 @@ export default function BuildChatPanel({
       ? ["craft-question-ask", jobSessionId]
       : null,
     ([, id]: [string, string]) => fetchCraftQuestionAsk(id),
-    { refreshInterval: 2000, revalidateOnFocus: false },
+    { refreshInterval: 2000, revalidateOnFocus: false }
   );
   const askQuestion = pendingQuestion ?? parkedQuestion ?? null;
 
@@ -237,9 +238,9 @@ export default function BuildChatPanel({
       resolveSessionLlmSelection(
         session?.agentProvider,
         session?.agentModel,
-        llmProviders,
+        llmProviders
       ),
-    [session?.agentProvider, session?.agentModel, llmProviders],
+    [session?.agentProvider, session?.agentModel, llmProviders]
   );
   const [modelBySession, setModelBySession] = useState<
     Record<string, BuildLlmSelection>
@@ -261,7 +262,7 @@ export default function BuildChatPanel({
       llmProviders,
       defaultCraft,
       defaultText,
-    ],
+    ]
   );
 
   const contextUsage = useMemo(() => {
@@ -270,10 +271,10 @@ export default function BuildChatPanel({
     let limit: number | null = null;
     if (selectedModel) {
       const provider = llmProviders?.find(
-        (candidate) => candidate.id === selectedModel.providerId,
+        (candidate) => candidate.id === selectedModel.providerId
       );
       const config = provider?.model_configurations.find(
-        (m) => m.name === selectedModel.modelName,
+        (m) => m.name === selectedModel.modelName
       );
       limit = config?.max_input_tokens ?? null;
     }
@@ -289,22 +290,23 @@ export default function BuildChatPanel({
   const reduceMotion = useReducedMotion();
 
   const updateSessionData = useBuildSessionStore(
-    (state) => state.updateSessionData,
+    (state) => state.updateSessionData
   );
+  const loadSession = useBuildSessionStore((state) => state.loadSession);
   const syncJobSpecialists = useBuildSessionStore(
-    (state) => state.syncJobSpecialists,
+    (state) => state.syncJobSpecialists
   );
 
   // Access actions directly like chat does - these don't cause re-renders
   const consumePreProvisionedSession = useBuildSessionStore(
-    (state) => state.consumePreProvisionedSession,
+    (state) => state.consumePreProvisionedSession
   );
   const createSession = useBuildSessionStore((state) => state.createSession);
   const appendMessageToCurrent = useBuildSessionStore(
-    (state) => state.appendMessageToCurrent,
+    (state) => state.appendMessageToCurrent
   );
   const nameBuildSession = useBuildSessionStore(
-    (state) => state.nameBuildSession,
+    (state) => state.nameBuildSession
   );
   const {
     streamMessage,
@@ -317,10 +319,10 @@ export default function BuildChatPanel({
   const queuedMessages = useQueuedMessages();
   const enqueueMessage = useBuildSessionStore((state) => state.enqueueMessage);
   const removeQueuedMessage = useBuildSessionStore(
-    (state) => state.removeQueuedMessage,
+    (state) => state.removeQueuedMessage
   );
   const reorderQueuedMessages = useBuildSessionStore(
-    (state) => state.reorderQueuedMessages,
+    (state) => state.reorderQueuedMessages
   );
   const composerEditorRef = useRef<LexicalPromptInputHandle | null>(null);
   const attachedTurnRef = useRef<{
@@ -332,7 +334,7 @@ export default function BuildChatPanel({
     timer: ReturnType<typeof setTimeout>;
   } | null>(null);
   const nameSessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
+    null
   );
   const isPreProvisioning = useIsPreProvisioning();
   const isPreProvisioningFailed = useIsPreProvisioningFailed();
@@ -346,11 +348,11 @@ export default function BuildChatPanel({
   const selectedModelConfig = useMemo(() => {
     if (!selectedModel || !llmProviders) return null;
     const provider = llmProviders.find(
-      (candidate) => candidate.id === selectedModel.providerId,
+      (candidate) => candidate.id === selectedModel.providerId
     );
     return (
       provider?.model_configurations.find(
-        (model) => model.name === selectedModel.modelName,
+        (model) => model.name === selectedModel.modelName
       ) ?? null
     );
   }, [selectedModel, llmProviders]);
@@ -365,7 +367,7 @@ export default function BuildChatPanel({
         toast.error((err as Error).message);
       }
     },
-    [thoughtSessionId, updateSessionData],
+    [thoughtSessionId, updateSessionData]
   );
 
   const thoughtLevel = selectedModelConfig
@@ -407,7 +409,7 @@ export default function BuildChatPanel({
   }, [existingSessionId, preProvisionedSessionId, setActiveSession]);
 
   const maybeAutoOpenPanelForPreview = useBuildSessionStore(
-    (s) => s.maybeAutoOpenPanelForPreview,
+    (s) => s.maybeAutoOpenPanelForPreview
   );
 
   // Auto-open the panel the first time webappUrl becomes non-null this session.
@@ -490,7 +492,7 @@ export default function BuildChatPanel({
         if (attachedTurnRef.current === attachment) {
           attachedTurnRef.current = null;
         }
-      },
+      }
     );
 
     return () => scheduleCleanup(attachment);
@@ -547,6 +549,64 @@ export default function BuildChatPanel({
     updateSessionData,
   ]);
 
+  // Job settled (failed/completed/cancelled) with no live turn attached: the
+  // SSE settle path never ran, so the store would stay "running" until a
+  // manual reload. Reconcile from the job poller's terminal status (the
+  // scheduled-run effect above is the pattern).
+  useEffect(() => {
+    if (
+      !jobSessionId ||
+      !craftJob ||
+      jobInFlight ||
+      session?.status !== "running" ||
+      // Only protect a turn this tab created and is actively streaming
+      // (SSE settle path owns its lifecycle). A job turn's id may linger
+      // from creation even when the attach never happened.
+      (activeTurnId !== null && activeTurnLocalOwner)
+    ) {
+      return;
+    }
+    const terminal = craftJob.status;
+    if (terminal === "failed" || terminal === "cancelled") {
+      updateSessionData(jobSessionId, {
+        status: "failed",
+        error: craftJob?.error_detail ?? "Craft job ended unexpectedly.",
+        activeTurnId: null,
+        activeTurnIndex: null,
+        activeTurnLocalOwner: false,
+        activeTurnStartedAtMs: null,
+      });
+      // Reload persisted rows so tool activity recorded server-side replaces
+      // whatever partial local stream state the failed attach left behind.
+      void loadSession(jobSessionId, { force: true });
+      return;
+    }
+    if (terminal === "succeeded") {
+      updateSessionData(jobSessionId, { status: "active" });
+    }
+    updateSessionData(jobSessionId, {
+      status: "failed",
+      error: craftJob?.error_detail ?? "Craft job ended unexpectedly.",
+      activeTurnId: null,
+      activeTurnIndex: null,
+      activeTurnLocalOwner: false,
+      activeTurnStartedAtMs: null,
+    });
+    // Reload persisted rows so tool activity recorded server-side replaces
+    // whatever partial local stream state the failed attach left behind.
+    void loadSession(jobSessionId, { force: true });
+  }, [
+    jobSessionId,
+    jobInFlight,
+    activeTurnId,
+    activeTurnLocalOwner,
+    session?.status,
+    craftJob?.status,
+    craftJob?.error_detail,
+    updateSessionData,
+    loadSession,
+  ]);
+
   // Scroll system: stick-to-bottom magnet with user-intent TTL, per-session
   // position memory, and the back-to-bottom flag (ZCode timeline behavior).
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -557,7 +617,7 @@ export default function BuildChatPanel({
       [
         displayTranscript.messages.length,
         displayTranscript.streamItems.length,
-      ].join(":"),
+      ].join(":")
     );
   const showScrollButton = !isAtBottom;
 
@@ -601,7 +661,7 @@ export default function BuildChatPanel({
       sessionId,
       craftJob.specialists,
       craftJob.status,
-      craftJob.id,
+      craftJob.id
     );
   }, [sessionId, session?.isLoaded, craftJob, syncJobSpecialists]);
 
@@ -610,7 +670,7 @@ export default function BuildChatPanel({
       message: string,
       attachments: BuildMessageAttachment[],
       modelOverride?: BuildLlmSelection | null,
-      selection?: SlashSelection,
+      selection?: SlashSelection
     ) => {
       if (scheduledRunInFlight) {
         toast.error(t("toast.scheduledRunWait"));
@@ -684,7 +744,7 @@ export default function BuildChatPanel({
           chosen,
           attachments,
           slash.skillIds,
-          slash.mcpServerIds,
+          slash.mcpServerIds
         );
       } else {
         // New session flow - ALWAYS use pre-provisioned session
@@ -718,7 +778,7 @@ export default function BuildChatPanel({
             const checkUploads = () => {
               // Check current state via ref (updates with each render)
               const stillUploading = currentFilesRef.current.some(
-                (f) => f.status === UploadFileStatus.UPLOADING,
+                (f) => f.status === UploadFileStatus.UPLOADING
               );
               if (!stillUploading || waited >= maxWaitMs) {
                 resolve();
@@ -750,7 +810,7 @@ export default function BuildChatPanel({
 
         // Navigate to URL - session controller will set currentSessionId
         router.push(
-          `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${newSessionId}`,
+          `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${newSessionId}`
         );
 
         // Schedule naming after delay (message will be saved by then)
@@ -807,7 +867,7 @@ export default function BuildChatPanel({
       mutateCraftJob,
       updateSessionData,
       session?.slashSelection,
-    ],
+    ]
   );
 
   const compactAvailable = Boolean(
@@ -816,7 +876,7 @@ export default function BuildChatPanel({
     !isRunning &&
     !scheduledRunInFlight &&
     !isViewingSubagent &&
-    (selectedModel || session.agentModel),
+    (selectedModel || session.agentModel)
   );
 
   const handleCompact = useCallback(async () => {
@@ -836,15 +896,15 @@ export default function BuildChatPanel({
       message: string,
       files: BuildFile[],
       selection: SlashSelection,
-      modelOverride?: BuildLlmSelection | null,
+      modelOverride?: BuildLlmSelection | null
     ) =>
       sendMessage(
         message,
         toMessageAttachments(files),
         modelOverride,
-        selection,
+        selection
       ),
-    [sendMessage],
+    [sendMessage]
   );
 
   const composerStopKind = craftComposerStopKind({
@@ -884,7 +944,7 @@ export default function BuildChatPanel({
     !jobInFlight &&
     !scheduledRunInFlight &&
     !isViewingSubagent &&
-    (session?.messages?.length ?? 0) > 0,
+    (session?.messages?.length ?? 0) > 0
   );
 
   const startRetryTurn = useCallback(
@@ -901,20 +961,23 @@ export default function BuildChatPanel({
             activeTurnId: started.turn_id,
             activeTurnIndex: started.turn_index,
             activeTurnLocalOwner: false,
+            // The rewritten user message keeps its original timestamp; anchor
+            // the running-turn timer to the resend instead.
+            activeTurnStartedAtMs: Date.now(),
           });
         } catch (err) {
           toast.error((err as Error).message);
         }
       })();
     },
-    [sessionId, retryAvailable, updateSessionData],
+    [sessionId, retryAvailable, updateSessionData]
   );
 
   const handleRetryTurn = useCallback(() => startRetryTurn(), [startRetryTurn]);
 
   const handleEditResend = useCallback(
     (content: string) => startRetryTurn(content),
-    [startRetryTurn],
+    [startRetryTurn]
   );
 
   const handleJobAsk = useCallback(
@@ -931,7 +994,7 @@ export default function BuildChatPanel({
         void mutateCraftJob();
       }
     },
-    [craftJob, mutateCraftJob],
+    [craftJob, mutateCraftJob]
   );
 
   const handleQuestionAnswer = useCallback(
@@ -941,7 +1004,7 @@ export default function BuildChatPanel({
         if (sessionId) {
           updateSessionData(sessionId, {
             streamItems: (session?.streamItems ?? []).filter(
-              (item) => item.type !== "question_ask",
+              (item) => item.type !== "question_ask"
             ),
           });
         }
@@ -949,7 +1012,7 @@ export default function BuildChatPanel({
         void mutateCraftJob();
       }
     },
-    [mutateCraftJob, session?.streamItems, sessionId, updateSessionData],
+    [mutateCraftJob, session?.streamItems, sessionId, updateSessionData]
   );
 
   const handleQueueMessage = useCallback(
@@ -967,21 +1030,21 @@ export default function BuildChatPanel({
         updateSessionData(sessionId, { slashSelection: selection });
       }
     },
-    [sessionId, session?.slashSelection, enqueueMessage, updateSessionData],
+    [sessionId, session?.slashSelection, enqueueMessage, updateSessionData]
   );
 
   const handleRemoveQueuedMessage = useCallback(
     (index: number) => {
       if (sessionId) removeQueuedMessage(sessionId, index);
     },
-    [sessionId, removeQueuedMessage],
+    [sessionId, removeQueuedMessage]
   );
 
   const handleReorderQueuedMessages = useCallback(
     (messages: typeof queuedMessages) => {
       if (sessionId) reorderQueuedMessages(sessionId, [...messages]);
     },
-    [sessionId, reorderQueuedMessages],
+    [sessionId, reorderQueuedMessages]
   );
 
   const handleEditQueuedMessage = useCallback(
@@ -991,21 +1054,38 @@ export default function BuildChatPanel({
       const index = queuedMessages.findIndex((m) => m.id === message.id);
       if (index >= 0 && sessionId) removeQueuedMessage(sessionId, index);
     },
-    [queuedMessages, sessionId, removeQueuedMessage],
+    [queuedMessages, sessionId, removeQueuedMessage]
   );
 
   const handleRunQueuedMessageNow = useCallback(
     (message: QueuedMessageCast, index: number) => {
       if (!sessionId) return;
+      // Guard BEFORE dequeuing: sendMessage refuses while a turn is running,
+      // and removing the row first would silently drop the message.
+      if (scheduledRunInFlight) {
+        toast.error(t("toast.scheduledRunWait"));
+        return;
+      }
+      if (isRunning) {
+        toast.error(t("toast.operationWait"));
+        return;
+      }
       removeQueuedMessage(sessionId, index);
       void sendMessage(
         message.text,
         message.attachments ?? [],
         undefined,
-        message.selection,
+        message.selection
       );
     },
-    [sessionId, removeQueuedMessage, sendMessage],
+    [
+      sessionId,
+      removeQueuedMessage,
+      sendMessage,
+      scheduledRunInFlight,
+      isRunning,
+      t,
+    ]
   );
 
   // Auto-send the next queued message FIFO after a run cleanly succeeds (each
@@ -1037,7 +1117,7 @@ export default function BuildChatPanel({
           next.text,
           next.attachments,
           undefined,
-          next.selection,
+          next.selection
         );
       }
     }
@@ -1067,7 +1147,7 @@ export default function BuildChatPanel({
             {...getRootProps()}
             className={cn(
               "flex flex-col h-full transition-all duration-300 ease-in-out outline-hidden",
-              outputPanelOpen ? "w-1/2 ps-4" : "w-full",
+              outputPanelOpen ? "w-1/2 ps-4" : "w-full"
             )}
           >
             {/* Chat header */}
@@ -1108,6 +1188,11 @@ export default function BuildChatPanel({
                 <IconButton
                   icon={SvgSidebar}
                   onClick={toggleOutputPanel}
+                  aria-label={
+                    outputPanelOpen
+                      ? t("outputPanel.closeTooltip")
+                      : t("outputPanel.openTooltip")
+                  }
                   tooltip={
                     outputPanelOpen
                       ? t("outputPanel.closeTooltip")
@@ -1118,7 +1203,7 @@ export default function BuildChatPanel({
                     "border rounded-full p-2.5!",
                     outputPanelOpen
                       ? "bg-background-tint-02!"
-                      : "bg-background-tint-00!",
+                      : "bg-background-tint-00!"
                   )}
                   iconClassName="stroke-text-04! h-5! w-5!"
                 />
@@ -1165,6 +1250,9 @@ export default function BuildChatPanel({
                       streamItems={displayTranscript.streamItems}
                       isStreaming={displayIsRunning}
                       scrollContainerRef={scrollContainerRef}
+                      turnStartedAtMsOverride={
+                        session?.activeTurnStartedAtMs ?? null
+                      }
                       onRetry={retryAvailable ? handleRetryTurn : undefined}
                       onEditResend={
                         retryAvailable ? handleEditResend : undefined
@@ -1210,7 +1298,7 @@ export default function BuildChatPanel({
                             "bg-background-neutral-inverted-00 border border-border-01",
                             "shadow-box-01 hover:shadow-box-02",
                             "transition-all duration-200",
-                            "hover:bg-background-tint-inverted-01",
+                            "hover:bg-background-tint-inverted-01"
                           )}
                           aria-label={t("scrollToBottom.label")}
                         >
@@ -1309,6 +1397,15 @@ export default function BuildChatPanel({
                           ...m,
                           [sessionId]: model,
                         }));
+                        // Fire-and-forget: survives reloads; failures keep the
+                        // in-memory pick for this visit (next send persists it).
+                        if (model.providerId != null && model.modelName) {
+                          void updateSessionAgentModel(
+                            sessionId,
+                            model.providerId,
+                            model.modelName
+                          ).catch(() => undefined);
+                        }
                       }
                     }}
                   />

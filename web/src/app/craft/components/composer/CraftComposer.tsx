@@ -62,13 +62,13 @@ interface CraftComposerProps {
   onSubmit: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection,
+    selection: SlashSelection
   ) => void;
   /** Absent on the welcome screen, where there is no session to queue into. */
   onQueueMessage?: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection,
+    selection: SlashSelection
   ) => void;
   queuedMessages?: readonly QueuedMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
@@ -103,7 +103,7 @@ interface CraftComposerProps {
 }
 
 function selectionFromMentions(
-  mentions: readonly ComposerMention[],
+  mentions: readonly ComposerMention[]
 ): SlashSelection {
   const skillIds: string[] = [];
   const mcpServerIds: number[] = [];
@@ -173,12 +173,12 @@ function CraftComposer({
           ]
         : [],
     }),
-    [skillsData, appsData, craftMcpData, compactAvailable, t],
+    [skillsData, appsData, craftMcpData, compactAvailable, t]
   );
 
   const { data: libraryTree } = useSWR(
     SWR_KEYS.buildUserLibraryTree,
-    fetchLibraryTree,
+    fetchLibraryTree
   );
   const libraryFileEntries = useMemo(
     () =>
@@ -191,7 +191,7 @@ function CraftComposer({
           path: entry.path,
           source: "library" as const,
         })),
-    [libraryTree],
+    [libraryTree]
   );
 
   const fileMentionSections = useMemo(
@@ -202,7 +202,7 @@ function CraftComposer({
       mcpServers: [],
       files: libraryFileEntries,
     }),
-    [libraryFileEntries],
+    [libraryFileEntries]
   );
 
   const slashTrigger = useMemo(
@@ -223,7 +223,7 @@ function CraftComposer({
         return false;
       },
     }),
-    [pickerSections, onCompact, router],
+    [pickerSections, onCompact, router]
   );
 
   const fileMentionTrigger = useMemo(
@@ -231,8 +231,11 @@ function CraftComposer({
       id: "craft-file-mention",
       triggerChars: ["@"] as const,
       sections: fileMentionSections,
+      // Show the popover's empty state when the library has no files yet.
+      showWhenEmpty: true,
+      emptyMessage: entryMenuT("library.empty"),
     }),
-    [fileMentionSections],
+    [fileMentionSections, entryMenuT]
   );
 
   // Restore the session's persistent slash selection as chips once the entry
@@ -251,7 +254,7 @@ function CraftComposer({
     }
     const entries = pickerEntriesFromSelection(
       pickerSections,
-      persistedSelection,
+      persistedSelection
     );
     if (entries.length === 0) {
       return;
@@ -265,10 +268,10 @@ function CraftComposer({
   const [mentions, setMentions] = useState<ComposerMention[]>([]);
   const activeMentionEntries = useMemo<PickerEntry[]>(() => {
     const skillIds = new Set(
-      mentions.filter((m) => m.category === "skills").map((m) => m.value),
+      mentions.filter((m) => m.category === "skills").map((m) => m.value)
     );
     const mcpIds = new Set(
-      mentions.filter((m) => m.category === "mcp").map((m) => Number(m.value)),
+      mentions.filter((m) => m.category === "mcp").map((m) => Number(m.value))
     );
     const active: PickerEntry[] = [];
     for (const skill of pickerSections.skills) {
@@ -289,7 +292,7 @@ function CraftComposer({
         }
       });
     },
-    [pickerSections, editorRef],
+    [pickerSections, editorRef]
   );
 
   const handleSubmit = useCallback(
@@ -303,7 +306,7 @@ function CraftComposer({
       rearmSelectionChips(selection);
       return true;
     },
-    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips],
+    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips]
   );
 
   const handleQueueMessage = useCallback(
@@ -324,7 +327,7 @@ function CraftComposer({
       editorRef,
       onQueueMessage,
       rearmSelectionChips,
-    ],
+    ]
   );
 
   const insertEntryAsChip = useCallback(
@@ -336,7 +339,7 @@ function CraftComposer({
       }
       editorRef.current?.insertMention(toMention(entry, "/"));
     },
-    [editorRef, router],
+    [editorRef, router]
   );
 
   const plusMenuItems = useMemo(
@@ -355,7 +358,7 @@ function CraftComposer({
             name: file.name,
           })),
         },
-        entryMenuT,
+        entryMenuT
       ),
     [
       pickerSections,
@@ -364,7 +367,7 @@ function CraftComposer({
       libraryFileEntries,
       entryMenuT,
       editorRef,
-    ],
+    ]
   );
 
   const topContent = (

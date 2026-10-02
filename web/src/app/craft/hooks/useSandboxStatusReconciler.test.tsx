@@ -56,6 +56,30 @@ describe("useSandboxStatusReconciler", () => {
     } as never);
   });
 
+  it("hydrates via loadSession when a loaded session has no sandbox data", async () => {
+    // E.g. the session GET raced a backend restart: the store loaded the
+    // session but never got sandbox data, so only the status poll can drive.
+    useBuildSessionStore.getState().createSession(SESSION_ID, {
+      status: "running",
+    });
+    useBuildSessionStore.getState().setCurrentSession(SESSION_ID);
+    useBuildSessionStore.setState((state) => {
+      const sessions = new Map(state.sessions);
+      const session = sessions.get(SESSION_ID);
+      if (session) {
+        sessions.set(SESSION_ID, { ...session, isLoaded: true });
+      }
+      return { sessions };
+    });
+    mockedApi.fetchSandboxStatus.mockResolvedValue({ status: "running" });
+
+    renderHook(() => useSandboxStatusReconciler(), { wrapper });
+
+    await waitFor(() => {
+      expect(loadSession).toHaveBeenCalledWith(SESSION_ID, { force: true });
+    });
+  });
+
   it.each(["sleeping", "terminated", "failed"] as const)(
     "updates the runtime state when the API reports %s",
     async (status) => {
