@@ -92,16 +92,29 @@ def test_every_manifest_scenario_playbook_exists() -> None:
         assert "suggested_lanes" not in rules
 
 
-def test_every_official_template_has_a_word_builder() -> None:
+def test_every_official_template_has_a_word_builder_or_contract() -> None:
     from onyx.system_catalog.builtin.word.generate import official_builder_slugs
 
     builders = official_builder_slugs()
     missing = [
         entry.slug
         for entry in BUILT_IN_REPORT_TEMPLATE_ENTRIES
-        if entry.builder_slug() not in builders
+        # Contract-style templates render their sample from contract + theme
+        # instead of an official Word builder spec.
+        if not entry.is_contract_style and entry.builder_slug() not in builders
     ]
     assert missing == []
+
+
+def test_contract_templates_have_contract_and_theme_files() -> None:
+    for entry in BUILT_IN_REPORT_TEMPLATE_ENTRIES:
+        if not entry.is_contract_style:
+            continue
+        contract = entry.read_contract()
+        theme = entry.read_theme()
+        assert contract.get("required_elements"), entry.slug
+        assert contract.get("spine"), entry.slug
+        assert theme.get("accent"), entry.slug
 
 
 def test_scenarios_only_reference_declared_skills_and_templates() -> None:

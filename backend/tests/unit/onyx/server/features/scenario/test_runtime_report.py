@@ -27,6 +27,7 @@ def test_render_docx_template_as_reference(monkeypatch) -> None:
         body="# 月度关账",
         kind=ReportTemplateKind.DOCX,
         slug="monthly_close",
+        contract={},
     )
     monkeypatch.setattr(
         "onyx.server.features.scenario.runtime.get_report_template_by_slug",
@@ -51,6 +52,7 @@ def test_render_includes_template_body(monkeypatch) -> None:
         description="Tax compliance risk brief for an entity.",
         body="# 合规风险预警报告\n\n1. **对象**",
         kind=ReportTemplateKind.MARKDOWN,
+        contract={},
     )
     monkeypatch.setattr(
         "onyx.server.features.scenario.runtime.get_report_template_by_slug",
@@ -178,3 +180,32 @@ def test_apply_merges_resolved_skills_and_rewrites_md(monkeypatch) -> None:
     assert "## Domain" in content
     assert "## Extra skills" in content
     assert "patent" in content
+
+
+def test_render_contract_template_as_contract(monkeypatch) -> None:
+    template = SimpleNamespace(
+        description="Five-year finance-tax risk report.",
+        body="# 财税与经营风险分析报告\n\n必答问题…",
+        kind=ReportTemplateKind.DOCX,
+        slug="finance_tax_risk_report",
+        contract={"must_answer": ["五年里哪些指标在变好?"], "min_figures": 5},
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.scenario.runtime.get_report_template_by_slug",
+        lambda _db, slug: template if slug == "finance_tax_risk_report" else None,
+    )
+    scenario = SimpleNamespace(
+        name="财税与经营风险分析",
+        description="",
+        rules={},
+        skill_links=[],
+        report_template="finance_tax_risk_report",
+    )
+    text = render_scenario_markdown_named(_FakeSession(template), scenario)  # ty: ignore[invalid-argument-type]
+    assert "contract-style" in text
+    assert "outputs/report.md" in text
+    assert "check_report" in text
+    assert "Content contract" in text
+    # The legacy edit-the-skeleton instruction must not appear.
+    assert "fill-in schema" not in text
+    assert "cp /workspace" not in text

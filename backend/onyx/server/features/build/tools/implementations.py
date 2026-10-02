@@ -390,6 +390,70 @@ def crawl_tool(crawl_fn: CrawlFn | None = None) -> CrawlTool:
     return CrawlTool(crawl_fn)
 
 
+# ── check_report ──────────────────────────────────────────────────────────
+
+
+class CheckReportTool:
+    """Run a contract-style report template's mechanical checks on markdown.
+
+    The agent calls this before delivering a report so placeholder residue,
+    missing required elements, chapter-number breaks or leaked internal paths
+    are fixed rather than discovered by the reader.
+    """
+
+    name = "check_report"
+    description = (
+        "Check a markdown report against a report template's content "
+        "contract: placeholder residue, required elements, chapter "
+        "numbering, figure count, source lines and internal-path leaks. "
+        "Pass the report markdown; optionally the contract JSON from the "
+        "template."
+    )
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "markdown": {"type": "string", "description": "The report markdown."},
+            "contract": {
+                "type": "object",
+                "description": "Optional contract JSON (required_elements, min_figures, ...).",
+            },
+        },
+        "required": ["markdown"],
+    }
+
+    def execute(
+        self,
+        invocation: ToolInvocation,
+        ctx: ToolContext,  # noqa: ARG002
+    ) -> ToolResult:
+        from onyx.report_templates.postcheck import check_report_markdown
+
+        markdown = str(invocation.arguments.get("markdown", ""))
+        if not markdown.strip():
+            return text_result("[check_report] argument 'markdown' is required")
+        contract = invocation.arguments.get("contract")
+        findings = check_report_markdown(
+            markdown, contract if isinstance(contract, dict) else None
+        )
+        if not findings:
+            return text_result("[check_report] no findings (no contract rules)")
+        lines = []
+        for finding in findings:
+            mark = "PASS" if finding.passed else "FAIL"
+            lines.append(f"{mark} {finding.check}: {finding.detail}")
+        failed = [finding for finding in findings if not finding.passed]
+        header = (
+            "all checks passed"
+            if not failed
+            else f"{len(failed)} of {len(findings)} checks failed - fix these before delivering"
+        )
+        return text_result("[check_report] " + header + "\n" + "\n".join(lines))
+
+
+def check_report_tool() -> CheckReportTool:
+    return CheckReportTool()
+
+
 def connector_query_tool() -> _DeferredTool:
     return _DeferredTool(
         name="connector_query",

@@ -11,6 +11,7 @@ import { Card } from "@/refresh-components/cards";
 import {
   canDeleteReportTemplate,
   canEditReportTemplate,
+  isContractStyle,
   isWorkspaceReportTemplate,
   type ReportTemplate,
 } from "@/lib/report-templates/types";
@@ -51,7 +52,10 @@ export default function ReportTemplateCard({
 
   if (layout === "list") {
     return (
-      <Interactive.Simple onClick={handleClick} group="group/ReportTemplateCard">
+      <Interactive.Simple
+        onClick={handleClick}
+        group="group/ReportTemplateCard"
+      >
         <Card variant="primary" padding={1} gap={0}>
           <div className="flex w-full flex-row items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -127,7 +131,20 @@ export default function ReportTemplateCard({
             />
             {template.kind === "DOCX" && (
               <span data-testid="ReportTemplateCard/word">
-                <Tag size="sm" color="green" title={t("card.kind.word.label")} />
+                <Tag
+                  size="sm"
+                  color="green"
+                  title={t("card.kind.word.label")}
+                />
+              </span>
+            )}
+            {isContractStyle(template) && (
+              <span data-testid="ReportTemplateCard/contract">
+                <Tag
+                  size="sm"
+                  color="amber"
+                  title={t("card.kind.contract.label")}
+                />
               </span>
             )}
             <Content

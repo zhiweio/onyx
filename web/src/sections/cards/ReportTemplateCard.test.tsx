@@ -16,6 +16,8 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     referenced_count: 2,
     can_edit: true,
     can_delete: false,
+    contract: {},
+    theme: {},
     created_at: "2026-08-01T00:00:00Z",
     updated_at: "2026-08-01T00:00:00Z",
     ...overrides,
@@ -39,11 +41,36 @@ describe("ReportTemplateCard", () => {
           kind: "DOCX",
           asset_filename: "close.docx",
         })}
-      />,
+      />
     );
 
     expect(screen.getByTestId("ReportTemplateCard/word")).toHaveTextContent(
-      "Word",
+      "Word"
+    );
+  });
+
+  it("hides the contract badge on a legacy template", () => {
+    render(<ReportTemplateCard template={template()} />);
+
+    expect(
+      screen.queryByTestId("ReportTemplateCard/contract")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a contract badge when the template has a contract", () => {
+    render(
+      <ReportTemplateCard
+        template={template({
+          contract: {
+            must_answer: ["注册地"],
+            required_elements: ["disclaimer"],
+          },
+        })}
+      />
+    );
+
+    expect(screen.getByTestId("ReportTemplateCard/contract")).toHaveTextContent(
+      "Contract"
     );
   });
 
@@ -53,7 +80,7 @@ describe("ReportTemplateCard", () => {
     expect(
       screen.getByRole("button", {
         name: "Cannot delete: packs use this template",
-      }),
+      })
     ).toBeDisabled();
   });
 
@@ -71,7 +98,7 @@ describe("ReportTemplateCard", () => {
         })}
         onClick={onClick}
         onDelete={onDelete}
-      />,
+      />
     );
 
     await user.click(screen.getByRole("button", { name: "Delete template" }));

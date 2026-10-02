@@ -20,11 +20,11 @@ phases:
   - id: charts
     done_when: The standard chart list has at least five charts under outputs/charts, drawn with vivid-figures-skill first
   - id: report
-    done_when: outputs/report.docx is filled with a real TOC field and continuous chapter numbers
+    done_when: outputs/report.md follows the template contract (spine acts, required elements) with continuous chapter numbers
   - id: review
-    done_when: references/quality-checklist.md passes item by item
+    done_when: the check_report platform tool passes every check on outputs/report.md
 deliverables:
-  - outputs/report.docx
+  - outputs/report.md
   - outputs/analysis/statements.json
   - outputs/analysis/kpi_dashboard.json
 quality_gates:
@@ -32,8 +32,10 @@ quality_gates:
   - The report never mentions MCP tool names, server slugs (qcc-*, hithink-*), or internal paths like outputs/ — those stay in the working archive only
   - Subsequent events stay unaudited-labeled and out of the five-year tables
   - Accounting-policy changes mark affected years as not directly comparable
-  - No leftover {{placeholders}} in the Word file
+  - No leftover {{placeholders}} in the report
   - The disclaimer survives at the end of the report
+  - The report never leaks internal paths (outputs/, .opencode/, MCP tool slugs) into reader-visible text
+  - Figures number at least the contract minimum and every table and figure carries a source line
 refusal_rules:
   - Do not invent a ticker, 统一社会信用代码, or 案号
   - Do not enable every MCP server for one task

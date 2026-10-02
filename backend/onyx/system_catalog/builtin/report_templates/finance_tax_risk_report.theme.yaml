@@ -1,0 +1,18 @@
+# 财税与经营风险分析报告 · 渲染主题
+#
+# 数值取自第 0 步视觉对比结论(见 plans/report-template-redesign.md):
+# 深蓝主色 + 浅蓝表格 band + 警示红,黑体标题 + 宋体正文。
+
+accent: "1F4E79"
+ink: "1F2937"
+muted: "6B7280"
+alert: "C00000"
+positive: "1F7A33"
+band: "DEEBF7"
+
+font_latin: "Times New Roman"
+font_east_asia: "宋体"
+heading_font_latin: "Arial"
+heading_font_east_asia: "微软雅黑"
+
+cover: "centered"

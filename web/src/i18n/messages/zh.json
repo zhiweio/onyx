@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "契约式"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "保存 Word 模板失败"
+          },
+          "contract": {
+            "label": "契约式"
+          },
+          "previewButton": {
+            "label": "预览样张"
+          },
+          "previewing": {
+            "label": "正在生成样张..."
+          },
+          "previewFailed": {
+            "message": "样张生成失败"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# 个必备产物} other {# 个必备产物}}"
+          },
+          "findings": {
+            "title": "质量检查"
           }
         }
       },

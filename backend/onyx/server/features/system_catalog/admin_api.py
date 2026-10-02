@@ -462,6 +462,8 @@ def create_catalog_report_template(
         body=request.body,
         category=request.category,
         tags=request.tags,
+        contract=request.contract,
+        theme=request.theme,
     )
     db_session.commit()
     return SystemReportTemplateResponse.from_report_template(entry)
@@ -493,6 +495,8 @@ def patch_catalog_report_template(
         body=request.body,
         category=request.category,
         tags=request.tags,
+        contract=request.contract,
+        theme=request.theme,
     )
     db_session.commit()
     return SystemReportTemplateResponse.from_report_template(entry)

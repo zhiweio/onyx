@@ -18,6 +18,7 @@ from onyx.db.models import ReportTemplate, Scenario, User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
+from onyx.report_templates.contract import validated_contract, validated_theme
 from onyx.report_templates.docx_template import (
     DOCX_CONTENT_TYPE,
     validate_docx_asset,
@@ -92,6 +93,8 @@ def create_report_template(
     slug: str | None,
     description: str,
     body: str,
+    contract: dict | None = None,
+    theme: dict | None = None,
 ) -> ReportTemplate:
     trimmed_name = name.strip()
     if not trimmed_name:
@@ -107,6 +110,8 @@ def create_report_template(
         name=trimmed_name[:NAME_MAX],
         description=description.strip(),
         body=trimmed_body,
+        contract=_checked_contract(contract),
+        theme=_checked_theme(theme),
         author_user_id=user.id,
         is_builtin=False,
     )
@@ -175,6 +180,8 @@ def update_report_template(
     name: str | None = None,
     description: str | None = None,
     body: str | None = None,
+    contract: dict | None = None,
+    theme: dict | None = None,
 ) -> ReportTemplate:
     if not can_edit_report_template(template, user):
         raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS)
@@ -192,9 +199,31 @@ def update_report_template(
         if len(trimmed_body) > BODY_MAX:
             raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Structure is too long")
         template.body = trimmed_body
+    if contract is not None:
+        template.contract = _checked_contract(contract)
+    if theme is not None:
+        template.theme = _checked_theme(theme)
     db_session.commit()
     db_session.refresh(template)
     return template
+
+
+def _checked_contract(raw: dict | None) -> dict:
+    try:
+        return validated_contract(raw)
+    except ValueError as exc:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, f"Invalid template contract: {exc}"
+        ) from exc
+
+
+def _checked_theme(raw: dict | None) -> dict:
+    try:
+        return validated_theme(raw)
+    except ValueError as exc:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, f"Invalid template theme: {exc}"
+        ) from exc
 
 
 def delete_report_template(

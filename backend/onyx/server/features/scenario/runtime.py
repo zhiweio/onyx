@@ -194,12 +194,35 @@ def render_playbook_section(
 def render_report_template_section(template: ReportTemplate) -> list[str]:
     """Render the report-template instructions for SCENARIO.md.
 
-    Markdown is the outline. An attached Word file is a layout reference.
-    The agent writes the report from those files; there is no fill-in schema.
+    Contract-style templates (``contract`` non-empty) own the structure: the
+    agent composes markdown per the contract and the platform renders the
+    styled Word export. Legacy templates keep the layout-reference behaviour:
+    the agent edits the attached Word skeleton in place.
     """
     lines: list[str] = []
     if template.description:
         lines.extend(["", template.description])
+
+    if template.contract:
+        lines.extend(
+            [
+                "",
+                "### Report format: contract + rendered export",
+                "",
+                "This template is contract-style. Compose the report as",
+                "markdown at `outputs/report.md`; the platform renders the",
+                "styled Word version on export — do not write a docx by hand.",
+                "The attached file is a style sample only:",
+                f"`{agent_template_path(template)}`",
+                "",
+                "Before delivering, run the platform tool `check_report` with",
+                "the report markdown and the template contract, and fix every",
+                "failed check.",
+            ]
+        )
+        if template.body:
+            lines.extend(["", "Content contract:", "", template.body.strip()])
+        return lines
 
     if template.kind is ReportTemplateKind.DOCX:
         asset_path = agent_template_path(template)

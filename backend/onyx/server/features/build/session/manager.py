@@ -37,12 +37,14 @@ from onyx.db.llm import (
     fetch_default_craft_model,
     fetch_default_llm_model,
 )
-from onyx.db.models import BuildMessage, BuildSession, Sandbox, User
+from onyx.db.models import BuildMessage, BuildSession, Sandbox, Scenario, User
+from onyx.db.report_template import get_report_template_by_slug
 from onyx.db.users import fetch_user_by_id
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.llm.models import ReasoningEffort
+from onyx.report_templates.contract import ReportTheme, parse_theme
 from onyx.server.features.build.configs import (
     MAX_TOTAL_UPLOAD_SIZE_BYTES,
     MAX_UPLOAD_FILES_PER_SESSION,
@@ -1345,9 +1347,7 @@ class SessionManager:
                     continue
             yield _streaming.event_to_sse(acp_event)
 
-    def _load_replayable_events(
-        self, session_id: UUID
-    ) -> list[dict[str, Any]]:
+    def _load_replayable_events(self, session_id: UUID) -> list[dict[str, Any]]:
         """Durable packets for the newest turn, in persisted order.
 
         Mirrors what persist_sandbox_event writes: terminal tool_call_progress
@@ -1361,9 +1361,7 @@ class SessionManager:
                 BuildMessage.session_id == session_id,
                 BuildMessage.type == MessageType.ASSISTANT,
             )
-            .order_by(
-                BuildMessage.turn_index.desc(), BuildMessage.created_at.asc()
-            )
+            .order_by(BuildMessage.turn_index.desc(), BuildMessage.created_at.asc())
             .all()
         )
         if not rows:
@@ -1899,13 +1897,37 @@ class SessionManager:
             raise ValueError("Only markdown (.md) files can be exported as DOCX")
 
         md_text = content_bytes.decode("utf-8")
+        theme, contract = self._report_render_config(session_id)
         docx_bytes = markdown_to_docx_bytes(
             md_text,
             image_loader=self._markdown_image_loader(session_id, user_id, path),
+            theme=theme,
+            include_toc=contract is not None and contract.get("require_toc") is True,
         )
 
         docx_filename = filename.rsplit(".", 1)[0] + ".docx"
         return (docx_bytes, docx_filename)
+
+    def _report_render_config(
+        self, session_id: UUID
+    ) -> tuple[ReportTheme | None, dict | None]:
+        """Theme + contract of the report template bound to the session's pack.
+
+        ``(None, None)`` when the session has no pack or the pack's template
+        is not contract-style — the export then keeps the default look.
+        """
+        session = self._db_session.get(BuildSession, session_id)
+        if session is None or session.scenario_id is None:
+            return None, None
+        scenario = self._db_session.get(Scenario, session.scenario_id)
+        if scenario is None or not scenario.report_template:
+            return None, None
+        template = get_report_template_by_slug(
+            self._db_session, scenario.report_template
+        )
+        if template is None or not template.contract:
+            return None, None
+        return parse_theme(template.theme), template.contract
 
     def export_pdf(
         self,

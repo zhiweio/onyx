@@ -14207,6 +14207,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "Contract"
           }
         }
       },
@@ -14275,6 +14278,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "Contract"
+          },
+          "previewButton": {
+            "label": "Preview document"
+          },
+          "previewing": {
+            "label": "Previewing..."
+          },
+          "previewFailed": {
+            "message": "Could not render the preview"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# required element} other {# required elements}}"
+          },
+          "findings": {
+            "title": "Quality checks"
           }
         }
       },

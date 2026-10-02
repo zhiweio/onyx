@@ -134,6 +134,8 @@ class SystemReportTemplateResponse(CatalogItemSummary):
     body: str
     kind: ReportTemplateKind
     asset_filename: str | None
+    contract: dict
+    theme: dict
 
     @classmethod
     def from_report_template(
@@ -145,6 +147,8 @@ class SystemReportTemplateResponse(CatalogItemSummary):
             body=entry.body,
             kind=entry.kind,
             asset_filename=entry.asset_filename,
+            contract=dict(entry.contract or {}),
+            theme=dict(entry.theme or {}),
         )
 
 
@@ -260,6 +264,8 @@ class SystemReportTemplateCreateRequest(BaseModel):
     body: str = Field(min_length=1, max_length=BODY_MAX)
     category: SystemCatalogCategory = SystemCatalogCategory.GENERAL
     tags: list[str] = Field(default_factory=list)
+    contract: dict | None = None
+    theme: dict | None = None
 
     @field_validator("tags")
     @classmethod
@@ -275,6 +281,8 @@ class SystemReportTemplatePatchRequest(BaseModel):
     body: str | None = Field(default=None, min_length=1, max_length=BODY_MAX)
     category: SystemCatalogCategory | None = None
     tags: list[str] | None = None
+    contract: dict | None = None
+    theme: dict | None = None
 
     @field_validator("tags")
     @classmethod

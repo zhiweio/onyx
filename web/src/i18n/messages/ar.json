@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "عقد"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "عقد"
+          },
+          "previewButton": {
+            "label": "معاينة المستند"
+          },
+          "previewing": {
+            "label": "جارٍ إنشاء المعاينة..."
+          },
+          "previewFailed": {
+            "message": "تعذّر إنشاء المعاينة"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# عنصر مطلوب} other {# عناصر مطلوبة}}"
+          },
+          "findings": {
+            "title": "فحوصات الجودة"
           }
         }
       },

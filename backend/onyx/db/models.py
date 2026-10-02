@@ -5175,6 +5175,22 @@ class ReportTemplate(Base):
         default=ReportTemplateKind.MARKDOWN,
         server_default=ReportTemplateKind.MARKDOWN.value,
     )
+    # Contract-style templates: the structured content contract the agent must
+    # satisfy (must-answer questions, required elements, soft spine) and the
+    # render theme the docx renderer applies. Empty objects mean the legacy
+    # fill-the-Word-skeleton behaviour.
+    contract: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(),
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    theme: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(),
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
     # Set only for DOCX templates: the Word asset in the file store. The agent
     # uses that file as a layout reference; tokens are not stored separately.
     asset_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -5479,6 +5495,21 @@ class SystemReportTemplate(Base):
         nullable=False,
         default=ReportTemplateKind.MARKDOWN,
         server_default=ReportTemplateKind.MARKDOWN.value,
+    )
+    # See ReportTemplate.contract / ReportTemplate.theme — the catalog carries
+    # its own copy so an unpublished draft can hold content no runtime row
+    # references yet.
+    contract: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(),
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    theme: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(),
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
     )
     # See ReportTemplate — the catalog carries its own copy of the asset so an
     # unpublished draft can hold content no runtime row references yet.

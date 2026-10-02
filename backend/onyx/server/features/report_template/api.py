@@ -1,3 +1,4 @@
+import base64
 import io
 from urllib.parse import quote
 from uuid import UUID
@@ -24,11 +25,15 @@ from onyx.db.report_template import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.report_templates.docx_template import DOCX_CONTENT_TYPE
+from onyx.report_templates.postcheck import check_report
+from onyx.report_templates.renderer import render_report_docx
 from onyx.server.features.build.api import require_onyx_craft_enabled
 from onyx.server.features.report_template.models import (
     ReportTemplateCreateRequest,
     ReportTemplateListResponse,
     ReportTemplatePatchRequest,
+    ReportTemplatePreviewRequest,
+    ReportTemplatePreviewResponse,
     ReportTemplateResponse,
 )
 
@@ -71,6 +76,8 @@ def create_report_template_endpoint(
         slug=request.slug,
         description=request.description,
         body=request.body,
+        contract=request.contract,
+        theme=request.theme,
     )
     return _to_response(db_session, template, user)
 
@@ -100,8 +107,32 @@ def patch_report_template_endpoint(
         name=request.name,
         description=request.description,
         body=request.body,
+        contract=request.contract,
+        theme=request.theme,
     )
     return _to_response(db_session, template, user)
+
+
+@router.post("/preview-docx")
+def preview_report_template_docx(
+    request: ReportTemplatePreviewRequest,
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+) -> ReportTemplatePreviewResponse:
+    """Render the given markdown with the given contract + theme.
+
+    Used by the template editor's preview button: the response carries the
+    docx bytes plus the deterministic postcheck findings, so the editor can
+    show both the document and what the quality gate says about it.
+    """
+    docx_bytes = render_report_docx(
+        request.body,
+        contract_raw=request.contract,
+        theme_raw=request.theme,
+    )
+    return ReportTemplatePreviewResponse(
+        docx_base64=base64.b64encode(docx_bytes).decode("ascii"),
+        findings=check_report(docx_bytes, request.contract),
+    )
 
 
 @router.post("/{template_id}/docx")

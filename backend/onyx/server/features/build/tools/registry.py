@@ -69,6 +69,7 @@ class PlatformToolRegistry:
             impl.web_search_tool(bindings.web_search_fn),
             impl.crawl_tool(bindings.crawl_fn),
             impl.connector_query_tool(),
+            impl.check_report_tool(),
         ]
         return cls(
             tools={tool.name: tool for tool in catalog},

@@ -1,8 +1,10 @@
 """Convert Markdown to a DOCX document using the shared GFM AST + python-docx.
 
-Used by the build session "export as DOCX" feature. ``parse_markdown`` builds
-the same mistune tree as PDF export; ``python-docx`` writes OOXML. Both are
-pure-Python, so the conversion needs no external binary.
+Used by the build session "export as DOCX" feature and, through
+``onyx.report_templates.renderer``, by contract-style report templates.
+``parse_markdown`` builds the same mistune tree as PDF export; ``python-docx``
+writes OOXML. Both are pure-Python, so the conversion needs no external
+binary.
 
 Supported constructs (covering what the LLM-generated documents emit):
 headings, bold/italic/strikethrough/inline-code, bulleted/numbered/nested
@@ -12,6 +14,14 @@ start values), blockquotes, fenced code blocks, GFM tables, hyperlinks
 ``image_loader`` supplies bytes; otherwise alt text), inline
 ``<br>`` line breaks, HTML entities, and horizontal rules. Other raw HTML is
 dropped rather than shown as literal markup.
+
+Template extensions: a leading YAML-ish frontmatter block (``key: value``
+lines between ``---`` fences) becomes cover-page metadata; a `````kpi`
+fenced block renders as a metric-card strip; a blockquote whose first
+paragraph starts with ``[!风险]`` / ``[!洞察]`` / ``[!提示]`` renders as a
+shaded callout. ``theme`` restyles the whole document (palette, fonts, cover
+recipe); ``None`` keeps the default research-note look byte-compatible with
+previous exports.
 """
 
 from dataclasses import dataclass, replace
@@ -22,7 +32,7 @@ from typing import Any, cast
 from docx import Document
 from docx.document import Document as DocxDocument
 from docx.enum.style import WD_STYLE_TYPE
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.opc.constants import RELATIONSHIP_TYPE
 from docx.opc.package import OpcPackage
 from docx.opc.packuri import PackURI
@@ -38,6 +48,7 @@ from docx.text.run import Run
 # ty: ignore[unresolved-import]: lxml.etree is a compiled extension with no stubs.
 from lxml import etree
 
+from onyx.report_templates.contract import ReportTheme
 from onyx.server.features.build.session.md_document import (
     Node,
     parse_markdown,
@@ -102,10 +113,7 @@ def _rgb(hex6: str) -> RGBColor:
     return RGBColor(int(hex6[0:2], 16), int(hex6[2:4], 16), int(hex6[4:6], 16))
 
 
-_LINK_COLOR = _rgb(LINK)
 _HEADER_COLOR = _rgb(WHITE)
-_HEADING_COLOR = _rgb(ACCENT)
-_MUTED_COLOR = _rgb(MUTED)
 # python-docx ships built-in "List Bullet"/"List Number" styles plus numbered
 # variants up to level 3 ("List Bullet 2", "List Bullet 3", ...). Deeper nesting
 # reuses the level-3 style.
@@ -158,20 +166,130 @@ class _Fmt:
     color: RGBColor | None = None
 
 
+@dataclass(frozen=True)
+class _Style:
+    """Resolved render tokens. Defaults reproduce the shared research-note
+    palette exactly, so ``theme=None`` keeps existing exports unchanged."""
+
+    accent: str = ACCENT
+    ink: str = INK
+    muted: str = MUTED
+    alert: str = "C00000"
+    positive: str = "1F7A33"
+    band: str = TABLE_ALT_FILL
+    header_fill: str = TABLE_HEADER_FILL
+    body_font: str = BODY_FONT
+    body_east_asia: str = BODY_EAST_ASIA
+    heading_font: str = HEADING_FONT
+    heading_east_asia: str = HEADING_EAST_ASIA
+    cover: str = "default"
+
+    @property
+    def accent_rgb(self) -> RGBColor:
+        return _rgb(self.accent)
+
+    @property
+    def ink_rgb(self) -> RGBColor:
+        return _rgb(self.ink)
+
+    @property
+    def muted_rgb(self) -> RGBColor:
+        return _rgb(self.muted)
+
+    @property
+    def alert_rgb(self) -> RGBColor:
+        return _rgb(self.alert)
+
+    @property
+    def positive_rgb(self) -> RGBColor:
+        return _rgb(self.positive)
+
+    @property
+    def header_fill_rgb(self) -> RGBColor:
+        return _rgb(self.header_fill)
+
+
+def _build_style(theme: ReportTheme | None) -> _Style:
+    if theme is None:
+        return _Style()
+    return _Style(
+        accent=theme.accent,
+        ink=theme.ink,
+        muted=theme.muted,
+        alert=theme.alert,
+        positive=theme.positive,
+        band=theme.band,
+        header_fill=theme.accent,
+        body_font=theme.font_latin,
+        body_east_asia=theme.font_east_asia,
+        heading_font=theme.heading_font_latin,
+        heading_east_asia=theme.heading_font_east_asia,
+        cover=theme.cover,
+    )
+
+
+def _tint(hex6: str, factor: float = 0.88) -> str:
+    """Mix a color toward white for callout and KPI-card fills.
+
+    ``factor`` is the white share: 0 keeps the color, 1 is pure white.
+    """
+    channels = [int(hex6[i : i + 2], 16) for i in (0, 2, 4)]
+    mixed = [round(channel * (1 - factor) + 255 * factor) for channel in channels]
+    return "".join(f"{value:02X}" for value in mixed)
+
+
+def _split_frontmatter(md_text: str) -> tuple[dict[str, str], str]:
+    """Split a leading ``---`` frontmatter block into a flat string mapping.
+
+    Only ``key: value`` lines are understood; lists stay unparsed and the
+    block is skipped entirely when the document does not start with ``---``.
+    """
+    if not md_text.lstrip("\ufeff\n ").startswith("---"):
+        return {}, md_text
+    lines = md_text.split("\n")
+    for index, line in enumerate(lines):
+        if index == 0 and line.strip() != "---":
+            continue
+        if index > 0 and line.strip() == "---":
+            meta: dict[str, str] = {}
+            for entry in lines[1:index]:
+                key, sep, value = entry.partition(":")
+                if sep and key.strip() and value.strip():
+                    meta[key.strip()] = value.strip().strip("\"'")
+            return meta, "\n".join(lines[index + 1 :])
+        if index > 8:
+            break
+    return {}, md_text
+
+
 def markdown_to_docx_bytes(
     md_text: str,
     *,
     image_loader: ImageLoader | None = None,
+    theme: ReportTheme | None = None,
+    include_toc: bool = False,
 ) -> bytes:
-    """Render Markdown text to the bytes of a .docx file."""
+    """Render Markdown text to the bytes of a .docx file.
+
+    ``theme`` restyles palette/fonts/cover for contract-style report
+    templates; ``None`` keeps the default look. ``include_toc`` inserts a
+    real Word TOC field after the cover.
+    """
+    meta, md_text = _split_frontmatter(md_text)
     nodes = parse_markdown(md_text)
     attach_image_bytes(nodes, image_loader)
 
+    style = _build_style(theme)
     document = Document()
     _drop_template_empty_paragraph(document)
-    _apply_report_styles(document)
-    _apply_cjk_document_defaults(document)
-    _apply_page_chrome(document, first_heading_text(nodes))
+    _apply_report_styles(document, style)
+    _apply_cjk_document_defaults(document, style)
+    if meta.get("title"):
+        _render_cover(document, style, meta)
+    else:
+        _apply_page_chrome(document, first_heading_text(nodes), style)
+    if include_toc:
+        _render_toc(document, style)
     footnote_block = next(
         (node for node in nodes if node.get("type") == "footnotes"), None
     )
@@ -180,7 +298,7 @@ def markdown_to_docx_bytes(
         if footnote_block is not None
         else None
     )
-    _render_blocks(document, nodes, footnotes)
+    _render_blocks(document, nodes, footnotes, style)
     if document.element.body.find(qn("w:p")) is None:
         _add_styled_paragraph(document, _STYLE_BODY)
 
@@ -189,7 +307,7 @@ def markdown_to_docx_bytes(
     return buffer.getvalue()
 
 
-def _apply_report_styles(document: DocxDocument) -> None:
+def _apply_report_styles(document: DocxDocument, style: _Style) -> None:
     """Configure A4 page, compact body, and navy heading hierarchy."""
     for section in document.sections:
         section.page_width = Mm(PAGE_WIDTH_MM)
@@ -204,18 +322,18 @@ def _apply_report_styles(document: DocxDocument) -> None:
     styles = document.styles
     existing = {style.name for style in styles}
 
-    def set_east_asia(style: ParagraphStyle, latin: str, east_asia: str) -> None:
-        style.font.name = latin
-        r_pr = style.element.get_or_add_rPr()
+    def set_east_asia(target: ParagraphStyle, latin: str, east_asia: str) -> None:
+        target.font.name = latin
+        r_pr = target.element.get_or_add_rPr()
         r_fonts = r_pr.get_or_add_rFonts()
         r_fonts.set(qn("w:ascii"), latin)
         r_fonts.set(qn("w:hAnsi"), latin)
         r_fonts.set(qn("w:eastAsia"), east_asia)
 
     normal = cast(ParagraphStyle, styles["Normal"])
-    set_east_asia(normal, BODY_FONT, BODY_EAST_ASIA)
+    set_east_asia(normal, style.body_font, style.body_east_asia)
     normal.font.size = Pt(BODY_SIZE_PT)
-    normal.font.color.rgb = _rgb(INK)
+    normal.font.color.rgb = style.ink_rgb
     _set_exact_line_spacing(normal.paragraph_format, WORD_BODY_LINE_PT)
     normal.paragraph_format.space_before = Pt(0)
     normal.paragraph_format.space_after = _BODY_SPACE_AFTER
@@ -248,7 +366,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
     caption = ensure(_STYLE_IMAGE_CAPTION, "Caption")
     caption.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     caption.font.size = Pt(9)
-    caption.font.color.rgb = _MUTED_COLOR
+    caption.font.color.rgb = style.muted_rgb
     _set_exact_line_spacing(caption.paragraph_format, WORD_COMPACT_LINE_PT)
 
     ensure(_STYLE_FOOTNOTE_TEXT, "Normal")
@@ -258,13 +376,13 @@ def _apply_report_styles(document: DocxDocument) -> None:
 
     if _STYLE_HYPERLINK not in existing:
         hyperlink = styles.add_style(_STYLE_HYPERLINK, WD_STYLE_TYPE.CHARACTER)
-        hyperlink.font.color.rgb = _LINK_COLOR
+        hyperlink.font.color.rgb = _rgb(LINK)
 
     for level, size in HEADING_SIZES_PT.items():
         heading = styles[f"Heading {level}"]
-        set_east_asia(heading, HEADING_FONT, HEADING_EAST_ASIA)
+        set_east_asia(heading, style.heading_font, style.heading_east_asia)
         heading.font.size = Pt(size)
-        heading.font.color.rgb = _HEADING_COLOR
+        heading.font.color.rgb = style.accent_rgb
         heading.font.bold = True
         _set_exact_line_spacing(heading.paragraph_format, word_heading_line_pt(level))
         heading.paragraph_format.space_before = Pt(HEADING_SPACE_BEFORE_PT[level])
@@ -273,7 +391,7 @@ def _apply_report_styles(document: DocxDocument) -> None:
         heading.paragraph_format.keep_together = True
         heading.paragraph_format.widow_control = True
 
-    set_east_asia(body, BODY_FONT, BODY_EAST_ASIA)
+    set_east_asia(body, style.body_font, style.body_east_asia)
     list_styles = (
         "List Bullet",
         "List Number",
@@ -295,20 +413,22 @@ def _apply_report_styles(document: DocxDocument) -> None:
     ):
         if inherited not in existing:
             continue
-        style = cast(ParagraphStyle, styles[inherited])
-        set_east_asia(style, BODY_FONT, BODY_EAST_ASIA)
+        inherited_style = cast(ParagraphStyle, styles[inherited])
+        set_east_asia(inherited_style, style.body_font, style.body_east_asia)
         if inherited in list_styles:
-            _set_exact_line_spacing(style.paragraph_format, WORD_COMPACT_LINE_PT)
-            style.paragraph_format.space_before = Pt(0)
-            style.paragraph_format.space_after = _COMPACT_SPACE
+            _set_exact_line_spacing(
+                inherited_style.paragraph_format, WORD_COMPACT_LINE_PT
+            )
+            inherited_style.paragraph_format.space_before = Pt(0)
+            inherited_style.paragraph_format.space_after = _COMPACT_SPACE
 
 
-def _apply_cjk_document_defaults(document: DocxDocument) -> None:
+def _apply_cjk_document_defaults(document: DocxDocument, style: _Style) -> None:
     """Set Word document language and theme fonts the way Word/WPS do.
 
     Style-level w:eastAsia is not enough: the template defaults to ja-JP
     theme language and theme-linked East-Asian fonts. Document defaults
-    plus the theme font scheme make 微软雅黑/黑体 apply to unstyled runs too.
+    plus the theme font scheme make the body face apply to unstyled runs too.
     """
     theme_lang = document.settings.element.find(qn("w:themeFontLang"))
     if theme_lang is None:
@@ -334,10 +454,10 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
     if r_fonts is None:
         r_fonts = OxmlElement("w:rFonts")
         rpr.insert(0, r_fonts)
-    r_fonts.set(qn("w:ascii"), BODY_FONT)
-    r_fonts.set(qn("w:hAnsi"), BODY_FONT)
-    r_fonts.set(qn("w:eastAsia"), BODY_EAST_ASIA)
-    r_fonts.set(qn("w:cs"), BODY_FONT)
+    r_fonts.set(qn("w:ascii"), style.body_font)
+    r_fonts.set(qn("w:hAnsi"), style.body_font)
+    r_fonts.set(qn("w:eastAsia"), style.body_east_asia)
+    r_fonts.set(qn("w:cs"), style.body_font)
     lang = rpr.find(qn("w:lang"))
     if lang is None:
         lang = OxmlElement("w:lang")
@@ -376,8 +496,8 @@ def _apply_cjk_document_defaults(document: DocxDocument) -> None:
             continue
         root = etree.fromstring(rel.target_part.blob)
         for tag, typeface in (
-            ("majorFont", HEADING_EAST_ASIA),
-            ("minorFont", BODY_EAST_ASIA),
+            ("majorFont", style.heading_east_asia),
+            ("minorFont", style.body_east_asia),
         ):
             for node in root.findall(f".//{{{_A_NS}}}{tag}"):
                 east_asia = node.find(f"{{{_A_NS}}}ea")
@@ -408,41 +528,179 @@ def _apply_cjk_document_grid(document: DocxDocument) -> None:
         doc_grid.set(qn("w:linePitch"), DOC_GRID_LINE_PITCH)
 
 
-def _apply_page_chrome(document: DocxDocument, title: str) -> None:
+def _apply_page_chrome(document: DocxDocument, title: str, style: _Style) -> None:
     """Add a running header after page 1 and a centred page number."""
     section = document.sections[0]
     section.different_first_page_header_footer = True
-    _fill_header(section.first_page_header.paragraphs[0], "")
-    _fill_header(section.header.paragraphs[0], title)
-    _fill_footer(section.first_page_footer.paragraphs[0])
-    _fill_footer(section.footer.paragraphs[0])
+    _fill_header(section.first_page_header.paragraphs[0], "", style)
+    _fill_header(section.header.paragraphs[0], title, style)
+    _fill_footer(section.first_page_footer.paragraphs[0], style)
+    _fill_footer(section.footer.paragraphs[0], style)
 
 
-def _fill_header(paragraph: Paragraph, title: str) -> None:
+def _fill_header(paragraph: Paragraph, title: str, style: _Style) -> None:
     paragraph.text = ""
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
     if not title:
         return
     run = paragraph.add_run(title[:40])
-    _set_run_typefaces(run, BODY_FONT, BODY_EAST_ASIA)
+    _set_run_typefaces(run, style.body_font, style.body_east_asia)
     run.font.size = Pt(8)
-    run.font.color.rgb = _MUTED_COLOR
+    run.font.color.rgb = style.muted_rgb
     _add_paragraph_border(paragraph, "bottom", RULE)
 
 
-def _fill_footer(paragraph: Paragraph) -> None:
+def _fill_footer(paragraph: Paragraph, style: _Style) -> None:
     paragraph.text = ""
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _add_paragraph_border(paragraph, "top", RULE)
     prefix = paragraph.add_run("— ")
-    _set_run_typefaces(prefix, BODY_FONT, BODY_EAST_ASIA)
+    _set_run_typefaces(prefix, style.body_font, style.body_east_asia)
     prefix.font.size = Pt(8)
-    prefix.font.color.rgb = _MUTED_COLOR
-    _add_page_field(paragraph)
+    prefix.font.color.rgb = style.muted_rgb
+    _add_page_field(paragraph, style)
     suffix = paragraph.add_run(" —")
-    _set_run_typefaces(suffix, BODY_FONT, BODY_EAST_ASIA)
+    _set_run_typefaces(suffix, style.body_font, style.body_east_asia)
     suffix.font.size = Pt(8)
-    suffix.font.color.rgb = _MUTED_COLOR
+    suffix.font.color.rgb = style.muted_rgb
+
+
+# --------------------------------------------------------------------------- #
+# Cover page and table of contents
+# --------------------------------------------------------------------------- #
+def _cover_meta_lines(meta: dict[str, str]) -> list[str]:
+    """The cover's middle band: ticker/org/data-cutoff style meta lines."""
+    lines = [
+        meta[key]
+        for key in ("org", "ticker", "data_cutoff", "period", "author")
+        if meta.get(key)
+    ]
+    lines.extend(
+        extra.strip()
+        for extra in meta.get("meta_lines", "").split("|")
+        if extra.strip()
+    )
+    return lines
+
+
+def _render_cover(document: DocxDocument, style: _Style, meta: dict[str, str]) -> None:
+    """A centered report cover built from frontmatter metadata.
+
+    Vertical rhythm comes from one spacer paragraph whose exact height scales
+    with the page, so the recipe stays a single page on A4.
+    """
+    banner = style.cover == "banner"
+    top_spacer = document.add_paragraph()
+    top_spacer.paragraph_format.space_after = Pt(96)
+
+    kicker = meta.get("kicker")
+    if kicker:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = paragraph.add_run(kicker)
+        _set_run_typefaces(run, style.heading_font, style.heading_east_asia)
+        run.font.size = Pt(11)
+        run.font.bold = True
+        run.font.color.rgb = style.muted_rgb
+        paragraph.paragraph_format.space_after = Pt(28)
+
+    title = document.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title.add_run(meta["title"])
+    _set_run_typefaces(run, style.heading_font, style.heading_east_asia)
+    run.font.size = Pt(24)
+    run.font.bold = True
+    run.font.color.rgb = style.accent_rgb
+    title.paragraph_format.space_after = Pt(16)
+    if banner:
+        _add_paragraph_border(title, "bottom", style.accent)
+
+    subtitle = meta.get("subtitle")
+    if subtitle:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = paragraph.add_run(subtitle)
+        _set_run_typefaces(run, style.heading_font, style.heading_east_asia)
+        run.font.size = Pt(14)
+        run.font.bold = True
+        run.font.color.rgb = style.ink_rgb
+        paragraph.paragraph_format.space_after = Pt(24)
+
+    for line in _cover_meta_lines(meta):
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = paragraph.add_run(line)
+        _set_run_typefaces(run, style.body_font, style.body_east_asia)
+        run.font.size = Pt(10)
+        run.font.color.rgb = style.muted_rgb
+        paragraph.paragraph_format.space_after = Pt(6)
+
+    date = meta.get("date")
+    if date:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_before = Pt(18)
+        run = paragraph.add_run(date)
+        _set_run_typefaces(run, style.body_font, style.body_east_asia)
+        run.font.size = Pt(10)
+        run.font.color.rgb = style.muted_rgb
+
+    disclaimer = meta.get("disclaimer")
+    if disclaimer:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_before = Pt(72)
+        run = paragraph.add_run(disclaimer)
+        _set_run_typefaces(run, style.body_font, style.body_east_asia)
+        run.font.size = Pt(8)
+        run.font.color.rgb = style.muted_rgb
+
+    document.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+
+
+def _render_toc(document: DocxDocument, style: _Style) -> None:
+    """A real Word TOC field after the cover, plus a refresh hint."""
+    title = document.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title.add_run("目  录")
+    _set_run_typefaces(run, style.heading_font, style.heading_east_asia)
+    run.font.size = Pt(16)
+    run.font.bold = True
+    run.font.color.rgb = style.accent_rgb
+    title.paragraph_format.space_before = Pt(12)
+    title.paragraph_format.space_after = Pt(12)
+
+    paragraph = document.add_paragraph()
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = r' TOC \o "1-2" \h \z \u '
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    placeholder_run = OxmlElement("w:r")
+    placeholder_text = OxmlElement("w:t")
+    placeholder_text.text = "在 Word 中右键目录并选择“更新域”以生成页码。"
+    placeholder_run.append(placeholder_text)
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    run_element = paragraph._p
+    run_element.append(begin)
+    run_element.append(instr)
+    run_element.append(separate)
+    run_element.append(placeholder_run)
+    run_element.append(end)
+
+    hint = document.add_paragraph()
+    hint_run = hint.add_run(
+        "提示:页码为域代码,打开文档后按 Ctrl+A → F9(或右键“更新域”)刷新。"
+    )
+    _set_run_typefaces(hint_run, style.body_font, style.body_east_asia)
+    hint_run.font.size = Pt(8)
+    hint_run.italic = True
+    hint_run.font.color.rgb = style.muted_rgb
+
+    document.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
 
 
 def _set_run_typefaces(run: Run, latin: str, east_asia: str) -> None:
@@ -468,11 +726,11 @@ def _add_paragraph_border(paragraph: Paragraph, edge: str, color: str) -> None:
     borders.append(line)
 
 
-def _add_page_field(paragraph: Paragraph) -> None:
+def _add_page_field(paragraph: Paragraph, style: _Style) -> None:
     run = paragraph.add_run()
-    _set_run_typefaces(run, BODY_FONT, BODY_EAST_ASIA)
+    _set_run_typefaces(run, style.body_font, style.body_east_asia)
     run.font.size = Pt(8)
-    run.font.color.rgb = _MUTED_COLOR
+    run.font.color.rgb = style.muted_rgb
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
     instr = OxmlElement("w:instrText")
@@ -647,7 +905,10 @@ def _add_styled_paragraph(document: DocxDocument, style_name: str) -> Paragraph:
 
 
 def _render_blocks(
-    document: DocxDocument, nodes: list[Node], footnotes: "_Footnotes | None"
+    document: DocxDocument,
+    nodes: list[Node],
+    footnotes: "_Footnotes | None",
+    style: _Style,
 ) -> None:
     # Like pandoc: the first prose paragraph after any non-paragraph block (a
     # heading, list, table, blockquote, code, or the document start) uses "First
@@ -669,8 +930,10 @@ def _render_blocks(
             elif not _has_visible_inlines(children):
                 continue
             else:
-                style = _STYLE_FIRST_PARAGRAPH if first_para_pending else _STYLE_BODY
-                paragraph = _add_styled_paragraph(document, style)
+                block_style = (
+                    _STYLE_FIRST_PARAGRAPH if first_para_pending else _STYLE_BODY
+                )
+                paragraph = _add_styled_paragraph(document, block_style)
                 _add_runs(paragraph, children, _Fmt(), footnotes)
                 first_para_pending = False
             continue
@@ -680,21 +943,25 @@ def _render_blocks(
             paragraph = _add_styled_paragraph(document, f"Heading {level}")
             _add_runs(paragraph, node.get("children", []), _Fmt(), footnotes)
         elif node_type == "block_code":
-            _render_code(document, node)
+            if str(node.get("attrs", {}).get("info", "")).strip() == "kpi":
+                _render_kpi_strip(document, node, style)
+            else:
+                _render_code(document, node)
         elif node_type == "block_quote":
-            _render_quote(document, node, footnotes)
+            if not _render_callout(document, node, footnotes, style):
+                _render_quote(document, node, footnotes, style)
         elif node_type == "list":
-            _render_list(document, node, level=0, footnotes=footnotes)
+            _render_list(document, node, level=0, footnotes=footnotes, style=style)
         elif node_type == "thematic_break":
             _render_thematic_break(document)
         elif node_type == "table":
-            _render_table(document, node, footnotes)
+            _render_table(document, node, footnotes, style)
             # pandoc styles the paragraph after a table as Body Text, not First.
             first_para_pending = False
             continue
         elif "children" in node:
             # Unknown block wrapper: recurse so its content is not dropped.
-            _render_blocks(document, node["children"], footnotes)
+            _render_blocks(document, node["children"], footnotes, style)
         first_para_pending = True
 
 
@@ -714,15 +981,179 @@ def _render_code(document: DocxDocument, node: Node) -> None:
 
 
 def _render_quote(
-    document: DocxDocument, node: Node, footnotes: "_Footnotes | None"
+    document: DocxDocument,
+    node: Node,
+    footnotes: "_Footnotes | None",
+    style: _Style,
 ) -> None:
     for child in node.get("children", []):
         if child.get("type") == "paragraph":
             paragraph = _add_styled_paragraph(document, _STYLE_BLOCK_TEXT)
-            _add_paragraph_border(paragraph, "left", ACCENT)
+            _add_paragraph_border(paragraph, "left", style.accent)
             _add_runs(paragraph, child.get("children", []), _Fmt(), footnotes)
         else:
-            _render_blocks(document, [child], footnotes)
+            _render_blocks(document, [child], footnotes, style)
+
+
+# Callout markers: ``> [!风险] 标题`` / ``> [!洞察] 标题`` / ``> [!提示] 标题``.
+_CALLOUT_KINDS: dict[str, tuple[str, str]] = {}
+for _name, _color_key in (
+    ("风险", "alert"),
+    ("警示", "alert"),
+    ("洞察", "accent"),
+    ("提示", "muted"),
+    ("注意", "alert"),
+):
+    _CALLOUT_KINDS[f"[!{_name}]"] = (_name, _color_key)
+
+
+def _callout_marker(children: list[Node]) -> tuple[str, str, str] | None:
+    """(marker, label, color_key) when the first inline text opens a callout."""
+    for child in children:
+        if child.get("type") == "text":
+            raw = str(child.get("raw", ""))
+            for marker, (label, color_key) in _CALLOUT_KINDS.items():
+                if raw.startswith(marker):
+                    return marker, label, color_key
+            return None
+        if child.get("type") not in ("softbreak", "linebreak"):
+            return None
+    return None
+
+
+def _render_callout(
+    document: DocxDocument,
+    node: Node,
+    footnotes: "_Footnotes | None",
+    style: _Style,
+) -> bool:
+    """Render ``[!风险]``-style blockquotes as shaded callouts.
+
+    Returns False when the blockquote is not a callout so the caller falls
+    back to the plain quote rendering.
+    """
+    paragraphs = [
+        child for child in node.get("children", []) if child.get("type") == "paragraph"
+    ]
+    if not paragraphs:
+        return False
+    marker = _callout_marker(paragraphs[0].get("children", []))
+    if marker is None:
+        return False
+    block_marker, label, color_key = marker
+    callout_colors: dict[str, tuple[RGBColor, str]] = {
+        "alert": (style.alert_rgb, style.alert),
+        "accent": (style.accent_rgb, style.accent),
+        "muted": (style.muted_rgb, style.muted),
+    }
+    color, color_hex = callout_colors[color_key]
+    fill = _tint(color_hex)
+
+    for position, child in enumerate(paragraphs):
+        paragraph = document.add_paragraph()
+        _shade_paragraph(paragraph, fill)
+        _add_paragraph_border(paragraph, "left", color_hex)
+        if position == 0:
+            children = child.get("children", [])
+            first_text = children[0] if children else None
+            title_text = ""
+            if first_text is not None and first_text.get("type") == "text":
+                title_text = str(first_text.get("raw", ""))[len(block_marker) :].strip()
+                children = children[1:]
+            title_run = paragraph.add_run(f"{label}")
+            _set_run_typefaces(title_run, style.heading_font, style.heading_east_asia)
+            title_run.font.bold = True
+            title_run.font.size = Pt(10.5)
+            title_run.font.color.rgb = color
+            if title_text:
+                separator_run = paragraph.add_run("　" + title_text)
+                _set_run_typefaces(
+                    separator_run, style.heading_font, style.heading_east_asia
+                )
+                separator_run.font.bold = True
+                separator_run.font.size = Pt(10.5)
+                separator_run.font.color.rgb = style.ink_rgb
+            if children:
+                paragraph.add_run("　")
+                _add_runs(paragraph, children, _Fmt(), footnotes)
+        else:
+            _add_runs(paragraph, child.get("children", []), _Fmt(), footnotes)
+    return True
+
+
+def _render_kpi_strip(document: DocxDocument, node: Node, style: _Style) -> None:
+    """Render a `` ```kpi `` block as a metric-card strip.
+
+    Body lines are ``指标名 | 当前值 | 状态`` (state optional; 预警/恶化/偏高/
+    偏低 tint the value alert-red, 改善/达标 tints it green, anything else
+    stays ink). Cards flow four per row, value over label, on a band fill.
+    """
+    metrics: list[tuple[str, str, str]] = []
+    for line in str(node.get("raw", "")).strip().splitlines():
+        parts = [
+            part.strip() for part in line.strip().lstrip("|").rstrip("|").split("|")
+        ]
+        parts = [part for part in parts if part]
+        if not parts or set(parts[0]) <= {"-", " "}:
+            continue
+        label = parts[0]
+        value = parts[1] if len(parts) > 1 else ""
+        state = parts[2] if len(parts) > 2 else ""
+        metrics.append((label, value, state))
+    if not metrics:
+        return
+
+    alert_states = {"预警", "恶化", "偏高", "偏低", "高风险", "关注"}
+    positive_states = {"改善", "达标", "健康", "稳健"}
+    columns = min(4, len(metrics))
+    fill = _tint(style.band, factor=0.6)
+
+    for chunk_start in range(0, len(metrics), columns):
+        chunk = metrics[chunk_start : chunk_start + columns]
+        table = document.add_table(rows=2, cols=len(chunk))
+        _set_table_full_width(table)
+        for index, (label, value, state) in enumerate(chunk):
+            value_cell = table.cell(0, index)
+            label_cell = table.cell(1, index)
+            for cell in (value_cell, label_cell):
+                _set_table_no_borders(cell)
+                _shade_cell(cell, fill)
+
+            value_paragraph = value_cell.paragraphs[0]
+            value_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            value_paragraph.paragraph_format.space_before = Pt(6)
+            value_run = value_paragraph.add_run(value or "—")
+            _set_run_typefaces(value_run, style.heading_font, style.heading_east_asia)
+            value_run.font.size = Pt(15)
+            value_run.font.bold = True
+            if state in alert_states:
+                value_run.font.color.rgb = style.alert_rgb
+            elif state in positive_states:
+                value_run.font.color.rgb = style.positive_rgb
+            else:
+                value_run.font.color.rgb = style.accent_rgb
+
+            label_paragraph = label_cell.paragraphs[0]
+            label_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            label_paragraph.paragraph_format.space_after = Pt(6)
+            label_text = f"{label}　{state}" if state else label
+            label_run = label_paragraph.add_run(label_text)
+            _set_run_typefaces(label_run, style.body_font, style.body_east_asia)
+            label_run.font.size = Pt(8.5)
+            label_run.font.color.rgb = style.muted_rgb
+    caption_space = document.add_paragraph()
+    caption_space.paragraph_format.space_after = Pt(2)
+    _set_paragraph_style(caption_space, _STYLE_COMPACT)
+
+
+def _set_table_no_borders(cell: _Cell) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    borders = OxmlElement("w:tcBorders")
+    for edge in ("top", "left", "bottom", "right"):
+        edge_el = OxmlElement(f"w:{edge}")
+        edge_el.set(qn("w:val"), "nil")
+        borders.append(edge_el)
+    tc_pr.append(borders)
 
 
 def _is_image_only(children: list[Node]) -> bool:
@@ -782,6 +1213,7 @@ def _render_list(
     node: Node,
     level: int,
     footnotes: "_Footnotes | None",
+    style: _Style,
 ) -> None:
     attrs = node.get("attrs", {})
     ordered = bool(attrs.get("ordered", False))
@@ -837,9 +1269,9 @@ def _render_list(
                 _add_runs(paragraph, child.get("children", []), _Fmt(), footnotes)
                 has_rendered_marker = True
             elif child_type == "list":
-                _render_list(document, child, level + 1, footnotes)
+                _render_list(document, child, level + 1, footnotes, style)
             else:
-                _render_blocks(document, [child], footnotes)
+                _render_blocks(document, [child], footnotes, style)
 
 
 def _create_list_numbering(
@@ -917,7 +1349,10 @@ def _render_thematic_break(document: DocxDocument) -> None:
 
 
 def _render_table(
-    document: DocxDocument, node: Node, footnotes: "_Footnotes | None"
+    document: DocxDocument,
+    node: Node,
+    footnotes: "_Footnotes | None",
+    style: _Style,
 ) -> None:
     header_cells: list[Node] = []
     body_rows: list[list[Node]] = []
@@ -949,14 +1384,14 @@ def _render_table(
                 footnotes=footnotes,
                 header=True,
             )
-            _shade_cell(cells[index], TABLE_HEADER_FILL)
+            _shade_cell(cells[index], style.header_fill)
     for row_index, row in enumerate(body_rows):
         cells = table.add_row().cells
         _keep_row_together(table.rows[-1])
         for index, cell_node in enumerate(row[:num_cols]):
             _fill_cell(cells[index], cell_node, footnotes=footnotes, header=False)
             if row_index % 2 == 1:
-                _shade_cell(cells[index], TABLE_ALT_FILL)
+                _shade_cell(cells[index], style.band)
 
     _remove_fixed_cell_widths(table)
 

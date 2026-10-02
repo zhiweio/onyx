@@ -1,12 +1,12 @@
 ---
 name: finance-tax-risk-report
 description: >-
-  撰写五年期上市公司财税与经营风险分析报告：老板 KPI 看板、三表五年透视、税负与现金流
-  专项、TX/OP 风险识别与评分矩阵、四维改进建议、30/90 日整改清单与闭环式结论，产出带
-  目录、表格与图表的正式 Word 报告。以年报 PDF 为第一证据；用同花顺取财务与行业对标，
-  企查查核验工商股权司法，智慧芽补专利研发；优先用 vivid-figures-skill 出图，
-  chart-gen 备选。
-  触发词：财税风险分析报告、经营风险识别、财税风险、风险矩阵、风险评级、五年财务分析、
+  撰写五年期上市公司财税与经营风险分析报告:老板 KPI 看板、三表五年透视、税负与现金流
+  专项、TX/OP 风险识别与评分矩阵、四维改进建议、30/90 日整改清单与闭环式结论,交付
+  markdown 报告(平台按模板主题渲染正式 Word 版)。以年报 PDF 为第一证据;用同花顺取
+  财务与行业对标,企查查核验工商股权司法,智慧芽补专利研发;优先用 vivid-figures-skill
+  出图,chart-gen 备选。
+  触发词:财税风险分析报告、经营风险识别、财税风险、风险矩阵、风险评级、五年财务分析、
   财税合规建议。
 optional-mcp:
   - hithink-meta
@@ -137,28 +137,23 @@ OP-01～OP-08。每条写成三段式：数据证据 → 成因分析 → 潜在
 
 数据图表优先用 `vivid-figures-skill`：按数据与表达目的在 `catalog/` 选配方，
 再保真复用配方源码出图；不适合时退回 `chart-gen`。利润桥接、同业雷达等特殊图
-用 matplotlib。报告是 Word 与 Markdown，图表一律输出 PNG，不用 HTML 图。
-不要 `npm install`。标准图表清单见
-`references/report-template.md`，至少产出：营收利润趋势、盈利能力、利润与现金流
-对比、费用结构、风险矩阵热力图。图放 `outputs/charts/`。
+用 matplotlib。图表一律输出 PNG 到 `outputs/charts/`，正文用 `![](路径)` 引用。
+不要 `npm install`。基线图表清单见 `references/report-template.md`，至少产出：
+营收利润趋势、盈利能力、利润与现金流对比、费用结构、风险矩阵热力图。
 
 ### 6. 撰写报告
 
-复制 `assets/report_template.md` 到 `outputs/`，按 `references/report-template.md`
-逐章填充。章节结构、表格列式以模板为准，不要自创。章号由脚本自动连续编号，
-写作时不必手工对齐。数字必须能指到年报页码、原始来源名称或网页 URL。
+复制 `assets/report_template.md` 到 `outputs/report.md`,按模板正文的契约组织
+章节:沿四幕脊柱自拟标题与结构,必备产物缺一不可;组件写法见
+`assets/components.md`。数字必须能指到年报页码、原始来源名称或网页 URL。
 
-### 7. 生成 Word
+### 7. 自检与交付
 
-```
-python .opencode/skills/finance-tax-risk-report/scripts/build_report_docx.py \
-  --input outputs/雪龙集团_财税与经营风险分析报告.md \
-  --output outputs/雪龙集团_财税与经营风险分析报告.docx
-```
-
-脚本自动生成真目录域、连续章号、提示框底纹与表格样式。生成后逐条过
-`references/quality-checklist.md`，再交付。聊天里给摘要、路径和引用，
-不要把整份文档贴进对话。
+用平台工具 `check_report`(传 `markdown` 与模板契约 `contract`)逐条自检:
+占位符、必备产物、章号、图表数、来源行、内部路径。FAIL 项修完再交付。
+交付 `outputs/report.md`;正式 Word 版由平台在导出时按模板主题渲染
+(封面、目录域、表格与提示框样式自动生成),不要手写 docx 转换脚本。
+聊天里给摘要、路径和引用,不要把整份文档贴进对话。
 
 ## 硬规则
 

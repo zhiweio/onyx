@@ -151,6 +151,8 @@ def publish_system_report_template(
             name=entry.name,
             description=entry.description,
             body=entry.body,
+            contract=dict(entry.contract or {}),
+            theme=dict(entry.theme or {}),
             author_user_id=None,
             is_builtin=True,
             system_report_template_id=entry.id,
@@ -160,6 +162,8 @@ def publish_system_report_template(
         projection.name = entry.name
         projection.description = entry.description
         projection.body = entry.body
+        projection.contract = dict(entry.contract or {})
+        projection.theme = dict(entry.theme or {})
     # The projection shares the catalog entry's blob rather than copying it:
     # the catalog row owns the asset and outlives the projection.
     projection.kind = entry.kind

@@ -10,6 +10,7 @@ extracted or stored; the agent reads the file itself.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import re
 import zipfile
@@ -51,6 +52,28 @@ def _parse_word_part(part_xml: bytes) -> None:
             OnyxErrorCode.INVALID_INPUT,
             "The Word template contains malformed XML",
         ) from exc
+
+
+def read_docx_asset_bytes(asset_bytes: bytes) -> list[tuple[str, bytes]]:
+    """The (name, content) pairs of a docx, sorted by member name."""
+    with zipfile.ZipFile(io.BytesIO(asset_bytes)) as archive:
+        return sorted((name, archive.read(name)) for name in archive.namelist())
+
+
+def docx_content_sha(asset_bytes: bytes) -> str:
+    """Content hash of a .docx that ignores container-level timestamps.
+
+    python-docx writes fresh zip entry mtimes on every save, so hashing the
+    raw bytes never matches across runs. Hashing each member's content in a
+    stable order yields a hash that changes only when the document content
+    changes — what the sync refresh check actually needs.
+    """
+    digest = hashlib.sha256()
+    for name, content in read_docx_asset_bytes(asset_bytes):
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\x00")
+        digest.update(content)
+    return digest.hexdigest()
 
 
 def validate_docx_asset(asset_bytes: bytes) -> None:

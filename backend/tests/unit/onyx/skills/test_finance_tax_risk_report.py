@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-import zipfile
-from pathlib import Path
 
 from onyx.db.enums import ReportTemplateKind, SystemCatalogCategory
 from onyx.skills.built_in import BUILT_IN_SKILLS, BUILTIN_SKILLS_PATH
@@ -16,7 +14,6 @@ from onyx.system_catalog.builtin.manifest import (
     BUILT_IN_SCENARIO_ENTRIES,
     BUILT_IN_SKILL_ENTRIES,
 )
-from onyx.system_catalog.builtin.word.generate import generate_official_docx
 
 _SKILL_ID = "finance-tax-risk-report"
 _SCRIPTS = BUILTIN_SKILLS_PATH / _SKILL_ID / "scripts"
@@ -43,16 +40,24 @@ def test_skill_is_in_the_gallery_manifest() -> None:
     assert entry.name == "财税与经营风险分析报告"
 
 
-def test_report_template_entry_generates_docx() -> None:
+def test_report_template_entry_renders_contract_sample() -> None:
     entry = next(
         item
         for item in BUILT_IN_REPORT_TEMPLATE_ENTRIES
         if item.slug == "finance_tax_risk_report"
     )
     assert entry.kind is ReportTemplateKind.DOCX
-    body = entry.read_body()
-    assert "风险矩阵" in body
-    docx_bytes = generate_official_docx("finance_tax_risk_report")
+    # Contract-style: structured contract + theme drive a rendered sample.
+    assert entry.is_contract_style
+    contract = entry.read_contract()
+    assert "风险矩阵" in entry.read_body()
+    assert contract["required_elements"]
+    assert contract["min_figures"] >= 5
+    assert entry.read_theme()["accent"]
+
+    from onyx.report_templates.renderer import build_sample_docx
+
+    docx_bytes = build_sample_docx(contract, entry.read_theme())
     assert docx_bytes.startswith(b"PK")
 
 
@@ -78,7 +83,7 @@ def test_report_citations_use_original_sources() -> None:
     checklist = (
         definition.source_dir / "references" / "quality-checklist.md"
     ).read_text(encoding="utf-8")
-    assert "零内部痕迹" in checklist
+    assert "内部路径" in checklist
     assert "企查查" in checklist
 
 
@@ -122,33 +127,55 @@ def test_extract_annual_report_self_test() -> None:
     assert "self-test passed" in output
 
 
-def test_build_report_docx_renders_template(tmp_path: Path) -> None:
-    from docx import Document
+def test_check_report_gates_the_starter_template() -> None:
+    """The starter template teaches components; the gate flags an unfilled one.
 
-    template = BUILTIN_SKILLS_PATH / _SKILL_ID / "assets" / "report_template.md"
-    output = tmp_path / "report.docx"
-    subprocess.check_output(
+    The unfilled skeleton carries {{placeholders}} on purpose. A minimal
+    compliant report (all elements, figures, sources) must pass every check.
+    """
+    from onyx.report_templates.postcheck import check_report_markdown
+
+    template = (
+        BUILTIN_SKILLS_PATH / _SKILL_ID / "assets" / "report_template.md"
+    ).read_text(encoding="utf-8")
+    contract = next(
+        item
+        for item in BUILT_IN_REPORT_TEMPLATE_ENTRIES
+        if item.slug == "finance_tax_risk_report"
+    ).read_contract()
+
+    findings = check_report_markdown(template, contract)
+    failed = {finding.check for finding in findings if not finding.passed}
+    assert "placeholders" in failed
+
+    compliant = "\n".join(
         [
-            sys.executable,
-            str(_SCRIPTS / "build_report_docx.py"),
-            "--input",
-            str(template),
-            "--output",
-            str(output),
-        ],
-        text=True,
+            "# 一、执行摘要",
+            "```kpi",
+            "营业收入 | 4.73 亿元 | 关注",
+            "毛利率 | 35.6% | 稳健",
+            "```",
+            "来源: 公司2024年年度报告第 5 页。",
+            "# 二、风险",
+            "| 编号 | 风险点 | 等级 | 风险评分 | 处置建议 |",
+            "| --- | --- | --- | --- | --- |",
+            "| TX-01 | 税负率异常 | 高 | 56 | 立即治理 |",
+            "![图](outputs/charts/01.png)",
+            "![图](outputs/charts/02.png)",
+            "![图](outputs/charts/03.png)",
+            "![图](outputs/charts/04.png)",
+            "![图](outputs/charts/05.png)",
+            "# 三、整改与期后",
+            "30 日内完成整改;期后事项未经审计,仅作趋势观察。",
+            "数据缺口:前五大客户明细未获取。",
+            "## 免责声明",
+            "本报告不构成投资建议。",
+        ]
     )
-    assert output.read_bytes().startswith(b"PK")
-    document = Document(str(output))
-    with zipfile.ZipFile(output) as bundle:
-        document_xml = bundle.read("word/document.xml").decode("utf-8")
-    assert "TOC" in document_xml
-    headings = [
-        p.text
-        for p in document.paragraphs
-        if p.style is not None and p.style.name.startswith("Heading")
+    findings = check_report_markdown(compliant, contract)
+    failures = [
+        f"{finding.check}: {finding.detail}"
+        for finding in findings
+        if not finding.passed
     ]
-    assert len(headings) >= 12
-    assert headings[0].startswith("一、")
-    assert any(text.startswith("二、") for text in headings)
-    assert not any("草稿" in text for text in headings)
+    assert failures == []

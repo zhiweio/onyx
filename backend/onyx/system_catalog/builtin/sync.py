@@ -28,7 +28,6 @@ Runs at startup and is idempotent. Rules that keep it safe to re-run:
 from __future__ import annotations
 
 import datetime
-import hashlib
 from collections.abc import Callable
 from functools import partial
 from typing import TypeVar
@@ -327,6 +326,8 @@ def _sync_report_templates(db_session: Session) -> None:
                 body=entry.read_body(),
                 category=entry.category,
                 tags=list(entry.tags),
+                contract=entry.read_contract() if entry.is_contract_style else None,
+                theme=entry.read_theme() if entry.is_contract_style else None,
                 origin=SystemCatalogOrigin.BUILTIN,
             )
             _adopt_legacy_report_template_row(db_session, catalog_entry)
@@ -369,6 +370,12 @@ def _report_template_needs_refresh(
         return True
     if list(catalog_entry.tags) != normalize_tags(list(entry.tags)):
         return True
+    if entry.is_contract_style:
+        if dict(catalog_entry.contract or {}) != entry.read_contract():
+            return True
+        if dict(catalog_entry.theme or {}) != entry.read_theme():
+            return True
+        return _asset_content_changed(catalog_entry, _contract_sample_bytes(entry))
     if entry.kind is ReportTemplateKind.DOCX:
         if catalog_entry.kind is not ReportTemplateKind.DOCX:
             return True
@@ -376,10 +383,33 @@ def _report_template_needs_refresh(
             return True
         builder = entry.builder_slug()
         if builder in official_builder_slugs():
-            expected = hashlib.sha256(generate_official_docx(builder)).hexdigest()
-            if catalog_entry.asset_sha256 != expected:
-                return True
+            # Hash document content, not raw bytes: python-docx emits fresh
+            # zip timestamps per save, so a raw-sha compare would flag a
+            # refresh on every boot.
+            return _asset_content_changed(
+                catalog_entry, generate_official_docx(builder)
+            )
     return False
+
+
+def _asset_content_changed(
+    catalog_entry: SystemReportTemplate, fresh_bytes: bytes
+) -> bool:
+    from onyx.db.system_catalog.report_template import read_catalog_docx_asset
+    from onyx.error_handling.exceptions import OnyxError
+    from onyx.report_templates.docx_template import docx_content_sha
+
+    try:
+        stored = read_catalog_docx_asset(catalog_entry)
+    except OnyxError:
+        return True
+    return docx_content_sha(stored) != docx_content_sha(fresh_bytes)
+
+
+def _contract_sample_bytes(entry: BuiltInReportTemplateEntry) -> bytes:
+    from onyx.report_templates.renderer import build_sample_docx
+
+    return build_sample_docx(entry.read_contract(), entry.read_theme())
 
 
 def _apply_report_template_manifest(
@@ -395,7 +425,17 @@ def _apply_report_template_manifest(
         body=entry.read_body(),
         category=entry.category,
         tags=list(entry.tags),
+        contract=entry.read_contract() if entry.is_contract_style else None,
+        theme=entry.read_theme() if entry.is_contract_style else None,
     )
+    if entry.is_contract_style:
+        attach_catalog_docx_asset(
+            db_session,
+            catalog_entry,
+            asset_bytes=_contract_sample_bytes(entry),
+            filename=f"{entry.slug}.docx",
+        )
+        return
     if entry.kind is not ReportTemplateKind.DOCX:
         return
     if entry.builder_slug() not in official_builder_slugs():

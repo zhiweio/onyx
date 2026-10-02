@@ -1,7 +1,10 @@
 import type {
+  ReportContract,
   ReportTemplate,
   ReportTemplateListResponse,
+  ReportTemplatePreviewResponse,
   ReportTemplateUpsert,
+  ReportTheme,
 } from "@/lib/report-templates/types";
 
 const TEMPLATES_URL = "/api/report-templates";
@@ -31,7 +34,7 @@ async function handle<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new ReportTemplateRequestError(
       await readError(response),
-      response.status,
+      response.status
     );
   }
   if (response.status === 204) {
@@ -49,14 +52,14 @@ export async function listReportTemplates(): Promise<ReportTemplate[]> {
 }
 
 export async function getReportTemplate(
-  templateId: string,
+  templateId: string
 ): Promise<ReportTemplate> {
   const response = await fetch(`${TEMPLATES_URL}/${templateId}`);
   return handle<ReportTemplate>(response);
 }
 
 export async function createReportTemplate(
-  input: ReportTemplateUpsert,
+  input: ReportTemplateUpsert
 ): Promise<ReportTemplate> {
   const response = await fetch(TEMPLATES_URL, {
     method: "POST",
@@ -68,7 +71,7 @@ export async function createReportTemplate(
 
 export async function updateReportTemplate(
   templateId: string,
-  input: Partial<ReportTemplateUpsert>,
+  input: Partial<ReportTemplateUpsert>
 ): Promise<ReportTemplate> {
   const response = await fetch(`${TEMPLATES_URL}/${templateId}`, {
     method: "PATCH",
@@ -85,9 +88,22 @@ export async function deleteReportTemplate(templateId: string): Promise<void> {
   await handle<void>(response);
 }
 
+export async function previewReportTemplateDocx(
+  body: string,
+  contract?: ReportContract,
+  theme?: ReportTheme
+): Promise<ReportTemplatePreviewResponse> {
+  const response = await fetch(`${TEMPLATES_URL}/preview-docx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body, contract, theme }),
+  });
+  return handle<ReportTemplatePreviewResponse>(response);
+}
+
 export async function uploadReportTemplateDocx(
   templateId: string,
-  file: File,
+  file: File
 ): Promise<ReportTemplate> {
   const form = new FormData();
   form.append("asset", file);

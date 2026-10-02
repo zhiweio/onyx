@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+from collections.abc import Callable
 from uuid import UUID
 
 from sqlalchemy import select
@@ -31,6 +32,7 @@ from onyx.db.system_catalog.constants import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
+from onyx.report_templates.contract import validated_contract, validated_theme
 from onyx.report_templates.docx_template import (
     DOCX_CONTENT_TYPE,
     validate_docx_asset,
@@ -88,6 +90,8 @@ def create_system_report_template(
     category: SystemCatalogCategory,
     tags: list[str],
     origin: SystemCatalogOrigin = SystemCatalogOrigin.ADMIN,
+    contract: dict | None = None,
+    theme: dict | None = None,
 ) -> SystemReportTemplate:
     entry = SystemReportTemplate(
         slug=normalize_report_template_catalog_slug(slug),
@@ -98,6 +102,8 @@ def create_system_report_template(
         body=normalize_required_text(body, field="Structure", max_length=BODY_MAX),
         category=category,
         tags=normalize_tags(tags),
+        contract=_checked("contract", contract, validated_contract),
+        theme=_checked("theme", theme, validated_theme),
         publish_status=SystemCatalogPublishStatus.DRAFT,
         version=0,
         changelog="",
@@ -123,6 +129,8 @@ def update_system_report_template(
     body: str | None = None,
     category: SystemCatalogCategory | None = None,
     tags: list[str] | None = None,
+    contract: dict | None = None,
+    theme: dict | None = None,
 ) -> SystemReportTemplate:
     if name is not None:
         entry.name = normalize_required_text(name, field="Name", max_length=NAME_MAX)
@@ -138,8 +146,23 @@ def update_system_report_template(
         entry.category = category
     if tags is not None:
         entry.tags = normalize_tags(tags)
+    if contract is not None:
+        entry.contract = _checked("contract", contract, validated_contract)
+    if theme is not None:
+        entry.theme = _checked("theme", theme, validated_theme)
     db_session.flush()
     return entry
+
+
+def _checked(
+    field: str, raw: dict | None, validate: Callable[[dict | None], dict]
+) -> dict:
+    try:
+        return validate(raw)
+    except ValueError as exc:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, f"Invalid template {field}: {exc}"
+        ) from exc
 
 
 def attach_catalog_docx_asset(

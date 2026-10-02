@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "Kontrakt"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "Kontrakt"
+          },
+          "previewButton": {
+            "label": "Dokumentvorschau"
+          },
+          "previewing": {
+            "label": "Vorschau wird erstellt..."
+          },
+          "previewFailed": {
+            "message": "Vorschau konnte nicht erstellt werden"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# Pflichtelement} other {# Pflichtelemente}}"
+          },
+          "findings": {
+            "title": "Qualitätsprüfungen"
           }
         }
       },

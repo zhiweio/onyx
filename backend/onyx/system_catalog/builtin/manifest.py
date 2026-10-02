@@ -55,6 +55,12 @@ class BuiltInReportTemplateEntry(BaseModel):
     kind: ReportTemplateKind = ReportTemplateKind.DOCX
     # Official Word builder slug. Defaults to ``slug``.
     builder: str | None = None
+    # Contract-style templates: YAML files under ``report_templates/`` holding
+    # the structured content contract and the render theme. When
+    # ``contract_file`` is set, the attached Word asset is the rendered sample
+    # document (style reference), not a fill-in skeleton.
+    contract_file: str | None = None
+    theme_file: str | None = None
 
     def read_body(self) -> str:
         path = _REPORT_TEMPLATE_DIR / self.body_file
@@ -64,6 +70,26 @@ class BuiltInReportTemplateEntry(BaseModel):
 
     def builder_slug(self) -> str:
         return self.builder or self.slug
+
+    def read_contract(self) -> dict:
+        return _read_template_yaml(self.contract_file)
+
+    def read_theme(self) -> dict:
+        return _read_template_yaml(self.theme_file)
+
+    @property
+    def is_contract_style(self) -> bool:
+        return self.contract_file is not None
+
+
+def _read_template_yaml(filename: str | None) -> dict:
+    if filename is None:
+        return {}
+    path = _REPORT_TEMPLATE_DIR / filename
+    if not path.is_file():
+        raise ValueError(f"Missing report template file: {filename}")
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return loaded if isinstance(loaded, dict) else {}
 
 
 class BuiltInScenarioEntry(BaseModel):
@@ -605,10 +631,12 @@ BUILT_IN_REPORT_TEMPLATE_ENTRIES: Final[tuple[BuiltInReportTemplateEntry, ...]] 
     BuiltInReportTemplateEntry(
         slug="finance_tax_risk_report",
         name="财税与经营风险分析报告",
-        description="五年期财税与经营风险诊断的正式报告骨架，含看板、透视与风险矩阵。",
+        description="五年期财税与经营风险诊断的契约式模板：必答问题、必备产物与软脊柱，版式由主题渲染。",
         category=SystemCatalogCategory.REPORT,
         tags=("finance", "tax", "risk"),
         body_file="finance_tax_risk_report.md",
+        contract_file="finance_tax_risk_report.contract.yaml",
+        theme_file="finance_tax_risk_report.theme.yaml",
     ),
 )
 

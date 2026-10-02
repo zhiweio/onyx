@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "계약"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "계약"
+          },
+          "previewButton": {
+            "label": "문서 미리보기"
+          },
+          "previewing": {
+            "label": "미리보기 생성 중..."
+          },
+          "previewFailed": {
+            "message": "미리보기를 생성하지 못했습니다"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {필수 요소 #개} other {필수 요소 #개}}"
+          },
+          "findings": {
+            "title": "품질 검사"
           }
         }
       },

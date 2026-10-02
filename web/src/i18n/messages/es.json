@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "Contrato"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "Contrato"
+          },
+          "previewButton": {
+            "label": "Vista previa del documento"
+          },
+          "previewing": {
+            "label": "Generando vista previa..."
+          },
+          "previewFailed": {
+            "message": "No se pudo generar la vista previa"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# elemento obligatorio} other {# elementos obligatorios}}"
+          },
+          "findings": {
+            "title": "Comprobaciones de calidad"
           }
         }
       },

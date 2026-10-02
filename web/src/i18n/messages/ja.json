@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "契約"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "契約"
+          },
+          "previewButton": {
+            "label": "ドキュメントをプレビュー"
+          },
+          "previewing": {
+            "label": "プレビュー中..."
+          },
+          "previewFailed": {
+            "message": "プレビューを生成できませんでした"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# 個の必須要素} other {# 個の必須要素}}"
+          },
+          "findings": {
+            "title": "品質チェック"
           }
         }
       },

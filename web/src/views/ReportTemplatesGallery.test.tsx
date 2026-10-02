@@ -66,6 +66,8 @@ function ownedTemplate(): ReportTemplate {
     referenced_count: 0,
     can_edit: true,
     can_delete: true,
+    contract: {},
+    theme: {},
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
   };
@@ -129,7 +131,7 @@ describe("ReportTemplatesPage gallery tab", () => {
     await user.click(screen.getByRole("tab", { name: "Gallery" }));
 
     expect(
-      (await screen.findAllByText("Monthly close report")).length,
+      (await screen.findAllByText("Monthly close report")).length
     ).toBeGreaterThan(0);
     expect(screen.queryAllByText("My template")).toHaveLength(0);
     expect(mockUseGalleryTemplates).toHaveBeenLastCalledWith(true);
@@ -144,7 +146,7 @@ describe("ReportTemplatesPage gallery tab", () => {
     await user.click(screen.getByRole("tab", { name: "Gallery" }));
 
     expect(
-      screen.queryByRole("button", { name: /new template/i }),
+      screen.queryByRole("button", { name: /new template/i })
     ).not.toBeInTheDocument();
   });
 
@@ -156,20 +158,20 @@ describe("ReportTemplatesPage gallery tab", () => {
     await screen.findAllByText("Monthly close report");
 
     await user.click(
-      screen.getByRole("button", { name: "Copy to my library" }),
+      screen.getByRole("button", { name: "Copy to my library" })
     );
 
     await waitFor(() => {
       expect(mockForkGalleryItem).toHaveBeenCalledWith(
         "report-templates",
-        "cat-monthly-close",
+        "cat-monthly-close"
       );
     });
     await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
     expect(mockToastSuccess).toHaveBeenCalled();
     // A fresh copy belongs to the user, so land them where they can edit it.
     expect((await screen.findAllByText("My template")).length).toBeGreaterThan(
-      0,
+      0
     );
   });
 
@@ -182,13 +184,13 @@ describe("ReportTemplatesPage gallery tab", () => {
     await screen.findAllByText("Monthly close report");
 
     await user.click(
-      screen.getByRole("button", { name: "Copy to my library" }),
+      screen.getByRole("button", { name: "Copy to my library" })
     );
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalled());
     expect(mockRefresh).not.toHaveBeenCalled();
     expect(screen.getAllByText("Monthly close report").length).toBeGreaterThan(
-      0,
+      0
     );
   });
 });

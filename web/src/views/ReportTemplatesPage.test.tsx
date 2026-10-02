@@ -40,6 +40,8 @@ function template(overrides: Partial<ReportTemplate> = {}): ReportTemplate {
     referenced_count: 1,
     can_edit: true,
     can_delete: false,
+    contract: {},
+    theme: {},
     created_at: "2026-08-01T00:00:00Z",
     updated_at: "2026-08-01T00:00:00Z",
     ...overrides,
@@ -80,7 +82,7 @@ describe("ReportTemplatesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "New template" }));
     expect(mockRouterPush).toHaveBeenCalledWith(
-      "/craft/v1/report-templates/new",
+      "/craft/v1/report-templates/new"
     );
   });
 
@@ -90,7 +92,7 @@ describe("ReportTemplatesPage", () => {
 
     await user.type(
       screen.getByPlaceholderText("Search templates..."),
-      "my brief",
+      "my brief"
     );
 
     expect(screen.getAllByText("My brief").length).toBeGreaterThan(0);

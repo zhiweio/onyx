@@ -14201,6 +14201,9 @@
         "kind": {
           "word": {
             "label": "Word"
+          },
+          "contract": {
+            "label": "Contrat"
           }
         }
       },
@@ -14269,6 +14272,24 @@
           },
           "uploadFailed": {
             "message": "Could not save the Word template"
+          },
+          "contract": {
+            "label": "Contrat"
+          },
+          "previewButton": {
+            "label": "Aperçu du document"
+          },
+          "previewing": {
+            "label": "Génération de l'aperçu..."
+          },
+          "previewFailed": {
+            "message": "Impossible de générer l'aperçu"
+          },
+          "requiredElements": {
+            "label": "{count, plural, one {# élément requis} other {# éléments requis}}"
+          },
+          "findings": {
+            "title": "Contrôles qualité"
           }
         }
       },
