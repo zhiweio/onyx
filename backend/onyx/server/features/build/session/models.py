@@ -56,6 +56,16 @@ class SessionReasoningRequest(BaseModel):
     reasoning_effort: ReasoningEffort | None = None
 
 
+class SessionModelRequest(BaseModel):
+    """Persist the user's per-session gateway model pick.
+
+    ``provider_id``/``model`` mirror the ``<provider_id>/<model>`` wire id the
+    gateway routes on (GatewaySelection.to_columns round-trip)."""
+
+    provider_id: int
+    model: str
+
+
 class SessionNameGenerateResponse(BaseModel):
     """Response containing a generated session name."""
 

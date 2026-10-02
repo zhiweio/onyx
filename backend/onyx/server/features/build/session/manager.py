@@ -1020,6 +1020,31 @@ class SessionManager:
         self._db_session.refresh(session)
         return session
 
+    def update_session_agent_model(
+        self,
+        session_id: UUID,
+        user: User,
+        provider_id: int,
+        model_name: str,
+    ) -> BuildSession | None:
+        """Persist the user's model pick on the session row.
+
+        Deliberately does NOT reconcile the sandbox opencode config: the pick
+        rides along on the next send (both the job and interactive send paths
+        re-write agent_provider/agent_model anyway), so flipping the picker
+        should not dispose a running opencode session.
+        """
+        session = get_build_session(session_id, user.id, self._db_session)
+        if session is None:
+            return None
+        session.agent_provider, session.agent_model = GatewaySelection(
+            provider_id, model_name
+        ).to_columns()
+        update_session_activity(session_id, self._db_session)
+        self._db_session.commit()
+        self._db_session.refresh(session)
+        return session
+
     def update_session_reasoning(
         self,
         session_id: UUID,
@@ -1273,6 +1298,22 @@ class SessionManager:
                 "Session live stream is not ready yet.",
             )
 
+        # Replay-first: this subscribe is used by mid-turn attachers (page
+        # reloads, job turns discovered by polling), and the executor may
+        # already have persisted events the attacher never saw. Re-emit those
+        # rows as SSE before the live stream, minus ones the live stream will
+        # repeat — deduped by (type, toolCallId, status) for tool events.
+        replayed_keys: set[tuple] = set()
+        for row in self._load_replayable_events(session_id):
+            replayed_keys.add(
+                (
+                    row.get("type"),
+                    row.get("toolCallId"),
+                    row.get("status"),
+                )
+            )
+            yield "event: message\ndata: " + json.dumps(row) + "\n\n"
+
         raw_events = self._sandbox_manager.subscribe_to_opencode_session(
             sandbox.id,
             opencode_session_id,
@@ -1287,7 +1328,61 @@ class SessionManager:
             )
 
         for acp_event in raw_events:
+            event_dict = (
+                acp_event.model_dump(mode="json", by_alias=True)
+                if hasattr(acp_event, "model_dump")
+                else None
+            )
+            if event_dict is not None:
+                key = (
+                    event_dict.get("type"),
+                    event_dict.get("toolCallId"),
+                    event_dict.get("status"),
+                )
+                if key in replayed_keys:
+                    # Already replayed from the durable rows; drop the live
+                    # duplicate so the client renders one block per call.
+                    continue
             yield _streaming.event_to_sse(acp_event)
+
+    def _load_replayable_events(
+        self, session_id: UUID
+    ) -> list[dict[str, Any]]:
+        """Durable packets for the newest turn, in persisted order.
+
+        Mirrors what persist_sandbox_event writes: terminal tool_call_progress
+        rows, merged text/thought packets, todo updates and compaction. Only
+        assistant rows are replayable; the trailing prompt_response is a live
+        signal, not persisted.
+        """
+        rows = (
+            self._db_session.query(BuildMessage)
+            .filter(
+                BuildMessage.session_id == session_id,
+                BuildMessage.type == MessageType.ASSISTANT,
+            )
+            .order_by(
+                BuildMessage.turn_index.desc(), BuildMessage.created_at.asc()
+            )
+            .all()
+        )
+        if not rows:
+            return []
+        newest_turn = rows[0].turn_index
+        replay: list[dict[str, Any]] = []
+        for row in rows:
+            if row.turn_index != newest_turn:
+                break
+            meta = row.message_metadata
+            if not isinstance(meta, dict):
+                continue
+            packet = dict(meta)
+            packet.setdefault("sessionId", None)
+            packet.setdefault("parentSessionId", None)
+            replay.append(packet)
+        # Persisted order within the turn is created_at ASC; the query above
+        # ordered ASC within the desc turn window, so replay is chronological.
+        return replay
 
     # ----- Persistence helpers (shared with the headless scheduled-tasks executor) -----
     #

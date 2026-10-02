@@ -279,9 +279,7 @@ def retry_turn(
         prompt = request.content.strip()
 
     cache = get_cache_backend()
-    client_request_id = (
-        request.client_request_id if request else None
-    ) or str(uuid4())
+    client_request_id = (request.client_request_id if request else None) or str(uuid4())
 
     try:
         lock = acquire_active_turn_lock(cache, session_id)
@@ -312,7 +310,9 @@ def retry_turn(
                     # Rewind from the newest harness user message; the last
                     # Onyx turn maps to it for interactive sessions.
                     _last_harness_user_message_id(
-                        sandbox_manager, sandbox.id, session_id,
+                        sandbox_manager,
+                        sandbox.id,
+                        session_id,
                         session.opencode_session_id,
                     )
                     or "",
@@ -331,9 +331,7 @@ def retry_turn(
             edited_content = dict(edited_metadata.get("content") or {})
             edited_content["text"] = prompt
             edited_metadata["content"] = edited_content
-            update_message(
-                last_user_message.id, edited_metadata, db_session
-            )
+            update_message(last_user_message.id, edited_metadata, db_session)
 
         if rewound:
             delete_messages_from_turn(
