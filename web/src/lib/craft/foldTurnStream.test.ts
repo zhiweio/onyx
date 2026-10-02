@@ -1,5 +1,6 @@
 import {
   classifyToolPhase,
+  foldFileChanges,
   foldTurnStream,
   shortPhaseTarget,
   stepSummary,
@@ -147,7 +148,10 @@ describe("foldTurnStream", () => {
   it("adds a thought preview and prefers following commentary", () => {
     const folded = foldTurnStream(
       [
-        thinking("th1", "Load the skill and map the workspace. Then fetch NCT."),
+        thinking(
+          "th1",
+          "Load the skill and map the workspace. Then fetch NCT."
+        ),
         toolItem(tool({ id: "r1", kind: "read", description: "SKILL.md" })),
         text("mid", "Skill is loaded. Next I will fetch the trial."),
         toolItem(
@@ -212,21 +216,17 @@ describe("foldTurnStream", () => {
   });
 
   it("shows planning next only in a live settled gap", () => {
-    const settled: StreamItem[] = [
-      thinking("th1", "done thinking", false),
-    ];
-    expect(foldTurnStream(settled, { isStreaming: true }).showPlanningNext).toBe(
-      true
-    );
+    const settled: StreamItem[] = [thinking("th1", "done thinking", false)];
     expect(
-      foldTurnStream(
-        [thinking("th1", "still", true)],
-        { isStreaming: true }
-      ).showPlanningNext
+      foldTurnStream(settled, { isStreaming: true }).showPlanningNext
+    ).toBe(true);
+    expect(
+      foldTurnStream([thinking("th1", "still", true)], { isStreaming: true })
+        .showPlanningNext
     ).toBe(false);
-    expect(foldTurnStream(settled, { isStreaming: false }).showPlanningNext).toBe(
-      false
-    );
+    expect(
+      foldTurnStream(settled, { isStreaming: false }).showPlanningNext
+    ).toBe(false);
     expect(
       foldTurnStream([...settled, text("a", "Answer")], { isStreaming: true })
         .showPlanningNext
@@ -263,8 +263,67 @@ describe("shortPhaseTarget", () => {
         "outputs/markdown/very/long/nested/HMPL760_1L_DLBCL_立项评估.md"
       )
     ).toBe("HMPL760_1L_DLBCL_立项评估.md");
-    expect(shortPhaseTarget("ls -la; echo one; echo two; echo three; echo four; echo five")).toContain(
-      "…"
-    );
+    expect(
+      shortPhaseTarget(
+        "ls -la; echo one; echo two; echo three; echo four; echo five"
+      )
+    ).toContain("…");
+  });
+});
+
+describe("foldFileChanges", () => {
+  const editTool = (id: string, path: string, oldC: string, newC: string) =>
+    ({
+      type: "tool_call",
+      id,
+      toolCall: {
+        id,
+        kind: "edit",
+        toolName: "write",
+        title: "Write",
+        description: path,
+        command: "",
+        status: "completed",
+        rawOutput: "",
+        filePath: path,
+        oldContent: oldC,
+        newContent: newC,
+      },
+    }) as never;
+
+  it("aggregates per-path stats across repeat edits to the same file", () => {
+    const items = [
+      editTool("t1", "outputs/a.md", "x", "x\ny"),
+      editTool("t2", "outputs/a.md", "x\ny", "x\ny\nz"),
+      editTool("t3", "outputs/b.md", "", "hello"),
+    ] as never[];
+    const changes = foldFileChanges(items);
+    expect(changes).toHaveLength(2);
+    const a = changes.find((c) => c.path === "outputs/a.md")!;
+    expect(a.added).toBe(2); // y + z net-new lines
+    expect(a.removed).toBe(0);
+    expect(a.toolCallId).toBe("t2"); // newest identity wins
+    const b = changes.find((c) => c.path === "outputs/b.md")!;
+    expect(b.isNewFile).toBe(false); // is_new not flagged in this shape
+  });
+
+  it("ignores non-edit and pathless tool calls", () => {
+    const items = [
+      { type: "text", id: "x", content: "hi", isStreaming: false },
+      {
+        type: "tool_call",
+        id: "t9",
+        toolCall: {
+          id: "t9",
+          kind: "execute",
+          title: "Terminal",
+          description: "",
+          command: "ls",
+          status: "completed",
+          rawOutput: "",
+        },
+      },
+    ] as never[];
+    expect(foldFileChanges(items)).toHaveLength(0);
   });
 });

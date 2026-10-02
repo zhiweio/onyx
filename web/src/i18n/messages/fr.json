@@ -12319,6 +12319,14 @@
         "ariaLabel": "Basculer {name}"
       }
     },
+    "diffTab": {
+      "copied": "Copied",
+      "copyPath": "Copy path",
+      "sideBySide": "Side by side",
+      "unchangedLines": "{count} unchanged lines",
+      "unified": "Unified",
+      "viewCurrentFile": "View current file"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "Poursuivez la conversation...",
@@ -12413,6 +12421,9 @@
         "paused": "En pause",
         "streaming": "Diffusion"
       }
+    },
+    "fileChanges": {
+      "title": "{count, plural, one {# file changed} other {# files changed}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

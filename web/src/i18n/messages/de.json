@@ -12319,6 +12319,14 @@
         "ariaLabel": "{name} umschalten"
       }
     },
+    "diffTab": {
+      "copied": "Copied",
+      "copyPath": "Copy path",
+      "sideBySide": "Side by side",
+      "unchangedLines": "{count} unchanged lines",
+      "unified": "Unified",
+      "viewCurrentFile": "View current file"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "Setze das Gespräch fort...",
@@ -12413,6 +12421,9 @@
         "paused": "Pausiert",
         "streaming": "Streaming"
       }
+    },
+    "fileChanges": {
+      "title": "{count, plural, one {# file changed} other {# files changed}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

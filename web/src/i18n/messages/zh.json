@@ -12319,6 +12319,14 @@
         "ariaLabel": "展开或折叠 {name}"
       }
     },
+    "diffTab": {
+      "copied": "已复制",
+      "copyPath": "复制路径",
+      "sideBySide": "并排视图",
+      "unchangedLines": "{count} 行未变更",
+      "unified": "统一视图",
+      "viewCurrentFile": "查看当前文件"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "继续对话...",
@@ -12413,6 +12421,9 @@
         "paused": "已暂停",
         "streaming": "流式传输中"
       }
+    },
+    "fileChanges": {
+      "title": "已更改 {count} 个文件 +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

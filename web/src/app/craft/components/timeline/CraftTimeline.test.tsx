@@ -63,6 +63,7 @@ function renderList(props: {
   messages?: BuildMessage[];
   streamItems?: StreamItem[];
   isStreaming?: boolean;
+  turnStartedAtMsOverride?: number | null;
   onRetry?: () => void;
   onEditResend?: (content: string) => void;
 }) {
@@ -73,11 +74,12 @@ function renderList(props: {
         messages={props.messages ?? []}
         streamItems={props.streamItems ?? []}
         isStreaming={props.isStreaming}
+        turnStartedAtMsOverride={props.turnStartedAtMsOverride}
         scrollContainerRef={scrollRef()}
         onRetry={props.onRetry}
         onEditResend={props.onEditResend}
       />
-    </TooltipProvider>,
+    </TooltipProvider>
   );
 }
 
@@ -140,10 +142,10 @@ describe("CraftTimeline rendering", () => {
     });
 
     expect(
-      screen.getByRole("img", { name: "reference image.png" }),
+      screen.getByRole("img", { name: "reference image.png" })
     ).toHaveAttribute(
       "src",
-      "/api/build/sessions/session-1/artifacts/attachments/reference%20image.png",
+      "/api/build/sessions/session-1/artifacts/attachments/reference%20image.png"
     );
   });
 
@@ -159,7 +161,7 @@ describe("CraftTimeline rendering", () => {
     expect(thought).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Thought")).toBeInTheDocument();
     expect(
-      screen.getAllByText("Checking the app structure.").length,
+      screen.getAllByText("Checking the app structure.").length
     ).toBeGreaterThan(1);
     expect(screen.getByText("Final answer")).toBeInTheDocument();
   });
@@ -169,7 +171,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
       "aria-expanded",
-      "false",
+      "false"
     );
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
@@ -196,7 +198,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(screen.getByRole("button", { name: /Thought/ })).toHaveAttribute(
       "aria-expanded",
-      "false",
+      "false"
     );
     expect(screen.getByText("Checking the app structure.")).toBeInTheDocument();
     expect(screen.getByText("Final answer")).toBeInTheDocument();
@@ -223,7 +225,7 @@ describe("CraftTimeline rendering", () => {
 
     expect(thinking).toHaveAttribute("aria-expanded", "true");
     expect(
-      screen.getAllByText("Checking the app structure.").length,
+      screen.getAllByText("Checking the app structure.").length
     ).toBeGreaterThan(1);
   });
 
@@ -258,7 +260,7 @@ describe("CraftTimeline rendering", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "provider model not found",
+      "provider model not found"
     );
   });
 
@@ -276,6 +278,21 @@ describe("CraftTimeline rendering", () => {
       timestamp: new Date(),
     },
   ];
+
+  it("anchors the running-turn timer to the override, not the old message", () => {
+    // Edit-resend rewrites the last user message in place, keeping its
+    // original timestamp; the retry path passes a fresh start instead.
+    renderList({
+      messages: retryTranscript,
+      isStreaming: true,
+      streamItems: [
+        { type: "text", id: "t1", content: "working", isStreaming: true },
+      ],
+      turnStartedAtMsOverride: Date.now() - 3000,
+    });
+    const header = screen.getByTestId("craft-turn-status");
+    expect(header.textContent).toMatch(/^Working for [0-9]s/);
+  });
 
   it("shows the retry action on the last agent message when idle", () => {
     const onRetry = jest.fn();
@@ -296,7 +313,7 @@ describe("CraftTimeline rendering", () => {
       onRetry: () => undefined,
     });
     expect(
-      screen.queryByTestId("CraftAgentMessage/retry-button"),
+      screen.queryByTestId("CraftAgentMessage/retry-button")
     ).not.toBeInTheDocument();
   });
 
@@ -318,7 +335,7 @@ describe("CraftTimeline rendering", () => {
       expect(onEditResend).toHaveBeenCalledWith("build a site");
     });
     expect(
-      screen.queryByTestId("CraftUserMessage/edit-editor"),
+      screen.queryByTestId("CraftUserMessage/edit-editor")
     ).not.toBeInTheDocument();
   });
 
@@ -328,7 +345,7 @@ describe("CraftTimeline rendering", () => {
     fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
     await waitFor(() => {
       expect(
-        screen.getByTestId("craft-message-edit-input").textContent,
+        screen.getByTestId("craft-message-edit-input").textContent
       ).toContain("build a site");
     });
     fireEvent.click(screen.getByRole("button", { name: "Resend" }));
@@ -345,7 +362,7 @@ describe("CraftTimeline rendering", () => {
     });
     expect(onEditResend).not.toHaveBeenCalled();
     expect(
-      screen.queryByTestId("CraftUserMessage/edit-editor"),
+      screen.queryByTestId("CraftUserMessage/edit-editor")
     ).not.toBeInTheDocument();
   });
 });

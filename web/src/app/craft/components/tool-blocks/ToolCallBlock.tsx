@@ -37,7 +37,7 @@ interface DiffCounts {
 
 function lineDiffCounts(
   oldContent: string | undefined,
-  newContent: string | undefined,
+  newContent: string | undefined
 ): DiffCounts | null {
   if (newContent === undefined) {
     return null;
@@ -106,8 +106,51 @@ function kindLabelKey(toolCall: ToolCallState): string {
   }
 }
 
-function primaryTextFor(toolCall: ToolCallState): ReactNode {
+interface FileNavProps {
+  /** Open this edit's diff in the output panel (edit with a patch). */
+  openDiff?: (toolCall: ToolCallState) => void;
+  /** Open the file itself in the output panel (write of a new file). */
+  openFile?: (path: string) => void;
+}
+
+function primaryTextFor(
+  toolCall: ToolCallState,
+  nav?: FileNavProps
+): ReactNode {
   const text = toolCall.command || toolCall.description || toolCall.title;
+  const filePath = toolCall.filePath;
+  const clickable =
+    nav &&
+    filePath &&
+    (toolCall.kind === "edit" || toolCall.toolName === "write");
+  if (clickable && nav) {
+    const onClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (toolCall.toolName === "write" && !toolCall.oldContent) {
+        nav.openFile?.(filePath);
+      } else {
+        nav.openDiff?.(toolCall);
+      }
+    };
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onClick(e as never);
+        }}
+        className="group/file-chip cursor-pointer rounded-sm bg-background-tint-01 px-1 underline-offset-2 hover:bg-background-tint-02 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-03"
+        data-testid="tool-file-chip"
+        title={filePath}
+      >
+        <Text font="secondary-mono" color="text-04" nowrap>
+          {text}
+        </Text>
+      </span>
+    );
+  }
   return (
     <span className="rounded-sm bg-background-tint-01 px-1">
       <Text font="secondary-mono" color="text-04" nowrap>
@@ -166,9 +209,11 @@ interface ToolCallBlockProps {
   toolCall: ToolCallState;
   /** Nested inside a group row: the group carries comet/skill chrome. */
   nested?: boolean;
+  /** Panel navigation for clickable file chips (diff/file preview). */
+  nav?: FileNavProps;
 }
 
-function ToolCallBlock({ toolCall, nested = false }: ToolCallBlockProps) {
+function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
   const t = useTranslations("craft.toolBlocks");
   const running =
     toolCall.status === "pending" || toolCall.status === "in_progress";
@@ -179,7 +224,7 @@ function ToolCallBlock({ toolCall, nested = false }: ToolCallBlockProps) {
       toolCall.kind === "edit" && !running
         ? lineDiffCounts(toolCall.oldContent, toolCall.newContent)
         : null,
-    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running],
+    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running]
   );
 
   // The task tool is its own clickable row that navigates to the spawned
@@ -203,14 +248,14 @@ function ToolCallBlock({ toolCall, nested = false }: ToolCallBlockProps) {
         !nested &&
           isSkillInvocation(toolCall) &&
           !failed &&
-          "border-[0.5px] border-border-01",
+          "border-[0.5px] border-border-01"
       )}
     >
       <ToolLayout
         toolId={toolCall.id}
         icon={<Icon className="size-4 shrink-0" />}
         kindLabel={t(kindLabelKey(toolCall))}
-        primaryText={primaryTextFor(toolCall)}
+        primaryText={primaryTextFor(toolCall, nav)}
         secondaryText={
           toolCall.skillName && toolCall.toolName !== "skill" ? (
             <Text font="secondary-body" color="text-04" nowrap>

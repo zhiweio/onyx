@@ -12319,6 +12319,14 @@
         "ariaLabel": "{name} を開閉"
       }
     },
+    "diffTab": {
+      "copied": "コピー済み",
+      "copyPath": "パスをコピー",
+      "sideBySide": "並列",
+      "unchangedLines": "{count} 行変更なし",
+      "unified": "ユニファイド",
+      "viewCurrentFile": "現在のファイルを表示"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "会話を続ける...",
@@ -12413,6 +12421,9 @@
         "paused": "一時停止中",
         "streaming": "ストリーミング中"
       }
+    },
+    "fileChanges": {
+      "title": "{count} 個のファイルを変更 +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

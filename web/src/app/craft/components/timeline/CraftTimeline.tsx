@@ -4,9 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Button, CopyButton } from "@opal/components";
+import { Button, CopyButton, Text as OpalText } from "@opal/components";
 import { Hoverable } from "@opal/core";
-import { SvgAlertCircle, SvgEdit, SvgRefreshCw } from "@opal/icons";
+import { cn } from "@opal/utils";
+import {
+  SvgAlertCircle,
+  SvgChevronRight,
+  SvgEdit,
+  SvgRefreshCw,
+} from "@opal/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Logo } from "@/lib/app/components";
 import SetupCard from "@/app/craft/components/setup-requests/SetupCard";
@@ -26,6 +32,8 @@ import {
   ThoughtRow,
 } from "@/app/craft/components/turn-activity/PhaseRow";
 import { ToolGroupRow } from "@/app/craft/components/tool-blocks/ToolGroupRow";
+import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
+import type { ToolCallState } from "@/app/craft/types/displayTypes";
 import { ChatPromptEditor } from "@/sections/input/lexical";
 import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
 import { TurnStatusHeader } from "@/app/craft/components/timeline/TurnStatusHeader";
@@ -38,6 +46,26 @@ import {
   isHostContinueMessage,
 } from "@/lib/craft-jobs/display";
 import { foldTurnStream, stepSummary } from "@/lib/craft/foldTurnStream";
+
+function countDiffLines(toolCall: {
+  oldContent?: string;
+  newContent?: string;
+}): { added: number; removed: number } {
+  const newLines = (toolCall.newContent ?? "").split("\n");
+  const oldCount = new Map<string, number>();
+  for (const line of (toolCall.oldContent ?? "").split("\n")) {
+    oldCount.set(line, (oldCount.get(line) ?? 0) + 1);
+  }
+  let added = 0;
+  for (const line of newLines) {
+    const remaining = oldCount.get(line) ?? 0;
+    if (remaining > 0) oldCount.set(line, remaining - 1);
+    else added += 1;
+  }
+  let removed = 0;
+  for (const count of oldCount.values()) removed += count;
+  return { added, removed };
+}
 
 interface CraftTimelineProps {
   sessionId: string | null;
@@ -58,6 +86,12 @@ interface CraftTimelineProps {
   onEditResend?: (content: string) => void;
   /** Handle over the inline edit composer (tests, programmatic prefill). */
   editEditorRef?: React.RefObject<LexicalPromptInputHandle | null>;
+  /**
+   * Wall-clock start of the active turn. Preferred over the last user
+   * message's timestamp when present: retry/edit-resend rewrites that message
+   * in place and keeps its original time.
+   */
+  turnStartedAtMsOverride?: number | null;
 }
 
 /**
@@ -79,16 +113,46 @@ export default function CraftTimeline({
   onRetry,
   onEditResend,
   editEditorRef: editEditorRefProp,
+  turnStartedAtMsOverride,
 }: CraftTimelineProps) {
   const t = useTranslations("craft.timeline");
   // Resolve a connect card's app (oauth-vs-form, credential fields) by ID.
   const { data: connectableApps } = useSWR<ExternalAppUserResponse[]>(
     SWR_KEYS.buildExternalApps,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const appsById = useMemo(
     () => new Map((connectableApps ?? []).map((app) => [app.id, app])),
-    [connectableApps],
+    [connectableApps]
+  );
+
+  const openDiffPreview = useBuildSessionStore(
+    (state) => state.openDiffPreview
+  );
+  const openFilePreview = useBuildSessionStore(
+    (state) => state.openFilePreview
+  );
+  const fileNav = useMemo(
+    () => ({
+      openDiff: (toolCall: ToolCallState) => {
+        if (!sessionId || !toolCall.filePath) return;
+        openDiffPreview(sessionId, {
+          path: toolCall.filePath,
+          fileName: toolCall.filePath.split("/").pop() ?? toolCall.filePath,
+          toolCallId: toolCall.id,
+          oldContent: toolCall.oldContent ?? "",
+          newContent: toolCall.newContent ?? "",
+          added: countDiffLines(toolCall).added,
+          removed: countDiffLines(toolCall).removed,
+          isNewFile: !!toolCall.isNewFile,
+        });
+      },
+      openFile: (path: string) => {
+        if (!sessionId) return;
+        openFilePreview(sessionId, path, path.split("/").pop() ?? path);
+      },
+    }),
+    [sessionId, openDiffPreview, openFilePreview]
   );
 
   const hasStreamItems = streamItems.length > 0;
@@ -141,7 +205,7 @@ export default function CraftTimeline({
     opts: {
       isCurrentStream: boolean;
       extractLatestTodo: boolean;
-    },
+    }
   ): { nodes: React.ReactNode[]; pinnedTodo: TodoListState | null } => {
     let latestTodoIdx = -1;
     rawItems.forEach((it, idx) => {
@@ -179,6 +243,15 @@ export default function CraftTimeline({
     });
     const hasAnswer = folded.answer != null;
 
+    const fileSummaryCard =
+      !opts.isCurrentStream && folded.fileChanges.length > 0 ? (
+        <FileChangesSummary
+          key="file-changes-summary"
+          changes={folded.fileChanges}
+          nav={fileNav}
+        />
+      ) : null;
+
     const nodes = [
       ...folded.rows.map((row) => {
         switch (row.kind) {
@@ -213,6 +286,7 @@ export default function CraftTimeline({
                 tools={row.tools}
                 autoCollapse={hasAnswer}
                 summary={row.summary}
+                nav={fileNav}
               />
             );
           case "text":
@@ -273,6 +347,7 @@ export default function CraftTimeline({
         }
       }),
       folded.showPlanningNext ? <PlanningNextRow key="planning-next" /> : null,
+      fileSummaryCard,
       folded.answer ? (
         <div key={folded.answer.id} className="mt-4">
           <TextChunk
@@ -289,7 +364,7 @@ export default function CraftTimeline({
   const renderAgentMessage = (
     message: BuildMessage,
     trailing?: React.ReactNode,
-    actionsExtra?: React.ReactNode,
+    actionsExtra?: React.ReactNode
   ) => {
     const savedStreamItems = message.message_metadata?.streamItems as
       | StreamItem[]
@@ -399,9 +474,13 @@ export default function CraftTimeline({
       })
     : null;
 
-  // The running turn started when the latest user message was sent; falls
-  // back to mount time for restored sessions still marked running.
+  // The running turn started when the latest user message was sent; the
+  // override wins for retry/edit-resend (the rewritten message keeps its
+  // original timestamp). Falls back to mount time for restored sessions.
   const turnStartedAtMs = useMemo(() => {
+    if (turnStartedAtMsOverride != null) {
+      return turnStartedAtMsOverride;
+    }
     for (let i = messages.length - 1; i >= 0; i--) {
       const message = messages[i];
       if (message?.type === "user" && message.timestamp) {
@@ -411,7 +490,7 @@ export default function CraftTimeline({
     return Date.now();
     // Mount-time fallback must not re-derive on every stream item.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]);
+  }, [messages.length, turnStartedAtMsOverride]);
 
   const liveTailRef = useRef<HTMLDivElement | null>(null);
 
@@ -537,7 +616,7 @@ export default function CraftTimeline({
                         data-testid="CraftAgentMessage/retry-button"
                         onClick={onRetry}
                       />
-                    ) : null,
+                    ) : null
                   )
                 )}
               </div>
@@ -581,6 +660,71 @@ export default function CraftTimeline({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FileChangesSummary({
+  changes,
+  nav,
+}: {
+  changes: import("@/lib/craft/foldTurnStream").FoldedFileChange[];
+  nav: {
+    openDiff?: (toolCall: ToolCallState) => void;
+    openFile?: (path: string) => void;
+  };
+}) {
+  const t = useTranslations("craft.fileChanges");
+  const [open, setOpen] = useState(false);
+  const totalAdded = changes.reduce((s, c) => s + c.added, 0);
+  const totalRemoved = changes.reduce((s, c) => s + c.removed, 0);
+  return (
+    <div
+      className="mt-2 flex flex-col gap-1 rounded-08 border border-border-01 px-2 py-1.5"
+      data-testid="file-changes-summary"
+    >
+      <button
+        type="button"
+        className="flex items-center gap-2 text-start"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <SvgChevronRight
+          className={cn(
+            "size-3.5 shrink-0 stroke-text-03 transition-transform",
+            open && "rotate-90"
+          )}
+        />
+        <OpalText font="secondary-action" color="text-03">
+          {t("title", {
+            count: changes.length,
+            added: totalAdded,
+            removed: totalRemoved,
+          })}
+        </OpalText>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-0.5 ps-5">
+          {changes.map((c) => (
+            <button
+              key={c.path + c.toolCallId}
+              type="button"
+              className="flex items-center gap-2 rounded-04 px-1 py-0.5 text-start hover:bg-background-tint-02"
+              data-testid={`file-changes-row-${c.fileName}`}
+              onClick={() => nav.openFile?.(c.path)}
+              title={c.path}
+            >
+              <OpalText font="secondary-mono" color="text-04" nowrap>
+                {c.path}
+              </OpalText>
+              <span className="ms-auto flex shrink-0 items-baseline gap-1 font-secondary-action">
+                <span className="text-status-success-05">+{c.added}</span>
+                <span className="text-status-error-05">−{c.removed}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

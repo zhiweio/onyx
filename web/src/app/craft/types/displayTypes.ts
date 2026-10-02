@@ -87,6 +87,8 @@ export interface ToolCallState {
   skillName?: string;
   /** For edit operations: whether this is a new file (write) or edit of existing */
   isNewFile?: boolean;
+  /** For edit operations: session-relative file path (drives diff/preview). */
+  filePath?: string;
   /** For edit operations: the old content before the edit (empty for new files) */
   oldContent?: string;
   /** For edit operations: the new content after the edit */
@@ -152,7 +154,23 @@ export interface ContextUsage {
  * Future view kinds: add a new variant here, render its chrome in
  * `OutputPanel.tsx`'s tab-row map, and its body in the panel body switch.
  */
-export type PanelTab = { kind: "file"; path: string; fileName: string };
+export type PanelTab =
+  | { kind: "file"; path: string; fileName: string }
+  | {
+      kind: "diff";
+      /** Session-relative file path the patch applies to. */
+      path: string;
+      fileName: string;
+      /** Content hash suffix (8 hex chars) so distinct edits to the same file
+       * coexist as tabs while re-clicking the same edit focuses its tab. */
+      contentHash: string;
+      toolCallId: string;
+      oldContent: string;
+      newContent: string;
+      added: number;
+      removed: number;
+      isNewFile: boolean;
+    };
 
 /**
  * Stable string ID for a `PanelTab`, namespaced by kind. Used as the value
@@ -164,9 +182,11 @@ export function panelTabId(tab: PanelTab): string {
   switch (tab.kind) {
     case "file":
       return `file:${tab.path}`;
+    case "diff":
+      return `diff:${tab.path}:${tab.contentHash}`;
     default: {
-      const _exhaustive: never = tab.kind;
-      throw new Error(`Unknown PanelTab kind: ${String(_exhaustive)}`);
+      const kind = (tab as { kind?: string }).kind ?? "unknown";
+      throw new Error(`Unknown PanelTab kind: ${kind}`);
     }
   }
 }

@@ -20,7 +20,7 @@ interface DiffLine {
 const SIDE_BY_SIDE_AUTO_THRESHOLD = 20;
 const BLANK = " ";
 
-function computeDiff(oldText: string, newText: string): DiffLine[] {
+export function computeDiff(oldText: string, newText: string): DiffLine[] {
   const oldLines = oldText.split("\n");
   const newLines = newText.split("\n");
   const result: DiffLine[] = [];
@@ -102,7 +102,7 @@ function computeDiff(oldText: string, newText: string): DiffLine[] {
   return result;
 }
 
-function collapseUnchanged(
+export function collapseUnchanged(
   lines: DiffLine[],
   formatUnchanged: (count: number) => string,
   contextLines: number = 3
@@ -189,9 +189,9 @@ function lineTextColor(type: DiffLineType): DiffTextColor {
   return "text-04";
 }
 
-function UnifiedDiff({ lines }: { lines: DiffLine[] }) {
+export function UnifiedDiff({ lines }: { lines: DiffLine[] }) {
   return (
-    <div className="overflow-auto max-h-[24rem]">
+    <div className="overflow-auto max-h-60">
       {lines.map((line, idx) => {
         const prefix = linePrefix(line.type);
         return (
@@ -221,9 +221,9 @@ function UnifiedDiff({ lines }: { lines: DiffLine[] }) {
   );
 }
 
-function SideBySideDiff({ lines }: { lines: DiffLine[] }) {
+export function SideBySideDiff({ lines }: { lines: DiffLine[] }) {
   return (
-    <div className="overflow-auto max-h-[24rem] grid grid-cols-2 divide-x divide-border-01">
+    <div className="overflow-auto max-h-60 grid grid-cols-2 divide-x divide-border-01">
       <div>
         {lines.map((line, idx) => {
           const isHeader = line.type === "header";

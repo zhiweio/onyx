@@ -12319,6 +12319,14 @@
         "ariaLabel": "تبديل {name}"
       }
     },
+    "diffTab": {
+      "copied": "Copied",
+      "copyPath": "Copy path",
+      "sideBySide": "Side by side",
+      "unchangedLines": "{count} unchanged lines",
+      "unified": "Unified",
+      "viewCurrentFile": "View current file"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "تابع المحادثة...",
@@ -12413,6 +12421,9 @@
         "paused": "متوقف مؤقتًا",
         "streaming": "بث مباشر"
       }
+    },
+    "fileChanges": {
+      "title": "{count, plural, one {# file changed} other {# files changed}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

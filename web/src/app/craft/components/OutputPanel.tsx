@@ -62,6 +62,14 @@ const ArtifactsTab = dynamic(
   () => import("@/app/craft/components/output-panel/ArtifactsTab"),
   { ssr: false }
 );
+const DiffTabBody = dynamic(
+  () =>
+    import("@/app/craft/components/output-panel/DiffTabBody").then(
+      (m) => m.DiffTabBody
+    ),
+  { ssr: false }
+);
+
 const FilePreviewContent = dynamic(
   () =>
     import("@/app/craft/components/output-panel/FilePreviewContent").then(
@@ -668,6 +676,66 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
                     </button>
                   );
                 }
+                case "diff": {
+                  const TabIcon = getFileIcon(tab.fileName);
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => handlePanelTabClick(id)}
+                      className={cn(
+                        "group relative inline-flex items-center justify-center gap-1.5 px-3 pe-2 py-1.5 rounded-t-lg",
+                        "max-w-[170px] min-w-fit",
+                        isActive
+                          ? "bg-background-neutral-00 text-text-04 z-10"
+                          : "text-text-03 bg-transparent hover:bg-background-tint-02"
+                      )}
+                    >
+                      {isActive && (
+                        <div
+                          className="absolute -start-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
+                          style={jointMasks.start}
+                        />
+                      )}
+                      <TabIcon
+                        size={14}
+                        className={cn(
+                          "stroke-current shrink-0",
+                          isActive ? "stroke-text-04" : "stroke-text-03"
+                        )}
+                      />
+                      <Text font="secondary-body" color="text-05" maxLines={1}>
+                        {tab.fileName}
+                      </Text>
+                      {/* Diff badge (ZCode patch-tab pill) */}
+                      <span
+                        className="shrink-0 rounded-full bg-background-tint-03 px-1.5 py-px"
+                        data-testid="diff-tab-badge"
+                      >
+                        <Text font="secondary-action" color="text-03">
+                          Diff
+                        </Text>
+                      </span>
+                      <button
+                        onClick={(e) => handlePanelTabClose(e, tab)}
+                        className={cn(
+                          "shrink-0 p-0.5 rounded-sm hover:bg-background-tint-03 transition-colors",
+                          isActive
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100 no-hover:opacity-100"
+                        )}
+                        aria-label={`Close ${tab.fileName}`}
+                      >
+                        <SvgX size={12} className="stroke-text-03" />
+                      </button>
+                      {isActive && (
+                        <div
+                          className="absolute -end-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
+                          style={jointMasks.end}
+                        />
+                      )}
+                    </button>
+                  );
+                }
               }
             })}
           </div>
@@ -750,6 +818,16 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
             sessionId={session.id}
             filePath={activePanel.path}
             refreshKey={filePreviewRefreshKey}
+          />
+        )}
+        {isFilePreviewActive && activePanel?.kind === "diff" && (
+          <DiffTabBody
+            tab={activePanel}
+            onViewCurrentFile={(path, fileName) => {
+              if (session?.id) {
+                openFilePreview(session.id, path, fileName);
+              }
+            }}
           />
         )}
         {/* Pinned tab content - only show when no file preview is active */}

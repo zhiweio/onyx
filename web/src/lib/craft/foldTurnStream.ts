@@ -40,8 +40,19 @@ export type FoldRow =
       rateLimit?: RateLimitDetails;
     };
 
+export interface FoldedFileChange {
+  path: string;
+  fileName: string;
+  toolCallId: string;
+  added: number;
+  removed: number;
+  isNewFile: boolean;
+}
+
 export interface FoldedTurn {
   rows: FoldRow[];
+  /** Aggregated edit/write file changes for the turn-end summary card. */
+  fileChanges: FoldedFileChange[];
   answer: { id: string; content: string; isStreaming: boolean } | null;
   showPlanningNext: boolean;
 }
@@ -242,7 +253,8 @@ export function foldTurnStream(
     }
   }
 
-  return { rows, answer, showPlanningNext };
+  const fileChanges = foldFileChanges(body);
+  return { rows, answer, showPlanningNext, fileChanges };
 }
 
 export function toolBatchIsLive(tools: ToolCallState[]): boolean {
@@ -352,4 +364,55 @@ function applyStepSummaries(rows: FoldRow[]): void {
       row.summary = undefined;
     }
   }
+}
+
+export function foldFileChanges(items: StreamItem[]): FoldedFileChange[] {
+  const changes: FoldedFileChange[] = [];
+  const byPath = new Map<string, FoldedFileChange>();
+  for (const item of items) {
+    if (item.type !== "tool_call") continue;
+    const tool = item.toolCall;
+    if (tool.kind !== "edit" || !tool.filePath) continue;
+    const stat = fileChangeStat(tool);
+    const existing = byPath.get(tool.filePath);
+    if (existing) {
+      // Same file edited again: keep the newest row's identity, sum stats.
+      existing.added += stat.added;
+      existing.removed += stat.removed;
+      existing.toolCallId = tool.id;
+      existing.isNewFile = existing.isNewFile && !!tool.isNewFile;
+    } else {
+      const entry: FoldedFileChange = {
+        path: tool.filePath,
+        fileName: tool.filePath.split("/").pop() ?? tool.filePath,
+        toolCallId: tool.id,
+        added: stat.added,
+        removed: stat.removed,
+        isNewFile: !!tool.isNewFile,
+      };
+      byPath.set(tool.filePath, entry);
+      changes.push(entry);
+    }
+  }
+  return changes;
+}
+
+function fileChangeStat(tool: { oldContent?: string; newContent?: string }): {
+  added: number;
+  removed: number;
+} {
+  const newLines = (tool.newContent ?? "").split("\n");
+  const oldCount = new Map<string, number>();
+  for (const line of (tool.oldContent ?? "").split("\n")) {
+    oldCount.set(line, (oldCount.get(line) ?? 0) + 1);
+  }
+  let added = 0;
+  for (const line of newLines) {
+    const remaining = oldCount.get(line) ?? 0;
+    if (remaining > 0) oldCount.set(line, remaining - 1);
+    else added += 1;
+  }
+  let removed = 0;
+  for (const count of oldCount.values()) removed += count;
+  return { added, removed };
 }

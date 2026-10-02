@@ -12319,6 +12319,14 @@
         "ariaLabel": "{name} 펼치기/접기"
       }
     },
+    "diffTab": {
+      "copied": "복사됨",
+      "copyPath": "경로 복사",
+      "sideBySide": "나란히",
+      "unchangedLines": "{count}줄 변경 없음",
+      "unified": "통합",
+      "viewCurrentFile": "현재 파일 보기"
+    },
     "chatPanel": {
       "input": {
         "continuePlaceholder": "대화를 계속하세요...",
@@ -12413,6 +12421,9 @@
         "paused": "일시 중지됨",
         "streaming": "스트리밍 중"
       }
+    },
+    "fileChanges": {
+      "title": "{count}개 파일 변경 +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

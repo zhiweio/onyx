@@ -45,7 +45,7 @@ function groupSummary(
   phase: ToolPhase,
   tools: ToolCallState[],
   live: boolean,
-  t: ReturnType<typeof useTranslations>,
+  t: ReturnType<typeof useTranslations>
 ): string {
   const last = tools[tools.length - 1];
   const target = last ? shortPhaseTarget(toolTarget(last)) : "";
@@ -81,7 +81,7 @@ function groupSummary(
     if (
       tools.length > 0 &&
       tools.every(
-        (tool) => tool.status === "cancelled" || tool.status === "failed",
+        (tool) => tool.status === "cancelled" || tool.status === "failed"
       )
     ) {
       return t("taskCancelled");
@@ -97,6 +97,11 @@ interface ToolGroupRowProps {
   /** Once the turn's answer arrives, groups collapse back to the summary. */
   autoCollapse: boolean;
   summary?: string;
+  /** Panel navigation for clickable file chips (diff/file preview). */
+  nav?: {
+    openDiff?: (toolCall: ToolCallState) => void;
+    openFile?: (path: string) => void;
+  };
 }
 
 export function ToolGroupRow({
@@ -104,6 +109,7 @@ export function ToolGroupRow({
   tools,
   autoCollapse,
   summary,
+  nav,
 }: ToolGroupRowProps) {
   const t = useTranslations("craft.turnActivity");
   const live = toolBatchIsLive(tools);
@@ -138,11 +144,11 @@ export function ToolGroupRow({
       // Single-call groups skip the extra nesting level.
       content={
         tools.length === 1 ? (
-          <ToolCallBlock toolCall={tools[0]!} nested />
+          <ToolCallBlock toolCall={tools[0]!} nested nav={nav} />
         ) : (
           <div className="flex flex-col gap-1 border-s border-border-02 ps-2.5">
             {tools.map((tool) => (
-              <ToolCallBlock key={tool.id} toolCall={tool} nested />
+              <ToolCallBlock key={tool.id} toolCall={tool} nested nav={nav} />
             ))}
           </div>
         )

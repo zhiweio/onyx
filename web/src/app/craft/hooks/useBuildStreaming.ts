@@ -182,6 +182,7 @@ export function useBuildStreaming() {
           activeTurnId: null,
           activeTurnIndex: null,
           activeTurnLocalOwner: false,
+          activeTurnStartedAtMs: null,
         });
       };
 
@@ -315,10 +316,12 @@ export function useBuildStreaming() {
               (lastItem.startedAtMs != null
                 ? Date.now() - lastItem.startedAtMs
                 : undefined);
-            useBuildSessionStore.getState().updateStreamItem(sessionId, lastItem.id, {
-              isStreaming: false,
-              ...(durationMs != null ? { durationMs } : {}),
-            } as Partial<StreamItem>);
+            useBuildSessionStore
+              .getState()
+              .updateStreamItem(sessionId, lastItem.id, {
+                isStreaming: false,
+                ...(durationMs != null ? { durationMs } : {}),
+              } as Partial<StreamItem>);
           }
         }
       };
@@ -635,6 +638,7 @@ export function useBuildStreaming() {
                 isNewFile: parsed.isNewFile,
                 oldContent: parsed.oldContent,
                 newContent: parsed.newContent,
+                filePath: parsed.filePath ?? undefined,
               }),
             });
 
@@ -734,6 +738,7 @@ export function useBuildStreaming() {
                 activeTurnId: null,
                 activeTurnIndex: null,
                 activeTurnLocalOwner: false,
+                activeTurnStartedAtMs: null,
               });
             }
             options?.onPromptResponse?.();
@@ -865,6 +870,12 @@ export function useBuildStreaming() {
             ? existingSession.isInterrupting
             : false,
         activeTurnId: turnId,
+        // Attaching counts as the turn's start when nobody set one yet (e.g.
+        // a job turn picked up by polling after a retry): the timer must not
+        // fall back to the last user message's (possibly rewritten) time.
+        ...(existingSession?.activeTurnStartedAtMs == null
+          ? { activeTurnStartedAtMs: Date.now() }
+          : {}),
       });
       if (existingSession?.activeTurnId !== turnId) {
         clearStreamItems(sessionId);
@@ -897,6 +908,7 @@ export function useBuildStreaming() {
           activeTurnId: null,
           activeTurnIndex: null,
           activeTurnLocalOwner: false,
+          activeTurnStartedAtMs: null,
         });
       };
 
@@ -1006,6 +1018,7 @@ export function useBuildStreaming() {
         activeTurnId: null,
         activeTurnIndex: null,
         activeTurnLocalOwner: true,
+        activeTurnStartedAtMs: Date.now(),
       });
       clearStreamItems(sessionId);
 
@@ -1106,6 +1119,7 @@ export function useBuildStreaming() {
         activeTurnId: null,
         activeTurnIndex: null,
         activeTurnLocalOwner: true,
+        activeTurnStartedAtMs: Date.now(),
       });
 
       try {
@@ -1156,12 +1170,7 @@ export function useBuildStreaming() {
         }
       }
     },
-    [
-      setAbortController,
-      updateSessionData,
-      appendStreamItem,
-      streamTurnEvents,
-    ]
+    [setAbortController, updateSessionData, appendStreamItem, streamTurnEvents]
   );
 
   /**
