@@ -86,6 +86,9 @@ from onyx.server.features.build.api import router as build_router
 from onyx.server.features.build.sandbox.agent_runtime.registry_api import (
     router as agent_models_admin_router,
 )
+from onyx.server.features.build.tools.bridge_api import (
+    router as build_agent_tools_router,
+)
 from onyx.server.features.build.webapp_proxy import public_build_router
 from onyx.server.features.craft_project.api import router as craft_project_router
 from onyx.server.features.default_assistant.api import (
@@ -130,6 +133,7 @@ from onyx.server.features.usage.api import router as cost_override_router
 from onyx.server.features.user_oauth_token.api import router as user_oauth_token_router
 from onyx.server.features.web_search.api import router as web_search_router
 from onyx.server.federated.api import router as federated_router
+from onyx.server.gateway.api import router as llm_gateway_router
 from onyx.server.kg.api import admin_router as kg_admin_router
 from onyx.server.manage.administrative import router as admin_router
 from onyx.server.manage.audit_report.api import (
@@ -605,6 +609,9 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, projects_router)
     include_router_with_global_prefix_prepended(application, public_build_router)
     include_router_with_global_prefix_prepended(application, build_router)
+    # Sandbox-facing platform-tools bridge: app-level mount because the /build
+    # feature router gates on BASIC_ACCESS, which CRAFT_SANDBOX PATs lack.
+    include_router_with_global_prefix_prepended(application, build_agent_tools_router)
     include_router_with_global_prefix_prepended(application, build_admin_router)
     include_router_with_global_prefix_prepended(application, image_generation_router)
     include_router_with_global_prefix_prepended(application, document_set_router)
@@ -675,6 +682,9 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     # Always mounted; every handler refuses to act while the module is off, so
     # the admin UI can explain the state instead of 404-ing.
     include_router_with_global_prefix_prepended(application, mcp_gateway_ops_router)
+    # LLM gateway for craft sandboxes (and PAT-scoped CLI clients); the
+    # sandbox LLM config points at {ONYX_SERVER_URL}/gateway/v1.
+    include_router_with_global_prefix_prepended(application, llm_gateway_router)
     include_router_with_global_prefix_prepended(application, skill_router)
     include_router_with_global_prefix_prepended(application, scenario_router)
     include_router_with_global_prefix_prepended(application, report_template_router)

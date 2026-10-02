@@ -381,9 +381,15 @@ known-first-party = ["onyx", "tests", "shared_configs", "model_server"]
 "backend/onyx/server/documents/connector.py" = ["C901"] # 28
 "backend/onyx/server/features/build/interactive_turns/api.py" = ["C901"] # 22
 "backend/onyx/server/features/build/interactive_turns/executor.py" = ["C901"] # 35
+"backend/onyx/server/features/build/sandbox/agent_runtime/base.py" = [
+    "ARG002",
+] # abstract runtime interface signatures
 "backend/onyx/server/features/build/sandbox/opencode/serve_client.py" = ["C901"] # 56
 "backend/onyx/server/features/build/session/streaming.py" = ["C901"] # 24
 "backend/onyx/server/features/mcp/api.py" = ["C901"] # 33
+"backend/onyx/server/gateway/anthropic_passthrough.py" = ["C901"] # 23
+"backend/onyx/server/gateway/api.py" = ["C901"] # 27
+"backend/onyx/server/gateway/openai_passthrough.py" = ["C901"] # 32
 "backend/onyx/server/manage/users.py" = ["C901"] # 22
 "backend/onyx/server/manage/voice/websocket_api.py" = ["C901"] # 29
 "backend/onyx/server/query_and_chat/session_loading.py" = ["C901"] # 42
