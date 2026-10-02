@@ -228,6 +228,10 @@ class AssistantMessage(CacheableMessage):
     content: str | None = None
     tool_calls: list[ToolCall] | None = None
     thinking_blocks: list[AnyThinkingBlock] | None = None
+    # DeepSeek-style chain-of-thought carried on the assistant message. Without
+    # this field, gateway re-sends silently drop it (pydantic ignores extras)
+    # and thinking-mode models degrade across multi-turn history.
+    reasoning_content: str | None = None
 
 
 class ToolMessage(CacheableMessage):

@@ -229,6 +229,13 @@ _THINKING_BLOCK_PROVIDERS = {
     LlmProviderNames.VERTEX_AI,
 }
 
+# Providers whose upstream API accepts the assistant message-level
+# `reasoning_content` field on re-sent history (DeepSeek thinking models).
+# Others get it stripped to avoid unknown-key errors.
+_REASONING_CONTENT_PROVIDERS = {
+    LlmProviderNames.DEEPSEEK,
+}
+
 
 def _strip_thinking_blocks_from_messages(
     messages: list[dict[str, Any]],
@@ -943,6 +950,18 @@ class LitellmLLM(LLM):
                 )
             ):
                 messages = _strip_thinking_blocks_from_messages(messages)
+
+            # DeepSeek-style reasoning_content rides on assistant history for
+            # thinking models; strip it for providers that reject unknown keys.
+            if self._model_provider not in _REASONING_CONTENT_PROVIDERS:
+                messages = [
+                    {
+                        key: value
+                        for key, value in msg.items()
+                        if key != "reasoning_content"
+                    }
+                    for msg in messages
+                ]
 
             # Bedrock's Converse API requires toolConfig when messages
             # contain toolUse/toolResult content blocks. When no tools are
