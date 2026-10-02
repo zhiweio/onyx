@@ -183,11 +183,11 @@ data, not migrations.
   `backend/onyx/skills/builtin/<id>/`, which stays the single home for skill
   content.
 - **Report template bodies** live as markdown under
-  `backend/onyx/system_catalog/builtin/report_templates/`. Official Word files
-  are generated from `backend/onyx/system_catalog/builtin/word/`. Contract-style
-  templates add `<slug>.contract.yaml` + `<slug>.theme.yaml` beside the body;
-  their attached Word file is a rendered sample (style reference), produced by
-  `backend/onyx/report_templates/renderer.py`.
+  `backend/onyx/system_catalog/builtin/report_templates/`. Every shipped
+  template is contract-style: `<slug>.md` (the content contract guide) plus
+  `<slug>.contract.yaml`; `<slug>.theme.yaml` is optional and falls back to
+  the built-in default theme. The attached Word file is a rendered sample
+  (style reference), produced by `backend/onyx/report_templates/renderer.py`.
 - **Scenarios** keep slug, name, skills, and template pointer in the manifest.
   Playbooks live as YAML under
   `backend/onyx/system_catalog/builtin/scenarios/` and use these keys:

@@ -36,7 +36,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import (
-    ReportTemplateKind,
     SystemCatalogOrigin,
     SystemCatalogPublishStatus,
 )
@@ -83,10 +82,6 @@ from onyx.system_catalog.builtin.manifest import (
     BuiltInReportTemplateEntry,
     BuiltInScenarioEntry,
     BuiltInSkillEntry,
-)
-from onyx.system_catalog.builtin.word.generate import (
-    generate_official_docx,
-    official_builder_slugs,
 )
 from onyx.utils.logger import setup_logger
 
@@ -376,19 +371,6 @@ def _report_template_needs_refresh(
         if dict(catalog_entry.theme or {}) != entry.read_theme():
             return True
         return _asset_content_changed(catalog_entry, _contract_sample_bytes(entry))
-    if entry.kind is ReportTemplateKind.DOCX:
-        if catalog_entry.kind is not ReportTemplateKind.DOCX:
-            return True
-        if catalog_entry.asset_file_id is None:
-            return True
-        builder = entry.builder_slug()
-        if builder in official_builder_slugs():
-            # Hash document content, not raw bytes: python-docx emits fresh
-            # zip timestamps per save, so a raw-sha compare would flag a
-            # refresh on every boot.
-            return _asset_content_changed(
-                catalog_entry, generate_official_docx(builder)
-            )
     return False
 
 
@@ -428,22 +410,12 @@ def _apply_report_template_manifest(
         contract=entry.read_contract() if entry.is_contract_style else None,
         theme=entry.read_theme() if entry.is_contract_style else None,
     )
-    if entry.is_contract_style:
-        attach_catalog_docx_asset(
-            db_session,
-            catalog_entry,
-            asset_bytes=_contract_sample_bytes(entry),
-            filename=f"{entry.slug}.docx",
-        )
-        return
-    if entry.kind is not ReportTemplateKind.DOCX:
-        return
-    if entry.builder_slug() not in official_builder_slugs():
+    if not entry.is_contract_style:
         return
     attach_catalog_docx_asset(
         db_session,
         catalog_entry,
-        asset_bytes=generate_official_docx(entry.builder_slug()),
+        asset_bytes=_contract_sample_bytes(entry),
         filename=f"{entry.slug}.docx",
     )
 

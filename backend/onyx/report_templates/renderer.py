@@ -156,13 +156,14 @@ def build_sample_markdown(contract: ReportContract) -> str:
         lines += [f"- {rule}" for rule in contract.hard_rules]
         lines += [""]
 
-    lines += [
-        "# 三、免责声明",
-        "",
-        "本报告基于公司公开披露的年度财务报告及相关公告编制,为分析框架,",
-        "不构成投资建议、税务申报意见或审计意见。",
-        "",
-    ]
+    if contract.require_disclaimer:
+        lines += [
+            "# 三、免责声明",
+            "",
+            "本报告基于公司公开披露的年度财务报告及相关公告编制,为分析框架,",
+            "不构成投资建议、税务申报意见或审计意见。",
+            "",
+        ]
     return "\n".join(lines)
 
 

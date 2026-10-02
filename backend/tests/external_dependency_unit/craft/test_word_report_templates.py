@@ -316,11 +316,3 @@ def test_docx_template_renders_the_file_as_a_reference(
     assert "report-data.json" not in rendered
     assert "Placeholders to fill" not in rendered
     assert "# Outline" in rendered
-
-
-def test_official_builder_returns_a_readable_docx() -> None:
-    from onyx.system_catalog.builtin.word.generate import generate_official_docx
-
-    asset_bytes = generate_official_docx("monthly_close")
-    validate_docx_asset(asset_bytes)
-    assert asset_bytes.startswith(b"PK")

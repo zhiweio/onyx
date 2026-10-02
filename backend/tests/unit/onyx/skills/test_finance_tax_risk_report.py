@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 
-from onyx.db.enums import ReportTemplateKind, SystemCatalogCategory
+from onyx.db.enums import SystemCatalogCategory
 from onyx.skills.built_in import BUILT_IN_SKILLS, BUILTIN_SKILLS_PATH
 from onyx.skills.metadata import parse_skill_document
 from onyx.system_catalog.builtin.manifest import (
@@ -46,8 +46,8 @@ def test_report_template_entry_renders_contract_sample() -> None:
         for item in BUILT_IN_REPORT_TEMPLATE_ENTRIES
         if item.slug == "finance_tax_risk_report"
     )
-    assert entry.kind is ReportTemplateKind.DOCX
-    # Contract-style: structured contract + theme drive a rendered sample.
+    # Contract-style: structured contract (+ optional theme) drive a rendered
+    # sample document instead of a fill-in skeleton.
     assert entry.is_contract_style
     contract = entry.read_contract()
     assert "风险矩阵" in entry.read_body()

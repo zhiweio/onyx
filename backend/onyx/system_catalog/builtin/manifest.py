@@ -615,18 +615,20 @@ BUILT_IN_REPORT_TEMPLATE_ENTRIES: Final[tuple[BuiltInReportTemplateEntry, ...]] 
     BuiltInReportTemplateEntry(
         slug="initiation_report",
         name="临床期立项调研报告",
-        description="临床期立项深度调研的正式报告骨架。",
+        description="临床期立项深度调研的契约式模板:决策因子打分、证据表与发现清单。",
         category=SystemCatalogCategory.BIOMED,
         tags=("biomed", "initiation"),
         body_file="initiation_report.md",
+        contract_file="initiation_report.contract.yaml",
     ),
     BuiltInReportTemplateEntry(
         slug="listed_company_audit",
         name="上市公司财务审计报告",
-        description="覆盖主体、财务、信用、行业与知识产权的审计报告骨架。",
+        description="覆盖主体、财务、信用、行业与知识产权的契约式审计报告模板。",
         category=SystemCatalogCategory.GENERAL,
         tags=("listed", "audit"),
         body_file="listed_company_audit.md",
+        contract_file="listed_company_audit.contract.yaml",
     ),
     BuiltInReportTemplateEntry(
         slug="finance_tax_risk_report",

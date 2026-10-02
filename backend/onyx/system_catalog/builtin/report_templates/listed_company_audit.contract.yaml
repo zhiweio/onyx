@@ -1,0 +1,41 @@
+# 契约式模板内容契约。字段说明见 onyx/report_templates/contract.py
+must_answer:
+- 审计主体与口径(期间、币种、准则)是什么?
+- 勾稽检查是否通过,失败项有哪些?
+- 关键比率与同业对比结论如何?
+- 信用、司法、专利与研发线索说明了什么?
+- 红蓝复核还有哪些未关闭的质疑?
+- 结论是什么,哪些事项需进一步核实?
+required_elements:
+- sources
+- data_gaps
+- disclaimer
+- 勾稽检查
+- 关键比率表
+- 发现清单
+spine:
+- 主体与口径
+- 勾稽与比率
+- 外部线索
+- 红蓝复核
+- 结论
+components:
+- kpi
+- callout
+- table
+- figure
+- toc
+hard_rules:
+- 无来源的数字不得写入结论。
+- 未关闭的红蓝复核质疑不得写成结论。
+- 每个数字、每条发现可溯源:原始来源名称(注明数据项)或网页 URL 与访问日期。
+- 报告正文不出现 MCP 工具名、服务器名、outputs/ 等内部路径与脚本名。
+- 拿不到的数据写「未获取」并写原因;转述标「转述」。
+completion_criteria:
+- 无残留 {{占位符}}。
+- 章号连续,标题按内容自拟。
+- 无来源的数字不进结论;发现表无空行。
+- 图表不少于 3 张。
+min_figures: 3
+require_toc: true
+require_disclaimer: true
