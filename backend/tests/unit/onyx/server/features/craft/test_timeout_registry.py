@@ -67,8 +67,9 @@ def test_provisioning_derivations() -> None:
 
 
 def test_turn_derivations() -> None:
-    assert ACTIVE_TURN_TTL_SECONDS == 45 * 60
-    assert REQUEST_ID_TTL_SECONDS == 60 * 60
+    # Rooted at the scheduled-run cap: job turns may run to that cap.
+    assert ACTIVE_TURN_TTL_SECONDS == 75 * 60
+    assert REQUEST_ID_TTL_SECONDS == 90 * 60
     assert REQUEST_ID_TTL_SECONDS > ACTIVE_TURN_TTL_SECONDS
     # The identity is the spec: a slot held past any interactive turn is leaked.
     assert PROMPT_SLOT_KEEP_ALIVE_MAX_SECONDS == INTERACTIVE_TURN_HARD_CAP_SECONDS

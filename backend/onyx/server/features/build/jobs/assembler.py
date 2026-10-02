@@ -101,6 +101,9 @@ def assemble_brief(
     lines.append(_VISIBLE_POLICY)
     lines.append(_STAY_IN_SESSION)
     lines.append(_PROJECT_HINT)
+    required_skills = _required_skill_lines(node, state)
+    if required_skills:
+        lines.extend(required_skills)
     if node.kind == "plan":
         lines.append(_DURABILITY_HINT)
     lines.append(_search_instruction(visible_tools, goal))
@@ -124,8 +127,14 @@ def assemble_brief(
             f"Write {PLAN_JSON_PATH} so the host can compile THIS job's graph: "
             "goal (string), optional phases [{id, kind, done_when as a path array}], "
             "optional lanes [{role, optional skill_id, optional output_dir, "
-            "optional done_when path array}], optional inputs [paths], "
+            "optional done_when path array, optional depends_on as a list of "
+            "other lane roles}], optional inputs [paths], "
             "optional ask_delivery boolean. "
+            "Lanes without depends_on all run in parallel after ingest. A lane "
+            "that produces the FINAL deliverable (report/docx) must either "
+            "depends_on the analysis and verification lanes, or be left to the "
+            "sequential compose phase — never both, so the final file has one "
+            "producer. "
             "You choose the graph. Do not assume a report. "
             f"When the user goal is met later, write {DONE_JSON_PATH}."
         )
@@ -140,6 +149,32 @@ def assemble_brief(
     else:
         lines.append("- Meet this node contract, then stop.")
     return "\n".join(lines)
+
+
+def _required_skill_lines(node: GraphNode, state: JobState) -> list[str]:
+    """Constraint lines binding the skills the user explicitly required.
+
+    Selected via chip or named in the prompt (skill_binding.py); without
+    these the planner freely re-skills the job around the user's back.
+    """
+    required = [slug for slug in (state.selected_skill_ids or []) if slug]
+    if not required:
+        return []
+    listed = ", ".join(f"`{slug}`" for slug in required)
+    if node.kind == "plan":
+        return [
+            f"The user explicitly requires the skill(s) {listed}. "
+            "These skills' workflows are this job's backbone: assign their "
+            "skill_id to the lanes and phases that do this work. Do not "
+            "substitute unrelated skills unless the required SKILL.md itself "
+            "delegates to them."
+        ]
+    if is_lane_kind(node.kind) and node.skill_id not in required:
+        return [
+            f"The user requires skill(s) {listed} for this job. Follow them "
+            "wherever they apply to this lane's deliverables."
+        ]
+    return []
 
 
 def _search_instruction(visible_tools: list[str] | None, goal: str) -> str:

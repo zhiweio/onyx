@@ -223,3 +223,22 @@ def test_checkpoint_replay_rebuilds_state() -> None:
     assert state.goal == "g"
     assert "plan" in state.completed_nodes
     assert "outputs/plan/PLAN.json" in state.artifacts
+
+
+def test_strip_postgres_json_nuls_cleans_keys_and_values() -> None:
+    """A NUL in a citation key once poisoned the whole craft_job.state UPDATE:
+    Postgres JSONB rejects \\u0000 anywhere, so keys must be cleaned too."""
+    import json
+
+    from onyx.server.features.build.jobs.channels import strip_postgres_json_nuls
+
+    poisoned = {
+        "cite\x00-1": {"title": "a\x00b", "nested": ["x\x00", {"k\x00": 1}]},
+        3: "v\x00",
+    }
+    cleaned = strip_postgres_json_nuls(poisoned)
+    assert "cite-1" in cleaned
+    assert cleaned["cite-1"]["title"] == "ab"
+    assert cleaned["cite-1"]["nested"][1] == {"k": 1}
+    assert cleaned[3] == "v"
+    assert "\x00" not in json.dumps(cleaned)

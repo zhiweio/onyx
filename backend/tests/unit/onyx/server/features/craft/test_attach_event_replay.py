@@ -47,9 +47,7 @@ def test_load_replayable_events_only_newest_turn_assistant_rows() -> None:
         user_row,
     ]
 
-    replay = session_manager.SessionManager._load_replayable_events(
-        mgr, uuid4()
-    )
+    replay = session_manager.SessionManager._load_replayable_events(mgr, uuid4())
     # Only the newest turn (2), assistant rows, chronological.
     assert [p["type"] for p in replay] == ["message", "tool_call_progress"]
     assert replay[0]["text"] == "hi"

@@ -55,7 +55,7 @@ async function openGallery(page: Page, path: string): Promise<void> {
   // Opens on the user's own library, so the page starts where they work.
   await expect(page.getByTestId(MINE_TAB)).toHaveAttribute(
     "aria-selected",
-    "true",
+    "true"
   );
   await page.getByTestId(GALLERY_TAB).click();
   await expect(page.getByTestId(GRID)).toBeVisible();
@@ -66,25 +66,67 @@ test.beforeEach(async ({ page }) => {
   const settings = response.ok() ? await response.json() : null;
   test.skip(
     settings?.onyx_craft_enabled !== true,
-    "Onyx Craft is disabled in this environment",
+    "Onyx Craft is disabled in this environment"
   );
   await suppressCraftIntro(page);
 });
 
 test("the skills gallery shows what the API publishes", async ({ page }) => {
+  // Hermetic: with a large live catalog the API's first item is not
+  // necessarily among the first rendered cards (grid pagination), so pin a
+  // deterministic two-item catalog instead of asserting on deployment data.
+  await page.route("**/api/craft/gallery/skills*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            slug: "e2e-skill-alpha",
+            name: "E2E Skill Alpha",
+            description: "First pinned gallery skill",
+            category: "GENERAL",
+            tags: [],
+            publish_status: "PUBLISHED",
+            version: 1,
+            changelog: "",
+            origin: "builtin",
+            published_at: "2026-01-01T00:00:00Z",
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+            is_built_in_content: true,
+          },
+          {
+            id: "22222222-2222-4222-8222-222222222222",
+            slug: "e2e-skill-beta",
+            name: "E2E Skill Beta",
+            description: "Second pinned gallery skill",
+            category: "GENERAL",
+            tags: [],
+            publish_status: "PUBLISHED",
+            version: 1,
+            changelog: "",
+            origin: "builtin",
+            published_at: "2026-01-01T00:00:00Z",
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+            is_built_in_content: true,
+          },
+        ],
+      }),
+    });
+  });
   await openGallery(page, "/craft/v1/skills");
 
-  const response = await page.request.get("/api/craft/gallery/skills");
-  const items = (await response.json()).items as { name: string }[];
-  expect(items.length).toBeGreaterThan(0);
-  const firstName = items[0]?.name;
-  expect(firstName).toBeTruthy();
-
   await expect(
-    page.getByTestId(GRID).getByText(firstName!, { exact: false }).first(),
+    page.getByTestId(GRID).getByText("E2E Skill Alpha").first()
   ).toBeVisible();
   await expect(
-    page.getByTestId(GRID).getByTestId("GalleryCard/fork").first(),
+    page.getByTestId(GRID).getByText("E2E Skill Beta").first()
+  ).toBeVisible();
+  await expect(
+    page.getByTestId(GRID).getByTestId("GalleryCard/fork").first()
   ).toBeVisible();
 });
 
@@ -99,7 +141,7 @@ test("the scenario and report-template galleries also list content", async ({
     const response = await page.request.get(endpoint);
     expect((await response.json()).items.length).toBeGreaterThan(0);
     await expect(
-      page.getByTestId(GRID).getByTestId("GalleryCard/fork").first(),
+      page.getByTestId(GRID).getByTestId("GalleryCard/fork").first()
     ).toBeVisible();
   }
 });
@@ -116,7 +158,7 @@ test("forking a report template creates an editable copy", async ({ page }) => {
   await expect(page.getByTestId(MINE_TAB)).toHaveAttribute(
     "aria-selected",
     "true",
-    { timeout: 20000 },
+    { timeout: 20000 }
   );
 
   await expect
@@ -125,7 +167,7 @@ test("forking a report template creates an editable copy", async ({ page }) => {
         const after = await page.request.get("/api/report-templates");
         return (await after.json()).templates.length;
       },
-      { timeout: 20000 },
+      { timeout: 20000 }
     )
     .toBeGreaterThan(beforeCount);
 
@@ -133,7 +175,7 @@ test("forking a report template creates an editable copy", async ({ page }) => {
   const after = await page.request.get("/api/report-templates");
   const forked = (await after.json()).templates.find(
     (template: { slug: string; author_user_id: string | null }) =>
-      template.slug.endsWith("_copy") && template.author_user_id !== null,
+      template.slug.endsWith("_copy") && template.author_user_id !== null
   );
   if (forked) {
     await page.request.delete(`/api/report-templates/${forked.id}`);
@@ -157,7 +199,7 @@ test("uploading a Word template attaches the file for the agent", async ({
   try {
     const fixture = path.join(
       process.cwd(),
-      "tests/e2e/craft/fixtures/placeholder.docx",
+      "tests/e2e/craft/fixtures/placeholder.docx"
     );
     await page.goto(`/craft/v1/report-templates/edit/${template.id}`);
     await dismissAnyModal(page);
@@ -168,21 +210,21 @@ test("uploading a Word template attaches the file for the agent", async ({
       .poll(
         async () => {
           const after = await page.request.get(
-            `/api/report-templates/${template.id}`,
+            `/api/report-templates/${template.id}`
           );
           const body = (await after.json()) as { kind?: string };
           return body.kind;
         },
-        { timeout: 20000 },
+        { timeout: 20000 }
       )
       .toBe("DOCX");
 
     const download = await page.request.get(
-      `/api/report-templates/${template.id}/docx`,
+      `/api/report-templates/${template.id}/docx`
     );
     expect(download.ok()).toBeTruthy();
     expect(download.headers()["content-type"]).toContain(
-      "wordprocessingml.document",
+      "wordprocessingml.document"
     );
     const bytes = await download.body();
     expect(bytes.byteLength).toBeGreaterThan(100);

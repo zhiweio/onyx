@@ -181,6 +181,7 @@ def run_claimed_interactive_build_turn(
             runner_id=runner_id,
             reclaimed=turn.reclaimed,
             kind=turn.kind,
+            selected_skill_ids=turn.selected_skill_ids,
         )
     except Exception as exc:
         logger.exception(
@@ -349,6 +350,26 @@ def _snapshot_session_workspace_after_turn(
     return thread
 
 
+def _skill_binding_preamble(selected_skill_ids: list[str] | None, prompt: str) -> str:
+    """Hidden prefix binding the skills the user explicitly required.
+
+    Applies to turns whose prompt is the raw user text; job briefs state the
+    requirement themselves (assembler._required_skill_lines) and are detected
+    to avoid doubling it.
+    """
+    slugs = [slug for slug in (selected_skill_ids or []) if slug]
+    if not slugs:
+        return ""
+    if "user explicitly requires the skill" in prompt.lower():
+        return ""
+    listed = ", ".join(f"`{slug}`" for slug in slugs)
+    return (
+        f"[system] The user explicitly requires the skill(s) {listed}. "
+        "Load .opencode/skills/<slug>/SKILL.md for each one first, then "
+        "follow their workflow for this task.\n\n"
+    )
+
+
 def _drive_interactive_turn(
     *,
     turn_id: UUID,
@@ -361,11 +382,15 @@ def _drive_interactive_turn(
     budget_seconds: int,
     runner_id: str | None,
     reclaimed: bool,
+    selected_skill_ids: list[str] | None = None,
 ) -> None:
     cache = get_cache_backend()
     turn_succeeded = False
     deadline_exceeded = False
     cancelled = False
+    # Error detail of the terminal failure, if any — the job continuation
+    # uses it to decide whether the phase/lane turn deserves a retry.
+    turn_error_detail: str | None = None
     sandbox_id: UUID | None = None
     skip_job_continue = kind == "compact"
     ownership_lost_for_continue = False
@@ -587,6 +612,7 @@ def _drive_interactive_turn(
                     returns TIMED_OUT (only while ``can_continue``); failures finish
                     the turn here and return TERMINATED so the caller just returns."""
                     nonlocal deadline_exceeded, ownership_lost_for_continue
+                    nonlocal turn_error_detail
                     ownership_lost = False
                     final_event_seen = False
                     cancelled_event_seen = False
@@ -658,6 +684,7 @@ def _drive_interactive_turn(
                                 error_detail="Job lease lost mid-turn.",
                                 runner_id=runner_id,
                             )
+                            turn_error_detail = "Job lease lost mid-turn."
                             return _PromptResult(_PromptOutcome.TERMINATED)
                         if isinstance(sandbox_event, SSEKeepalive):
                             continue
@@ -688,6 +715,7 @@ def _drive_interactive_turn(
                                 error_detail=sandbox_event.message,
                                 runner_id=runner_id,
                             )
+                            turn_error_detail = sandbox_event.message
                             return _PromptResult(_PromptOutcome.TERMINATED)
 
                         if isinstance(sandbox_event, PromptResponse):
@@ -716,7 +744,9 @@ def _drive_interactive_turn(
                         compact=True,
                     )
                 else:
-                    current_prompt = prompt
+                    current_prompt = (
+                        _skill_binding_preamble(selected_skill_ids, prompt) + prompt
+                    )
                     for attempt in range(MAX_TIMEOUT_CONTINUATIONS + 1):
                         result = drive_one_prompt(
                             current_prompt,
@@ -762,11 +792,12 @@ def _drive_interactive_turn(
                         "This turn was stopped after reaching its "
                         f"{max(1, round(budget_seconds / 60))}-minute time limit."
                     )
+                    turn_error_detail = f"hard time cap exceeded ({budget_seconds}s)"
                     finish_turn(
                         cache=cache,
                         turn_id=turn_id,
                         status=TURN_STATUS_FAILED,
-                        error_detail=f"hard time cap exceeded ({budget_seconds}s)",
+                        error_detail=turn_error_detail,
                         runner_id=runner_id,
                     )
                     return
@@ -775,11 +806,14 @@ def _drive_interactive_turn(
                     persist_turn_error(
                         "This turn ended before the agent returned a final response."
                     )
+                    turn_error_detail = (
+                        "Turn ended before opencode returned a final response."
+                    )
                     finish_turn(
                         cache=cache,
                         turn_id=turn_id,
                         status=TURN_STATUS_FAILED,
-                        error_detail="Turn ended before opencode returned a final response.",
+                        error_detail=turn_error_detail,
                         runner_id=runner_id,
                     )
                     return
@@ -835,11 +869,12 @@ def _drive_interactive_turn(
                         "Failed to finalize persistence for turn %s", turn_id
                     )
                 persist_turn_error("This turn failed unexpectedly.")
+                turn_error_detail = f"{type(exc).__name__}: {str(exc)[:950]}"
                 finish_turn(
                     cache=cache,
                     turn_id=turn_id,
                     status=TURN_STATUS_FAILED,
-                    error_detail=f"{type(exc).__name__}: {str(exc)[:950]}",
+                    error_detail=turn_error_detail,
                     runner_id=runner_id,
                 )
             finally:
@@ -893,6 +928,7 @@ def _drive_interactive_turn(
                         deadline_exceeded=deadline_exceeded,
                         cancelled=cancelled,
                         lease_owner=str(turn_id) if job_id is not None else None,
+                        turn_error_detail=turn_error_detail,
                     )
             except Exception:
                 logger.exception("Failed to continue Craft job after turn %s", turn_id)

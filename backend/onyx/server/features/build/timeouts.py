@@ -121,7 +121,9 @@ TURN_RECLAIM_SLACK_SECONDS = 15 * 60
 # Redis TTL of the turn record + active-turn pointer (interactive turns only;
 # scheduled runs live in Postgres rows). Refreshed on every heartbeat; floor
 # is cap + slack so a live turn's admission block never evaporates under it.
-ACTIVE_TURN_TTL_SECONDS = INTERACTIVE_TURN_HARD_CAP_SECONDS + TURN_RECLAIM_SLACK_SECONDS
+# Job turns may run to the scheduled-run cap (jobs/continuation.py), so the
+# floor roots at the larger cap.
+ACTIVE_TURN_TTL_SECONDS = SCHEDULED_RUN_HARD_CAP_SECONDS + TURN_RECLAIM_SLACK_SECONDS
 
 # Post-terminal retention of the turn record and the client_request_id →
 # turn_id dedupe key: an idempotent send-message retry (or the attach stream

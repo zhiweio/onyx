@@ -128,6 +128,9 @@ class JobPlanLane(BaseModel):
     output_dir: str = ""
     skill_id: str | None = None
     done_when: list[str] = Field(default_factory=list)
+    # Other lanes (by role) or phases (by id, e.g. "ingest") this lane waits
+    # for. Empty keeps the historical fan-out: all lanes depend on ingest only.
+    depends_on: list[str] = Field(default_factory=list)
 
     @field_validator("role")
     @classmethod
@@ -136,6 +139,19 @@ class JobPlanLane(BaseModel):
         if not role:
             raise ValueError("lane role is required")
         return role
+
+    @field_validator("depends_on", mode="before")
+    @classmethod
+    def _depends_on(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return []
+        return sorted(
+            {item.strip() for item in value if isinstance(item, str) and item.strip()}
+        )
 
     @field_validator("skill_id")
     @classmethod

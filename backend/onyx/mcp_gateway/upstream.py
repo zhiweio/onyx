@@ -67,6 +67,33 @@ def _error_payload(message: str) -> dict[str, Any]:
     )
 
 
+# Upstream account/balance failures look like tool errors to the agent, which
+# then honestly reports data as "unavailable" without anyone noticing the
+# deployment key is out of credit. Surface them loudly at the gateway.
+_BALANCE_ERROR_MARKERS = (
+    "insufficient balance",
+    "余额不足",
+    "payment required",
+    "exceeded your current quota",
+)
+
+
+def _warn_on_balance_error(result: dict[str, Any], tool_name: str) -> None:
+    try:
+        text = str(result.get("content") or result)
+    except Exception:
+        return
+    lowered = text.lower()
+    if any(marker in lowered for marker in _BALANCE_ERROR_MARKERS):
+        logger.warning(
+            "Upstream MCP tool %s returned an account/balance error — the "
+            "deployment credential for this server likely needs a top-up or "
+            "entitlement fix: %s",
+            tool_name,
+            text[:200],
+        )
+
+
 async def call_upstream(
     target: UpstreamTarget,
     tool_name: str,
@@ -84,7 +111,9 @@ async def call_upstream(
         inner = unwrap_exception_group(error)
         logger.exception("Upstream MCP call failed for %s", tool_name)
         return _error_payload(str(inner))
-    return serialize_call_result(result)
+    serialized = serialize_call_result(result)
+    _warn_on_balance_error(serialized, tool_name)
+    return serialized
 
 
 async def list_upstream_tools(target: UpstreamTarget) -> list[MCPLibTool]:

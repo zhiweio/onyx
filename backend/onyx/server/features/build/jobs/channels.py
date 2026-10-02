@@ -15,13 +15,22 @@ from onyx.server.features.build.jobs.plan import JobPlan
 
 
 def strip_postgres_json_nuls(value: Any) -> Any:
-    """Postgres JSONB rejects ``\\u0000``. Drop NUL from dumped job state."""
+    """Postgres JSONB rejects ``\\u0000``. Drop NUL from dumped job state.
+
+    Dict keys are cleaned too: PDF-extracted citation keys can carry NUL and
+    a poisoned key kills the whole ``craft_job.state`` UPDATE.
+    """
     if isinstance(value, str):
         return value.replace("\x00", "")
     if isinstance(value, list):
         return [strip_postgres_json_nuls(item) for item in value]
     if isinstance(value, dict):
-        return {key: strip_postgres_json_nuls(item) for key, item in value.items()}
+        return {
+            (
+                key.replace("\x00", "") if isinstance(key, str) else key
+            ): strip_postgres_json_nuls(item)
+            for key, item in value.items()
+        }
     return value
 
 

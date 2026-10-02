@@ -950,6 +950,10 @@ interface BuildSessionStore {
     options?: { force?: boolean; preferPersisted?: boolean }
   ) => Promise<void>;
 
+  /** Light refresh of just the sandbox runtime state (self-heals a session
+   * entry that was seeded from the sidebar list and never loaded). */
+  refreshSandboxStatus: (sessionId: string) => Promise<void>;
+
   // Actions - Session History
   refreshSessionHistory: () => Promise<void>;
   nameBuildSession: (sessionId: string) => Promise<void>;
@@ -1702,6 +1706,19 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   // ===========================================================================
   // Session Lifecycle
   // ===========================================================================
+
+  refreshSandboxStatus: async (sessionId: string) => {
+    const { updateSessionData, sessions } = get();
+    if (!sessions.has(sessionId)) {
+      return;
+    }
+    try {
+      const sessionData = await fetchSession(sessionId);
+      updateSessionData(sessionId, { sandbox: sessionData.sandbox ?? null });
+    } catch (err) {
+      console.warn("Failed to refresh sandbox status:", err);
+    }
+  },
 
   loadSession: async (
     sessionId: string,

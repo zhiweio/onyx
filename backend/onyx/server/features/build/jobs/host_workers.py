@@ -84,13 +84,21 @@ def run_reconcile(
     )
     write_reconcile_file(sandbox_id=sandbox_id, session_id=session_id, payload=payload)
     write_blackboard_file(sandbox_id=sandbox_id, session_id=session_id, payload=payload)
+    # PDF-extracted citation text can carry NUL bytes; Postgres JSONB rejects
+    # them, and an unsanitized payload would poison the job-state write.
+    from onyx.server.features.build.jobs.channels import strip_postgres_json_nuls
+
     return HostWorkerResult(
         ok=True,
-        payload={
-            "reconcile": payload,
-            "citations": {key: item.model_dump() for key, item in citations.items()},
-            "conflicts": [item.model_dump() for item in conflicts],
-        },
+        payload=strip_postgres_json_nuls(
+            {
+                "reconcile": payload,
+                "citations": {
+                    key: item.model_dump() for key, item in citations.items()
+                },
+                "conflicts": [item.model_dump() for item in conflicts],
+            }
+        ),
     )
 
 

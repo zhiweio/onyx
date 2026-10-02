@@ -17,6 +17,7 @@ from onyx.db.craft_job import (
     mark_job_finished,
     mark_job_running,
     mark_job_waiting_lanes,
+    mark_specialist_finished,
     specialists_all_terminal,
     specialists_any_failed,
 )
@@ -44,6 +45,7 @@ from onyx.server.features.build.jobs.gates import (
     ContractGateResult,
     evaluate_contract_gate,
     gate_retry_limit_detail,
+    is_transient_turn_error,
     named_search_required,
     retry_brief,
     retry_limit_error_detail,
@@ -64,6 +66,8 @@ from onyx.server.features.build.jobs.journal import (
     GATE_FAIL,
     INTERRUPT,
     LANE_END,
+    LANE_HEAL,
+    LANE_RESPAWN,
     LANE_START,
     NODE_END,
     NODE_START,
@@ -187,13 +191,12 @@ def after_worker_turn(
     graph = load_graph(job, state)
     node = _current_node(graph, state)
     if node is None:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail="Job has no current node",
-            db_session=db_session,
         )
-        _safe_commit(db_session)
         return
 
     if deadline_exceeded:
@@ -308,6 +311,105 @@ def resume_job(
     )
 
 
+def finalize_job_failure(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+    error_detail: str,
+) -> None:
+    """Fail the job and settle everything it leaves open.
+
+    Beyond the status write: still-open specialists go terminal (their lane
+    cards settle to cancelled so none stay "in progress" forever), running
+    lane turns get the interrupt fence, and the parent transcript gets a
+    user-visible error row — without it the session shows a failed job with
+    no explanation after reload.
+    """
+    mark_job_finished(
+        job,
+        status=CraftJobStatus.FAILED,
+        error_detail=error_detail,
+        db_session=db_session,
+    )
+    open_rows = [
+        row
+        for row in job.specialists
+        if row.status
+        in (CraftJobSpecialistStatus.PENDING, CraftJobSpecialistStatus.RUNNING)
+    ]
+    for row in open_rows:
+        mark_specialist_finished(
+            row, status=CraftJobSpecialistStatus.FAILED, error_detail="Job failed"
+        )
+    if open_rows:
+        from onyx.server.features.build.db.build_session import (
+            settle_open_lane_task_cards,
+        )
+
+        settle_open_lane_task_cards(
+            job.session_id,
+            [row.node_id for row in open_rows if row.node_id],
+            "cancelled",
+            db_session,
+        )
+    _persist_job_failure_row(db_session, job=job, error_detail=error_detail)
+    _safe_commit(db_session)
+
+    if open_rows:
+        from onyx.server.features.build.session.manager import SessionManager
+
+        session_manager = SessionManager(db_session)
+        for row in open_rows:
+            try:
+                session_manager.interrupt_message(row.session_id, user_id)
+            except Exception:
+                pass
+
+
+def _persist_job_failure_row(
+    db_session: Session, *, job: CraftJob, error_detail: str
+) -> None:
+    """One error build_message in the parent transcript summarizing the failure."""
+    from onyx.configs.constants import MessageType
+    from onyx.server.features.build.db.build_session import (
+        count_user_messages,
+        create_message,
+    )
+
+    failed = [
+        row.node_id or "?"
+        for row in job.specialists
+        if row.status == CraftJobSpecialistStatus.FAILED
+    ]
+    summary = f"Long job failed: {error_detail}"
+    if job.specialists:
+        succeeded = sum(
+            row.status == CraftJobSpecialistStatus.SUCCEEDED for row in job.specialists
+        )
+        failed_text = ", ".join(failed) if failed else "none"
+        summary += (
+            f" ({succeeded}/{len(job.specialists)} lanes succeeded;"
+            f" failed: {failed_text})"
+        )
+    try:
+        create_message(
+            session_id=job.session_id,
+            message_type=MessageType.ASSISTANT,
+            turn_index=count_user_messages(job.session_id, db_session),
+            message_metadata={
+                "type": "error",
+                "message": summary,
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            },
+            db_session=db_session,
+        )
+    except Exception:
+        logger.warning(
+            "Could not persist failure row for job %s", job.id, exc_info=True
+        )
+
+
 def after_lane_turn(
     db_session: Session,
     *,
@@ -316,143 +418,107 @@ def after_lane_turn(
     specialist_ok: bool,
     node_id: str | None,
     lease_owner: str | None = None,
+    turn_error_detail: str | None = None,
+    specialist_session_id: UUID | None = None,
 ) -> None:
+    """Settle one lane turn, then advance the job if this was the last lane.
+
+    Per-lane settlement (card, journal, completed_nodes, artifacts) is NOT
+    lease-gated: with N parallel lanes every running turn's heartbeat
+    overwrites ``job.lease_owner``, so a lease check here would randomly drop
+    completed_nodes writes and the kernel would re-spawn finished lanes. The
+    lease only guards the job-wide superstep advance after all lanes are
+    terminal. A per-job state lock serializes concurrent settlements because
+    persist_state overwrites the whole state document.
+    """
     if job_is_terminal(job):
         return
-    if lease_owner is not None and not lease_owned_by(job, lease_owner):
-        logger.warning(
-            "Job %s lease held by %s; losing lane turn %s skips its superstep",
-            job.id,
-            job.lease_owner,
-            lease_owner,
+    # Serialize concurrent lane settlements: persist_state overwrites the
+    # whole state document, so two interleaved settlements would lose writes.
+    # Best-effort — without a cache (unit tests) settlement proceeds unlocked.
+    state_lock = None
+    try:
+        from onyx.cache.factory import get_cache_backend
+
+        state_lock = get_cache_backend().lock(f"craft:job:{job.id}:state", timeout=120)
+        if not state_lock.acquire(blocking=True, blocking_timeout=15):
+            state_lock = None
+            logger.warning(
+                "Could not lock job %s state; settling lane %s unlocked",
+                job.id,
+                node_id,
+            )
+    except Exception:
+        state_lock = None
+    try:
+        _after_lane_turn_locked(
+            db_session,
+            job=job,
+            user_id=user_id,
+            specialist_ok=specialist_ok,
+            node_id=node_id,
+            lease_owner=lease_owner,
+            turn_error_detail=turn_error_detail,
+            specialist_session_id=specialist_session_id,
         )
-        return
+    finally:
+        if state_lock is not None:
+            try:
+                state_lock.release()
+            except Exception:
+                pass
+
+
+def _after_lane_turn_locked(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+    specialist_ok: bool,
+    node_id: str | None,
+    lease_owner: str | None = None,
+    turn_error_detail: str | None = None,
+    specialist_session_id: UUID | None = None,
+) -> None:
     state = load_state(job)
+    node = load_graph(job, state).get(node_id) if node_id else None
     if _interrupt_if_unseen_question_timeout(db_session, job=job, state=state):
         return
-    node = load_graph(job, state).get(node_id) if node_id else None
+    specialist_row = _specialist_for_settlement(job, node_id, specialist_session_id)
+    if node_id and not specialist_ok and node is not None:
+        retried_state = _retry_failed_lane_if_transient(
+            db_session,
+            job=job,
+            state=state,
+            node=node,
+            specialist=specialist_row,
+            turn_error_detail=turn_error_detail,
+            user_id=user_id,
+        )
+        if retried_state is not None:
+            persist_state(job, retried_state)
+            _safe_commit(db_session)
+            return
     if node_id and specialist_ok:
-        specialist = next(
-            (row for row in job.specialists if row.node_id == node_id),
-            None,
+        settled_state = _settle_successful_lane(
+            db_session,
+            job=job,
+            state=state,
+            node=node,
+            specialist=specialist_row,
+            user_id=user_id,
         )
-        try:
-            sandbox_id = _sandbox_id_for_session(db_session, job.session_id, user_id)
-        except Exception:
-            sandbox_id = None
-        if node is not None and sandbox_id is not None:
-            lane_session = (
-                specialist.session_id if specialist is not None else job.session_id
-            )
-            search_required = named_search_required(state.goal)
-            gate = evaluate_contract_gate(
-                sandbox_id=sandbox_id,
-                session_id=job.session_id,
-                node=node,
-                deadline_exceeded=False,
-                attempts=int(state.node_attempts.get(node.id) or 0),
-                search_required=search_required,
-            )
-            if not gate.passed:
-                if _is_search_unavailable_gate(gate):
-                    state = _interrupt_for_choice(
-                        db_session,
-                        job=job,
-                        state=state,
-                        summary="Search is not available. Retry, use existing tools, or cancel.",
-                        steps=["Retry search", "Use existing tools", "Cancel"],
-                        node_id=node.id,
-                    )
-                    persist_state(job, state)
-                    _safe_commit(db_session)
-                    return
-                state = _retry_lane_or_fail(
-                    db_session,
-                    job=job,
-                    state=state,
-                    node=node,
-                    missing=gate.missing_paths(),
-                    reasons=[item.reason for item in gate.missing],
-                    specialist=specialist,
-                    lane_session=lane_session,
-                    user_id=user_id,
-                )
-                persist_state(job, state)
-                _safe_commit(db_session)
-                return
-            missing_on_parent = _verify_lane_artifacts(
-                sandbox_id=sandbox_id,
-                session_id=job.session_id,
-                paths=node.required_paths,
-            )
-            if missing_on_parent:
-                logger.error(
-                    "Lane %s artifacts missing on shared outputs: %s",
-                    node.id,
-                    missing_on_parent,
-                )
-                state = _retry_lane_or_fail(
-                    db_session,
-                    job=job,
-                    state=state,
-                    node=node,
-                    missing=missing_on_parent,
-                    reasons=[
-                        f"lane artifact missing on shared outputs: {path}"
-                        for path in missing_on_parent
-                    ],
-                    specialist=specialist,
-                    lane_session=lane_session,
-                    user_id=user_id,
-                )
-                persist_state(job, state)
-                _safe_commit(db_session)
-                return
-            produced = scan_artifacts(
-                sandbox_id=sandbox_id,
-                session_id=job.session_id,
-                producer_node=node.id,
-            )
-            state = apply_writes(
-                state, {"artifacts": merge_node_outputs(state, node, produced)}
-            )
-            artifact_ids = [
-                path
-                for path in node.required_paths
-                if path in produced or path in state.artifacts
-            ]
-            if specialist is not None:
-                specialist.output_artifact_ids = artifact_ids
+        if settled_state is None:
+            return
+        state = settled_state
     if node_id:
-        emit(
+        _emit_lane_settlement(
             db_session,
-            job_id=job.id,
-            event_type=LANE_END,
-            payload={"node_id": node_id, "ok": specialist_ok},
-        )
-        notes_path = ""
-        if node is not None and node.required_paths:
-            notes_path = node.required_paths[0]
-        specialist_row = next(
-            (row for row in job.specialists if row.node_id == node_id),
-            None,
-        )
-        _emit_lane_task_card(
-            db_session,
-            session_id=job.session_id,
+            job=job,
+            node=node,
             node_id=node_id,
-            name=node.name if node is not None else node_id,
-            status="completed" if specialist_ok else "failed",
-            notes_path=notes_path,
-            specialist_session_id=(
-                specialist_row.session_id if specialist_row is not None else None
-            ),
-            role=(
-                specialist_row.role
-                if specialist_row is not None
-                else (node.role if node is not None else None)
-            ),
-            job_id=job.id,
+            ok=specialist_ok,
+            specialist_row=specialist_row,
         )
         if specialist_ok:
             state = apply_writes(
@@ -473,14 +539,23 @@ def after_lane_turn(
         return
     if not specialists_all_terminal(job):
         return
-    if specialists_any_failed(job) or not specialist_ok:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
-            error_detail="A specialist session failed",
-            db_session=db_session,
+    # Only the advance is lease-gated; the last lane to finish is always the
+    # most recent lease renewer (sibling heartbeats have stopped), so it wins.
+    if lease_owner is not None and not lease_owned_by(job, lease_owner):
+        logger.info(
+            "Job %s lease held by %s; lane turn %s skips the superstep advance",
+            job.id,
+            job.lease_owner,
+            lease_owner,
         )
-        _safe_commit(db_session)
+        return
+    if specialists_any_failed(job) or not specialist_ok:
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
+            error_detail=_specialist_failure_detail(job),
+        )
         return
     mark_job_running(job)
     persist_state(job, state)
@@ -496,6 +571,102 @@ def after_lane_turn(
         session_id=job.session_id,
         state=state,
     )
+
+
+def _specialist_for_settlement(
+    job: CraftJob, node_id: str | None, session_id: UUID | None
+) -> CraftJobSpecialist | None:
+    """The specialist row this settlement is about.
+
+    Matched by session when known (multi-round lanes have several rows per
+    node); falls back to the newest row so a stale caller still settles.
+    """
+    if not node_id:
+        return None
+    rows = [row for row in job.specialists if row.node_id == node_id]
+    if not rows:
+        return None
+    if session_id is not None:
+        for row in rows:
+            if row.session_id == session_id:
+                return row
+    return rows[-1]
+
+
+def maybe_self_heal_job(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    user_id: UUID,
+) -> None:
+    """Poll-time recovery for a job whose continuation was lost.
+
+    A RUNNING/WAITING_LANES job with no open specialists, no active parent
+    turn, and nothing pending to enqueue is idle by mistake — an exception
+    swallowed mid-superstep left it without a driver. Re-dispatch the current
+    node, rate-limited by a cache marker so polls cannot storm. Never raises:
+    a failed heal leaves the next poll to try again.
+    """
+    try:
+        if job_is_terminal(job) or job.status == CraftJobStatus.INTERRUPTED:
+            return
+        if job.status not in {
+            CraftJobStatus.RUNNING,
+            CraftJobStatus.WAITING_LANES,
+        }:
+            return
+        if count_open_specialists(job) > 0:
+            return
+        state = load_state(job)
+        if state.pending_enqueue:
+            return
+        from onyx.server.features.build.jobs.protocol import current_phase
+
+        raw_phase = current_phase(job.phases, job.current_phase_index)
+        if raw_phase is not None and raw_phase.get("pending_enqueue_prompt"):
+            return
+        from onyx.cache.factory import get_cache_backend
+        from onyx.server.features.build.interactive_turns.state import (
+            get_active_turn,
+        )
+
+        cache = get_cache_backend()
+        if get_active_turn(cache=cache, session_id=job.session_id, user_id=job.user_id):
+            return
+        if job.status == CraftJobStatus.WAITING_LANES:
+            graph = load_graph(job, state)
+            if any(is_lane_kind(node.kind) for node in graph.nodes) and any(
+                node.id not in state.completed_nodes
+                for node in graph.nodes
+                if is_lane_kind(node.kind)
+            ):
+                # Unfinished lanes: _spawn_lanes' heal/respawn path owns this.
+                return
+        marker = cache.lock(f"craft:job:{job.id}:selfheal", timeout=60)
+        if not marker.acquire(blocking=False):
+            return
+        # Intentionally never released: expiry IS the cooldown.
+        sandbox_id = _sandbox_id_for_session(db_session, job.session_id, user_id)
+        if sandbox_id is None:
+            return
+        logger.warning(
+            "Self-healing idle craft job %s (status=%s, last_node=%s)",
+            job.id,
+            job.status,
+            state.last_node,
+        )
+        mark_job_running(job)
+        _safe_commit(db_session)
+        _dispatch_next(
+            db_session,
+            job=job,
+            user_id=user_id,
+            sandbox_id=sandbox_id,
+            session_id=job.session_id,
+            state=load_state(job),
+        )
+    except Exception:
+        logger.warning("Craft job self-heal failed for %s", job.id, exc_info=True)
 
 
 def start_run_journal(db_session: Session, job: CraftJob) -> None:
@@ -703,13 +874,12 @@ def _fail_or_retry(
         },
     )
     if attempts >= DEFAULT_PHASE_RETRY_LIMIT:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail=gate_retry_limit_detail(gate, node.id),
-            db_session=db_session,
         )
-        _safe_commit(db_session)
         return
     _safe_commit(db_session)
     prompt = retry_brief(
@@ -947,14 +1117,87 @@ def _spawn_lanes(
     from onyx.server.features.build.session.manager import SessionManager
 
     open_count = count_open_specialists(job)
-    if open_count + len(lanes) > CRAFT_DEEP_JOB_MAX_SPECIALISTS:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
-            error_detail="Too many research lanes for this job",
-            db_session=db_session,
+
+    # A lane with a SUCCEEDED specialist whose deliverables still exist on the
+    # shared outputs must never re-run: its completion was lost (historic
+    # lease-race write loss), so heal the state instead of re-spawning.
+    sandbox_id = _sandbox_id_for_session(db_session, job.session_id, user_id)
+    to_spawn: list[GraphNode] = []
+    respawned: list[str] = []
+    healed: list[str] = []
+    for node in lanes:
+        rows = [row for row in job.specialists if row.node_id == node.id]
+        succeeded = any(
+            row.status == CraftJobSpecialistStatus.SUCCEEDED for row in rows
         )
+        if (
+            succeeded
+            and sandbox_id is not None
+            and not _verify_lane_artifacts(
+                sandbox_id=sandbox_id,
+                session_id=job.session_id,
+                paths=node.required_paths,
+            )
+        ):
+            healed.append(node.id)
+            continue
+        to_spawn.append(node)
+        if rows:
+            respawned.append(node.id)
+    if healed:
+        state = apply_writes(state, {"completed_nodes": healed})
+        for node_id in healed:
+            emit(
+                db_session,
+                job_id=job.id,
+                event_type=LANE_HEAL,
+                payload={"node_id": node_id, "reason": "completed-missing"},
+            )
+        persist_state(job, state)
         _safe_commit(db_session)
+        if not to_spawn:
+            # Every ready lane was already done: advance instead of idling.
+            if open_count == 0 and sandbox_id is not None:
+                mark_job_running(job)
+                _safe_commit(db_session)
+                _dispatch_next(
+                    db_session,
+                    job=job,
+                    user_id=user_id,
+                    sandbox_id=sandbox_id,
+                    session_id=job.session_id,
+                    state=load_state(job),
+                )
+            return
+        lanes = to_spawn
+
+    for node_id in respawned:
+        attempts = int(state.node_attempts.get(node_id) or 0) + 1
+        state = apply_writes(state, {"node_attempts": {node_id: attempts}})
+        emit(
+            db_session,
+            job_id=job.id,
+            event_type=LANE_RESPAWN,
+            payload={"node_id": node_id, "attempts": attempts},
+        )
+        if attempts >= DEFAULT_PHASE_RETRY_LIMIT:
+            finalize_job_failure(
+                db_session,
+                job=job,
+                user_id=user_id,
+                error_detail=retry_limit_error_detail(
+                    node_id, "lane kept re-running without completing"
+                ),
+            )
+            return
+
+    if open_count + len(lanes) > CRAFT_DEEP_JOB_MAX_SPECIALISTS:
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
+            error_detail="Too many research lanes for this job",
+        )
         return
 
     project_id = job.project_id
@@ -1224,11 +1467,11 @@ def _retry_lane_or_fail(
         },
     )
     if attempts >= DEFAULT_PHASE_RETRY_LIMIT:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail=retry_limit_error_detail(node.id, *reasons),
-            db_session=db_session,
         )
         return state
     if specialist is not None:
@@ -1305,6 +1548,213 @@ def _interrupt_for_choice(
         payload={"kind": "clarify", "summary": summary},
     )
     return next_state
+
+
+def _settle_successful_lane(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode | None,
+    specialist: CraftJobSpecialist | None,
+    user_id: UUID,
+) -> JobState | None:
+    """Gate-check a succeeded lane and collect its shared outputs.
+
+    Returns the updated state, or None when the lane was interrupted or
+    re-enqueued for a retry (both already persisted; the caller stops).
+    """
+    try:
+        sandbox_id = _sandbox_id_for_session(db_session, job.session_id, user_id)
+    except Exception:
+        sandbox_id = None
+    if node is None or sandbox_id is None:
+        return state
+    lane_session = specialist.session_id if specialist is not None else job.session_id
+    gate = evaluate_contract_gate(
+        sandbox_id=sandbox_id,
+        session_id=job.session_id,
+        node=node,
+        deadline_exceeded=False,
+        attempts=int(state.node_attempts.get(node.id) or 0),
+        search_required=named_search_required(state.goal),
+    )
+    if not gate.passed:
+        return _gate_failed_lane(
+            db_session,
+            job=job,
+            state=state,
+            node=node,
+            gate=gate,
+            specialist=specialist,
+            lane_session=lane_session,
+            user_id=user_id,
+        )
+    missing_on_parent = _verify_lane_artifacts(
+        sandbox_id=sandbox_id,
+        session_id=job.session_id,
+        paths=node.required_paths,
+    )
+    if missing_on_parent:
+        logger.error(
+            "Lane %s artifacts missing on shared outputs: %s",
+            node.id,
+            missing_on_parent,
+        )
+        state = _retry_lane_or_fail(
+            db_session,
+            job=job,
+            state=state,
+            node=node,
+            missing=missing_on_parent,
+            reasons=[
+                f"lane artifact missing on shared outputs: {path}"
+                for path in missing_on_parent
+            ],
+            specialist=specialist,
+            lane_session=lane_session,
+            user_id=user_id,
+        )
+        persist_state(job, state)
+        _safe_commit(db_session)
+        return None
+    produced = scan_artifacts(
+        sandbox_id=sandbox_id,
+        session_id=job.session_id,
+        producer_node=node.id,
+    )
+    state = apply_writes(
+        state, {"artifacts": merge_node_outputs(state, node, produced)}
+    )
+    artifact_ids = [
+        path
+        for path in node.required_paths
+        if path in produced or path in state.artifacts
+    ]
+    if specialist is not None:
+        specialist.output_artifact_ids = artifact_ids
+    return state
+
+
+def _gate_failed_lane(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode,
+    gate: ContractGateResult,
+    specialist: CraftJobSpecialist | None,
+    lane_session: UUID,
+    user_id: UUID,
+) -> JobState | None:
+    if _is_search_unavailable_gate(gate):
+        state = _interrupt_for_choice(
+            db_session,
+            job=job,
+            state=state,
+            summary="Search is not available. Retry, use existing tools, or cancel.",
+            steps=["Retry search", "Use existing tools", "Cancel"],
+            node_id=node.id,
+        )
+        persist_state(job, state)
+        _safe_commit(db_session)
+        return None
+    state = _retry_lane_or_fail(
+        db_session,
+        job=job,
+        state=state,
+        node=node,
+        missing=gate.missing_paths(),
+        reasons=[item.reason for item in gate.missing],
+        specialist=specialist,
+        lane_session=lane_session,
+        user_id=user_id,
+    )
+    persist_state(job, state)
+    _safe_commit(db_session)
+    return None
+
+
+def _retry_failed_lane_if_transient(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode,
+    specialist: CraftJobSpecialist | None,
+    turn_error_detail: str | None,
+    user_id: UUID,
+) -> JobState | None:
+    """Retry a failed lane turn whose cause is transient (hard cap mid-work,
+    upstream LLM blip, transport hiccup) instead of failing the whole job.
+
+    Returns the updated state when a retry was scheduled, None when the
+    failure stands (non-transient cause).
+    """
+    if not is_transient_turn_error(turn_error_detail):
+        return None
+    lane_session = specialist.session_id if specialist is not None else job.session_id
+    return _retry_lane_or_fail(
+        db_session,
+        job=job,
+        state=state,
+        node=node,
+        missing=list(node.required_paths) or ["this lane's contract"],
+        reasons=[turn_error_detail or "lane turn failed"],
+        specialist=specialist,
+        lane_session=lane_session,
+        user_id=user_id,
+    )
+
+
+def _emit_lane_settlement(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    node: GraphNode | None,
+    node_id: str,
+    ok: bool,
+    specialist_row: CraftJobSpecialist | None = None,
+) -> None:
+    """Journal lane.end plus the parent-transcript lane card, terminal status."""
+    emit(
+        db_session,
+        job_id=job.id,
+        event_type=LANE_END,
+        payload={"node_id": node_id, "ok": ok},
+    )
+    notes_path = ""
+    if node is not None and node.required_paths:
+        notes_path = node.required_paths[0]
+    _emit_lane_task_card(
+        db_session,
+        session_id=job.session_id,
+        node_id=node_id,
+        name=node.name if node is not None else node_id,
+        status="completed" if ok else "failed",
+        notes_path=notes_path,
+        specialist_session_id=(
+            specialist_row.session_id if specialist_row is not None else None
+        ),
+        role=(
+            specialist_row.role
+            if specialist_row is not None
+            else (node.role if node is not None else None)
+        ),
+        job_id=job.id,
+    )
+
+
+def _specialist_failure_detail(job: CraftJob) -> str:
+    failed = [
+        f"{row.node_id} ({row.error_detail or 'turn failed'})"
+        for row in job.specialists
+        if row.status == CraftJobSpecialistStatus.FAILED
+    ]
+    if not failed:
+        return "A specialist session failed"
+    detail = "; ".join(failed)
+    return f"A specialist session failed: {detail}"
 
 
 def _emit_lane_task_card(

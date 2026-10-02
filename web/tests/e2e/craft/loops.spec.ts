@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { loginAsWorkerUser } from "@tests/e2e/utils/auth";
 import { LoopsPage } from "@tests/e2e/pages/LoopsPage";
 

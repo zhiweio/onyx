@@ -70,8 +70,9 @@ def test_job_turn_budgets_respect_phase_cap(monkeypatch) -> None:
     )
     assert budgets is not None
     soft, hard = budgets
-    assert hard == 1500
-    assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
+    # The interactive cap is now a floor: deep-job turns never run shorter
+    # than a latency-promise interactive turn.
+    assert hard == INTERACTIVE_TURN_HARD_CAP_SECONDS
     assert 0 < soft < hard
     assert continuation_mod.job_turn_budgets(None) is None
 
@@ -93,9 +94,8 @@ def test_job_turn_budgets_use_deep_job_soft_fraction(monkeypatch) -> None:
     )
     assert budgets is not None
     soft, hard = budgets
-    assert hard == 1500
-    assert hard <= INTERACTIVE_TURN_HARD_CAP_SECONDS
-    assert soft == 1125
+    assert hard == INTERACTIVE_TURN_HARD_CAP_SECONDS
+    assert soft == int(0.75 * INTERACTIVE_TURN_HARD_CAP_SECONDS)
 
 
 def test_deep_job_inactivity_default_uses_long_tool_window() -> None:

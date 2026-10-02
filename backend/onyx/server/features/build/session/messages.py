@@ -199,6 +199,13 @@ def send_message(
                 sandbox_id=sandbox.id if sandbox is not None else None,
                 session_id=session_id,
             )
+        # Prose mentions ("按 financial-report-analysis 技能…") bind the named
+        # skill exactly like a picked chip would.
+        from onyx.server.features.build.skill_binding import merge_selected_skills
+
+        selected_skill_ids = merge_selected_skills(
+            db_session, user, request.content, selected_skill_ids
+        )
 
         turn = create_interactive_turn(
             cache=cache,

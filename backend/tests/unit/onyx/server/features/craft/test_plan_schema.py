@@ -458,3 +458,69 @@ def test_ask_delivery_does_not_duplicate_review() -> None:
     assert review.hitl == "approve_delivery"
     assert review.required_paths == ["outputs/DONE.json"]
     assert "review-2" not in ids
+
+
+def test_lane_depends_on_resolves_to_graph_edges() -> None:
+    from onyx.server.features.build.jobs.channels import empty_state
+    from onyx.server.features.build.jobs.graph import compile_graph, ready_nodes
+    from onyx.server.features.build.jobs.plan import parse_plan
+
+    plan = parse_plan(
+        {
+            "goal": "Financial report",
+            "inputs": ["attachments/report.pdf"],
+            "lanes": [
+                {
+                    "id": "extract",
+                    "role": "extract",
+                    "done_when": ["outputs/extract/extract.md"],
+                },
+                {
+                    "id": "compose",
+                    "role": "compose",
+                    "depends_on": ["extract"],
+                    "done_when": ["outputs/compose/compose.md"],
+                },
+            ],
+        }
+    )
+    graph = compile_graph("tax", plan)
+    compose = graph.get("lane:compose")
+    extract = graph.get("lane:extract")
+    assert compose is not None and extract is not None
+    assert "lane:extract" in compose.depends_on
+    assert "ingest" in compose.depends_on
+
+    state = empty_state()
+    state.completed_nodes = ["plan", "ingest"]
+    ready = ready_nodes(graph, state)
+    ready_ids = [node.id for node in ready]
+    assert "lane:extract" in ready_ids
+    assert "lane:compose" not in ready_ids, "dependent lane must wait"
+
+    state.completed_nodes.append("lane:extract")
+    assert "lane:compose" in [n.id for n in ready_nodes(graph, state)]
+
+
+def test_lane_depends_on_drops_unknown_names() -> None:
+    from onyx.server.features.build.jobs.graph import compile_graph
+    from onyx.server.features.build.jobs.plan import parse_plan
+
+    plan = parse_plan(
+        {
+            "goal": "g",
+            "inputs": ["attachments/report.pdf"],
+            "lanes": [
+                {
+                    "role": "solo",
+                    "depends_on": ["ghost-lane"],
+                    "done_when": ["outputs/solo/notes.md"],
+                },
+            ],
+        }
+    )
+    graph = compile_graph("", plan)
+    solo = graph.get("lane:solo")
+    assert solo is not None
+    assert "lane:ghost-lane" not in solo.depends_on
+    assert "ingest" in solo.depends_on

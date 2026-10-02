@@ -863,6 +863,14 @@ class LitellmLLM(LLM):
                     optional_kwargs["reasoning_effort"] = ReasoningEffort.HIGH.value
                 else:
                     optional_kwargs["reasoning_effort"] = ReasoningEffort.MEDIUM.value
+                if self.config.model_provider == LlmProviderNames.DASHSCOPE:
+                    # DashScope's OpenAI-compatible surface gates thinking behind
+                    # enable_thinking (litellm's reasoning_effort is ignored
+                    # there); without it no reasoning_content is streamed back
+                    # and DeepSeek-family clients rebuild history with blanks.
+                    optional_kwargs.setdefault("extra_body", {})["enable_thinking"] = (
+                        True
+                    )
 
         if tools:
             # OpenAI will error if parallel_tool_calls is True and tools are not specified

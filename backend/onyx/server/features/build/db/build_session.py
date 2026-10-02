@@ -394,9 +394,7 @@ def count_user_messages(session_id: UUID, db_session: Session) -> int:
     )
 
 
-def get_last_user_message(
-    session_id: UUID, db_session: Session
-) -> BuildMessage | None:
+def get_last_user_message(session_id: UUID, db_session: Session) -> BuildMessage | None:
     """Newest user message (by turn index, then creation), for retry/edit."""
     return (
         db_session.query(BuildMessage)

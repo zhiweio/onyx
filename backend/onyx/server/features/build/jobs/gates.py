@@ -35,6 +35,29 @@ _NAMED_SEARCH_HINTS = (
     "web search",
 )
 
+# Turn-failure signatures worth one automatic retry: upstream LLM blips, rate
+# limits, hard-cap kills mid-work, and transport hiccups all leave the
+# workspace intact, so re-driving the same phase/lane prompt is safe.
+_TRANSIENT_TURN_ERROR_MARKERS = (
+    "upstream_error",
+    "upstream llm request failed",
+    "temporarily rate limited",
+    "rate_limit_error",
+    "did not respond in time",
+    "hard time cap exceeded",
+    "before opencode returned a final response",
+    "ended before the agent returned a final response",
+    "event bus closed",
+    "prompt_async failed",
+)
+
+
+def is_transient_turn_error(error_detail: str | None) -> bool:
+    if not error_detail:
+        return False
+    lowered = error_detail.lower()
+    return any(marker in lowered for marker in _TRANSIENT_TURN_ERROR_MARKERS)
+
 
 def named_search_required(text: str) -> bool:
     lowered = (text or "").lower()

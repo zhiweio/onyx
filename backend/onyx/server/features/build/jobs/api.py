@@ -161,10 +161,18 @@ def create_job_run(
         session.agent_provider = request.provider
         session.agent_model = request.model
 
+    # Prose mentions ("按 financial-report-analysis 技能…") bind the named
+    # skill exactly like a picked chip would, for the planner and the lanes.
+    from onyx.server.features.build.skill_binding import merge_selected_skills
+
+    bound_skill_ids = merge_selected_skills(
+        db_session, user, goal, request.selected_skill_ids
+    )
+
     initialize_job_state(
         job,
         goal=goal,
-        selected_skill_ids=request.selected_skill_ids,
+        selected_skill_ids=bound_skill_ids,
         selected_mcp_server_ids=request.selected_mcp_server_ids,
         plan=scenario_plan,
     )
@@ -215,7 +223,7 @@ def create_job_run(
             user_id=user.id,
             prompt=prompt,
             visible_user_text=goal,
-            selected_skill_ids=request.selected_skill_ids,
+            selected_skill_ids=bound_skill_ids,
             selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
     return CraftJobStartResponse(
@@ -242,6 +250,9 @@ def get_job_for_session(
         CraftJobStatus.WAITING_LANES,
     }:
         flush_pending_job_enqueue(db_session, job=job, user_id=user.id)
+        from onyx.server.features.build.jobs.kernel import maybe_self_heal_job
+
+        maybe_self_heal_job(db_session, job=job, user_id=user.id)
         refreshed = get_latest_job_for_session(db_session, session_id)
         if refreshed is not None:
             job = refreshed

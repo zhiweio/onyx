@@ -875,7 +875,14 @@ def test_unconfigured_provider_is_never_auto_picked() -> None:
         "openai",
         [_model("fake-mini")],
     )
-    placeholder = placeholder.model_copy(update={"api_key": None, "api_base": None, "custom_config": None, "is_configured": False})
+    placeholder = placeholder.model_copy(
+        update={
+            "api_key": None,
+            "api_base": None,
+            "custom_config": None,
+            "is_configured": False,
+        }
+    )
     usable = _provider(65, "deepseek", [_model("deepseek-flash")])
 
     with patch.object(llm_config, "ONYX_SERVER_URL", "https://onyx.test"):

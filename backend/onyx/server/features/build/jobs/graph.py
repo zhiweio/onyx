@@ -117,11 +117,28 @@ def compile_graph(_domain: str = "", plan: JobPlan | None = None) -> JobGraph:
     used_ids = {node.id for node in nodes}
     if lanes:
         lane_ids: list[str] = []
+        role_to_node_id: dict[str, str] = {}
         for lane in lanes:
             node = _lane_node(lane, predecessor)
             node = node.model_copy(update={"id": _unique_id(used_ids, node.id)})
             nodes.append(node)
             lane_ids.append(node.id)
+            role_to_node_id[lane.role] = node.id
+        # Lane-to-lane dependencies: depends_on entries name another lane by
+        # role (or any earlier node id such as "ingest"). Unresolvable names
+        # are dropped so a bad plan cannot orphan a lane behind a ghost node.
+        for lane, node in zip(lanes, nodes[-len(lanes) :], strict=True):
+            if not lane.depends_on:
+                continue
+            resolved = list(node.depends_on)
+            for dep in lane.depends_on:
+                node_id = role_to_node_id.get(dep)
+                if node_id is None and dep in used_ids:
+                    node_id = dep
+                if node_id is not None and node_id != node.id:
+                    if node_id not in resolved:
+                        resolved.append(node_id)
+            nodes[nodes.index(node)] = node.model_copy(update={"depends_on": resolved})
         reconcile = _reconcile_node(lane_ids)
         reconcile = reconcile.model_copy(
             update={"id": _unique_id(used_ids, reconcile.id)}

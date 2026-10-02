@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, AnimatePresence } from "motion/react";
+import { useEffect } from "react";
+import { motion } from "motion/react";
 import { cn } from "@opal/utils";
 
 import {
@@ -8,6 +9,7 @@ import {
   useIsPreProvisioning,
   useIsPreProvisioningReady,
   useIsPreProvisioningFailed,
+  useBuildSessionStore,
 } from "@/app/craft/hooks/useBuildSessionStore";
 import { Text } from "@opal/components";
 import type { SandboxRuntimeStatus } from "@/app/craft/types/streamingTypes";
@@ -82,19 +84,12 @@ export function SandboxStatusIndicatorView({
             pulse && "animate-pulse"
           )}
         />
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={status}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Text font="main-ui-body" color="text-05" nowrap>
-              {label}
-            </Text>
-          </motion.span>
-        </AnimatePresence>
+        {/* No AnimatePresence key-swap here: its exit animation stalls when
+            the tab is hidden (rAF paused), leaving a faded stale label
+            mounted and the real status never shown. */}
+        <Text font="main-ui-body" color="text-05" nowrap>
+          {label}
+        </Text>
       </div>
     </motion.div>
   );
@@ -140,6 +135,32 @@ function deriveSandboxStatus(
   return "loading";
 }
 
+/** Primitive-input variant so the chip re-renders on the status string alone. */
+function deriveSandboxStatusFromRuntime(
+  runtimeStatus: SandboxRuntimeStatus | null,
+  hasSession: boolean,
+  isPreProvisioning: boolean,
+  isReady: boolean,
+  isFailed: boolean
+): SandboxDisplayStatus {
+  if (runtimeStatus !== null) {
+    return runtimeStatus;
+  }
+  if (hasSession) {
+    return "loading";
+  }
+  if (isFailed) {
+    return "failed";
+  }
+  if (isPreProvisioning) {
+    return "provisioning";
+  }
+  if (isReady) {
+    return "ready";
+  }
+  return "loading";
+}
+
 /**
  * Displays the current sandbox status with a colored indicator dot.
  *
@@ -151,9 +172,36 @@ export default function SandboxStatusIndicator() {
   const isPreProvisioning = useIsPreProvisioning();
   const isReady = useIsPreProvisioningReady();
   const isFailed = useIsPreProvisioningFailed();
+  const refreshSandboxStatus = useBuildSessionStore(
+    (state) => state.refreshSandboxStatus
+  );
+  // Primitive selector for the rendered status: the session object can share
+  // identity across renders (compiler memoization on the derive below), so the
+  // chip must key off the status string itself to re-render reliably.
+  const runtimeStatus = useBuildSessionStore((state) => {
+    const { currentSessionId, sessions } = state;
+    if (!currentSessionId) return null;
+    return sessions.get(currentSessionId)?.sandbox?.status ?? null;
+  });
 
-  const status = deriveSandboxStatus(
-    session,
+  // A session entry seeded from the sidebar list has no sandbox info; without
+  // a nudge the chip spins on "Finding sandbox..." forever even though the
+  // backend knows the runtime state. Refresh once after a short grace period.
+  const missingRuntime = session !== null && session.sandbox === null;
+  const sessionId = session?.id ?? null;
+  useEffect(() => {
+    if (!missingRuntime || !sessionId) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      void refreshSandboxStatus(sessionId);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [missingRuntime, sessionId, refreshSandboxStatus]);
+
+  const status = deriveSandboxStatusFromRuntime(
+    runtimeStatus,
+    session !== null,
     isPreProvisioning,
     isReady,
     isFailed

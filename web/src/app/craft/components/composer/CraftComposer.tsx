@@ -286,13 +286,21 @@ function CraftComposer({
   const rearmSelectionChips = useCallback(
     (selection: SlashSelection) => {
       const entries = pickerEntriesFromSelection(pickerSections, selection);
+
+      // Stamp the restore key: once these chips land, the persisted-selection
+      // effect must treat them as restored. Without the stamp both paths
+      // insert, duplicating the /skill prefix in the next message.
+      restoreKeyRef.current = `${sessionId ?? "draft"}:${selection.skillIds.join(",")}:${selection.mcpServerIds.join(",")}`;
+      // Stamp the restore key: once these chips land, the persisted-selection
+      // effect must treat them as restored. Without the stamp both paths
+      // insert, duplicating the /skill prefix in the next message.
       requestAnimationFrame(() => {
         for (const entry of entries) {
           editorRef.current?.insertMention(toMention(entry, "/"));
         }
       });
     },
-    [pickerSections, editorRef]
+    [pickerSections, editorRef, sessionId]
   );
 
   const handleSubmit = useCallback(

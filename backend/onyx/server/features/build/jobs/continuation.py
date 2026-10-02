@@ -15,7 +15,6 @@ from onyx.db.craft_job import (
     job_total_budget_exhausted,
     mark_job_finished,
     mark_specialist_finished,
-    specialists_any_failed,
 )
 from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus
 from onyx.db.models import CraftJob
@@ -61,6 +60,7 @@ def maybe_continue_craft_job(
     deadline_exceeded: bool,
     cancelled: bool,
     lease_owner: str | None = None,
+    turn_error_detail: str | None = None,
 ) -> None:
     specialist = get_specialist_for_session(db_session, session_id)
     if specialist is not None:
@@ -71,6 +71,7 @@ def maybe_continue_craft_job(
             turn_succeeded=turn_succeeded,
             cancelled=cancelled,
             lease_owner=lease_owner,
+            turn_error_detail=turn_error_detail,
         )
         return
 
@@ -91,22 +92,39 @@ def maybe_continue_craft_job(
             reap_inactive_lanes(db_session, job=job, user_id=user_id)
         return
     if not turn_succeeded and not deadline_exceeded:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
-            error_detail="Phase turn failed",
-            db_session=db_session,
+        from onyx.server.features.build.jobs.gates import is_transient_turn_error
+
+        phase = current_phase(job.phases, job.current_phase_index)
+        if phase is not None and is_transient_turn_error(turn_error_detail):
+            # Upstream blips and hard-cap kills leave the workspace intact:
+            # retry the phase turn instead of failing the whole job.
+            _retry_or_fail_phase(
+                db_session,
+                job=job,
+                user_id=user_id,
+                phase=phase,
+                missing=[],
+                reasons=[turn_error_detail or "phase turn failed"],
+            )
+            return
+        from onyx.server.features.build.jobs.kernel import finalize_job_failure
+
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
+            error_detail=_phase_failure_detail(turn_error_detail),
         )
-        db_session.commit()
         return
     if job_total_budget_exhausted(job):
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        from onyx.server.features.build.jobs.kernel import finalize_job_failure
+
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail="Job total budget exhausted",
-            db_session=db_session,
         )
-        db_session.commit()
         return
 
     from onyx.server.features.build.jobs.kernel import after_worker_turn
@@ -146,6 +164,12 @@ def flush_pending_job_enqueue(
     )
 
 
+def _phase_failure_detail(turn_error_detail: str | None) -> str:
+    if turn_error_detail:
+        return f"Phase turn failed: {turn_error_detail}"
+    return "Phase turn failed"
+
+
 def _retry_or_fail_phase(
     db_session: Session,
     *,
@@ -153,23 +177,25 @@ def _retry_or_fail_phase(
     user_id: UUID,
     phase: dict,
     missing: list[str],
+    reasons: list[str] | None = None,
 ) -> None:
     retries = increment_gate_retries(phase)
     job.phases = _replace_phase(job.phases, job.current_phase_index, phase)
     if retries >= DEFAULT_PHASE_RETRY_LIMIT:
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        from onyx.server.features.build.jobs.kernel import finalize_job_failure
+
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail=retry_limit_error_detail(
                 *(missing or [str(phase.get("id") or "")])
             ),
-            db_session=db_session,
         )
-        db_session.commit()
         return
     db_session.commit()
     phase_id = str(phase.get("id") or "")
-    prompt = retry_brief(phase_id, missing)
+    prompt = retry_brief(phase_id, missing, reasons=reasons)
     _enqueue_or_remember(
         db_session,
         job=job,
@@ -224,6 +250,7 @@ def _finish_specialist_turn(
     turn_succeeded: bool,
     cancelled: bool,
     lease_owner: str | None = None,
+    turn_error_detail: str | None = None,
 ) -> None:
     specialist = get_specialist_for_session(db_session, specialist_session_id)
     if specialist is None:
@@ -240,7 +267,7 @@ def _finish_specialist_turn(
         mark_specialist_finished(
             specialist,
             status=CraftJobSpecialistStatus.FAILED,
-            error_detail="Specialist turn failed",
+            error_detail=turn_error_detail or "Specialist turn failed",
         )
     db_session.commit()
 
@@ -248,26 +275,29 @@ def _finish_specialist_turn(
     if job is None or job_is_terminal(job):
         return
     if job_total_budget_exhausted(job):
-        mark_job_finished(
-            job,
-            status=CraftJobStatus.FAILED,
+        from onyx.server.features.build.jobs.kernel import finalize_job_failure
+
+        finalize_job_failure(
+            db_session,
+            job=job,
+            user_id=user_id,
             error_detail="Job total budget exhausted",
-            db_session=db_session,
         )
-        db_session.commit()
         return
 
     from onyx.server.features.build.jobs.kernel import after_lane_turn
 
+    # specialist_ok reflects ONLY this lane's own outcome; whether some other
+    # lane failed is a job-level decision made after all lanes are terminal.
     after_lane_turn(
         db_session,
         job=job,
         user_id=user_id,
-        specialist_ok=turn_succeeded
-        and not cancelled
-        and not specialists_any_failed(job),
+        specialist_ok=turn_succeeded and not cancelled,
         node_id=specialist.node_id,
         lease_owner=lease_owner,
+        turn_error_detail=turn_error_detail,
+        specialist_session_id=specialist.session_id,
     )
 
 
@@ -374,12 +404,24 @@ def _enqueue_phase_turn(
 
 
 def job_turn_budgets(job: CraftJob | None) -> tuple[int, int] | None:
-    """Return (soft_budget, hard_cap) for a job turn, or None for defaults."""
+    """Return (soft_budget, hard_cap) for a job turn, or None for defaults.
+
+    Deep-job turns (plan phases and lane specialists) routinely exceed the
+    interactive 30-minute promise, so the cap floors at the interactive cap
+    and ceilings at the scheduled-run cap regardless of the configured phase
+    budget.
+    """
     if job is None:
         return None
     from onyx.server.features.build.configs import CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION
-    from onyx.server.features.build.timeouts import INTERACTIVE_TURN_HARD_CAP_SECONDS
+    from onyx.server.features.build.timeouts import (
+        INTERACTIVE_TURN_HARD_CAP_SECONDS,
+        SCHEDULED_RUN_HARD_CAP_SECONDS,
+    )
 
-    hard = min(job.phase_budget_seconds, INTERACTIVE_TURN_HARD_CAP_SECONDS)
+    hard = min(
+        max(job.phase_budget_seconds, INTERACTIVE_TURN_HARD_CAP_SECONDS),
+        SCHEDULED_RUN_HARD_CAP_SECONDS,
+    )
     soft = max(1, int(CRAFT_DEEP_JOB_SOFT_BUDGET_FRACTION * hard))
     return soft, hard
