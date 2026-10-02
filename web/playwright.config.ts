@@ -5,6 +5,7 @@ dotenv.config({ path: ".vscode/.env" });
 
 export default defineConfig({
   globalSetup: require.resolve("./tests/e2e/global-setup"),
+  globalTeardown: require.resolve("./tests/e2e/global-teardown"),
   timeout: 100000, // 100 seconds timeout
   expect: {
     timeout: 15000, // 15 seconds timeout for all assertions to reduce flakiness

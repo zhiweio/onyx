@@ -578,12 +578,17 @@ export class OnyxApiClient {
   async listLlmProviders(): Promise<
     Array<{
       id: number;
+      name?: string | null;
       is_public?: boolean;
     }>
   > {
     const response = await this.get("/admin/llm/provider");
     const data = await this.handleResponse<{
-      providers: Array<{ id: number; is_public?: boolean }>;
+      providers: Array<{
+        id: number;
+        name?: string | null;
+        is_public?: boolean;
+      }>;
     }>(response, "Failed to list LLM providers");
     return data.providers;
   }
