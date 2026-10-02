@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -26,6 +26,8 @@ import {
   ThoughtRow,
 } from "@/app/craft/components/turn-activity/PhaseRow";
 import { ToolGroupRow } from "@/app/craft/components/tool-blocks/ToolGroupRow";
+import { ChatPromptEditor } from "@/sections/input/lexical";
+import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
 import { TurnStatusHeader } from "@/app/craft/components/timeline/TurnStatusHeader";
 import HumanMessage from "@/app/app/message/HumanMessage";
 import CraftMessageAttachments from "@/app/craft/components/CraftMessageAttachments";
@@ -54,6 +56,8 @@ interface CraftTimelineProps {
   onRetry?: () => void;
   /** Edit-resend the last user message (inline editor on that message). */
   onEditResend?: (content: string) => void;
+  /** Handle over the inline edit composer (tests, programmatic prefill). */
+  editEditorRef?: React.RefObject<LexicalPromptInputHandle | null>;
 }
 
 /**
@@ -74,6 +78,7 @@ export default function CraftTimeline({
   trailingAssistantSlot,
   onRetry,
   onEditResend,
+  editEditorRef: editEditorRefProp,
 }: CraftTimelineProps) {
   const t = useTranslations("craft.timeline");
   // Resolve a connect card's app (oauth-vs-form, credential fields) by ID.
@@ -370,20 +375,22 @@ export default function CraftTimeline({
   }, [messages]);
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState("");
   const editDisabled = showStreamingArea;
-  const startEdit = (message: BuildMessage) => {
-    setEditDraft(message.content);
-    setEditingMessageId(message.id);
-  };
-  const submitEdit = () => {
-    const next = editDraft.trim();
+  // The inline edit state swaps in the shared kernel composer (Enter
+  // resends, Shift+Enter newlines, Esc cancels, IME-safe) prefilled with the
+  // message. The draft text rides React state — the editor handle is only a
+  // convenience for programmatic prefill, never the source of truth.
+  const localEditEditorRef = useRef<LexicalPromptInputHandle | null>(null);
+  const editEditorRef = editEditorRefProp ?? localEditEditorRef;
+  const [editText, setEditText] = useState("");
+  const submitEdit = useCallback(() => {
+    const next = editText.trim();
     if (next && onEditResend) {
       onEditResend(next);
     }
     setEditingMessageId(null);
-    setEditDraft("");
-  };
+  }, [editText, onEditResend]);
+  const cancelEdit = useCallback(() => setEditingMessageId(null), []);
 
   const streamRender = hasStreamItems
     ? renderStreamItems(streamItems, {
@@ -450,14 +457,37 @@ export default function CraftTimeline({
                         />
                       )}
                       {editingMessageId === message.id ? (
-                        <EditResendEditor
-                          value={editDraft}
-                          onChange={setEditDraft}
-                          onSubmit={submitEdit}
-                          onCancel={() => setEditingMessageId(null)}
-                          submitLabel={t("editResend.submit")}
-                          cancelLabel={t("editResend.cancel")}
-                        />
+                        <div
+                          className="rounded-16 border border-border-02 bg-background-neutral-00 p-2"
+                          data-testid="CraftUserMessage/edit-editor"
+                        >
+                          <ChatPromptEditor
+                            key={message.id}
+                            placeholder={t("editResend.placeholder")}
+                            initialValue={message.content}
+                            editorRef={editEditorRef}
+                            inputTestId="craft-message-edit-input"
+                            onChange={setEditText}
+                            onSubmit={submitEdit}
+                            onCancel={cancelEdit}
+                            submitControl={
+                              <div className="flex flex-row items-center gap-2 pe-1">
+                                <Button
+                                  prominence="tertiary"
+                                  onClick={cancelEdit}
+                                >
+                                  {t("editResend.cancel")}
+                                </Button>
+                                <Button
+                                  prominence="primary"
+                                  onClick={submitEdit}
+                                >
+                                  {t("editResend.submit")}
+                                </Button>
+                              </div>
+                            }
+                          />
+                        </div>
                       ) : (
                         <>
                           <HumanMessage
@@ -478,7 +508,10 @@ export default function CraftTimeline({
                                     tooltip={t("editResend.tooltip")}
                                     aria-label={t("editResend.tooltip")}
                                     data-testid="CraftUserMessage/edit-button"
-                                    onClick={() => startEdit(message)}
+                                    onClick={() => {
+                                      setEditText(message.content);
+                                      setEditingMessageId(message.id);
+                                    }}
                                   />
                                 </div>
                               </Hoverable.Item>
@@ -547,66 +580,6 @@ export default function CraftTimeline({
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-interface EditResendEditorProps {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  submitLabel: string;
-  cancelLabel: string;
-}
-
-/** Inline editor for edit-resend: multiline textarea, Enter submits
- *  (Shift+Enter newlines), Escape cancels. */
-function EditResendEditor({
-  value,
-  onChange,
-  onSubmit,
-  onCancel,
-  submitLabel,
-  cancelLabel,
-}: EditResendEditorProps) {
-  return (
-    <div
-      className="flex w-full flex-col gap-2 rounded-16 border border-border-02 bg-background-neutral-00 p-3"
-      data-testid="CraftUserMessage/edit-editor"
-    >
-      <textarea
-        autoFocus
-        dir="auto"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            event.stopPropagation();
-            onCancel();
-            return;
-          }
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            onSubmit();
-          }
-        }}
-        rows={3}
-        className="w-full resize-none bg-transparent text-text-05 outline-hidden"
-      />
-      <div className="flex flex-row justify-end gap-2">
-        <Button prominence="tertiary" onClick={onCancel}>
-          {cancelLabel}
-        </Button>
-        <Button
-          prominence="primary"
-          onClick={onSubmit}
-          disabled={!value.trim()}
-        >
-          {submitLabel}
-        </Button>
       </div>
     </div>
   );

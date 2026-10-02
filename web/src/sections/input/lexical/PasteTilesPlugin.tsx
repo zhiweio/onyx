@@ -48,6 +48,14 @@ interface PasteTilesPluginProps {
   enabled: boolean;
 }
 
+/** Headless browsers race the async clipboard write against the
+ *  immediately-following paste; this short-lived stash covers that window. */
+const clipboardFallback = {
+  text: "",
+  at: 0,
+};
+const CLIPBOARD_FALLBACK_TTL_MS = 5000;
+
 function tileElementsIn(root: HTMLElement | null): HTMLElement[] {
   if (!root) {
     return [];
@@ -220,7 +228,13 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
       const plainArmed = plainPasteArmedRef.current;
       plainPasteArmedRef.current = false;
 
-      const text = event.clipboardData?.getData("text/plain") ?? "";
+      let text = event.clipboardData?.getData("text/plain") ?? "";
+      if (
+        !text &&
+        Date.now() - clipboardFallback.at < CLIPBOARD_FALLBACK_TTL_MS
+      ) {
+        text = clipboardFallback.text;
+      }
       if (!text || plainArmed || !shouldCreatePasteTile(text)) {
         return;
       }
@@ -293,6 +307,8 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
       }
       event.preventDefault();
       event.clipboardData.setData("text/plain", text);
+      clipboardFallback.text = text;
+      clipboardFallback.at = Date.now();
       // Belt-and-braces: synthetic capture-phase events don't always
       // persist through setData to the system clipboard in headless
       // browsers; the async clipboard API covers that path.
@@ -309,6 +325,8 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
       }
       event.preventDefault();
       event.clipboardData.setData("text/plain", text);
+      clipboardFallback.text = text;
+      clipboardFallback.at = Date.now();
       void navigator.clipboard?.writeText(text).catch(() => undefined);
       const highlighted = highlightedKeyRef.current;
       if (highlighted !== null) {

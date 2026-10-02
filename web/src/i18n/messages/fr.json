@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "Modifier et renvoyer",
         "submit": "Renvoyer",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "placeholder": "Modifiez votre message — Entrée renvoie"
       }
     },
     "toolBlocks": {

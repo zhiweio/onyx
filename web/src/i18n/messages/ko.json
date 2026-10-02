@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "편집 후 다시 보내기",
         "submit": "다시 보내기",
-        "cancel": "취소"
+        "cancel": "취소",
+        "placeholder": "메시지 편집 — Enter로 다시 보내기"
       }
     },
     "toolBlocks": {

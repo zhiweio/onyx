@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "Bearbeiten und erneut senden",
         "submit": "Erneut senden",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "placeholder": "Nachricht bearbeiten — Enter sendet erneut"
       }
     },
     "toolBlocks": {

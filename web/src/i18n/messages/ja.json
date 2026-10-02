@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "編集して再送信",
         "submit": "再送信",
-        "cancel": "キャンセル"
+        "cancel": "キャンセル",
+        "placeholder": "メッセージを編集 — Enter で再送信"
       }
     },
     "toolBlocks": {

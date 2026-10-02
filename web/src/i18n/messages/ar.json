@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "تحرير وإعادة الإرسال",
         "submit": "إعادة الإرسال",
-        "cancel": "إلغاء"
+        "cancel": "إلغاء",
+        "placeholder": "حرّر رسالتك — Enter يعيد الإرسال"
       }
     },
     "toolBlocks": {

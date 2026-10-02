@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "@tests/setup/test-utils";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import CraftTimeline from "@/app/craft/components/timeline/CraftTimeline";
@@ -300,33 +300,49 @@ describe("CraftTimeline rendering", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("edits the last user message and resends via onEditResend", () => {
+  it("resends the prefilled message through the edit composer on Enter", async () => {
     const onEditResend = jest.fn();
     renderList({ messages: retryTranscript, onEditResend });
     fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
 
-    const editor = screen.getByTestId("CraftUserMessage/edit-editor");
-    expect(editor).toBeInTheDocument();
-    const textarea = editor.querySelector("textarea");
-    expect(textarea).not.toBeNull();
-    fireEvent.change(textarea!, {
-      target: { value: "build a site with blog" },
+    // The kernel composer mounts prefilled with the original message; its
+    // onChange mirrors the seeded text into the edit state.
+    const editable = screen.getByTestId("craft-message-edit-input");
+    expect(editable).toBeInTheDocument();
+    await waitFor(() => {
+      expect(editable.textContent).toContain("build a site");
     });
-    fireEvent.keyDown(textarea!, { key: "Enter" });
+    fireEvent.keyDown(editable, { key: "Enter", keyCode: 13 });
 
-    expect(onEditResend).toHaveBeenCalledWith("build a site with blog");
+    await waitFor(() => {
+      expect(onEditResend).toHaveBeenCalledWith("build a site");
+    });
+    expect(
+      screen.queryByTestId("CraftUserMessage/edit-editor"),
+    ).not.toBeInTheDocument();
   });
 
-  it("cancel closes the edit editor without resending", () => {
+  it("resend button submits the edit composer", async () => {
     const onEditResend = jest.fn();
     renderList({ messages: retryTranscript, onEditResend });
     fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
-    fireEvent.keyDown(
-      screen
-        .getByTestId("CraftUserMessage/edit-editor")
-        .querySelector("textarea")!,
-      { key: "Escape" },
-    );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("craft-message-edit-input").textContent,
+      ).toContain("build a site");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Resend" }));
+
+    expect(onEditResend).toHaveBeenCalledWith("build a site");
+  });
+
+  it("Escape closes the edit composer without resending", () => {
+    const onEditResend = jest.fn();
+    renderList({ messages: retryTranscript, onEditResend });
+    fireEvent.click(screen.getByTestId("CraftUserMessage/edit-button"));
+    fireEvent.keyDown(screen.getByTestId("craft-message-edit-input"), {
+      key: "Escape",
+    });
     expect(onEditResend).not.toHaveBeenCalled();
     expect(
       screen.queryByTestId("CraftUserMessage/edit-editor"),

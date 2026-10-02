@@ -12586,7 +12586,8 @@
       "editResend": {
         "tooltip": "编辑后重发",
         "submit": "重发",
-        "cancel": "取消"
+        "cancel": "取消",
+        "placeholder": "编辑你的消息 — Enter 重发"
       }
     },
     "toolBlocks": {

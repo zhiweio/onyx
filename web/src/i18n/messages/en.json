@@ -12592,7 +12592,8 @@
       "editResend": {
         "tooltip": "Edit and resend",
         "submit": "Resend",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "placeholder": "Edit your message — Enter resends"
       }
     },
     "toolBlocks": {

@@ -190,17 +190,23 @@ function ChatPromptEditor({
   const draftRestoreDoneRef = useRef<string | null>(null);
   const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // One-shot seed per scope: a persisted draft wins, else initialValue
+  // (inline-edit prefill) applies even when drafts are disabled.
+  const seedScopeKey = draftScopeKey ?? `novalue:${initialValue ?? ""}`;
   useEffect(() => {
     const handle = resolvedEditorRef.current;
-    if (!handle || !draft || !draftScopeKey) {
+    if (!handle) {
       return;
     }
-    if (draftRestoreDoneRef.current === draftScopeKey) {
+    if (draftRestoreDoneRef.current === seedScopeKey) {
       return;
     }
-    draftRestoreDoneRef.current = draftScopeKey;
+    draftRestoreDoneRef.current = seedScopeKey;
 
-    const snapshot = readComposerDraft(draft.surface, draft.scope);
+    const snapshot =
+      draft && draftScopeKey
+        ? readComposerDraft(draft.surface, draft.scope)
+        : null;
     if (!snapshot) {
       if (initialValue !== undefined) {
         setText(initialValue);
@@ -217,7 +223,7 @@ function ChatPromptEditor({
     }
     // Only the onChange listener after restore keeps the draft in sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, draftScopeKey]);
+  }, [draft, draftScopeKey, seedScopeKey]);
 
   const scheduleDraftSave = useCallback(
     (nextText: string) => {
