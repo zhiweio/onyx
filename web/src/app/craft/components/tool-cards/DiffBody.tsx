@@ -396,7 +396,7 @@ export function wordSegments(oldLine: string, newLine: string): WordSegment[] {
   const b = tokenize(newLine);
   // LCS table; diff lines are short so O(n·m) is fine.
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0)
+    Array.from({ length: b.length + 1 }, () => 0)
   );
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {
