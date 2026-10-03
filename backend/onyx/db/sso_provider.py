@@ -200,6 +200,10 @@ def sso_login_callback_uri(
     """The redirect URI this row's login flow sends, which is also the URL an
     operator must allowlist at the IdP. Rows migrated from single-provider env
     config keep the legacy URI their IdP client already allowlists."""
+    if provider.provider_type in _CHINA_SSO_PROVIDER_TYPES:
+        # One shared callback for every China workplace row; the per-platform
+        # token exchange resolves the row (see server/china_sso.py).
+        return f"{web_domain}/api/auth/china/callback"
     if provider.provider_type is SSOProviderType.SAML:
         # Single issuer-resolved ACS for every SAML row. No /api prefix: the
         # AuthnRequest advertises this exact URL, nginx routes /auth/saml to
@@ -214,11 +218,27 @@ def sso_login_callback_uri(
     return f"{web_domain}/api/auth/oidc/{provider.name}/callback"
 
 
-# Keep in sync with the router prefixes in oidc_multi.py and saml_multi.py.
+# China workplace platforms share one authorize/callback router; keep in sync
+# with the router prefix in server/china_sso.py.
+_CHINA_SSO_PROVIDER_TYPES = frozenset(
+    {
+        SSOProviderType.WECOM,
+        SSOProviderType.DINGTALK,
+        SSOProviderType.FEISHU,
+        SSOProviderType.WPS365,
+    }
+)
+
+# Keep in sync with the router prefixes in oidc_multi.py, saml_multi.py, and
+# china_sso.py.
 _AUTHORIZE_ROUTER_BY_TYPE: dict[SSOProviderType, str] = {
     SSOProviderType.GOOGLE_OAUTH: "oidc",
     SSOProviderType.OIDC: "oidc",
     SSOProviderType.SAML: "saml",
+    SSOProviderType.WECOM: "china",
+    SSOProviderType.DINGTALK: "china",
+    SSOProviderType.FEISHU: "china",
+    SSOProviderType.WPS365: "china",
 }
 
 

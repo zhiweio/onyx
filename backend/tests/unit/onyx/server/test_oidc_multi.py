@@ -433,6 +433,27 @@ def test_login_callback_uri_saml_is_fixed_acs() -> None:
     assert uri == "https://onyx.example.com/auth/saml/callback"
 
 
+def test_login_callback_uri_china_is_shared_callback() -> None:
+    from onyx.db.sso_provider import sso_login_callback_uri
+
+    for provider_type in (
+        SSOProviderType.WECOM,
+        SSOProviderType.DINGTALK,
+        SSOProviderType.FEISHU,
+        SSOProviderType.WPS365,
+    ):
+        provider = _provider(name="china-sso", provider_type=provider_type)
+        uri = sso_login_callback_uri(provider, {}, "https://onyx.example.com")
+        assert uri == "https://onyx.example.com/api/auth/china/callback"
+
+
+def test_authorize_path_china_uses_china_router() -> None:
+    from onyx.db.sso_provider import sso_authorize_path
+
+    provider = _provider(name="feishu-main", provider_type=SSOProviderType.FEISHU)
+    assert sso_authorize_path(provider) == "/api/auth/china/feishu-main/authorize"
+
+
 def test_fixed_callback_rejects_missing_state() -> None:
     import asyncio
 
