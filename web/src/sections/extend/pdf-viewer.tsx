@@ -59,7 +59,6 @@ import {
   useIsViewportGated,
   useViewportCapability,
   useViewportElement,
-  useViewportRef,
   ViewportElementContext,
   ViewportPluginPackage,
 } from "@embedpdf/plugin-viewport/react";
@@ -67,6 +66,7 @@ import { useZoom, ZoomPluginPackage } from "@embedpdf/plugin-zoom/react";
 import { flushSync } from "react-dom";
 
 import { loadSharedPdfEngine } from "@/sections/extend/lib/pdf-thumbnail-utils";
+import { useRegisteredViewportRef } from "@/sections/extend/lib/use-registered-viewport-ref";
 import { cn } from "@/sections/extend/lib/utils";
 import { Button } from "@/sections/extend/ui/button";
 import {
@@ -1554,7 +1554,7 @@ function PDFViewerScrollAreaViewport({
   className?: string;
   documentId: string;
 }) {
-  const viewportRef = useViewportRef(documentId);
+  const viewportRef = useRegisteredViewportRef(documentId);
   const { provides: viewport } = useViewportCapability();
   const isGated = useIsViewportGated(documentId);
   const viewportGap = viewport?.getViewportGap() ?? 0;
@@ -1651,9 +1651,10 @@ function PDFViewerSelectionReleaseGuard({
         const selectionState = selection.getState(documentId);
         if (!selectionState.selecting) return;
         if (selectionState.selection && selectionPlugin) {
-          const pluginWithEndSelection = selectionPlugin as typeof selectionPlugin & {
-            endSelection?: (documentId: string, modeId: string) => void;
-          };
+          const pluginWithEndSelection =
+            selectionPlugin as typeof selectionPlugin & {
+              endSelection?: (documentId: string, modeId: string) => void;
+            };
           pluginWithEndSelection.endSelection?.(
             documentId,
             lastSelectionModeIdRef.current ?? "pointerMode"
@@ -2127,13 +2128,31 @@ function PDFViewerInner({
   // The zoom plugin only releases its viewport gate for mode-based zoom
   // levels (automatic/fit); with a numeric default the gate would never
   // lift, so apply the initial zoom explicitly once the document loads.
+  // requestZoom no-ops while viewport metrics are still zero (first frames
+  // after mount), which would leave the gate closed forever — retry until
+  // the gate releases.
+  const { provides: viewportCapability } = useViewportCapability();
   const initialZoomDocumentRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!pdfDocument || !zoom) return;
     if (initialZoomDocumentRef.current === documentId) return;
     initialZoomDocumentRef.current = documentId;
-    zoom.requestZoom(defaultZoom);
-  }, [defaultZoom, documentId, pdfDocument, zoom]);
+    let frame = 0;
+    let attempts = 0;
+    const applyInitialZoom = () => {
+      attempts += 1;
+      zoom.requestZoom(defaultZoom);
+      if (
+        attempts >= 120 ||
+        viewportCapability?.isGated(documentId) === false
+      ) {
+        return;
+      }
+      frame = window.requestAnimationFrame(applyInitialZoom);
+    };
+    applyInitialZoom();
+    return () => window.cancelAnimationFrame(frame);
+  }, [defaultZoom, documentId, pdfDocument, zoom, viewportCapability]);
   const scrollToPage = React.useCallback(
     (pageNumber: number, options?: ScrollIntoViewOptions) => {
       scroll?.scrollToPage({

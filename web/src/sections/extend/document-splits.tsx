@@ -41,7 +41,7 @@ export type DocumentSplit = {
 };
 type PageId = DocumentSplitPageId;
 type SplitGroup = DocumentSplit;
-const THUMBNAIL_WIDTH = 72;
+export const THUMBNAIL_WIDTH = 72;
 const THUMBNAIL_HEIGHT = 92;
 const DRAG_OVERLAY_DROP_ANIMATION = null;
 const THUMBNAIL_SURFACE_CLASS_NAME =
@@ -115,7 +115,7 @@ export function createInitialSplits(pageCount: number) {
     }
   );
 }
-function getPageNumber(pageId: PageId) {
+export function getPageNumber(pageId: PageId) {
   return Number(pageId.replace("page-", ""));
 }
 function getSplitSortableId(groupId: string) {

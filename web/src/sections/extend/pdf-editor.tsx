@@ -122,7 +122,6 @@ import {
   useIsViewportGated,
   useViewportCapability,
   useViewportElement,
-  useViewportRef,
   ViewportElementContext,
   ViewportPluginPackage,
 } from "@embedpdf/plugin-viewport/react";
@@ -135,6 +134,7 @@ import {
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 
 import { loadSharedPdfEngine } from "@/sections/extend/lib/pdf-thumbnail-utils";
+import { useRegisteredViewportRef } from "@/sections/extend/lib/use-registered-viewport-ref";
 import { cn } from "@/sections/extend/lib/utils";
 import { Badge } from "@/sections/extend/ui/badge";
 import { Button } from "@/sections/extend/ui/button";
@@ -655,7 +655,7 @@ function PdfEditorViewport({
   className?: string;
   documentId: string;
 }) {
-  const viewportRef = useViewportRef(documentId);
+  const viewportRef = useRegisteredViewportRef(documentId);
   const { provides: viewport } = useViewportCapability();
   const isGated = useIsViewportGated(documentId);
   const viewportGap = viewport?.getViewportGap() ?? 0;
@@ -2182,13 +2182,31 @@ function PdfEditorInner({
     });
   }, [notify, redaction]);
   /* ---- initial zoom (numeric defaults never lift the viewport gate) ----- */
+  // requestZoom no-ops while viewport metrics are still zero (first frames
+  // after mount), which would leave the gate closed forever — retry until
+  // the gate releases.
+  const { provides: viewportCapability } = useViewportCapability();
   const initialZoomDocumentRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!pdfDocument || !zoom) return;
     if (initialZoomDocumentRef.current === documentId) return;
     initialZoomDocumentRef.current = documentId;
-    zoom.requestZoom(toZoomLevel(defaultZoom));
-  }, [defaultZoom, documentId, pdfDocument, zoom]);
+    let frame = 0;
+    let attempts = 0;
+    const applyInitialZoom = () => {
+      attempts += 1;
+      zoom.requestZoom(toZoomLevel(defaultZoom));
+      if (
+        attempts >= 120 ||
+        viewportCapability?.isGated(documentId) === false
+      ) {
+        return;
+      }
+      frame = window.requestAnimationFrame(applyInitialZoom);
+    };
+    applyInitialZoom();
+    return () => window.cancelAnimationFrame(frame);
+  }, [defaultZoom, documentId, pdfDocument, zoom, viewportCapability]);
   /* ---- document actions ------------------------------------------------- */
   const scrollToPage = React.useCallback(
     (

@@ -167,11 +167,11 @@ src/sections/extend/pdf-editor.tsx(1580,17): error TS2322: Type '"icon-sm"' is n
 src/sections/extend/pdf-editor.tsx(1590,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-editor.tsx(1634,13): error TS2322: Type '"icon-xs" | "xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-editor.tsx(1703,11): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
-src/sections/extend/pdf-editor.tsx(2789,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
-src/sections/extend/pdf-editor.tsx(2817,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
-src/sections/extend/pdf-editor.tsx(2963,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
-src/sections/extend/pdf-editor.tsx(2972,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
-src/sections/extend/pdf-editor.tsx(3334,31): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(2807,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element[]; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor.tsx(2835,13): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
+src/sections/extend/pdf-editor.tsx(2981,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(2990,13): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
+src/sections/extend/pdf-editor.tsx(3352,31): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-editor.tsx(742,7): error TS2322: Type '"icon-xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-editor.tsx(792,3): error TS2322: Type '{ pageIndex?: number | undefined; pageNumber?: number | undefined; pageSize?: Size | undefined; rect?: Rect | undefined; rects?: Rect[] | undefined; normalizedRect?: PdfEditorNormalizedRect | undefined; normalizedRects?: PdfEditorNormalizedRect[] | undefined; documentId: string; text: string; pages: PdfEditorSelecti...' is not assignable to type 'PdfEditorSelectionPayload'.
 src/sections/extend/pdf-editor.tsx(958,17): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
@@ -184,8 +184,8 @@ src/sections/extend/pdf-viewer.tsx(1109,30): error TS2322: Type '{ size: string;
 src/sections/extend/pdf-viewer.tsx(1126,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-viewer.tsx(1130,39): error TS2532: Object is possibly 'undefined'.
 src/sections/extend/pdf-viewer.tsx(1137,21): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
-src/sections/extend/pdf-viewer.tsx(1657,34): error TS2339: Property 'endSelection' does not exist on type 'never'.
-src/sections/extend/pdf-viewer.tsx(2268,25): error TS18048: 'referencePageIndex' is possibly 'undefined'.
+src/sections/extend/pdf-viewer.tsx(1658,34): error TS2339: Property 'endSelection' does not exist on type 'never'.
+src/sections/extend/pdf-viewer.tsx(2287,25): error TS18048: 'referencePageIndex' is possibly 'undefined'.
 src/sections/extend/pdf-viewer.tsx(402,32): error TS2532: Object is possibly 'undefined'.
 src/sections/extend/pdf-viewer.tsx(477,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/pdf-viewer.tsx(586,13): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
