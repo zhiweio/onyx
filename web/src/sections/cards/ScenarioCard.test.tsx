@@ -24,7 +24,7 @@ function scenario(overrides: Partial<Scenario> = {}): Scenario {
 }
 
 describe("ScenarioCard", () => {
-  it("shows skill chips, domain, start run, and edit", () => {
+  it("shows skill chips, domain, use, and edit", () => {
     render(
       <ScenarioCard
         scenario={scenario()}
@@ -39,9 +39,7 @@ describe("ScenarioCard", () => {
     expect(screen.getByText("2 skills")).toBeInTheDocument();
     expect(screen.getByText("Biomedicine")).toBeInTheDocument();
     expect(screen.getByText("Personal")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Start run" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Edit pack" })
     ).toBeInTheDocument();
@@ -84,37 +82,37 @@ describe("ScenarioCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts a run without opening the pack", async () => {
+  it("uses a scenario without opening the pack editor", async () => {
     const user = setupUser();
     const onClick = jest.fn();
-    const onStart = jest.fn();
+    const onUse = jest.fn();
     render(
       <ScenarioCard
         scenario={scenario()}
         skillNames={["biomed-literature", "biomed-clinical-intel"]}
         onClick={onClick}
-        onStart={onStart}
+        onUse={onUse}
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Start run" }));
+    await user.click(screen.getByRole("button", { name: "Use" }));
 
-    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onUse).toHaveBeenCalledTimes(1);
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("opens share and delete without starting a run", async () => {
+  it("opens share and delete without using the pack", async () => {
     const user = setupUser();
     const onShare = jest.fn();
     const onDelete = jest.fn();
-    const onStart = jest.fn();
+    const onUse = jest.fn();
     render(
       <ScenarioCard
         scenario={scenario()}
         skillNames={["biomed-literature", "biomed-clinical-intel"]}
         onShare={onShare}
         onDelete={onDelete}
-        onStart={onStart}
+        onUse={onUse}
       />
     );
 
@@ -125,6 +123,6 @@ describe("ScenarioCard", () => {
 
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledTimes(1);
-    expect(onStart).not.toHaveBeenCalled();
+    expect(onUse).not.toHaveBeenCalled();
   });
 });

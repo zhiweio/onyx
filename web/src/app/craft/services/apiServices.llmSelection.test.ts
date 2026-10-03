@@ -58,11 +58,10 @@ describe("Craft LLM selection payloads", () => {
         },
       ],
       selected_skill_ids: [],
-      selected_mcp_server_ids: [],
     });
   });
 
-  it("sends slash-selected skill and MCP ids on the turn", async () => {
+  it("sends slash-selected skill ids on the turn", async () => {
     await createTurn(
       "session-id",
       "audit this",
@@ -117,13 +116,12 @@ describe("Craft LLM selection payloads", () => {
     ]);
   });
 
-  it("sends slash-selected skill and MCP ids when starting a long job", async () => {
+  it("sends slash-selected skill ids when starting a long job", async () => {
     await createCraftJob({
       session_id: "session-id",
       prompt: "analyze 603617",
       start: true,
       selected_skill_ids: ["hithink-finance"],
-      selected_mcp_server_ids: [12, 13],
     });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -131,7 +129,6 @@ describe("Craft LLM selection payloads", () => {
     expect(JSON.parse(String(request!.body))).toMatchObject({
       session_id: "session-id",
       selected_skill_ids: ["hithink-finance"],
-      selected_mcp_server_ids: [12, 13],
     });
   });
 });

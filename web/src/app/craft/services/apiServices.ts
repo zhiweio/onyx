@@ -1031,7 +1031,6 @@ export async function createCraftJob(body: {
   provider_id?: number;
   model?: string;
   selected_skill_ids?: string[];
-  selected_mcp_server_ids?: number[];
   scenario_id?: string | null;
 }): Promise<{ job: CraftJobResponse; turn_id: string | null }> {
   const res = await fetch(`${BUILD_API_BASE}/jobs`, {

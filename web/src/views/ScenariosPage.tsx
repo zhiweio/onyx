@@ -12,7 +12,13 @@ import {
   toast,
 } from "@opal/layouts";
 import SvgNoResult from "@opal/illustrations/no-result";
-import { SvgPlus, SvgShare, SvgSimpleLoader, SvgTrash } from "@opal/icons";
+import {
+  SvgPlus,
+  SvgScrollText,
+  SvgShare,
+  SvgSimpleLoader,
+  SvgTrash,
+} from "@opal/icons";
 import BrowseItemGrid from "@/sections/gallery/BrowseItemGrid";
 import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import GalleryGrid from "@/sections/gallery/GalleryGrid";
@@ -23,7 +29,6 @@ import useOnMount from "@/hooks/useOnMount";
 import useScenarios from "@/hooks/useScenarios";
 import useUserSkills from "@/hooks/useUserSkills";
 import { deleteScenario, duplicateScenario } from "@/lib/scenarios/api";
-import { startScenarioRun } from "@/lib/scenarios/run";
 import {
   collectCustomScenarioDomains,
   isBuiltinScenarioDomain,
@@ -37,7 +42,6 @@ import ScenarioCard from "@/sections/cards/ScenarioCard";
 import ShareScenarioModal from "@/sections/modals/scenarios/ShareScenarioModal";
 import { CRAFT_PATH, CRAFT_SCENARIOS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
-import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 import { clampPage, slicePage } from "@/lib/browse/page";
 
 export default function ScenariosPage() {
@@ -46,16 +50,12 @@ export default function ScenariosPage() {
   const router = useRouter();
   const { data: scenarios, error, isLoading, refresh } = useScenarios();
   const { data: skillsData } = useUserSkills();
-  const refreshSessionHistory = useBuildSessionStore(
-    (state) => state.refreshSessionHistory
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<CatalogViewMode>("cards");
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [shareTarget, setShareTarget] = useState<Scenario | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
-  const [startingId, setStartingId] = useState<string | null>(null);
   const [customizingId, setCustomizingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -152,20 +152,12 @@ export default function ScenariosPage() {
     }
   }
 
-  async function handleStart(scenario: Scenario) {
-    setStartingId(scenario.id);
-    try {
-      const sessionId = await startScenarioRun(scenario);
-      await refreshSessionHistory();
-      router.push(
-        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route
-      );
-    } catch (startError) {
-      console.error(startError);
-      toast.error(t("toasts.openFailed.message"));
-    } finally {
-      setStartingId(null);
-    }
+  // "Use" opens Craft with the scenario prefilled — the task description is
+  // typed there and Enter starts the run, so no session is created here.
+  function handleUse(scenario: Scenario) {
+    router.push(
+      `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SCENARIO_ID}=${scenario.id}` as Route
+    );
   }
 
   async function handleDelete() {
@@ -191,7 +183,7 @@ export default function ScenariosPage() {
   return (
     <SettingsLayouts.Root data-testid="ScenariosPage/container">
       <SettingsLayouts.Header
-        icon={SvgShare}
+        icon={SvgScrollText}
         title={t("page.title.text")}
         description={t("page.description.text")}
         rightChildren={
@@ -308,14 +300,13 @@ export default function ScenariosPage() {
                           scenario={scenario}
                           layout={itemView}
                           skillNames={skillNamesFor(scenario)}
-                          startPending={startingId === scenario.id}
                           customizePending={customizingId === scenario.id}
                           onClick={openEditor}
                           onEdit={openEditor}
                           onCustomize={(item) => void handleCustomize(item)}
                           onShare={setShareTarget}
                           onDelete={setDeleteTarget}
-                          onStart={(item) => void handleStart(item)}
+                          onUse={handleUse}
                         />
                       )}
                     />

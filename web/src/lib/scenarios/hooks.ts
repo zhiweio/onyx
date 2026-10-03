@@ -16,7 +16,6 @@ import {
   duplicateScenario,
   updateScenario,
 } from "@/lib/scenarios/api";
-import { startScenarioRun } from "@/lib/scenarios/run";
 import {
   canEditScenario,
   collectCustomScenarioDomains,
@@ -28,20 +27,13 @@ import {
   type ScenarioConditionalRule,
 } from "@/lib/scenarios/types";
 import type { Skill } from "@/lib/skills/types";
-import {
-  CRAFT_PATH,
-  CRAFT_SCENARIOS_PATH,
-} from "@/app/craft/v1/constants";
+import { CRAFT_PATH, CRAFT_SCENARIOS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
-import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 import {
   createCatalogEntry,
   updateCatalogEntry,
 } from "@/lib/system-catalog/api";
-import {
-  useCatalogEntries,
-  useCatalogItem,
-} from "@/lib/system-catalog/hooks";
+import { useCatalogEntries, useCatalogItem } from "@/lib/system-catalog/hooks";
 import type {
   CatalogScenarioCreateInput,
   CatalogPatchInput,
@@ -152,9 +144,6 @@ export function useUserScenarioEditor(scenarioId?: string) {
   const { data: allScenarios } = useScenarios();
   const { data: reportTemplates } = useReportTemplates();
   const { data: skillsData } = useUserSkills();
-  const refreshSessionHistory = useBuildSessionStore(
-    (state) => state.refreshSessionHistory
-  );
 
   const allSkills = useMemo(() => skillsFromList(skillsData), [skillsData]);
   const [draft, setDraft] = useState<ScenarioDraft>(emptyDraft);
@@ -163,7 +152,6 @@ export function useUserScenarioEditor(scenarioId?: string) {
   const [hydratedId, setHydratedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [customizing, setCustomizing] = useState(false);
-  const [starting, setStarting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
@@ -271,21 +259,13 @@ export function useUserScenarioEditor(scenarioId?: string) {
     }
   }
 
-  async function handleStart() {
+  // "Use" opens Craft with the scenario prefilled — the task description is
+  // typed there and Enter starts the run, so no session is created here.
+  function handleUse() {
     if (!scenario) return;
-    setStarting(true);
-    try {
-      const sessionId = await startScenarioRun(scenario);
-      await refreshSessionHistory();
-      router.push(
-        `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SESSION_ID}=${sessionId}` as Route
-      );
-    } catch (startError) {
-      console.error(startError);
-      toast.error(t("toasts.openFailed.message"));
-    } finally {
-      setStarting(false);
-    }
+    router.push(
+      `${CRAFT_PATH}?${CRAFT_SEARCH_PARAM_NAMES.SCENARIO_ID}=${scenario.id}` as Route
+    );
   }
 
   return {
@@ -321,8 +301,7 @@ export function useUserScenarioEditor(scenarioId?: string) {
         ? t("validation.skills")
         : undefined,
     onShare: () => setShareOpen(true),
-    onStartRun: () => void handleStart(),
-    starting,
+    onUse: handleUse,
     onCustomize: () => void handleCustomize(),
     customizing,
     shareOpen,
@@ -418,7 +397,9 @@ export function useCatalogScenarioEditor(entryId?: string) {
             description: draft.description.trim() || draft.name.trim(),
             category: draft.category,
             tags: draft.tags,
-            rules,
+            // Fresh spread: interfaces lack an implicit index signature, the
+            // catalog input is a plain record.
+            rules: { ...rules },
             skill_slugs: draft.skillKeys,
             report_template_slug: draft.reportTemplate.trim() || null,
           } satisfies CatalogScenarioCreateInput)
@@ -427,7 +408,7 @@ export function useCatalogScenarioEditor(entryId?: string) {
             description: draft.description.trim() || draft.name.trim(),
             category: draft.category,
             tags: draft.tags,
-            rules,
+            rules: { ...rules },
             skill_slugs: draft.skillKeys,
             report_template_slug: draft.reportTemplate.trim() || null,
             clear_report_template: !draft.reportTemplate.trim(),

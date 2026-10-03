@@ -37,8 +37,7 @@ export default function ScenarioEditorPage({
         canSave={editor.canSave}
         saveTooltip={editor.saveTooltip}
         onShare={editor.onShare}
-        onStartRun={editor.onStartRun}
-        starting={editor.starting}
+        onUse={editor.onUse}
         onCustomize={editor.onCustomize}
         customizing={editor.customizing}
       />

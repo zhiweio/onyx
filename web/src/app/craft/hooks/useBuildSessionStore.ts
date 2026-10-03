@@ -815,6 +815,12 @@ interface CraftQueuedMessage {
   selection?: SlashSelection;
 }
 
+/** Scenario context to write onto the empty session as it is consumed,
+ * before its first message. */
+export interface ConsumePreProvisionedSessionOptions {
+  scenarioId?: string | null;
+}
+
 const EMPTY_CRAFT_QUEUED_MESSAGES: readonly CraftQueuedMessage[] = [];
 
 /** File preview tab data */
@@ -1059,7 +1065,9 @@ interface BuildSessionStore {
 
   // Pre-provisioning Actions
   ensurePreProvisionedSession: () => Promise<string | null>;
-  consumePreProvisionedSession: () => Promise<string | null>;
+  consumePreProvisionedSession: (
+    options?: ConsumePreProvisionedSessionOptions
+  ) => Promise<string | null>;
 
   // Controller State Actions (for useBuildSessionController - replaces refs)
   setControllerTriggered: (url: string | null) => void;
@@ -2257,7 +2265,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     return promise;
   },
 
-  consumePreProvisionedSession: async () => {
+  consumePreProvisionedSession: async (options) => {
     const { preProvisioning } = get();
 
     // Wait for provisioning to complete if in progress
@@ -2269,7 +2277,22 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
     const { preProvisioning: currentState, sessionHistory } = get();
 
     if (currentState.status === "ready") {
-      const { sessionId } = currentState;
+      let { sessionId } = currentState;
+
+      // A scenario has to reach the backend session before the first message:
+      // POST /sessions reuses the same empty session, sets scenario_id,
+      // and writes SCENARIO.md — that drives per-turn scenario skills and the
+      // long-job phase plan.
+      if (options?.scenarioId) {
+        try {
+          const attached = await apiCreateSession({
+            scenarioId: options.scenarioId,
+          });
+          sessionId = attached.id;
+        } catch (err) {
+          console.error("[PreProvision] Failed to attach scenario:", err);
+        }
+      }
 
       // Optimistically add to session history so it appears in sidebar immediately
       // (Backend excludes empty sessions, but we're about to send a message)

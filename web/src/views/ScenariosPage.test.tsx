@@ -6,8 +6,6 @@ import type { SkillsList } from "@/lib/skills/types";
 const mockRouterPush = jest.fn();
 const mockUseScenarios = jest.fn();
 const mockUseUserSkills = jest.fn();
-const mockStartScenarioRun = jest.fn();
-const mockRefreshHistory = jest.fn();
 const mockRefresh = jest.fn();
 const mockDuplicateScenario = jest.fn();
 
@@ -25,19 +23,9 @@ jest.mock("@/hooks/useUserSkills", () => ({
   default: () => mockUseUserSkills(),
 }));
 
-jest.mock("@/lib/scenarios/run", () => ({
-  startScenarioRun: (...args: unknown[]) => mockStartScenarioRun(...args),
-}));
-
 jest.mock("@/lib/scenarios/api", () => ({
   deleteScenario: jest.fn(),
   duplicateScenario: (...args: unknown[]) => mockDuplicateScenario(...args),
-}));
-
-jest.mock("@/app/craft/hooks/useBuildSessionStore", () => ({
-  useBuildSessionStore: (
-    selector: (state: { refreshSessionHistory: () => Promise<void> }) => unknown
-  ) => selector({ refreshSessionHistory: mockRefreshHistory }),
 }));
 
 jest.mock("@/sections/modals/scenarios/ShareScenarioModal", () => ({
@@ -145,9 +133,6 @@ describe("ScenariosPage", () => {
       refresh: jest.fn(),
     });
     mockRouterPush.mockReset();
-    mockStartScenarioRun.mockReset();
-    mockRefreshHistory.mockReset();
-    mockRefreshHistory.mockResolvedValue(undefined);
   });
 
   it("lists packs and opens the composer", async () => {
@@ -176,23 +161,18 @@ describe("ScenariosPage", () => {
     expect(screen.queryByText("合规风险预警")).not.toBeInTheDocument();
   });
 
-  it("starts a Craft run with sessionId", async () => {
+  it("navigates to Craft with the scenario prefilled on Use", async () => {
     const user = setupUser();
-    mockStartScenarioRun.mockResolvedValue("session-123");
     render(<ScenariosPage />);
 
-    const startButtons = screen.getAllByRole("button", { name: "Start run" });
-    await user.click(startButtons[0]!);
+    const useButtons = screen.getAllByRole("button", { name: "Use" });
+    await user.click(useButtons[0]!);
 
     await waitFor(() =>
-      expect(mockStartScenarioRun).toHaveBeenCalledWith(taxPack)
-    );
-    await waitFor(() =>
       expect(mockRouterPush).toHaveBeenCalledWith(
-        "/craft/v1?sessionId=session-123"
+        "/craft/v1?scenarioId=pack-tax"
       )
     );
-    expect(mockRefreshHistory).toHaveBeenCalled();
   });
 
   it("opens the editor from the always-visible edit action", async () => {

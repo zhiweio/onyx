@@ -42,9 +42,9 @@ import {
   SvgMoreHorizontal,
   SvgEdit,
   SvgRefreshCw,
+  SvgScrollText,
   SvgTrash,
   SvgPlug,
-  SvgShare,
   SvgSimpleLoader,
   SvgFolder,
   SvgFolderOpen,
@@ -695,7 +695,7 @@ const MemoizedBuildSidebarInner = memo(() => {
             {t("library.label")}
           </SidebarTab>
           <SidebarTab
-            icon={SvgShare}
+            icon={SvgScrollText}
             onClick={() => navigate(CRAFT_SCENARIOS_PATH)}
             selected={pathname.startsWith(CRAFT_SCENARIOS_PATH)}
           >

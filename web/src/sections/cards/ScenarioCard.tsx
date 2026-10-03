@@ -7,8 +7,9 @@ import { Content } from "@opal/layouts";
 import {
   SvgCopy,
   SvgEdit,
-  SvgPlayCircle,
+  SvgScrollText,
   SvgShare,
+  SvgSquareArrowUpRight,
   SvgTrash,
 } from "@opal/icons";
 import { CardItemLayout } from "@/layouts/general-layouts";
@@ -36,8 +37,8 @@ export interface ScenarioCardProps {
   onCustomize?: (scenario: Scenario) => void;
   onShare?: (scenario: Scenario) => void;
   onDelete?: (scenario: Scenario) => void;
-  onStart?: (scenario: Scenario) => void;
-  startPending?: boolean;
+  /** Open Craft with this scenario prefilled; the run starts on submit. */
+  onUse?: (scenario: Scenario) => void;
   customizePending?: boolean;
   layout?: CatalogViewMode;
 }
@@ -59,8 +60,7 @@ export default function ScenarioCard({
   onCustomize,
   onShare,
   onDelete,
-  onStart,
-  startPending = false,
+  onUse,
   customizePending = false,
   layout = "cards",
 }: ScenarioCardProps) {
@@ -103,7 +103,7 @@ export default function ScenarioCard({
           <div className="flex w-full flex-row items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Content
-                icon={SvgShare}
+                icon={SvgScrollText}
                 title={scenario.name}
                 description={scenario.description}
                 sizePreset="main-ui"
@@ -115,11 +115,10 @@ export default function ScenarioCard({
               <Button
                 prominence="primary"
                 size="sm"
-                icon={SvgPlayCircle}
-                disabled={startPending}
-                onClick={(event) => stopAndCall(event, onStart, scenario)}
+                icon={SvgSquareArrowUpRight}
+                onClick={(event) => stopAndCall(event, onUse, scenario)}
               >
-                {t("card.startRun.label")}
+                {t("card.use.label")}
               </Button>
             </div>
           </div>
@@ -133,7 +132,7 @@ export default function ScenarioCard({
       <Card variant="primary" padding={0} gap={0} height="full">
         <div className="flex self-stretch min-h-24">
           <CardItemLayout
-            icon={SvgShare}
+            icon={SvgScrollText}
             title={scenario.name}
             description={scenario.description}
             rightChildren={leadAction}
@@ -182,7 +181,7 @@ export default function ScenarioCard({
           <div className="flex flex-row items-center justify-between w-full">
             <div className="py-1 px-1 min-w-0 flex-1">
               <Content
-                icon={SvgShare}
+                icon={SvgScrollText}
                 title={t("card.skillCount.label", {
                   count: skillNames.length,
                 })}
@@ -215,11 +214,10 @@ export default function ScenarioCard({
               <Button
                 prominence="primary"
                 size="sm"
-                icon={SvgPlayCircle}
-                disabled={startPending}
-                onClick={(event) => stopAndCall(event, onStart, scenario)}
+                icon={SvgSquareArrowUpRight}
+                onClick={(event) => stopAndCall(event, onUse, scenario)}
               >
-                {t("card.startRun.label")}
+                {t("card.use.label")}
               </Button>
             </div>
           </div>

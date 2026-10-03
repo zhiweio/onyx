@@ -2,19 +2,13 @@
 
 import { useMemo, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import {
-  Button,
-  Divider,
-  MessageCard,
-  Tag,
-  Tooltip,
-} from "@opal/components";
+import { Button, Divider, MessageCard, Tag, Tooltip } from "@opal/components";
 import { SettingsLayouts } from "@opal/layouts";
 import {
-  SvgBlocks,
-  SvgPlayCircle,
+  SvgScrollText,
   SvgShare,
   SvgSimpleLoader,
+  SvgSquareArrowUpRight,
 } from "@opal/icons";
 import {
   isBuiltinScenarioDomain,
@@ -62,8 +56,8 @@ interface ScenarioComposerProps {
   canSave: boolean;
   saveTooltip?: string;
   onShare?: () => void;
-  onStartRun?: () => void;
-  starting?: boolean;
+  /** Open Craft with this scenario prefilled; the run starts on submit. */
+  onUse?: () => void;
   onCustomize?: () => void;
   customizing?: boolean;
   onPublish?: () => void;
@@ -92,8 +86,7 @@ export default function ScenarioComposer({
   canSave,
   saveTooltip,
   onShare,
-  onStartRun,
-  starting = false,
+  onUse,
   onCustomize,
   customizing = false,
   onPublish,
@@ -148,9 +141,7 @@ export default function ScenarioComposer({
             isUncategorizedDomain(draft.domain)
           ? tScenarios(
               scenarioDomainMessageKey(
-                isBuiltinScenarioDomain(draft.domain)
-                  ? draft.domain
-                  : "custom"
+                isBuiltinScenarioDomain(draft.domain) ? draft.domain : "custom"
               )
             )
           : draft.domain;
@@ -164,9 +155,7 @@ export default function ScenarioComposer({
       templateLabel,
     ];
     if (conditionals.length > 0) {
-      parts.push(
-        t("header.summary.extras", { count: conditionals.length })
-      );
+      parts.push(t("header.summary.extras", { count: conditionals.length }));
     }
     return parts.join(" · ");
   }, [
@@ -188,7 +177,7 @@ export default function ScenarioComposer({
     <div className="h-full w-full" data-testid="ScenarioComposer/container">
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
-          icon={SvgBlocks}
+          icon={SvgScrollText}
           title={headerTitle}
           description={recipeSummary}
           divider
@@ -205,16 +194,15 @@ export default function ScenarioComposer({
                   {t("header.share.label")}
                 </Button>
               )}
-              {mode === "user" && !isCreating && onStartRun && (
+              {mode === "user" && !isCreating && onUse && (
                 <Button
                   size="sm"
                   prominence="secondary"
                   type="button"
-                  icon={SvgPlayCircle}
-                  disabled={starting}
-                  onClick={onStartRun}
+                  icon={SvgSquareArrowUpRight}
+                  onClick={onUse}
                 >
-                  {t("header.startRun.label")}
+                  {t("header.use.label")}
                 </Button>
               )}
               {mode === "catalog" && !isCreating && onUnpublish && (
@@ -294,7 +282,7 @@ export default function ScenarioComposer({
             </div>
           )}
 
-          {!isCreating && error && !isLoading && (
+          {!isCreating && error != null && !isLoading && (
             <MessageCard
               variant="error"
               title={t("error.title")}
@@ -344,9 +332,7 @@ export default function ScenarioComposer({
                 reportTemplate={draft.reportTemplate}
                 templates={templates}
                 fieldsLocked={fieldsLocked}
-                onChange={(reportTemplate) =>
-                  onDraftChange({ reportTemplate })
-                }
+                onChange={(reportTemplate) => onDraftChange({ reportTemplate })}
               />
               <Divider paddingParallel={0} paddingPerpendicular={0} />
               <AdvancedPlaybook

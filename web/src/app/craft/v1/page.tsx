@@ -3,7 +3,10 @@
 import { useSearchParams } from "next/navigation";
 import { useBuildSessionController } from "@/app/craft/hooks/useBuildSessionController";
 import { useOutputPanelOpen } from "@/app/craft/hooks/useBuildSessionStore";
-import { getSessionIdFromSearchParams } from "@/app/craft/services/searchParams";
+import {
+  getScenarioIdFromSearchParams,
+  getSessionIdFromSearchParams,
+} from "@/app/craft/services/searchParams";
 import BuildChatPanel from "@/app/craft/components/ChatPanel";
 import BuildOutputPanel from "@/app/craft/components/OutputPanel";
 import VideoBackground from "@/app/craft/components/video-background/VideoBackground";
@@ -13,12 +16,14 @@ import VideoBackground from "@/app/craft/components/video-background/VideoBackgr
  *
  * URL: /craft/v1 (new build)
  * URL: /craft/v1?sessionId=xxx (existing session)
+ * URL: /craft/v1?scenarioId=xxx (new build prefilled with a scenario)
  *
  * Renders the 2-panel layout (chat + output) and handles session controller setup.
  */
 export default function BuildV1Page() {
   const searchParams = useSearchParams();
   const sessionId = getSessionIdFromSearchParams(searchParams);
+  const scenarioId = getScenarioIdFromSearchParams(searchParams);
 
   const outputPanelOpen = useOutputPanelOpen();
   useBuildSessionController({ existingSessionId: sessionId });
@@ -30,7 +35,10 @@ export default function BuildV1Page() {
       <VideoBackground />
 
       <div className="relative z-10 w-full h-full">
-        <BuildChatPanel existingSessionId={sessionId} />
+        <BuildChatPanel
+          existingSessionId={sessionId}
+          initialScenarioId={scenarioId}
+        />
         <BuildOutputPanel isOpen={outputPanelOpen} />
       </div>
     </div>
