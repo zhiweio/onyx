@@ -2,7 +2,13 @@
 
 from typing import Any
 
-from onyx.server.features.build.tools.base import ToolContext, ToolInvocation
+from onyx.server.features.build.tools import implementations as impl
+from onyx.server.features.build.tools.base import (
+    ToolContext,
+    ToolInvocation,
+    ToolResult,
+    text_result,
+)
 from onyx.server.features.build.tools.mcp_server import handle_mcp_jsonrpc
 from onyx.server.features.build.tools.registry import (
     PlatformToolRegistry,
@@ -32,10 +38,12 @@ def test_catalog_shape_is_stable() -> None:
         "rag_search",
         "question",
         "background",
+        "start_long_job",
         "mcp_call",
         "web_search",
         "crawl",
         "connector_query",
+        "check_report",
     }
     defs = registry.definitions()
     assert all({"name", "description", "inputSchema"} <= set(d) for d in defs)
@@ -64,6 +72,7 @@ def test_unbound_services_report_structured_unavailability() -> None:
         "rag_search": {"query": "q"},
         "question": {"prompt": "p"},
         "background": {"action": "list"},
+        "start_long_job": {"goal": "write a report"},
         "mcp_call": {"server": "s", "tool": "t"},
     }
     for tool, arguments in unbound_args.items():
@@ -76,6 +85,33 @@ def test_unknown_tool_lists_known_tools() -> None:
     result = registry.call(ToolInvocation(tool="bananas", arguments={}), CTX)
     assert "unknown tool" in result.text()
     assert "rag_search" in result.text()
+
+
+def test_start_long_job_passes_goal_and_session_to_hook() -> None:
+    seen: list[tuple[str, str | None]] = []
+
+    def fake_job_hook(
+        invocation: ToolInvocation,
+        request: impl.StartJobRequest,
+        _ctx: ToolContext,
+    ) -> ToolResult:
+        seen.append((request.goal, invocation.session_id))
+        return text_result("Long job started. Wrap up the turn.")
+
+    registry = PlatformToolRegistry.build(ToolBindings(job_hook=fake_job_hook))
+    result = registry.call(
+        ToolInvocation(
+            tool="start_long_job",
+            arguments={"goal": "Build the Q3 report"},
+            session_id="sess-1",
+        ),
+        CTX,
+    )
+    assert seen == [("Build the Q3 report", "sess-1")]
+    # The escalation must not terminate the turn itself: the agent still
+    # writes the user-visible "deep task started" line.
+    assert "Long job started" in result.text()
+    assert not result.terminate
 
 
 def test_journal_receives_capped_entries() -> None:

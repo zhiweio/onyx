@@ -90,7 +90,9 @@ export function parsePacket(raw: unknown): ParsedPacket {
             const item = raw as Record<string, unknown>;
             const prompt = typeof item.prompt === "string" ? item.prompt : "";
             const itemOptions = Array.isArray(item.options)
-              ? item.options.filter((opt): opt is string => typeof opt === "string")
+              ? item.options.filter(
+                  (opt): opt is string => typeof opt === "string"
+                )
               : [];
             if (!prompt && itemOptions.length === 0) {
               return [];
@@ -156,7 +158,9 @@ function extractRoutingMeta(p: Record<string, unknown>): {
 }
 
 function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function extractThoughtTiming(p: Record<string, unknown>): {
@@ -667,6 +671,7 @@ function parseToolCallStart(p: Record<string, unknown>): ParsedToolCallStart {
     type: "tool_call_start",
     toolCallId: getToolCallId(p),
     toolName,
+    rawToolName: getToolNameRaw(p),
     kind,
     isTodo: toolName === "todowrite",
     title: buildTitle(toolName, kind, true),

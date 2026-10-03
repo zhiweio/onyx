@@ -30,13 +30,13 @@ test("job settle auto-recovers the composer to Send without a reload", async ({
   await session.goto(SESSION_ID);
   const held = await holdTurnOpen(page);
 
+  await session.enableDeepTask();
   await session.typeMessage("trigger the job");
   await session.pressEnter();
   await session.expectPrimaryAction(/Stop generating|停止生成/);
 
   // Cancel the job (mutateCraftJob → immediate refetch → cancelled status).
   await page.getByTestId("craft-job-cancel").click();
-
 
   // F1's reconcile effect must run from the terminal job status — composer
   // back to Send, no page.reload() anywhere in this test.

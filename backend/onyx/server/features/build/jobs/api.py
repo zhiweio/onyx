@@ -41,6 +41,7 @@ from onyx.server.features.build.db.sandbox import get_sandbox_by_user_id
 from onyx.server.features.build.jobs.continuation import (
     enqueue_job_phase_turn,
     flush_pending_job_enqueue,
+    remember_pending_enqueue,
 )
 from onyx.server.features.build.jobs.kernel import (
     apply_deep_job_sandbox_resources,
@@ -56,7 +57,10 @@ from onyx.server.features.build.jobs.models import (
     QuestionAskDecisionRequest,
 )
 from onyx.server.features.build.jobs.plan import JobPlan
-from onyx.server.features.build.jobs.protocol import default_phases_for_domain
+from onyx.server.features.build.jobs.protocol import (
+    current_phase,
+    default_phases_for_domain,
+)
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.query_and_chat.token_limit import check_token_rate_limits
@@ -226,6 +230,14 @@ def create_job_run(
             selected_skill_ids=bound_skill_ids,
             selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
+        if turn_id is None:
+            # The escalating start_long_job turn still holds the turn lock:
+            # park the plan brief; the post-turn continuation dispatches it.
+            phase = current_phase(job.phases, job.current_phase_index)
+            if phase is not None:
+                remember_pending_enqueue(
+                    db_session, job=job, phase=phase, prompt=prompt
+                )
     return CraftJobStartResponse(
         job=CraftJobResponse.from_model(job),
         turn_id=turn_id,

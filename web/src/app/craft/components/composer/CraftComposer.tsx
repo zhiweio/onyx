@@ -22,6 +22,9 @@ import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
 import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
+import IconButton from "@/refresh-components/buttons/IconButton";
+import { SvgWorkflow } from "@opal/icons";
+import { cn } from "@opal/utils";
 import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import {
@@ -83,6 +86,10 @@ interface CraftComposerProps {
   onCompact?: () => void;
   /** Last slash pick for this session — restored as chips after remount. */
   persistedSelection?: SlashSelection;
+  /** Deep-task switch: send as a long job instead of a plain turn. */
+  deepTask?: boolean;
+  /** Absent hides the switch (subagent views have nothing to escalate). */
+  onDeepTaskToggle?: () => void;
   contextUsage?: {
     usedTokens: number;
     contextLimit: number | null;
@@ -132,6 +139,8 @@ function CraftComposer({
   compactAvailable = false,
   onCompact,
   persistedSelection,
+  deepTask = false,
+  onDeepTaskToggle,
   contextUsage,
   thoughtLevel,
   modelSelection,
@@ -421,11 +430,36 @@ function CraftComposer({
         onMentionsChange={setMentions}
         topContent={topContent}
         toolbarLeading={
-          <PlusMenuButton
-            items={plusMenuItems}
-            disabled={disabled}
-            tooltip={t("plusMenu.tooltip")}
-          />
+          <>
+            <PlusMenuButton
+              items={plusMenuItems}
+              disabled={disabled}
+              tooltip={t("plusMenu.tooltip")}
+            />
+            {onDeepTaskToggle && (
+              <IconButton
+                icon={SvgWorkflow}
+                onClick={onDeepTaskToggle}
+                disabled={disabled}
+                aria-pressed={deepTask}
+                data-testid="craft-deep-task-toggle"
+                aria-label={t("deepTask.toggleAriaLabel")}
+                tooltip={
+                  deepTask ? t("deepTask.onTooltip") : t("deepTask.offTooltip")
+                }
+                tertiary
+                small
+                className={cn(
+                  "rounded-full p-1.5!",
+                  deepTask ? "bg-theme-primary-05!" : "bg-transparent!"
+                )}
+                iconClassName={cn(
+                  "h-4! w-4!",
+                  deepTask ? "stroke-theme-accent-08!" : "stroke-text-04!"
+                )}
+              />
+            )}
+          </>
         }
         toolbarTrailing={
           <>

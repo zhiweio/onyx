@@ -46,6 +46,7 @@ class ToolBindings:
     search_fn: impl.SearchFn | None = None
     question_hook: impl.QuestionHook | None = None
     background_hook: impl.BackgroundHook | None = None
+    job_hook: impl.StartJobHook | None = None
     mcp_call_fn: impl.McpCallFn | None = None
     web_search_fn: impl.WebSearchFn | None = None
     crawl_fn: impl.CrawlFn | None = None
@@ -65,6 +66,7 @@ class PlatformToolRegistry:
             impl.RagSearchTool(bindings.search_fn),
             impl.QuestionTool(bindings.question_hook),
             impl.BackgroundTool(bindings.background_hook),
+            impl.StartLongJobTool(bindings.job_hook),
             impl.mcp_call_tool(bindings.mcp_call_fn),
             impl.web_search_tool(bindings.web_search_fn),
             impl.crawl_tool(bindings.crawl_fn),

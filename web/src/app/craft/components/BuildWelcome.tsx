@@ -33,11 +33,14 @@ interface BuildWelcomeProps {
     message: string,
     files: BuildFile[],
     selection: SlashSelection,
-    model?: BuildLlmSelection | null,
+    model?: BuildLlmSelection | null
   ) => void;
   isRunning: boolean;
   /** When true, the composer is disabled while the sandbox starts. */
   sandboxInitializing?: boolean;
+  /** Deep-task switch for the first message (long job vs plain turn). */
+  deepTask?: boolean;
+  onDeepTaskToggle?: () => void;
   thoughtLevel?: {
     value: ReasoningEffortOverride | null;
     onChange: (effort: ReasoningEffortOverride) => void;
@@ -57,12 +60,14 @@ export default function BuildWelcome({
   onSubmit,
   isRunning,
   sandboxInitializing = false,
+  deepTask = false,
+  onDeepTaskToggle,
   thoughtLevel,
 }: BuildWelcomeProps) {
   const t = useTranslations("craft.welcome");
   const editorRef = useRef<LexicalPromptInputHandle | null>(null);
   const [selectedModel, setSelectedModel] = useState<BuildLlmSelection | null>(
-    null,
+    null
   );
   const handleWordmarkClick = useVideoBackgroundToggleClick();
   const { isAdmin, hasAnyProvider, isLoading } = useOnboarding();
@@ -72,7 +77,7 @@ export default function BuildWelcome({
   const { data: craftMcpData } = useCraftMcpServers();
   const pickerSections = useMemo(
     () => toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
-    [skillsData, appsData, craftMcpData],
+    [skillsData, appsData, craftMcpData]
   );
 
   // Craft can't build without a supported provider: inputs stay gated until
@@ -89,7 +94,7 @@ export default function BuildWelcome({
     const resolved = resolveToolHints(
       prompt.toolHints,
       pickerSections.skills,
-      pickerSections.mcpServers,
+      pickerSections.mcpServers
     );
     const entries = pickerEntriesFromSelection(pickerSections, {
       skillIds: resolved.skillIds,
@@ -156,6 +161,8 @@ export default function BuildWelcome({
             isRunning={isRunning}
             placeholder={t("input.placeholder")}
             disabled={!hasAnyProvider || sandboxInitializing}
+            deepTask={deepTask}
+            onDeepTaskToggle={onDeepTaskToggle}
             thoughtLevel={thoughtLevel}
             modelSelection={null}
             onModelChange={() => undefined}

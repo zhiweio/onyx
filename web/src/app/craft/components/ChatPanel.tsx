@@ -245,6 +245,9 @@ export default function BuildChatPanel({
   const [modelBySession, setModelBySession] = useState<
     Record<string, BuildLlmSelection>
   >({});
+  // Deep-task toggle for the yet-uncreated (welcome) session; per-session
+  // picks live in the store once a session exists.
+  const [deepTaskDraft, setDeepTaskDraft] = useState(false);
   const { user } = useUser();
   const selectedModel = useMemo(
     () =>
@@ -308,6 +311,14 @@ export default function BuildChatPanel({
   const nameBuildSession = useBuildSessionStore(
     (state) => state.nameBuildSession
   );
+  const deepTask = hasSession ? Boolean(session?.deepTask) : deepTaskDraft;
+  const toggleDeepTask = useCallback(() => {
+    if (hasSession && sessionId) {
+      updateSessionData(sessionId, { deepTask: !session?.deepTask });
+    } else {
+      setDeepTaskDraft((value) => !value);
+    }
+  }, [hasSession, sessionId, session?.deepTask, updateSessionData]);
   const {
     streamMessage,
     streamCompact,
@@ -694,9 +705,12 @@ export default function BuildChatPanel({
           toast.error(t("toast.operationWait"));
           return;
         }
-        // Long job is the only launch mode; while one is already in flight,
-        // follow-up questions stream as normal turns.
-        if (!jobInFlight) {
+        // Plain turns are the default. The deep-task switch forces the
+        // long-job pipeline; while one is in flight, follow-ups stream as
+        // normal turns. A plain turn can also escalate itself via the
+        // start_long_job platform tool (the stream hook then revalidates
+        // the job key).
+        if (deepTask && !jobInFlight) {
           try {
             const started = await createCraftJob({
               session_id: sessionId,
@@ -827,25 +841,38 @@ export default function BuildChatPanel({
           nameBuildSession(newSessionId);
         }, 1000);
 
-        // Every new session launches as a long job — the only run mode.
-        try {
-          const started = await createCraftJob({
-            session_id: newSessionId,
-            prompt: message,
-            start: true,
-            ...jobModelPayload(chosen),
-            selected_skill_ids: slash.skillIds,
-            selected_mcp_server_ids: slash.mcpServerIds,
-          });
-          void mutateCraftJob();
-          updateSessionData(newSessionId, {
-            status: "running",
-            error: null,
-            activeTurnId: started.turn_id,
-            activeTurnLocalOwner: false,
-          });
-        } catch (err) {
-          toast.error((err as Error).message);
+        // Plain turns are the default; deep-task sessions launch a long job
+        // instead. The pre-provisioned session already exists in the store,
+        // so the plain path streams directly after the navigation above.
+        if (deepTask) {
+          try {
+            const started = await createCraftJob({
+              session_id: newSessionId,
+              prompt: message,
+              start: true,
+              ...jobModelPayload(chosen),
+              selected_skill_ids: slash.skillIds,
+              selected_mcp_server_ids: slash.mcpServerIds,
+            });
+            void mutateCraftJob();
+            updateSessionData(newSessionId, {
+              status: "running",
+              error: null,
+              activeTurnId: started.turn_id,
+              activeTurnLocalOwner: false,
+            });
+          } catch (err) {
+            toast.error((err as Error).message);
+          }
+        } else {
+          await streamMessage(
+            newSessionId,
+            message,
+            chosen,
+            attachments,
+            slash.skillIds,
+            slash.mcpServerIds
+          );
         }
       }
     },
@@ -864,6 +891,7 @@ export default function BuildChatPanel({
       selectedModel,
       t,
       jobInFlight,
+      deepTask,
       mutateCraftJob,
       updateSessionData,
       session?.slashSelection,
@@ -1240,6 +1268,8 @@ export default function BuildChatPanel({
                       onSubmit={handleSubmit}
                       isRunning={displayIsRunning}
                       sandboxInitializing={sandboxNotReady}
+                      deepTask={deepTask}
+                      onDeepTaskToggle={toggleDeepTask}
                       thoughtLevel={thoughtLevel}
                     />
                   ) : (
@@ -1361,6 +1391,8 @@ export default function BuildChatPanel({
                     editorHandleRef={composerEditorRef}
                     hideQueueBar
                     persistedSelection={session?.slashSelection}
+                    deepTask={deepTask}
+                    onDeepTaskToggle={toggleDeepTask}
                     onSubmit={handleSubmit}
                     onQueueMessage={handleQueueMessage}
                     onRemoveQueuedMessage={handleRemoveQueuedMessage}

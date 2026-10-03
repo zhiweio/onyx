@@ -87,6 +87,7 @@ def _request_registry(user: User) -> PlatformToolRegistry:
     """
     from onyx.db.platform_tool_log import log_tool_call
     from onyx.server.features.build.tools.crawler import build_crawler_client
+    from onyx.server.features.build.tools.job_escalation import make_start_job_hook
     from onyx.server.features.build.tools.mcp_gateway import (
         default_gateway_servers,
     )
@@ -145,6 +146,7 @@ def _request_registry(user: User) -> PlatformToolRegistry:
             mcp_call_fn=_mcp_call,
             web_search_fn=_web_search if search_provider is not None else None,
             crawl_fn=_crawl if crawler is not None else None,
+            job_hook=make_start_job_hook(user),
             journal=_journal,
         )
     )

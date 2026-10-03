@@ -12567,6 +12567,11 @@
       "plusMenu": {
         "tooltip": "Añadir archivos o habilidades"
       },
+      "deepTask": {
+        "toggleAriaLabel": "Modo tarea profunda",
+        "offTooltip": "Tarea profunda desactivada. Actívala para ejecutar el próximo mensaje como un trabajo largo de varias fases.",
+        "onTooltip": "Tarea profunda activada. El próximo mensaje inicia un trabajo largo de varias fases. Haz clic para desactivar."
+      },
       "input": {
         "placeholder": "Pide a Craft que construya…"
       },

@@ -219,6 +219,57 @@ class BackgroundTool:
         return self._hook(invocation, request, ctx)
 
 
+# ── start_long_job ────────────────────────────────────────────────────────
+
+
+@dataclass
+class StartJobRequest:
+    goal: str
+
+
+StartJobHook = Callable[[ToolInvocation, StartJobRequest, ToolContext], ToolResult]
+
+
+class StartLongJobTool:
+    name = "start_long_job"
+    description = (
+        "Escalate the current request into a long job: a host-driven "
+        "multi-phase pipeline (plan, parallel research lanes, compose, "
+        "review) that keeps working across turns while this chat stays "
+        "responsive.\n"
+        "Call it ONLY for work that needs a durable multi-phase "
+        "deliverable: a full report or deck, an analysis across many "
+        "sources, or any task whose steps plainly exceed one turn.\n"
+        "Do NOT call it for a question answerable in this turn, quick "
+        "lookups, single-file edits, or conversation.\n"
+        "After a success: stop working. Write one short user-visible "
+        "line saying the deep task has started, then end the turn. The "
+        "host drives every later turn."
+    )
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "goal": {
+                "type": "string",
+                "description": (
+                    "The task for the long job, as the user stated it. "
+                    "Optional; defaults to the user's latest message."
+                ),
+            },
+        },
+        "required": [],
+    }
+
+    def __init__(self, hook: StartJobHook | None = None) -> None:
+        self._hook = hook
+
+    def execute(self, invocation: ToolInvocation, ctx: ToolContext) -> ToolResult:
+        goal = str(invocation.arguments.get("goal", "")).strip()
+        if self._hook is None:
+            return unavailable(self.name, "job escalation not bound for this session")
+        return self._hook(invocation, StartJobRequest(goal), ctx)
+
+
 # ── mcp_call (enterprise MCP gateway) ─────────────────────────────────────
 
 

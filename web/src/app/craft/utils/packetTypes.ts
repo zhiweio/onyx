@@ -107,6 +107,9 @@ export interface ParsedToolCallStart {
   type: "tool_call_start";
   toolCallId: string;
   toolName: ToolName;
+  /** Raw harness tool name (pre-normalization); MCP-bridged platform tools
+   *  keep their server-prefixed names here, e.g. "start_long_job". */
+  rawToolName: string;
   kind: import("../types/displayTypes").ToolCallKind;
   isTodo: boolean;
   /** Best-effort title resolved from toolName/kind, shown until progress arrives. */

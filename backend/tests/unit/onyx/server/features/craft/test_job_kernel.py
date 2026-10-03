@@ -715,6 +715,69 @@ def test_enqueue_stamps_job_picker_selection(monkeypatch) -> None:
     assert captured["selected_mcp_server_ids"] == [7, 9]
 
 
+def test_escalation_pending_enqueue_flushes_before_gate(monkeypatch) -> None:
+    """A mid-turn start_long_job escalation parks the plan brief on the
+    phase; the post-turn continuation must dispatch that brief, never
+    gate-evaluate a phase whose turn never ran."""
+    from onyx.server.features.build.jobs.continuation import (
+        maybe_continue_craft_job,
+        remember_pending_enqueue,
+    )
+    from onyx.server.features.build.jobs.protocol import current_phase
+
+    job = _job()
+    enqueued: list[str] = []
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_open_job_for_session",
+        lambda *_a, **_k: job,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.get_specialist_for_session",
+        lambda *_a, **_k: None,
+    )
+    # The fake job is a SimpleNamespace; the ORM-only dirty-flag helper is
+    # irrelevant to this behavior.
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation.flag_modified",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.continuation._enqueue_or_remember",
+        lambda *_a, **kwargs: enqueued.append(kwargs["prompt"]) or uuid4(),
+    )
+
+    phase = current_phase(job.phases, job.current_phase_index)
+    assert phase is not None
+    remember_pending_enqueue(_db(), job=job, phase=phase, prompt="PLAN BRIEF")
+    gate_evaluated: list[bool] = []
+
+    def _fail_if_gate_runs(*_args: object, **_kwargs: object) -> None:
+        gate_evaluated.append(True)
+
+    monkeypatch.setattr(
+        "onyx.server.features.build.jobs.kernel.after_worker_turn",
+        _fail_if_gate_runs,
+    )
+
+    maybe_continue_craft_job(
+        _db(),
+        session_id=job.session_id,
+        user_id=uuid4(),
+        sandbox_id=uuid4(),
+        turn_succeeded=True,
+        deadline_exceeded=False,
+        cancelled=False,
+    )
+
+    assert enqueued == ["PLAN BRIEF"]
+    assert not gate_evaluated
+    # The parked brief was consumed, so the next poll cannot double-dispatch.
+    settled = current_phase(job.phases, job.current_phase_index)
+    assert settled is not None
+    assert not settled.get("pending_enqueue_prompt")
+
+
 def test_lane_turn_completes_despite_parent_host_files(monkeypatch) -> None:
     from onyx.server.features.build.jobs.channels import ArtifactRecord
     from onyx.server.features.build.jobs.plan import parse_plan

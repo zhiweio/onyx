@@ -137,6 +137,21 @@ If the user or the host brief named a search MCP, call that tool.
 Stop when this node's required files are on disk. The host starts the next
 node.
 
+## When to escalate to a long job
+
+`start_long_job` hands this session to the host's multi-phase pipeline
+(plan, lanes, compose, review). Plain turns answer directly; escalate
+only when the work needs a durable multi-phase deliverable.
+
+Call `start_long_job` when the user's task is a full report, a deck, an
+analysis across many sources, or work whose steps plainly exceed one
+turn. Do not call it for a question this turn can answer, a quick lookup,
+a single-file edit, or conversation.
+
+After the tool succeeds, stop working: write one user-visible line that
+names the goal and says the deep task has started, then finish the turn.
+The host drives every later turn.
+
 ## Before you finish
 
 - The deliverable exists under `outputs/` (or the full answer is in the reply)

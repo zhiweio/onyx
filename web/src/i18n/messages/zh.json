@@ -12567,6 +12567,11 @@
       "plusMenu": {
         "tooltip": "添加文件或技能"
       },
+      "deepTask": {
+        "toggleAriaLabel": "深度任务模式",
+        "offTooltip": "深度任务已关闭。开启后,下一条消息将作为多阶段长任务运行。",
+        "onTooltip": "深度任务已开启。下一条消息将启动多阶段长任务,点击关闭。"
+      },
       "input": {
         "placeholder": "让 Craft 帮你构建…"
       },

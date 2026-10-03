@@ -122,7 +122,10 @@ export function toolCallProgress(
   };
 }
 
-export function toolCallStart(toolCallId: string, command = "mkdir -p outputs") {
+export function toolCallStart(
+  toolCallId: string,
+  command = "mkdir -p outputs"
+) {
   return {
     type: "tool_call_start",
     toolCallId,
@@ -141,7 +144,12 @@ export function toolCallStart(toolCallId: string, command = "mkdir -p outputs") 
 }
 
 export function thinkingChunk(text: string) {
-  return { type: "thinking_chunk", text, sessionId: null, parentSessionId: null };
+  return {
+    type: "thinking_chunk",
+    text,
+    sessionId: null,
+    parentSessionId: null,
+  };
 }
 
 export function textChunk(text: string) {
@@ -188,7 +196,11 @@ export function savedToolCall(
   };
 }
 
-export function savedThinking(id: string, content: string, durationMs?: number) {
+export function savedThinking(
+  id: string,
+  content: string,
+  durationMs?: number
+) {
   return {
     type: "thinking",
     id,
@@ -240,7 +252,9 @@ function jobBody(
     error_detail: errorDetail,
     current_phase_index: 0,
     phases: [{ id: "execute", name: "Execute", kind: "work", status: status }],
-    timeline: [{ id: "execute", kind: "work", status: status, label: "Execute" }],
+    timeline: [
+      { id: "execute", kind: "work", status: status, label: "Execute" },
+    ],
     artifacts: [],
     events: [],
     interrupt: null,
@@ -251,10 +265,10 @@ function jobBody(
 }
 
 /**
- * Mocks the long-job launch (the only send path on an existing session):
- * POST /jobs accepts the prompt and returns a running job + turn id, the
- * jobs SWR poll mirrors the job status, and the turn's SSE event stream is
- * held open so the session stays running until `release()` fulfills it with
+ * Holds a running turn open so the session stays busy. Both send paths are
+ * mocked (plain POST send-message is the default; POST /jobs fires for the
+ * deep-task switch), the jobs SWR poll mirrors the job status, and the
+ * turn's SSE event stream is held open until `release()` fulfills it with
  * the scripted packets plus a final prompt_response.
  */
 export async function holdTurnOpen(page: Page): Promise<HeldTurn> {
@@ -330,18 +344,45 @@ export async function holdTurnOpen(page: Page): Promise<HeldTurn> {
       ),
     });
   });
-  await page.route("**/api/build/sessions/**/interrupt", async (route) => {
-    held.interrupts.push(1);
-    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
-  });
-  await page.route("**/api/build/sessions/**/turns/**/events", async (route) => {
-    const packets = await releasedPromise;
+  await page.route("**/api/build/sessions/*/send-message", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    // Plain turns are the default send path; the deep-task switch (or a
+    // start_long_job escalation) is what POSTs /jobs instead.
+    const body = route.request().postDataJSON() as { content?: string };
+    held.prompts.push(body.content ?? "");
     await route.fulfill({
       status: 200,
-      contentType: "text/event-stream",
-      body: sseBody([...packets, { type: "prompt_response" }]),
+      contentType: "application/json",
+      body: JSON.stringify({
+        turn_id: `turn-${held.prompts.length}`,
+        session_id: SESSION_ID,
+        status: "QUEUED",
+        turn_index: held.prompts.length - 1,
+      }),
     });
   });
+  await page.route("**/api/build/sessions/**/interrupt", async (route) => {
+    held.interrupts.push(1);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "{}",
+    });
+  });
+  await page.route(
+    "**/api/build/sessions/**/turns/**/events",
+    async (route) => {
+      const packets = await releasedPromise;
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: sseBody([...packets, { type: "prompt_response" }]),
+      });
+    }
+  );
 
   held.release = async (packets: unknown[]) => {
     released = true;
@@ -410,7 +451,10 @@ export async function mockCraftBackend(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ status: "running", session_loaded_in_sandbox: true }),
+        body: JSON.stringify({
+          status: "running",
+          session_loaded_in_sandbox: true,
+        }),
       });
       return;
     }
@@ -511,13 +555,16 @@ export async function mockCraftBackend(
 
   if (turnPackets) {
     const body = sseBody([...turnPackets, { type: "prompt_response" }]);
-    await page.route("**/api/build/sessions/**/turns/**/events", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "text/event-stream",
-        body,
-      });
-    });
+    await page.route(
+      "**/api/build/sessions/**/turns/**/events",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/event-stream",
+          body,
+        });
+      }
+    );
   }
   if (activeTurn) {
     void activeTurn;

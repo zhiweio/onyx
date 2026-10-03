@@ -878,6 +878,11 @@ export interface BuildSessionData {
   /** Last slash pick on this session; restores chips after remount. */
   slashSelection: SlashSelection;
   /**
+   * Deep-task switch: send the next message as a long job instead of a
+   * plain turn. Persisted per session like slashSelection.
+   */
+  deepTask: boolean;
+  /**
    * True between an interrupt request and the turn actually terminating. Drives
    * the "stopping…" affordance; cleared by each terminal stream handler (and on
    * a fresh turn / aborted fetch).
@@ -1209,6 +1214,7 @@ const createInitialSessionData = (
   streamItems: [],
   queuedMessages: [],
   slashSelection: EMPTY_SLASH_SELECTION,
+  deepTask: false,
   isInterrupting: false,
   wasInterrupted: false,
   turnGeneration: 0,

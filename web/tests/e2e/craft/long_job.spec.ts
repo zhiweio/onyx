@@ -22,7 +22,58 @@ test.beforeEach(async ({ page }) => {
   await suppressCraftIntro(page);
 });
 
-test("welcome message launches a long job by default", async ({ page }) => {
+test("welcome message streams a plain turn by default", async ({ page }) => {
+  const welcome = new CraftWelcomePage(page);
+  const jobPosts: string[] = [];
+  const plainPosts: string[] = [];
+  await page.route("**/api/build/jobs", async (route) => {
+    if (route.request().method() === "POST") {
+      jobPosts.push(route.request().url());
+    }
+    await route.continue();
+  });
+  await page.route("**/api/build/sessions/*/send-message", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    plainPosts.push(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        turn_id: "turn-plain",
+        session_id: "00000000-0000-0000-0000-000000000002",
+        status: "QUEUED",
+        turn_index: 0,
+      }),
+    });
+  });
+  await page.route("**/api/build/sessions/*/turns/*/events", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: "event: prompt_response\ndata: {}\n\n",
+    });
+  });
+
+  await welcome.goto();
+  await welcome.startNewSession();
+  await welcome.submitMessage("a quick one-line question");
+
+  await expect.poll(() => plainPosts.length).toBeGreaterThan(0);
+  // Plain turns are the default: no long job is created unless the
+  // deep-task switch is on (or the agent escalates itself).
+  expect(jobPosts).toHaveLength(0);
+  // The switch exists, is visible, and defaults to off.
+  const toggle = page.getByTestId("craft-deep-task-toggle");
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+});
+
+test("deep-task switch routes the next message to a long job", async ({
+  page,
+}) => {
   const welcome = new CraftWelcomePage(page);
   const posted: { start?: boolean; prompt?: string } = {};
   await page.route("**/api/build/jobs", async (route) => {
@@ -71,66 +122,13 @@ test("welcome message launches a long job by default", async ({ page }) => {
 
   await welcome.goto();
   await welcome.startNewSession();
+  const toggle = page.getByTestId("craft-deep-task-toggle");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await welcome.submitMessage("start a long job fixture");
 
   await expect.poll(() => posted.start).toBe(true);
   expect(posted.prompt).toContain("long job fixture");
-  // Long job is the only run mode: the toggle is gone for good.
-  await expect(page.getByTestId("craft-long-job-toggle")).toHaveCount(0);
-});
-
-test("session composer shows no long-job toggle", async ({ page }) => {
-  const welcome = new CraftWelcomePage(page);
-  await page.route("**/api/build/jobs", async (route) => {
-    if (route.request().method() !== "POST") {
-      await route.continue();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        job: {
-          id: "00000000-0000-0000-0000-000000000001",
-          session_id: "00000000-0000-0000-0000-000000000002",
-          project_id: null,
-          scenario_id: null,
-          name: "Long job",
-          domain: "general",
-          status: "running",
-          current_phase_index: 0,
-          phases: [
-            { id: "plan", name: "Plan", kind: "plan", status: "running" },
-          ],
-          timeline: [
-            { id: "plan", kind: "plan", status: "running", label: "Plan" },
-          ],
-          artifacts: [],
-          events: [],
-          interrupt: null,
-          total_budget_seconds: 7200,
-          phase_budget_seconds: 1500,
-          error_detail: null,
-          specialists: [],
-        },
-        turn_id: "turn-fake",
-      }),
-    });
-  });
-  await page.route("**/api/build/sessions/**/send-message", async (route) => {
-    await route.fulfill({
-      status: 409,
-      contentType: "application/json",
-      body: JSON.stringify({ detail: "job turn already started" }),
-    });
-  });
-
-  await welcome.goto();
-  await welcome.startNewSession();
-  const welcomeToggle = page.getByTestId("craft-long-job-toggle");
-  await expect(welcomeToggle).toHaveCount(0);
-  await welcome.submitMessage("start a session long job");
-  await expect(page.getByTestId("craft-long-job-toggle")).toHaveCount(0);
 });
 
 test("job banner shows research timeline and plan approval", async ({

@@ -32,8 +32,10 @@ const SCRIPTED_TURN = [
   textChunk("All done — created the folder."),
 ];
 
-/** POST /jobs accept + scripted SSE for the launched turn. */
-async function mockScriptedTurn(page: import("@playwright/test").Page): Promise<void> {
+/** Plain-turn send + scripted SSE for the turn. */
+async function mockScriptedTurn(
+  page: import("@playwright/test").Page
+): Promise<void> {
   await page.route("**/api/build/jobs**", async (route) => {
     if (route.request().url().includes("/asks/current")) {
       await route.fulfill({
@@ -43,42 +45,40 @@ async function mockScriptedTurn(page: import("@playwright/test").Page): Promise<
       });
       return;
     }
-    if (route.request().method() === "POST") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          job: {
-            id: "00000000-0000-0000-0000-000000000abc",
-            session_id: SESSION_ID,
-            status: "running",
-            phases: [],
-            timeline: [],
-            artifacts: [],
-            events: [],
-            interrupt: null,
-            specialists: [],
-          },
-          turn_id: "turn-1",
-        }),
-      });
-      return;
-    }
     await route.fulfill({
       status: 404,
       contentType: "application/json",
       body: JSON.stringify({ detail: "no job" }),
     });
   });
-  await page.route("**/api/build/sessions/**/turns/**/events", async (route) => {
+  await page.route("**/api/build/sessions/*/send-message", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
     await route.fulfill({
       status: 200,
-      contentType: "text/event-stream",
-      body: `${SCRIPTED_TURN.map(
-        (packet) => `event: message\ndata: ${JSON.stringify(packet)}\n\n`
-      ).join("")}event: message\ndata: {"type":"prompt_response"}\n\n`,
+      contentType: "application/json",
+      body: JSON.stringify({
+        turn_id: "turn-1",
+        session_id: SESSION_ID,
+        status: "QUEUED",
+        turn_index: 0,
+      }),
     });
   });
+  await page.route(
+    "**/api/build/sessions/**/turns/**/events",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: `${SCRIPTED_TURN.map(
+          (packet) => `event: message\ndata: ${JSON.stringify(packet)}\n\n`
+        ).join("")}event: message\ndata: {"type":"prompt_response"}\n\n`,
+      });
+    }
+  );
 }
 
 test("scripted turn renders thinking, tool row, and final answer", async ({
@@ -117,12 +117,11 @@ test("scripted turn renders thinking, tool row, and final answer", async ({
   // Thinking card trigger (duration label appears with real timings).
   await expect(page.getByText(/Thought|思考/).first()).toBeVisible();
   // Tool summary row: expand the phase group to see the command body.
-  await page.getByRole("button", { name: /Show details|显示详情/ })
+  await page
+    .getByRole("button", { name: /Show details|显示详情/ })
     .first()
     .click();
-  await expect(
-    page.getByText("mkdir -p outputs/hello").first()
-  ).toBeVisible();
+  await expect(page.getByText("mkdir -p outputs/hello").first()).toBeVisible();
   // The agent row exposes the merged-turn copy action on hover.
   await page.getByText("All done — created the folder.").hover();
   await expect(session.agentCopyButton).toBeVisible();
@@ -153,9 +152,7 @@ test("history re-renders from persisted streamItems after reload", async ({
   // Collapsed phase groups summarize as a phase label; expand to see the
   // command body.
   await page.getByRole("button", { name: /Show details|显示详情/ }).click();
-  await expect(
-    page.getByText("mkdir -p persisted/path").first()
-  ).toBeVisible();
+  await expect(page.getByText("mkdir -p persisted/path").first()).toBeVisible();
   // Idle session: no live tail, no stop action.
   await expect(page.locator("[data-craft-live-tail]")).toHaveCount(0);
 });
@@ -257,7 +254,5 @@ test("clicking a write file chip opens the diff tab in the output panel", async 
   await expect(summary).toBeVisible();
   await expect(summary).toContainText("1");
   await summary.getByRole("button").click();
-  await expect(
-    page.getByTestId("file-changes-row-hello.md")
-  ).toBeVisible();
+  await expect(page.getByTestId("file-changes-row-hello.md")).toBeVisible();
 });

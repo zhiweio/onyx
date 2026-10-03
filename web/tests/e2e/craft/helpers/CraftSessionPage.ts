@@ -16,6 +16,7 @@ export class CraftSessionPage {
   readonly agentCopyButton: Locator;
   readonly userEditButton: Locator;
   readonly retryButton: Locator;
+  readonly deepTaskToggle: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -27,6 +28,13 @@ export class CraftSessionPage {
     this.agentCopyButton = page.getByTestId("CraftAgentMessage/copy-button");
     this.userEditButton = page.getByTestId("CraftUserMessage/edit-button");
     this.retryButton = page.getByTestId("CraftAgentMessage/retry-button");
+    this.deepTaskToggle = page.getByTestId("craft-deep-task-toggle");
+  }
+
+  /** Flip the deep-task switch so the next send launches a long job. */
+  async enableDeepTask(): Promise<void> {
+    await this.deepTaskToggle.click();
+    await expect(this.deepTaskToggle).toHaveAttribute("aria-pressed", "true");
   }
 
   async goto(sessionId: string): Promise<void> {
@@ -49,9 +57,7 @@ export class CraftSessionPage {
   }
 
   queueRow(text: string): Locator {
-    return this.page
-      .getByTestId("craft-queue-row")
-      .filter({ hasText: text });
+    return this.page.getByTestId("craft-queue-row").filter({ hasText: text });
   }
 
   async expectPrimaryAction(named: RegExp): Promise<void> {

@@ -508,6 +508,12 @@ export function useBuildStreaming() {
               );
             }
 
+            // A start_long_job call creates the job mid-turn: revalidate the
+            // job key so the banner appears and in-flight polling begins.
+            if (parsed.rawToolName.includes("start_long_job")) {
+              void globalMutate(SWR_KEYS.craftJob(sessionId));
+            }
+
             // Skip tool_call_start for TodoWrite; pill is created on progress.
             if (parsed.isTodo) {
               lastItemType = "tool";

@@ -39,12 +39,11 @@ test("slash picker opens and inserts a skill chip", async ({ page }) => {
   await expect(session.messageInput).toContainText("/alpha-skill");
 });
 
-
 test("Enter sends, Shift+Enter keeps editing with a newline", async ({
   page,
 }) => {
   const session = await openSession(page);
-  // Messages on an existing session always launch as long jobs.
+  // Plain turns are the default send path on an existing session.
   const prompts: string[] = [];
   await page.route("**/api/build/jobs**", async (route) => {
     if (route.request().url().includes("/asks/current")) {
@@ -55,42 +54,40 @@ test("Enter sends, Shift+Enter keeps editing with a newline", async ({
       });
       return;
     }
-    if (route.request().method() === "POST") {
-      const body = route.request().postDataJSON() as { prompt?: string };
-      prompts.push(body.prompt ?? "");
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          job: {
-            id: "00000000-0000-0000-0000-000000000abc",
-            session_id: SESSION_ID,
-            status: "running",
-            phases: [],
-            timeline: [],
-            artifacts: [],
-            events: [],
-            interrupt: null,
-            specialists: [],
-          },
-          turn_id: `turn-${prompts.length}`,
-        }),
-      });
-      return;
-    }
     await route.fulfill({
       status: 404,
       contentType: "application/json",
       body: JSON.stringify({ detail: "no job" }),
     });
   });
-  await page.route("**/api/build/sessions/**/turns/**/events", async (route) => {
+  await page.route("**/api/build/sessions/*/send-message", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    const body = route.request().postDataJSON() as { content?: string };
+    prompts.push(body.content ?? "");
     await route.fulfill({
       status: 200,
-      contentType: "text/event-stream",
-      body: 'event: message\ndata: {"type":"prompt_response"}\n\n',
+      contentType: "application/json",
+      body: JSON.stringify({
+        turn_id: `turn-${prompts.length}`,
+        session_id: SESSION_ID,
+        status: "QUEUED",
+        turn_index: prompts.length - 1,
+      }),
     });
   });
+  await page.route(
+    "**/api/build/sessions/**/turns/**/events",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: 'event: message\ndata: {"type":"prompt_response"}\n\n',
+      });
+    }
+  );
 
   await session.typeMessage("first line");
   await session.messageInput.press("Shift+Enter");
@@ -113,6 +110,7 @@ test("running turn swaps the primary action to stop; Esc cancels and settles", a
   const session = await openSession(page);
   const held = await holdTurnOpen(page);
 
+  await session.enableDeepTask();
   await session.typeMessage("keep the turn running");
   await session.pressEnter();
   await session.expectPrimaryAction(/Stop generating|停止生成/);
@@ -134,6 +132,7 @@ test("empty input while running keeps the stop action, not send", async ({
   const session = await openSession(page);
   const held = await holdTurnOpen(page);
 
+  await session.enableDeepTask();
   await session.typeMessage("long running");
   await session.pressEnter();
   await session.expectPrimaryAction(/Stop generating|停止生成/);
@@ -141,14 +140,18 @@ test("empty input while running keeps the stop action, not send", async ({
   await expect(session.primaryAction).toBeEnabled();
 
   await held.release([
-    { type: "text_chunk", text: "done", sessionId: null, parentSessionId: null },
+    {
+      type: "text_chunk",
+      text: "done",
+      sessionId: null,
+      parentSessionId: null,
+    },
   ]);
   // Esc settles via the cancel path so the composer returns to send.
   await session.messageInput.press("Escape");
   await expect.poll(() => held.cancels.length, { timeout: 15000 }).toBe(1);
   await session.expectPrimaryAction(/Send|发送/);
 });
-
 
 test("draft persists across a reload within the same session", async ({
   page,
@@ -161,7 +164,9 @@ test("draft persists across a reload within the same session", async ({
   await expect(session.messageInput).toContainText("draft survives reload");
 });
 
-test("arrow up recalls prompt history, arrow down returns", async ({ page }) => {
+test("arrow up recalls prompt history, arrow down returns", async ({
+  page,
+}) => {
   // History is stored append-only: the LAST entry is the most recent, and
   // ArrowUp walks from the most recent backwards.
   await seedPromptHistory(page, ["older prompt", "newer prompt"]);

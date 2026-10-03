@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from onyx.cache.factory import get_cache_backend
 from onyx.configs.constants import MessageType
@@ -91,6 +92,13 @@ def maybe_continue_craft_job(
 
             reap_inactive_lanes(db_session, job=job, user_id=user_id)
         return
+    # A start_long_job escalation created this job mid-turn and parked its
+    # first phase brief: dispatch it instead of gate-evaluating a phase
+    # whose turn never ran (this turn's artifacts are unrelated).
+    phase = current_phase(job.phases, job.current_phase_index)
+    if phase is not None and phase.get("pending_enqueue_prompt"):
+        flush_pending_job_enqueue(db_session, job=job, user_id=user_id)
+        return
     if not turn_succeeded and not deadline_exceeded:
         from onyx.server.features.build.jobs.gates import is_transient_turn_error
 
@@ -140,6 +148,25 @@ def maybe_continue_craft_job(
     )
 
 
+def remember_pending_enqueue(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    phase: dict,
+    prompt: str,
+) -> None:
+    """Park a phase brief the turn lock refused (mid-turn start_long_job
+    escalation, or a continuation that missed the lock). The post-turn
+    continuation or the next job poll flushes it."""
+    stored = dict(phase)
+    set_pending_enqueue_prompt(stored, prompt)
+    job.phases = _replace_phase(job.phases, job.current_phase_index, stored)
+    # The phase dict aliases into the loaded list; plain equality would
+    # report no change, so force the column dirty.
+    flag_modified(job, "phases")
+    db_session.commit()
+
+
 def flush_pending_job_enqueue(
     db_session: Session,
     *,
@@ -154,6 +181,9 @@ def flush_pending_job_enqueue(
     if pending is None:
         return None
     job.phases = _replace_phase(job.phases, job.current_phase_index, phase)
+    # The popped dict still aliases the loaded value; force the column
+    # dirty so the pop persists even with no other pending change.
+    flag_modified(job, "phases")
     db_session.commit()
     return _enqueue_or_remember(
         db_session,
