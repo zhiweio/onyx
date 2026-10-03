@@ -12,11 +12,13 @@ import { Text } from "@opal/components";
 import { SvgFileText } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import ImagePreview from "@/app/craft/components/output-panel/ImagePreview";
+import CodeFilePreview from "@/app/craft/components/output-panel/CodeFilePreview";
 import MarkdownFilePreview, {
   type FileRendererProps,
 } from "@/app/craft/components/output-panel/MarkdownFilePreview";
 import HtmlFilePreview from "@/app/craft/components/output-panel/HtmlFilePreview";
 import { isHtmlFilePath } from "@/app/craft/utils/filePreviewPaths";
+import { getLanguageFromPath } from "@/app/craft/utils/codeLanguage";
 import { DocumentPreview } from "@/sections/document-preview";
 
 // ── Preview registry ─────────────────────────────────────────────────────
@@ -92,6 +94,13 @@ const PREVIEW_REGISTRY: PreviewEntry[] = [
     type: "content",
     matches: (path) => isHtmlFilePath(path),
     component: HtmlFilePreview,
+  },
+  {
+    // Code files with a recognized language: highlighted source view with a
+    // line gutter. Markdown/HTML renderers above win first by design.
+    type: "content",
+    matches: (path) => getLanguageFromPath(path) !== undefined,
+    component: CodeFilePreview,
   },
 ];
 
