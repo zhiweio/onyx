@@ -1,6 +1,11 @@
 """Unit tests for scenario resource bindings and plan compilation."""
 
+from typing import Iterator
+
+import pytest
+
 from onyx.server.features.build.jobs.graph import compile_graph
+from onyx.server.features.build.sandbox.agent_runtime import models as model_registry
 from onyx.server.features.scenario.bindings import (
     PhaseGate,
     bindings_for_phase,
@@ -13,10 +18,38 @@ from onyx.server.features.scenario.playbook import ScenarioPlaybook
 from onyx.server.features.scenario.samples import FINANCE_TAX_RISK_RULES
 
 
+class _Entry:
+    """Gateway-catalog style entry seeding the registry snapshot."""
+
+    def __init__(
+        self,
+        id: str,
+        provider: str,
+        display_name: str,
+        max_input_tokens: int | None = None,
+        max_output_tokens: int | None = None,
+    ) -> None:
+        self.id = id
+        self.provider = provider
+        self.display_name = display_name
+        self.max_input_tokens = max_input_tokens
+        self.max_output_tokens = max_output_tokens
+
+
+@pytest.fixture(autouse=True)
+def _catalog_snapshot() -> Iterator[None]:
+    """The scenario chain resolves models from the registry snapshot."""
+    model_registry.apply_model_catalog_cache(
+        [_Entry("registry-default", "bigmodel", "Registry Default")],
+        "registry-default",
+    )
+    yield
+    model_registry.apply_model_catalog_cache([], None)
+
+
 def test_parse_policy_from_finance_sample() -> None:
     policy = parse_scenario_policy(FINANCE_TAX_RISK_RULES)
     assert policy.runtime == "opencode"
-    assert policy.model == "glm-4.7"
     assert policy.bindings.document_sets == ["财务制度", "税务政策"]
     assert policy.bindings.gate == PhaseGate.APPROVE_DELIVERY
     assert policy.delivery_actions == ["save_artifacts"]
@@ -53,7 +86,8 @@ def test_unknown_phase_gets_neutral_defaults() -> None:
 def test_runtime_request_carries_scenario_pin() -> None:
     request = scenario_runtime_request(FINANCE_TAX_RISK_RULES)
     assert request.scenario_runtime == "opencode"
-    assert request.scenario_model == "glm-4.7"
+    # Scenarios never bind a model — the field must not exist to carry one.
+    assert not hasattr(request, "scenario_model")
 
 
 def test_compile_scenario_plan_builds_host_phases() -> None:
@@ -88,7 +122,7 @@ def test_playbook_roundtrip_keeps_bindings() -> None:
     from onyx.server.features.scenario.playbook import playbook_as_dict
 
     dumped = playbook_as_dict(playbook)
-    assert dumped["runtime"]["model"] == "glm-4.7"
+    assert "model" not in dumped["runtime"]
     assert dumped["phases"][3]["bindings"]["gate"] == "approve_delivery"
 
 
@@ -96,7 +130,7 @@ def test_biopharma_scenario_compiles_through_the_same_chain() -> None:
     from onyx.server.features.scenario.samples import BIOPHARMA_REGULATORY_RULES
 
     policy = parse_scenario_policy(BIOPHARMA_REGULATORY_RULES)
-    assert policy.model == "qwen3-max"
+    assert policy.runtime == "opencode"
     merged = resolve_phase_bindings(BIOPHARMA_REGULATORY_RULES)
     assert merged["collect"].document_sets == ["注册资料", "临床方案"]
     assert merged["report"].gate == PhaseGate.APPROVE_DELIVERY
@@ -112,7 +146,9 @@ def test_biopharma_scenario_compiles_through_the_same_chain() -> None:
     request = scenario_runtime_request(BIOPHARMA_REGULATORY_RULES)
     choice = build_router_from_env().resolve(request)
     assert choice.origin == "scenario"
-    assert choice.model_id == "qwen3-max"
+    # The scenario pins the runtime only; the model falls back to the
+    # registry default.
+    assert choice.model_id == "registry-default"
 
 
 def test_tax_deck_scenarios_compile_through_the_same_chain() -> None:

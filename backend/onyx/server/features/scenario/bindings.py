@@ -11,7 +11,8 @@ A scenario binds, per phase and at scenario level:
 - ``gate`` — the human gate before the phase's work ships
 
 Scenario-level values are defaults; phase-level values override. The
-``runtime`` policy pins a runtime/model and feeds the HarnessRouter's
+``runtime`` policy pins the agent runtime (never a model — models resolve
+to the registry default at resolve time) and feeds the HarnessRouter's
 scenario precedence level.
 """
 
@@ -50,13 +51,17 @@ class PhaseResourceBinding(BaseModel):
 
 
 class ScenarioRuntimePolicy(BaseModel):
-    """Scenario-level defaults and runtime pinning."""
+    """Scenario-level defaults and runtime pinning.
+
+    Scenarios never bind a model: the pin selects the harness runtime,
+    and the model resolves to the registry default at resolve time. A
+    legacy ``model`` key in the rules is tolerated and ignored.
+    """
 
     model_config = {"extra": "allow"}
 
     bindings: PhaseResourceBinding = Field(default_factory=PhaseResourceBinding)
     runtime: str | None = None
-    model: str | None = None
     delivery_actions: list[str] = Field(default_factory=list)
 
 
@@ -121,11 +126,14 @@ def resolve_phase_bindings(
 def scenario_runtime_request(
     rules: dict[str, Any] | None,
 ) -> RuntimeResolutionRequest:
-    """HarnessRouter request carrying the scenario's runtime pin."""
+    """HarnessRouter request carrying the scenario's runtime pin.
+
+    Scenarios pin the runtime only — never a model (see
+    ``ScenarioRuntimePolicy``).
+    """
     policy = parse_scenario_policy(rules)
     return RuntimeResolutionRequest(
         scenario_runtime=policy.runtime,
-        scenario_model=policy.model,
     )
 
 

@@ -58,13 +58,16 @@ class RuntimeChoice:
 
 @dataclass(frozen=True)
 class RuntimeResolutionRequest:
-    """Inputs for one resolution. All fields optional; chain fills gaps."""
+    """Inputs for one resolution. All fields optional; chain fills gaps.
+
+    Scenarios never carry a model — their runtime pin resolves to the
+    registry default model. Only an explicit request may pick a model.
+    """
 
     purpose: RuntimePurpose | None = None
     requested_runtime: str | None = None
     requested_model: str | None = None
     scenario_runtime: str | None = None
-    scenario_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -188,18 +191,11 @@ class HarnessRouter:
                 "Scenario pins unapproved runtime %s; using org default", runtime_id
             )
             return None
-        model_id = request.scenario_model
-        if model_id is None or not model_registry.model_supported_by(
-            model_id, runtime_id
-        ):
-            fallback = model_registry.default_model_for(runtime_id)
-            note = "" if model_id is None else f"model {model_id!r} unsupported here"
-            model_id = fallback
-            assert model_id is not None
-        else:
-            note = ""
+        # Scenarios never bind a model; the registry default drives.
+        model_id = model_registry.default_model_for(runtime_id)
+        assert model_id is not None
         return RuntimeChoice(
-            runtime_id=runtime_id, model_id=model_id, origin="scenario", note=note
+            runtime_id=runtime_id, model_id=model_id, origin="scenario"
         )
 
     def _org_default_choice(self) -> RuntimeChoice:
@@ -242,14 +238,14 @@ class HarnessRouter:
 
 
 def default_purpose_bindings() -> dict[RuntimePurpose, PurposeBinding]:
-    """Standard purpose bindings: cheap models for classification work."""
+    """Standard purpose bindings: cheap classification / subagent work.
+
+    Models resolve to the registry default at resolve time, so the
+    bindings never reference a stale catalog id.
+    """
     return {
-        RuntimePurpose.CLASSIFY: PurposeBinding(
-            runtime_id=PRIMARY_RUNTIME, model_id="glm-4.5-air"
-        ),
-        RuntimePurpose.SUBAGENT: PurposeBinding(
-            runtime_id=PRIMARY_RUNTIME, model_id="glm-4.5-air"
-        ),
+        RuntimePurpose.CLASSIFY: PurposeBinding(runtime_id=PRIMARY_RUNTIME),
+        RuntimePurpose.SUBAGENT: PurposeBinding(runtime_id=PRIMARY_RUNTIME),
     }
 
 

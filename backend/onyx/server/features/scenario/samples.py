@@ -61,7 +61,6 @@ FINANCE_TAX_RISK_RULES: dict[str, Any] = {
     "refusal_rules": ["不得编造财务数据", "缺输入时先提问而非假设"],
     "runtime": {
         "runtime": "opencode",
-        "model": "glm-4.7",
         "bindings": {
             "skills": ["finance-tax-risk-report"],
             "mcp_server_ids": [],
@@ -116,7 +115,6 @@ BIOPHARMA_REGULATORY_RULES: dict[str, Any] = {
     "refusal_rules": ["不得推测未公示的审评结论", "内部临床数据不得写入外部交付物"],
     "runtime": {
         "runtime": "opencode",
-        "model": "qwen3-max",
         "bindings": {
             "document_sets": ["注册资料", "临床方案"],
             "web_search": True,

@@ -9424,48 +9424,6 @@ class ChinaIMBinding(Base):
     )
 
 
-class AgentModelOverlay(Base):
-    """Admin-defined model cloning a catalog template (QM overlay port).
-
-    The stored ``fingerprint`` binds the attestation to the spec and
-    credential revision; a mismatch on verify forces re-probing.
-    """
-
-    __tablename__ = "agent_model_overlay"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(128), nullable=False)
-    provider: Mapped[str] = mapped_column(String(64), nullable=False)
-    template_model_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    model_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    context_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    max_output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    verified_at: Mapped[datetime.datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    verify_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
-    __table_args__ = (
-        UniqueConstraint("model_id", name="uq_agent_model_overlay_model_id"),
-        Index("ix_agent_model_overlay_enabled", "enabled"),
-    )
-
-
 class PlatformToolLog(Base):
     """Append-only journal of platform tool calls from agent runtimes.
 

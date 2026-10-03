@@ -1,18 +1,23 @@
-"""Agent model registry: mainland-first catalog + runtime support matrix.
+"""Agent model registry: gateway-catalog snapshot + runtime support matrix.
 
-QM reference: ``pi-models.ts`` / ``model-overlay.ts`` / ``model-verification.ts``.
-Ported semantics:
+The model set is a snapshot of the Onyx gateway catalog, which is built
+from the admin-configured LLM providers (the "Model Providers" tab) —
+the single source of truth shared with the sandbox serving path
+(``build_onyx_gateway_config``). The snapshot is refreshed by the admin
+listing endpoint (``registry_api.list_agent_models``) and consulted by
+the ``HarnessRouter``.
 
-- A static catalog of well-known China-provider models; each entry declares
-  which agent runtimes can drive it.
-- ``fingerprint`` returns an HMAC over the canonical spec plus a credential
-  revision, so a stored "verified" attestation dies when the spec or the
-  credential changes.
+Runtime support matrix and probe/fingerprint helpers keep the QM-ported
+semantics:
+
+- Each snapshot entry declares which agent runtimes can drive it, keyed
+  off the provider type (codex speaks the OpenAI-completions protocol,
+  so anthropic-provider models are opencode-only).
+- ``fingerprint`` returns an HMAC over the canonical spec plus a
+  credential revision, so a stored "verified" attestation dies when the
+  spec or the credential changes.
 - ``classify_provider_error`` maps provider exceptions to stable failure
   codes for probe reporting.
-
-Overlays (admin-defined models cloning a template) and DB persistence land
-with the admin model-management page; this module is the resolution core.
 """
 
 from __future__ import annotations
@@ -20,154 +25,128 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Iterable, Protocol
 
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
-# Registries allowed to drive each catalog entry. "opencode" is the primary
-# runtime; codex/pi declare support only where their protocols carry the
-# provider cleanly (OpenAI-compatible endpoints).
+# Registries allowed to drive each entry. "opencode" is the primary
+# runtime; codex declares support only where its protocol (OpenAI
+# chat-completions) carries the provider cleanly.
 _RUNTIME_OPENCODE = frozenset({"opencode"})
 _RUNTIME_OPENAI_COMPAT = frozenset({"opencode", "codex"})
+
+_ANTHROPIC_PROVIDER = "anthropic"
 
 
 @dataclass(frozen=True)
 class AgentModelSpec:
-    """One driveable model. Field set mirrors QM's ModelEntry (trimmed)."""
+    """One driveable model, derived from a gateway catalog entry."""
 
     model_id: str
     provider: str
     display_name: str
-    context_window: int
-    max_output_tokens: int
+    context_window: int | None
+    max_output_tokens: int | None
     runtimes: frozenset[str]
     is_default: bool = False
     notes: str = ""
-    tags: frozenset[str] = field(default_factory=frozenset)
 
 
-_CATALOG: tuple[
-    AgentModelSpec, ...
-] = (  # ── Zhipu GLM (bigmodel) ─────────────────────────────────────────────
-    AgentModelSpec(
-        model_id="glm-4.7",
-        provider="bigmodel",
-        display_name="GLM-4.7",
-        context_window=200_000,
-        max_output_tokens=32_768,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        is_default=True,
-        notes="Primary general-purpose model for scenario work.",
-        tags=frozenset({"chat", "reasoning"}),
-    ),
-    AgentModelSpec(
-        model_id="glm-4.6",
-        provider="bigmodel",
-        display_name="GLM-4.6",
-        context_window=200_000,
-        max_output_tokens=32_768,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat"}),
-    ),
-    AgentModelSpec(
-        model_id="glm-4.5-air",
-        provider="bigmodel",
-        display_name="GLM-4.5-Air",
-        context_window=128_000,
-        max_output_tokens=16_384,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat", "fast"}),
-    ),
-    # ── Alibaba Qwen (DashScope) ─────────────────────────────────────────
-    AgentModelSpec(
-        model_id="qwen3-max",
-        provider="dashscope",
-        display_name="Qwen3-Max",
-        context_window=262_144,
-        max_output_tokens=32_768,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat", "long-context"}),
-    ),
-    AgentModelSpec(
-        model_id="qwen3-plus",
-        provider="dashscope",
-        display_name="Qwen3-Plus",
-        context_window=131_072,
-        max_output_tokens=16_384,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat"}),
-    ),
-    AgentModelSpec(
-        model_id="qwen3-flash",
-        provider="dashscope",
-        display_name="Qwen3-Flash",
-        context_window=131_072,
-        max_output_tokens=16_384,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat", "fast"}),
-    ),
-    # ── DeepSeek ─────────────────────────────────────────────────────────
-    AgentModelSpec(
-        model_id="deepseek-chat",
-        provider="deepseek",
-        display_name="DeepSeek-V3 (chat)",
-        context_window=131_072,
-        max_output_tokens=16_384,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"chat", "code"}),
-    ),
-    AgentModelSpec(
-        model_id="deepseek-reasoner",
-        provider="deepseek",
-        display_name="DeepSeek-R1 (reasoner)",
-        context_window=131_072,
-        max_output_tokens=32_768,
-        runtimes=_RUNTIME_OPENAI_COMPAT,
-        tags=frozenset({"reasoning"}),
-    ),
-)
+class CatalogEntry(Protocol):
+    """Structural view of a gateway model descriptor.
 
-_CATALOG_INDEX: dict[str, AgentModelSpec] = {spec.model_id: spec for spec in _CATALOG}
+    ``GatewayModelDescriptor`` satisfies this without an import, keeping
+    the registry core decoupled from the gateway module.
+    """
 
-# Admin overlays applied at runtime (app start + after overlay CRUD).
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def provider(self) -> str: ...
+
+    @property
+    def display_name(self) -> str: ...
+
+    @property
+    def max_input_tokens(self) -> int | None: ...
+
+    @property
+    def max_output_tokens(self) -> int | None: ...
+
+
+def _runtimes_for_provider(provider: str) -> frozenset[str]:
+    # codex speaks the OpenAI-completions protocol; anthropic-provider
+    # models answer the anthropic-messages surface, which only opencode
+    # carries today.
+    if provider == _ANTHROPIC_PROVIDER:
+        return _RUNTIME_OPENCODE
+    return _RUNTIME_OPENAI_COMPAT
+
+
+def _spec_from_catalog_entry(entry: CatalogEntry) -> AgentModelSpec:
+    return AgentModelSpec(
+        model_id=entry.id,
+        provider=entry.provider,
+        display_name=entry.display_name,
+        context_window=entry.max_input_tokens,
+        max_output_tokens=entry.max_output_tokens,
+        runtimes=_runtimes_for_provider(entry.provider),
+    )
+
+
+# Admin-facing snapshot applied at runtime (after each registry listing).
 # Kept as a flat index so every lookup (router support matrix, default
-# resolution, fingerprinting) is overlay-aware without threading state.
-_OVERLAY_INDEX: dict[str, AgentModelSpec] = {}
+# resolution, fingerprinting) is catalog-aware without threading state.
+_MODEL_INDEX: dict[str, AgentModelSpec] = {}
 
 
-def apply_overlay_cache(rows: Any) -> None:
-    """Refresh the overlay index from DB overlay rows (idempotent)."""
-    global _OVERLAY_INDEX
-    _OVERLAY_INDEX = {
-        spec.model_id: spec for spec in merge_overlays(rows) if not spec.is_default
-    }
+def apply_model_catalog_cache(
+    entries: Iterable[CatalogEntry],
+    default_model_id: str | None,
+) -> None:
+    """Refresh the registry snapshot from gateway catalog entries."""
+    global _MODEL_INDEX
+    index = {entry.id: _spec_from_catalog_entry(entry) for entry in entries}
+    if default_model_id is not None and default_model_id in index:
+        default_spec = index[default_model_id]
+        index[default_model_id] = AgentModelSpec(
+            model_id=default_spec.model_id,
+            provider=default_spec.provider,
+            display_name=default_spec.display_name,
+            context_window=default_spec.context_window,
+            max_output_tokens=default_spec.max_output_tokens,
+            runtimes=default_spec.runtimes,
+            is_default=True,
+        )
+    _MODEL_INDEX = index
 
 
 def iter_models() -> tuple[AgentModelSpec, ...]:
-    """The full static catalog, in declaration order."""
-    return _CATALOG
+    """The current snapshot, in catalog order."""
+    return tuple(_MODEL_INDEX.values())
 
 
 def get_model_spec(model_id: str) -> AgentModelSpec | None:
-    """Look up one model (catalog or overlay); None when unknown."""
-    return _CATALOG_INDEX.get(model_id) or _OVERLAY_INDEX.get(model_id)
+    """Look up one model; None when unknown."""
+    return _MODEL_INDEX.get(model_id)
 
 
 def model_supported_by(model_id: str, runtime_id: str) -> bool:
-    """Whether ``runtime_id`` can drive ``model_id`` (catalog or overlay)."""
+    """Whether ``runtime_id`` can drive ``model_id``."""
     spec = get_model_spec(model_id)
     return spec is not None and runtime_id in spec.runtimes
 
 
 def default_model_for(runtime_id: str) -> str | None:
-    """The catalog default model that ``runtime_id`` can drive."""
-    for spec in _CATALOG:
+    """The snapshot default model that ``runtime_id`` can drive."""
+    for spec in _MODEL_INDEX.values():
         if spec.is_default and runtime_id in spec.runtimes:
             return spec.model_id
-    for spec in _CATALOG:
+    for spec in _MODEL_INDEX.values():
         if runtime_id in spec.runtimes:
             return spec.model_id
     return None
@@ -200,7 +179,7 @@ def fingerprint(
     or ``gateway_route`` no longer matches, forcing re-verification — the
     same invalidation QM's verifier guarantees.
     """
-    spec = _CATALOG_INDEX.get(model_id)
+    spec = get_model_spec(model_id)
     if spec is None:
         return None
     material = "\n".join(
@@ -274,7 +253,7 @@ def probe_model(
     (raising on failure). Kept as a callable so tests inject a fake and the
     real binding wraps the configured LLM stack.
     """
-    spec = _CATALOG_INDEX.get(model_id)
+    spec = get_model_spec(model_id)
     if spec is None:
         return False, PROBE_FAILURE_UNKNOWN_MODEL
     try:
@@ -286,78 +265,3 @@ def probe_model(
     if not text.strip():
         return False, PROBE_FAILURE_PROVIDER
     return True, None
-
-
-# ── overlays (admin-defined clones over catalog templates) ────────────────
-
-
-def overlay_spec(
-    overlay_row: Any,
-    *,
-    template: AgentModelSpec | None = None,
-) -> AgentModelSpec | None:
-    """Merge a DB overlay row over its catalog template.
-
-    Inherits context window / max output / runtimes from the template;
-    explicit overlay values replace. Unknown templates are rejected
-    (None) — an overlay cannot invent a provider the catalog lacks.
-    """
-    spec = (
-        template
-        if template is not None
-        else get_model_spec(overlay_row.template_model_id)
-    )
-    if spec is None:
-        return None
-    return AgentModelSpec(
-        model_id=overlay_row.model_id,
-        provider=overlay_row.provider or spec.provider,
-        display_name=overlay_row.name or spec.display_name,
-        context_window=(
-            overlay_row.context_window
-            if overlay_row.context_window is not None
-            else spec.context_window
-        ),
-        max_output_tokens=(
-            overlay_row.max_output_tokens
-            if overlay_row.max_output_tokens is not None
-            else spec.max_output_tokens
-        ),
-        runtimes=spec.runtimes,
-        is_default=False,
-        notes=f"overlay of {spec.model_id}"
-        + (f"; base_url={overlay_row.base_url}" if overlay_row.base_url else ""),
-        tags=spec.tags,
-    )
-
-
-def merge_overlays(
-    overlay_rows: Any,
-) -> list[AgentModelSpec]:
-    """Effective catalog: static entries plus enabled overlays.
-
-    An overlay whose model_id collides with a static entry wins (admins
-    override defaults); overlays of unknown templates are skipped with
-    a log line.
-    """
-    merged: dict[str, AgentModelSpec] = dict(_CATALOG_INDEX)
-    defaults = {spec.model_id for spec in _CATALOG if spec.is_default}
-    for row in overlay_rows:
-        if not getattr(row, "enabled", True):
-            continue
-        spec = overlay_spec(row)
-        if spec is None:
-            logger.warning(
-                "agent model overlay %s has unknown template %s",
-                row.model_id,
-                row.template_model_id,
-            )
-            continue
-        if spec.model_id in defaults:
-            logger.warning(
-                "overlay %s collides with a default catalog model; skipped",
-                spec.model_id,
-            )
-            continue
-        merged[spec.model_id] = spec
-    return list(merged.values())
