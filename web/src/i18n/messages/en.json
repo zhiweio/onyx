@@ -12333,7 +12333,8 @@
       "unified": "Unified",
       "diffView": "Diff",
       "sourceView": "Source",
-      "viewToggleLabel": "Toggle diff and source view"
+      "viewToggleLabel": "Toggle diff and source view",
+      "snapshotNotice": "This file is no longer in the sandbox — showing the content as last written by the task."
     },
     "chatPanel": {
       "input": {

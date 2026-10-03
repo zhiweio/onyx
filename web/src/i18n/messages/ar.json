@@ -12327,7 +12327,8 @@
       "unified": "Unified",
       "diffView": "الفرق",
       "sourceView": "المصدر",
-      "viewToggleLabel": "التبديل بين عرض الفرق والمصدر"
+      "viewToggleLabel": "التبديل بين عرض الفرق والمصدر",
+      "snapshotNotice": "لم يعد هذا الملف موجودًا في بيئة التنفيذ — يُعرض المحتوى كما كتبته المهمة آخر مرة."
     },
     "chatPanel": {
       "input": {

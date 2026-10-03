@@ -12327,7 +12327,8 @@
       "unified": "Unified",
       "diffView": "Diff",
       "sourceView": "Source",
-      "viewToggleLabel": "Basculer entre diff et source"
+      "viewToggleLabel": "Basculer entre diff et source",
+      "snapshotNotice": "Ce fichier n'est plus dans le sandbox — affichage du contenu tel qu'écrit par la tâche."
     },
     "chatPanel": {
       "input": {

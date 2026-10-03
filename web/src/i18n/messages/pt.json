@@ -12327,7 +12327,8 @@
       "unified": "Unified",
       "diffView": "Diff",
       "sourceView": "Origem",
-      "viewToggleLabel": "Alternar entre diff e código-fonte"
+      "viewToggleLabel": "Alternar entre diff e código-fonte",
+      "snapshotNotice": "Este arquivo não está mais no sandbox — exibindo o conteúdo conforme gravado pela tarefa."
     },
     "chatPanel": {
       "input": {

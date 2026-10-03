@@ -12327,7 +12327,8 @@
       "unified": "统一视图",
       "diffView": "差异",
       "sourceView": "源文件",
-      "viewToggleLabel": "切换差异与源文件视图"
+      "viewToggleLabel": "切换差异与源文件视图",
+      "snapshotNotice": "该文件已不在沙箱中——显示任务最后写入的内容快照。"
     },
     "chatPanel": {
       "input": {

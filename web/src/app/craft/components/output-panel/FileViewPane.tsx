@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@opal/utils";
 import { Button, Text } from "@opal/components";
-import { SvgCopy } from "@opal/icons";
+import { SvgAlertCircle, SvgCopy } from "@opal/icons";
 import {
   buildInlineRows,
   collapseUnchanged,
@@ -12,6 +12,7 @@ import {
   type InlineDiffRow,
 } from "@/app/craft/components/tool-cards/DiffBody";
 import { FilePreviewContent } from "@/app/craft/components/output-panel/FilePreviewContent";
+import CodeFilePreview from "@/app/craft/components/output-panel/CodeFilePreview";
 import { getFileIcon } from "@/lib/utils";
 import type {
   FileEditPayload,
@@ -147,9 +148,43 @@ export function FileViewPane({
             sessionId={sessionId}
             filePath={path}
             refreshKey={refreshKey}
+            errorFallback={
+              edit ? <FileSnapshotFallback edit={edit} /> : undefined
+            }
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Source fallback for a task-edited file the sandbox no longer serves (the
+ * job's later phases may clean helper scripts): render the task's last
+ * written content, clearly labelled as a snapshot.
+ */
+function FileSnapshotFallback({ edit }: { edit: FileEditPayload }) {
+  const t = useTranslations("craft.diffTab");
+  return (
+    <div className="flex h-full flex-col">
+      <div
+        className="flex items-center gap-2 border-b border-border-01 bg-background-tint-01 px-3 py-1.5"
+        data-testid="snapshot-notice"
+      >
+        <SvgAlertCircle size={14} className="shrink-0 stroke-text-03" />
+        <Text font="secondary-body" color="text-03">
+          {t("snapshotNotice")}
+        </Text>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <CodeFilePreview
+          content={edit.newContent ?? ""}
+          fileName={edit.fileName}
+          filePath={edit.path}
+          mimeType="text/plain"
+          isImage={false}
+        />
+      </div>
     </div>
   );
 }

@@ -12327,7 +12327,8 @@
       "unified": "ユニファイド",
       "diffView": "差分",
       "sourceView": "ソース",
-      "viewToggleLabel": "差分とソースの表示を切り替え"
+      "viewToggleLabel": "差分とソースの表示を切り替え",
+      "snapshotNotice": "このファイルはサンドボックスに存在しません——タスクが最後に書き込んだ内容を表示しています。"
     },
     "chatPanel": {
       "input": {

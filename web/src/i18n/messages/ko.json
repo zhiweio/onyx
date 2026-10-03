@@ -12327,7 +12327,8 @@
       "unified": "통합",
       "diffView": "차이",
       "sourceView": "원본",
-      "viewToggleLabel": "차이/원본 보기 전환"
+      "viewToggleLabel": "차이/원본 보기 전환",
+      "snapshotNotice": "이 파일은 샌드박스에 없습니다 — 작업이 마지막으로 쓴 내용을 표시합니다."
     },
     "chatPanel": {
       "input": {

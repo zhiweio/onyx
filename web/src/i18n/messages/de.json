@@ -12327,7 +12327,8 @@
       "unified": "Unified",
       "diffView": "Diff",
       "sourceView": "Quellcode",
-      "viewToggleLabel": "Zwischen Diff- und Quellansicht wechseln"
+      "viewToggleLabel": "Zwischen Diff- und Quellansicht wechseln",
+      "snapshotNotice": "Diese Datei ist nicht mehr in der Sandbox — der Inhalt zeigt den letzten von der Aufgabe geschriebenen Stand."
     },
     "chatPanel": {
       "input": {

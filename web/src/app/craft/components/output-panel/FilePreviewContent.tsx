@@ -128,6 +128,12 @@ interface FilePreviewContentProps {
   filePath: string;
   /** Changing this value forces the preview to reload its data */
   refreshKey?: number;
+  /**
+   * Rendered instead of the error card when the fetch fails — lets a caller
+   * with side knowledge (e.g. the file pane holds the task's last-written
+   * content) degrade gracefully instead of a bare 404.
+   */
+  errorFallback?: React.ReactNode;
 }
 
 /**
@@ -138,6 +144,7 @@ export function FilePreviewContent({
   sessionId,
   filePath,
   refreshKey,
+  errorFallback,
 }: FilePreviewContentProps) {
   const standalone = findStandalonePreview(filePath);
   if (standalone) {
@@ -153,6 +160,7 @@ export function FilePreviewContent({
       filePath={filePath}
       fullHeight
       refreshKey={refreshKey}
+      errorFallback={errorFallback}
     />
   );
 }
@@ -181,6 +189,7 @@ interface FetchedFilePreviewProps {
   filePath: string;
   fullHeight?: boolean;
   refreshKey?: number;
+  errorFallback?: React.ReactNode;
 }
 
 /**
@@ -192,6 +201,7 @@ function FetchedFilePreview({
   filePath,
   fullHeight,
   refreshKey,
+  errorFallback,
 }: FetchedFilePreviewProps) {
   const t = useTranslations("craft.filePreview");
   const { data, error, isLoading, mutate } = useSWR(
@@ -235,6 +245,9 @@ function FetchedFilePreview({
   }
 
   if (error) {
+    if (errorFallback) {
+      return <>{errorFallback}</>;
+    }
     if (fullHeight) {
       return (
         <Section

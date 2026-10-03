@@ -12327,7 +12327,8 @@
       "unified": "Unified",
       "diffView": "Diff",
       "sourceView": "Fuente",
-      "viewToggleLabel": "Cambiar entre diff y código fuente"
+      "viewToggleLabel": "Cambiar entre diff y código fuente",
+      "snapshotNotice": "Este archivo ya no está en el sandbox — se muestra el contenido tal como lo escribió la tarea."
     },
     "chatPanel": {
       "input": {
