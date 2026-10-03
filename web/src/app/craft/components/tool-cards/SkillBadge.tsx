@@ -1,7 +1,7 @@
 "use client";
 
 import { Tag } from "@opal/components";
-import { SvgSparkle } from "@opal/icons";
+import { CATEGORY_SKILL_ICON } from "@/lib/skills/categoryIcons";
 
 interface SkillBadgeProps {
   name: string;
@@ -12,5 +12,5 @@ interface SkillBadgeProps {
  * originated from a skill (skill-namespaced tool name).
  */
 export default function SkillBadge({ name }: SkillBadgeProps) {
-  return <Tag icon={SvgSparkle} title={name} color="blue" size="sm" />;
+  return <Tag icon={CATEGORY_SKILL_ICON} title={name} color="blue" size="sm" />;
 }

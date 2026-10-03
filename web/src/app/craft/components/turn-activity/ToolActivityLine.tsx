@@ -3,7 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { Text } from "@opal/components";
 import { cn } from "@opal/utils";
-import { SvgChevronDown, SvgSparkle } from "@opal/icons";
+import { SvgChevronDown } from "@opal/icons";
+import { CATEGORY_SKILL_ICON } from "@/lib/skills/categoryIcons";
 import { useTranslations } from "next-intl";
 import {
   Collapsible,
@@ -108,7 +109,7 @@ function renderStatusIcon(toolCall: ToolCallState) {
   }
   if (isSkillInvocation(toolCall) && toolCall.status === "completed") {
     return (
-      <SvgSparkle
+      <CATEGORY_SKILL_ICON
         className={cn(baseClass, "stroke-status-info-05 fill-status-info-05")}
       />
     );

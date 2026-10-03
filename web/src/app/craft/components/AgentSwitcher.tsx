@@ -5,11 +5,11 @@ import { useTranslations } from "next-intl";
 import { Popover, PopoverMenu, Text, LineItemButton } from "@opal/components";
 import {
   SvgChevronDown,
-  SvgCpu,
   SvgSparkle,
   SvgCheckCircle,
   SvgAlertTriangle,
 } from "@opal/icons";
+import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 import { cn } from "@opal/utils";
 import {
   useSubagents,
@@ -102,7 +102,7 @@ export default function AgentSwitcher() {
   const labelNode = (
     <span className="flex min-w-0 items-center gap-1.5">
       {isViewingSubagent && (
-        <SvgCpu className="w-4 h-4 stroke-text-03 shrink-0" />
+        <CATEGORY_AGENT_ICON className="w-4 h-4 stroke-text-03 shrink-0" />
       )}
       <Text font="main-ui-action" color="text-04" nowrap>
         {triggerLabel}
@@ -170,7 +170,7 @@ export default function AgentSwitcher() {
                 <LineItemButton
                   sizePreset="main-ui"
                   variant="section"
-                  icon={SvgCpu}
+                  icon={CATEGORY_AGENT_ICON}
                   state={
                     s.sessionId === viewedSubagentSessionId
                       ? "selected"

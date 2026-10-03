@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Text } from "@opal/components";
 import { cn } from "@opal/utils";
-import { SvgChevronDown, SvgSparkle } from "@opal/icons";
+import { SvgChevronDown } from "@opal/icons";
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,6 +26,7 @@ import {
   isSkillInvocation,
   SvgLoader,
 } from "@/app/craft/components/tool-cards/helpers";
+import { CATEGORY_SKILL_ICON } from "@/lib/skills/categoryIcons";
 import type { ToolCallState } from "@/app/craft/types/displayTypes";
 
 interface CraftToolCardProps {
@@ -172,7 +173,7 @@ function renderStatusIcon(toolCall: ToolCallState) {
   // Finished skill leads with its sparkle, not the generic completion check.
   if (isSkillInvocation(toolCall) && toolCall.status === "completed") {
     return (
-      <SvgSparkle
+      <CATEGORY_SKILL_ICON
         className={cn(baseClass, "stroke-status-info-05 fill-status-info-05")}
       />
     );

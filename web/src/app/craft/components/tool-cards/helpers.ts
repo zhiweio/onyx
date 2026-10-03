@@ -4,11 +4,11 @@ import {
   SvgEdit,
   SvgSearch,
   SvgGlobe,
-  SvgCpu,
   SvgCheckSquare,
   SvgAlertCircle,
   SvgLoader,
 } from "@opal/icons";
+import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 import type { IconFunctionComponent } from "@opal/types";
 import type {
   ToolCallKind,
@@ -27,7 +27,7 @@ export function getToolIcon(kind: ToolCallKind): IconFunctionComponent {
     case "search":
       return SvgSearch;
     case "task":
-      return SvgCpu;
+      return CATEGORY_AGENT_ICON;
     case "other":
     default:
       return SvgEdit;

@@ -7,8 +7,8 @@ import {
   SvgFileText,
   SvgEdit,
   SvgSearch,
-  SvgCpu,
 } from "@opal/icons";
+import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 import { ToolLayout } from "@/app/craft/components/tool-blocks/ToolLayout";
 import ToolCallBlock from "@/app/craft/components/tool-blocks/ToolCallBlock";
 import {
@@ -34,7 +34,7 @@ function phaseIcon(phase: ToolPhase) {
     case "run":
       return SvgTerminalSmall;
     case "task":
-      return SvgCpu;
+      return CATEGORY_AGENT_ICON;
     case "other":
     default:
       return SvgFileText;

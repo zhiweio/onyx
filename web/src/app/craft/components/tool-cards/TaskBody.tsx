@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Text } from "@opal/components";
 import {
-  SvgCpu,
   SvgLoader,
   SvgCheckCircle,
   SvgAlertTriangle,
@@ -36,6 +35,7 @@ import {
 import { isHiddenJobTool } from "@/lib/craft-jobs/display";
 import type { ToolCardBodyProps } from "@/app/craft/components/tool-cards/interfaces";
 import type { StreamItem } from "@/app/craft/types/displayTypes";
+import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 
 /**
  * Task row for every subagent type. Expands in place to the live process.
@@ -128,7 +128,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
 
   const header = (
     <div className="flex min-w-0 w-full items-center gap-2">
-      <SvgCpu className="h-4 w-4 shrink-0 stroke-action-selection-05" />
+      <CATEGORY_AGENT_ICON className="h-4 w-4 shrink-0 stroke-action-selection-05" />
       <span className="min-w-0 flex-1 overflow-hidden">
         <Text as="p" font="main-ui-action" color="text-04" maxLines={1}>
           {label}

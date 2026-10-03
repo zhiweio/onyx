@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Button, Card, Checkbox, InputTypeIn, Text } from "@opal/components";
-import { SvgMcp } from "@opal/icons";
+import { CATEGORY_MCP_ICON } from "@/lib/skills/categoryIcons";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
@@ -76,7 +76,7 @@ export default function PreApprovalPicker({
             name: t("mcpServerFallbackName", { id }),
             description: "",
             status: t("status.unavailable"),
-            icon: SvgMcp,
+            icon: CATEGORY_MCP_ICON,
             testId: `pre-approval-mcp-server-${id}`,
           }))
       : []),

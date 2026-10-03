@@ -1,11 +1,9 @@
 import type { useTranslations } from "next-intl";
+import { SvgFileText, SvgFolder, SvgPaperclip } from "@opal/icons";
 import {
-  SvgFileText,
-  SvgFolder,
-  SvgMcp,
-  SvgPaperclip,
-  SvgSparkle,
-} from "@opal/icons";
+  CATEGORY_MCP_ICON,
+  CATEGORY_SKILL_ICON,
+} from "@/lib/skills/categoryIcons";
 import {
   pickerEntryKey,
   type PickerEntry,
@@ -96,7 +94,7 @@ export function buildEntryMenuItems(
     },
     {
       key: "skills",
-      icon: SvgSparkle,
+      icon: CATEGORY_SKILL_ICON,
       label: t("skills.label"),
       panel: {
         searchPlaceholder: t("skills.searchPlaceholder"),
@@ -111,7 +109,7 @@ export function buildEntryMenuItems(
     },
     {
       key: "mcp",
-      icon: SvgMcp,
+      icon: CATEGORY_MCP_ICON,
       label: t("mcp.label"),
       panel: {
         searchPlaceholder: t("mcp.searchPlaceholder"),

@@ -5,7 +5,7 @@ import MCPPageContent from "@/sections/actions/MCPPageContent";
 import { useTranslations } from "next-intl";
 import { Tabs } from "@opal/components";
 import { SettingsLayouts } from "@opal/layouts";
-import { SvgMcp } from "@opal/icons";
+import { CATEGORY_MCP_ICON } from "@/lib/skills/categoryIcons";
 import type { GalleryTab } from "@/lib/system-catalog/useGalleryTab";
 
 export default function CraftMcpActionsPage() {
@@ -16,7 +16,7 @@ export default function CraftMcpActionsPage() {
   return (
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
-        icon={SvgMcp}
+        icon={CATEGORY_MCP_ICON}
         title={t("header.title")}
         description={t("header.description")}
       >
