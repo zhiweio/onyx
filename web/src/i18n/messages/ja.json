@@ -12325,7 +12325,9 @@
       "sideBySide": "並列",
       "unchangedLines": "{count} 行変更なし",
       "unified": "ユニファイド",
-      "viewCurrentFile": "現在のファイルを表示"
+      "diffView": "差分",
+      "sourceView": "ソース",
+      "viewToggleLabel": "差分とソースの表示を切り替え"
     },
     "chatPanel": {
       "input": {
@@ -12759,6 +12761,12 @@
       },
       "noWebapp": {
         "label": "このセッションにはまだWebアプリがありません"
+      },
+      "modifiedFile": {
+        "label": "このタスクで変更"
+      },
+      "addedFile": {
+        "label": "このタスクで作成"
       }
     },
     "pdfPreview": {

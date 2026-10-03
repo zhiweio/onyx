@@ -12325,7 +12325,9 @@
       "sideBySide": "Side by side",
       "unchangedLines": "{count} unchanged lines",
       "unified": "Unified",
-      "viewCurrentFile": "View current file"
+      "diffView": "Diff",
+      "sourceView": "Fuente",
+      "viewToggleLabel": "Cambiar entre diff y código fuente"
     },
     "chatPanel": {
       "input": {
@@ -12759,6 +12761,12 @@
       },
       "noWebapp": {
         "label": "Aún no hay ninguna aplicación web en esta sesión"
+      },
+      "modifiedFile": {
+        "label": "Modificado por esta tarea"
+      },
+      "addedFile": {
+        "label": "Creado por esta tarea"
       }
     },
     "pdfPreview": {

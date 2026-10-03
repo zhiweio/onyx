@@ -12325,7 +12325,9 @@
       "sideBySide": "Side by side",
       "unchangedLines": "{count} unchanged lines",
       "unified": "Unified",
-      "viewCurrentFile": "View current file"
+      "diffView": "الفرق",
+      "sourceView": "المصدر",
+      "viewToggleLabel": "التبديل بين عرض الفرق والمصدر"
     },
     "chatPanel": {
       "input": {
@@ -12759,6 +12761,12 @@
       },
       "noWebapp": {
         "label": "لا يوجد تطبيق ويب في هذه الجلسة بعد"
+      },
+      "modifiedFile": {
+        "label": "عدّلته هذه المهمة"
+      },
+      "addedFile": {
+        "label": "أنشأته هذه المهمة"
       }
     },
     "pdfPreview": {

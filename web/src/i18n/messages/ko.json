@@ -12325,7 +12325,9 @@
       "sideBySide": "나란히",
       "unchangedLines": "{count}줄 변경 없음",
       "unified": "통합",
-      "viewCurrentFile": "현재 파일 보기"
+      "diffView": "차이",
+      "sourceView": "원본",
+      "viewToggleLabel": "차이/원본 보기 전환"
     },
     "chatPanel": {
       "input": {
@@ -12759,6 +12761,12 @@
       },
       "noWebapp": {
         "label": "이 세션에는 아직 웹 앱이 없습니다"
+      },
+      "modifiedFile": {
+        "label": "이 작업에서 수정됨"
+      },
+      "addedFile": {
+        "label": "이 작업에서 생성됨"
       }
     },
     "pdfPreview": {

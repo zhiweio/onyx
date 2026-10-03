@@ -45,27 +45,13 @@ import {
   isHiddenJobTool,
   isHostContinueMessage,
 } from "@/lib/craft-jobs/display";
-import { foldTurnStream, stepSummary } from "@/lib/craft/foldTurnStream";
+import {
+  foldTurnStream,
+  stepSummary,
+  fileChangeStat,
+} from "@/lib/craft/foldTurnStream";
 
-function countDiffLines(toolCall: {
-  oldContent?: string;
-  newContent?: string;
-}): { added: number; removed: number } {
-  const newLines = (toolCall.newContent ?? "").split("\n");
-  const oldCount = new Map<string, number>();
-  for (const line of (toolCall.oldContent ?? "").split("\n")) {
-    oldCount.set(line, (oldCount.get(line) ?? 0) + 1);
-  }
-  let added = 0;
-  for (const line of newLines) {
-    const remaining = oldCount.get(line) ?? 0;
-    if (remaining > 0) oldCount.set(line, remaining - 1);
-    else added += 1;
-  }
-  let removed = 0;
-  for (const count of oldCount.values()) removed += count;
-  return { added, removed };
-}
+const countDiffLines = fileChangeStat;
 
 interface CraftTimelineProps {
   sessionId: string | null;

@@ -151,26 +151,29 @@ export interface ContextUsage {
  * here. Subagent transcripts are NOT panel tabs — they swap the main chat
  * column in place (see `viewedSubagentSessionId` in the store).
  *
+ * A file edited during the task keeps its edit payload in the session's
+ * `fileEdits` map, so its tab can toggle between the diff and the source
+ * view (ZCode pattern) without a second tab kind.
+ *
  * Future view kinds: add a new variant here, render its chrome in
  * `OutputPanel.tsx`'s tab-row map, and its body in the panel body switch.
  */
-export type PanelTab =
-  | { kind: "file"; path: string; fileName: string }
-  | {
-      kind: "diff";
-      /** Session-relative file path the patch applies to. */
-      path: string;
-      fileName: string;
-      /** Content hash suffix (8 hex chars) so distinct edits to the same file
-       * coexist as tabs while re-clicking the same edit focuses its tab. */
-      contentHash: string;
-      toolCallId: string;
-      oldContent: string;
-      newContent: string;
-      added: number;
-      removed: number;
-      isNewFile: boolean;
-    };
+export interface FileEditPayload {
+  /** Session-relative file path the patch applies to. */
+  path: string;
+  fileName: string;
+  toolCallId: string;
+  oldContent: string;
+  newContent: string;
+  added: number;
+  removed: number;
+  isNewFile: boolean;
+}
+
+/** Pane view for a file tab: the task's diff, or the file as it stands. */
+export type FileViewMode = "diff" | "source";
+
+export type PanelTab = { kind: "file"; path: string; fileName: string };
 
 /**
  * Stable string ID for a `PanelTab`, namespaced by kind. Used as the value
@@ -182,8 +185,6 @@ export function panelTabId(tab: PanelTab): string {
   switch (tab.kind) {
     case "file":
       return `file:${tab.path}`;
-    case "diff":
-      return `diff:${tab.path}:${tab.contentHash}`;
     default: {
       const kind = (tab as { kind?: string }).kind ?? "unknown";
       throw new Error(`Unknown PanelTab kind: ${kind}`);

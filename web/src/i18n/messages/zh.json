@@ -12325,7 +12325,9 @@
       "sideBySide": "并排视图",
       "unchangedLines": "{count} 行未变更",
       "unified": "统一视图",
-      "viewCurrentFile": "查看当前文件"
+      "diffView": "差异",
+      "sourceView": "源文件",
+      "viewToggleLabel": "切换差异与源文件视图"
     },
     "chatPanel": {
       "input": {
@@ -12759,6 +12761,12 @@
       },
       "noWebapp": {
         "label": "此会话中还没有 Web 应用"
+      },
+      "modifiedFile": {
+        "label": "已被本任务修改"
+      },
+      "addedFile": {
+        "label": "由本任务创建"
       }
     },
     "pdfPreview": {

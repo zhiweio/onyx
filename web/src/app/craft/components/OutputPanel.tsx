@@ -12,12 +12,17 @@ import {
   usePanelTabs,
   useActiveOutputTab,
   useActivePanelTabId,
+  useFileEdits,
   usePreProvisionedSessionId,
   useIsPreProvisioning,
   useTabHistory,
   OutputTabType,
 } from "@/app/craft/hooks/useBuildSessionStore";
-import { type PanelTab, panelTabId } from "@/app/craft/types/displayTypes";
+import {
+  type FileViewMode,
+  type PanelTab,
+  panelTabId,
+} from "@/app/craft/types/displayTypes";
 import {
   fetchWebappInfo,
   fetchArtifacts,
@@ -62,10 +67,10 @@ const ArtifactsTab = dynamic(
   () => import("@/app/craft/components/output-panel/ArtifactsTab"),
   { ssr: false }
 );
-const DiffTabBody = dynamic(
+const FileViewPane = dynamic(
   () =>
-    import("@/app/craft/components/output-panel/DiffTabBody").then(
-      (m) => m.DiffTabBody
+    import("@/app/craft/components/output-panel/FileViewPane").then(
+      (m) => m.FileViewPane
     ),
   { ssr: false }
 );
@@ -149,6 +154,11 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
   const setActivePanelTabId = useBuildSessionStore(
     (state) => state.setActivePanelTabId
   );
+  const setFileViewMode = useBuildSessionStore(
+    (state) => state.setFileViewMode
+  );
+  // Latest task edit per path: drives the tab badges and the diff pane.
+  const fileEdits = useFileEdits();
 
   // Store actions for refresh
   const triggerFilesRefresh = useBuildSessionStore(
@@ -622,28 +632,32 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
             {panelTabs.map((tab) => {
               const id = panelTabId(tab);
               const isActive = activePanelTabId === id;
+              // ZCode-style edit badge: A for task-created files, M for
+              // modified ones. Files without a task edit get no badge.
+              const edit = fileEdits[tab.path];
+              const badge = edit ? (edit.isNewFile ? "A" : "M") : null;
 
-              switch (tab.kind) {
-                case "file": {
-                  const TabIcon = getFileIcon(tab.fileName);
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => handlePanelTabClick(id)}
-                      className={cn(
-                        "group relative inline-flex items-center justify-center gap-1.5 px-3 pe-2 py-1.5 rounded-t-lg",
-                        "max-w-[150px] min-w-fit",
-                        isActive
-                          ? "bg-background-neutral-00 text-text-04 z-10"
-                          : "text-text-03 bg-transparent hover:bg-background-tint-02"
-                      )}
-                    >
-                      {isActive && (
-                        <div
-                          className="absolute -start-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
-                          style={jointMasks.start}
-                        />
-                      )}
+              return (
+                <button
+                  key={id}
+                  onClick={() => handlePanelTabClick(id)}
+                  className={cn(
+                    "group relative inline-flex items-center justify-center gap-1.5 px-3 pe-2 py-1.5 rounded-t-lg",
+                    "max-w-[170px] min-w-fit",
+                    isActive
+                      ? "bg-background-neutral-00 text-text-04 z-10"
+                      : "text-text-03 bg-transparent hover:bg-background-tint-02"
+                  )}
+                >
+                  {isActive && (
+                    <div
+                      className="absolute -start-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
+                      style={jointMasks.start}
+                    />
+                  )}
+                  {(() => {
+                    const TabIcon = getFileIcon(tab.fileName);
+                    return (
                       <TabIcon
                         size={14}
                         className={cn(
@@ -651,92 +665,47 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
                           isActive ? "stroke-text-04" : "stroke-text-03"
                         )}
                       />
-                      <Text font="secondary-body" color="text-05" maxLines={1}>
-                        {tab.fileName}
-                      </Text>
-                      {/* Close button */}
-                      <button
-                        onClick={(e) => handlePanelTabClose(e, tab)}
-                        className={cn(
-                          "shrink-0 p-0.5 rounded-sm hover:bg-background-tint-03 transition-colors",
-                          isActive
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100 no-hover:opacity-100"
-                        )}
-                        aria-label={`Close ${tab.fileName}`}
-                      >
-                        <SvgX size={12} className="stroke-text-03" />
-                      </button>
-                      {isActive && (
-                        <div
-                          className="absolute -end-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
-                          style={jointMasks.end}
-                        />
-                      )}
-                    </button>
-                  );
-                }
-                case "diff": {
-                  const TabIcon = getFileIcon(tab.fileName);
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => handlePanelTabClick(id)}
-                      className={cn(
-                        "group relative inline-flex items-center justify-center gap-1.5 px-3 pe-2 py-1.5 rounded-t-lg",
-                        "max-w-[170px] min-w-fit",
-                        isActive
-                          ? "bg-background-neutral-00 text-text-04 z-10"
-                          : "text-text-03 bg-transparent hover:bg-background-tint-02"
-                      )}
+                    );
+                  })()}
+                  <Text font="secondary-body" color="text-05" maxLines={1}>
+                    {tab.fileName}
+                  </Text>
+                  {badge && (
+                    <span
+                      className="shrink-0 rounded-full bg-background-tint-03 px-1.5 py-px"
+                      data-testid="file-edit-badge"
+                      title={
+                        edit?.isNewFile
+                          ? t("addedFile.label")
+                          : t("modifiedFile.label")
+                      }
                     >
-                      {isActive && (
-                        <div
-                          className="absolute -start-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
-                          style={jointMasks.start}
-                        />
-                      )}
-                      <TabIcon
-                        size={14}
-                        className={cn(
-                          "stroke-current shrink-0",
-                          isActive ? "stroke-text-04" : "stroke-text-03"
-                        )}
-                      />
-                      <Text font="secondary-body" color="text-05" maxLines={1}>
-                        {tab.fileName}
+                      <Text font="secondary-action" color="text-03">
+                        {badge}
                       </Text>
-                      {/* Diff badge (ZCode patch-tab pill) */}
-                      <span
-                        className="shrink-0 rounded-full bg-background-tint-03 px-1.5 py-px"
-                        data-testid="diff-tab-badge"
-                      >
-                        <Text font="secondary-action" color="text-03">
-                          Diff
-                        </Text>
-                      </span>
-                      <button
-                        onClick={(e) => handlePanelTabClose(e, tab)}
-                        className={cn(
-                          "shrink-0 p-0.5 rounded-sm hover:bg-background-tint-03 transition-colors",
-                          isActive
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100 no-hover:opacity-100"
-                        )}
-                        aria-label={`Close ${tab.fileName}`}
-                      >
-                        <SvgX size={12} className="stroke-text-03" />
-                      </button>
-                      {isActive && (
-                        <div
-                          className="absolute -end-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
-                          style={jointMasks.end}
-                        />
-                      )}
-                    </button>
-                  );
-                }
-              }
+                    </span>
+                  )}
+                  {/* Close button */}
+                  <button
+                    onClick={(e) => handlePanelTabClose(e, tab)}
+                    className={cn(
+                      "shrink-0 p-0.5 rounded-sm hover:bg-background-tint-03 transition-colors",
+                      isActive
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100 no-hover:opacity-100"
+                    )}
+                    aria-label={`Close ${tab.fileName}`}
+                  >
+                    <SvgX size={12} className="stroke-text-03" />
+                  </button>
+                  {isActive && (
+                    <div
+                      className="absolute -end-2 bottom-0 w-2 h-2 bg-background-neutral-00 pointer-events-none"
+                      style={jointMasks.end}
+                    />
+                  )}
+                </button>
+              );
             })}
           </div>
         </div>
@@ -812,24 +781,30 @@ const BuildOutputPanel = memo(({ isOpen }: BuildOutputPanelProps) => {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden rounded-b-08">
-        {/* Transient panel tab content - shown when a panel tab is active */}
-        {isFilePreviewActive && activePanel?.kind === "file" && session?.id && (
-          <FilePreviewContent
-            sessionId={session.id}
-            filePath={activePanel.path}
-            refreshKey={filePreviewRefreshKey}
-          />
-        )}
-        {isFilePreviewActive && activePanel?.kind === "diff" && (
-          <DiffTabBody
-            tab={activePanel}
-            onViewCurrentFile={(path, fileName) => {
-              if (session?.id) {
-                openFilePreview(session.id, path, fileName);
-              }
-            }}
-          />
-        )}
+        {/* Transient panel tab content - shown when a panel tab is active.
+            One pane per file: edited files open on the diff and toggle to
+            the source in place (ZCode pattern); plain files are source-only. */}
+        {isFilePreviewActive &&
+          activePanel?.kind === "file" &&
+          session?.id &&
+          (() => {
+            const edit = fileEdits[activePanel.path] ?? null;
+            const viewMode: FileViewMode =
+              session.fileViewModes[activePanel.path] ??
+              (edit ? "diff" : "source");
+            return (
+              <FileViewPane
+                path={activePanel.path}
+                edit={edit}
+                viewMode={viewMode}
+                onViewModeChange={(mode) =>
+                  setFileViewMode(session.id, activePanel.path, mode)
+                }
+                sessionId={session.id}
+                refreshKey={filePreviewRefreshKey}
+              />
+            );
+          })()}
         {/* Pinned tab content - only show when no file preview is active */}
         {!isFilePreviewActive && (
           <>

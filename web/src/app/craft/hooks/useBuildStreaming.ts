@@ -32,6 +32,7 @@ import { StreamItem, ToolCallState } from "@/app/craft/types/displayTypes";
 
 import { genId } from "@/app/craft/utils/streamItemHelpers";
 import { parsePacket } from "@/app/craft/utils/parsePacket";
+import { fileChangeStat } from "@/lib/craft/foldTurnStream";
 import {
   classifySubagentEvent,
   toolCallStateFromProgress,
@@ -532,6 +533,24 @@ export function useBuildStreaming() {
               parsed.filePath
             ) {
               handleCompletedFileChange(sessionId, parsed.filePath);
+              // Register the finished patch so a Files-tab open of this path
+              // defaults to its diff (ZCode pattern), even without a chip click.
+              const oldContent = parsed.oldContent ?? "";
+              const newContent = parsed.newContent ?? "";
+              const { added, removed } = fileChangeStat({
+                oldContent,
+                newContent,
+              });
+              useBuildSessionStore.getState().recordFileEdit(sessionId, {
+                path: parsed.filePath,
+                fileName: parsed.filePath.split("/").pop() ?? parsed.filePath,
+                toolCallId: parsed.toolCallId,
+                oldContent,
+                newContent,
+                added,
+                removed,
+                isNewFile: !!parsed.isNewFile,
+              });
             }
 
             const subagentClass = classifySubagentEvent(parsed);

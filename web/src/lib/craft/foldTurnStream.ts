@@ -397,7 +397,10 @@ export function foldFileChanges(items: StreamItem[]): FoldedFileChange[] {
   return changes;
 }
 
-function fileChangeStat(tool: { oldContent?: string; newContent?: string }): {
+export function fileChangeStat(tool: {
+  oldContent?: string;
+  newContent?: string;
+}): {
   added: number;
   removed: number;
 } {

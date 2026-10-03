@@ -39,6 +39,8 @@ import {
   ToolCallState,
   TodoListState,
   type ContextUsage,
+  type FileEditPayload,
+  type FileViewMode,
   type PanelTab,
   panelTabId,
   type SubagentState,
@@ -48,6 +50,7 @@ import {
 
 import { MAX_QUEUED_MESSAGES } from "@/app/app/interfaces";
 import { SWR_KEYS } from "@/lib/swr-keys";
+import { fileChangeStat } from "@/lib/craft/foldTurnStream";
 import { DEFAULT_THOUGHT_LEVEL } from "@/sections/input/thoughtLevel";
 
 import {
@@ -416,6 +419,45 @@ function mergeSubagentMaps(
     });
   }
   return merged;
+}
+
+/**
+ * Rebuild the per-path edit payloads from persisted stream items so a
+ * restored session's Files-tab opens default to the diff, exactly like the
+ * live-streaming path. Later patches win; order follows message order.
+ */
+function seedFileEditsFromMessages(
+  messages: BuildMessage[]
+): Record<string, FileEditPayload> {
+  const edits: Record<string, FileEditPayload> = {};
+  for (const message of messages) {
+    const items = message.message_metadata?.streamItems;
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      if (item.type !== "tool_call") continue;
+      const tool = item.toolCall;
+      if (
+        tool.status !== "completed" ||
+        !tool.filePath ||
+        tool.oldContent === undefined ||
+        tool.newContent === undefined
+      ) {
+        continue;
+      }
+      const { added, removed } = fileChangeStat(tool);
+      edits[tool.filePath] = {
+        path: tool.filePath,
+        fileName: tool.filePath.split("/").pop() ?? tool.filePath,
+        toolCallId: tool.id,
+        oldContent: tool.oldContent,
+        newContent: tool.newContent,
+        added,
+        removed,
+        isNewFile: !!tool.isNewFile,
+      };
+    }
+  }
+  return edits;
 }
 
 function buildSubagentsFromMessages(
@@ -842,6 +884,13 @@ export interface BuildSessionData {
   filesNeedsRefresh: number;
   /** Transient panel tabs open in this session (files, subagents, etc.) */
   panelTabs: PanelTab[];
+  /**
+   * Latest task edit per file path (ZCode pattern: one tab per file, its diff
+   * reflects the most recent patch). Feeds the tab's diff/source toggle.
+   */
+  fileEdits: Record<string, FileEditPayload>;
+  /** Per-path explicit Diff/Source choice; absent = derive from fileEdits. */
+  fileViewModes: Record<string, FileViewMode>;
   /** Subagents spawned in this session, keyed by child opencode session id. */
   subagents: Map<string, SubagentState>;
   /**
@@ -985,7 +1034,10 @@ interface BuildSessionStore {
 
   // File Preview Actions
   openFilePreview: (sessionId: string, path: string, fileName: string) => void;
-  /** Open (or focus) a diff preview tab in the output panel. Click-driven. */
+  /**
+   * Record a task edit for `diff.path` (latest patch wins, ZCode pattern) and
+   * open the file's tab on the diff view. Click-driven from tool chips.
+   */
   openDiffPreview: (
     sessionId: string,
     diff: {
@@ -999,6 +1051,17 @@ interface BuildSessionStore {
       isNewFile: boolean;
     }
   ) => void;
+  /** Switch the file tab's pane between the diff and the source view. */
+  setFileViewMode: (
+    sessionId: string,
+    path: string,
+    mode: FileViewMode
+  ) => void;
+  /**
+   * Record a completed edit without opening anything (streaming completion
+   * and session-restore seeding) so Files-tab opens default to the diff.
+   */
+  recordFileEdit: (sessionId: string, edit: FileEditPayload) => void;
   /** Atomically open panel + create file tab + set active for a markdown file detected during streaming */
   openMarkdownPreview: (sessionId: string, filePath: string) => void;
   closeFilePreview: (sessionId: string, path: string) => void;
@@ -1133,6 +1196,8 @@ const createInitialSessionData = (
   webappNeedsRemount: 0,
   filesNeedsRefresh: 0,
   panelTabs: [],
+  fileEdits: {},
+  fileViewModes: {},
   subagents: new Map(),
   viewedSubagentSessionId: null,
   activeOutputTab: "preview",
@@ -1833,6 +1898,16 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
             currentSession!.subagents
           )
         : currentSession!.subagents;
+      // Hydrate the per-path edit map from history so restored sessions get
+      // the same diff-default file tabs as the live stream. Preserve any
+      // edits already recorded this visit (a chip clicked before load
+      // finished) and only seed when switching to DB-backed messages.
+      const fileEdits = useDbMessages
+        ? {
+            ...seedFileEditsFromMessages(messages),
+            ...currentSession!.fileEdits,
+          }
+        : currentSession!.fileEdits;
       const sandbox =
         needsRestore && sessionData.sandbox
           ? { ...sessionData.sandbox, status: "restoring" as const }
@@ -1843,6 +1918,7 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         messages: resolvedMessages,
         streamItems,
         subagents,
+        fileEdits,
         artifacts,
         webappUrl,
         sandbox,
@@ -2296,26 +2372,16 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
   },
 
   openDiffPreview: (sessionId, diff) => {
-    // Content hash dedupes tabs per patch content: re-clicking the same edit
-    // focuses its tab; a later edit to the same file opens a sibling tab.
-    let hash = 0x811c9dc5;
-    for (const part of [diff.oldContent, diff.newContent]) {
-      for (let i = 0; i < part.length; i++) {
-        hash ^= part.charCodeAt(i);
-        hash = Math.imul(hash, 0x01000193) >>> 0;
-      }
-    }
-    const contentHash = hash.toString(16).padStart(8, "0");
-
+    // One tab per file (ZCode pattern): the session's fileEdits map keeps the
+    // LATEST patch per path, and the file tab opens on the diff view. The
+    // user can flip to the source view in the pane.
     set((state) => {
       const session = state.sessions.get(sessionId);
       if (!session) return state;
 
-      const newTab: PanelTab = {
-        kind: "diff",
+      const edit: FileEditPayload = {
         path: diff.path,
         fileName: diff.fileName,
-        contentHash,
         toolCallId: diff.toolCallId,
         oldContent: diff.oldContent,
         newContent: diff.newContent,
@@ -2323,20 +2389,17 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         removed: diff.removed,
         isNewFile: diff.isNewFile,
       };
+
+      const newTab: PanelTab = {
+        kind: "file",
+        path: diff.path,
+        fileName: diff.fileName,
+      };
       const tabId = panelTabId(newTab);
 
-      // Refresh an existing tab's payload in place (later edits land in the
-      // same tab when content matches is impossible by hash; this covers the
-      // same-toolCallId refresh case).
-      const existingIdx = session.panelTabs.findIndex(
-        (t) => panelTabId(t) === tabId
-      );
-      const panelTabs = [...session.panelTabs];
-      if (existingIdx >= 0) {
-        panelTabs[existingIdx] = newTab;
-      } else {
-        panelTabs.push(newTab);
-      }
+      const panelTabs = session.panelTabs.some((t) => panelTabId(t) === tabId)
+        ? session.panelTabs
+        : [...session.panelTabs, newTab];
 
       const { tabHistory } = session;
       const newEntries = [
@@ -2348,11 +2411,45 @@ export const useBuildSessionStore = create<BuildSessionStore>()((set, get) => ({
         ...session,
         outputPanelOpen: true,
         panelTabs,
+        fileEdits: { ...session.fileEdits, [diff.path]: edit },
+        // A chip click asks for the change; keep any explicit source choice
+        // the user made afterwards from overriding this opening view.
+        fileViewModes: { ...session.fileViewModes, [diff.path]: "diff" },
         activePanelTabId: tabId,
         tabHistory: {
           entries: newEntries,
           currentIndex: newEntries.length - 1,
         },
+        lastAccessed: new Date(),
+      };
+      const newSessions = new Map(state.sessions);
+      newSessions.set(sessionId, updatedSession);
+      return { sessions: newSessions };
+    });
+  },
+
+  setFileViewMode: (sessionId, path, mode) => {
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      if (!session) return state;
+      const updatedSession: BuildSessionData = {
+        ...session,
+        fileViewModes: { ...session.fileViewModes, [path]: mode },
+        lastAccessed: new Date(),
+      };
+      const newSessions = new Map(state.sessions);
+      newSessions.set(sessionId, updatedSession);
+      return { sessions: newSessions };
+    });
+  },
+
+  recordFileEdit: (sessionId, edit) => {
+    set((state) => {
+      const session = state.sessions.get(sessionId);
+      if (!session) return state;
+      const updatedSession: BuildSessionData = {
+        ...session,
+        fileEdits: { ...session.fileEdits, [edit.path]: edit },
         lastAccessed: new Date(),
       };
       const newSessions = new Map(state.sessions);
@@ -3411,6 +3508,16 @@ export const useActivePanelTabId = () =>
     const { currentSessionId, sessions } = state;
     if (!currentSessionId) return null;
     return sessions.get(currentSessionId)?.activePanelTabId ?? null;
+  });
+
+const EMPTY_FILE_EDITS: Record<string, FileEditPayload> = {};
+
+/** Latest task edit per path for the active session (drives the diff pane). */
+export const useFileEdits = () =>
+  useBuildSessionStore((state) => {
+    const { currentSessionId, sessions } = state;
+    if (!currentSessionId) return EMPTY_FILE_EDITS;
+    return sessions.get(currentSessionId)?.fileEdits ?? EMPTY_FILE_EDITS;
   });
 
 export const useFilesTabState = () =>

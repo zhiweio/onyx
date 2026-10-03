@@ -12331,7 +12331,9 @@
       "sideBySide": "Side by side",
       "unchangedLines": "{count} unchanged lines",
       "unified": "Unified",
-      "viewCurrentFile": "View current file"
+      "diffView": "Diff",
+      "sourceView": "Source",
+      "viewToggleLabel": "Toggle diff and source view"
     },
     "chatPanel": {
       "input": {
@@ -12765,6 +12767,12 @@
       },
       "noWebapp": {
         "label": "No web app in this session yet"
+      },
+      "modifiedFile": {
+        "label": "Modified by this task"
+      },
+      "addedFile": {
+        "label": "Created by this task"
       }
     },
     "pdfPreview": {
