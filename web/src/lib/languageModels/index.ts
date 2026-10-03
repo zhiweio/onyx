@@ -1,7 +1,7 @@
 import type { IconFunctionComponent } from "@opal/types";
 import { SvgCpu, SvgPlug, SvgServer } from "@opal/icons";
 import {
-  SvgBailian,
+  SvgBailianColor,
   SvgBifrost,
   SvgOpenai,
   SvgClaude,
@@ -102,7 +102,7 @@ const PROVIDERS: Record<string, ProviderEntry> = {
     Modal: MiniMaxModal,
   },
   [LLMProviderName.DASHSCOPE]: {
-    icon: SvgBailian,
+    icon: SvgBailianColor,
     productName: "Qwen",
     companyName: "Alibaba Bailian (阿里百炼)",
     Modal: DashscopeModal,
@@ -261,7 +261,7 @@ const MODEL_ICON_MAP: Record<string, IconFunctionComponent> = {
   [LLMProviderName.BIGMODEL]: ZAIIcon,
   [LLMProviderName.MOONSHOT]: SvgKimi,
   [LLMProviderName.MINIMAX]: SvgMinimax,
-  [LLMProviderName.DASHSCOPE]: SvgBailian,
+  [LLMProviderName.DASHSCOPE]: SvgBailianColor,
   [LLMProviderName.OLLAMA_CHAT]: SvgOllama,
   [LLMProviderName.LM_STUDIO]: SvgLmStudio,
   [LLMProviderName.OPENROUTER]: SvgOpenrouter,
