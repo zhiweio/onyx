@@ -12423,7 +12423,7 @@
       }
     },
     "fileChanges": {
-      "title": "{count}개 파일 변경 +{added} −{removed}"
+      "title": "{count, plural, other {#개 파일 변경}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

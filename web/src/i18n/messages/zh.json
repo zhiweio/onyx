@@ -12423,7 +12423,7 @@
       }
     },
     "fileChanges": {
-      "title": "已更改 {count} 个文件 +{added} −{removed}"
+      "title": "{count, plural, other {已更改 # 个文件}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {

@@ -12423,7 +12423,7 @@
       }
     },
     "fileChanges": {
-      "title": "{count} 個のファイルを変更 +{added} −{removed}"
+      "title": "{count, plural, other {# 個のファイルを変更}} +{added} −{removed}"
     },
     "entryMenu": {
       "addFiles": {
