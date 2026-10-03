@@ -10,7 +10,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { Popover, Text, Tooltip } from "@opal/components";
+import { InputTypeIn, Popover, Text, Tooltip } from "@opal/components";
+import { SvgInfo } from "@opal/icons";
 import {
   filterPickerSections,
   flattenSections,
@@ -30,6 +31,10 @@ interface EntryPickerPopoverProps {
   emptyMessage?: string;
   onSelect: (entry: PickerEntry) => void;
   onClose: () => void;
+  /** Render the auto-focused search input at the top (trigger menus). */
+  searchable?: boolean;
+  /** Search-input edits; the host mirrors them into the editor token. */
+  onQueryChange?: (query: string) => void;
 }
 
 function EntryPickerPopover({
@@ -40,6 +45,8 @@ function EntryPickerPopover({
   emptyMessage,
   onSelect,
   onClose,
+  searchable = false,
+  onQueryChange,
 }: EntryPickerPopoverProps) {
   const t = useTranslations("chat.input");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -72,6 +79,14 @@ function EntryPickerPopover({
     );
     row?.scrollIntoView({ block: "nearest" });
   }, [open, selectedIndex]);
+
+  // Auto-focus the search input when the menu opens (trigger menus).
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open && searchable) {
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [open, searchable]);
 
   useEffect(() => {
     if (!open) return;
@@ -118,9 +133,9 @@ function EntryPickerPopover({
 
   const labels = {
     commands: t("entryPickerPopover.commandsGroup.label"),
+    scenarios: t("entryPickerPopover.scenariosGroup.label"),
     skills: t("entryPickerPopover.skillsGroup.label"),
     apps: t("entryPickerPopover.appsGroup.label"),
-    mcpServers: t("entryPickerPopover.mcpServersGroup.label"),
     files: t("entryPickerPopover.filesGroup.label"),
     connected: t("entryPickerPopover.connectedRow.description"),
     connectionRequired: t(
@@ -128,9 +143,9 @@ function EntryPickerPopover({
     ),
     connectAction: t("entryPickerPopover.connectAction.label"),
     kindSkill: t("entryPickerPopover.tooltip.kindSkill"),
+    kindScenario: t("entryPickerPopover.tooltip.kindScenario"),
     kindCommand: t("entryPickerPopover.tooltip.kindCommand"),
     kindApp: t("entryPickerPopover.tooltip.kindApp"),
-    kindMcp: t("entryPickerPopover.tooltip.kindMcp"),
     kindFile: t("entryPickerPopover.tooltip.kindFile"),
   };
 
@@ -169,6 +184,19 @@ function EntryPickerPopover({
           style={{ width: Math.max(anchorRect.width - 10, 240) }}
           className="min-w-0"
         >
+          {searchable && (
+            <div className="p-1.5 pb-1">
+              <InputTypeIn
+                searchIcon
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- transient picker panel; focusing it is the point
+                autoFocus
+                value={query}
+                placeholder={t("entryPickerPopover.search.placeholder")}
+                onChange={(e) => onQueryChange?.(e.target.value)}
+                aria-label={t("entryPickerPopover.search.placeholder")}
+              />
+            </div>
+          )}
           <Popover.Menu scrollContainerRef={scrollContainerRef}>
             {buildMenuChildren({
               filtered,
@@ -180,6 +208,15 @@ function EntryPickerPopover({
               labels,
             })}
           </Popover.Menu>
+          <div
+            className="flex items-center gap-2 border-t border-border-01 px-3 py-2"
+            data-testid="picker-footer-tip"
+          >
+            <SvgInfo className="size-3.5 shrink-0 stroke-text-03" />
+            <Text font="secondary-body" color="text-03">
+              {t("entryPickerPopover.footer.tip")}
+            </Text>
+          </div>
         </div>
       </Popover.Content>
     </Popover>,
@@ -189,17 +226,17 @@ function EntryPickerPopover({
 
 interface PickerLabels {
   commands: string;
+  scenarios: string;
   skills: string;
   apps: string;
-  mcpServers: string;
   files: string;
   connected: string;
   connectionRequired: string;
   connectAction: string;
   kindSkill: string;
+  kindScenario: string;
   kindCommand: string;
   kindApp: string;
-  kindMcp: string;
   kindFile: string;
 }
 
@@ -241,13 +278,13 @@ function buildMenuChildren({
       label: labels.commands,
       entries: filtered.commands,
     },
+    {
+      key: "scenarios",
+      label: labels.scenarios,
+      entries: filtered.scenarios,
+    },
     { key: "skills", label: labels.skills, entries: filtered.skills },
     { key: "apps", label: labels.apps, entries: filtered.apps },
-    {
-      key: "mcpServers",
-      label: labels.mcpServers,
-      entries: filtered.mcpServers,
-    },
     { key: "files", label: labels.files, entries: filtered.files ?? [] },
   ];
 
@@ -281,10 +318,12 @@ function buildMenuChildren({
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-2 pt-1 pb-0.5">
-      <Text font="secondary-action" color="text-03">
-        {label}
-      </Text>
+    <div className="px-2 pt-1.5 pb-0.5">
+      <span className="text-xs font-semibold uppercase tracking-wide">
+        <Text font="secondary-action" color="text-04">
+          {label}
+        </Text>
+      </span>
     </div>
   );
 }
@@ -295,10 +334,11 @@ function pickerRowTitle(entry: PickerEntry): string {
     case "command":
       return `/${entry.slug}`;
     case "app":
-    case "mcp":
       return entry.name;
     case "file":
       return `@${entry.name}`;
+    case "scenario":
+      return entry.name;
   }
 }
 
@@ -310,16 +350,12 @@ function pickerRowDescription(
     case "skill":
     case "command":
       return entry.description;
-    case "mcp":
-      return entry.description?.trim()
-        ? entry.description
-        : entry.authenticated
-          ? labels.connected
-          : labels.connectionRequired;
     case "app":
       return entry.authenticated ? labels.connected : labels.connectionRequired;
     case "file":
       return entry.path ?? "";
+    case "scenario":
+      return entry.description;
   }
 }
 
@@ -327,12 +363,12 @@ function pickerRowKind(entry: PickerEntry, labels: PickerLabels): string {
   switch (entry.kind) {
     case "skill":
       return labels.kindSkill;
+    case "scenario":
+      return labels.kindScenario;
     case "command":
       return labels.kindCommand;
     case "app":
       return labels.kindApp;
-    case "mcp":
-      return labels.kindMcp;
     case "file":
       return labels.kindFile;
   }
@@ -346,10 +382,10 @@ function pickerRowTestId(entry: PickerEntry): string {
       return `command-picker-row-${entry.slug}`;
     case "app":
       return `app-picker-row-${entry.externalAppId}`;
-    case "mcp":
-      return `mcp-picker-row-${entry.mcpServerId}`;
     case "file":
       return `file-picker-row-${entry.fileId}`;
+    case "scenario":
+      return `scenario-picker-row-${entry.scenarioId}`;
   }
 }
 
@@ -374,8 +410,7 @@ function PickerRow({
   const title = pickerRowTitle(entry);
   const description = pickerRowDescription(entry, labels);
   const kind = pickerRowKind(entry, labels);
-  const unauth =
-    (entry.kind === "mcp" || entry.kind === "app") && !entry.authenticated;
+  const unauth = entry.kind === "app" && !entry.authenticated;
 
   const tooltip = (
     <div className="flex max-w-80 flex-col gap-1">
@@ -396,11 +431,6 @@ function PickerRow({
       <Text font="secondary-body" color="inherit" as="p">
         {kind}
       </Text>
-      {entry.kind === "mcp" ? (
-        <Text font="secondary-body" color="inherit" as="p">
-          {entry.serverUrl}
-        </Text>
-      ) : null}
     </div>
   );
 
@@ -432,7 +462,7 @@ function PickerRow({
             <Icon className="h-3.5 w-3.5 text-text-03" />
           </span>
           <span className="flex min-w-0 flex-1 items-baseline gap-2">
-            <span className="max-w-[45%] shrink-0 truncate font-secondary-action text-text-05">
+            <span className="max-w-[45%] shrink-0 truncate font-semibold text-text-05">
               {title}
             </span>
             {description ? (

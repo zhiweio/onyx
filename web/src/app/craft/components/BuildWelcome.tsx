@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BuildFile } from "@/app/craft/contexts/UploadFilesContext";
 import { useVideoBackgroundToggleClick } from "@/app/craft/components/video-background/useVideoBackgroundToggleClick";
@@ -14,6 +14,7 @@ import CraftLlmSetup from "@/app/craft/onboarding/components/CraftLlmSetup";
 import CraftLlmLockedState from "@/app/craft/onboarding/components/CraftLlmLockedState";
 import { useOnboarding } from "@/app/craft/onboarding/BuildOnboardingProvider";
 import { BuildLlmSelection } from "@/app/craft/onboarding/constants";
+import { useScenario } from "@/hooks/useScenarios";
 import {
   pickerEntriesFromSelection,
   toPickerSections,
@@ -22,7 +23,6 @@ import {
 import { resolveToolHints } from "@/lib/skills/toolHints";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
-import { useCraftMcpServers } from "@/lib/tools/hooks";
 import { defaultEntryToMention } from "@/sections/input/lexical";
 import type { LexicalPromptInputHandle } from "@/sections/input/lexical";
 import type { ReasoningEffortOverride } from "@/lib/languageModels/types";
@@ -33,11 +33,13 @@ interface BuildWelcomeProps {
     message: string,
     files: BuildFile[],
     selection: SlashSelection,
-    model?: BuildLlmSelection | null
+    model?: BuildLlmSelection | null,
   ) => void;
   isRunning: boolean;
   /** When true, the composer is disabled while the sandbox starts. */
   sandboxInitializing?: boolean;
+  /** Scenario to prefill as a chip before the first message (`?scenarioId=`). */
+  prefillScenarioId?: string | null;
   /** Deep-task switch for the first message (long job vs plain turn). */
   deepTask?: boolean;
   onDeepTaskToggle?: () => void;
@@ -60,6 +62,7 @@ export default function BuildWelcome({
   onSubmit,
   isRunning,
   sandboxInitializing = false,
+  prefillScenarioId = null,
   deepTask = false,
   onDeepTaskToggle,
   thoughtLevel,
@@ -67,17 +70,49 @@ export default function BuildWelcome({
   const t = useTranslations("craft.welcome");
   const editorRef = useRef<LexicalPromptInputHandle | null>(null);
   const [selectedModel, setSelectedModel] = useState<BuildLlmSelection | null>(
-    null
+    null,
   );
   const handleWordmarkClick = useVideoBackgroundToggleClick();
   const { isAdmin, hasAnyProvider, isLoading } = useOnboarding();
 
+  // Deep-link prefill: land with the scenario attached as a chip and the
+  // input focused, so the user only writes the task description and hits
+  // Enter (no session exists until that first submit).
+  const { data: prefillScenario } = useScenario(prefillScenarioId ?? undefined);
+  const prefilledScenarioRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!prefillScenarioId || !prefillScenario) {
+      return;
+    }
+    if (prefilledScenarioRef.current === prefillScenarioId) {
+      return;
+    }
+    const handle = editorRef.current;
+    if (!handle) {
+      return;
+    }
+    prefilledScenarioRef.current = prefillScenarioId;
+    if (handle.getText().trim().length === 0) {
+      handle.insertMention(
+        defaultEntryToMention(
+          {
+            kind: "scenario",
+            scenarioId: prefillScenario.id,
+            name: prefillScenario.name,
+            description: prefillScenario.description,
+          },
+          "/",
+        ),
+      );
+    }
+    handle.focus();
+  }, [prefillScenarioId, prefillScenario]);
+
   const { data: skillsData } = useUserSkills();
   const { data: appsData } = useUserExternalApps();
-  const { data: craftMcpData } = useCraftMcpServers();
   const pickerSections = useMemo(
-    () => toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
-    [skillsData, appsData, craftMcpData]
+    () => toPickerSections(skillsData, appsData),
+    [skillsData, appsData],
   );
 
   // Craft can't build without a supported provider: inputs stay gated until
@@ -91,14 +126,10 @@ export default function BuildWelcome({
       return;
     }
     handle.setText(prompt.fullText);
-    const resolved = resolveToolHints(
-      prompt.toolHints,
-      pickerSections.skills,
-      pickerSections.mcpServers
-    );
+    const resolved = resolveToolHints(prompt.toolHints, pickerSections.skills);
     const entries = pickerEntriesFromSelection(pickerSections, {
       skillIds: resolved.skillIds,
-      mcpServerIds: resolved.mcpServerIds,
+      scenarioId: null,
     });
     for (const entry of entries) {
       handle.insertMention(defaultEntryToMention(entry, "/"));

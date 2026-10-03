@@ -21,6 +21,7 @@ from onyx.db.models import (
     MCPConnectionConfig,
     MCPServer,
     MCPServer__User,
+    MCPServer__UserDisabled,
     MCPServer__UserGroup,
     Persona,
     Sandbox,
@@ -113,11 +114,26 @@ def get_mcp_servers_by_owner(owner_email: str, db_session: Session) -> list[MCPS
     )
 
 
+def get_user_disabled_mcp_server_ids(
+    db_session: Session, user_id: UUID
+) -> set[int]:
+    """Server ids the user turned off on /craft/v1/mcp-actions. Absence from
+    this set means enabled — the opt-out model behind the single MCP
+    enable/disable surface."""
+    rows = db_session.scalars(
+        select(MCPServer__UserDisabled.mcp_server_id).where(
+            MCPServer__UserDisabled.user_id == user_id
+        )
+    ).all()
+    return set(rows)
+
+
 def get_craft_enabled_mcp_servers(
     db_session: Session, user: User | None
 ) -> list[MCPServer]:
     """MCP servers Craft may emit: org servers with ``available_in_craft``,
-    plus the user's own personal servers. ``None`` skips the access filter —
+    plus the user's own personal servers, minus the servers the user disabled
+    on /craft/v1/mcp-actions. ``None`` skips the access filter —
     only for host matching before a user is known (proxy claim path).
 
     Eager-loads ``admin_connection_config`` so credential resolution across the
@@ -134,6 +150,9 @@ def get_craft_enabled_mcp_servers(
                 ),
             )
         )
+        disabled_ids = get_user_disabled_mcp_server_ids(db_session, user.id)
+        if disabled_ids:
+            stmt = stmt.where(MCPServer.id.not_in(disabled_ids))
     else:
         stmt = stmt.where(MCPServer.available_in_craft.is_(True))
     return list(db_session.scalars(stmt).all())

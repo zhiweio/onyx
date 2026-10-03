@@ -449,6 +449,10 @@
         "restricted": "受限 — 未分配用户组",
         "restrictedGroups": "{count, plural, other {仅限 # 个用户组}}",
         "restrictedNamed": "仅限用户组：{names}"
+      },
+      "serverEnabled": {
+        "label": "对我启用",
+        "ariaLabel": "切换服务器是否用于你的会话"
       }
     },
     "mcpOauthCallback": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {已成功禁用 # 个工具} other {已成功禁用 # 个工具}}",
         "toolsEnabled": "{count, plural, one {已成功启用 # 个工具} other {已成功启用 # 个工具}}",
         "toolsFetched": "已成功连接并获取工具",
-        "toolsRefreshed": "工具刷新成功"
+        "toolsRefreshed": "工具刷新成功",
+        "serverEnabled": "已为你的会话启用服务器",
+        "serverDisabled": "已为你的会话停用服务器",
+        "toggleFailed": "更新服务器失败"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "命令"
         },
+        "scenariosGroup": {
+          "label": "场景"
+        },
         "skillsGroup": {
           "label": "技能"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "命令",
           "kindMcp": "MCP 服务器",
           "kindSkill": "技能",
+          "kindScenario": "场景",
           "kindFile": "文件"
         },
         "filesGroup": {
           "label": "文件"
+        },
+        "search": {
+          "placeholder": "搜索命令、技能、应用和文件…"
+        },
+        "footer": {
+          "tip": "输入以搜索命令、技能、应用等"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "请等待当前操作完成。",
         "sandboxWait": "请等待沙箱初始化",
         "scheduledRunWait": "请等待计划运行结束。"
+      },
+      "messageLog": {
+        "ariaLabel": "对话记录"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "分享"
         },
-        "startRun": {
-          "label": "开始运行"
+        "use": {
+          "label": "使用"
         },
         "unpublish": {
           "label": "下架"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# 个技能} other {# 个技能}}"
         },
-        "startRun": {
-          "label": "开始运行"
+        "use": {
+          "label": "使用"
         },
         "visibility": {
           "private": {
@@ -14022,11 +14042,8 @@
         "share": {
           "label": "分享"
         },
-        "startRun": {
-          "label": "开始运行"
-        },
         "subtitle": {
-          "create": "为方案命名、绑定技能，然后启动 Craft 运行。",
+          "create": "为方案命名、绑定技能。点击使用，在 craft 输入框描述任务即可开始。",
           "edit": "更新任务说明、绑定技能和协议。"
         },
         "title": {

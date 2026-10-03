@@ -449,6 +449,10 @@
         "restricted": "Restricted — no groups assigned",
         "restrictedGroups": "Restricted to {count, plural, one {# group} other {# groups}}",
         "restrictedNamed": "Restricted to {names}"
+      },
+      "serverEnabled": {
+        "label": "Enabled for you",
+        "ariaLabel": "Toggle server for your sessions"
       }
     },
     "mcpLineItem": {
@@ -533,7 +537,10 @@
         "toolsDisabled": "{count, plural, one {# tool disabled successfully} other {# tools disabled successfully}}",
         "toolsEnabled": "{count, plural, one {# tool enabled successfully} other {# tools enabled successfully}}",
         "toolsFetched": "Successfully connected and fetched tools",
-        "toolsRefreshed": "Tools refreshed successfully"
+        "toolsRefreshed": "Tools refreshed successfully",
+        "serverEnabled": "Server enabled for your sessions",
+        "serverDisabled": "Server disabled for your sessions",
+        "toggleFailed": "Failed to update the server"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "Commands"
         },
+        "scenariosGroup": {
+          "label": "Scenarios"
+        },
         "skillsGroup": {
           "label": "Skills"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "Command",
           "kindMcp": "MCP server",
           "kindSkill": "Skill",
+          "kindScenario": "Scenario",
           "kindFile": "File"
         },
         "filesGroup": {
           "label": "Files"
+        },
+        "search": {
+          "placeholder": "Search commands, skills, apps, and files…"
+        },
+        "footer": {
+          "tip": "Type to search commands, skills, apps, and more"
         }
       },
       "inputChip": {
@@ -12310,6 +12327,9 @@
         "operationWait": "Please wait for the current operation to complete.",
         "sandboxWait": "Please wait for sandbox to initialize",
         "scheduledRunWait": "Please wait for the scheduled run to finish."
+      },
+      "messageLog": {
+        "ariaLabel": "Conversation"
       }
     },
     "compaction": {
@@ -13552,8 +13572,8 @@
         "share": {
           "label": "Share"
         },
-        "startRun": {
-          "label": "Start run"
+        "use": {
+          "label": "Use"
         },
         "unpublish": {
           "label": "Unpublish"
@@ -13893,8 +13913,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "Start run"
+        "use": {
+          "label": "Use"
         },
         "visibility": {
           "private": {
@@ -14028,11 +14048,8 @@
         "share": {
           "label": "Share"
         },
-        "startRun": {
-          "label": "Start run"
-        },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "title": {

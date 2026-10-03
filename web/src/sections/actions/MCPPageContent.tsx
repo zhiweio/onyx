@@ -27,6 +27,7 @@ import {
   updateMCPServerStatus,
   updateMCPServer,
   updateToolsStatus,
+  updateMCPServerEnabled,
 } from "@/lib/tools/svc";
 import {
   mcpServerMatches,
@@ -86,7 +87,7 @@ export default function MCPPageContent({
 
   const mcpServers = useMemo(
     () => mcpData?.mcp_servers ?? [],
-    [mcpData?.mcp_servers]
+    [mcpData?.mcp_servers],
   );
   const isLoading = isMcpLoading;
 
@@ -98,7 +99,7 @@ export default function MCPPageContent({
       (server) =>
         server.gateway_bound &&
         server.tool_count === 0 &&
-        !attemptedEmptyDiscoverIds.current.has(server.id)
+        !attemptedEmptyDiscoverIds.current.has(server.id),
     );
     if (pending.length === 0) {
       return;
@@ -114,7 +115,7 @@ export default function MCPPageContent({
         }
         if (result.failed > 0) {
           toast.error(
-            result.errors[0] ?? t("mcpPage.toasts.refreshToolsFailed")
+            result.errors[0] ?? t("mcpPage.toasts.refreshToolsFailed"),
           );
         }
       })
@@ -151,7 +152,7 @@ export default function MCPPageContent({
           await updateMCPServerStatus(
             serverIdInt,
             MCPServerStatus.FETCHING_TOOLS,
-            variant
+            variant,
           );
 
           await mutateMcpServers();
@@ -175,7 +176,7 @@ export default function MCPPageContent({
                 error instanceof Error
                   ? error.message
                   : t("mcpPage.errors.unknown"),
-            })
+            }),
           );
           await mutateMcpServers();
         }
@@ -204,7 +205,7 @@ export default function MCPPageContent({
       prev.length === fetchingIds.length &&
       prev.every((id, index) => id === fetchingIds[index])
         ? prev
-        : fetchingIds
+        : fetchingIds,
     );
   }, [mcpServers]);
 
@@ -230,7 +231,7 @@ export default function MCPPageContent({
       }
       return ActionStatus.DISCONNECTED;
     },
-    []
+    [],
   );
 
   // Handler callbacks
@@ -242,7 +243,7 @@ export default function MCPPageContent({
         disconnectModal.toggle(true);
       }
     },
-    [mcpServers, disconnectModal]
+    [mcpServers, disconnectModal],
   );
 
   const handleConfirmDisconnect = useCallback(async () => {
@@ -253,7 +254,7 @@ export default function MCPPageContent({
       await updateMCPServerStatus(
         activeServer.id,
         MCPServerStatus.DISCONNECTED,
-        variant
+        variant,
       );
 
       toast.success(t("mcpPage.toasts.serverDisconnected"));
@@ -266,7 +267,7 @@ export default function MCPPageContent({
       toast.error(
         error instanceof Error
           ? error.message
-          : t("mcpPage.toasts.disconnectFailed")
+          : t("mcpPage.toasts.disconnectFailed"),
       );
     } finally {
       setIsDisconnecting(false);
@@ -290,7 +291,7 @@ export default function MCPPageContent({
       toast.error(
         error instanceof Error
           ? error.message
-          : t("mcpPage.toasts.deleteFailed")
+          : t("mcpPage.toasts.deleteFailed"),
       );
     } finally {
       setIsDisconnecting(false);
@@ -305,21 +306,21 @@ export default function MCPPageContent({
         manageServerModal.toggle(true);
       }
     },
-    [mcpServers, manageServerModal]
+    [mcpServers, manageServerModal],
   );
 
   const handleManage = useCallback(
     (serverId: number) => {
       openManageServerModal(serverId);
     },
-    [openManageServerModal]
+    [openManageServerModal],
   );
 
   const handleEdit = useCallback(
     (serverId: number) => {
       openManageServerModal(serverId);
     },
-    [openManageServerModal]
+    [openManageServerModal],
   );
 
   const handleDelete = useCallback(
@@ -335,11 +336,11 @@ export default function MCPPageContent({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("mcpPage.toasts.deleteFailed")
+            : t("mcpPage.toasts.deleteFailed"),
         );
       }
     },
-    [mutateMcpServers, t]
+    [mutateMcpServers, t],
   );
 
   const handleAuthenticate = useCallback(
@@ -350,7 +351,7 @@ export default function MCPPageContent({
         authModal.toggle(true);
       }
     },
-    [mcpServers, authModal]
+    [mcpServers, authModal],
   );
 
   const triggerFetchToolsInPlace = useCallback(
@@ -366,7 +367,7 @@ export default function MCPPageContent({
         await updateMCPServerStatus(
           serverId,
           MCPServerStatus.FETCHING_TOOLS,
-          variant
+          variant,
         );
         await mutateMcpServers();
 
@@ -383,12 +384,12 @@ export default function MCPPageContent({
               error instanceof Error
                 ? error.message
                 : t("mcpPage.errors.unknown"),
-          })
+          }),
         );
         await mutateMcpServers();
       }
     },
-    [fetchingToolsServerIds, mutateMcpServers, setServerToExpand, t]
+    [fetchingToolsServerIds, mutateMcpServers, setServerToExpand, t],
   );
 
   const handleReconnect = useCallback(
@@ -397,7 +398,7 @@ export default function MCPPageContent({
         await updateMCPServerStatus(
           serverId,
           MCPServerStatus.CONNECTED,
-          variant
+          variant,
         );
 
         toast.success(t("mcpPage.toasts.serverReconnected"));
@@ -408,11 +409,11 @@ export default function MCPPageContent({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("mcpPage.toasts.reconnectFailed")
+            : t("mcpPage.toasts.reconnectFailed"),
         );
       }
     },
-    [mutateMcpServers, t]
+    [mutateMcpServers, t],
   );
 
   const handleToolToggle = useCallback(
@@ -420,7 +421,7 @@ export default function MCPPageContent({
       serverId: number,
       toolId: string,
       enabled: boolean,
-      mutateServerTools: KeyedMutator<ToolSnapshot[]>
+      mutateServerTools: KeyedMutator<ToolSnapshot[]>,
     ) => {
       try {
         // Optimistically update the UI
@@ -428,10 +429,10 @@ export default function MCPPageContent({
           async (currentTools) => {
             if (!currentTools) return currentTools;
             return currentTools.map((tool) =>
-              tool.id.toString() === toolId ? { ...tool, enabled } : tool
+              tool.id.toString() === toolId ? { ...tool, enabled } : tool,
             );
           },
-          { revalidate: false }
+          { revalidate: false },
         );
 
         await updateToolStatus(parseInt(toolId), enabled, variant);
@@ -442,7 +443,7 @@ export default function MCPPageContent({
         toast.success(
           enabled
             ? t("mcpPage.toasts.toolEnabled")
-            : t("mcpPage.toasts.toolDisabled")
+            : t("mcpPage.toasts.toolDisabled"),
         );
       } catch (error) {
         console.error("Error toggling tool:", error);
@@ -453,17 +454,54 @@ export default function MCPPageContent({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("mcpPage.toasts.toolUpdateFailed")
+            : t("mcpPage.toasts.toolUpdateFailed"),
         );
       }
     },
-    [t]
+    [t],
+  );
+
+  const handleServerEnabledToggle = useCallback(
+    async (serverId: number, enabled: boolean) => {
+      // Optimistic flip; roll back if the request fails.
+      await mutateMcpServers(
+        (current) =>
+          current
+            ? {
+                ...current,
+                mcp_servers: current.mcp_servers.map((server) =>
+                  server.id === serverId
+                    ? { ...server, user_enabled: enabled }
+                    : server,
+                ),
+              }
+            : current,
+        { revalidate: false },
+      );
+      try {
+        await updateMCPServerEnabled(serverId, enabled);
+        await mutateMcpServers();
+        toast.success(
+          enabled
+            ? t("mcpPage.toasts.serverEnabled")
+            : t("mcpPage.toasts.serverDisabled"),
+        );
+      } catch (error) {
+        await mutateMcpServers();
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("mcpPage.toasts.toggleFailed"),
+        );
+      }
+    },
+    [mutateMcpServers, t],
   );
 
   const handleRefreshTools = useCallback(
     async (
       serverId: number,
-      mutateServerTools: KeyedMutator<ToolSnapshot[]>
+      mutateServerTools: KeyedMutator<ToolSnapshot[]>,
     ) => {
       try {
         // Refresh tools for this specific server (discovers from MCP and syncs to DB)
@@ -481,11 +519,11 @@ export default function MCPPageContent({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("mcpPage.toasts.refreshToolsFailed")
+            : t("mcpPage.toasts.refreshToolsFailed"),
         );
       }
     },
-    [mutateMcpServers, t]
+    [mutateMcpServers, t],
   );
 
   const handleUpdateToolsStatus = useCallback(
@@ -493,7 +531,7 @@ export default function MCPPageContent({
       serverId: number,
       toolIds: number[],
       enabled: boolean,
-      mutateServerTools: KeyedMutator<ToolSnapshot[]>
+      mutateServerTools: KeyedMutator<ToolSnapshot[]>,
     ) => {
       try {
         if (toolIds.length === 0) {
@@ -506,10 +544,10 @@ export default function MCPPageContent({
           async (currentTools) => {
             if (!currentTools) return currentTools;
             return currentTools.map((tool) =>
-              toolIds.includes(tool.id) ? { ...tool, enabled } : tool
+              toolIds.includes(tool.id) ? { ...tool, enabled } : tool,
             );
           },
-          { revalidate: false }
+          { revalidate: false },
         );
 
         const result = await updateToolsStatus(toolIds, enabled, variant);
@@ -520,12 +558,14 @@ export default function MCPPageContent({
         toast.success(
           enabled
             ? t("mcpPage.toasts.toolsEnabled", { count: result.updated_count })
-            : t("mcpPage.toasts.toolsDisabled", { count: result.updated_count })
+            : t("mcpPage.toasts.toolsDisabled", {
+                count: result.updated_count,
+              }),
         );
       } catch (error) {
         console.error(
           `Error ${enabled ? "enabling" : "disabling"} all tools:`,
-          error
+          error,
         );
 
         // Revert on error by revalidating
@@ -536,11 +576,11 @@ export default function MCPPageContent({
             ? error.message
             : enabled
               ? t("mcpPage.toasts.enableAllFailed")
-              : t("mcpPage.toasts.disableAllFailed")
+              : t("mcpPage.toasts.disableAllFailed"),
         );
       }
     },
-    [t]
+    [t],
   );
 
   const onServerCreated = useCallback(
@@ -548,7 +588,7 @@ export default function MCPPageContent({
       setActiveServer(server);
       authModal.toggle(true);
     },
-    [authModal]
+    [authModal],
   );
 
   const handleAddServer = useCallback(() => {
@@ -567,12 +607,12 @@ export default function MCPPageContent({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("mcpPage.toasts.renameFailed")
+            : t("mcpPage.toasts.renameFailed"),
         );
         throw error; // Re-throw so ButtonRenaming can handle it
       }
     },
-    [mutateMcpServers, t]
+    [mutateMcpServers, t],
   );
 
   // Shared client-side search + pagination (name / description / URL).
@@ -671,6 +711,16 @@ export default function MCPPageContent({
                     }
                     onRename={readOnly ? undefined : handleRenameServer}
                     onToolToggle={readOnly ? undefined : handleToolToggle}
+                    userEnabled={
+                      variant === "personal"
+                        ? (server.user_enabled ?? true)
+                        : undefined
+                    }
+                    onServerEnabledToggle={
+                      variant === "personal"
+                        ? handleServerEnabledToggle
+                        : undefined
+                    }
                     onRefreshTools={readOnly ? undefined : handleRefreshTools}
                     onUpdateToolsStatus={
                       readOnly ? undefined : handleUpdateToolsStatus

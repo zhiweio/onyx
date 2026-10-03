@@ -227,7 +227,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const llmManager = useLlmManager(
     currentChatSession ?? undefined,
-    activeAgent
+    activeAgent,
   );
 
   const {
@@ -250,7 +250,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     if (lastFailedFiles && lastFailedFiles.length > 0) {
       const names = lastFailedFiles.map((f) => f.name).join(", ");
       toast.error(
-        t("failedFiles.toast", { count: lastFailedFiles.length, names })
+        t("failedFiles.toast", { count: lastFailedFiles.length, names }),
       );
       clearLastFailedFiles();
     }
@@ -285,7 +285,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const submitOnLoadPerformed = useRef<boolean>(false);
 
   const [selectedDocuments, setSelectedDocuments] = useState<OnyxDocument[]>(
-    []
+    [],
   );
 
   // Access chat state directly from the store
@@ -293,7 +293,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const isReady = useIsReady();
   const documentSidebarVisible = useDocumentSidebarVisible();
   const updateCurrentDocumentSidebarVisible = useChatSessionStore(
-    (state) => state.updateCurrentDocumentSidebarVisible
+    (state) => state.updateCurrentDocumentSidebarVisible,
   );
   const messageHistory = useCurrentMessageHistory();
   const messageTree = useCurrentMessageTree();
@@ -302,7 +302,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // even an empty one: submitting would reuse it with its pinned mode.
   useEffect(() => {
     setIncognitoLocked(
-      messageHistory.length > 0 || currentChatSessionId !== null
+      messageHistory.length > 0 || currentChatSessionId !== null,
     );
   }, [messageHistory.length, currentChatSessionId, setIncognitoLocked]);
 
@@ -321,7 +321,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     void endIncognitoSession(previous).then((tornDown) => {
       if (!tornDown) {
         console.error(
-          `Incognito teardown failed for ${previous}; leaving it to the server sweep`
+          `Incognito teardown failed for ${previous}; leaving it to the server sweep`,
         );
       }
     });
@@ -526,10 +526,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   }
 
   const onChat = useCallback(
-    (
-      message: string,
-      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
-    ) => {
+    (message: string, selection?: { skillIds?: string[] }) => {
       if (multiModel.isMultiModelActive) {
         foldSidebarForMultiModel();
       }
@@ -544,7 +541,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
           ? multiModel.selectedModels
           : undefined,
         selectedSkillIds: selection?.skillIds,
-        selectedMcpServerIds: selection?.mcpServerIds,
       });
       if (showOnboarding || !onboardingDismissed) {
         finishOnboarding();
@@ -561,7 +557,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       showOnboarding,
       onboardingDismissed,
       finishOnboarding,
-    ]
+    ],
   );
   const { submit: submitQuery, state, setAppMode } = useQueryController();
 
@@ -589,14 +585,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const handleSearchDocumentClick = useCallback(
     (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
-    []
+    [],
   );
 
   const handleAppInputBarSubmit = useCallback(
-    async (
-      message: string,
-      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
-    ) => {
+    async (message: string, selection?: { skillIds?: string[] }) => {
       // If we're in an existing chat session, always use chat mode
       // (appMode only applies to new sessions)
       if (currentChatSessionId) {
@@ -611,7 +604,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
             ? multiModel.selectedModels
             : undefined,
           selectedSkillIds: selection?.skillIds,
-          selectedMcpServerIds: selection?.mcpServerIds,
         });
         if (showOnboarding || !onboardingDismissed) {
           finishOnboarding();
@@ -631,7 +623,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       // For search-routed queries, the input bar is intentionally kept
       // so the user can see and refine their search query.
       await submitQuery(message, (routedMessage) =>
-        onChat(routedMessage, selection)
+        onChat(routedMessage, selection),
       );
     },
     [
@@ -648,7 +640,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       finishOnboarding,
       multiModel.isMultiModelActive,
       multiModel.selectedModels,
-    ]
+    ],
   );
 
   // Memoized callbacks for DocumentsSidebar
@@ -773,7 +765,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
             <div
               className={cn(
                 "overflow-hidden transition-all duration-300 ease-in-out h-full",
-                documentSidebarVisible ? "w-100" : "w-0"
+                documentSidebarVisible ? "w-100" : "w-0",
               )}
             >
               <DocumentsSidebar
@@ -906,7 +898,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       alignItems="end"
                       className={cn(
                         !fullWidthActive &&
-                          "max-w-(--app-page-main-content-width)"
+                          "max-w-(--app-page-main-content-width)",
                       )}
                     >
                       <WelcomeMessage
@@ -938,7 +930,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                   className={cn(
                     "row-start-2 flex flex-col items-center px-2 sm:px-4",
                     onboardingVisible && "min-h-0",
-                    sessionFetchError && "hidden"
+                    sessionFetchError && "hidden",
                   )}
                 >
                   <div
@@ -946,7 +938,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       "relative w-full flex flex-col",
                       onboardingVisible && "min-h-0",
                       !fullWidthActive &&
-                        "md:max-w-(--app-page-main-content-width)"
+                        "md:max-w-(--app-page-main-content-width)",
                     )}
                   >
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
@@ -996,7 +988,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <div
                         className={cn(
                           "transition-all duration-150 ease-in-out overflow-hidden",
-                          isSearch ? "h-[14px]" : "h-0"
+                          isSearch ? "h-[14px]" : "h-0",
                         )}
                       />
                       {appPosition.isChat() && activeAgent && (
@@ -1053,11 +1045,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           <ChatExamplePrompts
                             onPromptClick={(prompt) => {
                               chatInputBarRef.current?.setMessage(
-                                prompt.fullText
+                                prompt.fullText,
                               );
                               if (prompt.entries.length > 0) {
                                 chatInputBarRef.current?.setEntries(
-                                  prompt.entries
+                                  prompt.entries,
                                 );
                               }
                               // Scenario wants fresh web results: turn deep
@@ -1074,7 +1066,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <div
                         className={cn(
                           "transition-all duration-150 ease-in-out overflow-hidden",
-                          appPosition.isChat() ? "h-[14px]" : "h-0"
+                          appPosition.isChat() ? "h-[14px]" : "h-0",
                         )}
                       />
                     </div>

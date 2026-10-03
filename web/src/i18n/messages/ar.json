@@ -449,7 +449,11 @@
         "restrictedGroups": "مقيّد على {count, plural, one {مجموعة واحدة} other {# مجموعات}}",
         "restrictedNamed": "مقيّد على {names}"
       },
-      "unavailable": "غير متاح أثناء إيقاف البوابة"
+      "unavailable": "غير متاح أثناء إيقاف البوابة",
+      "serverEnabled": {
+        "label": "ممكن لك",
+        "ariaLabel": "تبديل الخادم لجلساتك"
+      }
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {تم تعطيل أداة واحدة بنجاح} other {تم تعطيل # أدوات بنجاح}}",
         "toolsEnabled": "{count, plural, one {تم تفعيل أداة واحدة بنجاح} other {تم تفعيل # أدوات بنجاح}}",
         "toolsFetched": "تم الاتصال وجلب الأدوات بنجاح",
-        "toolsRefreshed": "تم تحديث الأدوات بنجاح"
+        "toolsRefreshed": "تم تحديث الأدوات بنجاح",
+        "serverEnabled": "تم تمكين الخادم لجلساتك",
+        "serverDisabled": "تم تعطيل الخادم لجلساتك",
+        "toggleFailed": "فشل تحديث الخادم"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "الأوامر"
         },
+        "scenariosGroup": {
+          "label": "السيناريوهات"
+        },
         "skillsGroup": {
           "label": "المهارات"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "أمر",
           "kindMcp": "خادم MCP",
           "kindSkill": "مهارة",
+          "kindScenario": "سيناريو",
           "kindFile": "ملف"
         },
         "filesGroup": {
           "label": "الملفات"
+        },
+        "search": {
+          "placeholder": "ابحث في الأوامر والمهارات والتطبيقات والملفات…"
+        },
+        "footer": {
+          "tip": "اكتب للبحث في الأوامر والمهارات والتطبيقات والمزيد"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "يرجى الانتظار حتى تكتمل العملية الحالية.",
         "sandboxWait": "يرجى الانتظار حتى تتم تهيئة بيئة الاختبار",
         "scheduledRunWait": "يرجى الانتظار حتى ينتهي التشغيل المجدول."
+      },
+      "messageLog": {
+        "ariaLabel": "المحادثة"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "مشاركة"
         },
-        "startRun": {
-          "label": "بدء التشغيل"
+        "use": {
+          "label": "استخدام"
         },
         "unpublish": {
           "label": "إلغاء النشر"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "Start run"
+        "use": {
+          "label": "استخدام"
         },
         "visibility": {
           "private": {
@@ -14022,11 +14042,8 @@
         "share": {
           "label": "Share"
         },
-        "startRun": {
-          "label": "Start run"
-        },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "title": {

@@ -71,6 +71,15 @@ function $detectTrigger(
     return null;
   }
   const textBeforeCaret = node.getTextContent().slice(0, anchor.offset);
+  return detectTriggerInText(configs, textBeforeCaret);
+}
+
+/** Pure text-level trigger detection (exported for tests): a trigger char at
+ *  a word start directly before the caret opens its menu. */
+export function detectTriggerInText(
+  configs: readonly TriggerMenuConfig[],
+  textBeforeCaret: string,
+): Detection | null {
   if (!textBeforeCaret) {
     return null;
   }
@@ -95,9 +104,9 @@ function sectionsHaveEntries(config: TriggerMenuConfig): boolean {
   const { sections } = config;
   return (
     sections.commands.length > 0 ||
+    sections.scenarios.length > 0 ||
     sections.skills.length > 0 ||
     sections.apps.length > 0 ||
-    sections.mcpServers.length > 0 ||
     (sections.files?.length ?? 0) > 0
   );
 }
@@ -145,14 +154,6 @@ export function defaultEntryToMention(
         value: String(entry.externalAppId),
         markdown,
       };
-    case "mcp":
-      return {
-        id: pickerEntryKey(entry),
-        category: "mcp",
-        label: entry.name,
-        value: String(entry.mcpServerId),
-        markdown,
-      };
     case "file":
       return {
         id: pickerEntryKey(entry),
@@ -165,6 +166,15 @@ export function defaultEntryToMention(
           path: entry.path,
           scope: entry.source === "sandbox" ? "sandbox" : "library",
         },
+      };
+    case "scenario":
+      return {
+        id: pickerEntryKey(entry),
+        category: "scenarios",
+        label: entry.name,
+        value: entry.scenarioId,
+        markdown,
+        description: entry.description,
       };
   }
 }
@@ -205,6 +215,10 @@ function TriggerMenusPlugin({
   const [active, setActive] = useState<ActiveTrigger | null>(null);
   const configsRef = useRef(configs);
   const activeRef = useRef(active);
+  // ZCode dismissedSignature: Escape records the trigger+query signature so
+  // the same token does not instantly reopen the menu; editing the token
+  // invalidates it.
+  const dismissedSignatureRef = useRef<string | null>(null);
 
   // Mirror the latest props/state into refs for the update listener; effects
   // (not render) so React can safely replay render work.
@@ -257,6 +271,18 @@ function TriggerMenusPlugin({
           return;
         }
 
+        const signature = `${detection.configId}|${detection.triggerChar}|${detection.query}`;
+        if (dismissedSignatureRef.current !== null) {
+          if (dismissedSignatureRef.current === signature) {
+            // Same token the user just dismissed with Escape: stay closed.
+            if (activeRef.current) {
+              setActive(null);
+            }
+            return;
+          }
+          dismissedSignatureRef.current = null;
+        }
+
         setActive((previous) => {
           const anchorRect = caretAnchorRect(editor);
           if (!anchorRect) {
@@ -286,12 +312,18 @@ function TriggerMenusPlugin({
     : null;
 
   const closeMenu = useCallback(() => {
+    const current = activeRef.current;
+    if (current) {
+      dismissedSignatureRef.current = `${current.configId}|${current.triggerChar}|${current.query}`;
+    }
     setActive(null);
-  }, []);
+    editor.focus();
+  }, [editor]);
 
   const handleSelect = useCallback(
     (entry: PickerEntry) => {
       const current = activeRef.current;
+      dismissedSignatureRef.current = null;
       setActive(null);
       if (!current) {
         return;
@@ -320,17 +352,17 @@ function TriggerMenusPlugin({
             const anchor = initialSelection.anchor;
             const node = anchor.getNode();
             const content = node.getTextContent();
-            const tokenLength =
-              current.triggerChar.length + current.query.length;
-            const start = Math.max(0, anchor.offset - tokenLength);
-            const token = content.slice(start, anchor.offset);
-            // Delete the typed token only when it still matches what opened
-            // the menu; a stale draft must not eat unrelated characters.
-            if (token === `${current.triggerChar}${current.query}`) {
+            // Delete whatever trigger token the editor actually holds (the
+            // search input can drive queries longer than the typed token).
+            const match = new RegExp(
+              `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`,
+            ).exec(content.slice(0, anchor.offset));
+            if (match) {
+              const tokenStart = anchor.offset - match[0].length;
               node.setTextContent(
-                content.slice(0, start) + content.slice(anchor.offset),
+                content.slice(0, tokenStart) + content.slice(anchor.offset),
               );
-              node.select(start, start);
+              node.select(tokenStart, tokenStart);
             }
           }
           let target = $getSelection();
@@ -347,6 +379,60 @@ function TriggerMenusPlugin({
     [editor],
   );
 
+  /** Search-input edits: update the filtered query and mirror it into the
+   *  editor token so selection replacement stays aligned (space-containing
+   *  queries filter locally only — editor tokens cannot hold spaces). */
+  const handleQueryChange = useCallback(
+    (nextQuery: string) => {
+      setActive((current) =>
+        current ? { ...current, query: nextQuery } : current,
+      );
+      if (/\s/.test(nextQuery)) {
+        return;
+      }
+      const current = activeRef.current;
+      if (!current) {
+        return;
+      }
+      editor.update(
+        () => {
+          const selection = $getSelection();
+          if (
+            !$isRangeSelection(selection) ||
+            !selection.isCollapsed() ||
+            selection.anchor.type !== "text"
+          ) {
+            return;
+          }
+          const anchor = selection.anchor;
+          const node = anchor.getNode();
+          if ($isPromptMentionNode(node)) {
+            return;
+          }
+          const content = node.getTextContent();
+          const match = new RegExp(
+            `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`,
+          ).exec(content.slice(0, anchor.offset));
+          if (!match) {
+            return;
+          }
+          const tokenStart = anchor.offset - match[0].length;
+          node.setTextContent(
+            content.slice(0, tokenStart) +
+              current.triggerChar +
+              nextQuery +
+              content.slice(anchor.offset),
+          );
+          const caretOffset =
+            tokenStart + current.triggerChar.length + nextQuery.length;
+          node.select(caretOffset, caretOffset);
+        },
+        { tag: PROGRAMMATIC_UPDATE_TAG },
+      );
+    },
+    [editor],
+  );
+
   return (
     <EntryPickerPopover
       open={active !== null && activeConfig !== null}
@@ -355,14 +441,16 @@ function TriggerMenusPlugin({
       sections={
         activeConfig?.sections ?? {
           commands: [],
+          scenarios: [],
           skills: [],
           apps: [],
-          mcpServers: [],
         }
       }
       emptyMessage={activeConfig?.emptyMessage}
       onSelect={handleSelect}
       onClose={closeMenu}
+      searchable
+      onQueryChange={handleQueryChange}
     />
   );
 }

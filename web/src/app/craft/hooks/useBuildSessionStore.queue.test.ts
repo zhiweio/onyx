@@ -35,7 +35,7 @@ describe("Craft queued messages", () => {
       .getState()
       .enqueueMessage(sessionId, "Summarize this brief", documentAttachments, {
         skillIds: ["hithink-finance"],
-        mcpServerIds: [12],
+        scenarioId: null,
       });
     useBuildSessionStore.getState().removeQueuedMessage(sessionId, 0);
 
@@ -48,7 +48,7 @@ describe("Craft queued messages", () => {
         attachments: documentAttachments,
         selection: {
           skillIds: ["hithink-finance"],
-          mcpServerIds: [12],
+          scenarioId: null,
         },
       },
     ]);

@@ -12,6 +12,7 @@ const sections: PickerSections = {
       description: "Summarize the conversation to free up context",
     },
   ],
+  scenarios: [],
   skills: [
     {
       kind: "skill",
@@ -33,16 +34,6 @@ const sections: PickerSections = {
       name: "Slack",
       appType: "SLACK",
       authenticated: true,
-    },
-  ],
-  mcpServers: [
-    {
-      kind: "mcp",
-      mcpServerId: 1,
-      name: "Linear",
-      serverUrl: "https://mcp.linear.app/sse",
-      authenticated: false,
-      description: "Issues and projects",
     },
   ],
   files: [
@@ -73,7 +64,7 @@ const slashTrigger: TriggerMenuConfig = {
 const fileMentions: TriggerMenuConfig = {
   id: "mention-files",
   triggerChars: ["@"],
-  sections: { ...sections, commands: [], skills: [], apps: [], mcpServers: [] },
+  sections: { ...sections, commands: [], skills: [], apps: [] },
 };
 
 const meta: Meta<typeof ChatPromptEditor> = {

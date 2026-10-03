@@ -36,7 +36,6 @@ function renderView({
   const onAuthenticate = jest.fn();
   const onBack = jest.fn();
   const onSelectServer = jest.fn();
-  const onToggleServer = jest.fn();
 
   render(
     <ManageConnectionsView
@@ -46,14 +45,12 @@ function renderView({
       onAuthenticate={onAuthenticate}
       onBack={onBack}
       onSelectServer={onSelectServer}
-      onToggleServer={onToggleServer}
       servers={servers}
       toolsByServer={new Map()}
-      enabledServerIds={new Set()}
-    />
+    />,
   );
 
-  return { onAuthenticate, onBack, onSelectServer, onToggleServer };
+  return { onAuthenticate, onBack, onSelectServer };
 }
 
 describe("ManageConnectionsView", () => {
@@ -63,10 +60,12 @@ describe("ManageConnectionsView", () => {
     expect(screen.getByPlaceholderText("Search MCPs...")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Manage" })).toHaveAttribute(
       "href",
-      "/craft/v1/mcp-actions"
+      "/craft/v1/mcp-actions",
     );
+    // Server rows select (open detail), they no longer carry per-chat
+    // enable switches — enablement lives on /craft/v1/mcp-actions.
     expect(
-      screen.getByRole("switch", { name: `Toggle ${deepWiki.name}` })
+      screen.getByRole("button", { name: new RegExp(deepWiki.name) }),
     ).toBeVisible();
   });
 
@@ -74,7 +73,7 @@ describe("ManageConnectionsView", () => {
     renderView({ canManage: false });
 
     expect(
-      screen.queryByRole("link", { name: "Manage" })
+      screen.queryByRole("link", { name: "Manage" }),
     ).not.toBeInTheDocument();
   });
 
@@ -85,26 +84,10 @@ describe("ManageConnectionsView", () => {
     await user.type(screen.getByPlaceholderText("Search MCPs..."), "deep");
 
     expect(
-      screen.getByRole("switch", { name: `Toggle ${deepWiki.name}` })
+      screen.getByRole("button", { name: new RegExp(deepWiki.name) }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("switch", { name: `Toggle ${parallelSearch.name}` })
+      screen.queryByRole("button", { name: new RegExp(parallelSearch.name) }),
     ).not.toBeInTheDocument();
-  });
-
-  it("keeps every server off until the user turns one on", async () => {
-    const user = setupUser();
-    const { onToggleServer } = renderView();
-
-    const deepWikiSwitch = screen.getByRole("switch", {
-      name: `Toggle ${deepWiki.name}`,
-    });
-    expect(deepWikiSwitch).not.toBeChecked();
-    expect(
-      screen.getByRole("switch", { name: `Toggle ${parallelSearch.name}` })
-    ).not.toBeChecked();
-
-    await user.click(deepWikiSwitch);
-    expect(onToggleServer).toHaveBeenCalledWith(deepWiki.id, true);
   });
 });

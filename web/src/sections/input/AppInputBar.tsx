@@ -63,14 +63,12 @@ import {
   type LexicalPromptInputHandle,
 } from "@/sections/input/lexical";
 import useUserSkills from "@/hooks/useUserSkills";
-import { useCraftMcpServers } from "@/lib/tools/hooks";
 import {
   pickerEntryConnectionPath,
   toPickerSections,
   type PickerEntry,
   type SlashSelection,
 } from "@/lib/skills/picker";
-import { uniqueMcpServerIds } from "@/lib/tools/mcpSelection";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -109,20 +107,18 @@ export interface AppInputBarProps {
   onToggleTabReading?: () => void;
 }
 
-/** Slash selection derived from the editor's chips. */
+/** Slash selection derived from the editor's chips. Chat never offers
+ * scenarios, so the scenario field stays empty here. */
 function selectionFromMentions(
-  mentions: readonly ComposerMention[]
+  mentions: readonly ComposerMention[],
 ): SlashSelection {
   const skillIds: string[] = [];
-  const mcpServerIds: number[] = [];
   for (const mention of mentions) {
     if (mention.category === "skills") {
       skillIds.push(mention.value);
-    } else if (mention.category === "mcp" && /^\d+$/.test(mention.value)) {
-      mcpServerIds.push(Number(mention.value));
     }
   }
-  return { skillIds, mcpServerIds };
+  return { skillIds, scenarioId: null };
 }
 
 const AppInputBar = React.memo(
@@ -154,16 +150,16 @@ const AppInputBar = React.memo(
     const [isMuted, setIsMuted] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(
-      null
+      null,
     );
     const setMutedRef = useRef<((muted: boolean) => void) | null>(null);
     const queuedMessages = useCurrentQueuedMessages();
     const latestMessageRenderComplete = useCurrentLatestMessageRenderComplete();
     const enqueueCurrentMessage = useChatSessionStore(
-      (state) => state.enqueueCurrentMessage
+      (state) => state.enqueueCurrentMessage,
     );
     const removeCurrentQueuedMessage = useChatSessionStore(
-      (state) => state.removeCurrentQueuedMessage
+      (state) => state.removeCurrentQueuedMessage,
     );
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
@@ -175,10 +171,9 @@ const AppInputBar = React.memo(
     const isRecordingRef = useRef(isRecording);
 
     const { data: skillsData } = useUserSkills();
-    const { data: craftMcpData } = useCraftMcpServers();
     const pickerSections = useMemo(
-      () => toPickerSections(skillsData, undefined, craftMcpData?.mcp_servers),
-      [skillsData, craftMcpData]
+      () => toPickerSections(skillsData, undefined),
+      [skillsData],
     );
 
     const { activePromptShortcuts } = usePromptShortcuts();
@@ -208,7 +203,7 @@ const AppInputBar = React.memo(
         onPick: (entry: PickerEntry): boolean => {
           if (entry.kind === "command") {
             const prompt = activePromptShortcuts.find(
-              (candidate) => candidate.prompt === entry.slug
+              (candidate) => candidate.prompt === entry.slug,
             );
             const content = prompt?.content ?? "";
             editorRef.current?.setText(content);
@@ -220,15 +215,32 @@ const AppInputBar = React.memo(
             window.location.assign(connectionPath);
             return true;
           }
-          if (entry.kind === "mcp") {
-            // Picking an MCP server both inserts the chip and enables the
-            // server for the next message, matching the tools toggle.
-            toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
-          }
           return false;
         },
       }),
-      [pickerSections, promptCommands, activePromptShortcuts, toolConfiguration]
+      [
+        pickerSections,
+        promptCommands,
+        activePromptShortcuts,
+        toolConfiguration,
+      ],
+    );
+
+    // Skills-only menu on $ (ZCode's dedicated skills trigger; ¥/￥ for CJK
+    // IMEs). Picks still insert the /slug chip.
+    const skillsTrigger = useMemo(
+      () => ({
+        id: "app-skills",
+        triggerChars: ["$", "¥", "￥"] as const,
+        sections: {
+          commands: [],
+          scenarios: [],
+          skills: pickerSections.skills,
+          apps: [],
+          files: [],
+        },
+      }),
+      [pickerSections],
     );
 
     const { state } = useQueryController();
@@ -293,19 +305,16 @@ const AppInputBar = React.memo(
         }
         stopTTS();
         const slash = selectionFromMentions(
-          editorRef.current?.getMentions() ?? []
+          editorRef.current?.getMentions() ?? [],
         );
         onSubmit(text, {
           skillIds: slash.skillIds,
-          mcpServerIds: uniqueMcpServerIds(
-            slash.mcpServerIds,
-            toolConfiguration.selectedMcpServerIds
-          ),
+          scenarioId: null,
         });
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [stopTTS, onSubmit, toolConfiguration.selectedMcpServerIds, draftScope]
+      [stopTTS, onSubmit, draftScope],
     );
 
     const handleQueueMessage = useCallback(
@@ -315,7 +324,7 @@ const AppInputBar = React.memo(
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [enqueueCurrentMessage, draftScope]
+      [enqueueCurrentMessage, draftScope],
     );
 
     const handleEditorChange = useCallback((text: string) => {
@@ -360,9 +369,6 @@ const AppInputBar = React.memo(
       },
       setEntries: (entries: PickerEntry[]) => {
         for (const entry of entries) {
-          if (entry.kind === "mcp") {
-            toolConfiguration.setMcpServerEnabled(entry.mcpServerId, true);
-          }
           editorRef.current?.insertMention(defaultEntryToMention(entry, "/"));
         }
       },
@@ -376,13 +382,13 @@ const AppInputBar = React.memo(
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
-        (file) => file.status === UserFileStatus.PROCESSING
+        (file) => file.status === UserFileStatus.PROCESSING,
       );
     }, [currentMessageFiles]);
 
     const hasUploadingFiles = useMemo(() => {
       return currentMessageFiles.some(
-        (file) => file.status === UserFileStatus.UPLOADING
+        (file) => file.status === UserFileStatus.UPLOADING,
       );
     }, [currentMessageFiles]);
 
@@ -401,14 +407,14 @@ const AppInputBar = React.memo(
 
         setPresentingDocument(documentForViewer);
       },
-      [setPresentingDocument]
+      [setPresentingDocument],
     );
 
     const handleRemoveMessageFile = useCallback(
       (fileId: string) => {
         setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
-      [setCurrentMessageFiles]
+      [setCurrentMessageFiles],
     );
 
     const combinedSettingsData = useSettings();
@@ -456,7 +462,7 @@ const AppInputBar = React.memo(
       if (modelConfigurationId != null) {
         for (const provider of providers) {
           const model = provider.model_configurations.find(
-            (candidate) => candidate.id === modelConfigurationId
+            (candidate) => candidate.id === modelConfigurationId,
           );
           if (model) return model;
         }
@@ -494,14 +500,14 @@ const AppInputBar = React.memo(
         // token_count is null until indexing finishes; don't hide the
         // processing indicator while a file's size is still unknown.
         const allTokenCountsKnown = currentIndexingFiles.every(
-          (file) => file.token_count !== null
+          (file) => file.token_count !== null,
         );
         if (!allTokenCountsKnown) {
           return false;
         }
         const currentFilesTokenTotal = currentMessageFiles.reduce(
           (acc, file) => acc + (file.token_count || 0),
-          0
+          0,
         );
         const totalTokens =
           (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
@@ -569,7 +575,7 @@ const AppInputBar = React.memo(
     const controlsHiddenClass = cn(
       "flex flex-row items-center",
       isSearchMode && "hidden",
-      controlsLoading && "invisible"
+      controlsLoading && "invisible",
     );
 
     const toolbarLeading = (
@@ -626,7 +632,7 @@ const AppInputBar = React.memo(
         {(() => {
           if (!activeAgent || forcedToolId === null) return null;
           const tool = activeAgent.tools.find(
-            (tool) => tool.id === forcedToolId
+            (tool) => tool.id === forcedToolId,
           );
           if (!tool) return null;
           return (
@@ -741,6 +747,7 @@ const AppInputBar = React.memo(
               historyStorageKey={`onyx-prompt-history:chat:${user?.id ?? "anonymous"}`}
               draft={{ surface: "chat", scope: draftScope }}
               slashTrigger={slashTrigger}
+              mentionTriggers={[skillsTrigger]}
               pasteTilesEnabled={user?.preferences?.paste_as_tile ?? false}
               topContent={attachedFiles}
               toolbarLeading={toolbarLeading}
@@ -822,7 +829,7 @@ const AppInputBar = React.memo(
         )}
       </>
     );
-  }
+  },
 );
 AppInputBar.displayName = "AppInputBar";
 

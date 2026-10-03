@@ -60,6 +60,9 @@ export interface MCPServer {
   groups: number[];
   users: string[];
   available_in_craft?: boolean;
+  // Per-user enablement (opt-out): false when the user disabled this server
+  // on /craft/v1/mcp-actions. Absent when there is no user context.
+  user_enabled?: boolean;
   // Sparse per-tool Craft approval overrides (unlisted tools default to ASK).
   // Present on owner/admin views only.
   tool_policies?: Record<string, EndpointPolicy> | null;

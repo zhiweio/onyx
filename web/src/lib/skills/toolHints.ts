@@ -5,14 +5,8 @@ export interface HintSkill {
   name: string;
 }
 
-export interface HintMcpServer {
-  mcpServerId: number;
-  name: string;
-}
-
 export interface ResolvedToolSelection {
   skillIds: string[];
-  mcpServerIds: number[];
   useWebSearch: boolean;
 }
 
@@ -30,22 +24,16 @@ function matches(reference: string, hint: string): boolean {
 export function resolveToolHints(
   hints: PromptToolHints | undefined,
   skills: HintSkill[],
-  mcpServers: HintMcpServer[]
 ): ResolvedToolSelection {
   const skillIds = (hints?.skillSlugs ?? [])
     .map((hint) => skills.find((skill) => matches(skill.slug, hint))?.slug)
     .filter((slug): slug is string => Boolean(slug));
 
-  const mcpServerIds = (hints?.mcpServerNames ?? [])
-    .map(
-      (hint) =>
-        mcpServers.find((server) => matches(server.name, hint))?.mcpServerId
-    )
-    .filter((id): id is number => id !== undefined);
-
+  // MCP hints are obsolete: servers are enabled globally on
+  // /craft/v1/mcp-actions and injected once per session, so example prompts
+  // no longer carry per-prompt MCP selections.
   return {
     skillIds: [...new Set(skillIds)],
-    mcpServerIds: [...new Set(mcpServerIds)],
     useWebSearch: hints?.webSearch ?? false,
   };
 }

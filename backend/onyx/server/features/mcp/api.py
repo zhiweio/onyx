@@ -1209,6 +1209,7 @@ def _db_mcp_server_to_api_mcp_server(
     craft_connected: bool | None = None,
     user_configs: Mapping[int, MCPConnectionConfig] | None = None,
     discovery_error: str | None = None,
+    user_enabled: bool | None = None,
 ) -> MCPServer:
     """Convert database MCP server to API model.
 
@@ -1323,6 +1324,7 @@ def _db_mcp_server_to_api_mcp_server(
         groups=[group.id for group in db_server.user_groups],
         users=[user.id for user in db_server.users],
         available_in_craft=db_server.available_in_craft,
+        user_enabled=user_enabled,
         tool_policies=(
             get_action_policies(db, GatedAppKind.MCP_SERVER, db_server.id)
             if can_view_server_details

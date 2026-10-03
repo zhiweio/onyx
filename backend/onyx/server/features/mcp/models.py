@@ -780,6 +780,9 @@ class MCPServer(BaseModel):
     groups: list[int] = Field(default_factory=list)
     users: list[UUID] = Field(default_factory=list)
     available_in_craft: bool = False
+    # Per-user enablement (opt-out): False when the user disabled this server
+    # on /craft/v1/mcp-actions. None when there is no user context.
+    user_enabled: Optional[bool] = None
     tool_policies: Optional[dict[str, EndpointPolicy]] = Field(
         None,
         description=(

@@ -74,7 +74,10 @@ jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({
   buildEntryMenuItems: () => [],
 }));
 
-const emptySelection: SlashSelection = { skillIds: [], mcpServerIds: [] };
+const emptySelection: SlashSelection = {
+  skillIds: [],
+  scenarioId: null,
+};
 
 function builtinSkill(id: string): SkillsList["builtins"][number] {
   return {
@@ -173,8 +176,35 @@ describe("CraftComposer", () => {
 
     expect(onSubmit).toHaveBeenCalledWith("/pptx make slides", attachedFiles, {
       skillIds: ["pptx"],
-      mcpServerIds: [],
+          scenarioId: null,
     });
+  });
+
+  it("carries a scenario chip into the structured selection", () => {
+    const { editorHandleRef, onSubmit } = renderComposer();
+    act(() => {
+      editorHandleRef.current?.insertMention({
+        id: "scenario:pack-1",
+        category: "scenarios",
+        label: "Quarterly review",
+        value: "pack-1",
+        markdown: '[Follow the scenario "Quarterly review" (ID: pack-1)]',
+      });
+      editorHandleRef.current?.appendText("compile Q3 numbers");
+    });
+    fireEvent.keyDown(screen.getByTestId("craft-message-input"), {
+      key: "Enter",
+      keyCode: 13,
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      '[Follow the scenario "Quarterly review" (ID: pack-1)] compile Q3 numbers',
+      attachedFiles,
+      {
+        skillIds: [],
+              scenarioId: "pack-1",
+      }
+    );
   });
 
   it("queues a follow-up with attachments while running", () => {
@@ -310,7 +340,7 @@ describe("CraftComposer", () => {
       // Post-submit rerender delivers the session's persistent selection.
       rerender({
         skillIds: ["pptx"],
-        mcpServerIds: [],
+              scenarioId: null,
       });
       // Now let the re-arm frame land.
       act(() => {

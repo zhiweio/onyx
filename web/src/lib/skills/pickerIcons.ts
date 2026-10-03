@@ -1,7 +1,6 @@
 import type { IconFunctionComponent } from "@opal/types";
 import { SvgScrollText } from "@opal/icons";
 import { getAppTypeLogo } from "@/app/craft/v1/apps/registry";
-import { getActionIcon } from "@/lib/tools/utils";
 import type { PickerEntry } from "@/lib/skills/picker";
 import {
   CATEGORY_COMMAND_ICON,
@@ -19,8 +18,6 @@ export function pickerEntryIcon(entry: PickerEntry): IconFunctionComponent {
   switch (entry.kind) {
     case "app":
       return getAppTypeLogo(entry.appType);
-    case "mcp":
-      return getActionIcon(entry.serverUrl, entry.name);
     case "skill":
       return CATEGORY_SKILL_ICON;
     case "command":

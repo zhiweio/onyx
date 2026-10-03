@@ -32,7 +32,7 @@ import {
 } from "@/app/craft/contexts/UploadFilesContext";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
-import { useCraftMcpServers } from "@/lib/tools/hooks";
+import useScenarios from "@/hooks/useScenarios";
 import {
   COMPACT_COMMAND_SLUG,
   pickerEntriesFromSelection,
@@ -52,11 +52,12 @@ import { useUser } from "@/providers/UserProvider";
 /**
  * Craft composer: the full form of the shared Lexical kernel.
  *
- * Slash (/) opens skills, apps, MCP servers, and the compact command; @ opens
- * user-library files. Picks become atomic chips whose markdown serializes
- * into the prompt, and skill/MCP chips also drive the structured selection
- * sent with the message. The session's persistent selection is re-armed as
- * chips after each send, matching the old chip-strip behavior.
+ * Slash (/) opens scenarios, skills, apps, MCP servers, and the compact
+ * command; @ opens user-library files. Picks become atomic chips whose
+ * markdown serializes into the prompt, and skill/MCP/scenario chips also
+ * drive the structured selection sent with the message. The session's
+ * persistent selection is re-armed as chips after each send, matching the
+ * old chip-strip behavior.
  */
 
 interface CraftComposerProps {
@@ -64,13 +65,13 @@ interface CraftComposerProps {
   onSubmit: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection
+    selection: SlashSelection,
   ) => void;
   /** Absent on the welcome screen, where there is no session to queue into. */
   onQueueMessage?: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection
+    selection: SlashSelection,
   ) => void;
   queuedMessages?: readonly QueuedMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
@@ -109,18 +110,18 @@ interface CraftComposerProps {
 }
 
 function selectionFromMentions(
-  mentions: readonly ComposerMention[]
+  mentions: readonly ComposerMention[],
 ): SlashSelection {
   const skillIds: string[] = [];
-  const mcpServerIds: number[] = [];
+  let scenarioId: string | null = null;
   for (const mention of mentions) {
     if (mention.category === "skills") {
       skillIds.push(mention.value);
-    } else if (mention.category === "mcp" && /^\d+$/.test(mention.value)) {
-      mcpServerIds.push(Number(mention.value));
+    } else if (mention.category === "scenarios") {
+      scenarioId = mention.value;
     }
   }
-  return { skillIds, mcpServerIds };
+  return { skillIds, scenarioId };
 }
 
 function CraftComposer({
@@ -165,11 +166,25 @@ function CraftComposer({
 
   const { data: skillsData } = useUserSkills();
   const { data: appsData } = useUserExternalApps();
-  const { data: craftMcpData } = useCraftMcpServers();
+  const { data: scenarios } = useScenarios();
+
+  const scenarioEntries = useMemo(
+    () =>
+      [...scenarios]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((scenario) => ({
+          kind: "scenario" as const,
+          scenarioId: scenario.id,
+          name: scenario.name,
+          description: scenario.description,
+        })),
+    [scenarios],
+  );
 
   const pickerSections = useMemo(
     () => ({
-      ...toPickerSections(skillsData, appsData, craftMcpData?.mcp_servers),
+      ...toPickerSections(skillsData, appsData),
+      scenarios: scenarioEntries,
       commands: compactAvailable
         ? [
             {
@@ -181,12 +196,12 @@ function CraftComposer({
           ]
         : [],
     }),
-    [skillsData, appsData, craftMcpData, compactAvailable, t]
+    [skillsData, appsData, scenarioEntries, compactAvailable, t],
   );
 
   const { data: libraryTree } = useSWR(
     SWR_KEYS.buildUserLibraryTree,
-    fetchLibraryTree
+    fetchLibraryTree,
   );
   const libraryFileEntries = useMemo(
     () =>
@@ -199,18 +214,18 @@ function CraftComposer({
           path: entry.path,
           source: "library" as const,
         })),
-    [libraryTree]
+    [libraryTree],
   );
 
   const fileMentionSections = useMemo(
     () => ({
       commands: [],
+      scenarios: [],
       skills: [],
       apps: [],
-      mcpServers: [],
       files: libraryFileEntries,
     }),
-    [libraryFileEntries]
+    [libraryFileEntries],
   );
 
   const slashTrigger = useMemo(
@@ -231,7 +246,25 @@ function CraftComposer({
         return false;
       },
     }),
-    [pickerSections, onCompact, router]
+    [pickerSections, onCompact, router],
+  );
+
+  // Skills-only menu on $ (ZCode's dedicated skills trigger; ¥/￥ for CJK
+  // IMEs). Picks still insert the /slug chip — the trigger is just the menu
+  // entry point.
+  const skillsTrigger = useMemo(
+    () => ({
+      id: "craft-skills",
+      triggerChars: ["$", "¥", "￥"] as const,
+      sections: {
+        commands: [],
+        scenarios: [],
+        skills: pickerSections.skills,
+        apps: [],
+        files: [],
+      },
+    }),
+    [pickerSections],
   );
 
   const fileMentionTrigger = useMemo(
@@ -243,17 +276,19 @@ function CraftComposer({
       showWhenEmpty: true,
       emptyMessage: entryMenuT("library.empty"),
     }),
-    [fileMentionSections, entryMenuT]
+    [fileMentionSections, entryMenuT],
   );
 
   // Restore the session's persistent slash selection as chips once the entry
   // data has loaded and the editor has no draft of its own.
   const restoreKeyRef = useRef<string | null>(null);
+  const selectionKey = (selection: SlashSelection): string =>
+    `${sessionId ?? "draft"}:${selection.scenarioId ?? ""}:${selection.skillIds.join(",")}`;
   useEffect(() => {
     if (!persistedSelection || !editorRef.current) {
       return;
     }
-    const key = `${sessionId ?? "draft"}:${persistedSelection.skillIds.join(",")}:${persistedSelection.mcpServerIds.join(",")}`;
+    const key = selectionKey(persistedSelection);
     if (restoreKeyRef.current === key) {
       return;
     }
@@ -262,7 +297,7 @@ function CraftComposer({
     }
     const entries = pickerEntriesFromSelection(
       pickerSections,
-      persistedSelection
+      persistedSelection,
     );
     if (entries.length === 0) {
       return;
@@ -274,41 +309,54 @@ function CraftComposer({
   }, [persistedSelection, pickerSections, sessionId, editorRef]);
 
   const [mentions, setMentions] = useState<ComposerMention[]>([]);
+
+  // A task carries at most one scenario (backend model is single-valued).
+  // When a second scenario chip lands, drop the earlier ones, keeping the
+  // most recent pick.
+  useEffect(() => {
+    const scenarioMentions = mentions.filter(
+      (mention) => mention.category === "scenarios",
+    );
+    if (scenarioMentions.length <= 1) {
+      return;
+    }
+    for (const stale of scenarioMentions.slice(0, -1)) {
+      editorRef.current?.removeMention(stale.id);
+    }
+  }, [mentions, editorRef]);
+
   const activeMentionEntries = useMemo<PickerEntry[]>(() => {
     const skillIds = new Set(
-      mentions.filter((m) => m.category === "skills").map((m) => m.value)
-    );
-    const mcpIds = new Set(
-      mentions.filter((m) => m.category === "mcp").map((m) => Number(m.value))
+      mentions.filter((m) => m.category === "skills").map((m) => m.value),
     );
     const active: PickerEntry[] = [];
     for (const skill of pickerSections.skills) {
       if (skillIds.has(skill.slug)) active.push(skill);
-    }
-    for (const mcp of pickerSections.mcpServers) {
-      if (mcpIds.has(mcp.mcpServerId)) active.push(mcp);
     }
     return active;
   }, [mentions, pickerSections]);
 
   const rearmSelectionChips = useCallback(
     (selection: SlashSelection) => {
+      // The welcome composer goes away with the submit that created the
+      // session; re-arming there would race the navigation and leak the
+      // chips into the persisted `__draft__` for every future visit.
+      if (sessionId === null) {
+        return;
+      }
       const entries = pickerEntriesFromSelection(pickerSections, selection);
 
       // Stamp the restore key: once these chips land, the persisted-selection
       // effect must treat them as restored. Without the stamp both paths
       // insert, duplicating the /skill prefix in the next message.
-      restoreKeyRef.current = `${sessionId ?? "draft"}:${selection.skillIds.join(",")}:${selection.mcpServerIds.join(",")}`;
-      // Stamp the restore key: once these chips land, the persisted-selection
-      // effect must treat them as restored. Without the stamp both paths
-      // insert, duplicating the /skill prefix in the next message.
+      restoreKeyRef.current = selectionKey(selection);
       requestAnimationFrame(() => {
         for (const entry of entries) {
           editorRef.current?.insertMention(toMention(entry, "/"));
         }
       });
     },
-    [pickerSections, editorRef, sessionId]
+    [pickerSections, editorRef, sessionId],
   );
 
   const handleSubmit = useCallback(
@@ -322,7 +370,7 @@ function CraftComposer({
       rearmSelectionChips(selection);
       return true;
     },
-    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips]
+    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips],
   );
 
   const handleQueueMessage = useCallback(
@@ -343,7 +391,7 @@ function CraftComposer({
       editorRef,
       onQueueMessage,
       rearmSelectionChips,
-    ]
+    ],
   );
 
   const insertEntryAsChip = useCallback(
@@ -355,35 +403,22 @@ function CraftComposer({
       }
       editorRef.current?.insertMention(toMention(entry, "/"));
     },
-    [editorRef, router]
+    [editorRef, router],
   );
 
   const plusMenuItems = useMemo(
     () =>
       buildEntryMenuItems(
-        pickerSections,
         {
           onAttachFiles: () => fileInputRef.current?.click(),
-          onSelectEntry: insertEntryAsChip,
-          onRemoveEntry: (entryKey: string) => {
-            editorRef.current?.removeMention(entryKey);
-          },
-          activeEntries: activeMentionEntries,
           libraryFiles: libraryFileEntries.map((file) => ({
             id: file.fileId,
             name: file.name,
           })),
         },
-        entryMenuT
+        entryMenuT,
       ),
-    [
-      pickerSections,
-      insertEntryAsChip,
-      activeMentionEntries,
-      libraryFileEntries,
-      entryMenuT,
-      editorRef,
-    ]
+    [libraryFileEntries, entryMenuT],
   );
 
   const topContent = (
@@ -425,7 +460,7 @@ function CraftComposer({
         historyStorageKey={historyStorageKey}
         draft={{ surface: "craft", scope: sessionId ?? "__draft__" }}
         slashTrigger={slashTrigger}
-        mentionTriggers={[fileMentionTrigger]}
+        mentionTriggers={[skillsTrigger, fileMentionTrigger]}
         onMentionsChange={setMentions}
         topContent={topContent}
         toolbarLeading={

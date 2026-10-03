@@ -93,7 +93,11 @@ export class CraftWelcomePage {
 
   async expectInputEnabled(): Promise<void> {
     await expect(this.messageInput).toBeVisible({ timeout: 15000 });
-    await expect(this.messageInput).toHaveAttribute("aria-disabled", "false");
+    // A cold stack provisions the sandbox before the composer enables; the
+    // welcome input stays aria-disabled until then. 90s covers a cold start.
+    await expect(this.messageInput).toHaveAttribute("aria-disabled", "false", {
+      timeout: 90_000,
+    });
   }
 
   async submitMessage(text: string): Promise<void> {
@@ -116,5 +120,22 @@ export class CraftWelcomePage {
     await this.messageInput.click();
     await this.page.keyboard.type(`/${query}`);
     await expect(this.skillPicker()).toBeVisible();
+  }
+
+  /** Opens the skills-only menu via the $ trigger. */
+  async openSkillsPicker(query = ""): Promise<void> {
+    await this.expectInputEnabled();
+    await this.messageInput.click();
+    await this.page.keyboard.type(`$${query}`);
+    await expect(this.skillPicker()).toBeVisible();
+  }
+
+  /** Types into the picker's top search input. */
+  async searchPicker(query: string): Promise<void> {
+    await this.skillPicker().getByRole("textbox").fill(query);
+  }
+
+  skillPickerFooterTip() {
+    return this.skillPicker().getByTestId("picker-footer-tip");
   }
 }

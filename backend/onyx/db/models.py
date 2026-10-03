@@ -6599,6 +6599,21 @@ class MCPServer__User(Base):
     )
 
 
+class MCPServer__UserDisabled(Base):
+    """Per-user MCP opt-out: a row removes an otherwise-eligible server from
+    that user's sessions (craft injection and chat tool building). Absence of
+    a row means enabled — the opt-out model keeps existing users' behavior
+    unchanged and gives /craft/v1/mcp-actions the single enable/disable
+    surface."""
+    __tablename__ = "mcp_server__user_disabled"
+    mcp_server_id: Mapped[int] = mapped_column(
+        ForeignKey("mcp_server.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class MCPServer__UserGroup(Base):
     __tablename__ = "mcp_server__user_group"
     mcp_server_id: Mapped[int] = mapped_column(

@@ -449,7 +449,11 @@
         "restrictedGroups": "{count, plural, other {#개 그룹으로 제한}}",
         "restrictedNamed": "{names}(으)로 제한"
       },
-      "unavailable": "게이트웨이가 꺼져 있는 동안 사용할 수 없습니다"
+      "unavailable": "게이트웨이가 꺼져 있는 동안 사용할 수 없습니다",
+      "serverEnabled": {
+        "label": "나에게 활성화",
+        "ariaLabel": "내 세션에 서버 전환"
+      }
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {도구 #개를 비활성화했습니다} other {도구 #개를 비활성화했습니다}}",
         "toolsEnabled": "{count, plural, one {도구 #개를 활성화했습니다} other {도구 #개를 활성화했습니다}}",
         "toolsFetched": "연결한 후 도구를 가져왔습니다",
-        "toolsRefreshed": "도구를 새로 고쳤습니다"
+        "toolsRefreshed": "도구를 새로 고쳤습니다",
+        "serverEnabled": "내 세션에서 서버가 활성화되었습니다",
+        "serverDisabled": "내 세션에서 서버가 비활성화되었습니다",
+        "toggleFailed": "서버 업데이트 실패"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "명령"
         },
+        "scenariosGroup": {
+          "label": "시나리오"
+        },
         "skillsGroup": {
           "label": "스킬"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "명령",
           "kindMcp": "MCP 서버",
           "kindSkill": "스킬",
+          "kindScenario": "시나리오",
           "kindFile": "파일"
         },
         "filesGroup": {
           "label": "파일"
+        },
+        "search": {
+          "placeholder": "명령, 스킬, 앱, 파일 검색…"
+        },
+        "footer": {
+          "tip": "입력하여 명령, 스킬, 앱 등을 검색"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "현재 작업이 완료될 때까지 기다려 주세요.",
         "sandboxWait": "샌드박스가 초기화될 때까지 기다려 주세요",
         "scheduledRunWait": "예약된 실행이 완료될 때까지 기다려 주세요."
+      },
+      "messageLog": {
+        "ariaLabel": "대화 기록"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "공유"
         },
-        "startRun": {
-          "label": "실행 시작"
+        "use": {
+          "label": "사용"
         },
         "unpublish": {
           "label": "게시 취소"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "실행 시작"
+        "use": {
+          "label": "사용"
         },
         "visibility": {
           "private": {
@@ -14022,15 +14042,12 @@
         "share": {
           "label": "공유"
         },
-        "startRun": {
-          "label": "실행 시작"
-        },
         "title": {
           "create": "새 팩",
           "edit": "Edit pack"
         },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "tray": {

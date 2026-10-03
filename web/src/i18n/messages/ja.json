@@ -449,7 +449,11 @@
         "restrictedGroups": "{count, plural, other {# グループに制限}}",
         "restrictedNamed": "{names} に制限"
       },
-      "unavailable": "ゲートウェイがオフの間は利用できません"
+      "unavailable": "ゲートウェイがオフの間は利用できません",
+      "serverEnabled": {
+        "label": "自分に対して有効",
+        "ariaLabel": "自分のセッションでサーバーを切り替え"
+      }
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {# 個のツールを無効にしました} other {# 個のツールを無効にしました}}",
         "toolsEnabled": "{count, plural, one {# 個のツールを有効にしました} other {# 個のツールを有効にしました}}",
         "toolsFetched": "接続してツールを取得しました",
-        "toolsRefreshed": "ツールを更新しました"
+        "toolsRefreshed": "ツールを更新しました",
+        "serverEnabled": "自分のセッションでサーバーを有効にしました",
+        "serverDisabled": "自分のセッションでサーバーを無効にしました",
+        "toggleFailed": "サーバーの更新に失敗しました"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "コマンド"
         },
+        "scenariosGroup": {
+          "label": "シナリオ"
+        },
         "skillsGroup": {
           "label": "スキル"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "コマンド",
           "kindMcp": "MCP サーバー",
           "kindSkill": "スキル",
+          "kindScenario": "シナリオ",
           "kindFile": "ファイル"
         },
         "filesGroup": {
           "label": "ファイル"
+        },
+        "search": {
+          "placeholder": "コマンド・スキル・アプリ・ファイルを検索…"
+        },
+        "footer": {
+          "tip": "入力してコマンド・スキル・アプリなどを検索"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "現在の操作が完了するまでお待ちください。",
         "sandboxWait": "サンドボックスの初期化をお待ちください",
         "scheduledRunWait": "スケジュール実行が完了するまでお待ちください。"
+      },
+      "messageLog": {
+        "ariaLabel": "会話ログ"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "共有"
         },
-        "startRun": {
-          "label": "実行を開始"
+        "use": {
+          "label": "使用"
         },
         "unpublish": {
           "label": "公開を解除"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "実行を開始"
+        "use": {
+          "label": "使用"
         },
         "visibility": {
           "private": {
@@ -14022,15 +14042,12 @@
         "share": {
           "label": "共有"
         },
-        "startRun": {
-          "label": "実行を開始"
-        },
         "title": {
           "create": "新しいパック",
           "edit": "Edit pack"
         },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "tray": {

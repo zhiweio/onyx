@@ -70,14 +70,12 @@ describe("Craft LLM selection payloads", () => {
       undefined,
       selection,
       [],
-      ["zhihuiya"],
-      [12]
+      ["zhihuiya"]
     );
 
     const request = jest.mocked(global.fetch).mock.calls[0]![1];
     expect(JSON.parse(String(request!.body))).toMatchObject({
       selected_skill_ids: ["zhihuiya"],
-      selected_mcp_server_ids: [12],
     });
   });
 

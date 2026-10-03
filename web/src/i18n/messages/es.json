@@ -449,7 +449,11 @@
         "restrictedGroups": "Restringido a {count, plural, one {# grupo} other {# grupos}}",
         "restrictedNamed": "Restringido a {names}"
       },
-      "unavailable": "No disponible mientras la puerta de enlace está desactivada"
+      "unavailable": "No disponible mientras la puerta de enlace está desactivada",
+      "serverEnabled": {
+        "label": "Activado para ti",
+        "ariaLabel": "Alternar servidor para tus sesiones"
+      }
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {# herramienta desactivada correctamente} other {# herramientas desactivadas correctamente}}",
         "toolsEnabled": "{count, plural, one {# herramienta activada correctamente} other {# herramientas activadas correctamente}}",
         "toolsFetched": "Conexión realizada y herramientas obtenidas correctamente",
-        "toolsRefreshed": "Las herramientas se actualizaron correctamente"
+        "toolsRefreshed": "Las herramientas se actualizaron correctamente",
+        "serverEnabled": "Servidor activado para tus sesiones",
+        "serverDisabled": "Servidor desactivado para tus sesiones",
+        "toggleFailed": "Error al actualizar el servidor"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "Comandos"
         },
+        "scenariosGroup": {
+          "label": "Escenarios"
+        },
         "skillsGroup": {
           "label": "Habilidades"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "Comando",
           "kindMcp": "Servidor MCP",
           "kindSkill": "Habilidad",
+          "kindScenario": "Escenario",
           "kindFile": "Archivo"
         },
         "filesGroup": {
           "label": "Archivos"
+        },
+        "search": {
+          "placeholder": "Buscar comandos, skills, apps y archivos…"
+        },
+        "footer": {
+          "tip": "Escribe para buscar comandos, skills, apps y más"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "Espera a que se complete la operación actual.",
         "sandboxWait": "Espera a que se inicialice el sandbox",
         "scheduledRunWait": "Espera a que termine la ejecución programada."
+      },
+      "messageLog": {
+        "ariaLabel": "Conversación"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "Compartir"
         },
-        "startRun": {
-          "label": "Iniciar ejecución"
+        "use": {
+          "label": "Usar"
         },
         "unpublish": {
           "label": "Anular publicación"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "Iniciar"
+        "use": {
+          "label": "Usar"
         },
         "visibility": {
           "private": {
@@ -14022,15 +14042,12 @@
         "share": {
           "label": "Compartir"
         },
-        "startRun": {
-          "label": "Iniciar"
-        },
         "title": {
           "create": "Nuevo paquete",
           "edit": "Edit pack"
         },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "tray": {

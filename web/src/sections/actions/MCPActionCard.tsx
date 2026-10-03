@@ -34,7 +34,7 @@ import {
   SvgTrash,
   SvgSimpleLoader,
 } from "@opal/icons";
-import { Button } from "@opal/components";
+import { Button, Switch } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { timeAgo } from "@opal/time";
 import { cn } from "@opal/utils";
@@ -73,17 +73,21 @@ export interface MCPActionCardProps {
     serverId: number,
     toolId: string,
     enabled: boolean,
-    mutate: KeyedMutator<ToolSnapshot[]>
+    mutate: KeyedMutator<ToolSnapshot[]>,
   ) => void;
+  // Per-user enablement (personal surface only). Undefined hides the switch
+  // (gallery/admin use other controls).
+  userEnabled?: boolean;
+  onServerEnabledToggle?: (serverId: number, enabled: boolean) => void;
   onRefreshTools?: (
     serverId: number,
-    mutate: KeyedMutator<ToolSnapshot[]>
+    mutate: KeyedMutator<ToolSnapshot[]>,
   ) => void;
   onUpdateToolsStatus?: (
     serverId: number,
     toolIds: number[],
     enabled: boolean,
-    mutate: KeyedMutator<ToolSnapshot[]>
+    mutate: KeyedMutator<ToolSnapshot[]>,
   ) => void;
 
   // Optional styling
@@ -110,6 +114,8 @@ export default function MCPActionCard({
   onReconnect,
   onRename,
   onToolToggle,
+  userEnabled,
+  onServerEnabledToggle,
   onRefreshTools,
   onUpdateToolsStatus,
   className,
@@ -198,7 +204,7 @@ export default function MCPActionCard({
   const { tools, isLoading, mutate } = useServerTools(
     server,
     isToolsExpanded,
-    surface
+    surface,
   );
 
   // Retry tools fetch when server transitions from FETCHING_TOOLS to CONNECTED
@@ -209,7 +215,7 @@ export default function MCPActionCard({
 
     if (statusChanged && tools.length === 0 && !hasRetriedTools.current) {
       console.log(
-        "Server status changed to CONNECTED with empty tools, retrying fetch"
+        "Server status changed to CONNECTED with empty tools, retrying fetch",
       );
       hasRetriedTools.current = true;
       mutate();
@@ -238,7 +244,7 @@ export default function MCPActionCard({
       filtered = filtered.filter(
         (tool) =>
           tool.name.toLowerCase().includes(query) ||
-          tool.description.toLowerCase().includes(query)
+          tool.description.toLowerCase().includes(query),
       );
     }
 
@@ -298,7 +304,7 @@ export default function MCPActionCard({
       status,
       title,
       toolCount,
-    ]
+    ],
   );
 
   const handleRename = async (newName: string) => {
@@ -379,6 +385,25 @@ export default function MCPActionCard({
         className={cn(className, layout === "list" && "w-full")}
         ariaLabel={t("mcpCard.card.ariaLabel", { title: cardTitle })}
       >
+        {userEnabled !== undefined && onServerEnabledToggle ? (
+          <div
+            className="flex items-center justify-between gap-3 rounded-08 border border-border-01 bg-background-tint-01 px-3 py-2"
+            data-testid={`mcp-server-enabled-${serverId}`}
+          >
+            <span>
+              <Text secondaryBody text03>
+                {t("mcpCard.serverEnabled.label")}
+              </Text>
+            </span>
+            <Switch
+              checked={userEnabled}
+              onCheckedChange={(checked) =>
+                onServerEnabledToggle(serverId, checked)
+              }
+              aria-label={t("mcpCard.serverEnabled.ariaLabel")}
+            />
+          </div>
+        ) : null}
         <ToolsList
           isFetching={
             server.status === MCPServerStatus.FETCHING_TOOLS || isLoading
@@ -414,7 +439,9 @@ export default function MCPActionCard({
               icon={tool.icon}
               isAvailable={tool.isAvailable}
               isEnabled={tool.isEnabled}
-              canToggle={!readOnly && can(tool, "toggle") && !gatewayUnavailable}
+              canToggle={
+                !readOnly && can(tool, "toggle") && !gatewayUnavailable
+              }
               onToggle={(enabled) =>
                 onToolToggle?.(serverId, tool.id, enabled, mutate)
               }

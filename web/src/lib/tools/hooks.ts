@@ -11,12 +11,6 @@ import type {
   ToolSnapshot,
   ToolState,
 } from "@/lib/tools/types";
-import {
-  MCP_SELECTION_STORAGE_PREFIX,
-  parseMcpServerIds,
-  serializeMcpServerIds,
-  withMcpServerEnabled,
-} from "@/lib/tools/mcpSelection";
 import { useAppPosition } from "@/lib/position/hooks";
 import { useActiveAgent } from "@/lib/agents/hooks";
 import {
@@ -68,7 +62,7 @@ export function useAdminMcpServers() {
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
     SWR_KEYS.adminMcpServers,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   return {
@@ -87,7 +81,7 @@ export function usePersonalMcpServers() {
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
     SWR_KEYS.personalMcpServers,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   return {
@@ -109,7 +103,7 @@ export function useGalleryMcpServers() {
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
     SWR_KEYS.mcpServersGallery,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   return {
@@ -134,7 +128,7 @@ export function useMcpServersForAgent(agentId: number | undefined) {
     isLoading: attachedIsLoading,
   } = useSWR<MCPServersResponse>(
     agentId ? SWR_KEYS.agentMcpServers(agentId) : null,
-    errorHandlingFetcher
+    errorHandlingFetcher,
   );
 
   const mcpServers = useMemo<AgentEditorMCPServer[]>(() => {
@@ -166,7 +160,7 @@ export function useCraftMcpServers(enabled: boolean = true) {
     errorHandlingFetcher,
     // The Apps page re-reads this after every connect/disconnect; holding the
     // previous list keeps the tab from flashing empty on revalidation.
-    { keepPreviousData: true }
+    { keepPreviousData: true },
   );
 
   const refresh = () => mutate(SWR_KEYS.mcpServersCraft);
@@ -200,7 +194,7 @@ export function useAvailableTools() {
       revalidateOnFocus: false,
       revalidateIfStale: false,
       dedupingInterval: 60000,
-    }
+    },
   );
 
   return {
@@ -249,7 +243,7 @@ function isChatKey(key: string): boolean {
 function withToolState(
   configuration: ToolConfiguration,
   toolId: number,
-  change: (current: ToolState | null) => ToolState | null
+  change: (current: ToolState | null) => ToolState | null,
 ): ToolConfiguration {
   const next = change(configuration[toolId] ?? null);
 
@@ -322,36 +316,6 @@ function storage(): Storage | null {
   }
 }
 
-function mcpStorageKeyFromToolsKey(toolsKey: string): string {
-  return `${MCP_SELECTION_STORAGE_PREFIX}${toolsKey.slice(STORAGE_PREFIX.length)}`;
-}
-
-function isChatMcpKey(key: string): boolean {
-  return key.startsWith(`${MCP_SELECTION_STORAGE_PREFIX}:chat:`);
-}
-
-function readMcpServerIds(key: string): number[] {
-  const store = storage();
-  if (!store) return [];
-  try {
-    const raw = store.getItem(key);
-    return raw === null ? [] : parseMcpServerIds(raw);
-  } catch {
-    return [];
-  }
-}
-
-function writeMcpServerIds(key: string, ids: readonly number[]) {
-  const store = storage();
-  if (!store) return;
-  try {
-    if (ids.length === 0) store.removeItem(key);
-    else store.setItem(key, serializeMcpServerIds(ids));
-  } catch {
-    // Blocked or full. The selection still holds for this composer.
-  }
-}
-
 function readConfiguration(key: string): ToolConfiguration {
   const store = storage();
   if (!store) return NEUTRAL;
@@ -399,7 +363,7 @@ export interface ToolConfigurationHandle {
    */
   setToolState: (
     toolId: number,
-    change: (current: ToolState | null) => ToolState | null
+    change: (current: ToolState | null) => ToolState | null,
   ) => void;
 
   /**
@@ -443,8 +407,6 @@ export interface ToolConfigurationHandle {
    * is off. The send path attaches these for the turn; they are not written
    * onto a shared persona.
    */
-  selectedMcpServerIds: number[];
-  setMcpServerEnabled: (serverId: number, enabled: boolean) => void;
 }
 
 /**
@@ -469,7 +431,7 @@ export interface ToolConfigurationHandle {
  * overwrites something real.
  */
 export function useToolConfiguration(
-  newChatWithAgentId?: number
+  newChatWithAgentId?: number,
 ): ToolConfigurationHandle {
   const appPosition = useAppPosition();
   const activeAgent = useActiveAgent();
@@ -494,8 +456,6 @@ export function useToolConfiguration(
       ? `${STORAGE_PREFIX}:new:${activeAgent.id}`
       : `${STORAGE_PREFIX}:new:${activeAgent.id}:${projectId}`;
   }, [newChatWithAgentId, appPosition, activeAgent]);
-
-  const mcpKey = key === null ? null : mcpStorageKeyFromToolsKey(key);
 
   // Tagged with the key it was read for, so a write cannot land on the entry
   // the composer has since moved to.
@@ -524,57 +484,6 @@ export function useToolConfiguration(
 
   const configuration = entry.key === key ? entry.configuration : NEUTRAL;
 
-  const [mcpEntry, setMcpEntry] = useState<{
-    key: string | null;
-    ids: number[];
-  }>({ key: null, ids: [] });
-
-  useEffect(() => {
-    if (mcpKey === null) {
-      setMcpEntry({ key: null, ids: [] });
-      return;
-    }
-    const stored = readMcpServerIds(mcpKey);
-    // Same rule as tool configuration: a new-chat key keeps nothing, so a
-    // value found there was handed over by a send and is taken once.
-    if (!isChatMcpKey(mcpKey) && stored.length > 0) {
-      const store = storage();
-      try {
-        store?.removeItem(mcpKey);
-      } catch {
-        // Ignore blocked storage.
-      }
-    }
-    setMcpEntry({ key: mcpKey, ids: stored });
-  }, [mcpKey]);
-
-  const selectedMcpServerIds = mcpEntry.key === mcpKey ? mcpEntry.ids : [];
-
-  useEffect(() => {
-    if (mcpEntry.key !== null && isChatMcpKey(mcpEntry.key)) {
-      writeMcpServerIds(mcpEntry.key, mcpEntry.ids);
-    }
-  }, [mcpEntry]);
-
-  const setMcpServerEnabled = useCallback(
-    (serverId: number, enabled: boolean) => {
-      if (mcpKey === null) return;
-      setMcpEntry((previous) => {
-        const current = previous.key === mcpKey ? previous.ids : [];
-        const ids = withMcpServerEnabled(current, serverId, enabled);
-        if (
-          previous.key === mcpKey &&
-          ids.length === current.length &&
-          ids.every((id, index) => id === current[index])
-        ) {
-          return previous;
-        }
-        return { key: mcpKey, ids };
-      });
-    },
-    [mcpKey]
-  );
-
   // Written from an effect rather than inside the setter, so two changes made
   // in one tick compose instead of the later one landing on what the earlier
   // one replaced. Only a chat that exists is written: everything else is held
@@ -588,7 +497,7 @@ export function useToolConfiguration(
   const setToolState = useCallback(
     (
       toolId: number,
-      change: (current: ToolState | null) => ToolState | null
+      change: (current: ToolState | null) => ToolState | null,
     ) => {
       if (key === null) return;
       setEntry((previous) => {
@@ -601,7 +510,7 @@ export function useToolConfiguration(
         return { key, configuration };
       });
     },
-    [key]
+    [key],
   );
 
   // Both land before the position that follows reaches this hook, so the key
@@ -609,24 +518,16 @@ export function useToolConfiguration(
   const handOffTo = useCallback(
     (chatSessionId: string) => {
       writeConfiguration(chatKey(chatSessionId), configuration);
-      writeMcpServerIds(
-        mcpStorageKeyFromToolsKey(chatKey(chatSessionId)),
-        selectedMcpServerIds
-      );
     },
-    [configuration, selectedMcpServerIds]
+    [configuration],
   );
 
   const handOffToNewChatWith = useCallback(
     (agentId: number) => {
       const nextKey = `${STORAGE_PREFIX}:new:${agentId}`;
       writeConfiguration(nextKey, configuration);
-      writeMcpServerIds(
-        mcpStorageKeyFromToolsKey(nextKey),
-        selectedMcpServerIds
-      );
     },
-    [configuration, selectedMcpServerIds]
+    [configuration],
   );
 
   return useMemo(() => {
@@ -643,21 +544,12 @@ export function useToolConfiguration(
       },
       forcedToolId,
       disabledToolIds: ids.filter(
-        (toolId) => configuration[toolId] === "disabled"
+        (toolId) => configuration[toolId] === "disabled",
       ),
       handOffTo,
       handOffToNewChatWith,
-      selectedMcpServerIds,
-      setMcpServerEnabled,
     };
-  }, [
-    configuration,
-    setToolState,
-    handOffTo,
-    handOffToNewChatWith,
-    selectedMcpServerIds,
-    setMcpServerEnabled,
-  ]);
+  }, [configuration, setToolState, handOffTo, handOffToNewChatWith]);
 }
 
 /**
@@ -685,6 +577,6 @@ export function useBuiltInToolNames(): Record<string, string> {
       [MEMORY_TOOL_ID]: t("toolNames.addMemory.label"),
       [CODING_AGENT_TOOL_ID]: t("toolNames.codingAgent.label"),
     }),
-    [t]
+    [t],
   );
 }

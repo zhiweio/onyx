@@ -39,9 +39,9 @@ describe("ChatPromptEditor", () => {
         triggerChars: ["@"],
         sections: {
           commands: [],
+          scenarios: [],
           skills: [],
           apps: [],
-          mcpServers: [],
           files: [],
         },
         showWhenEmpty: true,
@@ -56,9 +56,9 @@ describe("ChatPromptEditor", () => {
         triggerChars: ["@"],
         sections: {
           commands: [],
+          scenarios: [],
           skills: [],
           apps: [],
-          mcpServers: [],
           files: [],
         },
       })
@@ -69,9 +69,9 @@ describe("ChatPromptEditor", () => {
         triggerChars: ["/"],
         sections: {
           commands: [],
+          scenarios: [],
           skills: [],
           apps: [],
-          mcpServers: [],
           files: [
             {
               kind: "file",

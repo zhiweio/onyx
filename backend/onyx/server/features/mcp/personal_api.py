@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from onyx.auth.permission_projection import mcp_server_permissions, tool_permissions
@@ -22,9 +23,10 @@ from onyx.db.mcp import (
     delete_mcp_server,
     get_mcp_server_by_id,
     get_personal_mcp_servers,
+    get_user_disabled_mcp_server_ids,
     update_mcp_server__no_commit,
 )
-from onyx.db.models import User
+from onyx.db.models import MCPServer__UserDisabled, User
 from onyx.db.tools import (
     can_manage_mcp_server,
     can_manage_tool,
@@ -91,6 +93,7 @@ def list_personal_servers(
 ) -> MCPServersResponse:
     _require_personal_enabled()
     servers = get_personal_mcp_servers(db, user.email)
+    disabled_ids = get_user_disabled_mcp_server_ids(db, user.id)
     return MCPServersResponse(
         mcp_servers=[
             _db_mcp_server_to_api_mcp_server(
@@ -101,6 +104,7 @@ def list_personal_servers(
                 permissions=mcp_server_permissions(
                     can_manage=can_manage_mcp_server(user, server)
                 ),
+                user_enabled=server.id not in disabled_ids,
             )
             for server in servers
         ]
@@ -302,6 +306,44 @@ def update_personal_server_status(
     _personal_server_or_404(server_id, user, db)
     update_mcp_server__no_commit(server_id=server_id, db_session=db, status=status)
     db.commit()
+
+
+class _ServerEnabledBody(BaseModel):
+    enabled: bool
+
+
+@personal_router.patch("/server/{server_id}/enabled")
+def set_personal_server_enabled(
+    server_id: int,
+    body: _ServerEnabledBody,
+    db: Session = Depends(get_session),
+    user: User = Depends(_BASIC),
+) -> None:
+    """Per-user enable/disable — the single MCP enable surface
+    (/craft/v1/mcp-actions). Opt-out storage: `enabled=False` writes a
+    disable row, `enabled=True` clears it. Live craft sandboxes reload their
+    MCP config on the next turn."""
+    _require_personal_enabled()
+    _personal_server_or_404(server_id, user, db)
+
+    disabled = (
+        db.query(MCPServer__UserDisabled)
+        .filter(
+            MCPServer__UserDisabled.mcp_server_id == server_id,
+            MCPServer__UserDisabled.user_id == user.id,
+        )
+        .first()
+    )
+    if body.enabled:
+        if disabled is not None:
+            db.delete(disabled)
+    elif disabled is None:
+        db.add(MCPServer__UserDisabled(mcp_server_id=server_id, user_id=user.id))
+    db.commit()
+
+    from onyx.server.features.mcp.api import _hot_reload_craft_sessions
+
+    _hot_reload_craft_sessions({user.id}, db)
 
 
 @personal_router.get("/server/{server_id}/tools")

@@ -28,7 +28,6 @@ import EntryPickerPopover from "@/sections/input/EntryPickerPopover";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
 import { useEnvVars } from "@/hooks/useEnvVars";
-import { useCraftMcpServers } from "@/lib/tools/hooks";
 import {
   detectSlashTrigger,
   pickerEntryConnectionPath,
@@ -91,7 +90,7 @@ export default function ScheduleTaskForm({
   const [mode, setMode] = useState<EditorMode>(initial.mode);
   const [payload, setPayload] = useState<EditorPayload>(initial.payload);
   const [preApprovedAppIds, setPreApprovedAppIds] = useState<number[]>(
-    initial.preApprovedAppIds
+    initial.preApprovedAppIds,
   );
   const [preApprovedMcpServerIds, setPreApprovedMcpServerIds] = useState<
     number[]
@@ -110,11 +109,11 @@ export default function ScheduleTaskForm({
       const personalIds = new Set(
         grantableEnvVars
           .filter((item) => item.scope === "USER")
-          .map((item) => item.id)
+          .map((item) => item.id),
       );
       setEnvVarIds((prev) => prev.filter((id) => personalIds.has(id)));
     },
-    [grantableEnvVars]
+    [grantableEnvVars],
   );
   const [saving, setSaving] = useState(false);
   const [nameTouched, setNameTouched] = useState(false);
@@ -123,11 +122,9 @@ export default function ScheduleTaskForm({
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: skillsData } = useUserSkills();
   const { data: externalAppsData } = useUserExternalApps();
-  const { data: craftMcpData } = useCraftMcpServers();
   const pickerSections = useMemo(
-    () =>
-      toPickerSections(skillsData, externalAppsData, craftMcpData?.mcp_servers),
-    [skillsData, externalAppsData, craftMcpData]
+    () => toPickerSections(skillsData, externalAppsData),
+    [skillsData, externalAppsData],
   );
   const [skillPicker, setSkillPicker] = useState<{
     open: boolean;
@@ -159,7 +156,7 @@ export default function ScheduleTaskForm({
       setPrompt(value);
       evaluateSkillPicker(value, e.target.selectionStart ?? value.length);
     },
-    [evaluateSkillPicker]
+    [evaluateSkillPicker],
   );
 
   const handlePromptCursorChange = useCallback(
@@ -167,7 +164,7 @@ export default function ScheduleTaskForm({
       const target = e.currentTarget;
       evaluateSkillPicker(target.value, target.selectionStart ?? 0);
     },
-    [evaluateSkillPicker]
+    [evaluateSkillPicker],
   );
 
   const closeSkillPicker = useCallback(() => {
@@ -202,7 +199,7 @@ export default function ScheduleTaskForm({
 
       setSkillPicker((prev) => (prev.open ? { ...prev, open: false } : prev));
     },
-    [prompt, router, skillPicker]
+    [prompt, router, skillPicker],
   );
 
   const compiled = compileLocalPayloadToUtcCron(mode, payload);
@@ -249,7 +246,7 @@ export default function ScheduleTaskForm({
           };
           const updated: ScheduledTaskDetail = await updateScheduledTask(
             initial.taskId,
-            body
+            body,
           );
           await mutate(SWR_KEYS.scheduledTask(updated.id), updated, {
             revalidate: false,
@@ -272,13 +269,13 @@ export default function ScheduleTaskForm({
           await createScheduledTask(body);
           await mutate(SWR_KEYS.scheduledTasks);
           toast.success(
-            runImmediately ? t("toasts.createdAndQueued") : t("toasts.created")
+            runImmediately ? t("toasts.createdAndQueued") : t("toasts.created"),
           );
           router.push(TASKS_PATH);
         }
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : t("toasts.saveFailed")
+          err instanceof Error ? err.message : t("toasts.saveFailed"),
         );
       } finally {
         setSaving(false);
@@ -299,7 +296,7 @@ export default function ScheduleTaskForm({
       trimmedName,
       trimmedPrompt,
       t,
-    ]
+    ],
   );
 
   return (

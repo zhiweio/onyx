@@ -78,14 +78,14 @@ export default function ToolsPopover({
   const builtInToolNames = useBuiltInToolNames();
   const [open, setOpen] = useState(false);
   const [secondaryView, setSecondaryView] = useState<SecondaryViewState | null>(
-    null
+    null,
   );
   const [searchTerm, setSearchTerm] = useState("");
   const focusOnMount = useFocusOnMount<HTMLInputElement>();
   const { mcpData } = useMcpServers();
   const mcpServers = useMemo(
     () => (mcpData?.mcp_servers ?? []).map(toChatMcpServer),
-    [mcpData]
+    [mcpData],
   );
 
   // Store MCP server auth/loading state (tools are part of agent.tools)
@@ -129,7 +129,7 @@ export default function ToolsPopover({
   const close = useCallback(() => setOpen(false), []);
   const openSources = useCallback(
     () => setSecondaryView({ type: "sources" }),
-    []
+    [],
   );
 
   const displayTools = agent.tools.filter((tool) =>
@@ -139,7 +139,7 @@ export default function ToolsPopover({
       currentProjectId,
       hasProjectFiles: (allCurrentProjectFiles?.length ?? 0) > 0,
       hasNoConnectors,
-    })
+    }),
   );
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function ToolsPopover({
   const handleMCPAuthenticate = async (
     serverId: number,
     authType: MCPAuthenticationType,
-    forceReauthentication = false
+    forceReauthentication = false,
   ) => {
     if (authType === MCPAuthenticationType.OAUTH) {
       const updateLoadingState = (loading: boolean) => {
@@ -183,7 +183,7 @@ export default function ToolsPopover({
         const oauthStart = await startMCPUserOAuth(
           serverId,
           window.location.pathname + window.location.search,
-          { forceReauthentication }
+          { forceReauthentication },
         );
         window.location.href = getMCPUserOAuthNavigationUrl(oauthStart);
       } catch (error) {
@@ -201,12 +201,12 @@ export default function ToolsPopover({
 
   const handleMCPCredentialsSubmit = (
     serverId: number,
-    credentials: Record<string, string>
+    credentials: Record<string, string>,
   ) => saveMCPUserCredentials(serverId, credentials);
 
   const handleServerAuthentication = (
     server: MCPServer,
-    forceReauthentication = false
+    forceReauthentication = false,
   ) => {
     const authType = server.auth_type;
     const performer = server.auth_performer;
@@ -217,7 +217,7 @@ export default function ToolsPopover({
       void handleMCPAuthenticate(
         server.id,
         MCPAuthenticationType.OAUTH,
-        forceReauthentication
+        forceReauthentication,
       ).catch(() => undefined);
       return;
     }
@@ -239,7 +239,7 @@ export default function ToolsPopover({
             await handleMCPAuthenticate(
               server.id,
               MCPAuthenticationType.OAUTH,
-              forceReauthentication
+              forceReauthentication,
             );
             return;
           }
@@ -251,7 +251,6 @@ export default function ToolsPopover({
               isLoading: false,
             },
           }));
-          toolConfiguration.setMcpServerEnabled(server.id, true);
         },
         isAuthenticated: server.user_can_authenticate,
         existingCredentials: server.user_credentials,
@@ -284,7 +283,7 @@ export default function ToolsPopover({
     !searchTerm ||
     mcpLabel.toLowerCase().includes(searchLower) ||
     mcpServers.some((server) =>
-      server.name.toLowerCase().includes(searchLower)
+      server.name.toLowerCase().includes(searchLower),
     );
   const showMcpRow =
     (mcpServers.length > 0 || canManageMcp) && mcpRowMatchesSearch;
@@ -297,7 +296,7 @@ export default function ToolsPopover({
   const selectedMcpTools =
     selectedMcpServerId !== null
       ? agent.tools.filter(
-          (t) => t.mcp_server_id === Number(selectedMcpServerId)
+          (t) => t.mcp_server_id === Number(selectedMcpServerId),
         )
       : [];
   const selectedMcpServerData = selectedMcpServer
@@ -322,7 +321,7 @@ export default function ToolsPopover({
   }));
 
   const mcpAllDisabled = selectedMcpTools.every((tool) =>
-    toolConfiguration.disabledToolIds.includes(tool.id)
+    toolConfiguration.disabledToolIds.includes(tool.id),
   );
 
   // One call per tool rather than a second setter taking many. React batches
@@ -332,7 +331,7 @@ export default function ToolsPopover({
     for (const tool of agent.tools) {
       if (tool.mcp_server_id !== serverId) continue;
       toolConfiguration.setToolState(tool.id, () =>
-        disabled ? "disabled" : null
+        disabled ? "disabled" : null,
       );
     }
   };
@@ -346,27 +345,16 @@ export default function ToolsPopover({
     mcpServers.map((server) => [
       server.id,
       agent.tools.filter((tool) => tool.mcp_server_id === server.id),
-    ])
+    ]),
   );
   const enabledToolsByServer = new Map(
     [...toolsByServer.entries()].map(([serverId, serverTools]) => [
       serverId,
       serverTools.filter(
-        (tool) => !toolConfiguration.disabledToolIds.includes(tool.id)
+        (tool) => !toolConfiguration.disabledToolIds.includes(tool.id),
       ),
-    ])
+    ]),
   );
-  const enabledServerIds = useMemo(
-    () => new Set(toolConfiguration.selectedMcpServerIds),
-    [toolConfiguration.selectedMcpServerIds]
-  );
-
-  const handleToggleServer = (serverId: number, enabled: boolean) => {
-    toolConfiguration.setMcpServerEnabled(serverId, enabled);
-    if (enabled) {
-      setServerToolsDisabled(serverId, false);
-    }
-  };
 
   const handleFooterReauthClick = () => {
     if (selectedMcpServer) {
@@ -445,10 +433,8 @@ export default function ToolsPopover({
       onSelectServer={(serverId) =>
         setSecondaryView({ type: "mcp", serverId, from: "mcpList" })
       }
-      onToggleServer={handleToggleServer}
       servers={mcpServers}
       toolsByServer={toolsByServer}
-      enabledServerIds={enabledServerIds}
     />
   );
 
@@ -468,7 +454,7 @@ export default function ToolsPopover({
         setSecondaryView(
           secondaryView?.type === "mcp" && secondaryView.from === "mcpList"
             ? { type: "mcpList" }
-            : null
+            : null,
         )
       }
       footer={mcpFooter}

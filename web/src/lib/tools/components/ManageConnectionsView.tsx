@@ -17,10 +17,8 @@ export default function ManageConnectionsView({
   onAuthenticate,
   onBack,
   onSelectServer,
-  onToggleServer,
   servers,
   toolsByServer,
-  enabledServerIds,
   manageHref = CRAFT_MCP_ACTIONS_PATH,
 }: {
   canManage: boolean;
@@ -31,11 +29,8 @@ export default function ManageConnectionsView({
   onAuthenticate: (server: MCPServer) => void;
   onBack: () => void;
   onSelectServer: (serverId: number) => void;
-  onToggleServer: (serverId: number, enabled: boolean) => void;
   servers: MCPServer[];
   toolsByServer: Map<number, ToolSnapshot[]>;
-  /** Servers the current agent will use on the next send. Default none. */
-  enabledServerIds: ReadonlySet<number>;
   /** User MCP page (Mine + Gallery). Do not send chat users to admin. */
   manageHref?: string;
 }) {
@@ -46,7 +41,7 @@ export default function ManageConnectionsView({
     if (!searchTerm) return servers;
     const searchLower = searchTerm.toLowerCase();
     return servers.filter((server) =>
-      server.name.toLowerCase().includes(searchLower)
+      server.name.toLowerCase().includes(searchLower),
     );
   }, [searchTerm, servers]);
 
@@ -88,18 +83,15 @@ export default function ManageConnectionsView({
         </div>,
         ...(filteredServers.length === 0
           ? [
-              <Text
-                key="empty"
-                font="secondary-body"
-                color="text-03"
-                className="px-2 py-2"
-              >
-                {servers.length === 0
-                  ? canManage
-                    ? t("toolsPopover.manageConnections.empty")
-                    : t("toolsPopover.manageConnections.askAdmin")
-                  : t("toolsPopover.manageConnections.empty")}
-              </Text>,
+              <div key="empty" className="px-2 py-2">
+                <Text font="secondary-body" color="text-03">
+                  {servers.length === 0
+                    ? canManage
+                      ? t("toolsPopover.manageConnections.empty")
+                      : t("toolsPopover.manageConnections.askAdmin")
+                    : t("toolsPopover.manageConnections.empty")}
+                </Text>
+              </div>,
             ]
           : filteredServers.map((server) => {
               const serverData = mcpServerData[server.id] || {
@@ -108,7 +100,6 @@ export default function ManageConnectionsView({
               };
               const serverTools = toolsByServer.get(server.id) ?? [];
               const enabledTools = enabledToolsByServer.get(server.id) ?? [];
-              const serverEnabled = enabledServerIds.has(server.id);
               return (
                 <MCPLineItem
                   key={server.id}
@@ -116,15 +107,10 @@ export default function ManageConnectionsView({
                   isActive={false}
                   tools={serverTools}
                   enabledTools={enabledTools}
-                  enabled={serverEnabled}
                   isAuthenticated={serverData.isAuthenticated}
                   isLoading={serverData.isLoading}
-                  control="switch"
                   onSelect={() => onSelectServer(server.id)}
                   onAuthenticate={() => onAuthenticate(server)}
-                  onToggleEnabled={() =>
-                    onToggleServer(server.id, !serverEnabled)
-                  }
                 />
               );
             })),

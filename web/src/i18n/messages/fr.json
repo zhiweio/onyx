@@ -449,7 +449,11 @@
         "restrictedGroups": "Restreint à {count, plural, one {# groupe} other {# groupes}}",
         "restrictedNamed": "Restreint à {names}"
       },
-      "unavailable": "Indisponible tant que la passerelle est désactivée"
+      "unavailable": "Indisponible tant que la passerelle est désactivée",
+      "serverEnabled": {
+        "label": "Activé pour vous",
+        "ariaLabel": "Basculer le serveur pour vos sessions"
+      }
     },
     "mcpOauthCallback": {
       "autoRedirect": {
@@ -529,7 +533,10 @@
         "toolsDisabled": "{count, plural, one {# outil désactivé avec succès} other {# outils désactivés avec succès}}",
         "toolsEnabled": "{count, plural, one {# outil activé avec succès} other {# outils activés avec succès}}",
         "toolsFetched": "Connexion établie et outils récupérés",
-        "toolsRefreshed": "Outils actualisés avec succès"
+        "toolsRefreshed": "Outils actualisés avec succès",
+        "serverEnabled": "Serveur activé pour vos sessions",
+        "serverDisabled": "Serveur désactivé pour vos sessions",
+        "toggleFailed": "Échec de la mise à jour du serveur"
       }
     },
     "openApiAuthModal": {
@@ -10026,6 +10033,9 @@
         "commandsGroup": {
           "label": "Commandes"
         },
+        "scenariosGroup": {
+          "label": "Scénarios"
+        },
         "skillsGroup": {
           "label": "Compétences"
         },
@@ -10034,10 +10044,17 @@
           "kindCommand": "Commande",
           "kindMcp": "Serveur MCP",
           "kindSkill": "Compétence",
+          "kindScenario": "Scénario",
           "kindFile": "Fichier"
         },
         "filesGroup": {
           "label": "Fichiers"
+        },
+        "search": {
+          "placeholder": "Rechercher commandes, skills, apps et fichiers…"
+        },
+        "footer": {
+          "tip": "Saisissez pour rechercher commandes, skills, apps et plus"
         }
       },
       "inputChip": {
@@ -12304,6 +12321,9 @@
         "operationWait": "Veuillez attendre la fin de l'opération en cours.",
         "sandboxWait": "Veuillez attendre l'initialisation du bac à sable",
         "scheduledRunWait": "Veuillez attendre la fin de l'exécution planifiée."
+      },
+      "messageLog": {
+        "ariaLabel": "Conversation"
       }
     },
     "compaction": {
@@ -13546,8 +13566,8 @@
         "share": {
           "label": "Partager"
         },
-        "startRun": {
-          "label": "Lancer l’exécution"
+        "use": {
+          "label": "Utiliser"
         },
         "unpublish": {
           "label": "Dépublier"
@@ -13887,8 +13907,8 @@
         "skillCount": {
           "label": "{count, plural, one {# skill} other {# skills}}"
         },
-        "startRun": {
-          "label": "Lancer"
+        "use": {
+          "label": "Utiliser"
         },
         "visibility": {
           "private": {
@@ -14022,15 +14042,12 @@
         "share": {
           "label": "Partager"
         },
-        "startRun": {
-          "label": "Lancer"
-        },
         "title": {
           "create": "Nouveau pack",
           "edit": "Edit pack"
         },
         "subtitle": {
-          "create": "Name the pack, bind skills, then start a Craft run.",
+          "create": "Name the pack and bind skills. Click Use, then describe the task in the Craft input to start.",
           "edit": "Update the mission, bound skills, and protocol."
         },
         "tray": {

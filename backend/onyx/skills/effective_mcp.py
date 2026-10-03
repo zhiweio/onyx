@@ -9,8 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.db.mcp import (
+    get_craft_enabled_mcp_servers,
     get_mcp_servers_accessible_to_user,
     get_user_connection_configs,
+    get_user_disabled_mcp_server_ids,
 )
 from onyx.db.models import MCPCatalogEntry, MCPServer, User
 from onyx.server.features.mcp.credentials import user_can_authenticate
@@ -80,9 +82,11 @@ def resolve_effective_mcp_server_ids(
 ) -> list[int]:
     """Servers this turn may call: selected IDs plus skill-declared slugs.
 
-    An empty selection (no IDs and no skills) returns no servers. Persona MCP
-    tools are not implied. Only servers the user can access and authenticate
-    are returned.
+    With no explicit selection the base set is the user's globally enabled
+    servers (eligible minus per-user opt-outs from /craft/v1/mcp-actions) —
+    MCP injects once per session and the model picks tools itself. Skill
+    slugs always add on top. Only servers the user can access and
+    authenticate are returned.
     """
     selected_ids = {int(server_id) for server_id in (selected_mcp_server_ids or ())}
     wanted_slugs: set[str] = set()
@@ -93,7 +97,16 @@ def resolve_effective_mcp_server_ids(
         wanted_slugs.update(slugs_for_skill_spec(spec))
 
     if not selected_ids and not wanted_slugs:
-        return []
+        # Default injection: everything the user has not disabled. Explicit
+        # selections (legacy clients) still narrow instead.
+        eligible = get_craft_enabled_mcp_servers(db_session, user)
+        disabled = get_user_disabled_mcp_server_ids(db_session, user.id)
+        return sorted(
+            server.id
+            for server in eligible
+            if server.id not in disabled
+            and user_can_authenticate(server, user, db_session)
+        )
 
     accessible = get_mcp_servers_accessible_to_user(
         user, db_session, include_system=True

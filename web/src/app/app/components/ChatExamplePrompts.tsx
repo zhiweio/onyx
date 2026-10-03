@@ -59,11 +59,10 @@ export default function ChatExamplePrompts({
   const t = useTranslations("craft.suggestedPrompts");
   const { data: skillsData } = useUserSkills();
   const { data: appsData } = useUserExternalApps();
-  const { mcpData } = useMcpServers();
 
   const sections = useMemo(
-    () => toPickerSections(skillsData, appsData, mcpData?.mcp_servers),
-    [skillsData, appsData, mcpData]
+    () => toPickerSections(skillsData, appsData),
+    [skillsData, appsData],
   );
 
   const examples = useMemo(
@@ -72,11 +71,7 @@ export default function ChatExamplePrompts({
         const domain = useCaseDomains.find((d) => d.id === domainId);
         const prompt = domain?.prompts.find((p) => p.id === promptId);
         const hints: PromptToolHints | undefined = prompt?.toolHints;
-        const resolved = resolveToolHints(
-          hints,
-          sections.skills,
-          sections.mcpServers
-        );
+        const resolved = resolveToolHints(hints, sections.skills);
         return {
           domainId,
           promptId,
@@ -84,12 +79,12 @@ export default function ChatExamplePrompts({
           fullText: t(`${domainId}.prompts.${promptId}.fullText`),
           entries: pickerEntriesFromSelection(sections, {
             skillIds: resolved.skillIds,
-            mcpServerIds: resolved.mcpServerIds,
+            scenarioId: null,
           }),
           webSearch: resolved.useWebSearch,
         };
       }),
-    [t, sections]
+    [t, sections],
   );
 
   if (examples.length === 0) {
@@ -112,7 +107,7 @@ export default function ChatExamplePrompts({
           className={cn(
             "inline-flex items-center rounded-12 px-3 py-1.5 cursor-pointer transition-colors",
             "text-text-03 hover:bg-background-tint-02 hover:text-text-04",
-            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-action-selection-01 focus-visible:ring-offset-2"
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-action-selection-01 focus-visible:ring-offset-2",
           )}
         >
           <Text font="main-ui-body" color="inherit">
