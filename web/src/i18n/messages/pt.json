@@ -12519,6 +12519,7 @@
         "tooltip": "Adicionar arquivos ou habilidades"
       },
       "deepTask": {
+        "label": "Tarefa profunda",
         "toggleAriaLabel": "Modo tarefa profunda",
         "offTooltip": "Tarefa profunda desligada. Ative para executar a próxima mensagem como um trabalho longo de várias fases.",
         "onTooltip": "Tarefa profunda ligada. A próxima mensagem inicia um trabalho longo de várias fases. Clique para desligar."

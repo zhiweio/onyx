@@ -12519,6 +12519,7 @@
         "tooltip": "Ajouter des fichiers ou des compétences"
       },
       "deepTask": {
+        "label": "Tâche approfondie",
         "toggleAriaLabel": "Mode tâche approfondie",
         "offTooltip": "Tâche approfondie désactivée. Activez-la pour exécuter le prochain message comme un travail long multi-étapes.",
         "onTooltip": "Tâche approfondie activée. Le prochain message lance un travail long multi-étapes. Cliquez pour désactiver."

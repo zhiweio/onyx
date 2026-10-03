@@ -22,9 +22,8 @@ import ContextUsageMeter from "@/sections/input/ContextUsageMeter";
 import ThoughtLevelSelect from "@/sections/input/ThoughtLevelSelect";
 import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
-import IconButton from "@/refresh-components/buttons/IconButton";
+import { SelectButton } from "@opal/components";
 import { SvgWorkflow } from "@opal/icons";
-import { cn } from "@opal/utils";
 import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import {
@@ -437,27 +436,22 @@ function CraftComposer({
               tooltip={t("plusMenu.tooltip")}
             />
             {onDeepTaskToggle && (
-              <IconButton
+              <SelectButton
+                variant="select-light"
                 icon={SvgWorkflow}
                 onClick={onDeepTaskToggle}
                 disabled={disabled}
-                aria-pressed={deepTask}
+                state={deepTask ? "selected" : "empty"}
+                foldable={!deepTask}
                 data-testid="craft-deep-task-toggle"
+                aria-pressed={deepTask}
                 aria-label={t("deepTask.toggleAriaLabel")}
                 tooltip={
                   deepTask ? t("deepTask.onTooltip") : t("deepTask.offTooltip")
                 }
-                tertiary
-                small
-                className={cn(
-                  "rounded-full p-1.5!",
-                  deepTask ? "bg-theme-primary-05!" : "bg-transparent!"
-                )}
-                iconClassName={cn(
-                  "h-4! w-4!",
-                  deepTask ? "stroke-theme-accent-08!" : "stroke-text-04!"
-                )}
-              />
+              >
+                {t("deepTask.label")}
+              </SelectButton>
             )}
           </>
         }

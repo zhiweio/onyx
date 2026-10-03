@@ -12519,6 +12519,7 @@
         "tooltip": "Dateien oder Skills hinzufügen"
       },
       "deepTask": {
+        "label": "Tiefenaufgabe",
         "toggleAriaLabel": "Modus Tiefenaufgabe",
         "offTooltip": "Tiefenaufgabe aus. Aktivieren, um die nächste Nachricht als mehrphasigen Lang-Job auszuführen.",
         "onTooltip": "Tiefenaufgabe an. Die nächste Nachricht startet einen mehrphasigen Lang-Job. Zum Deaktivieren klicken."

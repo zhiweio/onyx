@@ -12525,6 +12525,7 @@
         "tooltip": "Add files or skills"
       },
       "deepTask": {
+        "label": "Deep task",
         "toggleAriaLabel": "Deep task mode",
         "offTooltip": "Deep task off. Turn on to run the next message as a multi-phase long job.",
         "onTooltip": "Deep task on. The next message starts a multi-phase long job. Click to turn off."
