@@ -6,6 +6,7 @@ import {
   within,
 } from "@tests/setup/test-utils";
 import ExternalAppsPage from "@/app/craft/v1/apps/page";
+import { SWR_KEYS } from "@/lib/swr-keys";
 import type { SkillsList } from "@/lib/skills/types";
 import {
   MCPAuthenticationPerformer,
@@ -136,10 +137,14 @@ function mockEndpoints(
   apps: ExternalAppUserResponse[] = [ACME_CRM_APP],
   mcpServers: MCPServer[] = []
 ): void {
-  mockUseSWR.mockImplementation(() => ({
-    data: apps,
-    mutate: mockMutateApps,
-  }));
+  // Honor the SWR contract: only the external-apps key carries data. A blanket
+  // mocked return leaks the apps array into every other useSWR consumer in the
+  // tree (e.g. the MCP card's lazy tool fetch, whose null key means "no data").
+  mockUseSWR.mockImplementation((key: unknown) =>
+    key === SWR_KEYS.buildExternalApps
+      ? { data: apps, mutate: mockMutateApps }
+      : { data: undefined, mutate: jest.fn() }
+  );
   mockUseCraftMcpServers.mockReturnValue({
     data: { mcp_servers: mcpServers },
     refresh: mockRefreshMcp,

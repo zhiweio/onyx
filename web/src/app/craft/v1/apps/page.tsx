@@ -349,7 +349,9 @@ function McpConnectableCard({
       >
         <McpToolsCard
           name={app.name}
-          description={app.description}
+          // Same one-line status grammar as app cards; MCP servers have no
+          // skills, so no skill-setup warning can apply.
+          description={statusLine(app, false, t)}
           logo={app.logo}
           server={app.mcpServer}
           surface="gallery"
