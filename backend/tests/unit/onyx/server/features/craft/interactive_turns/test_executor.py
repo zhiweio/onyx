@@ -25,6 +25,7 @@ from onyx.server.features.build.sandbox.event_schema import (
     TURN_ERROR_CODE_TIMEOUT,
     ActivityTimeoutError,
     PromptResponse,
+    ToolCallStart,
 )
 from onyx.server.features.build.sandbox.event_schema import Error as SandboxError
 from onyx.server.features.build.timeouts import (
@@ -35,15 +36,24 @@ from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 from tests.unit.fakes import FakeCache
 
 
-def _stub_workspace_persist(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_workspace_persist(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    persist_calls: list[object] | None = None,
+    retain_calls: list[object] | None = None,
+) -> None:
     monkeypatch.setattr(executor, "get_sandbox_manager", lambda: object())
     monkeypatch.setattr(
         "onyx.server.features.build.session.artifact_persist.persist_session_workspace_files",
-        lambda *_args, **_kwargs: None,
+        lambda *args, **_kwargs: (
+            None if persist_calls is None else persist_calls.append(args)
+        ),
     )
     monkeypatch.setattr(
         "onyx.memory.long_term.maybe_retain_after_craft_turn",
-        lambda *_args, **_kwargs: None,
+        lambda *args, **_kwargs: (
+            None if retain_calls is None else retain_calls.append(args)
+        ),
     )
 
 
@@ -178,7 +188,9 @@ def _run_turn_with_events(
             attachments: object,
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
+            skip_memory_recall: bool = False,
         ) -> Iterator[object]:
+            del skip_memory_recall
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
             assert prompt == "hello"
@@ -699,7 +711,9 @@ def test_ownership_recheck_after_slot_acquire(
             attachments: object,
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
+            skip_memory_recall: bool = False,
         ) -> Iterator[object]:
+            del skip_memory_recall
             nonlocal yield_sandbox_events_called
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
@@ -960,7 +974,9 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
             attachments: object,
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
+            skip_memory_recall: bool = False,
         ) -> Iterator[object]:
+            del skip_memory_recall
             nonlocal reclaimed
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
@@ -1090,6 +1106,8 @@ def test_start_interactive_turn_runner_preserves_tenant_context(
 def _run_turn_with_batches(
     monkeypatch: pytest.MonkeyPatch,
     batches: list[list[object]],
+    *,
+    record_workspace: bool = False,
 ) -> SimpleNamespace:
     cache = FakeCache()
     db_session = _FakeDbSession()
@@ -1103,6 +1121,8 @@ def _run_turn_with_batches(
     turn_errors: list[str] = []
     stamped: list[tuple[int, int]] = []
     cleared: list[bool] = []
+    persist_calls: list[object] = []
+    retain_calls: list[object] = []
 
     turn = create_interactive_turn(
         cache=cache,
@@ -1151,7 +1171,9 @@ def _run_turn_with_batches(
             attachments: object,
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
+            skip_memory_recall: bool = False,
         ) -> Iterator[object]:
+            del skip_memory_recall
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
             assert attachments == []
@@ -1215,7 +1237,14 @@ def _run_turn_with_batches(
     )
     monkeypatch.setattr(executor, "is_interrupt_requested", lambda *_: False)
     monkeypatch.setattr(executor, "clear_interrupt", lambda *_: None)
-    _stub_workspace_persist(monkeypatch)
+    _stub_workspace_persist(
+        monkeypatch,
+        **(
+            {"persist_calls": persist_calls, "retain_calls": retain_calls}
+            if record_workspace
+            else {}
+        ),
+    )
 
     claimed = claim_turn_for_runner(cache=cache, turn_id=turn.turn_id)
     assert claimed is not None
@@ -1233,7 +1262,52 @@ def _run_turn_with_batches(
         turn_errors=turn_errors,
         stamped=stamped,
         cleared=cleared,
+        persist_calls=persist_calls,
+        retain_calls=retain_calls,
     )
+
+
+def test_runner_skips_workspace_persist_when_no_tool_ran(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A turn without a tool call cannot have changed the workspace, so the
+    post-turn catalog walk is skipped; retention still runs (qm: an unused
+    box leaves nothing to persist)."""
+    done = PromptResponse.model_validate({"stopReason": "end_turn"})
+
+    result = _run_turn_with_batches(
+        monkeypatch,
+        [[object(), done]],
+        record_workspace=True,
+    )
+
+    finished = get_turn(result.cache, result.turn.turn_id)
+    assert finished is not None
+    assert finished.status == TURN_STATUS_SUCCEEDED
+    assert result.persist_calls == []
+    assert len(result.retain_calls) == 1
+
+
+def test_runner_persists_workspace_after_tool_activity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A tool-using turn keeps the catalog walk (change detection needs it)."""
+    tool_start = ToolCallStart.model_validate(
+        {"sessionUpdate": "tool_call", "toolCallId": "tc-1", "title": "bash"}
+    )
+    done = PromptResponse.model_validate({"stopReason": "end_turn"})
+
+    result = _run_turn_with_batches(
+        monkeypatch,
+        [[tool_start, done]],
+        record_workspace=True,
+    )
+
+    finished = get_turn(result.cache, result.turn.turn_id)
+    assert finished is not None
+    assert finished.status == TURN_STATUS_SUCCEEDED
+    assert len(result.persist_calls) == 1
+    assert len(result.retain_calls) == 1
 
 
 def test_runner_continues_after_tool_timeout(

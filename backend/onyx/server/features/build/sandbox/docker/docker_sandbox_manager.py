@@ -1756,6 +1756,13 @@ fi
             llm_config=llm_config,
             mcp_servers=mcp_servers,
         )
+        # The restored config is not built from reconcile's inputs; drop its
+        # digest so the next reconcile re-reads the file.
+        from onyx.server.features.build.session.config_digest import (
+            invalidate_config_digest,
+        )
+
+        invalidate_config_digest(session_id)
 
         if nextjs_port is not None:
             restore_webapp_script = build_webapp_restore_script(

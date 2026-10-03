@@ -546,6 +546,7 @@ def yield_sandbox_events(
     should_abort_on_teardown: Callable[[], bool] | None = None,
     turn_timeout_seconds: float | None = None,
     kind: str = "prompt",
+    skip_memory_recall: bool = False,
 ) -> Generator[Any, None, None]:
     """Drive the agent to completion, yielding raw sandbox events.
 
@@ -587,11 +588,17 @@ def yield_sandbox_events(
             turn_timeout_seconds=turn_timeout_seconds,
         )
     else:
-        from onyx.memory.long_term import maybe_craft_recall_prompt
+        # Job-kernel turns already carry recalled memories in their host
+        # brief (assembler), so the per-turn recall would double the embed
+        # on the critical path for nothing (qm: skipMemory for subagents).
+        if skip_memory_recall:
+            prompt_content = user_message_content
+        else:
+            from onyx.memory.long_term import maybe_craft_recall_prompt
 
-        prompt_content = maybe_craft_recall_prompt(
-            db_session, session_id, user_message_content
-        )
+            prompt_content = maybe_craft_recall_prompt(
+                db_session, session_id, user_message_content
+            )
         event_stream = sandbox_manager.send_message(
             sandbox_id,
             session_id,

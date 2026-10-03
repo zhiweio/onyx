@@ -158,6 +158,24 @@ def test_craft_toggle_off_skips_recall_prompt(
     assert prompt == "hello from user"
 
 
+def test_recall_empty_store_skips_embedding(
+    db_session: Session, test_user: User
+) -> None:
+    """The query embedding is the expensive part of recall; a user with no
+    stored memories must not pay it (qm: empty scopes never reach recall)."""
+    embedded: list[str] = []
+    with patch(
+        "onyx.memory.long_term.embed_texts",
+        side_effect=lambda _db, texts, *, query: (  # noqa: ARG005
+            embedded.extend(texts),
+            [_vector_for(item) for item in texts],
+        )[1],
+    ):
+        recalled = recall(db_session, test_user.id, "anything at all")
+    assert recalled == []
+    assert embedded == []
+
+
 @pytest.mark.usefixtures("pgvector_ready")
 def test_chat_long_term_can_read_craft_row(
     db_session: Session,

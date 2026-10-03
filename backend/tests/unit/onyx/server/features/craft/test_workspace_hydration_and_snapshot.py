@@ -120,3 +120,75 @@ def test_teardown_snapshot_runs_for_quiet_session(monkeypatch) -> None:
     )
     thread.join(timeout=5)
     assert snapshots == [(sandbox_id, session_id)]
+
+
+def test_teardown_snapshot_skips_untouched_session_with_existing_snapshot(
+    monkeypatch,
+) -> None:
+    """A turn that ran no tool left the workspace unchanged, so an existing
+    snapshot still matches and the archive is skipped (qm: homeUnchanged)."""
+    from onyx.server.features.build.interactive_turns import executor
+
+    snapshots: list[tuple[object, object]] = []
+    _patch_executor_db(monkeypatch)
+    monkeypatch.setattr(
+        "onyx.server.features.build.interactive_turns.executor.get_active_turn",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.db.sandbox.get_snapshots_for_session",
+        lambda *_a, **_k: [SimpleNamespace()],
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.session.sandbox_lifecycle."
+        "create_session_snapshot_keep_latest",
+        lambda _m, _d, sandbox_id, session_id, _t: snapshots.append(
+            (sandbox_id, session_id)
+        ),
+    )
+    thread = executor._snapshot_session_workspace_after_turn(
+        sandbox_id=uuid4(),
+        session_id=uuid4(),
+        user_id=uuid4(),
+        tenant_id=None,
+        workspace_touched=False,
+    )
+    thread.join(timeout=5)
+    assert snapshots == []
+
+
+def test_teardown_snapshot_runs_for_untouched_session_without_snapshot(
+    monkeypatch,
+) -> None:
+    """No prior snapshot (first turn, or every snapshot was pruned): archive
+    even when the workspace is untouched, so sleep/restore still has a base."""
+    from onyx.server.features.build.interactive_turns import executor
+
+    snapshots: list[tuple[object, object]] = []
+    _patch_executor_db(monkeypatch)
+    monkeypatch.setattr(
+        "onyx.server.features.build.interactive_turns.executor.get_active_turn",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.db.sandbox.get_snapshots_for_session",
+        lambda *_a, **_k: [],
+    )
+    monkeypatch.setattr(
+        "onyx.server.features.build.session.sandbox_lifecycle."
+        "create_session_snapshot_keep_latest",
+        lambda _m, _d, sandbox_id, session_id, _t: snapshots.append(
+            (sandbox_id, session_id)
+        ),
+    )
+    sandbox_id = uuid4()
+    session_id = uuid4()
+    thread = executor._snapshot_session_workspace_after_turn(
+        sandbox_id=sandbox_id,
+        session_id=session_id,
+        user_id=uuid4(),
+        tenant_id=None,
+        workspace_touched=False,
+    )
+    thread.join(timeout=5)
+    assert snapshots == [(sandbox_id, session_id)]

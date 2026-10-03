@@ -22,6 +22,7 @@ from onyx.server.features.build.sandbox.util.opencode_config import (
 )
 from onyx.server.features.build.session import llm_config
 from onyx.server.features.build.session import manager as manager_module
+from onyx.server.features.build.session.config_digest import digest_of_config
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.gateway import model_catalog
 from onyx.server.gateway.models import GatewayModelDescriptor
@@ -812,8 +813,85 @@ def test_empty_gateway_session_restarts_instance_for_changed_catalog() -> None:
     sandbox_manager.dispose_opencode_instance.assert_called_once_with(
         sandbox.id, session.id
     )
-    cache.set.assert_called_once()
+    # The dispose claim (plus the config digest the write recorded).
+    cache.set.assert_any_call("craft:llm_config_dispose_pending:2", "1", ex=86400)
+    cache.set.assert_any_call(
+        "craft:session_config_digest:2",
+        digest_of_config(_expected_session_config(config)),
+        ex=7 * 24 * 3600,
+    )
     cache.delete.assert_called_once()
+
+
+def test_reconcile_skips_sandbox_read_when_digest_matches() -> None:
+    """The digest fast path: once a reconcile verified (or wrote) the file,
+    a later reconcile with identical inputs skips the sandbox read RPC."""
+    config = _gateway_config()
+    manager, sandbox_manager, _ = _reconcile_manager(config)
+    expected = _expected_session_config(config)
+    sandbox_manager.read_file.return_value = expected.encode()
+
+    store: dict[str, str] = {}
+    cache = MagicMock()
+    cache.set.side_effect = lambda key, value, ex=None: store.__setitem__(  # noqa: ARG005
+        key, value
+    )
+    cache.get.side_effect = store.get
+    cache.delete.side_effect = lambda key: store.pop(key, None)  # noqa: ARG005
+
+    def _reconcile() -> None:
+        with patch.object(manager_module, "get_cache_backend", return_value=cache):
+            manager.reconcile_session_llm_config(
+                cast(Sandbox, MagicMock(id=1)),
+                _fresh_session(),
+                cast(User, MagicMock(spec=User)),
+            )
+
+    _reconcile()
+    # First turn verified the file against the sandbox and recorded it.
+    assert sandbox_manager.read_file.called
+    assert store.get("craft:session_config_digest:2") == digest_of_config(expected)
+    sandbox_manager.read_file.reset_mock()
+
+    _reconcile()
+    # Second turn: identical inputs, so no sandbox read and no rewrite.
+    sandbox_manager.read_file.assert_not_called()
+    sandbox_manager.regenerate_session_config.assert_not_called()
+    sandbox_manager.dispose_opencode_instance.assert_not_called()
+
+
+def test_reconcile_rereads_after_digest_invalidation() -> None:
+    """An out-of-band config write (pod restore, skills reload) drops the
+    digest, so the next reconcile goes back to the file as truth."""
+    config = _gateway_config()
+    manager, sandbox_manager, _ = _reconcile_manager(config)
+    expected = _expected_session_config(config)
+    # The restore wrote a config reconcile would not have produced.
+    sandbox_manager.read_file.return_value = b'{"restored": true}'
+
+    store: dict[str, str] = {}
+    cache = MagicMock()
+    cache.set.side_effect = lambda key, value, ex=None: store.__setitem__(  # noqa: ARG005
+        key, value
+    )
+    cache.get.side_effect = store.get
+    cache.delete.side_effect = lambda key: store.pop(key, None)  # noqa: ARG005
+    # A stale digest from before the restore must not gate the read.
+    store["craft:session_config_digest:2"] = digest_of_config(expected)
+
+    with patch.object(manager_module, "get_cache_backend", return_value=cache):
+        # What an out-of-band writer (restore / skills reload) does.
+        cache.delete("craft:session_config_digest:2")
+        assert "craft:session_config_digest:2" not in store
+
+        manager.reconcile_session_llm_config(
+            cast(Sandbox, MagicMock(id=1)),
+            _fresh_session(),
+            cast(User, MagicMock(spec=User)),
+        )
+
+    sandbox_manager.read_file.assert_called_once()
+    sandbox_manager.regenerate_session_config.assert_called_once()
 
 
 def test_workspace_rebuild_claims_a_dispose_the_next_reconcile_honours() -> None:
@@ -863,7 +941,12 @@ def test_workspace_rebuild_claims_a_dispose_the_next_reconcile_honours() -> None
         )
 
     sandbox_manager.dispose_opencode_instance.assert_called_once()
-    assert store == {}, "the claim must be cleared once the dispose succeeded"
+    assert store.get("craft:llm_config_dispose_pending:2") is None, (
+        "the claim must be cleared once the dispose succeeded"
+    )
+    assert store.get("craft:session_config_digest:2") == digest_of_config(expected), (
+        "a verified file records its digest for the next turn's fast path"
+    )
 
 
 def test_unconfigured_provider_is_never_auto_picked() -> None:

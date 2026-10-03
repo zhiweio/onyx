@@ -18,6 +18,7 @@ from onyx.db.long_term_memory import (
     evict_oldest_extract,
     find_active_by_hash,
     get_owned_active,
+    has_active_memories,
     insert_memory,
     list_active_for_user,
     list_stale_embeddings,
@@ -103,6 +104,10 @@ def recall(
     query = query.strip()
     if not query:
         return []
+    # Empty-store short-circuit (qm: scopes with no content never reach the
+    # model): the query embedding is the expensive part, so probe first.
+    if not has_active_memories(db_session, user_id):
+        return []
     try:
         _model, model_name, _dims = _embedding_model(db_session)
         vectors = embed_texts(db_session, [query], query=True)
@@ -122,7 +127,6 @@ def recall(
     if not recalled:
         recalled = recall_by_literal(db_session, user_id, query, limit)
     touch_last_used(db_session, [item.id for item in recalled])
-    _reembed_stale_best_effort(db_session, user_id, model_name)
     return recalled
 
 
@@ -266,6 +270,7 @@ def maybe_retain_after_craft_turn(
         project_id=session.project_id if session is not None else None,
         source_session_id=session_id,
     )
+    _maintain_stale_embeddings(db_session, user_id)
 
 
 def maybe_retain_after_chat_turn(
@@ -283,6 +288,18 @@ def maybe_retain_after_chat_turn(
         source="extract",
         source_surface="chat",
     )
+    _maintain_stale_embeddings(db_session, user.id)
+
+
+def _maintain_stale_embeddings(db_session: Session, user_id: UUID) -> None:
+    """Re-embed rows on an old embedding model. Maintenance only — runs
+    post-turn (qm: detached tail), never on the recall critical path."""
+    try:
+        _model, model_name, _dims = _embedding_model(db_session)
+    except Exception:
+        logger.warning("Could not resolve embedding model for stale re-embed")
+        return
+    _reembed_stale_best_effort(db_session, user_id, model_name)
 
 
 def extract_facts_from_user_text(user_message: str) -> list[MemoryFact]:

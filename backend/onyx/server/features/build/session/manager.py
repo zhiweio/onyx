@@ -90,6 +90,12 @@ from onyx.server.features.build.sandbox.util.opencode_config import (
     build_provider_opencode_config,
 )
 from onyx.server.features.build.session import streaming as _streaming
+from onyx.server.features.build.session.config_digest import (
+    digest_of_config,
+    invalidate_config_digest,
+    known_config_digest,
+    remember_config_digest,
+)
 from onyx.server.features.build.session.errors import (
     StaleProvisioningAttemptError,
     UploadLimitExceededError,
@@ -349,6 +355,25 @@ class SessionManager:
             )
         )
 
+        cache = get_cache_backend()
+        dispose_pending_key = _dispose_pending_key(session.id)
+        # Fast path: the same inputs produced the last verified write, so the
+        # sandbox file matches without paying the read RPC. Any out-of-band
+        # config write invalidates the digest (config_digest.py).
+        cached_digest = known_config_digest(session.id, cache)
+        if (
+            cached_digest == digest_of_config(expected)
+            and cache.get(dispose_pending_key) is None
+        ):
+            if (
+                session.agent_provider != llm_config.provider
+                or session.agent_model != llm_config.model_name
+            ):
+                session.agent_provider = llm_config.provider
+                session.agent_model = llm_config.model_name
+                self._db_session.flush()
+            return
+
         try:
             current = self._sandbox_manager.read_file(
                 sandbox.id, session.id, "opencode.json"
@@ -364,8 +389,6 @@ class SessionManager:
             )
             current = None
 
-        cache = get_cache_backend()
-        dispose_pending_key = _dispose_pending_key(session.id)
         if current == expected:
             # A matching file does NOT prove the running opencode instance
             # picked it up: a prior reconcile may have written the file and
@@ -377,6 +400,7 @@ class SessionManager:
             ):
                 self._sandbox_manager.dispose_opencode_instance(sandbox.id, session.id)
             cache.delete(dispose_pending_key)
+            remember_config_digest(session.id, expected, cache)
             if (
                 session.agent_provider != llm_config.provider
                 or session.agent_model != llm_config.model_name
@@ -409,6 +433,7 @@ class SessionManager:
         if session.opencode_session_id is not None:
             self._sandbox_manager.dispose_opencode_instance(sandbox.id, session.id)
         cache.delete(dispose_pending_key)
+        remember_config_digest(session.id, expected, cache)
         session.agent_provider = llm_config.provider
         session.agent_model = llm_config.model_name
         self._db_session.flush()
@@ -478,6 +503,9 @@ class SessionManager:
                         self._sandbox_manager.dispose_opencode_instance(
                             sandbox.id, session_id
                         )
+                    # This rewrite is not built from reconcile's inputs, so
+                    # its digest cache can no longer vouch for the file.
+                    invalidate_config_digest(session_id)
                 except Exception as exc:
                     logger.warning(
                         "Failed to refresh skills for session %s",
@@ -1411,6 +1439,7 @@ class SessionManager:
         should_abort_on_teardown: Callable[[], bool] | None = None,
         turn_timeout_seconds: float | None = None,
         kind: str = "prompt",
+        skip_memory_recall: bool = False,
     ) -> Generator[Any, None, None]:
         build_session = _streaming.load_turn_session(
             self._db_session, self._sandbox_manager, sandbox_id, session_id
@@ -1431,6 +1460,7 @@ class SessionManager:
             should_abort_on_teardown=should_abort_on_teardown,
             turn_timeout_seconds=turn_timeout_seconds,
             kind=kind,
+            skip_memory_recall=skip_memory_recall,
         )
 
     def yield_sandbox_compact_events(

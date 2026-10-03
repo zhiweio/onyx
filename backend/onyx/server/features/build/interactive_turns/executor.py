@@ -38,6 +38,7 @@ from onyx.server.features.build.interactive_turns.state import (
 from onyx.server.features.build.sandbox.event_schema import (
     ActivityTimeoutError,
     PromptResponse,
+    ToolCallStart,
 )
 from onyx.server.features.build.sandbox.event_schema import Error as SandboxError
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
@@ -301,6 +302,7 @@ def _snapshot_session_workspace_after_turn(
     session_id: UUID,
     user_id: UUID,
     tenant_id: str | None,
+    workspace_touched: bool = True,
 ) -> threading.Thread:
     """Snapshot the session workspace right after a turn used it.
 
@@ -308,8 +310,10 @@ def _snapshot_session_workspace_after_turn(
     workspace is quiet instead of mid-command. Skipped when the session
     already has a successor turn — including the job continuation this turn
     just enqueued — because the interval sweep snapshots it once idle, and
-    the sweep skips fresh snapshots. Failures are log-only; the sweep remains
-    the fallback.
+    the sweep skips fresh snapshots. A turn that ran no tool left the
+    workspace untouched, so an existing snapshot still matches and the
+    archive is skipped (qm: homeUnchanged). Failures are log-only; the
+    sweep remains the fallback.
     """
     from onyx.server.features.build.session.sandbox_lifecycle import (
         create_session_snapshot_keep_latest,
@@ -324,6 +328,18 @@ def _snapshot_session_workspace_after_turn(
                 is not None
             ):
                 return
+            if not workspace_touched:
+                from onyx.server.features.build.db.sandbox import (
+                    get_snapshots_for_session,
+                )
+
+                with get_session_with_current_tenant() as check_session:
+                    if get_snapshots_for_session(check_session, session_id):
+                        logger.info(
+                            "Teardown snapshot skipped for untouched session %s",
+                            session_id,
+                        )
+                        return
             with get_session_with_current_tenant() as db_session:
                 create_session_snapshot_keep_latest(
                     get_sandbox_manager(),
@@ -388,6 +404,10 @@ def _drive_interactive_turn(
     turn_succeeded = False
     deadline_exceeded = False
     cancelled = False
+    # Whether any tool ran this turn. Without a tool call nothing in the
+    # session workspace can change, so post-turn cataloging and teardown
+    # snapshots can skip the work (qm: homeUnchanged for unused boxes).
+    saw_tool_activity = False
     # Error detail of the terminal failure, if any — the job continuation
     # uses it to decide whether the phase/lane turn deserves a retry.
     turn_error_detail: str | None = None
@@ -612,7 +632,7 @@ def _drive_interactive_turn(
                     returns TIMED_OUT (only while ``can_continue``); failures finish
                     the turn here and return TERMINATED so the caller just returns."""
                     nonlocal deadline_exceeded, ownership_lost_for_continue
-                    nonlocal turn_error_detail
+                    nonlocal turn_error_detail, saw_tool_activity
                     ownership_lost = False
                     final_event_seen = False
                     cancelled_event_seen = False
@@ -633,6 +653,9 @@ def _drive_interactive_turn(
                             attachments=prompt_attachments,
                             should_interrupt=interrupt_requested,
                             should_abort_on_teardown=lambda: not ownership_lost,
+                            # Job-kernel turns carry recalled memories in
+                            # their host brief already.
+                            skip_memory_recall=job_id is not None,
                         )
 
                     for sandbox_event in event_stream:
@@ -688,6 +711,9 @@ def _drive_interactive_turn(
                             return _PromptResult(_PromptOutcome.TERMINATED)
                         if isinstance(sandbox_event, SSEKeepalive):
                             continue
+
+                        if isinstance(sandbox_event, ToolCallStart):
+                            saw_tool_activity = True
 
                         # The transport already aborted the timed-out step and ends the
                         # stream after this event; drain it (don't return early, which
@@ -774,18 +800,22 @@ def _drive_interactive_turn(
 
                 session_manager.finalize_persist(session_id, state)
                 db_session.commit()
-                from onyx.server.features.build.session.artifact_persist import (
-                    persist_session_workspace_files,
-                )
 
-                persist_session_workspace_files(
-                    db_session,
-                    get_sandbox_manager(),
-                    sandbox_id=sandbox.id,
-                    session_id=session_id,
-                    user_id=user_id,
-                    turn_index=turn_index,
-                )
+                # Without a tool call the workspace cannot have changed; the
+                # tree walk (and the teardown snapshot it feeds) is pure cost.
+                if saw_tool_activity:
+                    from onyx.server.features.build.session.artifact_persist import (
+                        persist_session_workspace_files,
+                    )
+
+                    persist_session_workspace_files(
+                        db_session,
+                        get_sandbox_manager(),
+                        sandbox_id=sandbox.id,
+                        session_id=session_id,
+                        user_id=user_id,
+                        turn_index=turn_index,
+                    )
 
                 if deadline_exceeded:
                     persist_turn_error(
@@ -835,7 +865,10 @@ def _drive_interactive_turn(
                     status=TURN_STATUS_SUCCEEDED,
                     runner_id=runner_id,
                 )
-                if kind != "compact":
+                if kind != "compact" and job_id is None:
+                    # Extract user facts from user words only: job-kernel
+                    # turns prompt with host briefs (qm: skip capture for
+                    # autonomous actors).
                     from onyx.memory.long_term import maybe_retain_after_craft_turn
 
                     maybe_retain_after_craft_turn(
@@ -940,4 +973,5 @@ def _drive_interactive_turn(
                 session_id=session_id,
                 user_id=user_id,
                 tenant_id=get_current_tenant_id(),
+                workspace_touched=saw_tool_activity,
             )

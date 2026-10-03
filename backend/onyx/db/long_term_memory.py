@@ -299,6 +299,31 @@ def count_extract_rows(db_session: Session, user_id: UUID) -> int:
     )
 
 
+def has_active_memories(db_session: Session, user_id: UUID) -> bool:
+    """Existence probe so recall can skip the query embedding entirely for
+    users whose store is empty (the common case before first extraction).
+    ``embedding`` is a pgvector column without an ORM mapping, so this
+    mirrors recall_by_vector's raw-SQL access."""
+    from sqlalchemy import text
+
+    return (
+        db_session.execute(
+            text(
+                """
+                SELECT 1
+                FROM long_term_memory
+                WHERE user_id = :user_id
+                  AND deleted_at IS NULL
+                  AND embedding IS NOT NULL
+                LIMIT 1
+                """
+            ),
+            {"user_id": str(user_id)},
+        ).scalar()
+        is not None
+    )
+
+
 def evict_oldest_extract(db_session: Session, user_id: UUID) -> None:
     from sqlalchemy import select
 
