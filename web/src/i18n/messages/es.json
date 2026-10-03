@@ -13276,6 +13276,9 @@
         "summary": {
           "partialLoadFailed": "Algunos detalles de aprobación previa no se pudieron cargar. Actualiza para volver a intentarlo.",
           "title": "Apps y servidores MCP preaprobados"
+        },
+        "search": {
+          "placeholder": "Buscar…"
         }
       },
       "runHistory": {

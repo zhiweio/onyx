@@ -13276,6 +13276,9 @@
         "summary": {
           "partialLoadFailed": "部分预批准详情无法加载。请刷新重试。",
           "title": "预批准的应用和 MCP 服务器"
+        },
+        "search": {
+          "placeholder": "搜索…"
         }
       },
       "runHistory": {

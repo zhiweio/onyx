@@ -13276,6 +13276,9 @@
         "summary": {
           "partialLoadFailed": "Certains détails de pré-approbation n'ont pas pu être chargés. Actualisez pour réessayer.",
           "title": "Apps et serveurs MCP pré-approuvés"
+        },
+        "search": {
+          "placeholder": "Rechercher…"
         }
       },
       "runHistory": {

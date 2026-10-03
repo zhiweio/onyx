@@ -13276,6 +13276,9 @@
         "summary": {
           "partialLoadFailed": "一部の事前承認の詳細を読み込めませんでした。更新して再試行してください。",
           "title": "事前承認済みのアプリと MCP サーバー"
+        },
+        "search": {
+          "placeholder": "検索…"
         }
       },
       "runHistory": {

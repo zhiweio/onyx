@@ -13276,6 +13276,9 @@
         "summary": {
           "partialLoadFailed": "Einige Vorabgenehmigungs-Details konnten nicht geladen werden. Aktualisiere, um es erneut zu versuchen.",
           "title": "Vorab genehmigte Apps und MCP-Server"
+        },
+        "search": {
+          "placeholder": "Suchen…"
         }
       },
       "runHistory": {

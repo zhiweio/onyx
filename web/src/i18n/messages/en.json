@@ -13282,6 +13282,9 @@
         "summary": {
           "partialLoadFailed": "Some pre-approval details couldn’t load. Refresh to try again.",
           "title": "Pre-approved apps and MCP servers"
+        },
+        "search": {
+          "placeholder": "Search…"
         }
       },
       "runHistory": {

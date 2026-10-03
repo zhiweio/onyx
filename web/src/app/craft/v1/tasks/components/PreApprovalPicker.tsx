@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Card, Checkbox, Text } from "@opal/components";
+import { Button, Card, Checkbox, InputTypeIn, Text } from "@opal/components";
 import { SvgMcp } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
@@ -9,6 +9,8 @@ import useUserExternalApps from "@/hooks/useUserExternalApps";
 import { useCraftMcpServers } from "@/lib/tools/hooks";
 import { getActionIcon } from "@/lib/tools/utils";
 import { getAppTypeLogo } from "@/app/craft/v1/apps/registry";
+import { useSearchablePagination } from "@/hooks/useSearchablePagination";
+import BrowsePagination from "@/sections/gallery/BrowsePagination";
 
 interface PreApprovalPickerProps {
   selectedAppIds: number[];
@@ -30,6 +32,7 @@ export default function PreApprovalPicker({
   onMcpServerChange,
 }: PreApprovalPickerProps) {
   const t = useTranslations("craft.tasks.preApproval");
+  const tShared = useTranslations("admin.shared");
   const {
     data: apps,
     isLoading: appsLoading,
@@ -58,6 +61,7 @@ export default function PreApprovalPicker({
     ...visibleMcpServers.map((server) => ({
       id: server.id,
       name: server.name,
+      description: server.description ?? "",
       status: server.craft_connected
         ? t("status.connected")
         : t("status.connectionRequired"),
@@ -70,6 +74,7 @@ export default function PreApprovalPicker({
           .map((id) => ({
             id,
             name: t("mcpServerFallbackName", { id }),
+            description: "",
             status: t("status.unavailable"),
             icon: SvgMcp,
             testId: `pre-approval-mcp-server-${id}`,
@@ -126,6 +131,7 @@ export default function PreApprovalPicker({
           options={appOptions}
           selectedIds={selectedAppIds}
           onToggle={(id) => onAppChange(toggledIds(selectedAppIds, id))}
+          paginationUnits={tShared("pagination.units")}
         />
       )}
       {mcpOptions.length > 0 && (
@@ -136,6 +142,7 @@ export default function PreApprovalPicker({
           onToggle={(id) =>
             onMcpServerChange(toggledIds(selectedMcpServerIds, id))
           }
+          paginationUnits={tShared("pagination.units")}
         />
       )}
     </div>
@@ -145,6 +152,7 @@ export default function PreApprovalPicker({
 interface PreApprovalOption {
   id: number;
   name: string;
+  description?: string;
   status: string;
   icon: IconFunctionComponent;
   testId: string;
@@ -155,6 +163,7 @@ interface PreApprovalGroupProps {
   options: PreApprovalOption[];
   selectedIds: number[];
   onToggle: (id: number) => void;
+  paginationUnits: string;
 }
 
 function PreApprovalGroup({
@@ -162,15 +171,47 @@ function PreApprovalGroup({
   options,
   selectedIds,
   onToggle,
+  paginationUnits,
 }: PreApprovalGroupProps) {
+  const t = useTranslations("craft.tasks.preApproval");
   const selected = new Set(selectedIds);
+
+  // Selections always stay visible — a checked row must never vanish into a
+  // later page just because its name does not match the query.
+  const groupList = useSearchablePagination(options, (option, query) =>
+    query ? option.name.toLowerCase().includes(query) : true
+  );
+  const pageOptions = groupList.pageItems.some((option) =>
+    selected.has(option.id)
+  )
+    ? groupList.pageItems
+    : [
+        ...groupList.pageItems,
+        ...options.filter(
+          (option) =>
+            selected.has(option.id) && !groupList.pageItems.includes(option)
+        ),
+      ];
+
   return (
     <section className="flex flex-col gap-2" aria-label={title}>
       <Text as="h3" font="main-ui-action" color="text-03">
         {title}
       </Text>
+      {options.length > 12 && (
+        <div className="max-w-sm">
+          <InputTypeIn
+            searchIcon
+            variant="internal"
+            value={groupList.searchQuery}
+            onChange={(e) => groupList.setSearchQuery(e.target.value)}
+            placeholder={t("search.placeholder")}
+            aria-label={t("search.placeholder")}
+          />
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {options.map((option) => (
+        {pageOptions.map((option) => (
           <PreApprovalRow
             key={option.id}
             option={option}
@@ -179,6 +220,12 @@ function PreApprovalGroup({
           />
         ))}
       </div>
+      <BrowsePagination
+        page={groupList.safePage}
+        totalItems={groupList.filtered.length}
+        onPageChange={groupList.setPage}
+        units={paginationUnits}
+      />
     </section>
   );
 }
