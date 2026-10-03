@@ -204,6 +204,7 @@
   },
   "overrides": {
     "react-is": "^19.0.0-rc-69d4b800-20241021",
-    "@radix-ui/react-dismissable-layer": "1.1.19"
+    "@radix-ui/react-dismissable-layer": "1.1.19",
+    "@radix-ui/react-focus-scope": "1.1.16"
   }
 }
