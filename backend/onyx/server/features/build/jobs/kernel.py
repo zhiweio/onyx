@@ -145,7 +145,6 @@ def initialize_job_state(
     *,
     goal: str,
     selected_skill_ids: Sequence[str] | None = None,
-    selected_mcp_server_ids: Sequence[int] | None = None,
     plan: JobPlan | None = None,
 ) -> JobState:
     graph = compile_graph(str(job.domain), plan=plan)
@@ -155,9 +154,6 @@ def initialize_job_state(
     state.last_node = "plan"
     state.graph = graph.to_snapshot()
     state.selected_skill_ids = [str(item) for item in selected_skill_ids or []]
-    state.selected_mcp_server_ids = [
-        int(item) for item in selected_mcp_server_ids or []
-    ]
     persist_state(job, state)
     return state
 

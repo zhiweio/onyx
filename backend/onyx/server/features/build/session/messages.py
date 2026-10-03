@@ -216,7 +216,6 @@ def send_message(
             turn_index=turn_index,
             attachments=prompt_attachments,
             selected_skill_ids=selected_skill_ids,
-            selected_mcp_server_ids=request.selected_mcp_server_ids,
         )
 
         try:

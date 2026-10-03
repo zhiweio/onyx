@@ -155,7 +155,6 @@ def construct_tools(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
-    selected_mcp_server_ids: list[int] | None = None,
     selected_skill_ids: list[str] | None = None,
 ) -> dict[int, list[Tool]]:
     """Constructs tools based on persona configuration and available APIs.
@@ -178,7 +177,6 @@ def construct_tools(
             file_reader_tool_config=file_reader_tool_config,
             allowed_tool_ids=allowed_tool_ids,
             search_usage_forcing_setting=search_usage_forcing_setting,
-            selected_mcp_server_ids=selected_mcp_server_ids,
             selected_skill_ids=selected_skill_ids,
         )
 
@@ -194,7 +192,6 @@ def _construct_tools_impl(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
-    selected_mcp_server_ids: list[int] | None = None,
     selected_skill_ids: list[str] | None = None,
 ) -> dict[int, list[Tool]]:
     tool_dict: dict[int, list[Tool]] = {}
@@ -202,7 +199,6 @@ def _construct_tools_impl(
         resolve_effective_mcp_server_ids(
             db_session,
             user,
-            selected_mcp_server_ids=selected_mcp_server_ids,
             selected_skill_ids=selected_skill_ids,
         )
     )

@@ -60,7 +60,6 @@ class InteractiveTurn:
     runner_id: str | None = None
     kind: Literal["prompt", "compact"] = "prompt"
     selected_skill_ids: list[str] | None = None
-    selected_mcp_server_ids: list[int] | None = None
     # Claim-local flag for stale-RUNNING recovery; not persisted (see _save_turn).
     reclaimed: bool = False
 
@@ -89,7 +88,6 @@ def create_interactive_turn(
     attachments: list[PromptAttachment] | None = None,
     kind: Literal["prompt", "compact"] = "prompt",
     selected_skill_ids: list[str] | None = None,
-    selected_mcp_server_ids: list[int] | None = None,
 ) -> InteractiveTurn:
     now = datetime.now(tz=timezone.utc)
     turn = InteractiveTurn(
@@ -103,7 +101,6 @@ def create_interactive_turn(
         last_heartbeat_at=now,
         kind=kind,
         selected_skill_ids=selected_skill_ids or [],
-        selected_mcp_server_ids=selected_mcp_server_ids or [],
     )
     _save_turn(cache, turn, ex=ACTIVE_TURN_TTL_SECONDS)
     cache.set(
@@ -335,10 +332,6 @@ def _load_turn(raw: bytes | None) -> InteractiveTurn | None:
                 else "prompt"
             ),
             selected_skill_ids=list(payload.get("selected_skill_ids") or []),
-            selected_mcp_server_ids=[
-                int(server_id)
-                for server_id in (payload.get("selected_mcp_server_ids") or [])
-            ],
         )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None

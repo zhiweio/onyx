@@ -119,7 +119,6 @@ def _run_turn_with_events(
     session_missing: bool = False,
     kind: Literal["prompt", "compact"] = "prompt",
     selected_skill_ids: list[str] | None = None,
-    selected_mcp_server_ids: list[int] | None = None,
 ) -> SimpleNamespace:
     cache = FakeCache()
     db_session = _FakeDbSession()
@@ -145,7 +144,6 @@ def _run_turn_with_events(
         turn_index=0,
         kind=kind,
         selected_skill_ids=selected_skill_ids,
-        selected_mcp_server_ids=selected_mcp_server_ids,
     )
 
     class FakeSessionManager:
@@ -363,14 +361,11 @@ def test_job_owned_turn_keeps_all_mcp_when_picker_empty(
     assert result.reconcile_calls[0][-1] is None
 
 
-def test_job_owned_turn_uses_stored_mcp_allowlist(
+def test_job_owned_turn_uses_stored_skill_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job = SimpleNamespace(
-        state={
-            "selected_skill_ids": ["hithink-finance"],
-            "selected_mcp_server_ids": [12],
-        },
+        state={"selected_skill_ids": ["hithink-finance"]},
         phase_budget_seconds=1500,
         lease_owner=None,
         lease_expires_at=None,
@@ -414,7 +409,7 @@ def test_chat_turn_empty_picker_keeps_session_mcp(
     assert result.reconcile_calls[0][-1] is None
 
 
-def test_chat_turn_uses_slash_picker_allowlist(
+def test_chat_turn_uses_skill_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -433,7 +428,7 @@ def test_chat_turn_uses_slash_picker_allowlist(
     result = _run_turn_with_events(
         monkeypatch,
         [prompt_response],
-        selected_mcp_server_ids=[12],
+        selected_skill_ids=["zhihuiya"],
     )
     assert result.reconcile_calls
     assert result.reconcile_calls[0][-1] == [12]

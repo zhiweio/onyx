@@ -15,17 +15,15 @@ from onyx.server.features.build.jobs.channels import JobState
 from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
 
 
-def job_picker_selection(job: CraftJob) -> tuple[list[str], list[int]]:
+def job_picker_skill_ids(job: CraftJob) -> list[str]:
     raw = job.state
     if not isinstance(raw, dict):
-        return [], []
+        return []
     try:
         state = JobState.model_validate(raw) if raw else JobState()
     except Exception:
         state = JobState()
-    return list(state.selected_skill_ids or []), list(
-        state.selected_mcp_server_ids or []
-    )
+    return list(state.selected_skill_ids or [])
 
 
 def resolve_job_mcp_server_ids(
@@ -34,12 +32,11 @@ def resolve_job_mcp_server_ids(
     job: CraftJob,
 ) -> list[int] | None:
     """Turn allowlist for a job. ``None`` keeps every eligible server."""
-    skill_ids, mcp_ids = job_picker_selection(job)
-    if not skill_ids and not mcp_ids:
+    skill_ids = job_picker_skill_ids(job)
+    if not skill_ids:
         return None
     return resolve_effective_mcp_server_ids(
         db_session,
         user,
-        selected_mcp_server_ids=mcp_ids,
         selected_skill_ids=skill_ids,
     )

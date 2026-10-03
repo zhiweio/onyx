@@ -121,7 +121,6 @@ class SendMessageRequest(BaseModel):
     # DEPRECATED: MCP selection moved to /craft/v1/mcp-actions (per-user
     # enablement injected once per session). Accepted for wire compatibility
     # and ignored by the product flow; legacy clients may still narrow.
-    selected_mcp_server_ids: list[int] | None = None
 
     file_descriptors: list[FileDescriptor] = []
 

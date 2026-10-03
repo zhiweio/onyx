@@ -562,17 +562,15 @@ def _drive_interactive_turn(
                     allowed_mcp_ids = resolve_job_mcp_server_ids(db_session, user, job)
                 elif turn_state is not None:
                     skill_ids = turn_state.selected_skill_ids or []
-                    mcp_ids = turn_state.selected_mcp_server_ids or []
-                    if skill_ids or mcp_ids:
+                    if skill_ids:
                         allowed_mcp_ids = resolve_effective_mcp_server_ids(
                             db_session,
                             user,
-                            selected_mcp_server_ids=mcp_ids,
                             selected_skill_ids=skill_ids,
                         )
                     else:
-                        # Workspace setup injects every eligible server. An empty
-                        # picker used to write [] and wipe that set.
+                        # No per-turn narrowing anywhere: workspace setup injects
+                        # every eligible server (minus per-user opt-outs).
                         allowed_mcp_ids = None
                 else:
                     allowed_mcp_ids = None

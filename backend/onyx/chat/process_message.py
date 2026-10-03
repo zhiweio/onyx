@@ -1392,7 +1392,6 @@ def _run_models(
                 ),
                 allowed_tool_ids=setup.new_msg_req.allowed_tool_ids,
                 search_usage_forcing_setting=setup.search_params.search_usage,
-                selected_mcp_server_ids=setup.new_msg_req.selected_mcp_server_ids,
                 selected_skill_ids=setup.new_msg_req.selected_skill_ids,
             )
             model_tools = [

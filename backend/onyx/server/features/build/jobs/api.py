@@ -111,6 +111,11 @@ def create_job_run(
     scenario_id = request.scenario_id or session.scenario_id
     scenario_rules: dict[str, object] | None = None
     if scenario_id is not None:
+        # Keep the session aligned so plain follow-up turns keep applying the
+        # scenario (SCENARIO.md + resolved skills) even when the request
+        # carried the scenario_id directly.
+        if session.scenario_id != scenario_id:
+            session.scenario_id = scenario_id
         scenario = get_scenario_for_user(db_session, scenario_id, user)
         scenario_rules = scenario.rules or {}
         if not domain:
@@ -177,7 +182,6 @@ def create_job_run(
         job,
         goal=goal,
         selected_skill_ids=bound_skill_ids,
-        selected_mcp_server_ids=request.selected_mcp_server_ids,
         plan=scenario_plan,
     )
     mark_job_running(job)
@@ -228,8 +232,7 @@ def create_job_run(
             prompt=prompt,
             visible_user_text=goal,
             selected_skill_ids=bound_skill_ids,
-            selected_mcp_server_ids=request.selected_mcp_server_ids,
-        )
+            )
         if turn_id is None:
             # The escalating start_long_job turn still holds the turn lock:
             # park the plan brief; the post-turn continuation dispatches it.

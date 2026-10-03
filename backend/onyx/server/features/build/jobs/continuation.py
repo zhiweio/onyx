@@ -339,7 +339,6 @@ def enqueue_job_phase_turn(
     prompt: str,
     visible_user_text: str | None = None,
     selected_skill_ids: list[str] | None = None,
-    selected_mcp_server_ids: list[int] | None = None,
 ) -> UUID | None:
     return _enqueue_phase_turn(
         db_session,
@@ -348,7 +347,6 @@ def enqueue_job_phase_turn(
         prompt=prompt,
         visible_user_text=visible_user_text,
         selected_skill_ids=selected_skill_ids,
-        selected_mcp_server_ids=selected_mcp_server_ids,
     )
 
 
@@ -371,7 +369,6 @@ def _enqueue_phase_turn(
     prompt: str,
     visible_user_text: str | None = None,
     selected_skill_ids: list[str] | None = None,
-    selected_mcp_server_ids: list[int] | None = None,
 ) -> UUID | None:
     cache = get_cache_backend()
     try:
@@ -385,16 +382,12 @@ def _enqueue_phase_turn(
                 "Session %s already has a turn; skip job continuation", session_id
             )
             return None
-        if selected_skill_ids is None or selected_mcp_server_ids is None:
-            from onyx.server.features.build.jobs.mcp import job_picker_selection
+        if selected_skill_ids is None:
+            from onyx.server.features.build.jobs.mcp import job_picker_skill_ids
 
             job = _job_for_turn_session(db_session, session_id)
             if job is not None:
-                stored_skills, stored_mcp = job_picker_selection(job)
-                if selected_skill_ids is None:
-                    selected_skill_ids = stored_skills
-                if selected_mcp_server_ids is None:
-                    selected_mcp_server_ids = stored_mcp
+                selected_skill_ids = job_picker_skill_ids(job)
         turn_index = count_user_messages(session_id, db_session)
         visible = visible_user_text.strip() if visible_user_text else ""
         create_message(
@@ -419,7 +412,6 @@ def _enqueue_phase_turn(
             prompt=prompt,
             turn_index=turn_index,
             selected_skill_ids=selected_skill_ids or [],
-            selected_mcp_server_ids=selected_mcp_server_ids or [],
         )
         db_session.commit()
     except Exception:

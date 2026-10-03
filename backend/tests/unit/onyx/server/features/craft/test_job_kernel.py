@@ -659,7 +659,6 @@ def test_enqueue_stamps_job_picker_selection(monkeypatch) -> None:
     job = _job()
     state = load_state(job)
     state.selected_skill_ids = ["hithink-finance"]
-    state.selected_mcp_server_ids = [7, 9]
     persist_state(job, state)
 
     monkeypatch.setattr(
@@ -712,7 +711,6 @@ def test_enqueue_stamps_job_picker_selection(monkeypatch) -> None:
         prompt="HOST BRIEF",
     )
     assert captured["selected_skill_ids"] == ["hithink-finance"]
-    assert captured["selected_mcp_server_ids"] == [7, 9]
 
 
 def test_escalation_pending_enqueue_flushes_before_gate(monkeypatch) -> None:

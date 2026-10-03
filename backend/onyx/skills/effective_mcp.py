@@ -77,18 +77,15 @@ def resolve_effective_mcp_server_ids(
     db_session: Session,
     user: User,
     *,
-    selected_mcp_server_ids: Sequence[int] | None = None,
     selected_skill_ids: Sequence[str] | None = None,
 ) -> list[int]:
-    """Servers this turn may call: selected IDs plus skill-declared slugs.
+    """Servers this turn may call: the user's globally enabled set plus
+    skill-declared slugs.
 
-    With no explicit selection the base set is the user's globally enabled
-    servers (eligible minus per-user opt-outs from /craft/v1/mcp-actions) —
-    MCP injects once per session and the model picks tools itself. Skill
-    slugs always add on top. Only servers the user can access and
-    authenticate are returned.
+    MCP injects once per session (eligible minus per-user opt-outs from
+    /craft/v1/mcp-actions) and the model picks tools itself; skill slugs add
+    on top. Only servers the user can access and authenticate are returned.
     """
-    selected_ids = {int(server_id) for server_id in (selected_mcp_server_ids or ())}
     wanted_slugs: set[str] = set()
     for skill_id in selected_skill_ids or ():
         spec = load_skill_mcp_spec(skill_id)
@@ -96,7 +93,7 @@ def resolve_effective_mcp_server_ids(
             continue
         wanted_slugs.update(slugs_for_skill_spec(spec))
 
-    if not selected_ids and not wanted_slugs:
+    if not wanted_slugs:
         # Default injection: everything the user has not disabled. Explicit
         # selections (legacy clients) still narrow instead.
         eligible = get_craft_enabled_mcp_servers(db_session, user)
@@ -124,8 +121,6 @@ def resolve_effective_mcp_server_ids(
         slug = catalog_slug_for_server(server)
         if slug:
             slug_to_id[slug] = server.id
-        if server.id in selected_ids:
-            allowed.add(server.id)
         if slug and slug in wanted_slugs:
             allowed.add(server.id)
 
