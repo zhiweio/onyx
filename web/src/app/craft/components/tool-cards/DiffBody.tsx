@@ -361,3 +361,131 @@ export default function DiffBody({ toolCall }: ToolCardBodyProps) {
     </ToolCardSurface>
   );
 }
+
+// ── ZCode-style inline diff (same-row word diff) ─────────────────────────
+
+export type WordSegmentType = "same" | "del" | "add";
+
+export interface WordSegment {
+  t: WordSegmentType;
+  s: string;
+}
+
+export interface InlineDiffRow {
+  kind: "unchanged" | "removed" | "added" | "modified" | "header";
+  /** Pure rows: the whole line. Modified rows: unused (see segments). */
+  content?: string;
+  /** Modified rows only: word-level segments across old and new text. */
+  segments?: WordSegment[];
+  oldLineNum?: number;
+  newLineNum?: number;
+}
+
+/** Split a line into word / whitespace / punctuation tokens, keeping every char. */
+function tokenize(line: string): string[] {
+  return line.match(/\s+|[A-Za-z0-9_]+|./g) ?? [];
+}
+
+/**
+ * Word-level LCS between a removed line and its replacement — the segments
+ * render on ONE row: deletions struck through in red, insertions in green
+ * (ZCode inline-diff pattern).
+ */
+export function wordSegments(oldLine: string, newLine: string): WordSegment[] {
+  const a = tokenize(oldLine);
+  const b = tokenize(newLine);
+  // LCS table; diff lines are short so O(n·m) is fine.
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0)
+  );
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      const av = a[i]!;
+      const bv = b[j]!;
+      dp[i]![j] =
+        av === bv
+          ? dp[i + 1]![j + 1]! + 1
+          : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    }
+  }
+  const segments: WordSegment[] = [];
+  const push = (t: WordSegmentType, s: string) => {
+    const last = segments[segments.length - 1];
+    if (last && last.t === t) last.s += s;
+    else segments.push({ t, s });
+  };
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    const av = a[i]!;
+    const bv = b[j]!;
+    if (av === bv) {
+      push("same", av);
+      i++;
+      j++;
+    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+      push("del", av);
+      i++;
+    } else {
+      push("add", bv);
+      j++;
+    }
+  }
+  while (i < a.length) push("del", a[i++]!);
+  while (j < b.length) push("add", b[j++]!);
+  return segments;
+}
+
+/**
+ * Collapse a unified diff into ZCode-style rows: a removed line immediately
+ * followed by its replacement merges into ONE modified row whose segments
+ * carry the old text (del) and new text (add) inline.
+ */
+export function buildInlineRows(lines: DiffLine[]): InlineDiffRow[] {
+  const rows: InlineDiffRow[] = [];
+  let idx = 0;
+  while (idx < lines.length) {
+    const line = lines[idx]!;
+    if (line.type === "removed") {
+      const next = lines[idx + 1];
+      if (next && next.type === "added") {
+        rows.push({
+          kind: "modified",
+          segments: wordSegments(line.content, next.content),
+          oldLineNum: line.oldLineNum,
+          newLineNum: next.newLineNum,
+        });
+        idx += 2;
+        continue;
+      }
+      rows.push({
+        kind: "removed",
+        content: line.content,
+        oldLineNum: line.oldLineNum,
+      });
+      idx++;
+      continue;
+    }
+    if (line.type === "added") {
+      rows.push({
+        kind: "added",
+        content: line.content,
+        newLineNum: line.newLineNum,
+      });
+      idx++;
+      continue;
+    }
+    if (line.type === "header") {
+      rows.push({ kind: "header", content: line.content });
+    } else {
+      rows.push({
+        kind: "unchanged",
+        content: line.content,
+        oldLineNum: line.oldLineNum,
+        newLineNum: line.newLineNum,
+      });
+    }
+    idx++;
+  }
+  return rows;
+}
