@@ -9155,14 +9155,6 @@
           "description": "이 날짜 이전에 마지막으로 업데이트된 문서는 무시됩니다.",
           "title": "지식 기준 날짜"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "펼치기"
-          },
-          "fold": {
-            "label": "접기"
-          }
-        },
         "moreInfo": {
           "title": "추가 정보"
         },

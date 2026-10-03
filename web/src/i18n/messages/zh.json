@@ -9155,14 +9155,6 @@
           "description": "最后更新日期早于此日期的文档将被忽略。",
           "title": "知识截止日期"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "展开"
-          },
-          "fold": {
-            "label": "折叠"
-          }
-        },
         "moreInfo": {
           "title": "更多信息"
         },

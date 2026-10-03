@@ -9155,14 +9155,6 @@
           "description": "Documents with a last-updated date prior to this will be ignored.",
           "title": "Knowledge Cutoff Date"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "Expand"
-          },
-          "fold": {
-            "label": "Fold"
-          }
-        },
         "moreInfo": {
           "title": "More Info"
         },

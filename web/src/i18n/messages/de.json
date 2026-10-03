@@ -9155,14 +9155,6 @@
           "description": "Dokumente, deren letzte Aktualisierung vor diesem Datum liegt, werden ignoriert.",
           "title": "Stichtag für Wissen"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "Ausklappen"
-          },
-          "fold": {
-            "label": "Einklappen"
-          }
-        },
         "moreInfo": {
           "title": "Weitere Informationen"
         },

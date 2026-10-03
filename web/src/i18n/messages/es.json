@@ -9155,14 +9155,6 @@
           "description": "Se ignorarán los documentos cuya fecha de última actualización sea anterior a esta.",
           "title": "Fecha límite del conocimiento"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "Desplegar"
-          },
-          "fold": {
-            "label": "Plegar"
-          }
-        },
         "moreInfo": {
           "title": "Más información"
         },

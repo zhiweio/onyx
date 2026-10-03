@@ -9155,14 +9155,6 @@
           "description": "この日付より前に最終更新されたドキュメントは無視されます。",
           "title": "ナレッジのカットオフ日"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "展開"
-          },
-          "fold": {
-            "label": "折りたたむ"
-          }
-        },
         "moreInfo": {
           "title": "詳細情報"
         },

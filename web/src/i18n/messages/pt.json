@@ -9155,14 +9155,6 @@
           "description": "Documentos com data da última atualização anterior a esta serão ignorados.",
           "title": "Data de corte do conhecimento"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "Expandir"
-          },
-          "fold": {
-            "label": "Recolher"
-          }
-        },
         "moreInfo": {
           "title": "Mais informações"
         },

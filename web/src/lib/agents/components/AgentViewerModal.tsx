@@ -15,8 +15,6 @@ import SimpleCollapsible from "@/refresh-components/SimpleCollapsible";
 import {
   SvgActions,
   SvgBubbleText,
-  SvgExpand,
-  SvgFold,
   SvgOrganization,
   SvgStar,
   SvgUser,
@@ -27,6 +25,7 @@ import { MCPServer, ToolSnapshot } from "@/lib/tools/types";
 import { EmptyMessageCard } from "@opal/components";
 import { Switch } from "@opal/components";
 import { Button } from "@opal/components";
+import McpToolsCard from "@/sections/actions/McpToolsCard";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import AppInputBar from "@/sections/input/AppInputBar";
 import { useLlmManager } from "@/lib/hooks";
@@ -41,8 +40,9 @@ import { useLLMProviders } from "@/lib/languageModels/hooks";
 import { Interactive } from "@opal/core";
 
 /**
- * Read-only MCP Server card for the viewer modal.
- * Displays the server header with its tools listed in the expandable content area.
+ * Read-only MCP Server card for the viewer modal: the shared inline-tools
+ * card, matching the agent editor's presentation. Tools arrive pre-fetched
+ * (the agent payload carries them), so no lazy loading or toggles.
  */
 interface ViewerMCPServerCardProps {
   server: MCPServer;
@@ -50,54 +50,18 @@ interface ViewerMCPServerCardProps {
 }
 
 function ViewerMCPServerCard({ server, tools }: ViewerMCPServerCardProps) {
-  const t = useTranslations("agents.modals");
-  const [expanded, setExpanded] = useState(true);
   const serverIcon = getActionIcon(server.server_url, server.name);
-
   return (
-    <Card
-      expandable
-      expanded={expanded}
-      border="solid"
-      rounding={4}
-      padding={2}
-      expandedContent={
-        tools.length > 0 ? (
-          <div className="flex flex-col gap-2 p-2">
-            {tools.map((tool) => (
-              <Section key={tool.id} padding={1}>
-                <Content
-                  title={tool.display_name}
-                  description={tool.description}
-                  sizePreset="main-ui"
-                  variant="section"
-                />
-              </Section>
-            ))}
-          </div>
-        ) : undefined
-      }
-    >
-      <ContentAction
-        icon={serverIcon}
-        title={server.name}
-        description={server.description}
-        sizePreset="main-ui"
-        variant="section"
-        padding={2}
-        rightChildren={
-          <Button
-            prominence="internal"
-            rightIcon={expanded ? SvgFold : SvgExpand}
-            onClick={() => setExpanded((prev) => !prev)}
-          >
-            {expanded
-              ? t("viewer.mcpCard.fold.label")
-              : t("viewer.mcpCard.expand.label")}
-          </Button>
-        }
-      />
-    </Card>
+    <McpToolsCard
+      name={server.name}
+      description={server.description}
+      logo={serverIcon}
+      tools={tools.map((tool) => ({
+        id: String(tool.id),
+        name: tool.display_name,
+        description: tool.description,
+      }))}
+    />
   );
 }
 

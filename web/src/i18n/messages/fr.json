@@ -9155,14 +9155,6 @@
           "description": "Les documents dont la date de dernière mise à jour est antérieure seront ignorés.",
           "title": "Date limite des connaissances"
         },
-        "mcpCard": {
-          "expand": {
-            "label": "Déplier"
-          },
-          "fold": {
-            "label": "Replier"
-          }
-        },
         "moreInfo": {
           "title": "Plus d'informations"
         },
