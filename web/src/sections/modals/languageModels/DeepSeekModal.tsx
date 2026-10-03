@@ -1,6 +1,9 @@
 "use client";
 
-import { LLMProviderFormProps, LLMProviderName } from "@/lib/languageModels/types";
+import {
+  LLMProviderFormProps,
+  LLMProviderName,
+} from "@/lib/languageModels/types";
 import ApiKeyProviderModal from "@/sections/modals/languageModels/ApiKeyProviderModal";
 
 export default function DeepSeekModal(props: LLMProviderFormProps) {
@@ -9,6 +12,7 @@ export default function DeepSeekModal(props: LLMProviderFormProps) {
       {...props}
       providerName={LLMProviderName.DEEPSEEK}
       apiKeyLabel="DeepSeek"
+      apiBasePlaceholder="https://api.deepseek.com/v1"
     />
   );
 }

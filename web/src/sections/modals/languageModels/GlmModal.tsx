@@ -1,6 +1,9 @@
 "use client";
 
-import { LLMProviderFormProps, LLMProviderName } from "@/lib/languageModels/types";
+import {
+  LLMProviderFormProps,
+  LLMProviderName,
+} from "@/lib/languageModels/types";
 import ApiKeyProviderModal from "@/sections/modals/languageModels/ApiKeyProviderModal";
 
 export default function GlmModal(props: LLMProviderFormProps) {
@@ -9,6 +12,7 @@ export default function GlmModal(props: LLMProviderFormProps) {
       {...props}
       providerName={LLMProviderName.ZAI}
       apiKeyLabel="Z.AI"
+      apiBasePlaceholder="https://api.z.ai/api/paas/v4"
     />
   );
 }

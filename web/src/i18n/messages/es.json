@@ -5699,6 +5699,7 @@
         "setup": {
           "apiBaseField": {
             "containerizedNote": "Si Onyx se ejecuta en un contenedor, usa `host.docker.internal` en lugar de `localhost` para llegar a un servicio de tu host.",
+            "providerDefaultNote": "Déjalo vacío para usar el endpoint oficial. Introduce una URL para dirigir las solicitudes a través de un proxy o una puerta de enlace autohospedada.",
             "title": "URL base de la API"
           },
           "apiKeyField": {

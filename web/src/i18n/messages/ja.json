@@ -5699,6 +5699,7 @@
         "setup": {
           "apiBaseField": {
             "containerizedNote": "Onyx をコンテナで実行している場合、ホスト上のサービスに接続するには `localhost` の代わりに `host.docker.internal` を使用してください。",
+            "providerDefaultNote": "空欄の場合は公式エンドポイントを使用します。プロキシやセルフホストのゲートウェイ経由でリクエストを送る場合は URL を入力してください。",
             "title": "API ベース URL"
           },
           "apiKeyField": {

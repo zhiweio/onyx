@@ -1,6 +1,9 @@
 "use client";
 
-import { LLMProviderFormProps, LLMProviderName } from "@/lib/languageModels/types";
+import {
+  LLMProviderFormProps,
+  LLMProviderName,
+} from "@/lib/languageModels/types";
 import ApiKeyProviderModal from "@/sections/modals/languageModels/ApiKeyProviderModal";
 
 export default function BigModelModal(props: LLMProviderFormProps) {
@@ -10,6 +13,7 @@ export default function BigModelModal(props: LLMProviderFormProps) {
       providerName={LLMProviderName.BIGMODEL}
       apiKeyLabel="BigModel"
       defaultApiBase="https://open.bigmodel.cn/api/paas/v4"
+      apiBasePlaceholder="https://open.bigmodel.cn/api/paas/v4"
     />
   );
 }

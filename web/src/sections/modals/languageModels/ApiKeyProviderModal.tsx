@@ -14,10 +14,12 @@ import { submitProvider } from "@/sections/modals/languageModels/svc";
 import { LLMProviderConfiguredSource } from "@/lib/analytics/utils";
 import {
   APIKeyField,
+  APIBaseField,
   ModelSelectionField,
   DisplayNameField,
   ModelAccessField,
   ModalWrapper,
+  useApiBaseSubDescription,
 } from "@/sections/modals/languageModels/shared";
 import { InputDivider, toast } from "@opal/layouts";
 import { refreshLlmProviderCaches } from "@/lib/languageModels/cache";
@@ -26,12 +28,15 @@ export interface ApiKeyProviderModalProps extends LLMProviderFormProps {
   providerName: LLMProviderName;
   apiKeyLabel: string;
   defaultApiBase?: string;
+  /** Placeholder for the optional API Base field. Presence enables the field. */
+  apiBasePlaceholder?: string;
 }
 
 export default function ApiKeyProviderModal({
   providerName,
   apiKeyLabel,
   defaultApiBase,
+  apiBasePlaceholder,
   variant = "llm-configuration",
   existingLlmProvider,
   shouldMarkAsDefault,
@@ -42,13 +47,15 @@ export default function ApiKeyProviderModal({
   const t = useTranslations("admin.languageModels.modals");
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
+  const apiBaseSubDescription = useApiBaseSubDescription(
+    t("setup.apiBaseField.providerDefaultNote")
+  );
 
   const onClose = () => onOpenChange?.(false);
 
   const initialValues = {
     ...useInitialValues(isOnboarding, providerName, existingLlmProvider),
-    api_base:
-      existingLlmProvider?.api_base ?? defaultApiBase ?? undefined,
+    api_base: existingLlmProvider?.api_base ?? defaultApiBase ?? undefined,
   };
 
   const validationSchema = buildValidationSchema(t, isOnboarding, {
@@ -94,6 +101,14 @@ export default function ApiKeyProviderModal({
       }}
     >
       <APIKeyField providerName={apiKeyLabel} />
+
+      {apiBasePlaceholder && (
+        <APIBaseField
+          optional
+          placeholder={apiBasePlaceholder}
+          subDescription={apiBaseSubDescription}
+        />
+      )}
 
       {!isOnboarding && (
         <>

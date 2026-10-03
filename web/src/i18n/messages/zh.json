@@ -5699,6 +5699,7 @@
         "setup": {
           "apiBaseField": {
             "containerizedNote": "当 Onyx 在容器中运行时，请使用 `host.docker.internal` 代替 `localhost` 来访问主机上的服务。",
+            "providerDefaultNote": "留空则使用官方默认接口地址。填写后，请求将通过该地址（代理或自建网关）转发。",
             "title": "API 基础 URL"
           },
           "apiKeyField": {
