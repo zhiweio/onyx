@@ -58,7 +58,7 @@ const sections: PickerSections = {
 const ANCHOR = new DOMRect(10, 10, 400, 1);
 
 function renderPopover(
-  props: Partial<React.ComponentProps<typeof EntryPickerPopover>> = {}
+  props: Partial<React.ComponentProps<typeof EntryPickerPopover>> = {},
 ) {
   const onSelect = jest.fn();
   const onClose = jest.fn();
@@ -74,7 +74,7 @@ function renderPopover(
       onQueryChange={onQueryChange}
       searchable
       {...props}
-    />
+    />,
   );
   return { ...utils, onSelect, onClose, onQueryChange };
 }
@@ -86,8 +86,13 @@ describe("EntryPickerPopover (searchable)", () => {
       expect(screen.getByText(header)).toBeInTheDocument();
     }
     expect(screen.getByTestId("picker-footer-tip")).toHaveTextContent(
-      "Type to search commands, skills, apps, and more"
+      "Type to search commands, skills, apps, and more",
     );
+    expect(
+      screen.getByTestId(
+        "scenario-picker-row-s1",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("skill-picker-row-pptx")).toBeInTheDocument();
     expect(screen.getByTestId("scenario-picker-row-s1")).toBeInTheDocument();
   });
@@ -95,7 +100,7 @@ describe("EntryPickerPopover (searchable)", () => {
   it("filters across groups from the search input", () => {
     const view = renderPopover();
     const input = screen.getByPlaceholderText(
-      "Search commands, skills, apps, and files…"
+      "Search commands, skills, apps, and files…",
     );
     fireEvent.change(input, { target: { value: "docx" } });
     expect(view.onQueryChange).toHaveBeenCalledWith("docx");
@@ -111,7 +116,7 @@ describe("EntryPickerPopover (searchable)", () => {
         onClose={jest.fn()}
         onQueryChange={jest.fn()}
         searchable
-      />
+      />,
     );
     expect(screen.getByTestId("skill-picker-row-docx")).toBeInTheDocument();
     expect(screen.queryByTestId("skill-picker-row-pptx")).toBeNull();
@@ -121,11 +126,11 @@ describe("EntryPickerPopover (searchable)", () => {
   it("Enter selects the highlighted row from the search input focus", () => {
     const { onSelect } = renderPopover({ query: "pptx" });
     const input = screen.getByPlaceholderText(
-      "Search commands, skills, apps, and files…"
+      "Search commands, skills, apps, and files…",
     );
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "skill", slug: "pptx" })
+      expect.objectContaining({ kind: "skill", slug: "pptx" }),
     );
   });
 
@@ -148,8 +153,8 @@ describe("EntryPickerPopover (searchable)", () => {
     renderPopover({ searchable: false });
     expect(
       screen.queryByPlaceholderText(
-        "Search commands, skills, apps, and files…"
-      )
+        "Search commands, skills, apps, and files…",
+      ),
     ).toBeNull();
     // The footer tip is trigger-menu-only furniture too? No: it renders for
     // any popover; ScheduleTaskForm keeps its compact look via searchable.

@@ -13,10 +13,10 @@ import type { PickerEntry, PickerSections } from "@/lib/skills/picker";
 
 export type ComposerMentionCategory =
   | "files"
+  | "scenarios"
   | "skills"
   | "commands"
-  | "apps"
-  | "mcp";
+  | "apps";
 
 export interface ComposerMentionData {
   /** Library file id or sandbox path reference. */

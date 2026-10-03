@@ -24,10 +24,10 @@ const CHIP_CLASS_NAME =
 
 const CATEGORY_MARK: Record<ComposerMentionCategory, string> = {
   files: "@",
+  scenarios: "@",
   skills: "/",
   commands: "/",
   apps: "@",
-  mcp: "@",
 };
 
 export interface PromptMentionPayload extends ComposerMention {}
@@ -66,12 +66,12 @@ export class PromptMentionNode extends TextNode {
         description: node.__description,
         data: node.__data,
       },
-      node.__key,
+      node.__key
     );
   }
 
   static importJSON(
-    serializedNode: SerializedPromptMentionNode,
+    serializedNode: SerializedPromptMentionNode
   ): PromptMentionNode {
     const node = new PromptMentionNode({
       id: serializedNode.mentionId,
@@ -111,7 +111,7 @@ export class PromptMentionNode extends TextNode {
   updateDOM(
     prevNode: PromptMentionNode,
     dom: HTMLElement,
-    config: EditorConfig,
+    config: EditorConfig
   ): boolean {
     const shouldUpdate = super.updateDOM(prevNode as this, dom, config);
     if (prevNode.__mentionId !== this.__mentionId) {
@@ -166,7 +166,7 @@ export class PromptMentionNode extends TextNode {
 
 export function mentionDisplayLabel(
   category: ComposerMentionCategory,
-  label: string,
+  label: string
 ): string {
   const mark = CATEGORY_MARK[category];
   if (!mark || label.startsWith(mark)) {
@@ -176,7 +176,7 @@ export function mentionDisplayLabel(
 }
 
 export function $createPromptMentionNode(
-  payload: PromptMentionPayload,
+  payload: PromptMentionPayload
 ): PromptMentionNode {
   const node = new PromptMentionNode(payload);
   node.setMode("token");
@@ -184,7 +184,7 @@ export function $createPromptMentionNode(
 }
 
 export function $isPromptMentionNode(
-  node: LexicalNode | null | undefined,
+  node: LexicalNode | null | undefined
 ): node is PromptMentionNode {
   return node instanceof PromptMentionNode;
 }
