@@ -422,39 +422,75 @@ function mergeSubagentMaps(
 }
 
 /**
- * Rebuild the per-path edit payloads from persisted stream items so a
- * restored session's Files-tab opens default to the diff, exactly like the
+ * Rebuild the per-path edit payloads from persisted messages so a restored
+ * session's Files-tab opens default to the diff, exactly like the
  * live-streaming path. Later patches win; order follows message order.
+ *
+ * Two shapes occur: raw per-packet messages (the edit fields sit flat on
+ * message_metadata, exactly what parsePacket reads) and pre-consolidated
+ * messages (nested streamItems with a toolCall object).
  */
 function seedFileEditsFromMessages(
   messages: BuildMessage[]
 ): Record<string, FileEditPayload> {
   const edits: Record<string, FileEditPayload> = {};
+
+  const consider = (tool: {
+    id?: string;
+    status?: string;
+    filePath?: string;
+    oldContent?: string;
+    newContent?: string;
+    isNewFile?: boolean;
+  }) => {
+    // A write (new file) has no old content; newContent alone reconstructs
+    // the all-additions diff.
+    if (
+      tool.status !== "completed" ||
+      !tool.filePath ||
+      tool.newContent === undefined
+    ) {
+      return;
+    }
+    const { added, removed } = fileChangeStat(tool);
+    edits[tool.filePath] = {
+      path: tool.filePath,
+      fileName: tool.filePath.split("/").pop() ?? tool.filePath,
+      toolCallId: tool.id ?? "",
+      oldContent: tool.oldContent ?? "",
+      newContent: tool.newContent,
+      added,
+      removed,
+      isNewFile: !!tool.isNewFile,
+    };
+  };
+
   for (const message of messages) {
-    const items = message.message_metadata?.streamItems;
-    if (!Array.isArray(items)) continue;
-    for (const item of items) {
-      if (item.type !== "tool_call") continue;
-      const tool = item.toolCall;
-      if (
-        tool.status !== "completed" ||
-        !tool.filePath ||
-        tool.oldContent === undefined ||
-        tool.newContent === undefined
-      ) {
-        continue;
+    const meta = message.message_metadata as
+      | (Record<string, unknown> & { streamItems?: unknown })
+      | undefined;
+    if (!meta || typeof meta !== "object") continue;
+    if (Array.isArray(meta.streamItems)) {
+      for (const item of meta.streamItems) {
+        const entry = item as { type?: string; toolCall?: ToolCallState };
+        if (entry.type === "tool_call" && entry.toolCall) {
+          consider(entry.toolCall);
+        }
       }
-      const { added, removed } = fileChangeStat(tool);
-      edits[tool.filePath] = {
-        path: tool.filePath,
-        fileName: tool.filePath.split("/").pop() ?? tool.filePath,
-        toolCallId: tool.id,
-        oldContent: tool.oldContent,
-        newContent: tool.newContent,
-        added,
-        removed,
-        isNewFile: !!tool.isNewFile,
-      };
+    } else {
+      // Raw per-packet message: run the same parser the live stream uses so
+      // the diff payload extraction stays identical.
+      const parsed = parsePacket(meta);
+      if (parsed.type === "tool_call_progress" && parsed.kind === "edit") {
+        consider({
+          id: parsed.toolCallId,
+          status: parsed.status,
+          filePath: parsed.filePath ?? undefined,
+          oldContent: parsed.oldContent,
+          newContent: parsed.newContent,
+          isNewFile: parsed.isNewFile,
+        });
+      }
     }
   }
   return edits;
