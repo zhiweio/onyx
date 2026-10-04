@@ -264,3 +264,65 @@ def test_deterministic_email() -> None:
         deterministic_email("feishu", "ou_1", type("C", (), {"email_domain": None})())
         == "feishu-ou_1@im.local"
     )
+
+
+def test_feishu_card_content_shape() -> None:
+    import json as _json
+
+    from onyx.onyxbot.china.framework import _feishu_card_content
+
+    card = _json.loads(_feishu_card_content("你好 **世界**"))
+    assert card["config"] == {"update_multi": True}
+    assert card["elements"][0]["tag"] == "markdown"
+    assert card["elements"][0]["content"] == "你好 **世界**"
+
+
+def test_reset_command_set_covers_aliases() -> None:
+    from onyx.onyxbot.china.framework import _RESET_COMMANDS
+
+    for cmd in ("/reset", "/新对话", "新对话"):
+        assert cmd in _RESET_COMMANDS
+    # plain chat must never trip the reset path
+    assert "今天天气怎么样" not in _RESET_COMMANDS
+
+
+def test_feishu_markdown_converts_headings_and_rules() -> None:
+    from onyx.onyxbot.china.framework import _feishu_markdown
+
+    md = _feishu_markdown("## 概览\n内容\n\n---\n后续")
+    assert "**概览**" in md
+    assert "## " not in md
+    assert "———" in md
+
+
+def test_feishu_markdown_converts_tables() -> None:
+    from onyx.onyxbot.china.framework import _feishu_markdown
+
+    table = "| 项目 | 数值 |\n|---|---|\n| 人口 | 82.9万 |\n| GDP | 3150亿 |\n"
+    md = _feishu_markdown(table)
+    assert "| 项目 | 数值 |" not in md
+    # header row becomes the bullet's bold keys; data rows follow
+    assert "- **项目**: 人口 · **数值**: 82.9万" in md
+    assert "- **项目**: GDP · **数值**: 3150亿" in md
+
+
+def test_feishu_markdown_converts_html() -> None:
+    from onyx.onyxbot.china.framework import _feishu_markdown
+
+    md = _feishu_markdown(
+        '行1<br>行2 <a href="https://x.cn">链接</a> <b>加粗</b> &amp; 更多'
+    )
+    assert "<br>" not in md and "<a " not in md and "<b>" not in md
+    assert "[链接](https://x.cn)" in md
+    assert "**加粗**" in md
+    assert "&" in md and "&amp;" not in md
+
+
+def test_feishu_card_content_uses_markdown_module() -> None:
+    import json as _json
+
+    from onyx.onyxbot.china.framework import _feishu_card_content
+
+    card = _json.loads(_feishu_card_content("# 标题"))
+    assert card["elements"][0]["tag"] == "markdown"
+    assert card["elements"][0]["content"] == "**标题**"

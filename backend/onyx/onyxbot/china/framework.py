@@ -18,10 +18,12 @@ binding and DM the user through the same reply senders.
 from __future__ import annotations
 
 import json
+import re
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -37,6 +39,16 @@ _answer_semaphore = threading.Semaphore(_MAX_CONCURRENT_ANSWERS)
 
 BOT_EMAIL_DOMAIN_FALLBACK = "im.local"
 
+# Slash commands that start a fresh chat session on the next message.
+_RESET_COMMANDS = frozenset({"/reset", "/new", "/新对话", "新对话"})
+_RESET_FLAG_TTL_SECONDS = 7 * 24 * 3600
+
+# Feishu interactive-card streaming: throttle cadence and size limits.
+# lark_md in cards renders most markdown but not tables; very long answers
+# overflow the card, so they fall back to a plain text message.
+_FEISHU_CARD_UPDATE_INTERVAL_SECONDS = 1.5
+_FEISHU_CARD_MAX_CHARS = 3500
+
 
 class CallbackRejected(Exception):
     """Verification refused the callback; router answers 403."""
@@ -50,6 +62,14 @@ class InboundMessage:
     chat_id: str  # group or DM conversation id
     text: str
     sender_name: str = ""
+
+
+@dataclass(frozen=True)
+class _PreparedTurn:
+    """Everything the chat engine needs after binding/scenario handling."""
+
+    email: str
+    request: Any  # SendMessageRequest
 
 
 # ── user binding (platform identity ↔ onyx user) ──────────────────────────
@@ -136,23 +156,78 @@ def _answer_safely(message: InboundMessage, provider_config: Any) -> None:
         logger.warning("china bot answer pool saturated; dropping %s", message.msg_id)
         return
     try:
-        reply = _answer(message, provider_config)
-        if reply:
-            _send_reply(message, provider_config, reply)
+        if message.platform == "feishu":
+            # Feishu answers stream into an interactive card the user can
+            # watch grow; other platforms get one final message.
+            _answer_feishu(message, provider_config)
+        else:
+            reply = _answer(message, provider_config)
+            if reply:
+                _send_reply(message, provider_config, reply)
     except Exception:
         logger.exception("china bot answer failed for %s", message.msg_id)
     finally:
         _answer_semaphore.release()
 
 
-def _answer(message: InboundMessage, provider_config: Any) -> str | None:
-    """Provision the user and run one in-process chat turn.
+def _latest_session_id(db_session: Session, user_id: Any) -> UUID | None:
+    """Most recent non-deleted chat session of the bot user — the IM chat is
+    one continuing conversation, so turns reuse it for context."""
+    from onyx.db.models import ChatSession
 
-    ``/场景`` commands bypass the chat turn and start a CraftJob instead."""
-    from onyx.chat.process_message import (
-        gather_stream,
-        handle_stream_message_objects,
+    return db_session.scalar(
+        select(ChatSession.id)
+        .where(
+            ChatSession.user_id == user_id,
+            ChatSession.deleted == False,  # noqa: E712
+        )
+        .order_by(ChatSession.time_updated.desc())
+        .limit(1)
     )
+
+
+def _reset_flag_key(platform: str, platform_user_id: str) -> str:
+    return f"china_bot:reset:{platform}:{platform_user_id}"
+
+
+def _mark_reset(platform: str, platform_user_id: str) -> bool:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        return bool(
+            client.set(
+                _reset_flag_key(platform, platform_user_id),
+                "1",
+                ex=_RESET_FLAG_TTL_SECONDS,
+            )
+        )
+    except Exception:
+        logger.warning("china bot reset flag unavailable", exc_info=True)
+        return False
+
+
+def _consume_reset_flag(platform: str, platform_user_id: str) -> bool:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        key = _reset_flag_key(platform, platform_user_id)
+        if client.get(key):
+            client.delete(key)
+            return True
+    except Exception:
+        logger.warning("china bot reset flag check failed", exc_info=True)
+    return False
+
+
+def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTurn | str:
+    """Provision the user, record the binding, and build the chat request.
+
+    Returns a direct reply string for commands (`/reset`) and scenario
+    triggers that bypass the chat turn."""
     from onyx.db.engine.sql_engine import get_session_with_current_tenant
     from onyx.db.users import get_user_by_email
     from onyx.onyxbot.china.scenario_trigger import try_scenario_trigger
@@ -165,6 +240,7 @@ def _answer(message: InboundMessage, provider_config: Any) -> str | None:
     email = deterministic_email(
         message.platform, message.platform_user_id, provider_config
     )
+    command = message.text.strip().lower()
     with get_session_with_current_tenant() as db_session:
         user = get_user_by_email(email, db_session)
         if user is None:
@@ -177,6 +253,13 @@ def _answer(message: InboundMessage, provider_config: Any) -> str | None:
             chat_id=message.chat_id,
             display_name=message.sender_name,
         )
+
+        if command in _RESET_COMMANDS:
+            _mark_reset(message.platform, message.platform_user_id)
+            return "好的,已重置对话。下一条消息将开启全新的会话。"
+
+        start_fresh = _consume_reset_flag(message.platform, message.platform_user_id)
+        session_id = None if start_fresh else _latest_session_id(db_session, user.id)
 
         trigger_reply = try_scenario_trigger(db_session, user, message.text)
         if trigger_reply is not None:
@@ -191,19 +274,121 @@ def _answer(message: InboundMessage, provider_config: Any) -> str | None:
     request = SendMessageRequest(
         message=message.text,
         origin=origin_value,
-        chat_session_info=ChatSessionCreationRequest(),
+        # Continue the ongoing conversation when there is one. When starting
+        # fresh, pass the creation request explicitly — SendMessageRequest's
+        # after-validator that defaults it is a no-op under __init__
+        # (pydantic v2 ignores non-self returns there).
+        chat_session_id=session_id,
+        chat_session_info=None if session_id else ChatSessionCreationRequest(),
     )
-    from onyx.db.engine.sql_engine import get_session_with_current_tenant as _sess
+    return _PreparedTurn(email=email, request=request)
 
-    with _sess() as db_session:
-        from onyx.db.users import get_user_by_email as _by_email
 
-        fresh_user = _by_email(email, db_session)
+def _iter_chat_stream(prepared: _PreparedTurn) -> Any:
+    """Open the chat-engine stream for one turn; hold the DB session open
+    for as long as the caller consumes the generator."""
+    from onyx.chat.process_message import handle_stream_message_objects
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.db.users import get_user_by_email
+
+    with get_session_with_current_tenant() as db_session:
+        fresh_user = get_user_by_email(prepared.email, db_session)
         assert fresh_user is not None
-        answer_stream = handle_stream_message_objects(
-            request, fresh_user, bypass_acl=False
+        yield from handle_stream_message_objects(
+            prepared.request, fresh_user, bypass_acl=False
         )
-        response = gather_stream(answer_stream)
+
+
+def _answer(message: InboundMessage, provider_config: Any) -> str | None:
+    """Provision the user and run one in-process chat turn to completion.
+
+    ``/场景`` commands bypass the chat turn and start a CraftJob instead."""
+    from onyx.chat.process_message import gather_stream
+
+    prepared = _prepare_turn(message, provider_config)
+    if isinstance(prepared, str):
+        return prepared
+    response = gather_stream(_iter_chat_stream(prepared))
+    if response is None:
+        return None
+    return response.answer.strip() or None
+
+
+# ── feishu streaming card answer ──────────────────────────────────────────
+
+
+def _answer_feishu(message: InboundMessage, provider_config: Any) -> None:
+    """Answer a Feishu message, streaming progress into an interactive card.
+
+    Falls back to the plain gather-then-send path when the card cannot be
+    created (older bots, API errors)."""
+    from onyx.chat.models import StreamingError
+    from onyx.connectors.china_common import AppTokenManager
+    from onyx.server.query_and_chat.streaming_models import AgentResponseDelta, Packet
+
+    token_mgr = AppTokenManager
+    prepared = _prepare_turn(message, provider_config)
+    if isinstance(prepared, str):
+        _feishu_send(provider_config, token_mgr, message.chat_id, prepared)
+        return
+
+    card_msg_id = _feishu_send_card(
+        provider_config, token_mgr, message.chat_id, "🤔 正在思考…"
+    )
+    if card_msg_id is None:
+        # No card support — behave like the other platforms.
+        reply = _answer_from_prepared(prepared)
+        if reply:
+            _feishu_send(provider_config, token_mgr, message.chat_id, reply)
+        return
+
+    answer = ""
+    error_msg: str | None = None
+    last_update = time.monotonic()
+    try:
+        for packet in _iter_chat_stream(prepared):
+            if isinstance(packet, StreamingError):
+                error_msg = packet.error
+                break
+            if not isinstance(packet, Packet):
+                continue
+            if isinstance(packet.obj, AgentResponseDelta) and packet.obj.content:
+                answer += packet.obj.content
+                now = time.monotonic()
+                if now - last_update >= _FEISHU_CARD_UPDATE_INTERVAL_SECONDS:
+                    _feishu_update_card(provider_config, token_mgr, card_msg_id, answer)
+                    last_update = now
+    except Exception:
+        logger.exception("feishu streaming answer failed for %s", message.msg_id)
+        error_msg = error_msg or "处理过程中出现错误"
+
+    if not answer.strip() and not error_msg:
+        error_msg = "未生成回答"
+
+    if error_msg:
+        detail = f"⚠️ 回答失败:{error_msg}"[:_FEISHU_CARD_MAX_CHARS]
+        _feishu_update_card(provider_config, token_mgr, card_msg_id, detail)
+        return
+
+    display = answer.strip()
+    if len(display) <= _FEISHU_CARD_MAX_CHARS:
+        _feishu_update_card(provider_config, token_mgr, card_msg_id, display)
+        return
+
+    # Too long for one card: truncate the card preview and DM the full text.
+    _feishu_update_card(
+        provider_config,
+        token_mgr,
+        card_msg_id,
+        display[:_FEISHU_CARD_MAX_CHARS] + "\n\n……(内容较长,完整回答已单独发送)",
+    )
+    _feishu_send(provider_config, token_mgr, message.chat_id, display)
+
+
+def _answer_from_prepared(prepared: _PreparedTurn) -> str | None:
+    from onyx.chat.process_message import gather_stream
+
+    response = gather_stream(_iter_chat_stream(prepared))
     if response is None:
         return None
     return response.answer.strip() or None
@@ -303,7 +488,7 @@ def _dingtalk_send(
     ).raise_for_status()
 
 
-def _feishu_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
+def _feishu_token(config: Any, token_mgr: Any) -> str:
     import requests
 
     def fetch() -> tuple[str, int]:
@@ -315,7 +500,13 @@ def _feishu_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
         data = resp.json()
         return str(data["tenant_access_token"]), int(data.get("expire", 7200))
 
-    token = token_mgr(fetch).get()
+    return token_mgr(fetch).get()
+
+
+def _feishu_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
+    import requests
+
+    token = _feishu_token(config, token_mgr)
     requests.post(
         "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
         headers={"Authorization": f"Bearer {token}"},
@@ -326,6 +517,132 @@ def _feishu_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
         },
         timeout=15,
     ).raise_for_status()
+
+
+_FEISHU_MD_HEADER_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$", re.MULTILINE)
+_FEISHU_MD_HR_RE = re.compile(r"^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$", re.MULTILINE)
+_FEISHU_MD_TABLE_DELIM_RE = re.compile(r"^\s*\|?\s*:?-{2,}[\s:|-]*\|?\s*$")
+_FEISHU_MD_HTML_LINK_RE = re.compile(r'<a\s+href="([^"]+)"[^>]*>(.*?)</a>', re.S)
+
+
+def _feishu_split_table_row(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _feishu_convert_tables(text: str) -> str:
+    """GFM tables → bold header line plus one bullet per row of
+    ``**column**: value`` pairs (Feishu card markdown has no tables)."""
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        is_table_start = (
+            lines[i].lstrip().startswith("|")
+            and i + 1 < len(lines)
+            and _FEISHU_MD_TABLE_DELIM_RE.match(lines[i + 1]) is not None
+            and "-" in lines[i + 1]
+        )
+        if not is_table_start:
+            out.append(lines[i])
+            i += 1
+            continue
+        header = _feishu_split_table_row(lines[i])
+        i += 2
+        while i < len(lines) and lines[i].lstrip().startswith("|"):
+            cells = _feishu_split_table_row(lines[i])
+            if any(cells):
+                pairs = " · ".join(
+                    f"**{h}**: {c}" if h else c
+                    for h, c in zip(header, cells, strict=False)
+                )
+                out.append(f"- {pairs}")
+            i += 1
+        out.append("")
+    return "\n".join(out)
+
+
+def _feishu_markdown(text: str) -> str:
+    """Translate chat markdown/HTML into the subset Feishu card markdown
+    renders: headings become bold lines, HTML conveniences become markdown,
+    tables become bullet rows. Code fences, lists, quotes, bold/italic and
+    links pass through untouched."""
+    # HTML conveniences the chat engine sometimes emits
+    text = (
+        text.replace("<br>", "\n")
+        .replace("<br/>", "\n")
+        .replace("<br />", "\n")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+    )
+    text = _FEISHU_MD_HTML_LINK_RE.sub(r"[\2](\1)", text)
+    text = re.sub(r"</?(?:b|strong)>", "**", text)
+    text = re.sub(r"</?(?:i|em)>", "*", text)
+    text = re.sub(r"</?code>", "`", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    # headings → bold lines
+    text = _FEISHU_MD_HEADER_RE.sub(lambda m: f"**{m.group(2)}**", text)
+    # horizontal rules → a plain dash line
+    text = _FEISHU_MD_HR_RE.sub("———", text)
+    return _feishu_convert_tables(text)
+
+
+def _feishu_card_content(text: str) -> str:
+    """Interactive-card payload rendering ``text`` with the card markdown
+    module (wider syntax support than lark_md inside a div)."""
+    return json.dumps(
+        {
+            "config": {"update_multi": True},
+            "elements": [{"tag": "markdown", "content": _feishu_markdown(text)}],
+        },
+        ensure_ascii=False,
+    )
+
+
+def _feishu_send_card(
+    config: Any, token_mgr: Any, chat_id: str, text: str
+) -> str | None:
+    """Send an interactive card and return its message id (None on failure,
+    letting the caller fall back to a plain text reply)."""
+    import requests
+
+    try:
+        token = _feishu_token(config, token_mgr)
+        resp = requests.post(
+            "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "receive_id": chat_id,
+                "msg_type": "interactive",
+                "content": _feishu_card_content(text),
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return str(resp.json().get("data", {}).get("message_id")) or None
+    except Exception:
+        logger.warning("feishu card send failed; falling back to text", exc_info=True)
+        return None
+
+
+def _feishu_update_card(
+    config: Any, token_mgr: Any, message_id: str, text: str
+) -> None:
+    """PATCH the card body in place; failures are logged, never raised —
+    a missed intermediate update must not kill the answer."""
+    import requests
+
+    try:
+        token = _feishu_token(config, token_mgr)
+        requests.patch(
+            f"https://open.feishu.cn/open-apis/im/v1/messages/{message_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"content": _feishu_card_content(text)},
+            timeout=15,
+        ).raise_for_status()
+    except Exception:
+        logger.warning("feishu card update failed for %s", message_id, exc_info=True)
 
 
 def dispatch_im_notification(
