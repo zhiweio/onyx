@@ -1303,7 +1303,7 @@ export default function ChatPreferencesPage() {
                     )}
 
                     {/* MCP Servers & OpenAPI Tools */}
-                    <Section gap={2}>
+                    <Section gap={2} alignItems="stretch">
                       {mcpServersWithTools.length > 0 && (
                         <AdminListHeader
                           hasItems
