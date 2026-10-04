@@ -1,10 +1,10 @@
-# Background-process tool for the sandbox's opencode agent.
-
-Talks to the in-pod sandbox daemon (localhost) — the data plane never
-crosses to the host. The `background` tool: start (returns process_id
-immediately), poll (byte-cursor output + status), send_input, stop, list.
-Matches the plan-4 wake semantics: watch the process from the host side by
-asking for a `watch` action; the session wakes when the pattern hits.
+// Background-process tool for the sandbox's opencode agent.
+//
+// Talks to the in-pod sandbox daemon (localhost) — the data plane never
+// crosses to the host. The `background` tool: start (returns process_id
+// immediately), poll (byte-cursor output + status), send_input, stop, list.
+// Matches the plan-4 wake semantics: watch the process from the host side by
+// asking for a `watch` action; the session wakes when the pattern hits.
 
 import type { Plugin } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
