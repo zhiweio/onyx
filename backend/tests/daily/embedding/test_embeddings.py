@@ -129,6 +129,27 @@ def azure_embedding_model(test_secrets: dict[TestSecret, str]) -> EmbeddingModel
     )
 
 
+@pytest.fixture
+def dashscope_embedding_model(test_secrets: dict[TestSecret, str]) -> EmbeddingModel:
+    return EmbeddingModel(
+        server_host="localhost",
+        server_port=9000,
+        model_name="text-embedding-v4",
+        normalize=True,
+        query_prefix=None,
+        passage_prefix=None,
+        api_key=test_secrets[TestSecret.DASHSCOPE_API_KEY],
+        provider_type=EmbeddingProvider.DASHSCOPE,
+        api_url=None,
+    )
+
+
+@pytest.mark.secrets(TestSecret.DASHSCOPE_API_KEY)
+def test_dashscope_embedding(dashscope_embedding_model: EmbeddingModel) -> None:
+    _run_embeddings(VALID_SAMPLE, dashscope_embedding_model, 1024)
+    _run_embeddings(TOO_LONG_SAMPLE, dashscope_embedding_model, 1024)
+
+
 # Azure has strict rate limits on their embedding API, so we retry with exponential
 # backoff to handle transient RateLimitError responses
 @pytest.mark.secrets(TestSecret.AZURE_API_KEY, TestSecret.AZURE_API_URL)

@@ -29,6 +29,7 @@ class TestSecret(StrEnum):
     LITELLM_API_URL = "LITELLM_API_URL"
     OLLAMA_API_KEY = "OLLAMA_API_KEY"
     BEDROCK_API_KEY = "bedrock-api-key"
+    DASHSCOPE_API_KEY = "DASHSCOPE_API_KEY"
 
     # Connector test secrets. Member names match the CI env var; values match
     # the AWS Secrets Manager key (the suffix after the ``test/`` prefix).

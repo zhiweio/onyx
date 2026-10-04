@@ -1,6 +1,7 @@
 import { SvgHardDrive } from "@opal/icons";
 import {
   SvgAzure,
+  SvgBailian,
   SvgCohere,
   SvgGoogle,
   SvgLitellm,
@@ -175,6 +176,37 @@ export const CLOUD_BASED_PROVIDERS: EmbeddingProvider[] = [
     costslink:
       "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai/",
     embeddingModels: [],
+  },
+  {
+    // Same provider as the "Alibaba Bailian" LLM provider in
+    // /admin/language-models; embeddings go through its OpenAI-compatible API.
+    providerName: EmbeddingProviderName.DASHSCOPE,
+    displayName: "Alibaba Bailian",
+    icon: SvgBailian,
+    docsLink: "https://www.alibabacloud.com/help/en/model-studio/embedding",
+    apiLink: "https://bailian.console.alibabacloud.com/",
+    costslink:
+      "https://www.alibabacloud.com/help/en/model-studio/models/#Embedding",
+    embeddingModels: [
+      {
+        modelName: "text-embedding-v4",
+        modelDim: 1024,
+        normalize: false,
+        queryPrefix: "",
+        passagePrefix: "",
+        description:
+          "Alibaba's latest embedding model. Multilingual with a selectable output dimension (64–2048); indexed here at the default 1024.",
+      },
+      {
+        modelName: "text-embedding-v3",
+        modelDim: 1024,
+        normalize: false,
+        queryPrefix: "",
+        passagePrefix: "",
+        description:
+          "Alibaba's multilingual embedding model. High quality at the default 1024 dimensions.",
+      },
+    ],
   },
 ];
 

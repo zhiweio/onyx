@@ -4869,6 +4869,29 @@
           "description": "O Onyx vai se conectar a este modelo no seu proxy {provider}."
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "Região",
+          "description": "A região do seu espaço de negócios da Bailian. A chave de API, o modelo e o endpoint devem pertencer à mesma região.",
+          "custom": {
+            "label": "Endpoint personalizado",
+            "description": "Insira você mesmo a URL completa do endpoint"
+          }
+        },
+        "workspaceId": {
+          "title": "ID do workspace",
+          "description": "O ID do seu espaço de negócios da Bailian, exibido na página de detalhes do workspace no console da Bailian."
+        },
+        "customBase": {
+          "title": "Base da API",
+          "description": "Endpoint completo compatível com OpenAI, ex.: https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "validation": {
+          "regionRequired": "A região é obrigatória",
+          "workspaceIdRequired": "O ID do workspace é obrigatório",
+          "customBaseRequired": "A base da API é obrigatória"
+        }
+      },
       "maxImageSize": {
         "description": "Imagens acima deste tamanho serão ignoradas para limitar o uso de recursos.",
         "suffix": "(MB)",
@@ -4950,12 +4973,9 @@
         }
       },
       "multipass": {
-        "description": "Indexe documentos como chunks de tamanhos variados para identificar melhor as fontes relevantes.",
-        "disabledTooltip": "A indexação multipass está desativada temporariamente e ficará disponível no futuro.",
-        "tag": {
-          "label": "temporariamente indisponível"
-        },
-        "title": "Indexação multipass"
+        "description": "Indexa documentos como blocos de tamanhos variados para identificar melhor as fontes relevantes. As alterações são aplicadas na próxima reindexação e aumentam o volume de embeddings.",
+        "reindexingTooltip": "Aguarde a conclusão da reindexação atual antes de alterar esta configuração.",
+        "title": "Indexação multipassa"
       },
       "progressBanner": {
         "attentionButton": {

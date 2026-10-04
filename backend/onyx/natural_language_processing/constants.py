@@ -12,6 +12,11 @@ DEFAULT_OPENAI_MODEL = "text-embedding-3-small"
 DEFAULT_COHERE_MODEL = "embed-english-light-v3.0"
 DEFAULT_VOYAGE_MODEL = "voyage-large-2-instruct"
 DEFAULT_VERTEX_MODEL = "text-embedding-005"
+DEFAULT_DASHSCOPE_MODEL = "text-embedding-v4"
+
+# Alibaba Bailian (DashScope) OpenAI-compatible embeddings endpoint, used when
+# the provider credentials carry no explicit api_url (Beijing region).
+DEFAULT_DASHSCOPE_API_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 
 class EmbeddingModelTextType:

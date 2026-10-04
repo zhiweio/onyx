@@ -4869,6 +4869,29 @@
           "description": "Onyx se conectará a este modelo en tu proxy de {provider}."
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "Región",
+          "description": "La región de tu espacio de negocio de Bailian. La clave de API, el modelo y el endpoint deben pertenecer a la misma región.",
+          "custom": {
+            "label": "Endpoint personalizado",
+            "description": "Introduce tú mismo la URL completa del endpoint"
+          }
+        },
+        "workspaceId": {
+          "title": "ID del espacio de trabajo",
+          "description": "El ID de tu espacio de negocio de Bailian, que se muestra en la página de detalles del espacio en la consola de Bailian."
+        },
+        "customBase": {
+          "title": "Base de la API",
+          "description": "Endpoint completo compatible con OpenAI, p. ej. https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "validation": {
+          "regionRequired": "La región es obligatoria",
+          "workspaceIdRequired": "El ID del espacio de trabajo es obligatorio",
+          "customBaseRequired": "La base de la API es obligatoria"
+        }
+      },
       "maxImageSize": {
         "description": "Las imágenes que superen este tamaño se omitirán para limitar el uso de recursos.",
         "suffix": "(MB)",
@@ -4950,12 +4973,9 @@
         }
       },
       "multipass": {
-        "description": "Indexa los documentos como fragmentos de distintos tamaños para identificar mejor las fuentes relevantes.",
-        "disabledTooltip": "La indexación multipaso está desactivada temporalmente y estará disponible en el futuro.",
-        "tag": {
-          "label": "no disponible temporalmente"
-        },
-        "title": "Indexación multipaso"
+        "description": "Indexa los documentos en fragmentos de distintos tamaños para identificar mejor las fuentes relevantes. Los cambios se aplican en la siguiente reindexación y aumentan el volumen de embeddings.",
+        "reindexingTooltip": "Espera a que termine la reindexación actual antes de cambiar esta configuración.",
+        "title": "Indexación multipase"
       },
       "progressBanner": {
         "attentionButton": {

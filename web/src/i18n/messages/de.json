@@ -4869,6 +4869,29 @@
           "description": "Onyx verbindet sich mit diesem Modell auf Ihrem {provider}-Proxy."
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "Region",
+          "description": "Die Region Ihres Bailian-Arbeitsbereichs. API-Schlüssel, Modell und Endpunkt müssen derselben Region angehören.",
+          "custom": {
+            "label": "Benutzerdefinierter Endpunkt",
+            "description": "Geben Sie die vollständige Endpunkt-URL selbst ein"
+          }
+        },
+        "workspaceId": {
+          "title": "Workspace-ID",
+          "description": "Die ID Ihres Bailian-Arbeitsbereichs, angezeigt auf der Detailseite des Arbeitsbereichs in der Bailian-Konsole."
+        },
+        "customBase": {
+          "title": "API-Basis",
+          "description": "Vollständige OpenAI-kompatible Endpunkt-URL, z. B. https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "validation": {
+          "regionRequired": "Region ist erforderlich",
+          "workspaceIdRequired": "Workspace-ID ist erforderlich",
+          "customBaseRequired": "API-Basis ist erforderlich"
+        }
+      },
       "maxImageSize": {
         "description": "Bilder über dieser Größe werden übersprungen, um den Ressourcenverbrauch zu begrenzen.",
         "suffix": "(MB)",
@@ -4950,11 +4973,8 @@
         }
       },
       "multipass": {
-        "description": "Indizieren Sie Dokumente als Chunks unterschiedlicher Größe, um relevante Quellen besser zu erkennen.",
-        "disabledTooltip": "Die Multipass-Indizierung ist vorübergehend deaktiviert und wird in Zukunft verfügbar sein.",
-        "tag": {
-          "label": "vorübergehend nicht verfügbar"
-        },
+        "description": "Indexiert Dokumente als Chunks unterschiedlicher Größe, um relevante Quellen besser zu erkennen. Änderungen greifen bei der nächsten Neuindizierung und erhöhen das Embedding-Volumen.",
+        "reindexingTooltip": "Warten Sie, bis die aktuelle Neuindizierung abgeschlossen ist, bevor Sie diese Einstellung ändern.",
         "title": "Multipass-Indizierung"
       },
       "progressBanner": {

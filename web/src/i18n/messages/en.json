@@ -4869,6 +4869,29 @@
           "description": "Onyx will connect to this model on your {provider} proxy."
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "Region",
+          "description": "The region of your Bailian business space. The API key, model, and endpoint region must match.",
+          "custom": {
+            "label": "Custom endpoint",
+            "description": "Enter the full endpoint URL yourself"
+          }
+        },
+        "workspaceId": {
+          "title": "Workspace ID",
+          "description": "Your Bailian business space ID, shown on the workspace details page in the Bailian console."
+        },
+        "customBase": {
+          "title": "API Base",
+          "description": "Full OpenAI-compatible endpoint, e.g. https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "validation": {
+          "regionRequired": "Region is required",
+          "workspaceIdRequired": "Workspace ID is required",
+          "customBaseRequired": "API base is required"
+        }
+      },
       "maxImageSize": {
         "description": "Images above this size will be skipped to limit resource usage.",
         "suffix": "(MB)",
@@ -4950,11 +4973,8 @@
         }
       },
       "multipass": {
-        "description": "Index documents as chunks of varying sizes to better identify relevant sources.",
-        "disabledTooltip": "Multipass Indexing is disabled temporarily and will be available in the future.",
-        "tag": {
-          "label": "temporarily unavailable"
-        },
+        "description": "Index documents as chunks of varying sizes to better identify relevant sources. Changes apply on the next re-index and increase embedding volume.",
+        "reindexingTooltip": "Wait for the current re-index to finish before changing this setting.",
         "title": "Multipass Indexing"
       },
       "progressBanner": {

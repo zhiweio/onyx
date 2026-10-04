@@ -40,6 +40,8 @@ from onyx.db.models import SearchSettings
 from onyx.indexing.indexing_heartbeat import IndexingHeartbeatInterface
 from onyx.natural_language_processing.constants import (
     DEFAULT_COHERE_MODEL,
+    DEFAULT_DASHSCOPE_API_BASE,
+    DEFAULT_DASHSCOPE_MODEL,
     DEFAULT_OPENAI_MODEL,
     DEFAULT_VERTEX_MODEL,
     DEFAULT_VOYAGE_MODEL,
@@ -97,6 +99,8 @@ _RETRY_TRIES = 8 if INDEXING_ONLY else 2
 _OPENAI_MAX_INPUT_LEN = 2048
 # Cohere allows up to 96 embeddings in a single embedding calling
 _COHERE_MAX_INPUT_LEN = 96
+# DashScope (Alibaba Bailian) accepts at most 10 input texts per request
+_DASHSCOPE_MAX_INPUT_LEN = 10
 
 # Authentication error string constants
 _AUTH_ERROR_401 = "401"
@@ -575,6 +579,35 @@ class CloudEmbedding:
         result = response.json()
         return [embedding["embedding"] for embedding in result["data"]]
 
+    async def _embed_dashscope(
+        self, texts: list[str], model: str | None, reduced_dimension: int | None
+    ) -> list[Embedding]:
+        if not model:
+            model = DEFAULT_DASHSCOPE_MODEL
+
+        import openai
+
+        # DashScope (Alibaba Bailian) serves an OpenAI-compatible API; the
+        # credentials' api_url carries the region/workspace base when set.
+        client = openai.AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_url or DEFAULT_DASHSCOPE_API_BASE,
+            timeout=OPENAI_EMBEDDING_TIMEOUT,
+        )
+
+        final_embeddings: list[Embedding] = []
+
+        for text_batch in batch_list(texts, _DASHSCOPE_MAX_INPUT_LEN):
+            response = await client.embeddings.create(
+                input=text_batch,
+                model=model,
+                dimensions=reduced_dimension or openai.omit,
+            )
+            final_embeddings.extend(
+                [embedding.embedding for embedding in response.data]
+            )
+        return final_embeddings
+
     @retry(
         retry=retry_if_exception_type(RuntimeError),
         stop=stop_after_attempt(_RETRY_TRIES),
@@ -595,6 +628,8 @@ class CloudEmbedding:
         try:
             if self.provider == EmbeddingProvider.OPENAI:
                 return await self._embed_openai(texts, model_name, reduced_dimension)
+            elif self.provider == EmbeddingProvider.DASHSCOPE:
+                return await self._embed_dashscope(texts, model_name, reduced_dimension)
             elif self.provider == EmbeddingProvider.AZURE:
                 return await self._embed_azure(texts, f"azure/{deployment_name}")
             elif self.provider == EmbeddingProvider.LITELLM:
@@ -612,7 +647,7 @@ class CloudEmbedding:
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
         except openai.AuthenticationError:
-            raise AuthenticationError(provider="OpenAI")
+            raise AuthenticationError(provider=str(self.provider.value))
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 401:
                 raise AuthenticationError(provider=str(self.provider))

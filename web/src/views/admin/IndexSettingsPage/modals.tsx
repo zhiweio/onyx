@@ -7,8 +7,10 @@ import { Button } from "@opal/components";
 import { SvgArrowExchange, SvgSimpleLoader } from "@opal/icons";
 import { SvgOnyxLogo } from "@opal/logos";
 import * as GeneralLayouts from "@/layouts/general-layouts";
+import { InputVertical, toast } from "@opal/layouts";
 import { Modal } from "@opal/components";
-import { toast } from "@opal/layouts";
+import InputSelect from "@/refresh-components/inputs/InputSelect";
+import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import {
   EmbeddingModelRequest,
   EmbeddingProviderName,
@@ -17,6 +19,12 @@ import {
   type EmbeddingProvider,
 } from "@/lib/indexing/types";
 import { connectEmbeddingProvider, testEmbedding } from "@/lib/indexing/svc";
+import {
+  DASHSCOPE_CUSTOM_REGION,
+  DASHSCOPE_REGIONS,
+  composeDashscopeBase,
+  parseDashscopeBase,
+} from "@/lib/languageModels/dashscope";
 import {
   ApiKeyField,
   ApiUrlField,
@@ -472,6 +480,160 @@ function LiteLLMProviderModal({
 }
 
 // ---------------------------------------------------------------------------
+// Alibaba Bailian (DashScope)
+//
+// Same provider as the "Alibaba Bailian" LLM provider: the credential stores
+// the workspace's OpenAI-compatible base in `api_url`, composed from a region
+// + workspace ID (or a hand-entered endpoint). Embedding calls go through the
+// compatible-mode API exactly like the LLM side.
+// ---------------------------------------------------------------------------
+
+const FIELD_REGION = "region";
+const FIELD_WORKSPACE_ID = "workspaceId";
+const FIELD_CUSTOM_API_BASE = "customApiBase";
+
+interface DashscopeFormValues {
+  apiKey: string;
+  region: string;
+  workspaceId: string;
+  customApiBase: string;
+}
+
+function DashscopeProviderModal({
+  provider,
+  existingCredentials,
+  onSubmit,
+}: ProviderModalProps) {
+  const t = useTranslations("admin.indexSettings");
+  const { values, setFieldValue } = useFormikContext<DashscopeFormValues>();
+  const isEditing = !!existingCredentials;
+  const maskedApiKey = existingCredentials?.api_key ?? "";
+
+  const parsedBase = parseDashscopeBase(existingCredentials?.api_url);
+  const isCustomRegion = values.region === DASHSCOPE_CUSTOM_REGION;
+
+  const schema = Yup.object({
+    apiKey: isEditing
+      ? Yup.string().trim()
+      : Yup.string().trim().required(t("validation.apiKeyRequired")),
+    region: Yup.string().required(t("dashscope.validation.regionRequired")),
+    workspaceId: Yup.string().when(FIELD_REGION, {
+      is: (region: string) => region !== DASHSCOPE_CUSTOM_REGION,
+      then: (fieldSchema) =>
+        fieldSchema.required(t("dashscope.validation.workspaceIdRequired")),
+      otherwise: (fieldSchema) => fieldSchema.notRequired(),
+    }),
+    customApiBase: Yup.string().when(FIELD_REGION, {
+      is: DASHSCOPE_CUSTOM_REGION,
+      then: (fieldSchema) =>
+        fieldSchema
+          .trim()
+          .required(t("dashscope.validation.customBaseRequired")),
+      otherwise: (fieldSchema) => fieldSchema.notRequired(),
+    }),
+  });
+
+  const initialValues: DashscopeFormValues = {
+    apiKey: maskedApiKey,
+    region: parsedBase.region,
+    workspaceId: parsedBase.workspaceId,
+    customApiBase: parsedBase.customBase,
+  };
+
+  return (
+    <Formik<DashscopeFormValues>
+      initialValues={initialValues}
+      validationSchema={schema}
+      validateOnMount
+      onSubmit={async (formValues) => {
+        const apiKey =
+          formValues.apiKey === maskedApiKey ? null : formValues.apiKey || null;
+        // The region/workspace fields exist only for this form; the composed
+        // endpoint is what gets stored and sent to the backend.
+        if (
+          await testAndSaveProviderCredentials({
+            provider,
+            apiKey,
+            apiUrl: composeDashscopeBase(
+              formValues.workspaceId,
+              formValues.region,
+              formValues.customApiBase
+            ),
+            // The backend test call needs a concrete model; use the newest
+            // registered Bailian embedding model.
+            modelName: provider.embeddingModels[0]?.modelName ?? "",
+            unknownErrorMessage: t("toasts.unknownError"),
+          })
+        ) {
+          onSubmit();
+        }
+      }}
+    >
+      <ModalShell provider={provider} isEditing={isEditing}>
+        <InputVertical
+          withLabel={FIELD_REGION}
+          title={t("dashscope.region.title")}
+          subDescription={t("dashscope.region.description")}
+        >
+          <InputSelect
+            value={values.region}
+            onValueChange={(value) => void setFieldValue(FIELD_REGION, value)}
+          >
+            <InputSelect.Trigger />
+            <InputSelect.Content>
+              {DASHSCOPE_REGIONS.map((region) => (
+                <InputSelect.Item
+                  key={region.code}
+                  value={region.code}
+                  description={region.code}
+                >
+                  {region.label}
+                </InputSelect.Item>
+              ))}
+              <InputSelect.Separator />
+              <InputSelect.Item
+                value={DASHSCOPE_CUSTOM_REGION}
+                description={t("dashscope.region.custom.description")}
+              >
+                {t("dashscope.region.custom.label")}
+              </InputSelect.Item>
+            </InputSelect.Content>
+          </InputSelect>
+        </InputVertical>
+
+        {!isCustomRegion && (
+          <InputVertical
+            withLabel={FIELD_WORKSPACE_ID}
+            title={t("dashscope.workspaceId.title")}
+            subDescription={t("dashscope.workspaceId.description")}
+          >
+            <InputTypeInField
+              name={FIELD_WORKSPACE_ID}
+              placeholder="your-workspace-id"
+            />
+          </InputVertical>
+        )}
+
+        {isCustomRegion && (
+          <InputVertical
+            withLabel={FIELD_CUSTOM_API_BASE}
+            title={t("dashscope.customBase.title")}
+            subDescription={t("dashscope.customBase.description")}
+          >
+            <InputTypeInField
+              name={FIELD_CUSTOM_API_BASE}
+              placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
+            />
+          </InputVertical>
+        )}
+
+        <ApiKeyField provider={provider} />
+      </ModalShell>
+    </Formik>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Custom Self-Hosted
 // ---------------------------------------------------------------------------
 
@@ -526,6 +688,8 @@ export function ProviderCredentialsModal(props: ProviderModalProps) {
       return <AzureProviderModal {...props} />;
     case EmbeddingProviderName.LITELLM:
       return <LiteLLMProviderModal {...props} />;
+    case EmbeddingProviderName.DASHSCOPE:
+      return <DashscopeProviderModal {...props} />;
     case EmbeddingProviderName.CUSTOM:
       return <CustomSelfHostedModal {...props} />;
     default:

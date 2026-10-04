@@ -4869,6 +4869,29 @@
           "description": "Onyx は {provider} プロキシ上にあるこのモデルに接続します。"
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "リージョン",
+          "description": "Bailian ビジネススペースのリージョン。API キー・モデル・エンドポイントは同じリージョンである必要があります。",
+          "custom": {
+            "label": "カスタムエンドポイント",
+            "description": "エンドポイント URL を直接入力してください"
+          }
+        },
+        "workspaceId": {
+          "title": "ワークスペース ID",
+          "description": "Bailian コンソールの「ワークスペース詳細」ページに表示されるビジネススペースの ID。"
+        },
+        "customBase": {
+          "title": "API Base",
+          "description": "OpenAI 互換エンドポイントの完全な URL（例: https://dashscope.aliyuncs.com/compatible-mode/v1）"
+        },
+        "validation": {
+          "regionRequired": "リージョンは必須です",
+          "workspaceIdRequired": "ワークスペース ID は必須です",
+          "customBaseRequired": "API Base は必須です"
+        }
+      },
       "maxImageSize": {
         "description": "リソース使用量を抑えるため、このサイズを超える画像はスキップされます。",
         "suffix": "(MB)",
@@ -4950,11 +4973,8 @@
         }
       },
       "multipass": {
-        "description": "ドキュメントをさまざまなサイズのチャンクとしてインデックスし、関連する情報源をより正確に特定します。",
-        "disabledTooltip": "マルチパスインデックスは一時的に無効です。今後利用できるようになります。",
-        "tag": {
-          "label": "一時的に利用不可"
-        },
+        "description": "関連性の高いソースをより適切に識別できるよう、ドキュメントをさまざまなサイズのチャンクにインデックスします。変更は次の再インデックス時に適用され、Embedding の量が増加します。",
+        "reindexingTooltip": "この設定を変更する前に、現在の再インデックスが完了するのをお待ちください。",
         "title": "マルチパスインデックス"
       },
       "progressBanner": {

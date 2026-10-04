@@ -4869,6 +4869,29 @@
           "description": "Onyx 将在您的 {provider} 代理上连接此模型。"
         }
       },
+      "dashscope": {
+        "region": {
+          "title": "地域",
+          "description": "百炼业务空间所在地域。API Key、模型与端点必须属于同一地域。",
+          "custom": {
+            "label": "自定义端点",
+            "description": "自行输入完整端点 URL"
+          }
+        },
+        "workspaceId": {
+          "title": "业务空间 ID",
+          "description": "百炼控制台“业务空间详情”页面中显示的业务空间 ID。"
+        },
+        "customBase": {
+          "title": "API Base",
+          "description": "完整的 OpenAI 兼容端点，例如 https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "validation": {
+          "regionRequired": "地域为必填项",
+          "workspaceIdRequired": "业务空间 ID 为必填项",
+          "customBaseRequired": "API Base 为必填项"
+        }
+      },
       "maxImageSize": {
         "description": "超过此大小的图像将被跳过，以限制资源占用。",
         "suffix": "(MB)",
@@ -4950,11 +4973,8 @@
         }
       },
       "multipass": {
-        "description": "将文档索引为不同大小的分块，以更好地识别相关来源。",
-        "disabledTooltip": "多轮索引暂时禁用，将在未来提供。",
-        "tag": {
-          "label": "暂时不可用"
-        },
+        "description": "将文档索引为不同大小的分块，以更好地识别相关来源。更改将在下次重建索引时生效，并增加 Embedding 用量。",
+        "reindexingTooltip": "请等待当前重建索引完成后再更改此设置。",
         "title": "多轮索引"
       },
       "progressBanner": {
