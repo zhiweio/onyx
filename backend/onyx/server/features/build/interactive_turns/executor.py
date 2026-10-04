@@ -382,7 +382,9 @@ def _skill_binding_preamble(selected_skill_ids: list[str] | None, prompt: str) -
     return (
         f"[system] The user explicitly requires the skill(s) {listed}. "
         "Load .opencode/skills/<slug>/SKILL.md for each one first, then "
-        "follow their workflow for this task.\n\n"
+        "follow their workflow for this task. If one of them is missing "
+        "from .opencode/skills, say so once and continue with the "
+        "scenario pack.\n\n"
     )
 
 

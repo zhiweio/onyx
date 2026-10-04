@@ -10,7 +10,9 @@ servers unlock and the briefs can state the requirement.
 from __future__ import annotations
 
 import re
+from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from onyx.db.models import Skill, User
@@ -59,3 +61,53 @@ def merge_selected_skills(
         if slug not in merged:
             merged.append(slug)
     return merged
+
+
+def resolve_skill_refs_to_slugs(db_session: Session, refs: list[str]) -> list[str]:
+    """Map skill UUID strings to their runtime slugs; pass slugs through.
+
+    Scenario binding resolves to skill IDs while the executor's binding
+    preamble turns every entry into a `.opencode/skills/<ref>/SKILL.md`
+    path, so UUID entries must be normalized to slugs before they reach
+    the turn. A ref that parses as a UUID but has no runtime skill is
+    dropped: an instruction pointing at a path that cannot exist only
+    teaches the agent to ignore the binding.
+    """
+    slug_by_ref: dict[str, str] = {}
+    ids: list[UUID] = []
+    for ref in refs:
+        text = (ref or "").strip()
+        if not text:
+            continue
+        try:
+            ids.append(UUID(text))
+        except ValueError:
+            slug_by_ref[text] = text
+    if ids:
+        rows = db_session.execute(
+            select(Skill.id, Skill.built_in_skill_id, Skill.name).where(
+                Skill.id.in_(ids)
+            )
+        ).all()
+        found: dict[UUID, str] = {}
+        for skill_id, built_in_id, name in rows:
+            slug = (built_in_id or name or "").strip()
+            if slug:
+                found[skill_id] = slug
+        for skill_id in ids:
+            slug = found.get(skill_id)
+            if slug is None:
+                logger.warning(
+                    "Bound skill id %s has no runtime skill; dropped from turn binding",
+                    skill_id,
+                )
+            else:
+                slug_by_ref[str(skill_id)] = slug
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for ref in refs:
+        slug = slug_by_ref.get((ref or "").strip())
+        if slug and slug not in seen:
+            seen.add(slug)
+            ordered.append(slug)
+    return ordered

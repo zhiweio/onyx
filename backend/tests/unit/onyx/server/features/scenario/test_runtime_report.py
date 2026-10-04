@@ -11,14 +11,22 @@ from onyx.server.features.scenario.runtime import (
 
 
 class _FakeSession:
-    def __init__(self, template) -> None:
+    def __init__(self, template, skill_rows=None) -> None:
         self.template = template
+        self.skill_rows = skill_rows or []
 
     def scalars(self, _stmt):
-        return SimpleNamespace(all=lambda: [])
+        rows = [
+            SimpleNamespace(id=skill_id, name=name)
+            for skill_id, _built_in, name in self.skill_rows
+        ]
+        return SimpleNamespace(all=lambda: rows)
 
     def scalar(self, _stmt):
         return self.template
+
+    def execute(self, _stmt):
+        return SimpleNamespace(all=lambda: self.skill_rows)
 
 
 def test_render_docx_template_as_reference(monkeypatch) -> None:
@@ -166,7 +174,13 @@ def test_apply_merges_resolved_skills_and_rewrites_md(monkeypatch) -> None:
             written[path] = content
 
     merged = apply_scenario_to_turn(
-        _FakeSession(None),  # ty: ignore[invalid-argument-type]
+        _FakeSession(
+            None,
+            skill_rows=[
+                (bound, "finance-tax-risk-report", "财税与经营风险分析"),
+                (extra, None, "listed-co-ip-rd"),
+            ],
+        ),  # ty: ignore[invalid-argument-type]
         scenario_id=uuid4(),
         user=SimpleNamespace(),  # ty: ignore[invalid-argument-type]
         query="patent search",
@@ -175,11 +189,18 @@ def test_apply_merges_resolved_skills_and_rewrites_md(monkeypatch) -> None:
         sandbox_id=uuid4(),
         session_id=session_id,
     )
-    assert merged == [str(bound), str(extra), "user-picked"]
+    # Turn bindings carry slugs (the preamble turns each entry into a
+    # .opencode/skills/<slug>/SKILL.md path), never raw skill UUIDs.
+    assert merged == [
+        "finance-tax-risk-report",
+        "listed-co-ip-rd",
+        "user-picked",
+    ]
     content = written[f"sessions/{session_id}/SCENARIO.md"]
     assert "## Domain" in content
     assert "## Extra skills" in content
     assert "patent" in content
+    assert ".opencode/skills/<slug>/SKILL.md" in content
 
 
 def test_render_contract_template_as_contract(monkeypatch) -> None:

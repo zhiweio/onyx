@@ -13,6 +13,7 @@ from onyx.report_templates.sandbox_assets import (
     push_report_templates_to_sandbox,
 )
 from onyx.server.features.build.sandbox.base import SandboxManager
+from onyx.server.features.build.skill_binding import resolve_skill_refs_to_slugs
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -261,6 +262,10 @@ def render_scenario_markdown_named(
     lines = _scenario_header(scenario.name, scenario.description or "")
     if names:
         lines.extend(f"- {name}" for name in names)
+        lines.append(
+            "These skills are bound for this session: load each skill's "
+            "`.opencode/skills/<slug>/SKILL.md` before starting and follow it."
+        )
     else:
         lines.append("- (no skills bound)")
     lines.extend(render_playbook_section(rules, labels))
@@ -298,9 +303,13 @@ def apply_scenario_to_turn(
 ) -> list[str]:
     """Merge resolved scenario skills and rewrite SCENARIO.md for this prompt."""
     scenario = get_scenario_for_user(db_session, scenario_id, user)
-    resolved = [
-        str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, query)
-    ]
+    # The executor's binding preamble turns every entry into a
+    # `.opencode/skills/<ref>/SKILL.md` path, so bound skills must reach
+    # the turn as slugs, never as raw skill UUIDs.
+    resolved = resolve_skill_refs_to_slugs(
+        db_session,
+        [str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, query)],
+    )
     merged = merge_skill_id_strings(resolved, selected_skill_ids)
     if (
         sandbox_manager is not None
