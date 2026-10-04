@@ -184,7 +184,23 @@ def test_tax_deck_scenarios_compile_through_the_same_chain() -> None:
         "tax-risk-review-deck",
         "tax-annual-settlement-deck",
     }
+    # Deck deliverables are HTML: slideblocks draws every figure with its own
+    # render routes, so no external chart skill may be bound or mandated.
+    external_chart_skills = {
+        "vivid-figures-skill",
+        "chart-gen",
+        "data-viz-gen",
+        "code-to-chart",
+    }
     by_slug = {entry.slug: entry for entry in tax_scenarios}
     for slug in deck_slugs:
-        assert "slideblocks" in by_slug[slug].skill_slugs
-        assert "vivid-figures-skill" in by_slug[slug].skill_slugs
+        entry = by_slug[slug]
+        assert "slideblocks" in entry.skill_slugs
+        assert not external_chart_skills & set(entry.skill_slugs), slug
+        rules = entry.read_rules()
+        playbook_text = " ".join(
+            [str(phase.get("done_when", "")) for phase in rules["phases"]]
+            + [str(gate) for gate in rules.get("quality_gates", [])]
+        )
+        assert "vivid-figures" not in playbook_text, slug
+        assert "slideblocks render route" in playbook_text, slug

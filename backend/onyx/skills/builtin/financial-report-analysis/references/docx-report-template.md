@@ -7,7 +7,8 @@
 ## 交付物
 
 `outputs/{公司名}_财报解读_{YYYY}Q{n}.docx`，与 HTML 报告（slideblocks 版）数据、
-结论、图表完全一致，出自同一套 `outputs/analysis/` 数据与 `outputs/charts/` 图。
+结论与图表清单完全一致。Word 图表是 `outputs/charts/` 的 PNG；HTML 图表由
+`slideblocks` 内置渲染路径绘制。两份报告出自同一套 `outputs/analysis/` 数据。
 
 ## 文档结构（顺序固定，章节标题按内容自拟）
 

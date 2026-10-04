@@ -95,11 +95,14 @@ class _VisibleHtmlText(HTMLParser):
 def _docx_surface(path: Path) -> tuple[str, int]:
     """Reader-visible text and figure count of a .docx file."""
     with zipfile.ZipFile(path) as archive:
-        document_xml = archive.read("word/document.xml").decode("utf-8", errors="replace")
+        document_xml = archive.read("word/document.xml").decode(
+            "utf-8", errors="replace"
+        )
     lines: list[str] = []
     for paragraph in re.finditer(r"<w:p\b[^>]*>(.*?)</w:p>", document_xml, re.S):
         content = "".join(
-            match.group(1) for match in re.finditer(r"<w:t[^>]*>([^<]*)</w:t>", paragraph.group(1))
+            match.group(1)
+            for match in re.finditer(r"<w:t[^>]*>([^<]*)</w:t>", paragraph.group(1))
         )
         if content.strip():
             lines.append(content)
@@ -111,7 +114,8 @@ def _html_surfaces(path: Path) -> tuple[str, str, int]:
     raw = path.read_text("utf-8", errors="replace")
     parser = _VisibleHtmlText()
     parser.feed(raw)
-    figures = max(raw.count("<img"), raw.count("data:image/"))
+    # slideblocks draws figures as inline SVG carriers, not <img> tags.
+    figures = max(raw.count("<img"), raw.count("data:image/"), raw.count("<svg"))
     return raw, parser.text(), figures
 
 
@@ -154,7 +158,9 @@ def check_report(
         Finding(
             check="draft_markers",
             passed=not dirty,
-            detail="no draft markers" if not dirty else f"draft markers: {sorted(set(dirty))[:5]}",
+            detail="no draft markers"
+            if not dirty
+            else f"draft markers: {sorted(set(dirty))[:5]}",
         )
     )
 
@@ -215,10 +221,17 @@ def _check_file(path: Path, min_figures: int) -> list[Finding]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Self-check a finished report before delivery.")
-    parser.add_argument("report", type=Path, help="Path to the .html / .docx / .md report")
+    parser = argparse.ArgumentParser(
+        description="Self-check a finished report before delivery."
+    )
     parser.add_argument(
-        "--min-figures", type=int, default=8, help="Minimum embedded figures (default: 8)"
+        "report", type=Path, help="Path to the .html / .docx / .md report"
+    )
+    parser.add_argument(
+        "--min-figures",
+        type=int,
+        default=8,
+        help="Minimum embedded figures (default: 8)",
     )
     args = parser.parse_args()
 

@@ -3,7 +3,8 @@ name: financial-report-analysis
 description: >-
   解读最新季报或年报：融合三表同比环比与 10 项异常检测，再建近 8 季单季趋势、经营 KPI
   与业绩指引。支持用户上传 PDF / Excel / 图片，或用同花顺、企查查、智慧芽查询财务、
-  工商与舆情，优先用 vivid-figures-skill 出图，chart-gen 备选。交付双报告：
+  工商与舆情。出图按交付分流：Word 用 vivid-figures-skill（chart-gen 备选）出 PNG，
+  HTML 由 slideblocks 内置渲染路径绘制。交付双报告：
   slideblocks 生成的报告型 HTML 与 docx 技能渲染的专业 Word。
   触发词：财报解读、三表、同比、
   环比、异常检测、业绩说明会、单车均价、市占率、读生意。
@@ -184,9 +185,20 @@ python .opencode/skills/financial-report-analysis/scripts/operating_kpi.py \
 
 ### 6. 图表
 
-Sandbox 已预装 Vega 与 infographic 脚本。不要再 `npm install`。
+至少产出 8 张，覆盖每个数据章节。两份报告的图表清单一致，但各自出图：
 
-趋势、同比、结构优先用 `vivid-figures-skill`：按数据与目的在 `catalog/` 选配方，
+1. 单季营收与归母净利趋势
+2. 营收 / 净利单季 YoY 增速
+3. 毛利率与净利率逐季
+4. 费用率结构（销售 / 管理 / 研发 / 财务）
+5. 净利润 vs 经营现金流对比
+6. 资产负债结构与偿债（负债率、有息负债）
+7. 经营 KPI（量 / 价 / 结构 / 份额，至少一张）
+8. 异常项预警卡或健康度快照
+
+数据够时增补：扣非缺口、TTM ROE、同业对比。每张图有图注与来源行。
+
+**Word 报告的图**：优先用 `vivid-figures-skill`：按数据与目的在 `catalog/` 选配方，
 保真复用配方源码出图（折线、柱状、面积、热力图等均有完整配方）。
 快速简单图退回 `chart-gen`：
 
@@ -199,21 +211,13 @@ node .opencode/skills/chart-gen/scripts/chart.mjs \
 ```
 
 KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页）。
-报告图表一律 PNG，供 HTML 与 Word 两个报告共用。
+Word 用图一律 PNG，放 `outputs/charts/`。Sandbox 已预装 Vega 与 infographic
+脚本。不要再 `npm install`。
 
-至少产出 8 张，覆盖每个数据章节：
-
-1. 单季营收与归母净利趋势
-2. 营收 / 净利单季 YoY 增速
-3. 毛利率与净利率逐季
-4. 费用率结构（销售 / 管理 / 研发 / 财务）
-5. 净利润 vs 经营现金流对比
-6. 资产负债结构与偿债（负债率、有息负债）
-7. 经营 KPI（量 / 价 / 结构 / 份额，至少一张）
-8. 异常项预警卡或健康度快照
-
-数据够时增补：扣非缺口、TTM ROE、同业对比。每张图有图注与来源行。
-图放 `outputs/charts/`，并嵌入两份报告。
+**HTML 报告的图**：一律用 `slideblocks` 的内置渲染路径（`diagram:mermaid`、
+`figure:comparison`、`figure:annotated`、`figure:graph`、`diagram:elk`、
+`direct-svg`）在 HTML 内直接绘制，数据取自 `outputs/analysis/`。不得把其他技能
+或外部工具产出的 PNG/SVG 嵌入 HTML 报告。
 
 ### 7. 健康度与综合结论
 
@@ -229,16 +233,17 @@ KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页）。
 
 **HTML 报告（slideblocks）**：用 `slideblocks` 技能生成报告型 HTML，
 按报告版式组织：封面（公司、代码、报告期、数据时点）、执行摘要与健康度总评、
-分项诊断（图表 + 表格）、生意与指引、综合结论、免责声明。图表一律嵌入
-已产出的 PNG，每页数据带来源行。交付自包含 `offline.html`，复制为
-`outputs/{公司名}_财报解读_{YYYY}Q{n}.html`。
+分项诊断（图表 + 表格）、生意与指引、综合结论、免责声明。图表按上文「HTML 报告的图」
+用 `slideblocks` 内置渲染路径绘制，每页数据带来源行。交付自包含
+`offline.html`，复制为 `outputs/{公司名}_财报解读_{YYYY}Q{n}.html`。
 
 **Word 报告（docx 技能）**：按 `references/docx-report-template.md` 的契约组织：
 封面、目录、执行摘要、正文（沿用 output_template 的章节脊柱）、
 图表编号 + 图注 + 来源行、数据来源与方法、免责声明。用 `docx` 技能
 （python-docx）渲染 `outputs/{公司名}_财报解读_{YYYY}Q{n}.docx`。
 
-两份报告数据与结论必须一致，出自同一套 `outputs/analysis/` 数据与图表。
+两份报告数据与结论必须一致，出自同一套 `outputs/analysis/` 数据；图表按 §6 分流，
+清单一致。
 
 **自检后交付**：
 

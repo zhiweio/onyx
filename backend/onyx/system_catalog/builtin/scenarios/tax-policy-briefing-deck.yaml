@@ -11,9 +11,9 @@ phases:
   - id: impact
     done_when: Affected parties, action items with deadlines, and open questions needing tax-authority confirmation are written under outputs/analysis
   - id: charts
-    done_when: Three to six informative charts (rate before/after, effective-date timeline, worked tax-burden example, affected-business mapping) are drawn with vivid-figures-skill; no decorative charts
+    done_when: outputs/analysis/chart_plan.json plans three to six informative figures (rate before/after, effective-date timeline, worked tax-burden example, affected-business mapping) with data sources and slideblocks render routes; no decorative charts
   - id: deck
-    done_when: outputs/slides holds the briefing deck with a verified self-contained offline.html
+    done_when: outputs/slides holds the briefing deck with a verified self-contained offline.html; every planned figure is drawn inside the deck with its locked slideblocks render route
   - id: qa
     done_when: Every quoted rate, deadline and clause number matches the official text, and no placeholders survive
 deliverables:
@@ -26,6 +26,7 @@ quality_gates:
   - Deck stays within 8-12 content slides for a 15-20 minute briefing
   - Audience-facing slides stay free of tool names, skill names and internal paths; clause citations stay reader-facing (文号 + 条款)
   - Each chart embeds real cited numbers or the official timeline and carries its caption and source (文号)
+  - Every chart and diagram is drawn inside the deck with a slideblocks render route (diagram:mermaid, figure:comparison, figure:annotated, figure:graph, diagram:elk, or direct-svg); no chart arrives as an image produced by another skill or an external plotting tool
   - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) on slides
 refusal_rules:
   - Do not guess an execution rule the official text does not state

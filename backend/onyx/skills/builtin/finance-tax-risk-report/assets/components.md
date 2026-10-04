@@ -45,7 +45,8 @@ GFM 表格。约定:
 
 `![图题](outputs/charts/NN_name.png)` 独立成段(前后空行)即嵌图,
 渲染自动带题注。图先由 vivid-figures-skill(优先)或 chart-gen 产出到
-`outputs/charts/`,一律 PNG,命名 `NN_英文名.png`。
+`outputs/charts/`,一律 PNG,命名 `NN_英文名.png`。本约定只约束 markdown/Word
+交付;HTML 演示交付(deck)由 slideblocks 内置渲染路径绘图,不嵌 PNG。
 
 - 全篇不少于 5 张;基线五图见 `references/report-template.md` 图表清单。
 - 每图的数据取自 `kpi_dashboard.json`,不在图里手填第二份。

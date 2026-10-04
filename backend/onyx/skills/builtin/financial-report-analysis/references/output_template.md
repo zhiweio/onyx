@@ -6,6 +6,8 @@
 >   （1.1 / 1.2 / 1.3 / 1.4 / 2.x / 3.x / 4.x / 五）。
 > - Word 报告的结构契约（封面、目录、图表编号、来源行、免责声明排版）见
 >   **`references/docx-report-template.md`**；HTML 版式由 `slideblocks` 按报告版式组织。
+> - 图表各自出：Word 用 `outputs/charts/` 的 PNG；HTML 由 `slideblocks` 内置渲染路径
+>   绘制。两份报告图表清单一致（SKILL.md §6）。
 > - 1.2 节的季度明细可由 `scripts/quarterly_trend.py` 的分析结果整理成表，不要手抄数字。
 >
 > **表现语义（两个报告一致，勿混用）**

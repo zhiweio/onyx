@@ -114,6 +114,11 @@ def test_skill_dual_delivery_contract() -> None:
     assert "slideblocks" in instructions
     assert "docx 技能" in instructions
     assert "self_check_report.py" in instructions
+    # The HTML report draws with slideblocks' own render routes; chart PNGs
+    # produced by other skills are Word-only.
+    assert "内置渲染路径" in instructions
+    assert "报告图表一律 PNG" not in instructions
+    assert "图表一律嵌入" not in instructions
     assert (_SKILL_DIR / "references" / "docx-report-template.md").is_file()
     # The hand-rolled HTML skeleton is retired.
     assert not (_SKILL_DIR / "assets" / "report_template.html").exists()
@@ -133,7 +138,13 @@ def test_skill_requires_eight_charts() -> None:
 
 def _run_self_check(target: Path, min_figures: int = 1) -> tuple[int, str]:
     process = subprocess.run(
-        [sys.executable, str(_SELF_CHECK), str(target), "--min-figures", str(min_figures)],
+        [
+            sys.executable,
+            str(_SELF_CHECK),
+            str(target),
+            "--min-figures",
+            str(min_figures),
+        ],
         capture_output=True,
         text=True,
     )
@@ -154,6 +165,26 @@ def test_self_check_passes_a_clean_html_report(tmp_path: Path) -> None:
     exit_code, output = _run_self_check(report)
     assert exit_code == 0, output
     assert "FAIL" not in output
+
+
+def test_self_check_counts_inline_svg_figures(tmp_path: Path) -> None:
+    """slideblocks draws HTML figures as inline SVG carriers, not <img> tags."""
+    report = tmp_path / "report.html"
+    report.write_text(
+        "<html><body>"
+        "<h1>雪龙集团 财报解读</h1>"
+        + "".join(
+            '<svg data-slideblocks-render-route="figure:comparison"></svg>'
+            for _ in range(2)
+        )
+        + "<p>数据来源：公司2025年年度报告第 12 页</p>"
+        "<p>免责声明：本解读不构成投资建议。</p>"
+        "</body></html>",
+        encoding="utf-8",
+    )
+    exit_code, output = _run_self_check(report)
+    assert exit_code == 0, output
+    assert "2 figures" in output
 
 
 def test_self_check_flags_leaky_html_report(tmp_path: Path) -> None:
@@ -182,7 +213,7 @@ def test_self_check_passes_a_clean_docx_report(tmp_path: Path) -> None:
     document.add_heading("雪龙集团 财报解读", 1)
     document.add_paragraph("数据来源：公司2025年年度报告第 12 页")
     document.add_paragraph("免责声明：本解读不构成投资建议。")
-    document.save(report)
+    document.save(str(report))
     exit_code, output = _run_self_check(report, min_figures=0)
     assert exit_code == 0, output
 
@@ -194,7 +225,7 @@ def test_self_check_flags_a_leaky_docx_report(tmp_path: Path) -> None:
     document = Document()
     document.add_heading("雪龙集团 财报解读", 1)
     document.add_paragraph("原始 JSON 存放在 outputs/mcp/hithink/，TODO：补充同业数据")
-    document.save(report)
+    document.save(str(report))
     exit_code, output = _run_self_check(report, min_figures=0)
     assert exit_code == 1
     assert "FAIL internal_paths" in output

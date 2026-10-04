@@ -731,7 +731,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         skill_slugs=(
             "document-ingest",
             "xlsx",
-            "vivid-figures-skill",
             "slideblocks",
         ),
         playbook_file="tax-monthly-review-deck.yaml",
@@ -747,7 +746,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         tags=("tax", "policy", "briefing", "deck"),
         skill_slugs=(
             "document-ingest",
-            "vivid-figures-skill",
             "slideblocks",
         ),
         playbook_file="tax-policy-briefing-deck.yaml",
@@ -766,7 +764,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
             "finance-tax-risk-report",
             "hithink-finance",
             "qichacha",
-            "vivid-figures-skill",
             "slideblocks",
         ),
         playbook_file="tax-risk-review-deck.yaml",
@@ -783,7 +780,6 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         skill_slugs=(
             "document-ingest",
             "xlsx",
-            "vivid-figures-skill",
             "slideblocks",
         ),
         playbook_file="tax-annual-settlement-deck.yaml",

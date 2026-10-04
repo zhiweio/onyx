@@ -73,7 +73,7 @@
 | 核查程序表 | 建议与结论 | 风险领域 / 等级 / 核心问题 / 建议程序 | 审计导向核查动作 |
 | 期后事项表 | 建议与结论 | 事项 / 公开信息 / 分析影响 | 最新季报、公告、变动 |
 
-### 标准图表清单(优先 vivid-figures-skill,备选 chart-gen / matplotlib,一律 PNG)
+### 标准图表清单(markdown/Word 交付:优先 vivid-figures-skill,备选 chart-gen / matplotlib,一律 PNG;HTML 演示交付改由 slideblocks 内置渲染路径绘图)
 
 | 图 | 类型 | 数据 |
 | --- | --- | --- |

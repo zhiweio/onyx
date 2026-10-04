@@ -95,11 +95,20 @@ Cite every source by title and URL. If results are empty or weak, say so.
 ## Outputs
 
 Write under `outputs/` when the task needs a file. Pick the format that
-answers the request: web app (`webapp` start first), slides (web deck:
-`slideblocks` skill; .pptx file: `pptx` skill),
-image (`image-generation`), markdown, HTML, or a direct reply. Give files
+answers the request: web app (`webapp` start first), slides or a
+report-style page (`slideblocks` skill; .pptx file: `pptx` skill), image
+(`image-generation`), markdown, standalone HTML (email, landing page,
+infographic: the matching skill), or a direct reply. Give files
 human-readable names. Chat holds a digest and a path, not a whole file.
 HTML files open as a live preview. The user can download them.
+
+Deck and report rules:
+
+- A deck or report delivered as HTML goes through `slideblocks`. Draw
+  every chart and diagram inside it with slideblocks' own render routes;
+  do not use another drawing skill for its visuals.
+- A deliverable that is not HTML (.pptx, .docx, .xlsx, .pdf, markdown,
+  images) does not use `slideblocks`.
 
 Create paths as you write (`outputs/markdown/…`, `outputs/research/…`,
 `outputs/exceptions/…` for a hard miss). Do not inventory empty trees.
