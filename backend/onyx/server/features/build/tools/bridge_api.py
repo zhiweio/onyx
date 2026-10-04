@@ -81,7 +81,8 @@ def _request_registry(user: User) -> PlatformToolRegistry:
     rag_search runs with the requesting user's ACL; a sandbox's craft PAT
     resolves to its owning user, so retrieval sees exactly that user's
     documents. Realtime tools bind the deployment-configured MCP gateway,
-    search provider and crawler (each degrades to an ``unavailable``
+    the admin-configured web search provider (env channel as fallback)
+    and crawler (each degrades to an ``unavailable``
     message when unconfigured). Every tool call lands in
     ``platform_tool_log`` for the audit report page.
     """
@@ -95,7 +96,7 @@ def _request_registry(user: User) -> PlatformToolRegistry:
         make_user_scoped_search_fn,
     )
     from onyx.server.features.build.tools.web_search_providers import (
-        build_search_provider,
+        build_configured_search_provider,
         format_hits,
     )
 
@@ -113,7 +114,7 @@ def _request_registry(user: User) -> PlatformToolRegistry:
                 session_id=(UUID(entry.session_id) if entry.session_id else None),
             )
 
-    search_provider = build_search_provider()
+    search_provider = build_configured_search_provider()
 
     def _web_search(query: str, max_results: int) -> str:
         if search_provider is None:

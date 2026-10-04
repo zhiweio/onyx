@@ -1,6 +1,11 @@
 """Pluggable web search providers (Bocha / Baidu / SearXNG).
 
-One interface, three mainland-relevant implementations:
+The web_search tool resolves its provider like chat's web search: the
+active provider row configured in the admin panel is the source of truth
+(``build_configured_search_provider``), and the env channel below is the
+fallback for deployments without an admin row.
+
+Env channel — one interface, three mainland-relevant implementations:
 
 - Bocha (博查) — commercial Chinese web search API
 - Baidu search open API
@@ -153,6 +158,72 @@ def build_search_provider(
         return SearXNGSearchProvider(url) if url else None
     logger.warning("unknown WEB_SEARCH_PROVIDER %r", name)
     return None
+
+
+def build_configured_search_provider() -> WebSearchProvider | None:
+    """The chat-configured admin search provider, with the env fallback.
+
+    The active provider row configured in the admin panel is the source
+    of truth — the same row chat's web search uses, so one admin setting
+    covers chat and craft. Deployments without an admin row keep the
+    env-channel provider. A broken row logs a warning and falls back
+    instead of raising — this runs inside the tool-bridge registry build.
+    """
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.db.web_search import fetch_active_web_search_provider
+    from onyx.tools.tool_implementations.web_search.providers import (
+        build_search_provider_from_config,
+    )
+    from shared_configs.enums import WebSearchProviderType
+
+    with get_session_with_current_tenant() as db_session:
+        provider_model = fetch_active_web_search_provider(db_session)
+
+    if provider_model is not None:
+        try:
+            provider = build_search_provider_from_config(
+                provider_type=WebSearchProviderType(provider_model.provider_type),
+                api_key=(
+                    provider_model.api_key.get_value(apply_mask=False)
+                    if provider_model.api_key
+                    else None
+                ),
+                config=provider_model.config or {},
+            )
+        except ValueError as exc:
+            logger.warning(
+                "Active web search provider '%s' is misconfigured (%s); "
+                "falling back to the env channel",
+                provider_model.name,
+                exc,
+            )
+        else:
+            return AdminSearchProvider(provider_model.provider_type, provider)
+    return build_search_provider()
+
+
+class AdminSearchProvider:
+    """Adapts a chat-side search provider to the craft tool interface."""
+
+    def __init__(self, name: str, provider: Any) -> None:
+        self.name = name
+        self._provider = provider
+
+    def search(self, query: str, max_results: int = 8) -> list[WebSearchHit]:
+        results = list(self._provider.search(query))[:max_results]
+        return [
+            WebSearchHit(
+                title=result.title,
+                url=result.link,
+                snippet=_truncate(result.snippet),
+                published=(
+                    result.published_date.date().isoformat()
+                    if result.published_date
+                    else None
+                ),
+            )
+            for result in results
+        ]
 
 
 def format_hits(query: str, hits: list[WebSearchHit]) -> str:

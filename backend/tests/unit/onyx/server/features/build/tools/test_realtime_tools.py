@@ -1,5 +1,9 @@
 """Unit tests for M6: MCP gateway, search providers, crawler, tool wiring."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -25,10 +29,13 @@ from onyx.server.features.build.tools.registry import (
     ToolBindings,
 )
 from onyx.server.features.build.tools.web_search_providers import (
+    AdminSearchProvider,
     SearXNGSearchProvider,
+    build_configured_search_provider,
     build_search_provider,
     format_hits,
 )
+from onyx.tools.tool_implementations.web_search.models import WebSearchResult
 
 CTX = ToolContext(user_id="u1")
 
@@ -157,6 +164,90 @@ def test_build_search_provider_selection(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setenv("BOCHA_API_KEY", "k")
     assert build_search_provider("bocha") is not None
     assert build_search_provider("searxng", searxng_url="http://x") is not None
+
+
+def _patch_admin_search_row(
+    monkeypatch: pytest.MonkeyPatch, row: SimpleNamespace | None
+) -> None:
+    """Stub the DB lookups build_configured_search_provider performs."""
+
+    @contextmanager
+    def fake_session() -> Iterator[None]:
+        yield None
+
+    def fake_fetch(_db_session: Any) -> SimpleNamespace | None:
+        return row
+
+    import onyx.db.engine.sql_engine as sql_engine
+    import onyx.db.web_search as db_web_search
+
+    monkeypatch.setattr(sql_engine, "get_session_with_current_tenant", fake_session)
+    monkeypatch.setattr(db_web_search, "fetch_active_web_search_provider", fake_fetch)
+
+
+def test_configured_search_provider_prefers_admin_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The admin panel row wins, like chat's web search."""
+    _patch_admin_search_row(
+        monkeypatch,
+        SimpleNamespace(
+            name="本地 SearXNG",
+            provider_type="searxng",
+            api_key=None,
+            config={"searxng_base_url": "http://searxng:8080"},
+        ),
+    )
+    provider = build_configured_search_provider()
+    assert provider is not None
+    assert provider.name == "searxng"
+
+
+def test_configured_search_provider_falls_back_to_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No admin row: the env channel keeps serving deployments without one."""
+    _patch_admin_search_row(monkeypatch, None)
+    monkeypatch.setenv("WEB_SEARCH_PROVIDER", "searxng")
+    monkeypatch.setenv("SEARXNG_BASE_URL", "http://x:8080")
+    provider = build_configured_search_provider()
+    assert provider is not None
+    assert provider.name == "searxng"
+
+
+def test_configured_search_provider_broken_row_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A misconfigured row degrades with a warning instead of raising."""
+    _patch_admin_search_row(
+        monkeypatch,
+        SimpleNamespace(
+            name="broken", provider_type="searxng", api_key=None, config={}
+        ),
+    )
+    monkeypatch.delenv("WEB_SEARCH_PROVIDER", raising=False)
+    assert build_configured_search_provider() is None
+
+
+def test_admin_search_provider_adapts_chat_results() -> None:
+    chat_provider = SimpleNamespace(
+        search=lambda _query: [
+            WebSearchResult(
+                title="公告",
+                link="https://gov.example/notice",
+                snippet="x" * 500,
+                published_date=datetime(2026, 3, 1, 12, 0),
+            ),
+            WebSearchResult(title="第二条", link="https://gov.example/2", snippet="s"),
+        ]
+    )
+    adapter = AdminSearchProvider("searxng", chat_provider)
+    hits = adapter.search("增值税", max_results=1)
+    assert len(hits) == 1
+    assert hits[0].title == "公告"
+    assert hits[0].url == "https://gov.example/notice"
+    assert hits[0].published == "2026-03-01"
+    assert len(hits[0].snippet) == 401 and hits[0].snippet.endswith("…")
 
 
 def test_web_search_tool_formats_via_injected_fn() -> None:
