@@ -747,7 +747,7 @@
         "label": "图像生成"
       },
       "webSearch": {
-        "label": "网络搜索"
+        "label": "网页搜索"
       },
       "knowledgeGraph": {
         "label": "知识图谱搜索"
@@ -780,7 +780,7 @@
           "tooltip": "管理 OpenAPI 操作"
         },
         "webSearch": {
-          "tooltip": "配置网络搜索"
+          "tooltip": "配置网页搜索"
         }
       },
       "disableAllSources": {
@@ -1787,7 +1787,7 @@
         "title": "操作与工具",
         "webSearch": {
           "description": "搜索网络以获取实时信息和最新结果。",
-          "title": "网络搜索"
+          "title": "网页搜索"
         }
       }
     },
@@ -8780,7 +8780,7 @@
         "title": "操作",
         "webSearch": {
           "description": "在网络上搜索实时信息和最新结果。",
-          "title": "网络搜索"
+          "title": "网页搜索"
         },
         "pagination": {
           "units": "项"
@@ -8962,7 +8962,7 @@
         }
       },
       "warnings": {
-        "openUrl": "没有打开 URL 能力的网络搜索可能会导致网络结果明显变差。"
+        "openUrl": "没有打开 URL 能力的网页搜索可能会导致网络结果明显变差。"
       }
     },
     "filters": {
