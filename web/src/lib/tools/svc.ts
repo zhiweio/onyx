@@ -37,7 +37,7 @@ export interface ToolStatusUpdateResponse {
  */
 export async function deleteMCPServer(
   serverId: number,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<void> {
   const response = await fetch(`${mcpApiRoot(surface)}/server/${serverId}`, {
     method: "DELETE",
@@ -54,11 +54,11 @@ export async function deleteMCPServer(
  */
 export async function refreshMCPServerTools(
   serverId: number,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<ToolSnapshot[]> {
   // Discovers tools from MCP server, upserts to DB, and returns ToolSnapshot format
   const response = await fetch(
-    `${mcpApiRoot(surface)}/server/${serverId}/tools/snapshots?source=mcp`,
+    `${mcpApiRoot(surface)}/server/${serverId}/tools/snapshots?source=mcp`
   );
   if (!response.ok) {
     const errorText = await response.text();
@@ -74,7 +74,7 @@ export async function refreshMCPServerTools(
 export async function updateToolsStatus(
   toolIds: number[],
   enabled: boolean,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
   const path =
     surface === "personal"
@@ -105,7 +105,7 @@ export async function updateToolsStatus(
 export async function updateToolStatus(
   toolId: number,
   enabled: boolean,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
   return updateToolsStatus([toolId], enabled, surface);
 }
@@ -115,7 +115,7 @@ export async function updateToolStatus(
  */
 export async function disableAllServerTools(
   toolIds: number[],
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<ToolStatusUpdateResponse> {
   return updateToolsStatus(toolIds, false, surface);
 }
@@ -125,7 +125,7 @@ export async function disableAllServerTools(
  */
 export async function createMCPServer(
   data: MCPServerCreateRequest,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<MCPServer> {
   const response = await fetch(`${mcpApiRoot(surface)}/server`, {
     method: "POST",
@@ -211,7 +211,7 @@ export async function discoverEmptyMcpTools(): Promise<MCPDiscoverEmptyResponse>
  */
 export async function bindMCPServerGateway(
   serverId: number,
-  data: MCPGatewayBindingRequest,
+  data: MCPGatewayBindingRequest
 ): Promise<MCPServer> {
   const response = await fetch(
     `/api/admin/mcp/server/${serverId}/gateway-binding`,
@@ -221,7 +221,7 @@ export async function bindMCPServerGateway(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
-    },
+    }
   );
   if (!response.ok) {
     const errorText = await response.text();
@@ -231,18 +231,18 @@ export async function bindMCPServerGateway(
 }
 
 export async function unbindMCPServerGateway(
-  serverId: number,
+  serverId: number
 ): Promise<MCPServer> {
   const response = await fetch(
     `/api/admin/mcp/server/${serverId}/gateway-binding`,
     {
       method: "DELETE",
-    },
+    }
   );
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      errorText || "Failed to unbind MCP server from the gateway",
+      errorText || "Failed to unbind MCP server from the gateway"
     );
   }
   return await response.json();
@@ -251,7 +251,7 @@ export async function unbindMCPServerGateway(
 export async function updateMCPServer(
   serverId: number,
   data: MCPServerUpdateRequest,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<MCPServer> {
   const response = await fetch(`${mcpApiRoot(surface)}/server/${serverId}`, {
     method: "PATCH",
@@ -271,21 +271,19 @@ export async function updateMCPServer(
 
 /**
  * Per-user enable/disable for an MCP server — the single MCP enable surface
- * (/craft/v1/mcp-actions). Backend writes the opt-out row and hot-reloads
- * the user's running craft sandboxes.
+ * (/craft/v1/mcp-actions). Works for org and personal servers alike; the
+ * backend writes the caller's own opt-out row and hot-reloads their running
+ * craft sandboxes.
  */
 export async function updateMCPServerEnabled(
   serverId: number,
-  enabled: boolean,
+  enabled: boolean
 ): Promise<void> {
-  const response = await fetch(
-    `${mcpApiRoot("personal")}/server/${serverId}/enabled`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled }),
-    },
-  );
+  const response = await fetch(`/api/mcp/server/${serverId}/enabled`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -299,13 +297,13 @@ export async function updateMCPServerEnabled(
 export async function updateMCPServerStatus(
   serverId: number,
   status: MCPServerStatus,
-  surface: McpSurface = "admin",
+  surface: McpSurface = "admin"
 ): Promise<void> {
   const response = await fetch(
     `${mcpApiRoot(surface)}/server/${serverId}/status?status=${status}`,
     {
       method: "PATCH",
-    },
+    }
   );
 
   if (!response.ok) {
@@ -399,7 +397,7 @@ export type MCPUserOAuthStartResponse =
     };
 
 export function getMCPUserOAuthNavigationUrl(
-  response: MCPUserOAuthStartResponse,
+  response: MCPUserOAuthStartResponse
 ): string {
   return response.status === "authorization_required"
     ? response.authorization_url
@@ -410,7 +408,7 @@ export function getMCPUserOAuthNavigationUrl(
 export async function startMCPUserOAuth(
   serverId: number,
   returnPath: string,
-  options: { forceReauthentication?: boolean } = {},
+  options: { forceReauthentication?: boolean } = {}
 ): Promise<MCPUserOAuthStartResponse> {
   const res = await fetch("/api/mcp/oauth/connect", {
     method: "POST",
@@ -424,7 +422,7 @@ export async function startMCPUserOAuth(
   });
   if (!res.ok) {
     throw new Error(
-      await parseErrorDetail(res, "Failed to start authorization"),
+      await parseErrorDetail(res, "Failed to start authorization")
     );
   }
   return res.json();
@@ -443,7 +441,7 @@ export interface MCPOAuthCallbackResponse {
  * user. The code + state are single-use — call at most once per callback. */
 export async function completeMCPUserOAuth(
   code: string,
-  state: string,
+  state: string
 ): Promise<MCPOAuthCallbackResponse> {
   const params = new URLSearchParams({ code, state });
   const res = await fetch(`/api/mcp/oauth/callback?${params.toString()}`, {
@@ -451,7 +449,7 @@ export async function completeMCPUserOAuth(
   });
   if (!res.ok) {
     throw new Error(
-      await parseErrorDetail(res, "Failed to complete authorization"),
+      await parseErrorDetail(res, "Failed to complete authorization")
     );
   }
   return res.json();
@@ -461,7 +459,7 @@ export async function completeMCPUserOAuth(
 export async function saveMCPUserCredentials(
   serverId: number,
   credentials: Record<string, string>,
-  transport: MCPTransportType = MCPTransportType.STREAMABLE_HTTP,
+  transport: MCPTransportType = MCPTransportType.STREAMABLE_HTTP
 ): Promise<void> {
   const res = await fetch("/api/mcp/user-credentials", {
     method: "POST",
@@ -553,7 +551,7 @@ type ToolUpdatePayload = {
 
 export async function updateCustomTool(
   toolId: number,
-  toolData: ToolUpdatePayload,
+  toolData: ToolUpdatePayload
 ): Promise<ApiResponse<ToolSnapshot>> {
   try {
     const response = await fetch(`/api/admin/tool/custom/${toolId}`, {
@@ -578,7 +576,7 @@ export async function updateCustomTool(
 }
 
 export async function deleteCustomTool(
-  toolId: number,
+  toolId: number
 ): Promise<ApiResponse<boolean>> {
   try {
     const response = await fetch(`/api/admin/tool/custom/${toolId}`, {

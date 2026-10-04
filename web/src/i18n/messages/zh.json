@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "禁用所有来源"
       },
-      "disableAllTools": {
-        "label": "禁用所有工具"
-      },
       "enableAllSources": {
         "label": "启用所有来源"
-      },
-      "enableAllTools": {
-        "label": "启用所有工具"
-      },
-      "integrations": {
-        "label": "连接"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "管理",
-        "searchPlaceholder": "搜索 MCP..."
       },
       "manageActions": {
         "tooltip": "选择这次对话可用的工具"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "在新标签页打开连接设置。",
-          "label": "添加新连接"
-        },
-        "askAdmin": "请管理员添加连接。",
-        "description": "可关闭这次对话中的连接，或打开后选择可用工具。",
-        "empty": "还没有连接。添加后即可在对话中使用。",
-        "label": "管理连接",
-        "title": "管理连接"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "搜索 {server} 工具"
-      },
-      "reauthenticate": {
-        "label": "重新验证"
-      },
       "search": {
         "placeholder": "搜索工具..."
-      },
-      "serverFallback": {
-        "label": "服务器"
       },
       "sourceFilters": {
         "searchPlaceholder": "搜索筛选器"
@@ -867,10 +833,6 @@
         "ariaLabel": "搜索工具",
         "placeholder": "搜索工具…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "编辑排队消息"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "API 密钥",
-        "placeholder": "输入您的 API 密钥"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "隐藏 API 密钥",
-        "showAriaLabel": "显示 API 密钥"
-      },
-      "cancelButton": {
-        "label": "取消"
-      },
-      "credentialField": {
-        "placeholder": "输入您的 {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "隐藏凭据",
-        "showAriaLabel": "显示凭据"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "输入 API 密钥"
-        },
-        "enterCredentials": {
-          "title": "输入凭据"
-        },
-        "manageApiKey": {
-          "title": "管理 API 密钥"
-        },
-        "manageCredentials": {
-          "title": "管理凭据"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "输入 {server} 的 API 密钥以启用身份验证。"
-        },
-        "enterCredentials": {
-          "text": "输入 {server} 的凭据以启用身份验证。"
-        },
-        "updateApiKey": {
-          "text": "更新 {server} 的 API 密钥。"
-        },
-        "updateCredentials": {
-          "text": "更新 {server} 的凭据。"
-        }
-      },
-      "saveApiKeyError": {
-        "message": "保存 API 密钥失败"
-      },
-      "saveCredentialsError": {
-        "message": "保存凭据失败"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "保存 API 密钥"
-        },
-        "saveCredentials": {
-          "label": "保存凭据"
-        },
-        "saving": {
-          "label": "正在保存..."
-        },
-        "updateApiKey": {
-          "label": "更新 API 密钥"
-        },
-        "updateCredentials": {
-          "label": "更新凭据"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "您的 API 密钥将由服务器验证，并安全存储。"
-        },
-        "authenticated": {
-          "text": "更改在保存前将由服务器验证。"
-        },
-        "credentials": {
-          "text": "您的凭据将由服务器验证，并安全存储。"
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "抓取",
         "agent": "子代理",
         "skill": "技能",
+        "mcp": "MCP",
         "other": "工具"
       },
       "status": {

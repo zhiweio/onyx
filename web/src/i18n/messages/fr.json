@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "Désactiver toutes les sources"
       },
-      "disableAllTools": {
-        "label": "Désactiver tous les outils"
-      },
       "enableAllSources": {
         "label": "Activer toutes les sources"
-      },
-      "enableAllTools": {
-        "label": "Activer tous les outils"
-      },
-      "integrations": {
-        "label": "Connexions"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "Gérer",
-        "searchPlaceholder": "Rechercher des MCP..."
       },
       "manageActions": {
         "tooltip": "Choisir les outils de cette conversation"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "Ouvre les paramètres de connexion dans un nouvel onglet.",
-          "label": "Ajouter une connexion"
-        },
-        "askAdmin": "Demandez à un administrateur d'ajouter une connexion.",
-        "description": "Désactivez une connexion pour cette conversation, ou ouvrez-la pour choisir ses outils.",
-        "empty": "Aucune connexion. Ajoutez-en une pour l'utiliser dans la conversation.",
-        "label": "Gérer les connexions",
-        "title": "Gérer les connexions"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "Rechercher les outils de {server}"
-      },
-      "reauthenticate": {
-        "label": "Se réauthentifier"
-      },
       "search": {
         "placeholder": "Rechercher des outils..."
-      },
-      "serverFallback": {
-        "label": "serveur"
       },
       "sourceFilters": {
         "searchPlaceholder": "Rechercher des filtres"
@@ -867,10 +833,6 @@
         "ariaLabel": "Rechercher des outils",
         "placeholder": "Rechercher des outils…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "modifier les messages en attente"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "Clé d'API",
-        "placeholder": "Saisissez votre clé d'API"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "Masquer la clé d'API",
-        "showAriaLabel": "Afficher la clé d'API"
-      },
-      "cancelButton": {
-        "label": "Annuler"
-      },
-      "credentialField": {
-        "placeholder": "Saisissez votre {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "Masquer l'identifiant",
-        "showAriaLabel": "Afficher l'identifiant"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "Saisir la clé d'API"
-        },
-        "enterCredentials": {
-          "title": "Saisir les identifiants"
-        },
-        "manageApiKey": {
-          "title": "Gérer la clé d'API"
-        },
-        "manageCredentials": {
-          "title": "Gérer les identifiants"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "Saisissez votre clé d'API pour {server} afin d'activer l'authentification."
-        },
-        "enterCredentials": {
-          "text": "Saisissez vos identifiants pour {server} afin d'activer l'authentification."
-        },
-        "updateApiKey": {
-          "text": "Mettez à jour votre clé d'API pour {server}."
-        },
-        "updateCredentials": {
-          "text": "Mettez à jour vos identifiants pour {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "Échec de l'enregistrement de la clé d'API"
-      },
-      "saveCredentialsError": {
-        "message": "Échec de l'enregistrement des identifiants"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "Enregistrer la clé d'API"
-        },
-        "saveCredentials": {
-          "label": "Enregistrer les identifiants"
-        },
-        "saving": {
-          "label": "Enregistrement..."
-        },
-        "updateApiKey": {
-          "label": "Mettre à jour la clé d'API"
-        },
-        "updateCredentials": {
-          "label": "Mettre à jour les identifiants"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "Votre clé d'API sera validée auprès du serveur et stockée de manière sécurisée."
-        },
-        "authenticated": {
-          "text": "Les modifications seront validées auprès du serveur avant d'être enregistrées."
-        },
-        "credentials": {
-          "text": "Vos identifiants seront validés auprès du serveur et stockés de manière sécurisée."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "Récupérer",
         "agent": "Agent",
         "skill": "Skill",
+        "mcp": "MCP",
         "other": "Outil"
       },
       "status": {

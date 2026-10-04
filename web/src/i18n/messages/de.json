@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "Alle Quellen deaktivieren"
       },
-      "disableAllTools": {
-        "label": "Alle Tools deaktivieren"
-      },
       "enableAllSources": {
         "label": "Alle Quellen aktivieren"
-      },
-      "enableAllTools": {
-        "label": "Alle Tools aktivieren"
-      },
-      "integrations": {
-        "label": "Verbindungen"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "Verwalten",
-        "searchPlaceholder": "MCPs suchen..."
       },
       "manageActions": {
         "tooltip": "Tools für diesen Chat wählen"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "Öffnet die Verbindungseinstellungen in einem neuen Tab.",
-          "label": "Neue Verbindung hinzufügen"
-        },
-        "askAdmin": "Bitten Sie einen Admin, eine Verbindung hinzuzufügen.",
-        "description": "Schalten Sie eine Verbindung für diesen Chat aus, oder öffnen Sie sie, um die Tools zu wählen.",
-        "empty": "Noch keine Verbindungen. Fügen Sie eine hinzu, um sie im Chat zu nutzen.",
-        "label": "Verbindungen verwalten",
-        "title": "Verbindungen verwalten"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "{server}-Tools durchsuchen"
-      },
-      "reauthenticate": {
-        "label": "Erneut authentifizieren"
-      },
       "search": {
         "placeholder": "Tools suchen..."
-      },
-      "serverFallback": {
-        "label": "Server"
       },
       "sourceFilters": {
         "searchPlaceholder": "Filter durchsuchen"
@@ -867,10 +833,6 @@
         "ariaLabel": "Tools durchsuchen",
         "placeholder": "Tools durchsuchen…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "Wartende Nachrichten bearbeiten"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "API-Schlüssel",
-        "placeholder": "Geben Sie Ihren API-Schlüssel ein"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "API-Schlüssel verbergen",
-        "showAriaLabel": "API-Schlüssel anzeigen"
-      },
-      "cancelButton": {
-        "label": "Abbrechen"
-      },
-      "credentialField": {
-        "placeholder": "Geben Sie {field} ein"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "Anmeldedaten verbergen",
-        "showAriaLabel": "Anmeldedaten anzeigen"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "API-Schlüssel eingeben"
-        },
-        "enterCredentials": {
-          "title": "Anmeldedaten eingeben"
-        },
-        "manageApiKey": {
-          "title": "API-Schlüssel verwalten"
-        },
-        "manageCredentials": {
-          "title": "Anmeldedaten verwalten"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "Geben Sie Ihren API-Schlüssel für {server} ein, um die Authentifizierung zu aktivieren."
-        },
-        "enterCredentials": {
-          "text": "Geben Sie Ihre Anmeldedaten für {server} ein, um die Authentifizierung zu aktivieren."
-        },
-        "updateApiKey": {
-          "text": "Aktualisieren Sie Ihren API-Schlüssel für {server}."
-        },
-        "updateCredentials": {
-          "text": "Aktualisieren Sie Ihre Anmeldedaten für {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "API-Schlüssel konnte nicht gespeichert werden"
-      },
-      "saveCredentialsError": {
-        "message": "Anmeldedaten konnten nicht gespeichert werden"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "API-Schlüssel speichern"
-        },
-        "saveCredentials": {
-          "label": "Anmeldedaten speichern"
-        },
-        "saving": {
-          "label": "Wird gespeichert..."
-        },
-        "updateApiKey": {
-          "label": "API-Schlüssel aktualisieren"
-        },
-        "updateCredentials": {
-          "label": "Anmeldedaten aktualisieren"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "Ihr API-Schlüssel wird beim Server validiert und sicher gespeichert."
-        },
-        "authenticated": {
-          "text": "Änderungen werden vor dem Speichern beim Server validiert."
-        },
-        "credentials": {
-          "text": "Ihre Anmeldedaten werden beim Server validiert und sicher gespeichert."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "Abrufen",
         "agent": "Agent",
         "skill": "Skill",
+        "mcp": "MCP",
         "other": "Tool"
       },
       "status": {

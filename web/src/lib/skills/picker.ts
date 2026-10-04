@@ -20,9 +20,7 @@ export interface PickerApp {
   authenticated: boolean;
 }
 
-/** A craft-enabled MCP server. Kept a distinct kind from `PickerApp` rather
- * than folded in: the two are connected differently, reach the agent by
- * different channels, and the user is told which is which. */
+/** A compact command offered by the composer's slash menu. */
 export interface PickerCommand {
   kind: "command";
   slug: string;
@@ -84,7 +82,7 @@ export function compareByName<T extends { name: string }>(a: T, b: T): number {
 // readiness as an additional runtime requirement.
 export function toPickerSections(
   skillsData: SkillsList | undefined,
-  externalApps: ExternalAppUserResponse[] | undefined,
+  externalApps: ExternalAppUserResponse[] | undefined
 ): PickerSections {
   if (!skillsData && !externalApps) return EMPTY_SECTIONS;
 
@@ -141,7 +139,7 @@ export interface SlashTrigger {
 // Trigger rules: "/" must be at start-of-text or after whitespace; the query
 // (chars between "/" and the cursor) must not contain whitespace.
 export function detectSlashTrigger(
-  textBeforeCursor: string,
+  textBeforeCursor: string
 ): SlashTrigger | null {
   const slashIndex = textBeforeCursor.lastIndexOf("/");
   if (slashIndex === -1) return null;
@@ -208,7 +206,7 @@ export const EMPTY_SLASH_SELECTION: SlashSelection = {
 };
 
 export function slashSelectionFromEntries(
-  entries: PickerEntry[],
+  entries: PickerEntry[]
 ): SlashSelection {
   const skillIds: string[] = [];
   let scenarioId: string | null = null;
@@ -225,12 +223,12 @@ export function slashSelectionFromEntries(
 
 export function pickerEntriesFromSelection(
   sections: PickerSections,
-  selection: SlashSelection,
+  selection: SlashSelection
 ): PickerEntry[] {
   const skillIds = new Set(selection.skillIds);
   return [
     ...sections.scenarios.filter(
-      (entry) => selection.scenarioId === entry.scenarioId,
+      (entry) => selection.scenarioId === entry.scenarioId
     ),
     ...sections.skills.filter((entry) => skillIds.has(entry.slug)),
   ];
@@ -254,7 +252,7 @@ export function pickerEntryPromptPrefix(entry: PickerEntry): string {
 type PickerConnectionPath = `${typeof CRAFT_APPS_PATH}?connect=${number}`;
 
 export function pickerEntryConnectionPath(
-  entry: PickerEntry,
+  entry: PickerEntry
 ): PickerConnectionPath | null {
   switch (entry.kind) {
     case "skill":
@@ -274,7 +272,7 @@ export function pickerEntryConnectionPath(
 
 export function filterPickerSections(
   sections: PickerSections,
-  query: string,
+  query: string
 ): PickerSections {
   const q = query.trim().toLowerCase();
   if (!q) return sections;
@@ -287,9 +285,8 @@ export function filterPickerSections(
   };
 }
 
-// Commands, then scenarios, then skills, then apps, then MCP servers, then
-// files; must match the popover's visual render order so keyboard nav indices
-// line up.
+// Commands, then scenarios, then skills, then apps, then files; must match
+// the popover's visual render order so keyboard nav indices line up.
 export function flattenSections(sections: PickerSections): PickerEntry[] {
   return [
     ...sections.commands,

@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "تعطيل جميع المصادر"
       },
-      "disableAllTools": {
-        "label": "تعطيل جميع الأدوات"
-      },
       "enableAllSources": {
         "label": "تمكين جميع المصادر"
-      },
-      "enableAllTools": {
-        "label": "تمكين جميع الأدوات"
-      },
-      "integrations": {
-        "label": "الاتصالات"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "إدارة",
-        "searchPlaceholder": "البحث في MCP..."
       },
       "manageActions": {
         "tooltip": "اختر أدوات هذه المحادثة"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "يفتح إعدادات الاتصال في علامة تبويب جديدة.",
-          "label": "إضافة اتصال جديد"
-        },
-        "askAdmin": "اطلب من المسؤول إضافة اتصال.",
-        "description": "أوقف اتصالًا لهذه المحادثة، أو افتحه لاختيار أدواته.",
-        "empty": "لا توجد اتصالات بعد. أضف اتصالًا لاستخدامه في المحادثة.",
-        "label": "إدارة الاتصالات",
-        "title": "إدارة الاتصالات"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "البحث في أدوات {server}"
-      },
-      "reauthenticate": {
-        "label": "إعادة المصادقة"
-      },
       "search": {
         "placeholder": "البحث عن أدوات..."
-      },
-      "serverFallback": {
-        "label": "الخادم"
       },
       "sourceFilters": {
         "searchPlaceholder": "البحث في عوامل التصفية"
@@ -867,10 +833,6 @@
         "ariaLabel": "البحث في الأدوات",
         "placeholder": "البحث في الأدوات…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "لتحرير الرسائل في قائمة الانتظار"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "مفتاح API",
-        "placeholder": "أدخل مفتاح API الخاص بك"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "إخفاء مفتاح API",
-        "showAriaLabel": "إظهار مفتاح API"
-      },
-      "cancelButton": {
-        "label": "إلغاء"
-      },
-      "credentialField": {
-        "placeholder": "أدخل {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "إخفاء بيانات الاعتماد",
-        "showAriaLabel": "إظهار بيانات الاعتماد"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "إدخال مفتاح API"
-        },
-        "enterCredentials": {
-          "title": "إدخال بيانات الاعتماد"
-        },
-        "manageApiKey": {
-          "title": "إدارة مفتاح API"
-        },
-        "manageCredentials": {
-          "title": "إدارة بيانات الاعتماد"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "أدخل مفتاح API الخاص بك لـ {server} لتفعيل المصادقة."
-        },
-        "enterCredentials": {
-          "text": "أدخل بيانات الاعتماد الخاصة بك لـ {server} لتفعيل المصادقة."
-        },
-        "updateApiKey": {
-          "text": "حدّث مفتاح API الخاص بك لـ {server}."
-        },
-        "updateCredentials": {
-          "text": "حدّث بيانات الاعتماد الخاصة بك لـ {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "فشل حفظ مفتاح API"
-      },
-      "saveCredentialsError": {
-        "message": "فشل حفظ بيانات الاعتماد"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "حفظ مفتاح API"
-        },
-        "saveCredentials": {
-          "label": "حفظ بيانات الاعتماد"
-        },
-        "saving": {
-          "label": "جارٍ الحفظ..."
-        },
-        "updateApiKey": {
-          "label": "تحديث مفتاح API"
-        },
-        "updateCredentials": {
-          "label": "تحديث بيانات الاعتماد"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "سيتم التحقق من مفتاح API لدى الخادم وتخزينه بأمان."
-        },
-        "authenticated": {
-          "text": "سيتم التحقق من التغييرات لدى الخادم قبل حفظها."
-        },
-        "credentials": {
-          "text": "سيتم التحقق من بيانات الاعتماد لدى الخادم وتخزينها بأمان."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "جلب",
         "agent": "وكيل",
         "skill": "مهارة",
+        "mcp": "MCP",
         "other": "أداة"
       },
       "status": {

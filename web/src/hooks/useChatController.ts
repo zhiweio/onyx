@@ -166,46 +166,46 @@ export default function useChatController({
 
   // Use selectors to access only the specific fields we need
   const currentSessionId = useChatSessionStore(
-    (state) => state.currentSessionId,
+    (state) => state.currentSessionId
   );
   const sessions = useChatSessionStore((state) => state.sessions);
 
   // Store actions - these don't cause re-renders
   const updateChatStateAction = useChatSessionStore(
-    (state) => state.updateChatState,
+    (state) => state.updateChatState
   );
   const setLatestMessageRenderComplete = useChatSessionStore(
-    (state) => state.setLatestMessageRenderComplete,
+    (state) => state.setLatestMessageRenderComplete
   );
   const updateRegenerationStateAction = useChatSessionStore(
-    (state) => state.updateRegenerationState,
+    (state) => state.updateRegenerationState
   );
   const updateCanContinueAction = useChatSessionStore(
-    (state) => state.updateCanContinue,
+    (state) => state.updateCanContinue
   );
   const createSession = useChatSessionStore((state) => state.createSession);
   const setCurrentSession = useChatSessionStore(
-    (state) => state.setCurrentSession,
+    (state) => state.setCurrentSession
   );
   const updateSessionMessageTree = useChatSessionStore(
-    (state) => state.updateSessionMessageTree,
+    (state) => state.updateSessionMessageTree
   );
   const updateSubmittedMessage = useChatSessionStore(
-    (state) => state.updateSubmittedMessage,
+    (state) => state.updateSubmittedMessage
   );
   const updateSelectedNodeForDocDisplay = useChatSessionStore(
-    (state) => state.updateSelectedNodeForDocDisplay,
+    (state) => state.updateSelectedNodeForDocDisplay
   );
   const setUncaughtError = useChatSessionStore(
-    (state) => state.setUncaughtError,
+    (state) => state.setUncaughtError
   );
   const setLoadingError = useChatSessionStore((state) => state.setLoadingError);
   const setAbortController = useChatSessionStore(
-    (state) => state.setAbortController,
+    (state) => state.setAbortController
   );
   const setIsReady = useChatSessionStore((state) => state.setIsReady);
   const setStreamingStartTime = useChatSessionStore(
-    (state) => state.setStreamingStartTime,
+    (state) => state.setStreamingStartTime
   );
 
   // Use custom hooks for accessing store data
@@ -228,7 +228,7 @@ export default function useChatController({
 
   const updateRegenerationState = (
     newState: RegenerationState | null,
-    sessionId?: string | null,
+    sessionId?: string | null
   ) => {
     const targetSessionId = sessionId || getCurrentSessionId();
     if (targetSessionId) {
@@ -249,7 +249,7 @@ export default function useChatController({
 
   const updateStatesWithNewSessionId = (
     newSessionId: string,
-    incognito = false,
+    incognito = false
   ) => {
     // Create new session in store if it doesn't exist
     const existingSession = sessions.get(newSessionId);
@@ -270,7 +270,7 @@ export default function useChatController({
       chatSessionId,
       null,
       false,
-      true, // skipReload
+      true // skipReload
     );
 
     // Navigate immediately if still on chat page
@@ -341,7 +341,7 @@ export default function useChatController({
     const newCompleteMessageTree = upsertMessages(
       currentMessageTreeToUse,
       messages,
-      makeLatestChildMessage,
+      makeLatestChildMessage
     );
 
     updateSessionMessageTree(chatSessionId, newCompleteMessageTree);
@@ -440,7 +440,7 @@ export default function useChatController({
       const errorTurnHasUsableSibling = errorTurnUserMsg
         ? (getMultiModelChildren(
             errorTurnUserMsg,
-            currentMessageTreeLocal,
+            currentMessageTreeLocal
           )?.some((m) => m.type === "assistant" && m.messageId != null) ??
           false)
         : false;
@@ -471,7 +471,7 @@ export default function useChatController({
                 const updatedGrandparent = {
                   ...grandparent,
                   childrenNodeIds: (grandparent.childrenNodeIds || []).filter(
-                    (id: number) => id !== parentNodeId,
+                    (id: number) => id !== parentNodeId
                   ),
                   latestChildNodeId:
                     grandparent.latestChildNodeId === parentNodeId
@@ -489,7 +489,7 @@ export default function useChatController({
         updateSessionMessageTree(frozenSessionId, newMessageTree);
         console.log(
           "Removed previous error message ID:",
-          lastMessage.messageId,
+          lastMessage.messageId
         );
 
         // update state for the new world (with the error message removed)
@@ -511,7 +511,7 @@ export default function useChatController({
       // Auto-pin the agent to sidebar when sending a message if not already pinned
       if (activeAgent) {
         const isAlreadyPinned = pinnedAgents.some(
-          (agent) => agent.id === activeAgent.id,
+          (agent) => agent.id === activeAgent.id
         );
         if (!isAlreadyPinned) {
           togglePinnedAgent(activeAgent, true).catch((err) => {
@@ -531,7 +531,7 @@ export default function useChatController({
       // Auto-name only once, after the first agent response, and only when the chat isn't
       // already explicitly named (e.g. `?title=...`).
       const hadAnyUserMessagesBeforeSubmit = currentHistory.some(
-        (m) => m.type === "user",
+        (m) => m.type === "user"
       );
       if (isNewSession) {
         // There is no incognito agent chat, so incognito pins the default
@@ -541,7 +541,7 @@ export default function useChatController({
           searchParamBasedChatSessionName,
           projectId ? parseInt(projectId) : null,
           incognito,
-          incognito ? incognitoSessionId : null,
+          incognito ? incognitoSessionId : null
         );
 
         // This send is what created the chat, so the configuration chosen for
@@ -586,8 +586,8 @@ export default function useChatController({
           finalLLM.name || "",
           finalLLM.provider || "",
           finalLLM.modelName || "",
-          finalLLM.modelConfigurationId,
-        ),
+          finalLLM.modelConfigurationId
+        )
       );
 
       // mark the session as the current session
@@ -608,12 +608,12 @@ export default function useChatController({
       setAbortController(currChatSessionId, controller);
 
       const messageToResend = currentHistory.find(
-        (message) => message.messageId === messageIdToResend,
+        (message) => message.messageId === messageIdToResend
       );
       if (messageIdToResend && regenerationRequest) {
         updateRegenerationState(
           { regenerating: true, finalMessageIndex: messageIdToResend + 1 },
-          frozenSessionId,
+          frozenSessionId
         );
       }
       const messageToResendParent =
@@ -627,7 +627,7 @@ export default function useChatController({
 
       if (!messageToResend && messageIdToResend !== undefined) {
         toast.error(
-          "Failed to re-send message - please refresh the page and try again.",
+          "Failed to re-send message - please refresh the page and try again."
         );
         resetRegenerationState(frozenSessionId);
         updateChatStateAction(frozenSessionId, "input");
@@ -668,14 +668,14 @@ export default function useChatController({
       if (!regenerationRequest && !messageToResend) {
         const unresolvedTurn = getUnresolvedMultiModelTurn(
           currentHistory,
-          currentMessageTreeLocal,
+          currentMessageTreeLocal
         );
         const chosen = unresolvedTurn
           ? chooseImplicitPreferred(
               currentHistory,
               currentMessageTreeLocal,
               unresolvedTurn,
-              getMostVisibleResponseId(unresolvedTurn.userMessage.nodeId),
+              getMostVisibleResponseId(unresolvedTurn.userMessage.nodeId)
             )
           : null;
         if (
@@ -693,7 +693,7 @@ export default function useChatController({
             message: chosen,
             persist: setPreferredResponse(
               unresolvedTurn.userMessage.messageId,
-              chosen.messageId,
+              chosen.messageId
             ).catch(() => null),
             revert: () => {
               // A newer explicit pick may have replaced the assumption while
@@ -711,13 +711,13 @@ export default function useChatController({
               const reverted = applyPreferredResponse(
                 currentMessageTreeLocal,
                 originalUserMessage.nodeId,
-                null,
+                null
               );
               if (!reverted) return;
               currentMessageTreeLocal = reverted;
               updateSessionMessageTree(
                 frozenSessionId,
-                currentMessageTreeLocal,
+                currentMessageTreeLocal
               );
             },
           };
@@ -725,7 +725,7 @@ export default function useChatController({
             applyPreferredResponse(
               currentMessageTreeLocal,
               originalUserMessage.nodeId,
-              chosen,
+              chosen
             ) ?? currentMessageTreeLocal;
         }
       }
@@ -763,7 +763,7 @@ export default function useChatController({
           parentNodeIdForMessage,
           currMessage,
           effectiveFileDescriptors,
-          messageToResend,
+          messageToResend
         );
         initialUserNode = result.initialUserNode;
         initialAgentNode = result.initialAgentNode;
@@ -858,7 +858,7 @@ export default function useChatController({
       /** Build a non-errored multi-model assistant node for upsert. */
       function buildAssistantNodeUpdate(
         idx: number,
-        overrides?: Partial<Message>,
+        overrides?: Partial<Message>
       ): Message {
         return {
           ...initialAssistantNodes[idx]!,
@@ -888,7 +888,7 @@ export default function useChatController({
        *  siblings keep their stable Message ref so React memo short-circuits. */
       function buildNonErroredNodes(
         overrides?: Partial<Message>,
-        onlyDirty?: Set<number> | null,
+        onlyDirty?: Set<number> | null
       ): Message[] {
         const nodes: Message[] = [];
         for (let idx = 0; idx < initialAssistantNodes.length; idx++) {
@@ -1019,18 +1019,18 @@ export default function useChatController({
             implicitPreference.revert();
             const data = res ? await res.json().catch(() => ({})) : {};
             throw new Error(
-              data.detail ?? "Failed to set the preferred response",
+              data.detail ?? "Failed to set the preferred response"
             );
           }
         }
 
         const lastSuccessfulMessageId = getLastSuccessfulMessageId(
-          currentMessageTreeLocal,
+          currentMessageTreeLocal
         );
 
         // Find the search tool's numeric ID for forceSearch
         const searchToolNumericId = activeAgent?.tools.find(
-          (tool) => tool.in_code_tool_id === SEARCH_TOOL_ID,
+          (tool) => tool.in_code_tool_id === SEARCH_TOOL_ID
         )?.id;
 
         // The tool this message is made to use: the search tool when the
@@ -1074,7 +1074,7 @@ export default function useChatController({
             searchFilters.selectedSources,
             searchFilters.selectedDocumentSets,
             searchFilters.timeRange,
-            searchFilters.selectedTags,
+            searchFilters.selectedTags
           ),
           modelProvider: isMultiModel
             ? undefined
@@ -1100,15 +1100,27 @@ export default function useChatController({
           // explicit list is a whitelist, and this one is built from the tools
           // the frontend can see — which excludes those marked
           // `expose_to_frontend=False`. Sending it always would quietly
-          // withhold tools nobody chose to disable.
+          // withhold tools nobody chose to disable. MCP tool ids are dropped
+          // from the disabled set: per-chat MCP toggling is gone, and stale
+          // sessionStorage from before that must not keep filtering them.
           enabledToolIds:
             activeAgent && toolConfiguration.disabledToolIds.length > 0
-              ? activeAgent.tools
-                  .filter(
-                    (tool) =>
-                      !toolConfiguration.disabledToolIds.includes(tool.id),
-                  )
-                  .map((tool) => tool.id)
+              ? (() => {
+                  const mcpToolIds = new Set(
+                    activeAgent.tools
+                      .filter((tool) => tool.mcp_server_id != null)
+                      .map((tool) => tool.id)
+                  );
+                  const disabledBuiltInIds =
+                    toolConfiguration.disabledToolIds.filter(
+                      (id) => !mcpToolIds.has(id)
+                    );
+                  return disabledBuiltInIds.length > 0
+                    ? activeAgent.tools
+                        .filter((tool) => !disabledBuiltInIds.includes(tool.id))
+                        .map((tool) => tool.id)
+                    : undefined;
+                })()
               : undefined,
           forcedToolId: effectiveForcedToolId,
           origin: messageOrigin,
@@ -1186,7 +1198,7 @@ export default function useChatController({
               isMultiModel &&
               Object.hasOwn(packet, "responses") &&
               Array.isArray(
-                (packet as MultiModelMessageResponseIDInfo).responses,
+                (packet as MultiModelMessageResponseIDInfo).responses
               )
             ) {
               const multiPacket = packet as MultiModelMessageResponseIDInfo;
@@ -1209,7 +1221,7 @@ export default function useChatController({
               // Ensure files are unique by id
               const newUserFiles = userFiles.filter(
                 (newFile) =>
-                  !files.some((existingFile) => existingFile.id === newFile.id),
+                  !files.some((existingFile) => existingFile.id === newFile.id)
               );
               files = files.concat(newUserFiles);
               if (newUserFiles.length > 0) userNodeDirty = true;
@@ -1222,7 +1234,7 @@ export default function useChatController({
                     id: fileId,
                     type: ChatFileType.IMAGE,
                   };
-                },
+                }
               );
             } else if (
               Object.hasOwn(packet, "error") &&
@@ -1278,7 +1290,7 @@ export default function useChatController({
                   // stays alive for other models.
                   console.warn(
                     "Multi-model error without model_index:",
-                    streamingError.error,
+                    streamingError.error
                   );
                 }
                 continue;
@@ -1368,7 +1380,7 @@ export default function useChatController({
                       if (modelIndex === 0 && initialAssistantNodes[0]) {
                         updateSelectedNodeForDocDisplay(
                           frozenSessionId,
-                          initialAssistantNodes[0].nodeId,
+                          initialAssistantNodes[0].nodeId
                         );
                       }
                     }
@@ -1396,7 +1408,7 @@ export default function useChatController({
                     documents = messageStart.final_documents;
                     updateSelectedNodeForDocDisplay(
                       frozenSessionId,
-                      initialAgentNode.nodeId,
+                      initialAgentNode.nodeId
                     );
                   }
                 }
@@ -1528,7 +1540,7 @@ export default function useChatController({
       // For auto-pinning agents
       pinnedAgents,
       togglePinnedAgent,
-    ],
+    ]
   );
 
   const handleMessageSpecificFileUpload = useCallback(
@@ -1536,32 +1548,32 @@ export default function useChatController({
       const [_, llmModel] = getFinalLLM(
         llmManager.llmProviders || [],
         activeAgent || null,
-        llmManager.currentLlm,
+        llmManager.currentLlm
       );
       const llmAcceptsImages = modelSupportsImageInput(
         llmManager.llmProviders || [],
-        llmModel,
+        llmModel
       );
 
       const imageFiles = acceptedFiles.filter((file) =>
-        file.type.startsWith("image/"),
+        file.type.startsWith("image/")
       );
 
       if (imageFiles.length > 0 && !llmAcceptsImages) {
         toast.error(
-          "The current model does not support image input. Please select a model with Vision support.",
+          "The current model does not support image input. Please select a model with Vision support."
         );
         return;
       }
       updateChatStateAction(getCurrentSessionId(), "uploading");
       const uploadedMessageFiles = await beginUpload(
         Array.from(acceptedFiles),
-        null,
+        null
       );
       setCurrentMessageFiles((prev) => [...prev, ...uploadedMessageFiles]);
       updateChatStateAction(getCurrentSessionId(), "input");
     },
-    [activeAgent, llmManager, toolConfiguration],
+    [activeAgent, llmManager, toolConfiguration]
   );
 
   useEffect(() => {
@@ -1619,7 +1631,7 @@ export default function useChatController({
   // document tokens. The backend already accounts for system prompt, tools,
   // and user-message reservations.
   const [availableContextTokens, setAvailableContextTokens] = useState<number>(
-    DEFAULT_CONTEXT_TOKENS,
+    DEFAULT_CONTEXT_TOKENS
   );
 
   useEffect(() => {
@@ -1641,7 +1653,7 @@ export default function useChatController({
         if (sessionId) {
           const available = await getAvailableContextTokens(
             sessionId,
-            llmManager.currentLlm.modelConfigurationId,
+            llmManager.currentLlm.modelConfigurationId
           );
           setIfActive(available ?? DEFAULT_CONTEXT_TOKENS);
           return;
@@ -1678,7 +1690,7 @@ export default function useChatController({
     return currentMessageHistory
       .filter((message) => message.type === "user")
       .some((message) =>
-        message.files.some((file) => file.type === ChatFileType.IMAGE),
+        message.files.some((file) => file.type === ChatFileType.IMAGE)
       );
   }, [currentMessageHistory]);
 

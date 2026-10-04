@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "Desativar todas as fontes"
       },
-      "disableAllTools": {
-        "label": "Desativar todas as ferramentas"
-      },
       "enableAllSources": {
         "label": "Ativar todas as fontes"
-      },
-      "enableAllTools": {
-        "label": "Ativar todas as ferramentas"
-      },
-      "integrations": {
-        "label": "Conexões"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "Gerenciar",
-        "searchPlaceholder": "Pesquisar MCPs..."
       },
       "manageActions": {
         "tooltip": "Escolher ferramentas para este chat"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "Abre as configurações de conexão em uma nova aba.",
-          "label": "Adicionar conexão"
-        },
-        "askAdmin": "Peça a um administrador para adicionar uma conexão.",
-        "description": "Desative uma conexão neste chat ou abra-a para escolher as ferramentas.",
-        "empty": "Ainda não há conexões. Adicione uma para usar no chat.",
-        "label": "Gerenciar conexões",
-        "title": "Gerenciar conexões"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "Pesquisar ferramentas de {server}"
-      },
-      "reauthenticate": {
-        "label": "Autenticar novamente"
-      },
       "search": {
         "placeholder": "Pesquisar ferramentas..."
-      },
-      "serverFallback": {
-        "label": "servidor"
       },
       "sourceFilters": {
         "searchPlaceholder": "Pesquisar filtros"
@@ -867,10 +833,6 @@
         "ariaLabel": "Pesquisar ferramentas",
         "placeholder": "Pesquisar ferramentas…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "editar mensagens na fila"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "Chave de API",
-        "placeholder": "Insira sua chave de API"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "Ocultar chave de API",
-        "showAriaLabel": "Mostrar chave de API"
-      },
-      "cancelButton": {
-        "label": "Cancelar"
-      },
-      "credentialField": {
-        "placeholder": "Insira seu {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "Ocultar credencial",
-        "showAriaLabel": "Mostrar credencial"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "Inserir chave de API"
-        },
-        "enterCredentials": {
-          "title": "Inserir credenciais"
-        },
-        "manageApiKey": {
-          "title": "Gerenciar chave de API"
-        },
-        "manageCredentials": {
-          "title": "Gerenciar credenciais"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "Insira sua chave de API para {server} para habilitar a autenticação."
-        },
-        "enterCredentials": {
-          "text": "Insira suas credenciais para {server} para habilitar a autenticação."
-        },
-        "updateApiKey": {
-          "text": "Atualize sua chave de API para {server}."
-        },
-        "updateCredentials": {
-          "text": "Atualize suas credenciais para {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "Falha ao salvar a chave de API"
-      },
-      "saveCredentialsError": {
-        "message": "Falha ao salvar as credenciais"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "Salvar chave de API"
-        },
-        "saveCredentials": {
-          "label": "Salvar credenciais"
-        },
-        "saving": {
-          "label": "Salvando..."
-        },
-        "updateApiKey": {
-          "label": "Atualizar chave de API"
-        },
-        "updateCredentials": {
-          "label": "Atualizar credenciais"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "Sua chave de API será validada no servidor e armazenada com segurança."
-        },
-        "authenticated": {
-          "text": "As alterações serão validadas no servidor antes de serem salvas."
-        },
-        "credentials": {
-          "text": "Suas credenciais serão validadas no servidor e armazenadas com segurança."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "Obter",
         "agent": "Agente",
         "skill": "Skill",
+        "mcp": "MCP",
         "other": "Ferramenta"
       },
       "status": {

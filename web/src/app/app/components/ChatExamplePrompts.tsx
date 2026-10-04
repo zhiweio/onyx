@@ -16,7 +16,6 @@ import {
 import { resolveToolHints } from "@/lib/skills/toolHints";
 import useUserSkills from "@/hooks/useUserSkills";
 import useUserExternalApps from "@/hooks/useUserExternalApps";
-import { useMcpServers } from "@/lib/tools/hooks";
 
 /** Chips shown under the main chat input: the financeTax examples first,
  * then the opening prompt of each remaining domain. */
@@ -62,7 +61,7 @@ export default function ChatExamplePrompts({
 
   const sections = useMemo(
     () => toPickerSections(skillsData, appsData),
-    [skillsData, appsData],
+    [skillsData, appsData]
   );
 
   const examples = useMemo(
@@ -84,7 +83,7 @@ export default function ChatExamplePrompts({
           webSearch: resolved.useWebSearch,
         };
       }),
-    [t, sections],
+    [t, sections]
   );
 
   if (examples.length === 0) {
@@ -107,7 +106,7 @@ export default function ChatExamplePrompts({
           className={cn(
             "inline-flex items-center rounded-12 px-3 py-1.5 cursor-pointer transition-colors",
             "text-text-03 hover:bg-background-tint-02 hover:text-text-04",
-            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-action-selection-01 focus-visible:ring-offset-2",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-action-selection-01 focus-visible:ring-offset-2"
           )}
         >
           <Text font="main-ui-body" color="inherit">

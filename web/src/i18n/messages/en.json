@@ -455,10 +455,6 @@
         "ariaLabel": "Toggle server for your sessions"
       }
     },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
-    },
     "mcpOauthCallback": {
       "autoRedirect": {
         "text": "Taking you back automatically…"
@@ -790,48 +786,14 @@
       "disableAllSources": {
         "label": "Disable All Sources"
       },
-      "disableAllTools": {
-        "label": "Disable All Tools"
-      },
       "enableAllSources": {
         "label": "Enable All Sources"
-      },
-      "enableAllTools": {
-        "label": "Enable All Tools"
-      },
-      "integrations": {
-        "label": "Connections"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "Manage",
-        "searchPlaceholder": "Search MCPs..."
       },
       "manageActions": {
         "tooltip": "Choose tools for this chat"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "Opens connection settings in a new tab.",
-          "label": "Add a connection"
-        },
-        "askAdmin": "Ask an admin to add a connection.",
-        "description": "Turn a connection off for this chat, or open it to choose which tools it can use.",
-        "empty": "No connections yet. Add one to use it in chat.",
-        "label": "Manage connections",
-        "title": "Manage connections"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "Search {server} tools"
-      },
-      "reauthenticate": {
-        "label": "Re-authenticate"
-      },
       "search": {
         "placeholder": "Search tools..."
-      },
-      "serverFallback": {
-        "label": "server"
       },
       "sourceFilters": {
         "searchPlaceholder": "Search Filters"
@@ -10127,88 +10089,6 @@
         "text": "to edit queued messages"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "API Key",
-        "placeholder": "Enter your API Key"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "Hide API key",
-        "showAriaLabel": "Show API key"
-      },
-      "cancelButton": {
-        "label": "Cancel"
-      },
-      "credentialField": {
-        "placeholder": "Enter your {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "Hide credential",
-        "showAriaLabel": "Show credential"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "Enter API Key"
-        },
-        "enterCredentials": {
-          "title": "Enter Credentials"
-        },
-        "manageApiKey": {
-          "title": "Manage API Key"
-        },
-        "manageCredentials": {
-          "title": "Manage Credentials"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "Enter your API Key for {server} to enable authentication."
-        },
-        "enterCredentials": {
-          "text": "Enter your Credentials for {server} to enable authentication."
-        },
-        "updateApiKey": {
-          "text": "Update your API Key for {server}."
-        },
-        "updateCredentials": {
-          "text": "Update your Credentials for {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "Failed to save API key"
-      },
-      "saveCredentialsError": {
-        "message": "Failed to save credentials"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "Save API Key"
-        },
-        "saveCredentials": {
-          "label": "Save Credentials"
-        },
-        "saving": {
-          "label": "Saving..."
-        },
-        "updateApiKey": {
-          "label": "Update API Key"
-        },
-        "updateCredentials": {
-          "label": "Update Credentials"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "Your API Key will be validated against the server and stored securely."
-        },
-        "authenticated": {
-          "text": "Changes will be validated against the server before being saved."
-        },
-        "credentials": {
-          "text": "Your Credentials will be validated against the server and stored securely."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12609,6 +12489,7 @@
         "fetch": "Fetch",
         "agent": "Agent",
         "skill": "Skill",
+        "mcp": "MCP",
         "other": "Tool"
       },
       "status": {

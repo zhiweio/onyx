@@ -54,15 +54,15 @@ export function useMcpServers() {
  * Every configured MCP server, from the admin endpoint. Use this only on admin
  * surfaces; {@link useMcpServers} is what user-facing UI should read.
  */
-export function useAdminMcpServers() {
+export function useAdminMcpServers(enabled = true) {
   const {
     data: mcpData,
     error,
     isLoading,
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
-    SWR_KEYS.adminMcpServers,
-    errorHandlingFetcher,
+    enabled ? SWR_KEYS.adminMcpServers : null,
+    errorHandlingFetcher
   );
 
   return {
@@ -73,15 +73,15 @@ export function useAdminMcpServers() {
   };
 }
 
-export function usePersonalMcpServers() {
+export function usePersonalMcpServers(enabled = true) {
   const {
     data: mcpData,
     error,
     isLoading,
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
-    SWR_KEYS.personalMcpServers,
-    errorHandlingFetcher,
+    enabled ? SWR_KEYS.personalMcpServers : null,
+    errorHandlingFetcher
   );
 
   return {
@@ -95,15 +95,15 @@ export function usePersonalMcpServers() {
 /**
  * Organization MCP servers this user can use. Personal servers stay on Mine.
  */
-export function useGalleryMcpServers() {
+export function useGalleryMcpServers(enabled = true) {
   const {
     data: mcpData,
     error,
     isLoading,
     mutate: mutateMcpServers,
   } = useSWR<MCPServersResponse>(
-    SWR_KEYS.mcpServersGallery,
-    errorHandlingFetcher,
+    enabled ? SWR_KEYS.mcpServersGallery : null,
+    errorHandlingFetcher
   );
 
   return {
@@ -128,7 +128,7 @@ export function useMcpServersForAgent(agentId: number | undefined) {
     isLoading: attachedIsLoading,
   } = useSWR<MCPServersResponse>(
     agentId ? SWR_KEYS.agentMcpServers(agentId) : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
 
   const mcpServers = useMemo<AgentEditorMCPServer[]>(() => {
@@ -160,7 +160,7 @@ export function useCraftMcpServers(enabled: boolean = true) {
     errorHandlingFetcher,
     // The Apps page re-reads this after every connect/disconnect; holding the
     // previous list keeps the tab from flashing empty on revalidation.
-    { keepPreviousData: true },
+    { keepPreviousData: true }
   );
 
   const refresh = () => mutate(SWR_KEYS.mcpServersCraft);
@@ -194,7 +194,7 @@ export function useAvailableTools() {
       revalidateOnFocus: false,
       revalidateIfStale: false,
       dedupingInterval: 60000,
-    },
+    }
   );
 
   return {
@@ -243,7 +243,7 @@ function isChatKey(key: string): boolean {
 function withToolState(
   configuration: ToolConfiguration,
   toolId: number,
-  change: (current: ToolState | null) => ToolState | null,
+  change: (current: ToolState | null) => ToolState | null
 ): ToolConfiguration {
   const next = change(configuration[toolId] ?? null);
 
@@ -363,7 +363,7 @@ export interface ToolConfigurationHandle {
    */
   setToolState: (
     toolId: number,
-    change: (current: ToolState | null) => ToolState | null,
+    change: (current: ToolState | null) => ToolState | null
   ) => void;
 
   /**
@@ -401,12 +401,6 @@ export interface ToolConfigurationHandle {
    * Leaves the configuration where that page will find it, once.
    */
   handOffToNewChatWith: (agentId: number) => void;
-
-  /**
-   * MCP servers this user turned on for this chat. Empty means every server
-   * is off. The send path attaches these for the turn; they are not written
-   * onto a shared persona.
-   */
 }
 
 /**
@@ -431,7 +425,7 @@ export interface ToolConfigurationHandle {
  * overwrites something real.
  */
 export function useToolConfiguration(
-  newChatWithAgentId?: number,
+  newChatWithAgentId?: number
 ): ToolConfigurationHandle {
   const appPosition = useAppPosition();
   const activeAgent = useActiveAgent();
@@ -497,7 +491,7 @@ export function useToolConfiguration(
   const setToolState = useCallback(
     (
       toolId: number,
-      change: (current: ToolState | null) => ToolState | null,
+      change: (current: ToolState | null) => ToolState | null
     ) => {
       if (key === null) return;
       setEntry((previous) => {
@@ -510,7 +504,7 @@ export function useToolConfiguration(
         return { key, configuration };
       });
     },
-    [key],
+    [key]
   );
 
   // Both land before the position that follows reaches this hook, so the key
@@ -519,7 +513,7 @@ export function useToolConfiguration(
     (chatSessionId: string) => {
       writeConfiguration(chatKey(chatSessionId), configuration);
     },
-    [configuration],
+    [configuration]
   );
 
   const handOffToNewChatWith = useCallback(
@@ -527,7 +521,7 @@ export function useToolConfiguration(
       const nextKey = `${STORAGE_PREFIX}:new:${agentId}`;
       writeConfiguration(nextKey, configuration);
     },
-    [configuration],
+    [configuration]
   );
 
   return useMemo(() => {
@@ -544,7 +538,7 @@ export function useToolConfiguration(
       },
       forcedToolId,
       disabledToolIds: ids.filter(
-        (toolId) => configuration[toolId] === "disabled",
+        (toolId) => configuration[toolId] === "disabled"
       ),
       handOffTo,
       handOffToNewChatWith,
@@ -577,6 +571,6 @@ export function useBuiltInToolNames(): Record<string, string> {
       [MEMORY_TOOL_ID]: t("toolNames.addMemory.label"),
       [CODING_AGENT_TOOL_ID]: t("toolNames.codingAgent.label"),
     }),
-    [t],
+    [t]
   );
 }

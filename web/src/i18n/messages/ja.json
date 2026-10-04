@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "すべてのソースを無効にする"
       },
-      "disableAllTools": {
-        "label": "すべてのツールを無効にする"
-      },
       "enableAllSources": {
         "label": "すべてのソースを有効にする"
-      },
-      "enableAllTools": {
-        "label": "すべてのツールを有効にする"
-      },
-      "integrations": {
-        "label": "接続"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "管理",
-        "searchPlaceholder": "MCP を検索..."
       },
       "manageActions": {
         "tooltip": "このチャットで使うツールを選ぶ"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "接続設定を新しいタブで開きます。",
-          "label": "新しい接続を追加"
-        },
-        "askAdmin": "管理者に接続の追加を依頼してください。",
-        "description": "このチャットで接続をオフにするか、開いて使うツールを選べます。",
-        "empty": "接続はまだありません。追加するとチャットで使えます。",
-        "label": "接続を管理",
-        "title": "接続を管理"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "{server} のツールを検索"
-      },
-      "reauthenticate": {
-        "label": "再認証"
-      },
       "search": {
         "placeholder": "ツールを検索..."
-      },
-      "serverFallback": {
-        "label": "サーバー"
       },
       "sourceFilters": {
         "searchPlaceholder": "フィルターを検索"
@@ -867,10 +833,6 @@
         "ariaLabel": "ツールを検索",
         "placeholder": "ツールを検索…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "予約メッセージを編集"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "API キー",
-        "placeholder": "API キーを入力"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "API キーを非表示",
-        "showAriaLabel": "API キーを表示"
-      },
-      "cancelButton": {
-        "label": "キャンセル"
-      },
-      "credentialField": {
-        "placeholder": "{field} を入力"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "認証情報を非表示",
-        "showAriaLabel": "認証情報を表示"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "API キーの入力"
-        },
-        "enterCredentials": {
-          "title": "認証情報の入力"
-        },
-        "manageApiKey": {
-          "title": "API キーの管理"
-        },
-        "manageCredentials": {
-          "title": "認証情報の管理"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "認証を有効にするには、{server} の API キーを入力してください。"
-        },
-        "enterCredentials": {
-          "text": "認証を有効にするには、{server} の認証情報を入力してください。"
-        },
-        "updateApiKey": {
-          "text": "{server} の API キーを更新してください。"
-        },
-        "updateCredentials": {
-          "text": "{server} の認証情報を更新してください。"
-        }
-      },
-      "saveApiKeyError": {
-        "message": "API キーを保存できませんでした"
-      },
-      "saveCredentialsError": {
-        "message": "認証情報を保存できませんでした"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "API キーを保存"
-        },
-        "saveCredentials": {
-          "label": "認証情報を保存"
-        },
-        "saving": {
-          "label": "保存中..."
-        },
-        "updateApiKey": {
-          "label": "API キーを更新"
-        },
-        "updateCredentials": {
-          "label": "認証情報を更新"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "API キーはサーバーで検証され、安全に保管されます。"
-        },
-        "authenticated": {
-          "text": "変更は保存前にサーバーで検証されます。"
-        },
-        "credentials": {
-          "text": "認証情報はサーバーで検証され、安全に保管されます。"
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "取得",
         "agent": "エージェント",
         "skill": "スキル",
+        "mcp": "MCP",
         "other": "ツール"
       },
       "status": {

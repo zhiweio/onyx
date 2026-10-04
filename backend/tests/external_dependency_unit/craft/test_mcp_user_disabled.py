@@ -5,9 +5,10 @@ Covers the single enable/disable surface (/craft/v1/mcp-actions):
   via the executor's None allowlist) excludes user-disabled servers;
 - chat tool building (resolve_effective_mcp_server_ids) defaults to the
   user-enabled set when no explicit selection is sent;
-- the enabled PATCH writes/clears the opt-out row and hot-reloads the user's
-  craft sandbox config hash;
-- the personal listing reports user_enabled per server.
+- the enabled PATCH (PATCH /mcp/server/{id}/enabled) writes/clears the
+  opt-out row for the calling user only and hot-reloads their craft sandbox
+  config hash;
+- the personal and gallery listings report user_enabled per server.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from onyx.db.enums import MCPServerScope
 from onyx.db.mcp import (
     get_craft_enabled_mcp_servers,
     get_user_disabled_mcp_server_ids,
+    user_can_access_mcp_server,
 )
 from onyx.db.models import MCPServer, MCPServer__UserDisabled, User
 from onyx.skills.effective_mcp import resolve_effective_mcp_server_ids
@@ -112,3 +114,34 @@ def test_chat_default_set_excludes_disabled_servers(
 
     default_ids = resolve_effective_mcp_server_ids(db_session, test_user)
     assert org_server.id not in default_ids
+
+
+def test_access_gate_covers_org_and_personal_servers(
+    db_session: Session,
+    test_user: User,
+    org_server: MCPServer,
+) -> None:
+    """The unified enabled PATCH gates on `user_can_access_mcp_server`:
+    org servers by their sharing settings, personal servers by ownership."""
+    personal = MCPServer(
+        owner=test_user.email,
+        name="My Server",
+        server_url="https://mcp.example.com/mine",
+        scope=MCPServerScope.PERSONAL,
+        is_public=False,
+    )
+    foreign_personal = MCPServer(
+        owner="someone-else@example.com",
+        name="Not Mine",
+        server_url="https://mcp.example.com/other",
+        scope=MCPServerScope.PERSONAL,
+        is_public=False,
+    )
+    db_session.add_all([personal, foreign_personal])
+    db_session.commit()
+
+    assert user_can_access_mcp_server(test_user, org_server.id, db_session) is True
+    assert user_can_access_mcp_server(test_user, personal.id, db_session) is True
+    assert (
+        user_can_access_mcp_server(test_user, foreign_personal.id, db_session) is False
+    )

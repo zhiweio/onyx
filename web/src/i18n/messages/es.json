@@ -786,48 +786,14 @@
       "disableAllSources": {
         "label": "Desactivar todas las fuentes"
       },
-      "disableAllTools": {
-        "label": "Desactivar todas las herramientas"
-      },
       "enableAllSources": {
         "label": "Activar todas las fuentes"
-      },
-      "enableAllTools": {
-        "label": "Activar todas las herramientas"
-      },
-      "integrations": {
-        "label": "Conexiones"
-      },
-      "mcp": {
-        "label": "MCP",
-        "manage": "Gestionar",
-        "searchPlaceholder": "Buscar MCP..."
       },
       "manageActions": {
         "tooltip": "Elegir herramientas para este chat"
       },
-      "manageConnections": {
-        "addNew": {
-          "description": "Abre la configuración de conexiones en una pestaña nueva.",
-          "label": "Añadir una conexión"
-        },
-        "askAdmin": "Pida a un administrador que añada una conexión.",
-        "description": "Desactive una conexión para este chat, o ábrala para elegir sus herramientas.",
-        "empty": "Aún no hay conexiones. Añada una para usarla en el chat.",
-        "label": "Gestionar conexiones",
-        "title": "Gestionar conexiones"
-      },
-      "mcpTools": {
-        "searchPlaceholder": "Buscar herramientas de {server}"
-      },
-      "reauthenticate": {
-        "label": "Volver a autenticar"
-      },
       "search": {
         "placeholder": "Buscar herramientas..."
-      },
-      "serverFallback": {
-        "label": "servidor"
       },
       "sourceFilters": {
         "searchPlaceholder": "Buscar filtros"
@@ -867,10 +833,6 @@
         "ariaLabel": "Buscar herramientas",
         "placeholder": "Buscar herramientas…"
       }
-    },
-    "mcpLineItem": {
-      "personal": "{name} · Personal",
-      "personalOnlyYou": "{name} · Personal — only you can run"
     },
     "toolsCard": {
       "search": {
@@ -10127,88 +10089,6 @@
         "text": "editar mensajes en cola"
       }
     },
-    "mcpApiKey": {
-      "apiKeyField": {
-        "label": "Clave de API",
-        "placeholder": "Introduce tu clave de API"
-      },
-      "apiKeyVisibilityButton": {
-        "hideAriaLabel": "Ocultar clave de API",
-        "showAriaLabel": "Mostrar clave de API"
-      },
-      "cancelButton": {
-        "label": "Cancelar"
-      },
-      "credentialField": {
-        "placeholder": "Introduce tu {field}"
-      },
-      "credentialVisibilityButton": {
-        "hideAriaLabel": "Ocultar credencial",
-        "showAriaLabel": "Mostrar credencial"
-      },
-      "header": {
-        "enterApiKey": {
-          "title": "Introducir clave de API"
-        },
-        "enterCredentials": {
-          "title": "Introducir credenciales"
-        },
-        "manageApiKey": {
-          "title": "Gestionar clave de API"
-        },
-        "manageCredentials": {
-          "title": "Gestionar credenciales"
-        }
-      },
-      "intro": {
-        "enterApiKey": {
-          "text": "Introduce tu clave de API para {server} para habilitar la autenticación."
-        },
-        "enterCredentials": {
-          "text": "Introduce tus credenciales para {server} para habilitar la autenticación."
-        },
-        "updateApiKey": {
-          "text": "Actualiza tu clave de API para {server}."
-        },
-        "updateCredentials": {
-          "text": "Actualiza tus credenciales para {server}."
-        }
-      },
-      "saveApiKeyError": {
-        "message": "No se pudo guardar la clave de API"
-      },
-      "saveCredentialsError": {
-        "message": "No se pudieron guardar las credenciales"
-      },
-      "submitButton": {
-        "saveApiKey": {
-          "label": "Guardar clave de API"
-        },
-        "saveCredentials": {
-          "label": "Guardar credenciales"
-        },
-        "saving": {
-          "label": "Guardando..."
-        },
-        "updateApiKey": {
-          "label": "Actualizar clave de API"
-        },
-        "updateCredentials": {
-          "label": "Actualizar credenciales"
-        }
-      },
-      "validationNote": {
-        "apiKey": {
-          "text": "Tu clave de API se validará con el servidor y se almacenará de forma segura."
-        },
-        "authenticated": {
-          "text": "Los cambios se validarán con el servidor antes de guardarse."
-        },
-        "credentials": {
-          "text": "Tus credenciales se validarán con el servidor y se almacenarán de forma segura."
-        }
-      }
-    },
     "messages": {
       "agentMessage": {
         "stoppedGeneration": {
@@ -12603,6 +12483,7 @@
         "fetch": "Obtener",
         "agent": "Agente",
         "skill": "Skill",
+        "mcp": "MCP",
         "other": "Herramienta"
       },
       "status": {

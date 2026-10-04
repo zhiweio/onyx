@@ -40,7 +40,7 @@ interface DiffCounts {
 
 function lineDiffCounts(
   oldContent: string | undefined,
-  newContent: string | undefined,
+  newContent: string | undefined
 ): DiffCounts | null {
   if (newContent === undefined) {
     return null;
@@ -118,7 +118,7 @@ interface FileNavProps {
 
 function primaryTextFor(
   toolCall: ToolCallState,
-  nav?: FileNavProps,
+  nav?: FileNavProps
 ): ReactNode {
   const text = toolCall.command || toolCall.description || toolCall.title;
   const filePath = toolCall.filePath;
@@ -227,7 +227,7 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
       toolCall.kind === "edit" && !running
         ? lineDiffCounts(toolCall.oldContent, toolCall.newContent)
         : null,
-    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running],
+    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running]
   );
 
   const labelKey = statusLabelKey(toolCall.status);
@@ -250,7 +250,9 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
         <ToolLayout
           toolId={toolCall.id}
           icon={<SvgPlug className="size-4 shrink-0 stroke-text-03" />}
-          kindLabel={running ? <ShimmerText>MCP</ShimmerText> : "MCP"}
+          kindLabel={
+            running ? <ShimmerText>{t("kind.mcp")}</ShimmerText> : t("kind.mcp")
+          }
           kindDetail={toolCall.mcpServerName}
           separator={
             <span aria-hidden className="shrink-0 text-text-03">
@@ -294,7 +296,7 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
         !nested &&
           isSkillInvocation(toolCall) &&
           !failed &&
-          "border-[0.5px] border-border-01",
+          "border-[0.5px] border-border-01"
       )}
     >
       <ToolLayout

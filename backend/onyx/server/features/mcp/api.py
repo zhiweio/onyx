@@ -60,13 +60,14 @@ from onyx.db.mcp import (
     get_org_mcp_servers_accessible_to_user,
     get_user_connection_config,
     get_user_connection_configs,
+    get_user_disabled_mcp_server_ids,
     update_connection_config,
     update_connection_config__no_commit,
     update_mcp_server__no_commit,
     upsert_user_connection_config,
     user_can_access_mcp_server,
 )
-from onyx.db.models import MCPConnectionConfig, Tool, User
+from onyx.db.models import MCPConnectionConfig, MCPServer__UserDisabled, Tool, User
 from onyx.db.models import MCPServer as DbMCPServer
 from onyx.db.tools import (
     can_manage_mcp_server,
@@ -1406,11 +1407,55 @@ def get_gallery_mcp_servers_for_user(
 ) -> MCPServersResponse:
     """Organization MCP servers this user can use. Personal servers stay on Mine."""
     db_mcp_servers = get_org_mcp_servers_accessible_to_user(user, db)
+    disabled_ids = get_user_disabled_mcp_server_ids(db, user.id)
     mcp_servers = [
-        _db_mcp_server_to_api_mcp_server(db_server, db, request_user=user)
+        _db_mcp_server_to_api_mcp_server(
+            db_server,
+            db,
+            request_user=user,
+            user_enabled=db_server.id not in disabled_ids,
+        )
         for db_server in db_mcp_servers
     ]
     return MCPServersResponse(mcp_servers=mcp_servers)
+
+
+class _MCPServerEnabledRequest(BaseModel):
+    enabled: bool
+
+
+@router.patch("/server/{server_id}/enabled")
+def set_mcp_server_enabled_for_user(
+    server_id: int,
+    request: _MCPServerEnabledRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+) -> None:
+    """Per-user enable/disable for any server the user may use (org or
+    personal) — the single MCP enable surface (/craft/v1/mcp-actions). Opt-out
+    storage: ``enabled=False`` writes a disable row for this user only,
+    ``enabled=True`` clears it. Server-global config is never touched, and
+    other users are unaffected. Live craft sandboxes reload their MCP config
+    on the next turn."""
+    if not user_can_access_mcp_server(user, server_id, db):
+        raise HTTPException(status_code=404, detail="MCP server not found")
+
+    disabled = (
+        db.query(MCPServer__UserDisabled)
+        .filter(
+            MCPServer__UserDisabled.mcp_server_id == server_id,
+            MCPServer__UserDisabled.user_id == user.id,
+        )
+        .first()
+    )
+    if request.enabled:
+        if disabled is not None:
+            db.delete(disabled)
+    elif disabled is None:
+        db.add(MCPServer__UserDisabled(mcp_server_id=server_id, user_id=user.id))
+    db.commit()
+
+    _hot_reload_craft_sessions({user.id}, db)
 
 
 @router.get("/servers/craft", response_model=MCPServersResponse)
