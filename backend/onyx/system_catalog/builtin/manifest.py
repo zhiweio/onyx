@@ -631,6 +631,15 @@ BUILT_IN_REPORT_TEMPLATE_ENTRIES: Final[tuple[BuiltInReportTemplateEntry, ...]] 
         contract_file="listed_company_audit.contract.yaml",
     ),
     BuiltInReportTemplateEntry(
+        slug="tax_compliance_check",
+        name="税务合规体检报告",
+        description="税务合规体检的契约式模板:五块评级、红旗清单与整改清单,版式由渲染器统一生成。",
+        category=SystemCatalogCategory.TAX,
+        tags=("tax", "audit", "compliance"),
+        body_file="tax_compliance_check.md",
+        contract_file="tax_compliance_check.contract.yaml",
+    ),
+    BuiltInReportTemplateEntry(
         slug="finance_tax_risk_report",
         name="财税与经营风险分析报告",
         description="五年期财税与经营风险诊断的契约式模板：必答问题、必备产物与软脊柱，版式由主题渲染。",
@@ -784,7 +793,7 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
         name="税务合规体检",
         description=(
             "按审计视角体检企业税务合规：申报一致性、税负合理性、内控有效性、"
-            "舞弊红旗与优惠备案五块评级，产出带整改清单的 Word 体检报告。"
+            "舞弊红旗与优惠备案五块评级，产出带整改清单的体检报告。"
         ),
         category=SystemCatalogCategory.TAX,
         tags=("tax", "audit", "compliance", "report"),
@@ -797,6 +806,7 @@ BUILT_IN_SCENARIO_ENTRIES: Final[tuple[BuiltInScenarioEntry, ...]] = (
             "chart-gen",
             "docx",
         ),
+        report_template_slug="tax_compliance_check",
         playbook_file="tax-compliance-check.yaml",
     ),
     BuiltInScenarioEntry(
