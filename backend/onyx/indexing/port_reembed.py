@@ -57,10 +57,14 @@ from onyx.indexing.chunker import (
     MAX_METADATA_PERCENTAGE,
     get_metadata_suffix_for_document_index,
 )
+from onyx.indexing.chunking.section_chunker import get_mini_chunk_texts
 from onyx.indexing.embedder import IndexingEmbedder
 from onyx.indexing.models import DocAwareChunk, IndexChunk
 
 if TYPE_CHECKING:
+    from chonkie import SentenceChunker
+
+    from onyx.document_index.opensearch.schema import MiniChunkDocument
     from onyx.llm.interfaces import LLM
     from onyx.natural_language_processing.utils import BaseTokenizer
 
@@ -189,7 +193,9 @@ def _title_prefix(chunk: DocumentChunkWithoutVectors) -> str:
 
 
 def _stored_chunk_to_doc_aware(
-    chunk: DocumentChunkWithoutVectors, embed_input: str
+    chunk: DocumentChunkWithoutVectors,
+    embed_input: str,
+    mini_chunk_texts: list[str] | None = None,
 ) -> DocAwareChunk:
     """Minimal DocAwareChunk that drives DefaultIndexingEmbedder unchanged.
 
@@ -223,7 +229,7 @@ def _stored_chunk_to_doc_aware(
         contextual_rag_reserved_tokens=0,
         doc_summary="",
         chunk_context="",
-        mini_chunk_texts=None,
+        mini_chunk_texts=mini_chunk_texts,
         large_chunk_id=None,
         large_chunk_reference_ids=[],
     )
@@ -266,23 +272,32 @@ def re_embed_chunks(
     embedder: IndexingEmbedder,
     augmentation_ctx: AugmentationReembedContext | None = None,
     present_tokenizer: BaseTokenizer | None = None,
-) -> list[DocumentChunk]:
+    mini_chunk_splitter: "SentenceChunker | None" = None,
+) -> list[DocumentChunk | MiniChunkDocument]:
     """Re-embed stored chunks under a prebuilt strategy + embedder (no DB access).
 
-    Returns DocumentChunks ready to write to the FUTURE index. For MODEL_ONLY only
-    `content_vector`/`title_vector` change; every other field is copied through.
-    For AUGMENTATION the stored `content`, `doc_summary` and `chunk_context` are
-    also rebuilt under FUTURE settings (`augmentation_ctx` is required, and for
-    FUTURE-RAG-on must carry the contextual LLM). Chunks may span documents; only
-    when FUTURE RAG is on must a document's chunks ALL be in one call — the LLM's
-    doc-text reconstruction needs it complete. FUTURE-RAG-off and MODEL_ONLY re-embed
-    each chunk independently, so the caller may split a document across calls.
+    Returns documents ready to write to the FUTURE index: each stored chunk
+    becomes a DocumentChunk plus, when `mini_chunk_splitter` is supplied
+    (FUTURE `multipass_indexing` on), its mini chunk sibling documents. For
+    MODEL_ONLY only `content_vector`/`title_vector` change; every other field
+    is copied through. For AUGMENTATION the stored `content`, `doc_summary` and
+    `chunk_context` are also rebuilt under FUTURE settings (`augmentation_ctx`
+    is required, and for FUTURE-RAG-on must carry the contextual LLM). Chunks
+    may span documents; only when FUTURE RAG is on must a document's chunks ALL
+    be in one call — the LLM's doc-text reconstruction needs it complete.
+    FUTURE-RAG-off and MODEL_ONLY re-embed each chunk independently, so the
+    caller may split a document across calls.
 
-    `present_tokenizer` (required for MODEL_ONLY) is the PRESENT embedding model's
-    tokenizer — the one indexing used — needed to reproduce the metadata-tail skip
-    exactly. The FUTURE embedder's tokenizer must NOT be substituted: on a model
-    change it can count the tail differently and flip the threshold, re-embedding
-    text the PRESENT index never did.
+    `present_tokenizer` (required for MODEL_ONLY) is the PRESENT embedding
+    model's tokenizer — the one indexing used — needed to reproduce the
+    metadata-tail skip exactly. The FUTURE embedder's tokenizer must NOT be
+    substituted: on a model change it can count the tail differently and flip
+    the threshold, re-embedding text the PRESENT index never did.
+
+    `mini_chunk_splitter` must be built on the FUTURE embedding tokenizer.
+    Minis are split from the bare chunk text (the same input indexing splits),
+    embedded by the same embedder call as their parent, and returned as
+    MiniChunkDocuments carrying the parent's fields.
     """
     if not stored_chunks:
         return []
@@ -291,29 +306,85 @@ def re_embed_chunks(
             raise ValueError(
                 "AUGMENTATION re-embed requires an AugmentationReembedContext"
             )
-        return _augmentation_reembed(stored_chunks, embedder, augmentation_ctx)
+        return _augmentation_reembed(
+            stored_chunks, embedder, augmentation_ctx, mini_chunk_splitter
+        )
 
     if present_tokenizer is None:
         raise ValueError("MODEL_ONLY re-embed requires the PRESENT tokenizer")
     embed_inputs = [
         recover_embedding_input(chunk, present_tokenizer) for chunk in stored_chunks
     ]
+    # Minis split from the bare chunk text, mirroring indexing-time chunking.
+    mini_texts: list[list[str] | None] = [None] * len(stored_chunks)
+    if mini_chunk_splitter is not None:
+        mini_texts = [
+            get_mini_chunk_texts(bare_content, mini_chunk_splitter)
+            for bare_content in _bare_contents(stored_chunks)
+        ]
     doc_aware_chunks = [
-        _stored_chunk_to_doc_aware(chunk, embed_input)
-        for chunk, embed_input in zip(stored_chunks, embed_inputs, strict=True)
+        _stored_chunk_to_doc_aware(chunk, embed_input, mini_chunk_texts=minis)
+        for chunk, embed_input, minis in zip(
+            stored_chunks, embed_inputs, mini_texts, strict=True
+        )
     ]
+    return _embed_and_finalize(stored_chunks, doc_aware_chunks, embedder)
+
+
+def _embed_and_finalize(
+    stored_chunks: list[DocumentChunkWithoutVectors],
+    doc_aware_chunks: list[DocAwareChunk],
+    embedder: IndexingEmbedder,
+    augmentation_fields: bool = False,
+) -> list[DocumentChunk | MiniChunkDocument]:
+    """Embeds the rebuilt chunks and pairs them back with their stored fields.
+
+    Each stored chunk yields its parent DocumentChunk followed by its mini
+    chunk documents (when it carried mini chunk texts). With
+    `augmentation_fields` (AUGMENTATION strategy), the stored `content`,
+    `doc_summary` and `chunk_context` are overridden with the FUTURE-enriched
+    rebuild on `doc_aware_chunks`."""
     embedded = embedder.embed_chunks(doc_aware_chunks)
     # Pair each stored chunk with its OWN vector by identity, not list position.
     matched = _match_embeddings_by_identity(stored_chunks, embedded)
-    # Whole stored chunk + the two new vectors; everything else copied through.
-    return [
-        DocumentChunk(
-            **dict(stored),
+
+    results: list[DocumentChunk | MiniChunkDocument] = []
+    for stored, doc_aware, index_chunk in zip(
+        stored_chunks, doc_aware_chunks, matched, strict=True
+    ):
+        fields = dict(stored)
+        if augmentation_fields:
+            # The stored (BM25) content, rebuilt under FUTURE enrichment.
+            fields["content"] = generate_enriched_content_for_chunk_text(doc_aware)
+            fields["doc_summary"] = doc_aware.doc_summary
+            fields["chunk_context"] = doc_aware.chunk_context
+        parent = DocumentChunk(
+            **fields,
             content_vector=index_chunk.embeddings.full_embedding,
             title_vector=index_chunk.title_embedding,
         )
-        for stored, index_chunk in zip(stored_chunks, matched, strict=True)
-    ]
+        results.append(parent)
+        mini_embeddings = index_chunk.embeddings.mini_chunk_embeddings
+        if doc_aware.mini_chunk_texts:
+            if not mini_embeddings or len(mini_embeddings) != len(
+                doc_aware.mini_chunk_texts
+            ):
+                actual = 0 if not mini_embeddings else len(mini_embeddings)
+                raise RuntimeError(
+                    f"Embedder returned {actual} mini chunk embeddings for "
+                    f"{len(doc_aware.mini_chunk_texts)} mini chunk texts of "
+                    f"{stored.document_id}#{stored.chunk_index}"
+                )
+            # Lazy import: opensearch_document_index is a heavy module; keeps
+            # port_reembed's import surface light + cycle-free.
+            from onyx.document_index.opensearch.opensearch_document_index import (
+                _build_minichunk_documents_from_parent,
+            )
+
+            results.extend(
+                _build_minichunk_documents_from_parent(parent, mini_embeddings)
+            )
+    return results
 
 
 def _bare_contents(stored_chunks: list[DocumentChunkWithoutVectors]) -> list[str]:
@@ -375,10 +446,20 @@ def _augmentation_reembed(
     stored_chunks: list[DocumentChunkWithoutVectors],
     embedder: IndexingEmbedder,
     ctx: AugmentationReembedContext,
-) -> list[DocumentChunk]:
+    mini_chunk_splitter: "SentenceChunker | None" = None,
+) -> list[DocumentChunk | MiniChunkDocument]:
     bare_contents = _bare_contents(stored_chunks)
     future_rag_on = ctx.future_enable_contextual_rag
     reserved = ctx.contextual_rag_reserved_tokens if future_rag_on else 0
+    # Minis split from the bare chunk text, mirroring indexing-time chunking.
+    mini_texts = (
+        [
+            get_mini_chunk_texts(bare_content, mini_chunk_splitter)
+            for bare_content in bare_contents
+        ]
+        if mini_chunk_splitter is not None
+        else [None] * len(stored_chunks)
+    )
 
     # One reconstructed Document per document_id — the input may span documents,
     # and each chunk's enrichment must see only its own document's text.
@@ -414,11 +495,13 @@ def _augmentation_reembed(
             contextual_rag_reserved_tokens=reserved,
             doc_summary="",
             chunk_context="",
-            mini_chunk_texts=None,
+            mini_chunk_texts=minis,
             large_chunk_id=None,
             large_chunk_reference_ids=[],
         )
-        for chunk, bare in zip(stored_chunks, bare_contents, strict=True)
+        for chunk, bare, minis in zip(
+            stored_chunks, bare_contents, mini_texts, strict=True
+        )
     ]
 
     if future_rag_on:
@@ -437,24 +520,6 @@ def _augmentation_reembed(
             chunk_token_limit=ctx.chunk_token_limit,
         )
 
-    embedded = embedder.embed_chunks(doc_aware_chunks)
-    # Pair each stored chunk with its OWN vector by identity, not list position.
-    matched = _match_embeddings_by_identity(stored_chunks, embedded)
-
-    results: list[DocumentChunk] = []
-    for stored, doc_aware, index_chunk in zip(
-        stored_chunks, doc_aware_chunks, matched, strict=True
-    ):
-        fields = dict(stored)
-        # The stored (BM25) content, rebuilt under FUTURE enrichment.
-        fields["content"] = generate_enriched_content_for_chunk_text(doc_aware)
-        fields["doc_summary"] = doc_aware.doc_summary
-        fields["chunk_context"] = doc_aware.chunk_context
-        results.append(
-            DocumentChunk(
-                **fields,
-                content_vector=index_chunk.embeddings.full_embedding,
-                title_vector=index_chunk.title_embedding,
-            )
-        )
-    return results
+    return _embed_and_finalize(
+        stored_chunks, doc_aware_chunks, embedder, augmentation_fields=True
+    )

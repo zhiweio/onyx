@@ -57,6 +57,7 @@ from onyx.document_index.opensearch.schema import (
     DocumentChunk,
     DocumentChunkWithoutVectors,
     DocumentSchema,
+    MiniChunkDocument,
     get_opensearch_doc_chunk_id,
 )
 from onyx.document_index.opensearch.search import (
@@ -271,6 +272,82 @@ def _convert_onyx_chunk_to_opensearch_document(
     )
 
 
+def _build_minichunk_documents_from_parent(
+    parent: DocumentChunk,
+    mini_embeddings: list[Embedding],
+) -> list[MiniChunkDocument]:
+    """Derives the mini chunk sibling documents of a converted parent chunk.
+
+    Every field except the vectors and the mini markers duplicates the parent,
+    so a mini hit converts exactly like its parent's; the mini TEXT itself is
+    never stored (only its embedding), mirroring the Vespa multipass behavior.
+    """
+    parent_fields = parent.model_dump()
+    parent_fields.pop("title_vector", None)
+    parent_fields.pop("content_vector", None)
+    # Minis carry their own size label (the mini chunk size), both in this
+    # field and in their doc ID — not the parent's.
+    parent_fields.pop("max_chunk_size", None)
+    return [
+        MiniChunkDocument(
+            **parent_fields,
+            mini_chunk_index=mini_ind,
+            content_vector=mini_embedding,
+        )
+        for mini_ind, mini_embedding in enumerate(mini_embeddings)
+    ]
+
+
+def _convert_onyx_chunk_to_minichunk_documents(
+    chunk: DocMetadataAwareIndexChunk,
+) -> list[MiniChunkDocument]:
+    """Builds the mini chunk sibling documents for a chunk (multipass indexing).
+
+    Returns [] when the chunk carries no mini chunks (multipass disabled or no
+    mini embeddings yet). Raises when texts and embeddings disagree, which
+    would silently drop or corrupt mini vectors.
+    """
+    if not chunk.mini_chunk_texts:
+        return []
+    mini_embeddings = (
+        chunk.embeddings.mini_chunk_embeddings if chunk.embeddings else None
+    )
+    if not mini_embeddings or len(mini_embeddings) != len(chunk.mini_chunk_texts):
+        actual = 0 if not mini_embeddings else len(mini_embeddings)
+        raise ValueError(
+            f"Chunk {chunk.to_short_descriptor()} has {len(chunk.mini_chunk_texts)} "
+            f"mini chunk texts but {actual} mini chunk embeddings."
+        )
+    parent = _convert_onyx_chunk_to_opensearch_document(chunk)
+    return _build_minichunk_documents_from_parent(parent, mini_embeddings)
+
+
+def _dedupe_minichunk_hits(
+    search_hits: list[SearchHit[DocumentChunkWithoutVectors]],
+) -> list[SearchHit[DocumentChunkWithoutVectors]]:
+    """Collapses mini chunk hits into their parent chunk's hit (multipass).
+
+    A mini chunk hit IS a hit on its parent: mini documents duplicate every
+    parent field, so both convert to the same InferenceChunk. When a parent and
+    its minis both match, the best score wins; when only minis match, the best
+    mini's score represents the parent. Each identity keeps the position of its
+    first appearance, so the result stays in approximate score order.
+    """
+    best_by_identity: dict[tuple[str, int], SearchHit[DocumentChunkWithoutVectors]] = {}
+    for search_hit in search_hits:
+        identity = (
+            search_hit.document_chunk.document_id,
+            search_hit.document_chunk.chunk_index,
+        )
+        existing = best_by_identity.get(identity)
+        if existing is None or (
+            search_hit.score is not None
+            and (existing.score is None or search_hit.score > existing.score)
+        ):
+            best_by_identity[identity] = search_hit
+    return list(best_by_identity.values())
+
+
 class OpenSearchDocumentIndex(DocumentIndex):
     """OpenSearch-specific implementation of the DocumentIndex interface.
 
@@ -461,6 +538,13 @@ class OpenSearchDocumentIndex(DocumentIndex):
                 _convert_onyx_chunk_to_opensearch_document(chunk)
                 for chunk in doc_chunks
             ]
+            # Mini chunks (multipass indexing) ride along as sibling documents;
+            # [] for every chunk when multipass is disabled.
+            minichunk_batch: list[MiniChunkDocument] = [
+                minichunk
+                for chunk in doc_chunks
+                for minichunk in _convert_onyx_chunk_to_minichunk_documents(chunk)
+            ]
             onyx_document: Document = doc_chunks[0].source_document
             # First delete the doc's chunks from the index. This is so that
             # there are no dangling chunks in the index, in the event that the
@@ -489,7 +573,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
             # we do not expect because we should have deleted all chunks.
             try:
                 self._client.bulk_index_documents(
-                    documents=chunk_batch,
+                    documents=chunk_batch + minichunk_batch,
                     tenant_state=self._tenant_state,
                 )
             except BulkIndexError as e:
@@ -506,7 +590,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
                 )
                 self._client.refresh_index()
                 self._client.bulk_index_documents(
-                    documents=chunk_batch,
+                    documents=chunk_batch + minichunk_batch,
                     tenant_state=self._tenant_state,
                     # At this point we know for sure some docs from this batch
                     # may exist, so we don't want to fail in that case.
@@ -675,6 +759,9 @@ class OpenSearchDocumentIndex(DocumentIndex):
 
             doc_chunk_ids_to_update: list[str] = []
             chunk_id_to_doc_id: dict[str, str] = {}
+            # Documents whose main chunks are actually being updated (count
+            # known and > 0); their mini chunks get the same metadata below.
+            updated_doc_ids: list[str] = []
             for doc_id in update_request.document_ids:
                 doc_chunk_count = update_request.doc_id_to_chunk_cnt.get(doc_id, -1)
                 if doc_chunk_count < 0:
@@ -703,6 +790,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
                     )
                     continue
 
+                updated_doc_ids.append(doc_id)
                 for chunk_index in range(doc_chunk_count):
                     document_chunk_id = get_opensearch_doc_chunk_id(
                         tenant_state=self._tenant_state,
@@ -712,6 +800,9 @@ class OpenSearchDocumentIndex(DocumentIndex):
                     doc_chunk_ids_to_update.append(document_chunk_id)
                     chunk_id_to_doc_id[document_chunk_id] = doc_id
 
+            if not updated_doc_ids:
+                continue
+
             try:
                 self._client.bulk_update_documents(
                     document_chunk_ids=doc_chunk_ids_to_update,
@@ -720,6 +811,16 @@ class OpenSearchDocumentIndex(DocumentIndex):
                     # a port surfaces them instead so deferred-sync can retry.
                     ignore_missing=not surface_document_missing,
                     surface_document_missing=surface_document_missing,
+                )
+                # Mini chunks are not enumerable by ID (the per-chunk count is
+                # data-dependent), so they follow via update-by-query. Only run
+                # it after the main update succeeded: when surfacing, a missing
+                # main chunk means the doc is not in this index yet, so there is
+                # nothing to sync there either.
+                self._client.update_minichunks_by_document_ids(
+                    document_ids=updated_doc_ids,
+                    properties_to_update=properties_to_update,
+                    tenant_state=self._tenant_state,
                 )
             except OpenSearchDocumentMissingError as e:
                 # Only raised when surfacing; record the missing docs and keep
@@ -831,6 +932,11 @@ class OpenSearchDocumentIndex(DocumentIndex):
             search_type=OpenSearchSearchType.HYBRID,
         )
 
+        # Mini chunks (multipass) share the content_vector field with their
+        # parent, so the vector subquery matches them directly; a mini hit IS a
+        # hit on its parent.
+        search_hits = _dedupe_minichunk_hits(search_hits)
+
         # Good place for a breakpoint to inspect the search hits if you have
         # "explain" enabled.
         inference_chunks_uncleaned: list[InferenceChunkUncleaned] = [
@@ -922,6 +1028,11 @@ class OpenSearchDocumentIndex(DocumentIndex):
             search_type=OpenSearchSearchType.SEMANTIC,
         )
 
+        # Mini chunks (multipass) share the content_vector field with their
+        # parent, so the knn query matches them directly; a mini hit IS a hit
+        # on its parent.
+        search_hits = _dedupe_minichunk_hits(search_hits)
+
         inference_chunks_uncleaned: list[InferenceChunkUncleaned] = [
             convert_retrieved_opensearch_chunk_to_inference_chunk_uncleaned(
                 search_hit.document_chunk, search_hit.score, search_hit.match_highlights
@@ -968,7 +1079,9 @@ class OpenSearchDocumentIndex(DocumentIndex):
         return inference_chunks
 
     def index_raw_chunks(
-        self, chunks: list[DocumentChunk], use_create_only: bool = False
+        self,
+        chunks: list[DocumentChunk | MiniChunkDocument],
+        use_create_only: bool = False,
     ) -> None:
         """Indexes raw document chunks into OpenSearch.
 
@@ -977,7 +1090,8 @@ class OpenSearchDocumentIndex(DocumentIndex):
         overwrite a chunk a live/forward writer already owns in FUTURE (an
         existing chunk is a benign 409). The port is pure gap-fill backfill of
         PRESENT, which is always >= the port in recency, so it never needs to
-        overwrite an existing chunk.
+        overwrite an existing chunk. Mini chunks (multipass indexing) are
+        written alongside their parent chunks.
         """
         logger.debug(
             "[OpenSearchDocumentIndex] Indexing %s raw chunks for index %s.",

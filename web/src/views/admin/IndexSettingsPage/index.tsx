@@ -601,6 +601,7 @@ function EmbeddingModelCard({
 interface IndexSettingsFormValues extends EmbeddingModelSelection {
   enable_contextual_rag: boolean;
   contextual_rag_model_configuration_id: number | null;
+  multipass_indexing: boolean;
 }
 
 function isContextualModelOnlyChange(
@@ -869,6 +870,7 @@ export default function IndexSettingsPage() {
       enable_contextual_rag: searchSettings?.enable_contextual_rag ?? false,
       contextual_rag_model_configuration_id:
         searchSettings?.contextual_rag_model_configuration_id ?? null,
+      multipass_indexing: searchSettings?.multipass_indexing ?? false,
     }),
     [savedSelection, searchSettings]
   );
@@ -1011,6 +1013,7 @@ export default function IndexSettingsPage() {
                 contextualRagModelConfigurationId: values.enable_contextual_rag
                   ? values.contextual_rag_model_configuration_id
                   : null,
+                multipassIndexing: values.multipass_indexing,
                 acknowledgedWontPortCcPairIds: frozenWontPortRef.current.map(
                   (c) => c.cc_pair_id
                 ),
@@ -1747,25 +1750,20 @@ export default function IndexSettingsPage() {
                         />
 
                         <CloudDisabled
-                          disabled={!isReindexing}
-                          tooltip={t("multipass.disabledTooltip")}
+                          disabled={isReindexing}
+                          tooltip={
+                            isReindexing
+                              ? t("multipass.reindexingTooltip")
+                              : undefined
+                          }
                         >
                           <Card border="solid" rounding={4}>
                             <InputHorizontal
                               title={t("multipass.title")}
                               description={t("multipass.description")}
-                              tag={{
-                                title: t("multipass.tag.label"),
-                                color: "gray",
-                              }}
                               withLabel
                             >
-                              <Switch
-                                checked={
-                                  searchSettings?.multipass_indexing ?? false
-                                }
-                                disabled
-                              />
+                              <SwitchField name="multipass_indexing" />
                             </InputHorizontal>
                           </Card>
                         </CloudDisabled>

@@ -43,10 +43,13 @@ from onyx.document_index.opensearch.schema import (
     CHUNK_INDEX_FIELD_NAME,
     CONTENT_VECTOR_FIELD_NAME,
     DOCUMENT_ID_FIELD_NAME,
+    IS_MINI_CHUNK_FIELD_NAME,
     MAX_CHUNK_SIZE_FIELD_NAME,
+    TENANT_ID_FIELD_NAME,
     TITLE_VECTOR_FIELD_NAME,
     DocumentChunk,
     DocumentChunkWithoutVectors,
+    MiniChunkDocument,
     get_opensearch_doc_chunk_id,
 )
 from onyx.document_index.opensearch.search import DEFAULT_OPENSEARCH_MAX_RESULT_WINDOW
@@ -982,7 +985,7 @@ class OpenSearchIndexClient(OpenSearchClient):
     )
     def bulk_index_documents(
         self,
-        documents: list[DocumentChunk],
+        documents: list[DocumentChunk | MiniChunkDocument],
         tenant_state: TenantState,
         update_if_exists: bool = False,
         use_create_only: bool = False,
@@ -998,7 +1001,8 @@ class OpenSearchIndexClient(OpenSearchClient):
         Args:
             documents: The documents to index. In Onyx this is a chunk of a
                 document, OpenSearch simply refers to this as a document as
-                well.
+                well. Mini chunks (multipass indexing) are stored as sibling
+                documents of their parent chunk.
             tenant_state: The tenant state of the caller.
             update_if_exists: Whether to update the document if it already
                 exists. If False, will raise an exception if the document
@@ -1036,6 +1040,11 @@ class OpenSearchIndexClient(OpenSearchClient):
                 document_id=document.document_id,
                 chunk_index=document.chunk_index,
                 max_chunk_size=document.max_chunk_size,
+                mini_chunk_index=(
+                    document.mini_chunk_index
+                    if isinstance(document, MiniChunkDocument)
+                    else None
+                ),
             )
             body: dict[str, Any] = document.model_dump(exclude_none=True)
             # create-only never overwrites: an existing chunk (a live/forward
@@ -1516,6 +1525,69 @@ class OpenSearchIndexClient(OpenSearchClient):
         logger.debug(
             "Successfully bulk updated %s document chunks.", len(document_chunk_ids)
         )
+
+    def update_minichunks_by_document_ids(
+        self,
+        document_ids: list[str],
+        properties_to_update: dict[str, Any],
+        tenant_state: TenantState,
+    ) -> int:
+        """Updates the mini chunk documents (multipass indexing) of the given
+        Onyx documents via update-by-query.
+
+        Mini chunk IDs are not enumerable by the caller (the number of minis
+        per parent chunk is data-dependent), so unlike `bulk_update_documents`
+        this targets them by `document_id` + the `is_mini_chunk` marker.
+        Documents without mini chunks (or entirely) match nothing and are a
+        benign no-op — there is no missing-document concept here, so this is
+        safe to run alongside `bulk_update_documents` for the main chunks.
+
+        Args:
+            document_ids: The Onyx document IDs whose mini chunks to update.
+            properties_to_update: The properties to update. Each property
+                should exist in the schema.
+            tenant_state: The tenant state of the caller.
+
+        Raises:
+            Exception: There was an error during the update-by-query.
+
+        Returns:
+            The number of mini chunk documents updated.
+        """
+        if not document_ids or not properties_to_update:
+            return 0
+
+        filter_clauses: list[dict[str, Any]] = [
+            {"terms": {DOCUMENT_ID_FIELD_NAME: list(document_ids)}},
+            {"term": {IS_MINI_CHUNK_FIELD_NAME: {"value": True}}},
+        ]
+        if tenant_state.multitenant:
+            filter_clauses.append(
+                {"term": {TENANT_ID_FIELD_NAME: {"value": tenant_state.tenant_id}}}
+            )
+        # Field names come from internal schema constants, never user input.
+        script_source = "; ".join(
+            f"ctx._source['{field}'] = params['{field}']"
+            for field in properties_to_update
+        )
+        body: dict[str, Any] = {
+            "query": {"bool": {"filter": filter_clauses}},
+            "script": {
+                "source": script_source,
+                "lang": "painless",
+                "params": properties_to_update,
+            },
+        }
+        response = self._client.update_by_query(
+            index=self._index_name, body=body, params={"conflicts": "proceed"}
+        )
+        updated = int(response.get("updated", 0))
+        logger.debug(
+            "Updated %s mini chunk documents by document ID for index %s.",
+            updated,
+            self._index_name,
+        )
+        return updated
 
     @log_function_time(print_only=True, debug_only=True, include_args=True)
     def get_document(self, document_chunk_id: str) -> DocumentChunk:

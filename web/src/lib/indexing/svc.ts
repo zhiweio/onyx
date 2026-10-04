@@ -183,6 +183,9 @@ interface SetNewSearchSettingsArgs {
   switchoverType: SwitchoverType;
   enableContextualRag: boolean;
   contextualRagModelConfigurationId: number | null;
+  // Whether the new index generation stores additional mini chunk vectors
+  // (multipass indexing). A preserved field: changing it requires this reindex.
+  multipassIndexing: boolean;
   // The server recomputes this set itself and rejects the reindex if its own set contains
   // a cc_pair the admin never acknowledged.
   acknowledgedWontPortCcPairIds: number[];
@@ -194,10 +197,11 @@ export async function setNewSearchSettings({
   switchoverType,
   enableContextualRag,
   contextualRagModelConfigurationId,
+  multipassIndexing,
   acknowledgedWontPortCcPairIds,
 }: SetNewSearchSettingsArgs): Promise<Response> {
   // The backend's EmbeddingProvider enum only contains cloud providers
-  // (openai/cohere/voyage/google/litellm/azure). Self-hosted models live
+  // (openai/cohere/voyage/google/litellm/azure/dashscope). Self-hosted models live
   // under the frontend's EmbeddingProviderName for UI grouping (icon,
   // docs link), but the backend expects provider_type=null for them.
   const providerType = isCloudBased(providerName) ? providerName : null;
@@ -215,7 +219,7 @@ export async function setNewSearchSettings({
       api_key: null,
       api_url: null,
       index_name: null,
-      multipass_indexing: false,
+      multipass_indexing: multipassIndexing,
       enable_contextual_rag: enableContextualRag,
       contextual_rag_model_configuration_id: contextualRagModelConfigurationId,
       switchover_type: switchoverType,

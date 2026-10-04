@@ -14,6 +14,7 @@ from pydantic import (
 )
 
 from onyx.configs.app_configs import (
+    MINI_CHUNK_SIZE,
     OPENSEARCH_INDEX_NUM_REPLICAS,
     OPENSEARCH_INDEX_NUM_SHARDS,
     OPENSEARCH_TEXT_ANALYZER,
@@ -67,6 +68,11 @@ PRIMARY_OWNERS_FIELD_NAME = "primary_owners"
 SECONDARY_OWNERS_FIELD_NAME = "secondary_owners"
 # Hierarchy filtering - list of ancestor hierarchy node IDs
 ANCESTOR_HIERARCHY_NODE_IDS_FIELD_NAME = "ancestor_hierarchy_node_ids"
+# Multipass (mini chunk) marker fields. Mini chunks are stored as sibling
+# documents in the same index; main chunks never carry these fields (omitted
+# via exclude_none), so indices whose mapping predates them are unaffected.
+IS_MINI_CHUNK_FIELD_NAME = "is_mini_chunk"
+MINI_CHUNK_INDEX_FIELD_NAME = "mini_chunk_index"
 
 
 # Faiss was also tried but it didn't have any benefits
@@ -79,6 +85,7 @@ def get_opensearch_doc_chunk_id(
     document_id: str,
     chunk_index: int,
     max_chunk_size: int = DEFAULT_MAX_CHUNK_SIZE,
+    mini_chunk_index: int | None = None,
 ) -> str:
     """
     Returns a unique identifier for the chunk.
@@ -86,9 +93,16 @@ def get_opensearch_doc_chunk_id(
     This will be the string used to identify the chunk in OpenSearch. Any direct
     chunk queries should use this function.
 
+    Mini chunks (multipass indexing) are stored as sibling documents of their
+    parent chunk; pass `mini_chunk_index` to build their IDs.
+
     If the document ID is too long, a hash of the ID is used instead.
     """
-    opensearch_doc_chunk_id_suffix: str = f"__{max_chunk_size}__{chunk_index}"
+    if mini_chunk_index is not None:
+        chunk_id_part = f"{chunk_index}_m{mini_chunk_index}"
+    else:
+        chunk_id_part = str(chunk_index)
+    opensearch_doc_chunk_id_suffix: str = f"__{max_chunk_size}__{chunk_id_part}"
     encoded_suffix_length: int = len(opensearch_doc_chunk_id_suffix.encode("utf-8"))
     max_encoded_permissible_doc_id_length: int = (
         MAX_DOCUMENT_ID_ENCODED_LENGTH - encoded_suffix_length
@@ -364,6 +378,43 @@ class DocumentChunk(DocumentChunkWithoutVectors):
         return self
 
 
+class MiniChunkDocument(DocumentChunkWithoutVectors):
+    """A mini chunk (multipass indexing), stored as a sibling document of its
+    parent chunk in the same index.
+
+    Mini chunks exist for semantic retrieval only: `content_vector` embeds the
+    mini text, while `content` (and every display/filter field) duplicates the
+    parent chunk, so a hit converts exactly like its parent's. Keyword search,
+    ID-based retrieval, and random retrieval exclude mini chunks via
+    `is_mini_chunk`; deletion and metadata update flows reach them through
+    `document_id`. Build the doc ID with
+    `get_opensearch_doc_chunk_id(..., mini_chunk_index=...)`.
+
+    Only indices created after (or mapping-refreshed with) the multipass schema
+    fields accept these documents; main chunks never carry the marker fields,
+    so older mappings are unaffected.
+    """
+
+    model_config = {"frozen": True}
+
+    # Minis are labeled with the size they were split at, distinct from main
+    # chunks' DEFAULT_MAX_CHUNK_SIZE in both the doc ID and this field.
+    max_chunk_size: int = MINI_CHUNK_SIZE
+
+    is_mini_chunk: bool = True
+    # Position of this mini chunk within its parent chunk (0-based).
+    mini_chunk_index: int
+
+    content_vector: list[float]
+
+    def __str__(self) -> str:
+        return (
+            f"MiniChunkDocument(document_id={self.document_id}, chunk_index={self.chunk_index}, "
+            f"mini_chunk_index={self.mini_chunk_index}, "
+            f"content length={len(self.content)}, tenant_id={self.tenant_id.tenant_id})."
+        )
+
+
 class DocumentSchema:
     """
     Represents the schema and indexing strategies of the OpenSearch index.
@@ -495,6 +546,11 @@ class DocumentSchema:
                 HIDDEN_FIELD_NAME: {"type": "boolean"},
                 # Marks port-written chunks; filtered by the orphan sweep's delete-by-query.
                 WRITTEN_BY_PORT_FIELD_NAME: {"type": "boolean"},
+                # Multipass (mini chunk) marker fields, set only on mini chunk
+                # sibling documents. Main chunks never carry them (omitted via
+                # exclude_none), so indices with an older mapping are unaffected.
+                IS_MINI_CHUNK_FIELD_NAME: {"type": "boolean"},
+                MINI_CHUNK_INDEX_FIELD_NAME: {"type": "integer"},
                 GLOBAL_BOOST_FIELD_NAME: {"type": "integer"},
                 # This field is only used for displaying a useful name for the
                 # doc in the UI and is not used for searching. Disabling these

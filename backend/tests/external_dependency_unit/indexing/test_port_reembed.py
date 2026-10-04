@@ -14,6 +14,7 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from chonkie import SentenceChunker
 
 from onyx.configs.constants import RETURN_SEPARATOR, DocumentSource
 from onyx.configs.model_configs import (
@@ -33,7 +34,12 @@ from onyx.document_index.chunk_content_enrichment import (
 )
 from onyx.document_index.interfaces_new import TenantState
 from onyx.document_index.opensearch.constants import DEFAULT_MAX_CHUNK_SIZE
-from onyx.document_index.opensearch.schema import DocumentChunkWithoutVectors
+from onyx.document_index.opensearch.schema import (
+    MINI_CHUNK_SIZE,
+    DocumentChunk,
+    DocumentChunkWithoutVectors,
+    MiniChunkDocument,
+)
 from onyx.indexing.chunker import get_metadata_suffix_for_document_index
 from onyx.indexing.embedder import DefaultIndexingEmbedder, IndexingEmbedder
 from onyx.indexing.models import ChunkEmbedding, DocAwareChunk, IndexChunk
@@ -604,6 +610,8 @@ def test_re_embed_preserves_all_fields_swaps_only_vectors() -> None:
     [result] = re_embed_chunks(
         [stored], ReembedStrategy.MODEL_ONLY, embedder, present_tokenizer=_TOKENIZER
     )
+    # Without a mini chunk splitter the output is exactly the parent chunk.
+    assert isinstance(result, DocumentChunk)
 
     # only the two vectors are new
     assert result.content_vector == fake_cv
@@ -664,3 +672,115 @@ def test_model_only_reembed_vector_differs_from_naive_stored_content() -> None:
     # (field preservation is covered by the fast fake-embedder test above).
     assert result.content_vector != naive_vector
     assert len(result.content_vector) == DOC_EMBEDDING_DIM
+
+
+# ------------------------------------------------------------------------------
+# Minichunk regeneration (FUTURE multipass_indexing)
+# ------------------------------------------------------------------------------
+
+_MINI_SENTENCES = "One two three. Four five six. Seven eight nine. Ten eleven twelve."
+
+
+class _MiniVecEmbedder(_ContentVecEmbedder):
+    """Like _ContentVecEmbedder, but fills mini chunk embeddings deterministically
+    from the mini texts so tests can assert the exact parent->mini pairing."""
+
+    def embed_chunks(self, chunks: list[DocAwareChunk]) -> list[IndexChunk]:
+        out = []
+        for chunk in chunks:
+            text = generate_enriched_content_for_chunk_embedding(chunk)
+            title = chunk.source_document.get_title_for_document_index()
+            minis = chunk.mini_chunk_texts or []
+            out.append(
+                IndexChunk.model_construct(
+                    **shallow_model_dump(chunk),
+                    embeddings=ChunkEmbedding(
+                        full_embedding=_vec(text),
+                        mini_chunk_embeddings=[_vec(f"mini:{m}") for m in minis],
+                    ),
+                    title_embedding=_vec(title) if title else None,
+                )
+            )
+        return out
+
+
+def _mini_splitter(chunk_size: int = 15) -> SentenceChunker:
+    def token_counter(text: str) -> int:
+        return len(_TOKENIZER.encode(text))
+
+    return SentenceChunker(
+        tokenizer_or_token_counter=token_counter,
+        chunk_size=chunk_size,
+        chunk_overlap=0,
+        return_type="texts",
+    )
+
+
+def test_model_only_minichunk_regeneration() -> None:
+    """With a splitter (FUTURE multipass on), each stored chunk yields its parent
+    DocumentChunk followed by its mini chunk siblings: minis split from the bare
+    text, duplicate the parent's fields, and carry their own vectors."""
+    chunk = _stored_chunk(_MINI_SENTENCES)
+    results = re_embed_chunks(
+        [chunk],
+        ReembedStrategy.MODEL_ONLY,
+        cast(IndexingEmbedder, _MiniVecEmbedder()),
+        present_tokenizer=_TOKENIZER,
+        mini_chunk_splitter=_mini_splitter(),
+    )
+
+    parent = results[0]
+    minis = results[1:]
+    assert isinstance(parent, DocumentChunk)
+    expected_pieces = list(cast(list[str], _mini_splitter().chunk(_MINI_SENTENCES)))
+    assert len(minis) == len(expected_pieces) >= 2
+
+    for ind, (mini, piece) in enumerate(zip(minis, expected_pieces, strict=True)):
+        assert isinstance(mini, MiniChunkDocument)
+        assert mini.is_mini_chunk is True
+        assert mini.mini_chunk_index == ind
+        assert mini.max_chunk_size == MINI_CHUNK_SIZE
+        # identity + duplicated parent fields
+        assert mini.document_id == chunk.document_id
+        assert mini.chunk_index == chunk.chunk_index
+        assert mini.content == parent.content
+        assert mini.title == parent.title
+        # the vector belongs to THIS mini's text
+        assert mini.content_vector == _vec(f"mini:{piece}")
+
+
+def test_reembed_without_splitter_yields_no_minichunks() -> None:
+    """No splitter (FUTURE multipass off) — exactly one DocumentChunk per stored
+    chunk, the pre-multipass contract."""
+    results = re_embed_chunks(
+        [_stored_chunk(_MINI_SENTENCES)],
+        ReembedStrategy.MODEL_ONLY,
+        cast(IndexingEmbedder, _ContentVecEmbedder()),
+        present_tokenizer=_TOKENIZER,
+    )
+    assert len(results) == 1
+    assert isinstance(results[0], DocumentChunk)
+
+
+def test_augmentation_minichunk_regeneration_uses_bare_text() -> None:
+    """Minis split from the BARE chunk text (augmentation stripped), matching
+    what a fresh FUTURE index would split — not the enriched stored content."""
+    chunk, bare = _augmented_stored_chunk()
+    ctx = AugmentationReembedContext(
+        future_enable_contextual_rag=False, future_embedding_tokenizer=_TOKENIZER
+    )
+    results = re_embed_chunks(
+        [chunk],
+        ReembedStrategy.AUGMENTATION,
+        cast(IndexingEmbedder, _MiniVecEmbedder()),
+        augmentation_ctx=ctx,
+        mini_chunk_splitter=_mini_splitter(),
+    )
+
+    [parent] = [r for r in results if isinstance(r, DocumentChunk)]
+    minis = [r for r in results if isinstance(r, MiniChunkDocument)]
+    # The bare text is a single short sentence -> exactly one mini of it.
+    assert len(minis) == 1
+    assert minis[0].content_vector == _vec(f"mini:{bare}")
+    assert minis[0].content == parent.content
+    assert minis[0].mini_chunk_index == 0

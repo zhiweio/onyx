@@ -11,18 +11,29 @@ Contextual-RAG-ON AUGMENTATION re-embeds one document per page — its per-chunk
 re-enrichment is the slow, unheartbeated phase, and needs a doc's chunks complete
 (they span PIT pages) to rebuild the doc text. RAG-off / MODEL_ONLY have no LLM step,
 so they stream PIT pages.
+
+When the FUTURE settings enable multipass indexing, each re-embedded chunk also
+yields its mini chunk sibling documents (split from the bare chunk text, embedded
+by the same call); they are written alongside their parents and progress is
+counted in parent chunks only.
 """
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 
+from chonkie import SentenceChunker
+
+from onyx.configs.app_configs import MINI_CHUNK_SIZE
 from onyx.db.models import SearchSettings
 from onyx.document_index.factory import build_opensearch_document_index
 from onyx.document_index.opensearch.client import OpenSearchIndexClient
 from onyx.document_index.opensearch.opensearch_document_index import (
     OpenSearchDocumentIndex,
 )
-from onyx.document_index.opensearch.schema import DocumentChunkWithoutVectors
+from onyx.document_index.opensearch.schema import (
+    DocumentChunkWithoutVectors,
+    MiniChunkDocument,
+)
 from onyx.indexing.chunker import DEFAULT_CONTEXTUAL_RAG_RESERVED_TOKENS
 from onyx.indexing.embedder import DefaultIndexingEmbedder, IndexingEmbedder
 from onyx.indexing.port_reembed import (
@@ -41,15 +52,12 @@ _PORT_WRITE_PAGE_SIZE = 1000
 
 def _build_augmentation_ctx(
     future_search_settings: SearchSettings,
+    future_embedding_tokenizer: BaseTokenizer,
 ) -> AugmentationReembedContext:
-    """Prepare the AUGMENTATION inputs while a DB session is available. The FUTURE
-    embedding tokenizer is always resolved (reproduces the chunker's metadata-tail skip);
-    for FUTURE-RAG-on we also resolve the contextual LLM/tokenizer and the same token
+    """Prepare the AUGMENTATION inputs. The FUTURE embedding tokenizer is resolved
+    by the caller (it is needed for the mini chunk splitter regardless); for
+    FUTURE-RAG-on we also resolve the contextual LLM/tokenizer and the same token
     budgets the chunker uses."""
-    future_embedding_tokenizer = get_tokenizer(
-        model_name=future_search_settings.model_name,
-        provider_type=future_search_settings.provider_type,
-    )
     if not future_search_settings.enable_contextual_rag:
         return AugmentationReembedContext(
             future_enable_contextual_rag=False,
@@ -86,6 +94,7 @@ def copy_present_chunks_to_future(
     embedder: IndexingEmbedder,
     present_tokenizer: BaseTokenizer,
     augmentation_ctx: AugmentationReembedContext | None = None,
+    mini_chunk_splitter: SentenceChunker | None = None,
     surviving_doc_ids: Callable[[], set[str]] | None = None,
     should_abort: Callable[[], bool] | None = None,
 ) -> tuple[int, bool]:
@@ -95,7 +104,8 @@ def copy_present_chunks_to_future(
 
     should_abort brackets each re-embed and precedes each write — it aborts a cancelled
     attempt and heartbeats so a slow-but-live port isn't stall-failed. surviving_doc_ids
-    drops chunks of docs deleted mid-batch (no resurrection)."""
+    drops chunks of docs deleted mid-batch (no resurrection). Progress is counted in
+    parent chunks; mini chunk siblings ride along uncounted."""
     pages: Iterable[list[DocumentChunkWithoutVectors]]
     # Contextual RAG-on AUGMENTATION: buffer to reassemble each doc (chunks span PIT pages), then
     # re-embed one doc per page so the unheartbeated per-chunk LLM re-enrichment is bounded
@@ -126,6 +136,7 @@ def copy_present_chunks_to_future(
             embedder,
             augmentation_ctx=augmentation_ctx,
             present_tokenizer=present_tokenizer,
+            mini_chunk_splitter=mini_chunk_splitter,
         )
         if not reembedded:
             continue
@@ -145,15 +156,19 @@ def copy_present_chunks_to_future(
                 return chunks_written, True
             sub = reembedded[i : i + _PORT_WRITE_PAGE_SIZE]
             # Drop chunks of docs deleted mid-batch, re-checked immediately before each
-            # write (not once per page): a doc's chunks can span several sub-pages, and a
-            # doc deleted between writes would otherwise be create-only resurrected.
+            # write (not once per page): a doc's chunks can span several sub-pages, and
+            # a doc deleted between writes would otherwise be create-only resurrected.
             if surviving_doc_ids is not None:
                 surviving = surviving_doc_ids()
                 sub = [c for c in sub if c.document_id in surviving]
                 if not sub:
                     continue
             future_index.index_raw_chunks(sub, use_create_only=True)
-            chunks_written += len(sub)
+            # Count parent chunks only, so progress stays comparable to the
+            # PRESENT chunk counts the port cursor is measured against.
+            chunks_written += sum(
+                1 for chunk in sub if not isinstance(chunk, MiniChunkDocument)
+            )
     return chunks_written, False
 
 
@@ -185,9 +200,29 @@ class PortCopier:
             model_name=present_search_settings.model_name,
             provider_type=present_search_settings.provider_type,
         )
+        self._future_embedding_tokenizer = get_tokenizer(
+            model_name=future_search_settings.model_name,
+            provider_type=future_search_settings.provider_type,
+        )
         self._augmentation_ctx: AugmentationReembedContext | None = None
         if self._strategy is ReembedStrategy.AUGMENTATION:
-            self._augmentation_ctx = _build_augmentation_ctx(future_search_settings)
+            self._augmentation_ctx = _build_augmentation_ctx(
+                future_search_settings, self._future_embedding_tokenizer
+            )
+        # Mini chunks (multipass indexing): split with the FUTURE tokenizer on
+        # the same mini size the indexing pipeline uses.
+        self._mini_chunk_splitter: SentenceChunker | None = None
+        if future_search_settings.multipass_indexing:
+
+            def mini_token_counter(text: str) -> int:
+                return len(self._future_embedding_tokenizer.encode(text))
+
+            self._mini_chunk_splitter = SentenceChunker(
+                tokenizer_or_token_counter=mini_token_counter,
+                chunk_size=MINI_CHUNK_SIZE,
+                chunk_overlap=0,
+                return_type="texts",
+            )
 
     def delete_port_written(self, document_ids: list[str]) -> int:
         """Delete only the port-written chunks of these docs from the target index —
@@ -209,6 +244,7 @@ class PortCopier:
             embedder=self._embedder,
             present_tokenizer=self._present_tokenizer,
             augmentation_ctx=self._augmentation_ctx,
+            mini_chunk_splitter=self._mini_chunk_splitter,
             surviving_doc_ids=surviving_doc_ids,
             should_abort=should_abort,
         )

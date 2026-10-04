@@ -30,6 +30,7 @@ from onyx.document_index.opensearch.schema import (
     DOCUMENT_ID_FIELD_NAME,
     DOCUMENT_SETS_FIELD_NAME,
     HIDDEN_FIELD_NAME,
+    IS_MINI_CHUNK_FIELD_NAME,
     LAST_UPDATED_FIELD_NAME,
     MAX_CHUNK_SIZE_FIELD_NAME,
     METADATA_LIST_FIELD_NAME,
@@ -234,7 +235,16 @@ class DocumentQuery:
             hierarchy_node_ids=index_filters.hierarchy_node_ids,
         )
         final_get_ids_query: dict[str, Any] = {
-            "query": {"bool": {"filter": filter_clauses}},
+            "query": {
+                "bool": {
+                    "filter": filter_clauses,
+                    # Mini chunks duplicate their parent chunk's fields and
+                    # share its chunk_index; only main chunks are fetchable by
+                    # ID. (The max_chunk_size term filter already excludes them
+                    # when supplied; this is the safety net when it isn't.)
+                    "must_not": [{"term": {IS_MINI_CHUNK_FIELD_NAME: {"value": True}}}],
+                }
+            },
             # We include this to make sure OpenSearch does not revert to
             # returning some number of results less than the index max allowed
             # return size.
@@ -647,7 +657,16 @@ class DocumentQuery:
         final_random_search_query = {
             "query": {
                 "function_score": {
-                    "query": {"bool": {"filter": search_filters}},
+                    "query": {
+                        "bool": {
+                            "filter": search_filters,
+                            # Mini chunks duplicate their parent chunk; random
+                            # sampling should only consider main chunks.
+                            "must_not": [
+                                {"term": {IS_MINI_CHUNK_FIELD_NAME: {"value": True}}}
+                            ],
+                        }
+                    },
                     # See
                     # https://docs.opensearch.org/latest/query-dsl/compound/function-score/#the-random-score-function
                     "random_score": {
@@ -859,6 +878,9 @@ class DocumentQuery:
                 # in the document. This defaults to 1, unless a filter or must
                 # clause is supplied, in which case it defaults to 0.
                 "minimum_should_match": 1,
+                # Mini chunks duplicate their parent chunk's content; matching
+                # them here would multiply-count the parent in keyword scoring.
+                "must_not": [{"term": {IS_MINI_CHUNK_FIELD_NAME: {"value": True}}}],
             }
         }
 
