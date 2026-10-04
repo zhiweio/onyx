@@ -150,6 +150,12 @@ export default function CraftTimeline({
 
   // ---- History items (virtualized) ----------------------------------------
 
+  // While a turn streams, its trailing assistant message renders in the live
+  // tail; keeping it in the virtual list too would double-render it and pin
+  // a stale mid-stream row measurement under the rows that follow.
+  const lastMessageIsStreamingAssistant =
+    hasStreamItems && lastMessage?.type === "assistant";
+
   const historyItems = useMemo(() => {
     const items: { key: string; message: BuildMessage; index: number }[] = [];
     messages.forEach((message, index) => {
@@ -162,10 +168,19 @@ export default function CraftTimeline({
       if (message.type !== "user" && message.type !== "assistant") {
         return;
       }
+      // Streaming tail is owned by the live tail below (see
+      // lastMessageIsStreamingAssistant).
+      if (
+        lastMessageIsStreamingAssistant &&
+        message.type === "assistant" &&
+        index === messages.length - 1
+      ) {
+        return;
+      }
       items.push({ key: message.id, message, index });
     });
     return items;
-  }, [messages]);
+  }, [messages, lastMessageIsStreamingAssistant]);
 
   const virtualizer = useVirtualizer({
     count: historyItems.length,
@@ -183,6 +198,20 @@ export default function CraftTimeline({
   useEffect(() => {
     virtualizer.measure();
   }, [messages.length, virtualizer]);
+
+  // Phase turns grow their trailing message without changing the message
+  // count, so mid-stream measurements go stale and later rows would paint
+  // on top of them. Re-measure on a short interval while the live tail is
+  // up, plus one final correction when it hands the turn back to history.
+  useEffect(() => {
+    if (!showStreamingArea) return;
+    virtualizer.measure();
+    const timer = setInterval(() => virtualizer.measure(), 500);
+    return () => {
+      clearInterval(timer);
+      requestAnimationFrame(() => virtualizer.measure());
+    };
+  }, [showStreamingArea, virtualizer]);
 
   // ---- Turn rendering (shared with the live tail) --------------------------
 
