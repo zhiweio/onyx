@@ -17,6 +17,10 @@ interface ToolSummaryRowProps {
   icon: ReactNode;
   kindLabel: ReactNode;
   kindLabelClassName?: string;
+  /** Detail right after the kind label (e.g. MCP server name). */
+  kindDetail?: ReactNode;
+  /** Separator between the content group's leading node and primary text. */
+  separator?: ReactNode;
   primaryText: ReactNode;
   secondaryText?: ReactNode;
   diffCount?: ReactNode;
@@ -31,6 +35,8 @@ export function ToolSummaryRow({
   icon,
   kindLabel,
   kindLabelClassName,
+  kindDetail,
+  separator,
   primaryText,
   secondaryText,
   diffCount,
@@ -54,8 +60,12 @@ export function ToolSummaryRow({
           {kindLabel}
         </span>
       ) : null}
+      {kindDetail ? (
+        <span className="shrink-0 whitespace-nowrap">{kindDetail}</span>
+      ) : null}
       {hasContent ? (
         <span className="flex min-w-0 max-w-full items-center gap-2">
+          {separator}
           <span className="min-w-0 truncate">{primaryText}</span>
           {secondaryText ? (
             <span className="min-w-0 shrink truncate">{secondaryText}</span>

@@ -273,6 +273,10 @@ class CustomToolStart(BaseObj):
 
     tool_name: str
     tool_id: int | None = None
+    # MCP presentation: the owning server's name and the tool's display name,
+    # so the timeline can render `MCP <server> · <tool>` without name-guessing.
+    server_name: str | None = None
+    display_name: str | None = None
 
 
 class CustomToolArgs(BaseObj):

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@tests/setup/test-utils";
+import { fireEvent, render, screen, waitFor } from "@tests/setup/test-utils";
 import TaskBody from "@/app/craft/components/tool-cards/TaskBody";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 import type { CraftJobResponse } from "@/app/craft/services/apiServices";
@@ -28,7 +28,7 @@ function task(overrides: Partial<ToolCallState>): ToolCallState {
   };
 }
 
-describe("TaskBody", () => {
+describe("TaskBody (ZCode subagent row)", () => {
   beforeEach(() => {
     craftJobRef.current = null;
     useBuildSessionStore.setState({
@@ -37,130 +37,15 @@ describe("TaskBody", () => {
     } as never);
   });
 
-  it("does not expand when no child session is linked", () => {
+  it("renders the SubAgent label, description, and activity line", () => {
     render(<TaskBody toolCall={task({})} />);
-    expect(
-      screen.queryByRole("button", { name: /expand/i })
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByText("SubAgent").length).toBeGreaterThan(0);
     expect(screen.getByText("Map the tool cards")).toBeInTheDocument();
+    // No inline expansion — the row is the whole surface.
+    expect(screen.queryByRole("button", { name: /expand/i })).toBeNull();
   });
 
-  it("expands a running explore subagent and shows a waiting line", () => {
-    const sessionId = "parent-session";
-    const childId = "child-explore";
-    useBuildSessionStore.getState().createSession(sessionId, {
-      status: "active",
-      isLoaded: true,
-    });
-    useBuildSessionStore.getState().setCurrentSession(sessionId);
-    useBuildSessionStore
-      .getState()
-      .seedSubagentMeta(sessionId, childId, "task-1", "explore", "Explore", "");
-
-    render(
-      <TaskBody
-        toolCall={task({
-          subagentType: "explore",
-          subagentSessionId: childId,
-        })}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /expand/i }));
-    expect(screen.getByText("Waiting for the first step")).toBeInTheDocument();
-  });
-
-  it("shows live tool lines for a literature lane", () => {
-    const sessionId = "parent-session";
-    const childId = "55b05a82-5e0b-4d98-8059-9abe0f49686e";
-    useBuildSessionStore.getState().createSession(sessionId, {
-      status: "active",
-      isLoaded: true,
-    });
-    useBuildSessionStore.getState().setCurrentSession(sessionId);
-    useBuildSessionStore
-      .getState()
-      .seedSubagentMeta(
-        sessionId,
-        childId,
-        "lane-task-lane:literature",
-        "literature",
-        "Literature",
-        ""
-      );
-    useBuildSessionStore.getState().recordSubagentToolCall(
-      sessionId,
-      childId,
-      "lane-task-lane:literature",
-      {
-        id: "bash-1",
-        kind: "execute",
-        toolName: "bash",
-        title: "Running command",
-        description: "outputs/normalized/pipeline.csv",
-        command: "ls",
-        status: "in_progress",
-        rawOutput: "",
-      },
-      "literature",
-      "Literature"
-    );
-
-    render(
-      <TaskBody
-        toolCall={task({
-          id: "lane-task-lane:literature",
-          title: "Literature",
-          description: "Literature — outputs/normalized/pipeline.csv",
-          subagentType: "literature",
-          subagentSessionId: childId,
-        })}
-      />
-    );
-
-    expect(
-      screen.getByText("outputs/normalized/pipeline.csv")
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /expand/i }));
-    expect(screen.getByText("Running")).toBeInTheDocument();
-  });
-
-  it("expands an old status-suffixed lane card from the specialist map", () => {
-    const sessionId = "parent-session";
-    const childId = "4d0a580e-7ab3-4106-a846-9d4148e6230c";
-    useBuildSessionStore.getState().createSession(sessionId, {
-      status: "active",
-      isLoaded: true,
-    });
-    useBuildSessionStore.getState().setCurrentSession(sessionId);
-    useBuildSessionStore
-      .getState()
-      .seedSubagentMeta(
-        sessionId,
-        childId,
-        "lane-task-lane:researcher",
-        "researcher",
-        "Researcher",
-        ""
-      );
-
-    render(
-      <TaskBody
-        toolCall={task({
-          id: "lane-task-lane:researcher-in_progress",
-          title: "Researcher",
-          description: "Researcher — outputs/normalized/epi-patient-pool.md",
-          subagentType: "researcher",
-        })}
-      />
-    );
-
-    expect(screen.getByRole("button", { name: /expand/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /expand/i }));
-    expect(screen.getByText("Waiting for the first step")).toBeInTheDocument();
-  });
-
-  it("opens the full transcript from the expanded row", () => {
+  it("opens the subagent transcript on whole-row click", () => {
     const sessionId = "parent-session";
     const childId = "child-plan";
     useBuildSessionStore.getState().createSession(sessionId, {
@@ -179,14 +64,98 @@ describe("TaskBody", () => {
           subagentSessionId: childId,
           description: "Draft rebase plan",
         })}
-      />
+      />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /expand/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    fireEvent.click(screen.getByTestId("subagent-row"));
     expect(
       useBuildSessionStore.getState().sessions.get(sessionId)
-        ?.viewedSubagentSessionId
+        ?.viewedSubagentSessionId,
     ).toBe(childId);
+  });
+
+  it("keeps the row inert when no child session is linked", () => {
+    render(<TaskBody toolCall={task({})} />);
+    const row = screen.getByTestId("subagent-row");
+    fireEvent.click(row);
+    expect(
+      [...useBuildSessionStore.getState().sessions.values()].filter(
+        (session) => session.viewedSubagentSessionId,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("keeps the lane-transcript warm for a linked lane while running", async () => {
+    const sessionId = "parent-session";
+    const childId = "55b05a82-5e0b-4d98-8059-9abe0f49686e";
+    useBuildSessionStore.getState().createSession(sessionId, {
+      status: "active",
+      isLoaded: true,
+    });
+    useBuildSessionStore.getState().setCurrentSession(sessionId);
+    useBuildSessionStore
+      .getState()
+      .seedSubagentMeta(
+        sessionId,
+        childId,
+        "lane-task-lane:literature",
+        "literature",
+        "Literature",
+        "",
+      );
+
+    render(
+      <TaskBody
+        toolCall={task({
+          id: "lane-task-lane:literature",
+          title: "Literature",
+          description: "Literature — outputs/normalized/pipeline.csv",
+          subagentType: "literature",
+          subagentSessionId: childId,
+        })}
+      />,
+    );
+
+    // The summary keeps the latest activity as its secondary line.
+    await waitFor(() => {
+      expect(screen.getAllByText(/pipeline.csv/).length).toBeGreaterThan(0);
+    });
+    // ZCode anatomy: SubAgent label + dot separator + description.
+    expect(screen.getAllByText("SubAgent").length).toBeGreaterThan(0);
+    expect(screen.getByText("·")).toBeInTheDocument();
+  });
+
+  it("shows the running spinner only while running", () => {
+    const sessionId = "parent-session";
+    const childId = "child-a";
+    useBuildSessionStore.getState().createSession(sessionId, {
+      status: "active",
+      isLoaded: true,
+    });
+    useBuildSessionStore.getState().setCurrentSession(sessionId);
+    useBuildSessionStore
+      .getState()
+      .seedSubagentMeta(sessionId, childId, "task-1", "explore", "Explore", "");
+
+    const view = render(
+      <TaskBody
+        toolCall={task({
+          subagentType: "explore",
+          subagentSessionId: childId,
+        })}
+      />,
+    );
+    expect(document.querySelector(".animate-spin")).not.toBeNull();
+
+    view.rerender(
+      <TaskBody
+        toolCall={task({
+          subagentType: "explore",
+          subagentSessionId: childId,
+          status: "completed",
+        })}
+      />,
+    );
+    expect(document.querySelector(".animate-spin")).toBeNull();
   });
 
   it("does not keep a cancelled lane card in the running state", () => {
@@ -205,7 +174,7 @@ describe("TaskBody", () => {
         "lane-task-lane:researcher",
         "researcher",
         "Researcher",
-        ""
+        "",
       );
 
     render(
@@ -217,7 +186,7 @@ describe("TaskBody", () => {
           status: "cancelled",
           description: "Researcher — epi.md",
         })}
-      />
+      />,
     );
 
     expect(document.querySelector(".animate-spin")).toBeNull();
@@ -240,7 +209,7 @@ describe("TaskBody", () => {
         "lane-task-lane:researcher",
         "researcher",
         "Researcher",
-        ""
+        "",
       );
     craftJobRef.current = {
       id: "job-2",
@@ -276,7 +245,7 @@ describe("TaskBody", () => {
           status: "cancelled",
           description: "Researcher — epi.md",
         })}
-      />
+      />,
     );
 
     expect(document.querySelector(".animate-spin")).toBeNull();

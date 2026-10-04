@@ -19,13 +19,13 @@ export type {
 // Every backend field name variant is listed ONCE here.
 
 export function getRawInput(
-  p: Record<string, unknown>
+  p: Record<string, unknown>,
 ): Record<string, unknown> | null {
   return (p.raw_input ?? p.rawInput ?? null) as Record<string, unknown> | null;
 }
 
 export function getRawOutput(
-  p: Record<string, unknown>
+  p: Record<string, unknown>,
 ): Record<string, unknown> | null {
   return (p.raw_output ?? p.rawOutput ?? null) as Record<
     string,
@@ -127,6 +127,11 @@ export interface ParsedToolCallStart {
   parentSessionId: string | null;
   /** On a parent `task` event, the child session it spawned; else null. */
   subagentSessionId: string | null;
+  /** MCP-bridged calls: owning server name and bare tool name, parsed from
+   *  the server-qualified raw name. Undefined for non-MCP calls. */
+  mcpServerName?: string;
+  mcpToolName?: string;
+  mcpParameters?: Record<string, unknown>;
 }
 
 export interface ParsedToolCallProgress {
@@ -158,6 +163,9 @@ export interface ParsedToolCallProgress {
   parentSessionId: string | null;
   /** On a parent `task` event, the child session it spawned; else null. */
   subagentSessionId: string | null;
+  mcpServerName?: string;
+  mcpToolName?: string;
+  mcpParameters?: Record<string, unknown>;
 }
 
 export interface ParsedPromptResponse {

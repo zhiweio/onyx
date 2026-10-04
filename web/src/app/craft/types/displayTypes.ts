@@ -85,6 +85,14 @@ export interface ToolCallState {
   taskOutput?: string;
   /** For skill-namespaced tool calls: the skill name (sans namespace prefix) */
   skillName?: string;
+  /** MCP-bridged calls: owning server name and the bare tool name, parsed
+   *  from the server-qualified raw tool name. Absent for non-MCP calls. */
+  mcpServerName?: string;
+  mcpToolName?: string;
+  /** MCP call arguments (raw input object), for the call-details view. */
+  mcpParameters?: Record<string, unknown>;
+  /** MCP tool description from the tool definition, for call details. */
+  mcpDescription?: string;
   /** For edit operations: whether this is a new file (write) or edit of existing */
   isNewFile?: boolean;
   /** For edit operations: session-relative file path (drives diff/preview). */

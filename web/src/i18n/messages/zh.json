@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "您处于无痕模式"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "结果",
+      "copyResult": "复制结果",
+      "viewCallDetails": "查看调用详情",
+      "description": "描述",
+      "parameters": "参数"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "已运行",
       "lineRunning": "正在运行",
       "lineUsed": "已使用",
-      "lineUsing": "正在使用"
+      "lineUsing": "正在使用",
+      "durationSeconds": "{seconds} 秒",
+      "durationFewSeconds": "几秒",
+      "subagent": "子代理",
+      "openSubagent": "打开子代理时间线"
     },
     "approvals": {
       "approveOnce": {

@@ -84,7 +84,7 @@ const THINKING_MARKDOWN_OVERRIDES = {
 function rowTriggerClass(expandable: boolean): string {
   return cn(
     "group flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden py-0.5 text-left",
-    expandable && "rounded-sm hover:bg-background-tint-02"
+    expandable && "rounded-sm hover:bg-background-tint-02",
   );
 }
 
@@ -172,14 +172,19 @@ export function ThoughtRow({
   if (!content) return null;
 
   const seconds =
-    durationMs != null && durationMs >= 1000
-      ? Math.round(durationMs / 1000)
-      : null;
+    durationMs != null ? Math.max(1, Math.ceil(durationMs / 1000)) : null;
+  // ZCode anatomy: "Thought" (medium) · "{seconds} seconds" (normal).
   const label = isStreaming
     ? t("thinking")
     : seconds != null
-      ? t("thoughtFor", { seconds })
+      ? t("thought")
       : t("thought");
+  const durationLabel =
+    !isStreaming && seconds != null
+      ? t("durationSeconds", { seconds })
+      : !isStreaming
+        ? t("durationFewSeconds")
+        : null;
 
   return (
     <div className="min-w-0 max-w-full">
@@ -194,10 +199,20 @@ export function ThoughtRow({
           <button type="button" className={rowTriggerClass(true)}>
             <ThoughtActivityIcon isStreaming={isStreaming} />
             <PhaseTitle>{label}</PhaseTitle>
+            {durationLabel ? (
+              <>
+                <span aria-hidden className="shrink-0 text-text-03">
+                  ·
+                </span>
+                <span className="shrink-0 whitespace-nowrap font-normal text-text-03">
+                  {durationLabel}
+                </span>
+              </>
+            ) : null}
             <SvgChevronDown
               className={cn(
                 "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-                !isOpen && "-rotate-90"
+                !isOpen && "-rotate-90",
               )}
             />
           </button>

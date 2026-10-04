@@ -1,22 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Button, Text } from "@opal/components";
-import {
-  SvgLoader,
-  SvgCheckCircle,
-  SvgAlertTriangle,
-  SvgChevronDown,
-  SvgArrowRight,
-} from "@opal/icons";
+import { Text } from "@opal/components";
+import { SvgCheckCircle, SvgAlertTriangle, SvgLoader } from "@opal/icons";
 import { cn } from "@opal/utils";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/refresh-components/Collapsible";
-import ToolActivityLine from "@/app/craft/components/turn-activity/ToolActivityLine";
+import ShimmerText from "@/refresh-components/texts/ShimmerText";
 import {
   useSubagent,
   useSubagents,
@@ -32,14 +21,15 @@ import {
   matchesLaneTaskToolId,
   taskRowStatus,
 } from "@/app/craft/utils/laneTask";
-import { isHiddenJobTool } from "@/lib/craft-jobs/display";
 import type { ToolCardBodyProps } from "@/app/craft/components/tool-cards/interfaces";
-import type { StreamItem } from "@/app/craft/types/displayTypes";
 import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 
 /**
- * Task row for every subagent type. Expands in place to the live process.
- * "Open" still swaps the main column to the full transcript.
+ * SubAgent row, ZCode-style: a single-line summary
+ * `[bot] SubAgent · <task description>` with the latest child activity as a
+ * secondary line. The whole row opens the subagent's full timeline (main
+ * column swap to SubagentView); the parent conversation keeps only this
+ * summary — no in-place expansion.
  */
 export default function TaskBody({ toolCall }: ToolCardBodyProps) {
   const t = useTranslations("craft.turnActivity");
@@ -55,13 +45,13 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       ? row.session_id === toolCall.subagentSessionId
       : !settled &&
         !!row.node_id &&
-        matchesLaneTaskToolId(toolCall.id, laneTaskToolId(row.node_id))
+        matchesLaneTaskToolId(toolCall.id, laneTaskToolId(row.node_id)),
   );
   const linkedSessionId = childSessionIdForTask(
     toolCall.id,
     toolCall.subagentSessionId,
     subagents.values(),
-    { allowRematch: !settled }
+    { allowRematch: !settled },
   );
   const subagent = useSubagent(linkedSessionId);
 
@@ -69,15 +59,15 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
     subagent?.status,
     toolCall.status,
     specialist?.status,
-    specialist ? craftJob?.status : undefined
+    specialist ? craftJob?.status : undefined,
   );
 
-  const label = toolCall.description || "Spawning subagent";
-  const seedName = toolCall.description || toolCall.title || label;
+  const running = status === "running";
+  const description =
+    toolCall.description || toolCall.command || toolCall.title;
+  const seedName = description;
   const activity =
     latestSubagentActivity(subagent) || specialist?.last_activity || "";
-  const expandable = linkedSessionId !== null;
-  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (!parentSessionId || !linkedSessionId) return;
@@ -87,7 +77,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       toolCall.id,
       toolCall.subagentType ?? null,
       seedName,
-      toolCall.command || ""
+      toolCall.command || "",
     );
   }, [
     parentSessionId,
@@ -99,21 +89,16 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
     seedSubagentMeta,
   ]);
 
+  // Keep the lane transcript warm so the swapped-in SubagentView is current.
   useLaneTranscript({
-    open: isOpen,
+    open: linkedSessionId !== null,
     parentSessionId,
     childSessionId: linkedSessionId,
     parentToolCallId: toolCall.id,
-    running: status === "running",
+    running: running,
   });
 
-  const lastTurn = subagent?.turns[subagent.turns.length - 1];
-  const processItems = (lastTurn?.streamItems ?? []).filter((item) => {
-    return item.type !== "tool_call" || !isHiddenJobTool(item.toolCall);
-  });
-
-  function openFull(event: { stopPropagation: () => void }) {
-    event.stopPropagation();
+  function openTranscript() {
     if (!parentSessionId || !linkedSessionId) return;
     seedSubagentMeta(
       parentSessionId,
@@ -121,17 +106,38 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       toolCall.id,
       toolCall.subagentType ?? null,
       seedName,
-      toolCall.command || ""
+      toolCall.command || "",
     );
     viewSubagent(parentSessionId, linkedSessionId);
   }
 
-  const header = (
-    <div className="flex min-w-0 w-full items-center gap-2">
-      <CATEGORY_AGENT_ICON className="h-4 w-4 shrink-0 stroke-action-selection-05" />
+  return (
+    <button
+      type="button"
+      onClick={openTranscript}
+      disabled={linkedSessionId === null}
+      data-testid="subagent-row"
+      aria-label={t("openSubagent")}
+      className={cn(
+        "group/subagent flex min-w-0 w-full items-center gap-2 rounded-04 py-0.5 text-start transition-colors",
+        linkedSessionId !== null && "hover:bg-background-tint-02",
+      )}
+    >
+      <CATEGORY_AGENT_ICON className="h-4 w-4 shrink-0 stroke-text-03" />
+      <span
+        className={cn(
+          "shrink-0 whitespace-nowrap font-medium",
+          running ? "text-text-04" : "text-text-04",
+        )}
+      >
+        {running ? <ShimmerText>{t("subagent")}</ShimmerText> : t("subagent")}
+      </span>
+      <span aria-hidden className="shrink-0 text-text-03">
+        ·
+      </span>
       <span className="min-w-0 flex-1 overflow-hidden">
-        <Text as="p" font="main-ui-action" color="text-04" maxLines={1}>
-          {label}
+        <Text as="p" font="main-ui-muted" color="text-04" maxLines={1}>
+          {description}
         </Text>
         {activity ? (
           <Text as="p" font="secondary-mono" color="text-03" maxLines={1}>
@@ -139,7 +145,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
           </Text>
         ) : null}
       </span>
-      {status === "running" && (
+      {running && (
         <SvgLoader className="h-4 w-4 shrink-0 animate-spin stroke-action-selection-05" />
       )}
       {status === "done" && (
@@ -148,77 +154,6 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       {status === "failed" && (
         <SvgAlertTriangle className="h-4 w-4 shrink-0 stroke-status-error-05" />
       )}
-      <SvgChevronDown
-        aria-hidden={!expandable}
-        className={cn(
-          "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-          !isOpen && "-rotate-90",
-          !expandable && "invisible"
-        )}
-      />
-    </div>
+    </button>
   );
-
-  if (!expandable) {
-    return <div className="w-full min-w-0 py-0.5">{header}</div>;
-  }
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          aria-label={t("expandTask", { label })}
-          className="w-full min-w-0 rounded-sm py-0.5 text-start hover:bg-background-tint-02"
-        >
-          {header}
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="flex min-w-0 flex-col gap-1 ps-6 pb-1">
-          <div className="max-h-48 overflow-y-auto">
-            {processItems.length === 0 ? (
-              <Text font="main-ui-muted" color="text-03">
-                {t("taskWaiting")}
-              </Text>
-            ) : (
-              processItems.map((item) => (
-                <TaskProcessItem key={item.id} item={item} />
-              ))
-            )}
-          </div>
-          <Button
-            type="button"
-            size="xs"
-            prominence="tertiary"
-            icon={SvgArrowRight}
-            onClick={openFull}
-          >
-            {t("openTranscript")}
-          </Button>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-function TaskProcessItem({ item }: { item: StreamItem }) {
-  if (item.type === "tool_call") {
-    if (item.toolCall.kind === "task") {
-      return (
-        <Text as="p" font="main-ui-muted" color="text-03" maxLines={1}>
-          {item.toolCall.description || item.toolCall.title}
-        </Text>
-      );
-    }
-    return <ToolActivityLine toolCall={item.toolCall} />;
-  }
-  if (item.type === "thinking" && item.content) {
-    return (
-      <Text as="p" font="main-ui-muted" color="text-03" maxLines={3}>
-        {item.content}
-      </Text>
-    );
-  }
-  return null;
 }

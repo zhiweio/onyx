@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "Sie sind inkognito"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "Ergebnis",
+      "copyResult": "Ergebnis kopieren",
+      "viewCallDetails": "Aufrufdetails anzeigen",
+      "description": "Beschreibung",
+      "parameters": "Parameter"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "Ausgeführt",
       "lineRunning": "Führt aus",
       "lineUsed": "Verwendet",
-      "lineUsing": "Verwendet"
+      "lineUsing": "Verwendet",
+      "durationSeconds": "{seconds} Sekunden",
+      "durationFewSeconds": "einige Sekunden",
+      "subagent": "SubAgent",
+      "openSubagent": "Subagent-Timeline öffnen"
     },
     "approvals": {
       "approveOnce": {

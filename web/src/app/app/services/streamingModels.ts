@@ -216,6 +216,10 @@ export interface CustomToolStart extends BaseObj {
   type: "custom_tool_start";
   tool_name: string;
   tool_id?: number | null;
+  // MCP presentation: owning server name + tool display name (optional;
+  // absent for non-MCP custom tools and older backends).
+  server_name?: string | null;
+  display_name?: string | null;
 }
 
 export interface CustomToolArgs extends BaseObj {

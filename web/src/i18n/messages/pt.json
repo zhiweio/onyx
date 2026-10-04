@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "Você está no modo anônimo"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "Resultado",
+      "copyResult": "Copiar resultado",
+      "viewCallDetails": "Ver detalhes da chamada",
+      "description": "Descrição",
+      "parameters": "Parâmetros"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "Executou",
       "lineRunning": "Executando",
       "lineUsed": "Usou",
-      "lineUsing": "Usando"
+      "lineUsing": "Usando",
+      "durationSeconds": "{seconds} segundos",
+      "durationFewSeconds": "alguns segundos",
+      "subagent": "Subagente",
+      "openSubagent": "Abrir a linha do tempo do subagente"
     },
     "approvals": {
       "approveOnce": {

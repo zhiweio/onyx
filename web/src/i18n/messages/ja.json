@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "シークレットモードです"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "結果",
+      "copyResult": "結果をコピー",
+      "viewCallDetails": "呼び出し詳細を表示",
+      "description": "説明",
+      "parameters": "パラメータ"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "実行済み",
       "lineRunning": "実行中",
       "lineUsed": "使用済み",
-      "lineUsing": "使用中"
+      "lineUsing": "使用中",
+      "durationSeconds": "{seconds}秒",
+      "durationFewSeconds": "数秒",
+      "subagent": "サブエージェント",
+      "openSubagent": "サブエージェントのタイムラインを開く"
     },
     "approvals": {
       "approveOnce": {

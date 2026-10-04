@@ -11,16 +11,24 @@ import ShimmerText from "@/refresh-components/texts/ShimmerText";
  */
 
 function formatDuration(totalSeconds: number): string {
-  const seconds = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
+  // ZCode convention: at least 1s, at most two unit parts (d/h/m/s).
+  const seconds = Math.max(1, Math.round(totalSeconds));
+  const parts: string[] = [];
+  let remaining = seconds;
+  for (const [unit, size] of [
+    ["d", 86400],
+    ["h", 3600],
+    ["m", 60],
+    ["s", 1],
+  ] as const) {
+    if (parts.length === 2) break;
+    const value = Math.floor(remaining / size);
+    if (value > 0 || parts.length > 0) {
+      parts.push(`${value}${unit}`);
+      remaining -= value * size;
+    }
   }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
-  }
-  return `${seconds}s`;
+  return parts.join(" ");
 }
 
 interface TurnStatusHeaderProps {

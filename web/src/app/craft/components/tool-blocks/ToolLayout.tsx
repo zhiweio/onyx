@@ -35,6 +35,10 @@ interface ToolLayoutProps {
   toolId: string;
   icon: ReactNode;
   kindLabel: ReactNode;
+  /** Detail right after the kind label (e.g. MCP server name). */
+  kindDetail?: ReactNode;
+  /** Separator between the kind group and the content group. */
+  separator?: ReactNode;
   primaryText: ReactNode;
   secondaryText?: ReactNode;
   diffCount?: ReactNode;
@@ -52,6 +56,8 @@ function ToolLayoutComponent({
   toolId,
   icon,
   kindLabel,
+  kindDetail,
+  separator,
   primaryText,
   secondaryText,
   diffCount,
@@ -212,6 +218,8 @@ function ToolLayoutComponent({
       <ToolSummaryRow
         icon={icon}
         kindLabel={kindLabel}
+        kindDetail={kindDetail}
+        separator={separator}
         kindLabelClassName={
           isRunning
             ? "font-secondary-action text-text-03"

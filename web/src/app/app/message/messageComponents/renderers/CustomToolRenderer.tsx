@@ -12,7 +12,13 @@ import {
 import { MessageRenderer, RenderType } from "../interfaces";
 import { buildImgUrl } from "../../../components/files/images/utils";
 import Text from "@/refresh-components/texts/Text";
-import { SvgActions, SvgDownload, SvgExternalLink } from "@opal/icons";
+import { SvgActions, SvgDownload, SvgExternalLink, SvgPlug } from "@opal/icons";
+import { parseMcpToolName } from "@/lib/tools/mcpPresentation";
+import {
+  McpCallDetails,
+  McpResultBlock,
+  McpSummaryLine,
+} from "@/lib/tools/components/McpCall";
 import { CodeBlock } from "@/app/app/message/CodeBlock";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
@@ -53,23 +59,23 @@ function HighlightedJsonCode({ code }: HighlightedJsonCodeProps) {
 
 function constructCustomToolState(
   packets: CustomToolPacket[],
-  fallbackToolName: string
+  fallbackToolName: string,
 ) {
   const toolStart = packets.find(
-    (p) => p.obj.type === PacketType.CUSTOM_TOOL_START
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_START,
   )?.obj as CustomToolStart | null;
   const toolDeltas = packets
     .filter((p) => p.obj.type === PacketType.CUSTOM_TOOL_DELTA)
     .map((p) => p.obj as CustomToolDelta);
   const toolEnd = packets.find(
     (p) =>
-      p.obj.type === PacketType.SECTION_END || p.obj.type === PacketType.ERROR
+      p.obj.type === PacketType.SECTION_END || p.obj.type === PacketType.ERROR,
   )?.obj as SectionEnd | null;
 
   const toolName =
     toolStart?.tool_name || toolDeltas[0]?.tool_name || fallbackToolName;
   const toolArgsPacket = packets.find(
-    (p) => p.obj.type === PacketType.CUSTOM_TOOL_ARGS
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_ARGS,
   )?.obj as CustomToolArgs | null;
   const toolArgs = toolArgsPacket?.tool_args ?? null;
   const latestDelta = toolDeltas[toolDeltas.length - 1] || null;
@@ -81,6 +87,19 @@ function constructCustomToolState(
   const isRunning = Boolean(toolStart && !toolEnd);
   const isComplete = Boolean(toolStart && toolEnd);
 
+  // MCP presentation: prefer the server-streamed fields, fall back to the
+  // name conventions (`mcp__<server>__<tool>` / `mcp_<server>_<tool>`).
+  const mcpFromStart = toolStart?.server_name
+    ? {
+        serverName: toolStart.server_name,
+        toolName: toolStart.display_name || toolName,
+      }
+    : null;
+  const mcpFromName = /^mcp([_]|__)/.test(toolName)
+    ? parseMcpToolName(toolName)
+    : null;
+  const mcp = mcpFromStart ?? (mcpFromName?.serverName ? mcpFromName : null);
+
   return {
     toolName,
     toolArgs,
@@ -90,6 +109,7 @@ function constructCustomToolState(
     error,
     isRunning,
     isComplete,
+    mcp,
   };
 }
 
@@ -109,6 +129,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     error,
     isRunning,
     isComplete,
+    mcp,
   } = constructCustomToolState(packets, t("customTool.fallbackName.label"));
 
   useEffect(() => {
@@ -118,6 +139,15 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
   }, [isComplete, onComplete]);
 
   const status = useMemo(() => {
+    if (mcp) {
+      return (
+        <McpSummaryLine
+          serverName={mcp.serverName}
+          toolName={mcp.toolName}
+          running={isRunning}
+        />
+      );
+    }
     if (isComplete) {
       if (error) {
         return error.is_auth_error
@@ -138,131 +168,147 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     }
     if (isRunning) return t("customTool.runningStatus.text", { toolName });
     return null;
-  }, [toolName, responseType, error, isComplete, isRunning, t]);
+  }, [mcp, toolName, responseType, error, isComplete, isRunning, t]);
 
-  const icon = SvgActions;
+  const icon = mcp ? SvgPlug : SvgActions;
 
   const toolArgsJson = useMemo(
     () => (toolArgs ? JSON.stringify(toolArgs, null, 2) : null),
-    [toolArgs]
+    [toolArgs],
   );
   const dataJson = useMemo(
     () =>
       data !== undefined && data !== null && typeof data === "object"
         ? JSON.stringify(data, null, 2)
         : null,
-    [data]
+    [data],
   );
 
   const content = useMemo(
-    () => (
-      <div className="flex flex-col gap-3">
-        {/* Loading indicator */}
-        {isRunning &&
-          !error &&
-          !fileIds &&
-          (data === undefined || data === null) && (
-            <div className="flex items-center gap-2 text-sm text-text-03">
-              <div className="flex gap-0.5">
-                <div className="w-1 h-1 bg-current rounded-full animate-pulse"></div>
-                <div
-                  className="w-1 h-1 bg-current rounded-full animate-pulse"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-1 h-1 bg-current rounded-full animate-pulse"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
+    () =>
+      mcp ? (
+        <div className="flex min-w-0 flex-col gap-2">
+          {error ? (
+            <div className="rounded-08 border border-status-error-02 bg-status-error-00 px-3 py-2 text-sm">
+              {error.message}
+            </div>
+          ) : data !== undefined && data !== null ? (
+            <McpResultBlock
+              result={
+                typeof data === "string" ? data : JSON.stringify(data, null, 2)
+              }
+            />
+          ) : null}
+          <McpCallDetails parameters={toolArgs} />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Loading indicator */}
+          {isRunning &&
+            !error &&
+            !fileIds &&
+            (data === undefined || data === null) && (
+              <div className="flex items-center gap-2 text-sm text-text-03">
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 bg-current rounded-full animate-pulse"></div>
+                  <div
+                    className="w-1 h-1 bg-current rounded-full animate-pulse"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-1 h-1 bg-current rounded-full animate-pulse"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+                <Text text03 secondaryBody>
+                  {t("customTool.waitingIndicator.text")}
+                </Text>
               </div>
-              <Text text03 secondaryBody>
-                {t("customTool.waitingIndicator.text")}
+            )}
+
+          {/* Tool arguments */}
+          {toolArgsJson && (
+            <div>
+              <IoBlockLabel label={t("customTool.requestBlock.label")} />
+              <div className="prose max-w-full">
+                <CodeBlock
+                  className="font-secondary-mono"
+                  codeText={toolArgsJson}
+                  noPadding
+                >
+                  <HighlightedJsonCode code={toolArgsJson} />
+                </CodeBlock>
+              </div>
+            </div>
+          )}
+
+          {/* Error display */}
+          {error && (
+            <div className="ps-(--timeline-common-text-padding)">
+              <Text text03 mainUiMuted>
+                {error.message}
               </Text>
             </div>
           )}
 
-        {/* Tool arguments */}
-        {toolArgsJson && (
-          <div>
-            <IoBlockLabel label={t("customTool.requestBlock.label")} />
-            <div className="prose max-w-full">
-              <CodeBlock
-                className="font-secondary-mono"
-                codeText={toolArgsJson}
-                noPadding
-              >
-                <HighlightedJsonCode code={toolArgsJson} />
-              </CodeBlock>
+          {/* File responses */}
+          {!error && fileIds && fileIds.length > 0 && (
+            <div className="text-sm text-text-03 flex flex-col gap-2">
+              {fileIds.map((fid, idx) => (
+                <div key={fid} className="flex items-center gap-2 flex-wrap">
+                  <Text text03 secondaryBody className="whitespace-nowrap">
+                    {t("customTool.fileItem.label", { index: idx + 1 })}
+                  </Text>
+                  <a
+                    href={buildImgUrl(fid)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-action-selection-01 hover:underline whitespace-nowrap"
+                  >
+                    <SvgExternalLink className="w-3 h-3" />{" "}
+                    {t("customTool.openFileLink.label")}
+                  </a>
+                  <a
+                    href={buildImgUrl(fid)}
+                    download
+                    className="inline-flex items-center gap-1 text-xs text-action-selection-01 hover:underline whitespace-nowrap"
+                  >
+                    <SvgDownload className="w-3 h-3" />{" "}
+                    {t("customTool.downloadFileLink.label")}
+                  </a>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error display */}
-        {error && (
-          <div className="ps-(--timeline-common-text-padding)">
-            <Text text03 mainUiMuted>
-              {error.message}
-            </Text>
-          </div>
-        )}
-
-        {/* File responses */}
-        {!error && fileIds && fileIds.length > 0 && (
-          <div className="text-sm text-text-03 flex flex-col gap-2">
-            {fileIds.map((fid, idx) => (
-              <div key={fid} className="flex items-center gap-2 flex-wrap">
-                <Text text03 secondaryBody className="whitespace-nowrap">
-                  {t("customTool.fileItem.label", { index: idx + 1 })}
-                </Text>
-                <a
-                  href={buildImgUrl(fid)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-action-selection-01 hover:underline whitespace-nowrap"
-                >
-                  <SvgExternalLink className="w-3 h-3" />{" "}
-                  {t("customTool.openFileLink.label")}
-                </a>
-                <a
-                  href={buildImgUrl(fid)}
-                  download
-                  className="inline-flex items-center gap-1 text-xs text-action-selection-01 hover:underline whitespace-nowrap"
-                >
-                  <SvgDownload className="w-3 h-3" />{" "}
-                  {t("customTool.downloadFileLink.label")}
-                </a>
+          {/* JSON/Text responses */}
+          {!error && data !== undefined && data !== null && (
+            <div>
+              <IoBlockLabel label={t("customTool.responseBlock.label")} />
+              <div className="prose max-w-full">
+                {dataJson ? (
+                  <CodeBlock
+                    className="font-secondary-mono"
+                    codeText={dataJson}
+                    noPadding
+                  >
+                    <HighlightedJsonCode code={dataJson} />
+                  </CodeBlock>
+                ) : (
+                  <CodeBlock
+                    className="font-secondary-mono"
+                    codeText={String(data)}
+                    noPadding
+                  >
+                    {String(data)}
+                  </CodeBlock>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* JSON/Text responses */}
-        {!error && data !== undefined && data !== null && (
-          <div>
-            <IoBlockLabel label={t("customTool.responseBlock.label")} />
-            <div className="prose max-w-full">
-              {dataJson ? (
-                <CodeBlock
-                  className="font-secondary-mono"
-                  codeText={dataJson}
-                  noPadding
-                >
-                  <HighlightedJsonCode code={dataJson} />
-                </CodeBlock>
-              ) : (
-                <CodeBlock
-                  className="font-secondary-mono"
-                  codeText={String(data)}
-                  noPadding
-                >
-                  {String(data)}
-                </CodeBlock>
-              )}
             </div>
-          </div>
-        )}
-      </div>
-    ),
-    [toolArgsJson, dataJson, data, fileIds, error, isRunning, t]
+          )}
+        </div>
+      ),
+    [toolArgsJson, dataJson, data, fileIds, error, isRunning, t, mcp, toolArgs],
   );
 
   // Auth error: always render FULL with error surface

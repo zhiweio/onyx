@@ -3,6 +3,9 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Text } from "@opal/components";
+import { SvgPlug } from "@opal/icons";
+import ShimmerText from "@/refresh-components/texts/ShimmerText";
+import { McpCallDetails, McpResultBlock } from "@/lib/tools/components/McpCall";
 import { cn } from "@opal/utils";
 import { ToolLayout } from "@/app/craft/components/tool-blocks/ToolLayout";
 import TaskBody from "@/app/craft/components/tool-cards/TaskBody";
@@ -37,7 +40,7 @@ interface DiffCounts {
 
 function lineDiffCounts(
   oldContent: string | undefined,
-  newContent: string | undefined
+  newContent: string | undefined,
 ): DiffCounts | null {
   if (newContent === undefined) {
     return null;
@@ -115,7 +118,7 @@ interface FileNavProps {
 
 function primaryTextFor(
   toolCall: ToolCallState,
-  nav?: FileNavProps
+  nav?: FileNavProps,
 ): ReactNode {
   const text = toolCall.command || toolCall.description || toolCall.title;
   const filePath = toolCall.filePath;
@@ -224,8 +227,14 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
       toolCall.kind === "edit" && !running
         ? lineDiffCounts(toolCall.oldContent, toolCall.newContent)
         : null,
-    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running]
+    [toolCall.kind, toolCall.oldContent, toolCall.newContent, running],
   );
+
+  const labelKey = statusLabelKey(toolCall.status);
+  // Failures surface the error on the status word's tooltip; the raw output
+  // usually carries the stderr tail.
+  const errorTooltip =
+    failed && toolCall.rawOutput ? toolCall.rawOutput.slice(-2000) : undefined;
 
   // The task tool is its own clickable row that navigates to the spawned
   // subagent's transcript — not a collapsible block.
@@ -233,12 +242,49 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
     return <TaskBody toolCall={toolCall} />;
   }
 
+  // MCP-bridged calls render the ZCode-style MCP row: summary
+  // `MCP <server> · <tool>`, expanded Result + View call details.
+  if (toolCall.mcpToolName) {
+    return (
+      <div className="rounded-08 px-1">
+        <ToolLayout
+          toolId={toolCall.id}
+          icon={<SvgPlug className="size-4 shrink-0 stroke-text-03" />}
+          kindLabel={running ? <ShimmerText>MCP</ShimmerText> : "MCP"}
+          kindDetail={toolCall.mcpServerName}
+          separator={
+            <span aria-hidden className="shrink-0 text-text-03">
+              ·
+            </span>
+          }
+          primaryText={primaryTextFor(toolCall, nav)}
+          statusLabel={labelKey ? t(labelKey) : undefined}
+          statusTooltip={failed ? errorTooltip : undefined}
+          isRunning={running}
+          title={toolCall.title}
+          content={
+            <div className="flex min-w-0 flex-col gap-2">
+              {failed && toolCall.rawOutput ? (
+                <div className="rounded-08 border border-status-error-02 bg-status-error-00 px-3 py-2">
+                  <Text font="secondary-body" color="text-03">
+                    {toolCall.rawOutput.slice(-2000)}
+                  </Text>
+                </div>
+              ) : toolCall.rawOutput ? (
+                <McpResultBlock result={toolCall.rawOutput} />
+              ) : null}
+              <McpCallDetails
+                description={toolCall.mcpDescription ?? toolCall.title}
+                parameters={toolCall.mcpParameters ?? null}
+              />
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
   const Icon = getToolIcon(toolCall.kind);
-  const labelKey = statusLabelKey(toolCall.status);
-  // Failures surface the error on the status word's tooltip; the raw output
-  // usually carries the stderr tail.
-  const errorTooltip =
-    failed && toolCall.rawOutput ? toolCall.rawOutput.slice(-2000) : undefined;
 
   return (
     <div
@@ -248,7 +294,7 @@ function ToolCallBlock({ toolCall, nested = false, nav }: ToolCallBlockProps) {
         !nested &&
           isSkillInvocation(toolCall) &&
           !failed &&
-          "border-[0.5px] border-border-01"
+          "border-[0.5px] border-border-01",
       )}
     >
       <ToolLayout

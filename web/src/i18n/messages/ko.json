@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "시크릿 모드입니다"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "결과",
+      "copyResult": "결과 복사",
+      "viewCallDetails": "호출 세부 정보 보기",
+      "description": "설명",
+      "parameters": "매개변수"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "실행함",
       "lineRunning": "실행 중",
       "lineUsed": "사용함",
-      "lineUsing": "사용 중"
+      "lineUsing": "사용 중",
+      "durationSeconds": "{seconds}초",
+      "durationFewSeconds": "몇 초",
+      "subagent": "서브에이전트",
+      "openSubagent": "서브에이전트 타임라인 열기"
     },
     "approvals": {
       "approveOnce": {

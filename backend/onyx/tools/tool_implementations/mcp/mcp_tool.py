@@ -138,7 +138,11 @@ class MCPTool(Tool[None]):
         self.emitter.emit(
             Packet(
                 placement=placement,
-                obj=CustomToolStart(tool_name=self._name),
+                obj=CustomToolStart(
+                    tool_name=self._name,
+                    server_name=self.mcp_server.name,
+                    display_name=self._display_name,
+                ),
             )
         )
 

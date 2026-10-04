@@ -11289,6 +11289,14 @@
       "incognito": {
         "title": "أنت في وضع التخفي"
       }
+    },
+    "mcpCall": {
+      "label": "MCP",
+      "result": "النتيجة",
+      "copyResult": "نسخ النتيجة",
+      "viewCallDetails": "عرض تفاصيل الاستدعاء",
+      "description": "الوصف",
+      "parameters": "المعلمات"
     }
   },
   "common": {
@@ -11965,7 +11973,11 @@
       "lineRan": "شغل",
       "lineRunning": "يشغل",
       "lineUsed": "استخدم",
-      "lineUsing": "يستخدم"
+      "lineUsing": "يستخدم",
+      "durationSeconds": "{seconds} ثانية",
+      "durationFewSeconds": "بضع ثوان",
+      "subagent": "وكيل فرعي",
+      "openSubagent": "افتح الجدول الزمني للوكيل الفرعي"
     },
     "approvals": {
       "approveOnce": {
