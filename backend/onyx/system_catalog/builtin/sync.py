@@ -377,13 +377,16 @@ def _report_template_needs_refresh(
 def _asset_content_changed(
     catalog_entry: SystemReportTemplate, fresh_bytes: bytes
 ) -> bool:
+    from onyx.db.file_record import FileRecordNotFoundError
     from onyx.db.system_catalog.report_template import read_catalog_docx_asset
     from onyx.error_handling.exceptions import OnyxError
     from onyx.report_templates.docx_template import docx_content_sha
 
     try:
         stored = read_catalog_docx_asset(catalog_entry)
-    except OnyxError:
+    except (OnyxError, FileRecordNotFoundError):
+        # A missing stored asset (e.g. a dangling file id after an external
+        # deletion) means refresh: the sync regenerates and republishes it.
         return True
     return docx_content_sha(stored) != docx_content_sha(fresh_bytes)
 
