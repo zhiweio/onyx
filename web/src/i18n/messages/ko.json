@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "닫기"
         },
+        "downloadButton": {
+          "label": "ZIP 다운로드"
+        },
         "fallbackTitle": "스킬 미리보기",
+        "files": {
+          "empty": "파일이 없습니다.",
+          "title": "파일"
+        },
         "instructions": {
           "title": "지침"
         },
@@ -16318,20 +16325,50 @@
           "title": "스킬을 불러오지 못했습니다"
         },
         "metadata": {
+          "createdAt": {
+            "label": "생성일"
+          },
           "createdBy": {
             "label": "생성자"
           },
           "externalApp": {
             "label": "외부 앱"
+          },
+          "status": {
+            "label": "상태"
+          },
+          "updatedAt": {
+            "label": "마지막 업데이트"
+          },
+          "visibility": {
+            "label": "공개 범위"
           }
         },
         "noInstructions": {
           "message": "지침이 없습니다."
         },
+        "status": {
+          "invalid": "유효하지 않음",
+          "valid": "유효"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "“{name}” 업데이트에 실패했습니다.",
+          "bundleReplaced": "스킬 “{name}”이(가) 업데이트되었습니다.",
+          "downloadFailed": "스킬 번들을 다운로드하지 못했습니다."
+        },
         "unavailable": {
           "appDisabled": "관리자가 “{appName}” 앱을 비활성화했습니다.",
           "appNotConnected": "이 스킬을 사용하려면 앱 페이지에서 “{appName}” 앱을 연결하세요.",
           "title": "스킬 사용 불가"
+        },
+        "uploadVersion": {
+          "label": "새 버전 업로드",
+          "pendingLabel": "업로드 중..."
+        },
+        "visibility": {
+          "organization": "조직의 모든 사용자",
+          "personal": "개인",
+          "shared": "공유됨"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "자세한 내용은 콘솔을 확인하고 페이지를 새로고침해 보세요.",
         "title": "스킬을 불러오지 못했습니다"
       },
+      "overwriteModal": {
+        "body": "계속하면 스킬의 설명, 지침, 파일이 업로드한 ZIP으로 대체됩니다. 이 작업은 되돌릴 수 없습니다.",
+        "description": "업로드한 ZIP이 편집 가능한 기존 스킬과 같은 이름입니다.",
+        "submit": {
+          "label": "스킬 덮어쓰기",
+          "pendingLabel": "덮어쓰는 중..."
+        },
+        "title": "스킬 “{name}”을(를) 덮어쓰시겠습니까?"
+      },
       "preview": {
         "unavailableFallback": "이 스킬은 현재 사용할 수 없습니다."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "{name}을(를) 비활성화하지 못했습니다",
         "enableFailed": "{name}을(를) 활성화하지 못했습니다",
+        "nameTaken": "“{name}” 스킬이 이미 존재하며 편집 권한이 없습니다.",
+        "overwriteFailed": "“{name}” 덮어쓰기에 실패했습니다.",
+        "overwriteSucceeded": "스킬 “{name}”이(가) 업로드한 ZIP으로 교체되었습니다.",
         "refreshFailed": "{name}이(가) 업데이트되었지만 스킬 목록을 새로고침할 수 없습니다."
       }
     },

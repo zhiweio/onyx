@@ -2,9 +2,10 @@ import io
 import zipfile
 from contextlib import ExitStack
 from typing import Annotated
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -70,19 +71,25 @@ from onyx.server.features.skill.response_helpers import (
     skill_response_for_user,
     skills_list_response_for_user,
 )
+from onyx.skills.built_in import BUILT_IN_SKILLS
 from onyx.skills.bundle import (
     SKILL_MD_NAME,
+    build_builtin_bundle,
     build_single_file_bundle,
     build_skill_md,
     compute_bundle_sha256,
     inspect_custom_bundle,
+    list_builtin_bundle_files,
     normalize_custom_bundle,
     read_bundle_file,
     read_custom_bundle_instructions,
     rewrite_custom_bundle_skill_md,
     update_custom_bundle_files,
 )
-from onyx.skills.content import read_custom_skill_bundle_bytes
+from onyx.skills.content import (
+    read_builtin_skill_instructions,
+    read_custom_skill_bundle_bytes,
+)
 from onyx.skills.ingest import (
     delete_bundle_blob,
     ingested_skill_bundle,
@@ -113,6 +120,15 @@ def _github_authorization_header(user: User) -> str | None:
         ).get("Authorization")
 
 
+def _content_disposition(filename: str) -> str:
+    """HTTP headers are Latin-1. Use RFC 5987 when the name is not."""
+    try:
+        filename.encode("latin-1")
+    except UnicodeEncodeError:
+        return f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
+    return f'attachment; filename="{filename}"'
+
+
 def _ensure_can_edit_org_visibility(skill: Skill, user: User) -> None:
     if skill.author_user_id == user.id:
         return
@@ -124,21 +140,32 @@ def _ensure_can_edit_org_visibility(skill: Skill, user: User) -> None:
     )
 
 
-def _editable_skill_response(
+def _skill_detail_response(
     skill: Skill,
     user: User,
     db_session: Session,
 ) -> SkillEditableDetailResponse:
-    bundle_bytes = read_custom_skill_bundle_bytes(skill)
-    response = skill_response_for_user(
+    """Full detail for any skill the user can view: row metadata (including
+    shares), instructions, and the bundle file listing."""
+    base = skill_response_for_user(
         skill,
         user,
         db_session,
         include_share_details=True,
     )
-    bundle_contents = inspect_custom_bundle(bundle_bytes)
+    if skill.built_in_skill_id is not None:
+        definition = BUILT_IN_SKILLS.get(skill.built_in_skill_id)
+        if definition is None:
+            raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
+        return SkillEditableDetailResponse(
+            **base.model_dump(),
+            instructions_markdown=read_builtin_skill_instructions(definition),
+            files=list_builtin_bundle_files(definition),
+        )
+
+    bundle_contents = inspect_custom_bundle(read_custom_skill_bundle_bytes(skill))
     return SkillEditableDetailResponse(
-        **response.model_dump(),
+        **base.model_dump(),
         instructions_markdown=bundle_contents.instructions_markdown,
         files=bundle_contents.files,
     )
@@ -170,7 +197,7 @@ def _replace_skill_bundle_from_editor(
     push_skill_to_affected_sandboxes(skill, db_session)
     db_session.commit()
     delete_bundle_blob(file_store, old_file_id)
-    return _editable_skill_response(skill, user, db_session)
+    return _skill_detail_response(skill, user, db_session)
 
 
 @user_router.get("")
@@ -238,6 +265,53 @@ def preview_skill_for_current_user(
     if skill is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
     return skill_preview_response(skill, user, db_session)
+
+
+@user_router.get("/{skill_id}/detail")
+def fetch_skill_detail_for_current_user(
+    skill_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> SkillEditableDetailResponse:
+    skill = fetch_skill(
+        skill_id,
+        policy=SkillManagementPolicy.VIEW,
+        user=user,
+        db_session=db_session,
+    )
+    if skill is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
+    return _skill_detail_response(skill, user, db_session)
+
+
+@user_router.get("/{skill_id}/bundle")
+def download_skill_bundle_for_current_user(
+    skill_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> Response:
+    skill = fetch_skill(
+        skill_id,
+        policy=SkillManagementPolicy.VIEW,
+        user=user,
+        db_session=db_session,
+    )
+    if skill is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
+
+    if skill.built_in_skill_id is not None:
+        definition = BUILT_IN_SKILLS.get(skill.built_in_skill_id)
+        if definition is None:
+            raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
+        bundle_bytes = build_builtin_bundle(definition)
+    else:
+        bundle_bytes = read_custom_skill_bundle_bytes(skill)
+
+    return Response(
+        content=bundle_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": _content_disposition(f"{skill.name}.zip")},
+    )
 
 
 @user_router.post("/custom")
@@ -497,7 +571,7 @@ def create_custom_skill_from_editor(
         push_skill_to_affected_sandboxes(skill, db_session)
         db_session.commit()
 
-    return _editable_skill_response(skill, user, db_session)
+    return _skill_detail_response(skill, user, db_session)
 
 
 @user_router.get("/custom/{skill_id}/edit")
@@ -515,7 +589,7 @@ def fetch_custom_skill_for_edit(
     if skill is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Skill not found")
 
-    return _editable_skill_response(skill, user, db_session)
+    return _skill_detail_response(skill, user, db_session)
 
 
 @user_router.post("/custom/bundle/inspect")

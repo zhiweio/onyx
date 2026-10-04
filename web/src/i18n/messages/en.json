@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "Close"
         },
+        "downloadButton": {
+          "label": "Download ZIP"
+        },
         "fallbackTitle": "Skill preview",
+        "files": {
+          "empty": "No files.",
+          "title": "Files"
+        },
         "instructions": {
           "title": "Instructions"
         },
@@ -16318,20 +16325,50 @@
           "title": "Failed to load skill"
         },
         "metadata": {
+          "createdAt": {
+            "label": "Created"
+          },
           "createdBy": {
             "label": "Created by"
           },
           "externalApp": {
             "label": "External app"
+          },
+          "status": {
+            "label": "Status"
+          },
+          "updatedAt": {
+            "label": "Last updated"
+          },
+          "visibility": {
+            "label": "Visibility"
           }
         },
         "noInstructions": {
           "message": "No instructions found."
         },
+        "status": {
+          "invalid": "Invalid",
+          "valid": "Valid"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "Failed to update “{name}”.",
+          "bundleReplaced": "Skill “{name}” updated.",
+          "downloadFailed": "Failed to download the skill bundle."
+        },
         "unavailable": {
           "appDisabled": "App “{appName}” is disabled by an administrator.",
           "appNotConnected": "Connect app “{appName}” from the Apps page to use this skill.",
           "title": "Skill unavailable"
+        },
+        "uploadVersion": {
+          "label": "Upload new version",
+          "pendingLabel": "Uploading..."
+        },
+        "visibility": {
+          "organization": "Everyone in the organization",
+          "personal": "Personal",
+          "shared": "Shared"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "Check the console for details and try refreshing the page.",
         "title": "Failed to load skills"
       },
+      "overwriteModal": {
+        "body": "Continuing replaces the skill's description, instructions, and files with the uploaded ZIP. This cannot be undone.",
+        "description": "The uploaded ZIP matches an existing skill you can edit.",
+        "submit": {
+          "label": "Overwrite skill",
+          "pendingLabel": "Overwriting..."
+        },
+        "title": "Overwrite “{name}” skill?"
+      },
       "preview": {
         "unavailableFallback": "This skill is currently unavailable."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "Failed to disable {name}",
         "enableFailed": "Failed to enable {name}",
+        "nameTaken": "A skill named “{name}” already exists and you do not have edit access to it.",
+        "overwriteFailed": "Failed to overwrite “{name}”.",
+        "overwriteSucceeded": "Skill “{name}” was replaced with the uploaded ZIP.",
         "refreshFailed": "{name} was updated, but the skill list could not be refreshed."
       }
     },

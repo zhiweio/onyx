@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "閉じる"
         },
+        "downloadButton": {
+          "label": "ZIPをダウンロード"
+        },
         "fallbackTitle": "スキルのプレビュー",
+        "files": {
+          "empty": "ファイルはありません。",
+          "title": "ファイル"
+        },
         "instructions": {
           "title": "指示"
         },
@@ -16318,20 +16325,50 @@
           "title": "スキルを読み込めませんでした"
         },
         "metadata": {
+          "createdAt": {
+            "label": "作成日時"
+          },
           "createdBy": {
             "label": "作成者"
           },
           "externalApp": {
             "label": "外部アプリ"
+          },
+          "status": {
+            "label": "ステータス"
+          },
+          "updatedAt": {
+            "label": "最終更新"
+          },
+          "visibility": {
+            "label": "公開範囲"
           }
         },
         "noInstructions": {
           "message": "指示が見つかりません。"
         },
+        "status": {
+          "invalid": "無効",
+          "valid": "有効"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "「{name}」の更新に失敗しました。",
+          "bundleReplaced": "スキル「{name}」を更新しました。",
+          "downloadFailed": "スキルバンドルのダウンロードに失敗しました。"
+        },
         "unavailable": {
           "appDisabled": "アプリ「{appName}」は管理者によって無効にされています。",
           "appNotConnected": "このスキルを使用するには、「アプリ」ページからアプリ「{appName}」を接続してください。",
           "title": "スキルを利用できません"
+        },
+        "uploadVersion": {
+          "label": "新しいバージョンをアップロード",
+          "pendingLabel": "アップロード中..."
+        },
+        "visibility": {
+          "organization": "組織内の全員",
+          "personal": "個人",
+          "shared": "共有中"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "詳細はコンソールを確認し、ページを再読み込みしてください。",
         "title": "スキルの読み込みに失敗しました"
       },
+      "overwriteModal": {
+        "body": "続行すると、スキルの説明・手順・ファイルがアップロードしたZIPで置き換えられます。この操作は元に戻せません。",
+        "description": "アップロードしたZIPが、編集可能な既存スキルと同じ名前です。",
+        "submit": {
+          "label": "スキルを上書き",
+          "pendingLabel": "上書き中..."
+        },
+        "title": "スキル「{name}」を上書きしますか？"
+      },
       "preview": {
         "unavailableFallback": "このスキルは現在利用できません。"
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "{name}を無効にできませんでした",
         "enableFailed": "{name}を有効にできませんでした",
+        "nameTaken": "「{name}」という名前のスキルはすでに存在し、編集権限がありません。",
+        "overwriteFailed": "「{name}」の上書きに失敗しました。",
+        "overwriteSucceeded": "スキル「{name}」をアップロードしたZIPで上書きしました。",
         "refreshFailed": "{name}は更新されましたが、スキル一覧を更新できませんでした。"
       }
     },

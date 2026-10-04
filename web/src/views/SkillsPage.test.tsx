@@ -6,16 +6,25 @@ import {
   setupUser,
   waitFor,
 } from "@tests/setup/test-utils";
+import { useEffect, useState } from "react";
 import SkillsPage from "@/views/SkillsPage";
 import type { CustomSkill, SkillsList } from "@/lib/skills/types";
 
 const mockSetSkillEnabled = jest.fn();
+const mockReplaceUserSkillBundle = jest.fn();
 const mockRefresh = jest.fn();
 const mockToastError = jest.fn();
+const mockToastSuccess = jest.fn();
 const mockRouterPush = jest.fn();
 const mockUseUserSkills = jest.fn();
 const mockStageSkillCreationDraft = jest.fn();
 const mockSearchParamsGet = jest.fn();
+
+/** Draft payload emitted by the CreateSkillModal mock; set per test. */
+let mockUploadDraft: object = {
+  contents: { name: "uploaded-skill" },
+  upload: { file: new File(["zip"], "uploaded-skill.zip") },
+};
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockRouterPush }),
@@ -31,11 +40,14 @@ jest.mock("@/hooks/useUserSkills", () => ({
 jest.mock("@/lib/skills/api", () => ({
   ...jest.requireActual("@/lib/skills/api"),
   setSkillEnabled: (...args: unknown[]) => mockSetSkillEnabled(...args),
+  replaceUserSkillBundle: (...args: unknown[]) =>
+    mockReplaceUserSkillBundle(...args),
 }));
 
 jest.mock("@opal/layouts/toast/store", () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
   },
 }));
 
@@ -76,12 +88,17 @@ jest.mock("@/sections/modals/skills/CreateSkillModal", () => ({
   }: {
     open: boolean;
     onContinue: (draft: object) => void;
-  }) =>
-    open ? (
-      <button type="button" onClick={() => onContinue({ draft: true })}>
+  }) => {
+    const [draft, setDraft] = useState<object | null>(null);
+    useEffect(() => {
+      if (open) setDraft(mockUploadDraft);
+    }, [open]);
+    return open ? (
+      <button type="button" onClick={() => onContinue(draft ?? {})}>
         Continue upload
       </button>
-    ) : null,
+    ) : null;
+  },
 }));
 
 jest.mock("@/sections/modals/skills/ImportSkillsFromGitHubModal", () => ({
@@ -161,6 +178,11 @@ describe("SkillsPage preference toggles", () => {
     mockSearchParamsGet.mockReturnValue(null);
     mockStageSkillCreationDraft.mockReset();
     mockStageSkillCreationDraft.mockReturnValue("draft-id");
+    mockReplaceUserSkillBundle.mockReset();
+    mockUploadDraft = {
+      contents: { name: "uploaded-skill" },
+      upload: { file: new File(["zip"], "uploaded-skill.zip") },
+    };
   });
 
   it("routes an uploaded skill draft to the editor without creating it", async () => {
@@ -171,11 +193,122 @@ describe("SkillsPage preference toggles", () => {
     await user.click(screen.getAllByText("Upload a skill")[0]!);
     await user.click(screen.getByRole("button", { name: "Continue upload" }));
 
-    expect(mockStageSkillCreationDraft).toHaveBeenCalledWith({ draft: true });
+    expect(mockStageSkillCreationDraft).toHaveBeenCalledWith({
+      contents: { name: "uploaded-skill" },
+      upload: { file: expect.any(File) },
+    });
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/craft/v1/skills/new?draft=draft-id"
     );
     expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  it("offers to overwrite an editable skill when an uploaded ZIP matches its name", async () => {
+    mockUseUserSkills.mockImplementation(() => ({
+      data: {
+        builtins: [],
+        customs: [
+          {
+            ...customSkill("existing-id", "uploaded-skill"),
+            user_permission: "OWNER",
+          },
+        ],
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    }));
+    mockReplaceUserSkillBundle.mockResolvedValueOnce(
+      customSkill("existing-id", "uploaded-skill")
+    );
+    const user = setupUser();
+    render(<SkillsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Create skill" }));
+    await user.click(screen.getAllByText("Upload a skill")[0]!);
+    await user.click(screen.getByRole("button", { name: "Continue upload" }));
+
+    expect(mockStageSkillCreationDraft).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Overwrite “uploaded-skill” skill?")
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Overwrite skill" }));
+
+    await waitFor(() =>
+      expect(mockReplaceUserSkillBundle).toHaveBeenCalledWith(
+        "existing-id",
+        expect.any(File)
+      )
+    );
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      "Skill “uploaded-skill” was replaced with the uploaded ZIP."
+    );
+    expect(
+      screen.queryByText("Overwrite “uploaded-skill” skill?")
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the overwrite confirmation when replacement fails", async () => {
+    mockUseUserSkills.mockImplementation(() => ({
+      data: {
+        builtins: [],
+        customs: [
+          {
+            ...customSkill("existing-id", "uploaded-skill"),
+            user_permission: "EDITOR",
+          },
+        ],
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    }));
+    mockReplaceUserSkillBundle.mockRejectedValueOnce(
+      new Error("Replacement rejected")
+    );
+    const user = setupUser();
+    render(<SkillsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Create skill" }));
+    await user.click(screen.getAllByText("Upload a skill")[0]!);
+    await user.click(screen.getByRole("button", { name: "Continue upload" }));
+    await user.click(screen.getByRole("button", { name: "Overwrite skill" }));
+
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith("Replacement rejected")
+    );
+    expect(
+      screen.getByText("Overwrite “uploaded-skill” skill?")
+    ).toBeInTheDocument();
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  it("blocks overwriting a skill the user cannot edit", async () => {
+    mockUseUserSkills.mockImplementation(() => ({
+      data: {
+        builtins: [],
+        customs: [customSkill("existing-id", "uploaded-skill")],
+      },
+      error: undefined,
+      isLoading: false,
+      refresh: mockRefresh,
+    }));
+    const user = setupUser();
+    render(<SkillsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Create skill" }));
+    await user.click(screen.getAllByText("Upload a skill")[0]!);
+    await user.click(screen.getByRole("button", { name: "Continue upload" }));
+
+    expect(mockStageSkillCreationDraft).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    expect(mockReplaceUserSkillBundle).not.toHaveBeenCalled();
+    expect(mockToastError).toHaveBeenCalledWith(
+      "A skill named “uploaded-skill” already exists and you do not have edit access to it."
+    );
   });
 
   it("offers GitHub import from the create menu", async () => {

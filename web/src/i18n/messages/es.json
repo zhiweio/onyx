@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "Cerrar"
         },
+        "downloadButton": {
+          "label": "Descargar ZIP"
+        },
         "fallbackTitle": "Vista previa de la habilidad",
+        "files": {
+          "empty": "No hay archivos.",
+          "title": "Archivos"
+        },
         "instructions": {
           "title": "Instrucciones"
         },
@@ -16318,20 +16325,50 @@
           "title": "No se pudo cargar la habilidad"
         },
         "metadata": {
+          "createdAt": {
+            "label": "Creado"
+          },
           "createdBy": {
             "label": "Creado por"
           },
           "externalApp": {
             "label": "App externa"
+          },
+          "status": {
+            "label": "Estado"
+          },
+          "updatedAt": {
+            "label": "Última actualización"
+          },
+          "visibility": {
+            "label": "Visibilidad"
           }
         },
         "noInstructions": {
           "message": "No se encontraron instrucciones."
         },
+        "status": {
+          "invalid": "No válido",
+          "valid": "Válido"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "No se pudo actualizar «{name}».",
+          "bundleReplaced": "Habilidad «{name}» actualizada.",
+          "downloadFailed": "No se pudo descargar el paquete de la habilidad."
+        },
         "unavailable": {
           "appDisabled": "Un administrador ha desactivado la app “{appName}”.",
           "appNotConnected": "Conecta la app “{appName}” desde la página Apps para usar esta habilidad.",
           "title": "Habilidad no disponible"
+        },
+        "uploadVersion": {
+          "label": "Subir nueva versión",
+          "pendingLabel": "Subiendo..."
+        },
+        "visibility": {
+          "organization": "Todos en la organización",
+          "personal": "Personal",
+          "shared": "Compartido"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "Revisa la consola para más detalles e intenta actualizar la página.",
         "title": "No se pudieron cargar las habilidades"
       },
+      "overwriteModal": {
+        "body": "Si continúas, la descripción, las instrucciones y los archivos de la habilidad se reemplazarán por el ZIP subido. Esta acción no se puede deshacer.",
+        "description": "El ZIP subido coincide con una habilidad existente que puedes editar.",
+        "submit": {
+          "label": "Sobrescribir habilidad",
+          "pendingLabel": "Sobrescribiendo..."
+        },
+        "title": "¿Sobrescribir la habilidad «{name}»?"
+      },
       "preview": {
         "unavailableFallback": "Esta habilidad no está disponible actualmente."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "No se pudo desactivar {name}",
         "enableFailed": "No se pudo activar {name}",
+        "nameTaken": "Ya existe una habilidad llamada «{name}» y no tienes permiso para editarla.",
+        "overwriteFailed": "No se pudo sobrescribir «{name}».",
+        "overwriteSucceeded": "La habilidad «{name}» fue reemplazada por el ZIP subido.",
         "refreshFailed": "{name} se actualizó, pero no se pudo actualizar la lista de habilidades."
       }
     },

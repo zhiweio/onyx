@@ -8,14 +8,16 @@ import os
 import stat
 import sys
 import zipfile
+from collections.abc import Iterator
 from contextlib import ExitStack
 from copy import copy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import IO, Final
 
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
-from onyx.skills.built_in import BUILT_IN_SKILLS
+from onyx.skills.built_in import BUILT_IN_SKILLS, BuiltInSkillDefinition
 from onyx.skills.metadata import (
     parse_skill_document,
     parse_skill_md_frontmatter,
@@ -109,6 +111,53 @@ def inspect_custom_bundle(zip_bytes: bytes) -> CustomSkillBundleContents:
 
 def read_custom_bundle_instructions(zip_bytes: bytes) -> str:
     return inspect_custom_bundle(zip_bytes).instructions_markdown
+
+
+def is_ignored_builtin_source_path(path: str) -> bool:
+    parts = path.split("/")
+    return (
+        "__pycache__" in parts
+        or any(part.endswith((".pyc", ".pyo")) for part in parts)
+        or _is_ignored_bundle_path(path)
+    )
+
+
+def _iter_builtin_source_files(
+    definition: BuiltInSkillDefinition,
+) -> Iterator[tuple[Path, str]]:
+    for path in sorted(definition.source_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        relative_path = path.relative_to(definition.source_dir).as_posix()
+        if is_ignored_builtin_source_path(relative_path):
+            continue
+        yield path, relative_path
+
+
+def list_builtin_bundle_files(
+    definition: BuiltInSkillDefinition,
+) -> list[SkillBundleFile]:
+    """File listing for a built-in skill, mirroring the download archive."""
+    return [
+        SkillBundleFile(path=relative_path, size=path.stat().st_size)
+        for path, relative_path in _iter_builtin_source_files(definition)
+    ]
+
+
+def build_builtin_bundle(definition: BuiltInSkillDefinition) -> bytes:
+    """Zip a built-in skill's source directory for download.
+
+    Files are archived exactly as they exist on disk, including a
+    ``SKILL.md.template`` when the skill ships one; caches and OS noise are
+    skipped.
+    """
+    output = io.BytesIO()
+    with zipfile.ZipFile(
+        output, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as target_zip:
+        for path, relative_path in _iter_builtin_source_files(definition):
+            target_zip.write(path, relative_path)
+    return output.getvalue()
 
 
 def build_skill_md(

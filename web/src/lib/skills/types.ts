@@ -87,6 +87,13 @@ export type SkillEditableDetail = CustomSkill & {
   files: SkillBundleFile[];
 };
 
+/** Full detail of any visible skill (built-in or custom); served by
+ * `GET /api/skills/{id}/detail`. */
+export type SkillDetail = Skill & {
+  instructions_markdown: string;
+  files: SkillBundleFile[];
+};
+
 export interface SkillBundleFile {
   path: string;
   size: number;

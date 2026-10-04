@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "Fermer"
         },
+        "downloadButton": {
+          "label": "Télécharger le ZIP"
+        },
         "fallbackTitle": "Aperçu de la compétence",
+        "files": {
+          "empty": "Aucun fichier.",
+          "title": "Fichiers"
+        },
         "instructions": {
           "title": "Instructions"
         },
@@ -16318,20 +16325,50 @@
           "title": "Échec du chargement de la compétence"
         },
         "metadata": {
+          "createdAt": {
+            "label": "Créé le"
+          },
           "createdBy": {
             "label": "Créée par"
           },
           "externalApp": {
             "label": "Application externe"
+          },
+          "status": {
+            "label": "Statut"
+          },
+          "updatedAt": {
+            "label": "Dernière mise à jour"
+          },
+          "visibility": {
+            "label": "Visibilité"
           }
         },
         "noInstructions": {
           "message": "Aucune instruction trouvée."
         },
+        "status": {
+          "invalid": "Invalide",
+          "valid": "Valide"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "Échec de la mise à jour de « {name} ».",
+          "bundleReplaced": "La compétence « {name} » a été mise à jour.",
+          "downloadFailed": "Échec du téléchargement du paquet de la compétence."
+        },
         "unavailable": {
           "appDisabled": "L'application “{appName}” est désactivée par un administrateur.",
           "appNotConnected": "Connectez l'application “{appName}” depuis la page Applications pour utiliser cette compétence.",
           "title": "Compétence indisponible"
+        },
+        "uploadVersion": {
+          "label": "Téléverser une nouvelle version",
+          "pendingLabel": "Téléversement..."
+        },
+        "visibility": {
+          "organization": "Tout le monde dans l'organisation",
+          "personal": "Personnel",
+          "shared": "Partagé"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "Consultez la console pour plus de détails et essayez d'actualiser la page.",
         "title": "Échec du chargement des compétences"
       },
+      "overwriteModal": {
+        "body": "En continuant, la description, les instructions et les fichiers de la compétence seront remplacés par le ZIP téléversé. Cette action est irréversible.",
+        "description": "Le ZIP téléversé porte le nom d'une compétence existante que vous pouvez modifier.",
+        "submit": {
+          "label": "Remplacer la compétence",
+          "pendingLabel": "Remplacement..."
+        },
+        "title": "Remplacer la compétence « {name} » ?"
+      },
       "preview": {
         "unavailableFallback": "Cette compétence est actuellement indisponible."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "Échec de la désactivation de {name}",
         "enableFailed": "Échec de l'activation de {name}",
+        "nameTaken": "Une compétence nommée « {name} » existe déjà et vous n'avez pas l'accès en modification.",
+        "overwriteFailed": "Échec du remplacement de « {name} ».",
+        "overwriteSucceeded": "La compétence « {name} » a été remplacée par le ZIP téléversé.",
         "refreshFailed": "{name} a été mise à jour, mais la liste des compétences n'a pas pu être actualisée."
       }
     },

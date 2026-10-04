@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "إغلاق"
         },
+        "downloadButton": {
+          "label": "تنزيل ZIP"
+        },
         "fallbackTitle": "معاينة المهارة",
+        "files": {
+          "empty": "لا توجد ملفات.",
+          "title": "الملفات"
+        },
         "instructions": {
           "title": "التعليمات"
         },
@@ -16318,20 +16325,50 @@
           "title": "فشل تحميل المهارة"
         },
         "metadata": {
+          "createdAt": {
+            "label": "تاريخ الإنشاء"
+          },
           "createdBy": {
             "label": "أنشأها"
           },
           "externalApp": {
             "label": "تطبيق خارجي"
+          },
+          "status": {
+            "label": "الحالة"
+          },
+          "updatedAt": {
+            "label": "آخر تحديث"
+          },
+          "visibility": {
+            "label": "مستوى الرؤية"
           }
         },
         "noInstructions": {
           "message": "لم يتم العثور على تعليمات."
         },
+        "status": {
+          "invalid": "غير صالح",
+          "valid": "صالح"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "فشل تحديث “{name}”.",
+          "bundleReplaced": "تم تحديث المهارة “{name}”.",
+          "downloadFailed": "فشل تنزيل حزمة المهارة."
+        },
         "unavailable": {
           "appDisabled": "التطبيق “{appName}” معطّل من قبل مسؤول.",
           "appNotConnected": "اربط التطبيق “{appName}” من صفحة التطبيقات لاستخدام هذه المهارة.",
           "title": "المهارة غير متاحة"
+        },
+        "uploadVersion": {
+          "label": "تحميل إصدار جديد",
+          "pendingLabel": "جارٍ التحميل..."
+        },
+        "visibility": {
+          "organization": "جميع من في المؤسسة",
+          "personal": "شخصي",
+          "shared": "مُشارك"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "راجع وحدة التحكم لمعرفة التفاصيل وحاول تحديث الصفحة.",
         "title": "فشل تحميل المهارات"
       },
+      "overwriteModal": {
+        "body": "المتابعة ستستبدل وصف المهارة وتعليماتها وملفاتها بملف ZIP المحمّل. لا يمكن التراجع عن هذا الإجراء.",
+        "description": "ملف ZIP المحمّل يحمل اسم مهارة موجودة يمكنك تعديلها.",
+        "submit": {
+          "label": "الكتابة فوق المهارة",
+          "pendingLabel": "جارٍ الكتابة فوق..."
+        },
+        "title": "هل تريد الكتابة فوق المهارة “{name}”؟"
+      },
       "preview": {
         "unavailableFallback": "هذه المهارة غير متاحة حاليًا."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "فشل تعطيل {name}",
         "enableFailed": "فشل تفعيل {name}",
+        "nameTaken": "توجد مهارة بالاسم “{name}” بالفعل وليس لديك إذن بتعديلها.",
+        "overwriteFailed": "فشل الكتابة فوق “{name}”.",
+        "overwriteSucceeded": "تمت استبدال المهارة “{name}” بملف ZIP المحمّل.",
         "refreshFailed": "تم تحديث {name}، لكن تعذّر تحديث قائمة المهارات."
       }
     },

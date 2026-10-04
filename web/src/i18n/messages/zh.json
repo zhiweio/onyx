@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "关闭"
         },
+        "downloadButton": {
+          "label": "下载 ZIP"
+        },
         "fallbackTitle": "技能预览",
+        "files": {
+          "empty": "暂无文件。",
+          "title": "文件"
+        },
         "instructions": {
           "title": "指令"
         },
@@ -16318,20 +16325,50 @@
           "title": "加载技能失败"
         },
         "metadata": {
+          "createdAt": {
+            "label": "创建时间"
+          },
           "createdBy": {
             "label": "创建者"
           },
           "externalApp": {
             "label": "外部应用"
+          },
+          "status": {
+            "label": "状态"
+          },
+          "updatedAt": {
+            "label": "最近更新"
+          },
+          "visibility": {
+            "label": "可见性"
           }
         },
         "noInstructions": {
           "message": "未找到指令。"
         },
+        "status": {
+          "invalid": "无效",
+          "valid": "有效"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "更新“{name}”失败。",
+          "bundleReplaced": "技能“{name}”已更新。",
+          "downloadFailed": "下载技能包失败。"
+        },
         "unavailable": {
           "appDisabled": "应用“{appName}”已被管理员禁用。",
           "appNotConnected": "请在“应用”页面连接应用“{appName}”，才能使用此技能。",
           "title": "技能不可用"
+        },
+        "uploadVersion": {
+          "label": "上传新版本",
+          "pendingLabel": "上传中..."
+        },
+        "visibility": {
+          "organization": "组织内所有人",
+          "personal": "个人",
+          "shared": "已共享"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "请查看控制台了解详情，并尝试刷新页面。",
         "title": "加载技能失败"
       },
+      "overwriteModal": {
+        "body": "继续操作将用上传的 ZIP 替换该技能的描述、指令和文件，且无法撤销。",
+        "description": "上传的 ZIP 与一个你可编辑的现有技能同名。",
+        "submit": {
+          "label": "覆盖技能",
+          "pendingLabel": "覆盖中..."
+        },
+        "title": "覆盖技能“{name}”？"
+      },
       "preview": {
         "unavailableFallback": "此技能当前不可用。"
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "停用 {name} 失败",
         "enableFailed": "启用 {name} 失败",
+        "nameTaken": "已存在名为“{name}”的技能，且你没有编辑权限。",
+        "overwriteFailed": "覆盖“{name}”失败。",
+        "overwriteSucceeded": "技能“{name}”已被上传的 ZIP 覆盖。",
         "refreshFailed": "{name} 已更新，但技能列表无法刷新。"
       }
     },

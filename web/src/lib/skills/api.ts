@@ -15,6 +15,7 @@ import type {
   SkillEditableDetail,
   SkillSharePermission,
 } from "@/lib/skills/types";
+import { downloadFile } from "@/lib/download";
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -153,6 +154,41 @@ export async function uploadUserSkillFiles(
     body: form,
   });
   return handle<SkillEditableDetail>(res);
+}
+
+/** Replace a custom skill's whole bundle by uploading a new ZIP. */
+export async function replaceUserSkillBundle(
+  skillId: string,
+  bundle: File
+): Promise<Skill> {
+  const form = new FormData();
+  form.append("bundle", bundle);
+  const res = await fetch(`/api/skills/custom/${skillId}/bundle`, {
+    method: "PUT",
+    body: form,
+  });
+  return handle<Skill>(res);
+}
+
+/** Download a skill's bundle as a `<name>.zip` file. */
+export async function downloadSkillBundle(
+  skill: Pick<Skill, "id" | "name">
+): Promise<void> {
+  const res = await fetch(`/api/skills/${skill.id}/bundle`);
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch {
+      // Use the generic status message.
+    }
+    throw new Error(detail);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  downloadFile(`${skill.name}.zip`, { url });
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export async function inspectSkillBundle(

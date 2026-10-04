@@ -45,7 +45,12 @@ import ImportSkillsFromGitHubModal from "@/sections/modals/skills/ImportSkillsFr
 import SkillPreviewModal from "@/sections/modals/SkillPreviewModal";
 import type { BuiltinSkill, CustomSkill } from "@/lib/skills/types";
 import { stageSkillCreationDraft } from "@/lib/skills/creationDraft";
-import { isSkillNameConflict, setSkillEnabled } from "@/lib/skills/api";
+import {
+  isSkillNameConflict,
+  replaceUserSkillBundle,
+  setSkillEnabled,
+} from "@/lib/skills/api";
+import type { SkillCreationDraft } from "@/lib/skills/creationDraft";
 import type { CatalogViewMode } from "@/lib/system-catalog/types";
 import { clampPage, slicePage } from "@/lib/browse/page";
 
@@ -91,6 +96,11 @@ export default function SkillsPage() {
   >(new Map());
   const [pendingSwitchTarget, setPendingSwitchTarget] =
     useState<SkillCardItem | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<{
+    draft: SkillCreationDraft;
+    target: CustomSkillCardItem;
+  } | null>(null);
+  const [overwriting, setOverwriting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useOnMount(() => {
@@ -498,11 +508,82 @@ export default function SkillsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onContinue={(draft) => {
+          // A re-upload of an existing skill's ZIP overwrites that skill
+          // instead of creating a same-name duplicate.
+          const existing = items.find(
+            (candidate): candidate is CustomSkillCardItem =>
+              candidate.source === "custom" &&
+              candidate.name === draft.contents.name
+          );
+          if (existing) {
+            const canOverwrite =
+              existing.skill.user_permission === "OWNER" ||
+              existing.skill.user_permission === "EDITOR";
+            setCreateOpen(false);
+            if (canOverwrite) {
+              setPendingOverwrite({ draft, target: existing });
+            } else {
+              toast.error(
+                t("page.toasts.nameTaken", { name: draft.contents.name })
+              );
+            }
+            return;
+          }
           const draftId = stageSkillCreationDraft(draft);
           setCreateOpen(false);
           router.push(`/craft/v1/skills/new?draft=${draftId}` as Route);
         }}
       />
+
+      {pendingOverwrite && (
+        <ConfirmationModalLayout
+          icon={SvgAlertTriangle}
+          title={t("page.overwriteModal.title", {
+            name: pendingOverwrite.target.name,
+          })}
+          description={t("page.overwriteModal.description", {
+            name: pendingOverwrite.target.name,
+          })}
+          onClose={overwriting ? undefined : () => setPendingOverwrite(null)}
+          submit={
+            <Button
+              disabled={overwriting}
+              onClick={() => {
+                const { draft, target } = pendingOverwrite;
+                void (async () => {
+                  setOverwriting(true);
+                  try {
+                    await replaceUserSkillBundle(target.id, draft.upload.file);
+                    toast.success(
+                      t("page.toasts.overwriteSucceeded", {
+                        name: target.name,
+                      })
+                    );
+                    setPendingOverwrite(null);
+                    await refresh();
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : t("page.toasts.overwriteFailed", {
+                            name: target.name,
+                          })
+                    );
+                  } finally {
+                    setOverwriting(false);
+                  }
+                })();
+              }}
+            >
+              {overwriting
+                ? t("page.overwriteModal.submit.pendingLabel")
+                : t("page.overwriteModal.submit.label")}
+            </Button>
+          }
+        >
+          {t("page.overwriteModal.body")}
+        </ConfirmationModalLayout>
+      )}
 
       {githubImportOpen && (
         <ImportSkillsFromGitHubModal
@@ -525,6 +606,7 @@ export default function SkillsPage() {
         fallbackTitle={previewTarget?.name}
         unavailableReason={previewUnavailableReason}
         onClose={() => setPreviewTarget(null)}
+        onUpdated={() => void refresh()}
       />
 
       {pendingSwitchTarget && (

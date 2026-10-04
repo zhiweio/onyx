@@ -16309,7 +16309,14 @@
         "closeButton": {
           "label": "Schließen"
         },
+        "downloadButton": {
+          "label": "ZIP herunterladen"
+        },
         "fallbackTitle": "Skill-Vorschau",
+        "files": {
+          "empty": "Keine Dateien.",
+          "title": "Dateien"
+        },
         "instructions": {
           "title": "Anweisungen"
         },
@@ -16318,20 +16325,50 @@
           "title": "Der Skill konnte nicht geladen werden"
         },
         "metadata": {
+          "createdAt": {
+            "label": "Erstellt"
+          },
           "createdBy": {
             "label": "Erstellt von"
           },
           "externalApp": {
             "label": "Externe App"
+          },
+          "status": {
+            "label": "Status"
+          },
+          "updatedAt": {
+            "label": "Zuletzt aktualisiert"
+          },
+          "visibility": {
+            "label": "Sichtbarkeit"
           }
         },
         "noInstructions": {
           "message": "Keine Anweisungen gefunden."
         },
+        "status": {
+          "invalid": "Ungültig",
+          "valid": "Gültig"
+        },
+        "toasts": {
+          "bundleReplaceFailed": "„{name}“ konnte nicht aktualisiert werden.",
+          "bundleReplaced": "Skill „{name}“ wurde aktualisiert.",
+          "downloadFailed": "Das Skill-Paket konnte nicht heruntergeladen werden."
+        },
         "unavailable": {
           "appDisabled": "App “{appName}” wurde von einem Administrator deaktiviert.",
           "appNotConnected": "Verbinden Sie die App “{appName}” auf der Apps-Seite, um diesen Skill zu verwenden.",
           "title": "Skill nicht verfügbar"
+        },
+        "uploadVersion": {
+          "label": "Neue Version hochladen",
+          "pendingLabel": "Wird hochgeladen..."
+        },
+        "visibility": {
+          "organization": "Alle in der Organisation",
+          "personal": "Persönlich",
+          "shared": "Geteilt"
         }
       },
       "share": {
@@ -16433,6 +16470,15 @@
         "description": "Prüfen Sie die Konsole für Details und versuchen Sie, die Seite zu aktualisieren.",
         "title": "Skills konnten nicht geladen werden"
       },
+      "overwriteModal": {
+        "body": "Das Fortfahren ersetzt Beschreibung, Anweisungen und Dateien des Skills durch die hochgeladene ZIP. Dies kann nicht rückgängig gemacht werden.",
+        "description": "Die hochgeladene ZIP trägt denselben Namen wie ein bestehender, von Ihnen bearbeitbarer Skill.",
+        "submit": {
+          "label": "Skill überschreiben",
+          "pendingLabel": "Wird überschrieben..."
+        },
+        "title": "Skill „{name}“ überschreiben?"
+      },
       "preview": {
         "unavailableFallback": "Dieser Skill ist derzeit nicht verfügbar."
       },
@@ -16451,6 +16497,9 @@
       "toasts": {
         "disableFailed": "{name} konnte nicht deaktiviert werden",
         "enableFailed": "{name} konnte nicht aktiviert werden",
+        "nameTaken": "Ein Skill namens „{name}“ existiert bereits und Sie haben keine Bearbeitungsrechte dafür.",
+        "overwriteFailed": "„{name}“ konnte nicht überschrieben werden.",
+        "overwriteSucceeded": "Skill „{name}“ wurde durch die hochgeladene ZIP ersetzt.",
         "refreshFailed": "{name} wurde aktualisiert, aber die Skill-Liste konnte nicht aktualisiert werden."
       }
     },
