@@ -215,6 +215,9 @@ repos:
     rev: 7d94620933e79b8acaa0cd9e60e9864b07673d86 # frozen: v0.1.11
     hooks:
       - id: ripsecrets
+        # The WeCom logo component inlines a public PNG as a base64 data URI,
+        # which trips the generic base64-secret rule. It is artwork, not a key.
+        exclude: ^web/lib/opal/src/logos/wecom\.tsx$
         args:
           - --strict-ignore
           # ripsecrets joins every pattern into one regex and runs it over the
