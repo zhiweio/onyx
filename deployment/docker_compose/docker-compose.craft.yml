@@ -5,6 +5,22 @@
 # /var/run/docker.sock (root-equivalent on host). Only run on hosts you fully
 # control.
 services:
+  # Self-hosted metasearch backing the craft `web_search` platform tool
+  # (WEB_SEARCH_PROVIDER=searxng + SEARXNG_BASE_URL). No API key; enable the
+  # json format in ./searxng/settings.yml — the tool calls /search?format=json.
+  # The craft `crawl` tool needs no service: it falls back to the web content
+  # provider configured in the admin panel (e.g. a self-hosted Firecrawl).
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   api_server:
     environment:
       - SANDBOX_BACKEND=${SANDBOX_BACKEND:-docker}

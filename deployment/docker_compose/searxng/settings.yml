@@ -1,0 +1,13 @@
+# SearXNG for the Onyx craft `web_search` tool and the chat Internet Search
+# provider. JSON output must be enabled — the platform calls /search?format=json.
+use_default_settings: true
+
+server:
+  secret_key: "onyx-local-searxng-secret"
+  limiter: false   # internal service; no rate limiting between containers
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
