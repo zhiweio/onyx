@@ -115,7 +115,10 @@ def resolve_china_provider(
                     OnyxErrorCode.VALIDATION_ERROR,
                     f"Provider {provider_name!r} is not a China platform provider",
                 )
-            return provider, _config_for(provider, dict(provider.config or {}))
+            stored_config = (
+                provider.config.get_value(apply_mask=False) if provider.config else {}
+            )
+            return provider, _config_for(provider, dict(stored_config))
     raise OnyxError(
         OnyxErrorCode.VALIDATION_ERROR,
         f"Unknown SSO provider {provider_name!r}",
@@ -162,6 +165,12 @@ def dingtalk_authorize_url(
     )
 
 
+# Passport only fills `email` on /oauth/userinfo when the grant covers the
+# contact read scopes; logins without them fall back to the deterministic
+# `{union_id}@{email_domain}` identity.
+FEISHU_LOGIN_SCOPES = "contact:user.base:readonly contact:user.email:readonly"
+
+
 def feishu_authorize_url(
     config: FeishuProviderConfig, state: str, redirect_uri: str
 ) -> str:
@@ -170,6 +179,7 @@ def feishu_authorize_url(
         f"?client_id={quote_plus(config.app_id)}"
         f"&redirect_uri={quote_plus(redirect_uri, safe='')}"
         "&response_type=code"
+        f"&scope={quote_plus(FEISHU_LOGIN_SCOPES)}"
         f"&state={quote_plus(state)}"
     )
 
@@ -577,7 +587,11 @@ async def china_sso_authorize(
         CSRF_TOKEN_COOKIE_NAME,
         csrf_token,
         httponly=True,
-        samesite="none",
+        # "lax" (matching the OIDC flow): the OAuth callback is a top-level
+        # GET redirect, so the CSRF cookie survives it. "none" without a
+        # secure context gets dropped by the browser on http:// deployments,
+        # which broke the double-submit check at the callback.
+        samesite="lax",
         secure=_COOKIE_SECURE,
     )
     return response

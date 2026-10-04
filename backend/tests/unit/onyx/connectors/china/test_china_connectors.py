@@ -2,13 +2,22 @@
 
 from typing import Any
 
+import pytest
 from requests_mock import Mocker as RequestsMocker
 
 from onyx.configs.constants import DocumentSource
 from onyx.connectors.china_common import AppTokenManager, paginated
 from onyx.connectors.dingtalk.connector import DingTalkConnector
+from onyx.connectors.exceptions import (
+    CredentialInvalidError,
+    InsufficientPermissionsError,
+)
 from onyx.connectors.feishu.connector import FeishuConnector
-from onyx.connectors.models import Document, SlimDocument
+from onyx.connectors.models import (
+    ConnectorMissingCredentialError,
+    Document,
+    SlimDocument,
+)
 from onyx.connectors.sap_odata.connector import SapODataConnector
 from onyx.connectors.wecom.connector import WeComConnector
 
@@ -53,12 +62,24 @@ def test_pagination_stops_without_token() -> None:
 
 
 def test_pagination_caps_at_max_pages() -> None:
-    def forever(
+    def distinct_tokens(
+        token: str | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        return [{"i": 1}], f"page-{(token or 'start')}"
+
+    assert len(list(paginated(distinct_tokens, max_pages=5))) == 5
+
+
+def test_pagination_stops_on_repeated_cursor() -> None:
+    # Feishu keeps returning a page_token on the last page; a repeated
+    # cursor must end iteration instead of looping until the API rejects it.
+    def always_same(
         _token: str | None,
     ) -> tuple[list[dict[str, Any]], str | None]:
         return [{"i": 1}], "same"
 
-    assert len(list(paginated(forever, max_pages=5))) == 5
+    # page 1 yields items, the repeat is detected after serving page 2
+    assert len(list(paginated(always_same))) == 2
 
 
 def test_feishu_connector_indexes_wiki(requests_mock: RequestsMocker) -> None:
@@ -378,3 +399,40 @@ def test_feishu_perm_sync_unreadable_members_fall_back_private(
     assert access.external_user_emails == set()
     assert access.external_user_group_ids == set()
     assert access.is_public is False
+
+
+def test_feishu_validate_requires_credentials() -> None:
+    connector = FeishuConnector()
+    with pytest.raises(ConnectorMissingCredentialError):
+        connector.validate_connector_settings()
+
+
+def test_feishu_validate_rejects_bad_credentials(
+    requests_mock: RequestsMocker,
+) -> None:
+    requests_mock.post(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        json={"code": 10003, "msg": "invalid app_id"},
+        status_code=200,
+    )
+    connector = FeishuConnector()
+    connector.load_credentials(FEISHU_CREDS)
+    with pytest.raises(CredentialInvalidError):
+        connector.validate_connector_settings()
+
+
+def test_feishu_validate_requires_wiki_scope(
+    requests_mock: RequestsMocker,
+) -> None:
+    requests_mock.post(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        json={"code": 0, "tenant_access_token": "tt", "expire": 7200},
+    )
+    requests_mock.get(
+        "https://open.feishu.cn/open-apis/wiki/v2/spaces",
+        json={"code": 99991672, "msg": "permission denied"},
+    )
+    connector = FeishuConnector()
+    connector.load_credentials(FEISHU_CREDS)
+    with pytest.raises(InsufficientPermissionsError):
+        connector.validate_connector_settings()

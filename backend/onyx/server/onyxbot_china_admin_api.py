@@ -49,7 +49,10 @@ def _bot_fields_set(platform: str, config: Any) -> bool:
         return bool(config.bot_token and config.bot_encoding_aes_key)
     if platform == "dingtalk":
         return bool(config.robot_code and config.bot_aes_key)
-    return bool(config.bot_verification_token and config.bot_encrypt_key)
+    # Feishu's Encrypt Key is optional: callbacks arrive unencrypted unless
+    # the key is configured on the platform side, and the callback verifies
+    # the plain token either way.
+    return bool(config.bot_verification_token)
 
 
 def _mask(value: str) -> str:
@@ -110,14 +113,26 @@ class ChinaBotVerifyResponse(BaseModel):
     detail: str | None = None
 
 
+def _china_bot_configs(
+    db_session: Session, provider_type: SSOProviderType
+) -> list[Any]:
+    """Enabled provider configs of one China platform; unwraps the encrypted
+    config blob the same way the callback router does."""
+    configs = []
+    for provider in fetch_sso_providers(db_session, enabled_only=True):
+        if provider.provider_type is not provider_type:
+            continue
+        stored_config = (
+            provider.config.get_value(apply_mask=False) if provider.config else {}
+        )
+        configs.append(_config_for(provider, dict(stored_config)))
+    return configs
+
+
 def _platform_status(
     platform: str, provider_type: SSOProviderType, db_session: Session
 ) -> ChinaBotPlatformStatus:
-    configs = [
-        _config_for(provider, dict(provider.config or {}))
-        for provider in fetch_sso_providers(db_session, enabled_only=True)
-        if provider.provider_type is provider_type
-    ]
+    configs = _china_bot_configs(db_session, provider_type)
     ready_configs = [c for c in configs if _bot_fields_set(platform, c)]
     identifier = next(
         (_identifier_for(platform, c) for c in ready_configs + configs if c), None
@@ -166,11 +181,7 @@ def verify_china_bot(
     if provider_type is None:
         return ChinaBotVerifyResponse(ok=False, detail="unknown platform")
 
-    configs = [
-        _config_for(provider, dict(provider.config or {}))
-        for provider in fetch_sso_providers(db_session, enabled_only=True)
-        if provider.provider_type is provider_type
-    ]
+    configs = _china_bot_configs(db_session, provider_type)
     ready_configs = [c for c in configs if _bot_fields_set(platform, c)]
     if not ready_configs:
         return ChinaBotVerifyResponse(ok=False, detail="bot credentials missing")

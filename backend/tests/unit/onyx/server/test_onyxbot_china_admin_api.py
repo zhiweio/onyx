@@ -69,7 +69,9 @@ def test_bot_fields_set_per_platform() -> None:
     assert _bot_fields_set("wecom", _wecom_config())
     assert not _bot_fields_set("wecom", _wecom_config(bot_token=None))
     assert _bot_fields_set("feishu", _feishu_config())
-    assert not _bot_fields_set("feishu", _feishu_config(bot_encrypt_key=None))
+    # Feishu's Encrypt Key is optional — verification only needs the token.
+    assert _bot_fields_set("feishu", _feishu_config(bot_encrypt_key=None))
+    assert not _bot_fields_set("feishu", _feishu_config(bot_verification_token=None))
 
 
 def _provider(provider_type: SSOProviderType, config: object) -> SimpleNamespace:

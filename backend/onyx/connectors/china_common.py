@@ -66,15 +66,25 @@ def paginated(
 
     ``fetch_page(page_token)`` returns (items, next_page_token); iteration
     ends when next is None/empty or the page cap is hit (runaway guard).
+    A repeated next token also ends iteration: some platforms (Feishu)
+    keep emitting a cursor on the final page, and honoring it forever
+    would loop until the API rejects the stale cursor.
     """
     page_token: str | None = None
+    seen_tokens: set[str] = set()
     pages = 0
     while pages < max_pages:
         items, next_token = fetch_page(page_token)
         yield from items
         pages += 1
-        if not next_token:
+        if not next_token or next_token in seen_tokens:
+            if next_token:
+                logger.warning(
+                    "pagination cursor %s repeated; stopping to avoid a loop",
+                    next_token[:32],
+                )
             return
+        seen_tokens.add(next_token)
         page_token = next_token
     logger.warning("pagination cap (%s pages) hit; stopping early", max_pages)
 

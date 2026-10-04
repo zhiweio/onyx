@@ -28,6 +28,11 @@ from onyx.connectors.china_common import (
     paginated,
     post_json,
 )
+from onyx.connectors.exceptions import (
+    CredentialInvalidError,
+    InsufficientPermissionsError,
+    UnexpectedValidationError,
+)
 from onyx.connectors.interfaces import (
     GenerateDocumentsOutput,
     GenerateSlimDocumentOutput,
@@ -90,6 +95,32 @@ class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
         session.headers.update({"Authorization": f"Bearer {token}"})
         return session
 
+    def validate_connector_settings(self) -> None:
+        """Surface the two misconfigurations a test call can detect: bad app
+        credentials (token request rejected) and missing wiki read scope."""
+        if self._token is None:
+            raise ConnectorMissingCredentialError("Feishu")
+        try:
+            self._fetch_tenant_token()
+        except ChinaConnectorError as e:
+            raise CredentialInvalidError(f"Invalid Feishu app credentials: {e}") from e
+        except Exception as e:
+            raise UnexpectedValidationError(
+                f"Unexpected error while validating Feishu settings: {e}"
+            ) from e
+        try:
+            self._wiki_spaces(self._session())
+        except ChinaConnectorError as e:
+            raise InsufficientPermissionsError(
+                "Feishu rejected the wiki space list; confirm the app has the "
+                "wiki read scope and the wiki is inside the app's availability "
+                f"range: {e}"
+            ) from e
+        except Exception as e:
+            raise UnexpectedValidationError(
+                f"Unexpected error while validating Feishu settings: {e}"
+            ) from e
+
     # ── wiki ─────────────────────────────────────────────────────────────
 
     def _wiki_spaces(self, session: requests.Session) -> list[dict[str, Any]]:
@@ -101,7 +132,11 @@ class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
             if data.get("code") not in (0, None):
                 raise ChinaConnectorError(f"Feishu spaces error: {data.get('msg')}")
             spaces = data.get("data") or {}
-            return list(spaces.get("items") or []), spaces.get("page_token")
+            # Feishu keeps returning a page_token on the last page; only
+            # has_more=false marks the end.
+            return list(spaces.get("items") or []), (
+                spaces.get("page_token") if spaces.get("has_more") else None
+            )
 
         return list(paginated(page))
 
@@ -120,7 +155,9 @@ class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
             if data.get("code") not in (0, None):
                 raise ChinaConnectorError(f"Feishu nodes error: {data.get('msg')}")
             payload = data.get("data") or {}
-            return list(payload.get("items") or []), payload.get("page_token")
+            return list(payload.get("items") or []), (
+                payload.get("page_token") if payload.get("has_more") else None
+            )
 
         return list(paginated(page))
 
@@ -276,7 +313,9 @@ class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
             if data.get("code") not in (0, None):
                 raise ChinaConnectorError(f"Feishu members error: {data.get('msg')}")
             payload = data.get("data") or {}
-            return list(payload.get("members") or []), payload.get("page_token")
+            return list(payload.get("members") or []), (
+                payload.get("page_token") if payload.get("has_more") else None
+            )
 
         return list(paginated(page))
 

@@ -41,11 +41,15 @@ def _bot_configs(db_session: Any, platform: str) -> list[Any]:
     provider_type = _PLATFORM_TYPES.get(platform)
     if provider_type is None:
         return []
-    return [
-        _config_for(provider, dict(provider.config or {}))
-        for provider in fetch_sso_providers(db_session, enabled_only=True)
-        if provider.provider_type is provider_type
-    ]
+    configs = []
+    for provider in fetch_sso_providers(db_session, enabled_only=True):
+        if provider.provider_type is not provider_type:
+            continue
+        stored_config = (
+            provider.config.get_value(apply_mask=False) if provider.config else {}
+        )
+        configs.append(_config_for(provider, dict(stored_config)))
+    return configs
 
 
 @router.get("/{platform}/callback")

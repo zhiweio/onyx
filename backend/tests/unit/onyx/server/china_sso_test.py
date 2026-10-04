@@ -62,6 +62,9 @@ def test_authorize_urls_contain_required_params() -> None:
 
     feishu_url = feishu_authorize_url(FEISHU, state, redirect)
     assert "passport.feishu.cn" in feishu_url and "cli_a1" in feishu_url
+    assert "scope=contact%3Auser.base%3Areadonly+contact%3Auser.email%3Areadonly" in (
+        feishu_url
+    )
 
     wps_url = wps365_authorize_url(WPS, state, redirect)
     assert "account.wps.cn/oauth2/v3/authorize" in wps_url
