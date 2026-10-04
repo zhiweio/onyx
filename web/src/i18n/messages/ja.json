@@ -9598,7 +9598,7 @@
         "label": "Onyx をどこでお知りになりましたか？"
       },
       "subtitle": {
-        "text": "Onyx を始めましょう"
+        "text": "{appName} を始めましょう"
       }
     },
     "verifyEmail": {
@@ -9945,7 +9945,7 @@
           "placeholder": "今日はどのようなご用件でしょうか？",
           "queuedPlaceholder": "上キーを押すとキュー内のメッセージを編集できます",
           "searchPlaceholder": "接続済みのソースを検索",
-          "speakingPlaceholder": "Onyx が話しています..."
+          "speakingPlaceholder": "{appName} が話しています..."
         },
         "sendButton": {
           "processingFilesTooltip": "添付ファイルの処理が完了するのを待っています"
@@ -10089,7 +10089,7 @@
       },
       "sharedAppInputBar": {
         "input": {
-          "placeholder": "Onyx がお手伝いできることはありますか"
+          "placeholder": "{appName} がお手伝いできることはありますか"
         },
         "startSessionButton": {
           "label": "新しいセッションを開始"
@@ -11020,7 +11020,7 @@
         "error": "アプリケーションを利用するには、規約に同意する必要があります。"
       },
       "header": {
-        "title": "Onyx へようこそ！"
+        "title": "{appName} へようこそ！"
       },
       "logoIcon": {
         "alt": "ロゴ"
@@ -15738,6 +15738,9 @@
         },
         "imBots": {
           "label": "IM ボット"
+        },
+        "branding": {
+          "label": "Branding"
         }
       },
       "sections": {
@@ -16469,6 +16472,130 @@
           "readFailed": "アップロードされたファイルを読み込めませんでした。"
         }
       }
+    }
+  },
+  "admin_branding": {
+    "header": {
+      "description": "Apply your company brand: name, logos, colors, and custom text across the product."
+    },
+    "actions": {
+      "save": "Save",
+      "loading": "Loading..."
+    },
+    "loadFailed": "Branding settings could not be loaded. Refresh the page to retry.",
+    "toasts": {
+      "saved": "Branding updated",
+      "saveFailed": "Failed to update branding"
+    },
+    "identity": {
+      "title": "Application identity",
+      "appName": {
+        "title": "Application name",
+        "description": "Shown in the sidebar, browser title, login page, and emails.",
+        "placeholder": "Onyx"
+      },
+      "displayStyle": {
+        "title": "Logo display style",
+        "description": "How the sidebar presents the logo and name.",
+        "placeholder": "Select a style",
+        "options": {
+          "logo_and_name": "Logo and name",
+          "logo_only": "Logo only",
+          "name_only": "Name only"
+        }
+      },
+      "hideBranding": {
+        "title": "Hide Onyx branding",
+        "description": "Removes the “Powered by” tagline and Onyx references from user-facing surfaces."
+      }
+    },
+    "assets": {
+      "title": "Brand assets",
+      "empty": {
+        "label": "Default"
+      },
+      "upload": {
+        "label": "Upload"
+      },
+      "replace": {
+        "label": "Replace"
+      },
+      "remove": {
+        "label": "Remove"
+      },
+      "uploadSuccess": "Image uploaded",
+      "uploadFailed": "Failed to upload image",
+      "removeSuccess": "Image removed",
+      "removeFailed": "Failed to remove image",
+      "logo": {
+        "title": "Logo",
+        "description": "Square mark shown in the sidebar and auth pages (PNG, JPEG, WebP, or SVG)."
+      },
+      "logoDark": {
+        "title": "Logo (dark mode)",
+        "description": "Optional variant for dark mode; the light logo is used when unset."
+      },
+      "logotype": {
+        "title": "Logotype (wordmark)",
+        "description": "Optional wordmark shown next to the logo mark in the sidebar."
+      },
+      "logotypeDark": {
+        "title": "Logotype (dark mode)",
+        "description": "Optional dark-mode wordmark; the light logotype is used when unset."
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "Browser tab icon (.ico, PNG, or SVG)."
+      }
+    },
+    "theme": {
+      "title": "Theme colors",
+      "description": "Colors apply to buttons, links, and selection states across the product. The dark-mode color is optional; leave it empty to keep the default dark theme. Edits preview live and apply after saving.",
+      "brandColor": {
+        "title": "Brand color (light mode)",
+        "description": "Primary accent for light mode, e.g. buttons and selected states."
+      },
+      "brandColorDark": {
+        "title": "Brand color (dark mode)",
+        "description": "Primary accent for dark mode."
+      },
+      "emailCta": {
+        "title": "Email button color",
+        "description": "Color of call-to-action buttons in outgoing emails."
+      }
+    },
+    "copy": {
+      "title": "Custom text",
+      "greeting": {
+        "title": "Chat greeting",
+        "description": "Welcome message on the empty chat page. Markdown supported."
+      },
+      "loginSubtitle": {
+        "title": "Login page subtitle",
+        "description": "Helper text under the login form."
+      },
+      "chatHeader": {
+        "title": "Chat header content",
+        "description": "Custom note rendered at the top of the chat page. Markdown supported."
+      },
+      "disclaimer": {
+        "title": "Footer disclaimer",
+        "description": "Replaces the default footer text. Markdown supported."
+      },
+      "helpLinkLabel": {
+        "title": "Help link label",
+        "description": ""
+      },
+      "helpLinkUrl": {
+        "title": "Help link URL",
+        "description": "Shown in the profile menu next to Help & FAQ."
+      }
+    },
+    "nav": {
+      "title": "Custom navigation",
+      "description": "External links shown in the app sidebar, e.g. your internal help center.",
+      "itemTitlePlaceholder": "Title",
+      "addItem": "Add link"
     }
   }
 }

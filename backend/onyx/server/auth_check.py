@@ -15,6 +15,16 @@ from onyx.configs.app_configs import APP_API_PREFIX
 from onyx.utils.variable_functionality import fetch_ee_implementation_or_noop
 
 PUBLIC_ENDPOINT_SPECS = [
+    # White-label branding: the login page renders the enterprise name, logo,
+    # and favicon before authentication, so the whole read surface is public
+    # by design. Only /admin/enterprise-settings (not listed here) mutates it.
+    ("/enterprise-settings", {"GET"}),
+    ("/enterprise-settings/logo", {"GET"}),
+    ("/enterprise-settings/logo-dark", {"GET"}),
+    ("/enterprise-settings/logotype", {"GET"}),
+    ("/enterprise-settings/logotype-dark", {"GET"}),
+    ("/enterprise-settings/favicon", {"GET"}),
+    ("/enterprise-settings/custom-analytics-script", {"GET"}),
     # Built-in API docs / schema. These routes only exist when ENABLE_PUBLIC_DOCS
     # is set (see get_application); they are gated off by default so the API
     # surface is not exposed publicly. When the flag is off the routes are not

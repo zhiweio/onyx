@@ -42,6 +42,7 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       imBots: t("adminNav.items.imBots.label"),
       users: t("adminNav.items.users.label"),
       groups: t("adminNav.items.groups.label"),
+      branding: t("adminNav.items.branding.label"),
       plansAndBilling: t("adminNav.items.plansAndBilling.label"),
       securityAndHardening: t("adminNav.items.securityAndHardening.label"),
       ssoProviders: t("adminNav.items.ssoProviders.label"),

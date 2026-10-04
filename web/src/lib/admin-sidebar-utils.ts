@@ -44,6 +44,7 @@ export type AdminNavItemId =
   | "imBots"
   | "users"
   | "groups"
+  | "branding"
   | "plansAndBilling"
   | "securityAndHardening"
   | "ssoProviders"
@@ -101,6 +102,7 @@ export const NAV_ITEM_IDS: Record<
   IM_BOTS: "imBots",
   USERS: "users",
   GROUPS: "groups",
+  BRANDING: "branding",
   OAUTH_TEST: null,
   SECURITY_HARDENING: "securityAndHardening",
   SSO_PROVIDERS: "ssoProviders",

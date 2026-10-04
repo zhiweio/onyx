@@ -107,6 +107,15 @@ export function useSettings(): AppSettings {
     logoUrl: enterprise?.use_custom_logo
       ? `/api/enterprise-settings/logo?v=${logoBuster}`
       : null,
+    logoDarkUrl: enterprise?.use_custom_logo
+      ? `/api/enterprise-settings/logo-dark?v=${logoBuster}`
+      : null,
+    logotypeUrl: enterprise?.use_custom_logotype
+      ? `/api/enterprise-settings/logotype?v=${logoBuster}`
+      : null,
+    logotypeDarkUrl: enterprise?.use_custom_logotype
+      ? `/api/enterprise-settings/logotype-dark?v=${logoBuster}`
+      : null,
     vectorDbEnabled:
       !settingsLoading && !settingsError && core.vector_db_enabled !== false,
     isLoading:

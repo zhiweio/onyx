@@ -185,12 +185,18 @@ function SettingsPopover({
             variant="body"
             color="muted"
             orientation="reverse"
-            icon={SvgOnyxLogo}
-            title={markdown(
-              `[Onyx ${
-                settings.version ?? "dev"
-              }](https://docs.onyx.app/changelog)`
-            )}
+            icon={
+              settings.enterprise?.hide_onyx_branding ? undefined : SvgOnyxLogo
+            }
+            title={
+              settings.enterprise?.hide_onyx_branding
+                ? markdown(`${settings.appName} ${settings.version ?? "dev"}`)
+                : markdown(
+                    `[Onyx ${
+                      settings.version ?? "dev"
+                    }](https://docs.onyx.app/changelog)`
+                  )
+            }
           />
         </div>,
       ]}

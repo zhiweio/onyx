@@ -139,11 +139,23 @@ export interface NavigationItem {
   title: string;
 }
 
+export type LogoDisplayStyle = "logo_and_name" | "logo_only" | "name_only";
+
 export interface EnterpriseSettings {
   application_name: string | null;
   use_custom_logo: boolean;
   use_custom_logotype: boolean;
-  logo_display_style: "logo_and_name" | "logo_only" | "name_only" | null;
+  logo_display_style: LogoDisplayStyle | null;
+  // Optional dark-mode variants; when unset the light asset is used for both.
+  use_custom_logo_dark?: boolean | null;
+  use_custom_logotype_dark?: boolean | null;
+  use_custom_favicon?: boolean | null;
+
+  // Light customization: brand colors override the theme primary at runtime
+  // (light/dark mode respectively); email_cta_color recolors email CTAs.
+  brand_color?: string | null;
+  brand_color_dark?: string | null;
+  email_cta_color?: string | null;
 
   // custom navigation
   custom_nav_items: NavigationItem[];
@@ -216,6 +228,11 @@ export interface AppSettings extends Settings {
    * new logo.
    */
   logoUrl: string | null;
+  /** Custom logo for dark mode; null falls back to `logoUrl`. */
+  logoDarkUrl: string | null;
+  /** Custom logotype (wordmark) images; null uses the name text / default SVG. */
+  logotypeUrl: string | null;
+  logotypeDarkUrl: string | null;
   /** False when DISABLE_VECTOR_DB is set server-side. */
   vectorDbEnabled: boolean;
   isLoading: boolean;

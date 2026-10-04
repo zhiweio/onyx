@@ -150,8 +150,13 @@ def admin_patch_settings(
 def apply_license_status_to_settings(settings: Settings) -> Settings:
     """CE-only build has no license resolver; every workspace runs at the
     enterprise tier so no feature is tier-gated. Also overrides any stale
-    community value persisted in the KV store."""
-    return settings.model_copy(update={"tier": Tier.ENTERPRISE})
+    community value persisted in the KV store. `ee_features_enabled` rides
+    along: white-label branding surfaces (enterprise settings, custom logo)
+    are always available in this build, and the frontend only fetches them
+    when this flag is true."""
+    return settings.model_copy(
+        update={"tier": Tier.ENTERPRISE, "ee_features_enabled": True}
+    )
 
 
 @basic_router.get("")

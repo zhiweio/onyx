@@ -9,12 +9,15 @@ import ReferralSourceSelector from "./ReferralSourceSelector";
 import AuthErrorDisplay from "@/components/auth/AuthErrorDisplay";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@opal/utils";
+import { fetchEnterpriseSettingsSS } from "@/lib/settings/svcSS";
 import { getTranslations } from "next-intl/server";
 
 const Page = async (props: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
   const t = await getTranslations("auth");
+  const appName =
+    (await fetchEnterpriseSettingsSS())?.application_name?.trim() || "Onyx";
   const searchParams = await props.searchParams;
   const nextUrl = Array.isArray(searchParams?.next)
     ? searchParams?.next[0]
@@ -81,7 +84,7 @@ const Page = async (props: {
                 : t("signup.createAccountHeading.title")}
             </Text>
             <Text as="p" text03>
-              {t("signup.subtitle.text")}
+              {t("signup.subtitle.text", { appName })}
             </Text>
           </div>
           {cloud && authUrl && (

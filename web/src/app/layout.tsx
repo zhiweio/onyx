@@ -3,6 +3,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { GTM_ENABLED, MODAL_ROOT_ID } from "@/lib/constants";
 import { generateFaviconMetadata } from "@/lib/app/svcSS";
+import { fetchEnterpriseSettingsSS } from "@/lib/settings/svcSS";
+import { BRAND_THEME_STYLE_ID, buildBrandThemeCss } from "@/lib/branding/theme";
 import AppProvider from "@/providers/AppProvider";
 import { PHProvider } from "./providers";
 import {
@@ -68,6 +70,15 @@ export default async function Layout({ children }: LayoutProps) {
   const locale = await getLocale();
   const messages = await getMessages();
 
+  // White-label brand colors are injected server-side so the themed palette
+  // paints on first render with no flash. Null when unset or on fetch error —
+  // both fall back to the stock Opal tokens.
+  const enterpriseSettings = await fetchEnterpriseSettingsSS();
+  const brandThemeCss = buildBrandThemeCss({
+    brandColor: enterpriseSettings?.brand_color,
+    brandColorDark: enterpriseSettings?.brand_color_dark,
+  });
+
   let dir: HtmlDir = htmlDirForLocale(locale);
   // Dev-only escape hatch so QA can preview either direction without
   // switching account language: set an "onyx-dir" cookie to "rtl" or
@@ -103,6 +114,13 @@ export default async function Layout({ children }: LayoutProps) {
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content"
         />
+
+        {brandThemeCss && (
+          <style
+            id={BRAND_THEME_STYLE_ID}
+            dangerouslySetInnerHTML={{ __html: brandThemeCss }}
+          />
+        )}
 
         {/* When running inside the Tauri desktop wrapper on macOS, tag <html>
             as desktop so the native title-bar reservation in
@@ -168,7 +186,7 @@ export default async function Layout({ children }: LayoutProps) {
                           <CustomAnalyticsScript />
                           <PostHogPageTracker />
                           <div id={MODAL_ROOT_ID} className="h-screen w-screen">
-                              {children}
+                            {children}
                           </div>
                           <WebVitals />
                           {process.env.NEXT_PUBLIC_ENABLE_STATS === "true" && (

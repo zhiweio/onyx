@@ -40,6 +40,10 @@ from onyx.utils.url import add_url_params
 from onyx.utils.variable_functionality import fetch_versioned_implementation
 from shared_configs.configs import MULTI_TENANT
 
+# Stock CTA blue used before branding colors existed; also the fallback when
+# no enterprise color is configured.
+EMAIL_DEFAULT_CTA_COLOR = "#0055FF"
+
 logger = setup_logger()
 
 HTML_EMAIL_TEMPLATE = """\
@@ -103,7 +107,7 @@ HTML_EMAIL_TEMPLATE = """\
     .cta-button {{
       display: inline-block;
       padding: 14px 24px;
-      background-color: #0055FF;
+      background-color: {cta_color};
       color: #ffffff !important;
       text-decoration: none;
       border-radius: 4px;
@@ -172,12 +176,23 @@ def build_html_email(
         cta_block = f'<a class="cta-button" href="{cta_link}">{cta_text}</a>'
     else:
         cta_block = ""
+
+    # Brand color for the CTA button; falls back to the stock blue when the
+    # workspace has not configured one (or the settings store is unreachable).
+    try:
+        from onyx.server.enterprise_settings.store import load_runtime_settings
+
+        cta_color = load_runtime_settings().email_cta_color or EMAIL_DEFAULT_CTA_COLOR
+    except Exception:
+        cta_color = EMAIL_DEFAULT_CTA_COLOR
+
     return HTML_EMAIL_TEMPLATE.format(
         application_name=application_name,
         title=heading,
         heading=heading,
         message=message,
         cta_block=cta_block,
+        cta_color=cta_color,
         community_link_fragment=community_link_fragment,
         year=datetime.now().year,
     )

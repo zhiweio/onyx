@@ -9598,7 +9598,7 @@
         "label": "您是如何了解到我们的？"
       },
       "subtitle": {
-        "text": "开始使用 Onyx"
+        "text": "开始使用 {appName}"
       }
     },
     "verifyEmail": {
@@ -9945,7 +9945,7 @@
           "placeholder": "今天我能帮您做些什么？",
           "queuedPlaceholder": "按上箭头键编辑排队的消息",
           "searchPlaceholder": "搜索已连接的来源",
-          "speakingPlaceholder": "Onyx 正在朗读..."
+          "speakingPlaceholder": "{appName} 正在朗读..."
         },
         "sendButton": {
           "processingFilesTooltip": "正在等待附件处理完成"
@@ -10089,7 +10089,7 @@
       },
       "sharedAppInputBar": {
         "input": {
-          "placeholder": "今天 Onyx 能为您做些什么"
+          "placeholder": "今天 {appName} 能为您做些什么"
         },
         "startSessionButton": {
           "label": "开始新会话"
@@ -11020,7 +11020,7 @@
         "error": "您需要同意条款才能使用本应用。"
       },
       "header": {
-        "title": "欢迎使用 Onyx！"
+        "title": "欢迎使用 {appName}！"
       },
       "logoIcon": {
         "alt": "徽标"
@@ -11734,7 +11734,7 @@
         "alt": "徽标"
       },
       "poweredBy": {
-        "label": "由 Onyx 提供支持"
+        "label": "由 {appName} 提供支持"
       }
     },
     "nonSelectableConnectors": {
@@ -15738,6 +15738,9 @@
         },
         "imBots": {
           "label": "IM 机器人"
+        },
+        "branding": {
+          "label": "品牌定制"
         }
       },
       "sections": {
@@ -16469,6 +16472,130 @@
           "readFailed": "无法读取上传的内容。"
         }
       }
+    }
+  },
+  "admin_branding": {
+    "header": {
+      "description": "应用企业品牌：产品内外的名称、Logo、主题色与自定义文案。"
+    },
+    "actions": {
+      "save": "保存",
+      "loading": "加载中..."
+    },
+    "loadFailed": "品牌设置加载失败，请刷新页面重试。",
+    "toasts": {
+      "saved": "品牌设置已更新",
+      "saveFailed": "品牌设置更新失败"
+    },
+    "identity": {
+      "title": "应用身份",
+      "appName": {
+        "title": "应用名称",
+        "description": "显示在侧边栏、浏览器标题、登录页与邮件中。",
+        "placeholder": "Onyx"
+      },
+      "displayStyle": {
+        "title": "Logo 展示样式",
+        "description": "侧边栏中 Logo 与名称的呈现方式。",
+        "placeholder": "选择样式",
+        "options": {
+          "logo_and_name": "Logo 和名称",
+          "logo_only": "仅 Logo",
+          "name_only": "仅名称"
+        }
+      },
+      "hideBranding": {
+        "title": "隐藏 Onyx 品牌",
+        "description": "移除用户可见界面上的 “Powered by” 标识与 Onyx 相关内容。"
+      }
+    },
+    "assets": {
+      "title": "品牌资产",
+      "empty": {
+        "label": "默认"
+      },
+      "upload": {
+        "label": "上传"
+      },
+      "replace": {
+        "label": "替换"
+      },
+      "remove": {
+        "label": "移除"
+      },
+      "uploadSuccess": "图片已上传",
+      "uploadFailed": "图片上传失败",
+      "removeSuccess": "图片已移除",
+      "removeFailed": "图片移除失败",
+      "logo": {
+        "title": "Logo",
+        "description": "侧边栏与登录页显示的方形标志（支持 PNG、JPEG、WebP、SVG）。"
+      },
+      "logoDark": {
+        "title": "Logo（深色模式）",
+        "description": "深色模式可选变体；未设置时使用浅色 Logo。"
+      },
+      "logotype": {
+        "title": "文字标（Wordmark）",
+        "description": "侧边栏中 Logo 旁显示的文字标识（可选）。"
+      },
+      "logotypeDark": {
+        "title": "文字标（深色模式）",
+        "description": "深色模式文字标（可选）；未设置时使用浅色文字标。"
+      },
+      "favicon": {
+        "title": "浏览器图标",
+        "description": "浏览器标签页图标（支持 .ico、PNG、SVG）。"
+      }
+    },
+    "theme": {
+      "title": "主题颜色",
+      "description": "颜色将应用到整个产品的按钮、链接与选中态。深色模式颜色可选，留空则保持默认深色主题。修改会实时预览，保存后生效。",
+      "brandColor": {
+        "title": "品牌色（浅色模式）",
+        "description": "浅色模式的主强调色，如按钮与选中态。"
+      },
+      "brandColorDark": {
+        "title": "品牌色（深色模式）",
+        "description": "深色模式的主强调色。"
+      },
+      "emailCta": {
+        "title": "邮件按钮颜色",
+        "description": "外发邮件中操作按钮的颜色。"
+      }
+    },
+    "copy": {
+      "title": "自定义文案",
+      "greeting": {
+        "title": "对话欢迎语",
+        "description": "空对话页面的欢迎消息。支持 Markdown。"
+      },
+      "loginSubtitle": {
+        "title": "登录页副标题",
+        "description": "登录表单下方的辅助说明文字。"
+      },
+      "chatHeader": {
+        "title": "对话页顶部内容",
+        "description": "对话页顶部渲染的自定义说明。支持 Markdown。"
+      },
+      "disclaimer": {
+        "title": "页脚声明",
+        "description": "替换默认页脚文字。支持 Markdown。"
+      },
+      "helpLinkLabel": {
+        "title": "帮助链接名称",
+        "description": ""
+      },
+      "helpLinkUrl": {
+        "title": "帮助链接 URL",
+        "description": "显示在个人菜单中，与“帮助与常见问题”并列。"
+      }
+    },
+    "nav": {
+      "title": "自定义导航",
+      "description": "显示在应用侧边栏中的外部链接，例如企业内部帮助中心。",
+      "itemTitlePlaceholder": "名称",
+      "addItem": "添加链接"
     }
   }
 }

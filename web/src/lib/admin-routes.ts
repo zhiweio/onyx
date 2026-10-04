@@ -420,6 +420,16 @@ export const ADMIN_ROUTES = {
   },
 
   // ── Organization ──────────────────────────────────────────────────
+  BRANDING: {
+    path: "/admin/branding",
+    icon: SvgPaintBrush,
+    title: "Branding",
+    sidebarLabel: "Branding",
+    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
+    section: "Organization",
+    requiredTier: null,
+    visibleWhen: null,
+  },
   SECURITY_HARDENING: {
     path: "/admin/security",
     icon: SvgShield,

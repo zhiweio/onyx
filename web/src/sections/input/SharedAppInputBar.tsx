@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Text from "@/refresh-components/texts/Text";
+import { useSettings } from "@/lib/settings/hooks";
 import { Button, OpenButton, SelectButton } from "@opal/components";
 import { SvgOpenai } from "@opal/logos";
 import {
@@ -14,6 +15,7 @@ import {
 
 export default function SharedAppInputBar() {
   const t = useTranslations("chat.input");
+  const { appName } = useSettings();
 
   return (
     <div className="relative w-full">
@@ -21,7 +23,7 @@ export default function SharedAppInputBar() {
         {/* Textarea area */}
         <div className="flex flex-row items-center w-full">
           <Text text03 className="w-full px-3 pt-3 pb-2 select-none">
-            {t("sharedAppInputBar.input.placeholder")}
+            {t("sharedAppInputBar.input.placeholder", { appName })}
           </Text>
         </div>
 

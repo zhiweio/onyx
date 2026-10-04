@@ -78,6 +78,19 @@ def create_mcp_fastapi_app() -> FastAPI:
             logger.info("MCP server shutting down")
             await shutdown_http_client()
 
+    # White-label: surface the workspace's application name to MCP clients.
+    # The enterprise settings store needs the DB engine, which is live by the
+    # time this startup function runs; any failure keeps the default name.
+    try:
+        from onyx.server.enterprise_settings.store import load_runtime_settings
+
+        mcp_display_name = (
+            load_runtime_settings().application_name or "Onyx"
+        ).strip() + " MCP Server"
+        mcp_server.name = mcp_display_name
+    except Exception:
+        logger.debug("Could not load branded MCP server name; using default")
+
     app = FastAPI(
         title="Onyx MCP Server",
         description="HTTP POST transport with bearer auth delegated to API /me",

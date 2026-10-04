@@ -5,9 +5,7 @@ import {
   Settings,
   QueryHistoryType,
 } from "@/lib/settings/types";
-import {
-  HOST_URL,
-} from "@/lib/constants";
+import { HOST_URL } from "@/lib/constants";
 import { fetchSS } from "@/lib/utilsSS";
 import { getWebVersion } from "@/lib/version";
 
@@ -45,8 +43,8 @@ async function fetchCustomAnalyticsScriptSS(): Promise<string | null> {
 
 export async function fetchSettingsSS(): Promise<CombinedSettings | null> {
   const settingsTask = fetchSS("/settings");
-  const enterpriseTask = Promise.resolve(null);
-  const analyticsTask = Promise.resolve(null);
+  const enterpriseTask = fetchSS("/enterprise-settings");
+  const analyticsTask = fetchSS("/enterprise-settings/custom-analytics-script");
 
   try {
     const [settingsResponse, enterpriseResponse, analyticsResponse] =

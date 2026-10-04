@@ -12,10 +12,16 @@ import { SEARCH_TOOL_ID, WEB_SEARCH_TOOL_ID } from "@/lib/tools/constants";
 
 export function useCustomFooterContent(): string {
   const settings = useSettings();
-  return (
-    settings.enterprise?.custom_lower_disclaimer_content ||
-    `[Onyx ${settings.version ?? "dev"}](https://www.onyx.app/) - ${APP_SLOGAN}`
-  );
+  if (settings.enterprise?.custom_lower_disclaimer_content) {
+    return settings.enterprise.custom_lower_disclaimer_content;
+  }
+  // White-label: a branded workspace footer names the enterprise app instead
+  // of linking out to the Onyx site; the Onyx link only survives on default
+  // branding.
+  if (settings.enterprise?.application_name) {
+    return `${settings.appName} ${settings.version ?? ""}`.trim();
+  }
+  return `[Onyx ${settings.version ?? "dev"}](https://www.onyx.app/) - ${APP_SLOGAN}`;
 }
 
 export function useAppDocumentTitle(): void {

@@ -20,7 +20,6 @@ from onyx.configs.constants import (
 from onyx.file_store.file_store import get_default_file_store
 from onyx.redis.redis_pool import get_redis_replica_client
 from onyx.utils.file import FileWithMimeType, OnyxStaticFileManager
-from onyx.utils.variable_functionality import fetch_ee_implementation_or_noop
 
 
 class OnyxRuntime:
@@ -56,12 +55,15 @@ class OnyxRuntime:
         return onyx_file
 
     @staticmethod
-    def get_logo() -> FileWithMimeType:
+    def get_logo(dark: bool = False) -> FileWithMimeType:
         STATIC_FILENAME = "static/images/logo.png"
 
-        db_filename: str | None = fetch_ee_implementation_or_noop(
-            "onyx.server.enterprise_settings.store", "get_logo_filename", None
-        )
+        # Import inside the call: the enterprise_settings module also imports
+        # the file store, and keeping it lazy avoids any import-order coupling
+        # at startup.
+        from onyx.server.enterprise_settings.store import get_logo_filename
+
+        db_filename: str | None = get_logo_filename(dark=dark)
 
         return OnyxRuntime._get_with_static_fallback(db_filename, STATIC_FILENAME)
 
@@ -89,12 +91,12 @@ class OnyxRuntime:
         return onyx_file
 
     @staticmethod
-    def get_logotype() -> FileWithMimeType:
+    def get_logotype(dark: bool = False) -> FileWithMimeType:
         STATIC_FILENAME = "static/images/logotype.png"
 
-        db_filename: str | None = fetch_ee_implementation_or_noop(
-            "onyx.server.enterprise_settings.store", "get_logotype_filename", None
-        )
+        from onyx.server.enterprise_settings.store import get_logotype_filename
+
+        db_filename: str | None = get_logotype_filename(dark=dark)
 
         return OnyxRuntime._get_with_static_fallback(db_filename, STATIC_FILENAME)
 
