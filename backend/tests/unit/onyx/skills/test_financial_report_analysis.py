@@ -13,7 +13,9 @@ from onyx.skills.metadata import parse_skill_document
 from onyx.system_catalog.builtin.manifest import BUILT_IN_SKILL_ENTRIES
 
 _SKILL_ID = "financial-report-analysis"
-_SCRIPTS = BUILTIN_SKILLS_PATH / _SKILL_ID / "scripts"
+_SKILL_DIR = BUILTIN_SKILLS_PATH / _SKILL_ID
+_SCRIPTS = _SKILL_DIR / "scripts"
+_SELF_CHECK = _SCRIPTS / "self_check_report.py"
 
 
 def test_financial_report_analysis_is_registered_and_parses() -> None:
@@ -86,3 +88,114 @@ def test_normalize_statements_emits_trend_rows(tmp_path: Path) -> None:
     assert trend["income"][0]["EndDate"] == "2023-03-31"
     assert trend["income"][0]["OperatingRevenue"] == 50_000_000
     assert trend["cashflow"][-1]["NetOperateCashFlow"] == 2_000_000
+
+
+def _instructions() -> str:
+    definition = BUILT_IN_SKILLS[_SKILL_ID]
+    return parse_skill_document(
+        (definition.source_dir / "SKILL.md").read_bytes(),
+        directory_name=_SKILL_ID,
+    ).instructions_markdown
+
+
+def test_skill_instructions_ban_internal_citations() -> None:
+    """Reader-facing citations only: no MCP names, no sandbox temp paths."""
+    instructions = _instructions()
+    assert "禁止写进报告" in instructions
+    assert "/tmp/" in instructions
+    assert "同花顺（iFinD）" in instructions
+    # The old rule explicitly allowed MCP tool citations.
+    assert "MCP 工具或网页 URL" not in instructions
+
+
+def test_skill_dual_delivery_contract() -> None:
+    """HTML goes through slideblocks; Word goes through the docx skill."""
+    instructions = _instructions()
+    assert "slideblocks" in instructions
+    assert "docx 技能" in instructions
+    assert "self_check_report.py" in instructions
+    assert (_SKILL_DIR / "references" / "docx-report-template.md").is_file()
+    # The hand-rolled HTML skeleton is retired.
+    assert not (_SKILL_DIR / "assets" / "report_template.html").exists()
+    stale = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            _SKILL_DIR / "SKILL.md",
+            _SKILL_DIR / "references" / "output_template.md",
+        )
+    )
+    assert "report_template.html" not in stale
+
+
+def test_skill_requires_eight_charts() -> None:
+    assert "至少产出 8 张" in _instructions()
+
+
+def _run_self_check(target: Path, min_figures: int = 1) -> tuple[int, str]:
+    process = subprocess.run(
+        [sys.executable, str(_SELF_CHECK), str(target), "--min-figures", str(min_figures)],
+        capture_output=True,
+        text=True,
+    )
+    return process.returncode, process.stdout + process.stderr
+
+
+def test_self_check_passes_a_clean_html_report(tmp_path: Path) -> None:
+    report = tmp_path / "report.html"
+    report.write_text(
+        "<html><body>"
+        "<h1>雪龙集团 财报解读</h1>"
+        + "".join('<img src="data:image/png;base64,AAA">' for _ in range(2))
+        + "<p>数据来源：公司2025年年度报告第 12 页</p>"
+        "<p>免责声明：本解读不构成投资建议。</p>"
+        "</body></html>",
+        encoding="utf-8",
+    )
+    exit_code, output = _run_self_check(report)
+    assert exit_code == 0, output
+    assert "FAIL" not in output
+
+
+def test_self_check_flags_leaky_html_report(tmp_path: Path) -> None:
+    report = tmp_path / "report.html"
+    report.write_text(
+        "<html><body>"
+        "<h1>雪龙集团（草稿待修改）</h1>"
+        '<img src="outputs/charts/a.png">'
+        "<p>数据来自 hithink-a-share（MCP），明细见 /tmp/report_data.csv 与 {{公司名}}</p>"
+        "</body></html>",
+        encoding="utf-8",
+    )
+    exit_code, output = _run_self_check(report)
+    assert exit_code == 1
+    assert "FAIL internal_paths" in output
+    assert "FAIL mcp_names" in output
+    assert "FAIL draft_markers" in output
+    assert "FAIL placeholders" in output
+
+
+def test_self_check_passes_a_clean_docx_report(tmp_path: Path) -> None:
+    from docx import Document
+
+    report = tmp_path / "report.docx"
+    document = Document()
+    document.add_heading("雪龙集团 财报解读", 1)
+    document.add_paragraph("数据来源：公司2025年年度报告第 12 页")
+    document.add_paragraph("免责声明：本解读不构成投资建议。")
+    document.save(report)
+    exit_code, output = _run_self_check(report, min_figures=0)
+    assert exit_code == 0, output
+
+
+def test_self_check_flags_a_leaky_docx_report(tmp_path: Path) -> None:
+    from docx import Document
+
+    report = tmp_path / "report.docx"
+    document = Document()
+    document.add_heading("雪龙集团 财报解读", 1)
+    document.add_paragraph("原始 JSON 存放在 outputs/mcp/hithink/，TODO：补充同业数据")
+    document.save(report)
+    exit_code, output = _run_self_check(report, min_figures=0)
+    assert exit_code == 1
+    assert "FAIL internal_paths" in output
+    assert "FAIL draft_markers" in output

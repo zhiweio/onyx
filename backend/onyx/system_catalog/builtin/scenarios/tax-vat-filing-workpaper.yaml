@@ -23,6 +23,8 @@ quality_gates:
   - Decimal math throughout; no silent netting of gaps between invoice, book and bank amounts
   - Regional rules and local rates stay 未核验 until an official local source is on file
   - The checklist separates workpaper items from official actions (submit, pay, red-invoice) that need explicit user confirmation
+  - The checklist embeds at least three charts from vat_reconciliation.csv (VAT bridge waterfall, invoice rate structure, monthly trend) with captions and source notes
+  - Policy citations stay reader-facing (文号 + 条款); working files stay free of placeholders and draft markers (草稿 / 待修改 / TODO)
 refusal_rules:
   - Do not fabricate invoice numbers, amounts or policy citations
   - Do not submit, pay or operate the e-tax bureau without explicit user confirmation

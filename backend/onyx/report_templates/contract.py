@@ -67,6 +67,13 @@ class ReportContract(BaseModel):
     min_figures: int = Field(default=0, ge=0, le=100)
     require_toc: bool = True
     require_disclaimer: bool = True
+    # Regex strings any match in reader-visible text fails the report. Use for
+    # domain-specific bans (e.g. MCP server slugs in finance templates); the
+    # built-in dirty-marker and internal-path checks stay generic.
+    forbidden_patterns: list[str] = Field(default_factory=list)
+    # Risk-entry ID prefixes (e.g. ["TX", "OP"]) enabling the continuity
+    # check: per prefix, the IDs found must run 01..N without gaps.
+    risk_id_prefixes: list[str] = Field(default_factory=list)
 
     @field_validator(
         "must_answer",
@@ -81,6 +88,28 @@ class ReportContract(BaseModel):
         for item in value:
             if not item.strip():
                 raise ValueError("contract list items must be non-empty")
+        return value
+
+    @field_validator("forbidden_patterns")
+    @classmethod
+    def _check_patterns_compile(cls, value: list[str]) -> list[str]:
+        for pattern in value:
+            try:
+                re.compile(pattern)
+            except re.error as error:
+                raise ValueError(
+                    f"forbidden_patterns entry does not compile: {pattern}"
+                ) from error
+        return value
+
+    @field_validator("risk_id_prefixes")
+    @classmethod
+    def _check_risk_prefixes(cls, value: list[str]) -> list[str]:
+        for prefix in value:
+            if not re.fullmatch(r"[A-Z]{2,4}", prefix):
+                raise ValueError(
+                    f"risk_id_prefixes entries must be 2-4 uppercase letters, got '{prefix}'"
+                )
         return value
 
 

@@ -23,7 +23,9 @@ deliverables:
 quality_gates:
   - Accounting treatment is never silently equated to tax treatment; each difference is an explicit bridge line
   - Preferential deductions list their 备查资料 status
-  - Charts drawn with vivid-figures-skill use settlement.json numbers only
+  - Charts drawn with vivid-figures-skill use settlement.json numbers only; at least five charts (profit-to-taxable bridge, tax-burden trend, adjustment structure, preferential-policy status, prepaid-vs-payable)
+  - Audience-facing slides stay free of tool names, skill names and internal paths; policy citations stay reader-facing (文号 + 条款)
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) on slides
 refusal_rules:
   - Do not invent an adjustment basis — no clause, no line
   - Do not recommend aggressive arrangements; flag them as risk instead

@@ -3,7 +3,8 @@ name: financial-report-analysis
 description: >-
   解读最新季报或年报：融合三表同比环比与 10 项异常检测，再建近 8 季单季趋势、经营 KPI
   与业绩指引。支持用户上传 PDF / Excel / 图片，或用同花顺、企查查、智慧芽查询财务、
-  工商与舆情，优先用 vivid-figures-skill 出图，chart-gen 备选。
+  工商与舆情，优先用 vivid-figures-skill 出图，chart-gen 备选。交付双报告：
+  slideblocks 生成的报告型 HTML 与 docx 技能渲染的专业 Word。
   触发词：财报解读、三表、同比、
   环比、异常检测、业绩说明会、单车均价、市占率、读生意。
 optional-mcp:
@@ -64,10 +65,25 @@ optional-mcp:
 
 - 不要开齐全部企查查或智慧芽服务器。一次任务只用上表里需要的那几个。
 - 不要跑 `qcc`、`qcc-agent-cli`、`hithink-finance-cli`。走网关 MCP。
-- 原始 JSON 存 `outputs/mcp/hithink/`、`outputs/mcp/qichacha/`、`outputs/mcp/zhihuiya/`。
+- 原始 JSON 存 `outputs/mcp/hithink/`、`outputs/mcp/qichacha/`、`outputs/mcp/zhihuiya/`，
+  仅作内部存档与复核，不进报告。
 - 网页先 `websearch`，再 `webfetch` 打开具体 URL。优先巨潮、上交所、深交所、港交所、公司 IR。
 - 研报或媒体转述必须标「转述」或「估算」。不要写成管理层原话。
 - 拿不到就写「未获取」，并写原因。
+
+报告引用来源的写法（面向读者，不暴露内部痕迹）：
+
+| 数据来自 | 报告里怎么写 |
+| --- | --- |
+| 上传 / 下载的财报 | 「公司 2025 年年度报告第 47 页」 |
+| 企查查（qcc-*） | 「企查查行政处罚记录，文号 甬市监罚〔2024〕XX 号」 |
+| 智慧芽（company-* / patsnap-*） | 「智慧芽专利检索，专利 CN2024XXXXXXX.X」 |
+| 同花顺（hithink-*） | 「同花顺（iFinD），同业公司 2025Q3 毛利率」 |
+| 网页 / 公告 | 原始 URL + 访问日期，如「巨潮资讯网公告，2026-02-11」 |
+
+禁止写进报告：MCP 工具名与服务器名（qcc-company、hithink-a-share 等）、
+`outputs/`、`/tmp/` 等内部或临时文件路径、脚本名。报告头部「来源」只写
+数据源名称（如「公司定期报告 / 同花顺（iFinD）/ 公开检索」）。
 
 ## 上传文件
 
@@ -182,11 +198,22 @@ node .opencode/skills/chart-gen/scripts/chart.mjs \
   --output outputs/charts/revenue_q.png
 ```
 
-KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页），
-不要用 HTML 信息图——报告里嵌不进。
+KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页）。
+报告图表一律 PNG，供 HTML 与 Word 两个报告共用。
 
-至少产出：营收/净利趋势、毛利率或收现比、一张经营 KPI 图。
-图放 `outputs/charts/`，并嵌进 HTML 报告。
+至少产出 8 张，覆盖每个数据章节：
+
+1. 单季营收与归母净利趋势
+2. 营收 / 净利单季 YoY 增速
+3. 毛利率与净利率逐季
+4. 费用率结构（销售 / 管理 / 研发 / 财务）
+5. 净利润 vs 经营现金流对比
+6. 资产负债结构与偿债（负债率、有息负债）
+7. 经营 KPI（量 / 价 / 结构 / 份额，至少一张）
+8. 异常项预警卡或健康度快照
+
+数据够时增补：扣非缺口、TTM ROE、同业对比。每张图有图注与来源行。
+图放 `outputs/charts/`，并嵌入两份报告。
 
 ### 7. 健康度与综合结论
 
@@ -196,25 +223,47 @@ KPI 快照或对比看板用 matplotlib 出静态 PNG（多子图拼一页），
 
 银行、保险、券商不要套收现比和 FCF。改看不良率、拨备、资本充足率、净息差。
 
-### 8. 交付 HTML
+### 8. 交付双报告（HTML + Word）
 
-复制 `assets/report_template.html` 到
+报告章节与内容要求见 `references/output_template.md`，读者版引用与编辑规范见上文。
+
+**HTML 报告（slideblocks）**：用 `slideblocks` 技能生成报告型 HTML，
+按报告版式组织：封面（公司、代码、报告期、数据时点）、执行摘要与健康度总评、
+分项诊断（图表 + 表格）、生意与指引、综合结论、免责声明。图表一律嵌入
+已产出的 PNG，每页数据带来源行。交付自包含 `offline.html`，复制为
 `outputs/{公司名}_财报解读_{YYYY}Q{n}.html`。
-按 `references/output_template.md` 填每一节。
-把脚本产出的 HTML 片段贴进 1.2 与 1.5 节。
-嵌图表。数据缺口写「未获取」。不要留 `{{占位符}}`。
 
-头部写数据时点、来源、币种、序列长度。尾部保留免责声明。
+**Word 报告（docx 技能）**：按 `references/docx-report-template.md` 的契约组织：
+封面、目录、执行摘要、正文（沿用 output_template 的章节脊柱）、
+图表编号 + 图注 + 来源行、数据来源与方法、免责声明。用 `docx` 技能
+（python-docx）渲染 `outputs/{公司名}_财报解读_{YYYY}Q{n}.docx`。
 
-聊天里给摘要、路径和引用。不要把整份 HTML 贴进对话。
+两份报告数据与结论必须一致，出自同一套 `outputs/analysis/` 数据与图表。
+
+**自检后交付**：
+
+```
+python .opencode/skills/financial-report-analysis/scripts/self_check_report.py \
+  "outputs/{公司名}_财报解读_{YYYY}Q{n}.html" --min-figures 8
+python .opencode/skills/financial-report-analysis/scripts/self_check_report.py \
+  "outputs/{公司名}_财报解读_{YYYY}Q{n}.docx" --min-figures 8
+```
+
+FAIL 项修完再交付。聊天里给摘要、路径和引用。不要把整份报告贴进对话。
 
 ## 硬规则
 
 1. 带 `_Q` 的增速才是单季。不要把累计增速当单季读。
 2. 周转率与累计 ROE 只能同比同期比，或改用 TTM。
 3. 强季节性行业以 YoY 为主。
-4. 数字必须能指到来源文件、MCP 工具或网页 URL。
-5. 禁止把年度值插值成季度值。
+4. 每个数字可溯源，三选一：来源文件页码（如「2025 年年报第 47 页」）、
+   原始来源名称（企查查 / 智慧芽 / 同花顺，注明具体数据项）、网页 URL + 访问日期。
+5. 报告正文（HTML 页面与 Word 文档）不得出现 MCP 工具名、服务器名、
+   `outputs/`、`/tmp/` 等内部或临时文件路径、脚本名，也不得出现
+   「草稿 / 待修改 / 待补充 / TODO」等未定稿标记。
+6. 禁止把年度值插值成季度值。
+7. 编辑规范：结论先行；口径与量纲随数字注明；不留 `{{占位符}}`；
+   图表编号连续，每图有图注与来源行；数据缺口写「未获取」并写原因。
 
 ## 免责声明
 

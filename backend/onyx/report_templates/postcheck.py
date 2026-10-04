@@ -27,6 +27,20 @@ _SOURCE_LINE: Final[re.Pattern[str]] = re.compile(
 
 _DISCLAIMER_TEXT: Final[re.Pattern[str]] = re.compile(r"免责声明|不构成投资建议")
 
+# Internal workspace paths and sandbox temp paths never belong in
+# reader-visible text.
+_INTERNAL_PATH: Final[re.Pattern[str]] = re.compile(
+    r"outputs/[\w./-]+|\.opencode/[\w./-]+|\.slideblocks/[\w./-]+"
+    r"|/tmp/[\w./-]+|/workspace/[\w./-]+"
+)
+
+# Unfinished-work markers. 草稿 etc. are safe on any surface; ASCII markers
+# could false-positive on domain text, but a delivered contract report must
+# not contain them either.
+_DIRTY_MARKER: Final[re.Pattern[str]] = re.compile(
+    r"草稿|待修改|待补充|待完善|待定稿|\b(?:TODO|FIXME)\b"
+)
+
 _CHAPTER_HEADING: Final[re.Pattern[str]] = re.compile(
     r"^\s*(?:#{1,6}\s+)?第?\s*([一二三四五六七八九十]{1,3})\s*[、章节.．]|"
     r"^\s*(?:#{1,6}\s+)?(\d{1,2})[.．、]\s*\S"
@@ -126,20 +140,79 @@ def check_report(docx_bytes: bytes, contract_raw: dict | None = None) -> list[Fi
     # Image/link targets may legitimately point into the workspace; only
     # paths written in prose are leaks.
     prose = re.sub(r"\]\([^)]*\)", "()", text)
-    internal_paths = re.findall(r"outputs/[\w./-]+|\.opencode/[\w./-]+", prose)
-    findings.append(
-        Finding(
-            check="internal_paths",
-            passed=not internal_paths,
-            detail=(
-                "no internal paths in reader-visible text"
-                if not internal_paths
-                else f"internal paths leaked: {sorted(set(internal_paths))[:5]}"
-            ),
-        )
-    )
+    findings.append(_internal_paths_finding(prose))
+    findings.append(_dirty_markers_finding(text))
+    findings.extend(_forbidden_patterns_findings(prose, contract))
+    risk_ids_finding = _risk_ids_finding(text, contract)
+    if risk_ids_finding is not None:
+        findings.append(risk_ids_finding)
 
     return findings
+
+
+def _internal_paths_finding(prose: str) -> Finding:
+    internal_paths = _INTERNAL_PATH.findall(prose)
+    return Finding(
+        check="internal_paths",
+        passed=not internal_paths,
+        detail=(
+            "no internal paths in reader-visible text"
+            if not internal_paths
+            else f"internal paths leaked: {sorted(set(internal_paths))[:5]}"
+        ),
+    )
+
+
+def _dirty_markers_finding(text: str) -> Finding:
+    hits = sorted(set(_DIRTY_MARKER.findall(text)))
+    return Finding(
+        check="draft_markers",
+        passed=not hits,
+        detail="no draft markers" if not hits else f"draft markers: {hits[:5]}",
+    )
+
+
+def _forbidden_patterns_findings(text: str, contract: ReportContract) -> list[Finding]:
+    """One finding per contract-configured regex; a match fails the report."""
+    findings: list[Finding] = []
+    for pattern in contract.forbidden_patterns:
+        hits = sorted({match.group(0) for match in re.finditer(pattern, text)})
+        findings.append(
+            Finding(
+                check="forbidden_patterns",
+                passed=not hits,
+                detail=(
+                    f"no match for {pattern!r}"
+                    if not hits
+                    else f"forbidden pattern {pattern!r} matched: {hits[:5]}"
+                ),
+            )
+        )
+    return findings
+
+
+def _risk_ids_finding(text: str, contract: ReportContract) -> Finding | None:
+    """Per configured prefix, risk IDs must run 01..N without gaps.
+
+    Repeated references to the same ID are fine; a missing number in the
+    sequence means an entry was dropped or renumbered inconsistently.
+    """
+    if not contract.risk_id_prefixes:
+        return None
+    gaps: list[str] = []
+    for prefix in contract.risk_id_prefixes:
+        pattern = re.compile(rf"\b{prefix}-(\d{{1,3}})\b")
+        ids = sorted({int(match.group(1)) for match in pattern.finditer(text)})
+        if ids != list(range(1, len(ids) + 1)):
+            found = ", ".join(f"{prefix}-{number:02d}" for number in ids)
+            gaps.append(
+                f"{prefix} IDs not continuous from {prefix}-01 (found: {found})"
+            )
+    return Finding(
+        check="risk_ids",
+        passed=not gaps,
+        detail="risk IDs continuous" if not gaps else "; ".join(gaps),
+    )
 
 
 def _check_chapter_numbering(text: str) -> Finding:
@@ -259,18 +332,12 @@ def check_report_markdown(
     )
 
     prose = re.sub(r"\]\([^)]*\)", "()", md_text)
-    internal_paths = re.findall(r"outputs/[\w./-]+|\.opencode/[\w./-]+", prose)
-    findings.append(
-        Finding(
-            check="internal_paths",
-            passed=not internal_paths,
-            detail=(
-                "no internal paths"
-                if not internal_paths
-                else f"internal paths leaked: {sorted(set(internal_paths))[:5]}"
-            ),
-        )
-    )
+    findings.append(_internal_paths_finding(prose))
+    findings.append(_dirty_markers_finding(md_text))
+    findings.extend(_forbidden_patterns_findings(prose, contract))
+    risk_ids_finding = _risk_ids_finding(md_text, contract)
+    if risk_ids_finding is not None:
+        findings.append(risk_ids_finding)
 
     missing_elements = [
         element

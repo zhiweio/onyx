@@ -23,10 +23,12 @@ deliverables:
   - outputs/slides/slides.md
   - outputs/analysis/monthly.json
 quality_gates:
-  - Every slide number names its source file under outputs/analysis
-  - Audience-facing slides stay free of internal paths, tool names and skill names
+  - Every slide number traces to an outputs/analysis row; the mapping lives in presenter notes or a source appendix, never on the audience-facing canvas
+  - Audience-facing slides stay free of internal paths, temp paths, tool names and skill names; sources read in business terms (科目余额表 / 增值税申报表 / 银行流水)
   - Each chart embeds real data and carries its period and accounting-basis note
+  - Charts cover at least six views — revenue/profit trend, KPI trend, expense structure, tax burden, cash flow, and one risk view (receivables/inventory)
   - Deck length stays within 10-15 content slides unless the user asked for more
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) on slides
 refusal_rules:
   - Do not invent a number when a statement field is missing — mark it 未获取
   - Do not present an accrual-basis view as cash-basis or vice versa

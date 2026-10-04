@@ -29,13 +29,13 @@ deliverables:
   - outputs/analysis/kpi_dashboard.json
 quality_gates:
   - Every figure names an annual-report page, an original source (企查查 / 智慧芽 / 同花顺 with the record such as a penalty number or patent number), or a web URL with access date
-  - The report never mentions MCP tool names, server slugs (qcc-*, hithink-*), or internal paths like outputs/ — those stay in the working archive only
+  - The report never mentions MCP tool names, server slugs (qcc-*, hithink-*), or internal or temp paths (outputs/, .opencode/, /tmp/, /workspace/) — those stay in the working archive only
   - Subsequent events stay unaudited-labeled and out of the five-year tables
   - Accounting-policy changes mark affected years as not directly comparable
-  - No leftover {{placeholders}} in the report
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) in the report
   - The disclaimer survives at the end of the report
-  - The report never leaks internal paths (outputs/, .opencode/, MCP tool slugs) into reader-visible text
-  - Figures number at least the contract minimum and every table and figure carries a source line
+  - Figures number at least the contract minimum, cover every data section, and every table and figure carries a numbered caption with a source line
+  - TX/OP risk IDs run continuously from 01 — no gaps, no duplicates
 refusal_rules:
   - Do not invent a ticker, 统一社会信用代码, or 案号
   - Do not enable every MCP server for one task

@@ -165,6 +165,9 @@ def test_check_report_gates_the_starter_template() -> None:
             "![图](outputs/charts/03.png)",
             "![图](outputs/charts/04.png)",
             "![图](outputs/charts/05.png)",
+            "![图](outputs/charts/06.png)",
+            "![图](outputs/charts/07.png)",
+            "![图](outputs/charts/08.png)",
             "# 三、整改与期后",
             "30 日内完成整改;期后事项未经审计,仅作趋势观察。",
             "数据缺口:前五大客户明细未获取。",
@@ -179,3 +182,90 @@ def test_check_report_gates_the_starter_template() -> None:
         if not finding.passed
     ]
     assert failures == []
+
+
+def test_check_report_flags_temp_paths_mcp_names_and_draft_markers() -> None:
+    """Sandbox temp paths, MCP slugs and draft markers never reach the reader."""
+    from onyx.report_templates.postcheck import check_report_markdown
+
+    contract = next(
+        item
+        for item in BUILT_IN_REPORT_TEMPLATE_ENTRIES
+        if item.slug == "finance_tax_risk_report"
+    ).read_contract()
+
+    leaked = "\n".join(
+        [
+            "# 一、执行摘要",
+            "数据来源:原始数据见 /tmp/report_data.csv。",
+            "指标经 qcc-company 核验,行业增速来自 hithink-a-share（MCP）。",
+            "雪龙集团（草稿待修改）2021-2025 财税风险分析报告",
+            "来源: 公司2024年年度报告第 5 页。",
+            "![图](outputs/charts/01.png)",
+            "## 免责声明",
+            "本报告不构成投资建议。",
+        ]
+    )
+    findings = check_report_markdown(leaked, contract)
+    failed = {finding.check for finding in findings if not finding.passed}
+    assert "internal_paths" in failed
+    assert "forbidden_patterns" in failed
+    assert "draft_markers" in failed
+
+    figures = "\n".join(f"![图](outputs/charts/{i:02d}.png)" for i in range(1, 9))
+    clean = "\n".join(
+        [
+            "# 一、执行摘要",
+            "```kpi",
+            "营业收入 | 4.73 亿元 | 关注",
+            "```",
+            "风险矩阵与整改建议见后文;期后事项未经审计,仅作趋势观察。",
+            "数据缺口:前五大客户明细未获取。",
+            "数据来源:公司2024年年度报告第 5 页;企查查行政处罚记录,文号 甬市监罚〔2024〕1 号。",
+            "雪龙集团 2021-2025 财税与经营风险分析报告",
+            figures,
+            "## 免责声明",
+            "本报告不构成投资建议。",
+        ]
+    )
+    findings = check_report_markdown(clean, contract)
+    assert all(finding.passed for finding in findings)
+
+
+def test_check_report_flags_broken_risk_id_sequence() -> None:
+    """TX/OP IDs must run continuously from 01 — the shipped OP-08-twice bug."""
+    from onyx.report_templates.postcheck import check_report_markdown
+
+    contract = next(
+        item
+        for item in BUILT_IN_REPORT_TEMPLATE_ENTRIES
+        if item.slug == "finance_tax_risk_report"
+    ).read_contract()
+    figures = "\n".join(f"![图](outputs/charts/{i:02d}.png)" for i in range(1, 9))
+
+    broken = "\n".join(
+        [
+            "# 一、风险",
+            "| 编号 | 风险点 |",
+            "| --- | --- |",
+            "| OP-01 | 收入现金质量 |",
+            "| OP-02 | 存货减值 |",
+            "| OP-08 | 用工结构 |",
+            "| OP-08 | 资本配置效率 |",
+            figures,
+            "## 免责声明",
+            "本报告不构成投资建议。",
+            "来源: 公司2024年年度报告第 5 页。",
+        ]
+    )
+    findings = check_report_markdown(broken, contract)
+    risk_ids = next(finding for finding in findings if finding.check == "risk_ids")
+    assert not risk_ids.passed
+    assert "OP" in risk_ids.detail
+
+    continuous = broken.replace("| OP-08 | 用工结构 |", "| OP-03 | 用工结构 |").replace(
+        "| OP-08 | 资本配置效率 |", "| OP-04 | 资本配置效率 |"
+    )
+    findings = check_report_markdown(continuous, contract)
+    risk_ids = next(finding for finding in findings if finding.check == "risk_ids")
+    assert risk_ids.passed

@@ -16,16 +16,22 @@ phases:
   - id: review
     done_when: outputs/review/red.md and outputs/review/blue.md exist
   - id: report
-    done_when: outputs/report.docx is filled
+    done_when: outputs/report.md follows the listed_company_audit contract (spine acts, required elements) with continuous chapter numbers
+  - id: qa
+    done_when: the check_report platform tool passes every check on outputs/report.md; the platform renders the formal Word at export
 deliverables:
-  - outputs/report.docx
+  - outputs/report.md
   - outputs/normalized/ratios.csv
   - outputs/entity.json
 quality_gates:
-  - Every figure names a file path or MCP capture
-  - Broken ties stay in the exception file
+  - Every figure cites a reader-facing source: an annual-report page, a named external source with its record (penalty number, patent number), or a web URL with access date — never a workspace file path or an MCP tool name
+  - The report stays free of MCP tool names, server slugs, skill names, and internal or temp paths (outputs/, .opencode/, /tmp/)
+  - Figures number at least the contract minimum and cover the audit sections; every table and figure carries a numbered caption with a source line
+  - Broken ties stay in the exception file, not in the report body
   - Zhihuiya citations go through replay_store, not mcp-offload
-  - No leftover {{placeholders}} in the Word file
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) in the report
+  - The disclaimer survives at the end of the report
+  - check_report passes every check before delivery
 refusal_rules:
   - Do not invent a ticker, 案号, or patent number
   - Do not hide a broken tie

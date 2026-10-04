@@ -26,6 +26,9 @@ quality_gates:
   - Every material claim has a fetched identifier
   - Derived sales, PoS, and cost figures are labeled as estimates
   - Public facts come from the installed search MCP and public databases only
+  - The report stays free of MCP tool names, server slugs, and internal or temp paths (outputs/, .opencode/, /tmp/)
+  - Figures number at least the contract minimum (竞争格局 / 打分对比 / 读出时间 baseline) and every table and figure carries a numbered caption with a source line
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) in the report
 refusal_rules:
   - Do not invent NCT IDs, PMIDs, patent numbers, deal values, or prevalence
   - Do not fill missing sales or PoS fields from model memory

@@ -11,7 +11,7 @@ phases:
   - id: risks
     done_when: TX-01~TX-10 and OP-01~OP-08 entries are scored in evidence-cause-impact form under outputs/analysis/risk_matrix.json
   - id: charts
-    done_when: outputs/charts holds the risk-matrix heatmap and at least two supporting trend or structure charts, drawn with vivid-figures-skill first
+    done_when: outputs/charts holds at least five charts — the risk-matrix heatmap plus tax-burden trend, tax-type structure, profit/cash-flow trend and a remediation timeline — drawn with vivid-figures-skill first
   - id: deck
     done_when: outputs/slides holds the management deck (top risks, matrix, remediation timeline) with a verified self-contained offline.html
   - id: qa
@@ -21,9 +21,11 @@ deliverables:
   - outputs/slides/slides.md
   - outputs/analysis/risk_matrix.json
 quality_gates:
-  - Each risk names its evidence (report page, penalty number, or URL with access date)
-  - Audience-facing slides stay free of tool names and internal paths
+  - Each risk names its evidence in reader-facing form (report page, penalty number, or URL with access date)
+  - Audience-facing slides stay free of tool names, skill names and internal or temp paths
+  - TX/OP risk IDs run continuously from 01 — no gaps, no duplicates
   - Remediation actions carry owner-by-role, deadline and priority
+  - No leftover {{placeholders}} and no draft markers (草稿 / 待修改 / TODO) on slides
 refusal_rules:
   - Do not invent a ticker, 统一社会信用代码 or 案号
   - Do not present unaudited data as audited

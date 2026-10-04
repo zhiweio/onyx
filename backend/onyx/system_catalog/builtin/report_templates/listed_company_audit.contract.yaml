@@ -29,13 +29,19 @@ hard_rules:
 - 无来源的数字不得写入结论。
 - 未关闭的红蓝复核质疑不得写成结论。
 - 每个数字、每条发现可溯源:原始来源名称(注明数据项)或网页 URL 与访问日期。
-- 报告正文不出现 MCP 工具名、服务器名、outputs/ 等内部路径与脚本名。
+- 报告正文不出现 MCP 工具名、服务器名、outputs/ 等内部路径、/tmp/ 等临时路径与脚本名。
 - 拿不到的数据写「未获取」并写原因;转述标「转述」。
+- 图注统一「图表N + 标题 + 来源行」;不留草稿、待修改、TODO 等未定稿标记。
 completion_criteria:
-- 无残留 {{占位符}}。
+- 无残留 {{占位符}},无草稿/待修改/TODO 等未定稿标记。
 - 章号连续,标题按内容自拟。
 - 无来源的数字不进结论;发现表无空行。
-- 图表不少于 3 张。
-min_figures: 3
+- 图表不少于 5 张,覆盖勾稽结果、关键比率、外部线索与红蓝复核。
+forbidden_patterns:
+- '\b(?:qcc|patsnap|hithink)-[\w-]+'
+- '\bcompany-(?:credit|profile|risk)\b'
+- '\bMCP\b'
+- '\b(?:TODO|FIXME)\b'
+min_figures: 5
 require_toc: true
 require_disclaimer: true

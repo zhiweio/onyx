@@ -530,7 +530,7 @@ def esc(s):
 
 
 def html_table(headers, rows, caption=None, first_col_left=True):
-    """生成 HTML 表格片段，可直接嵌入 assets/report_template.html。
+    """生成 HTML 表格片段，作为内部分析底稿。
 
     数值着色遵循 A 股习惯：正=红(up)、负=绿(down)。
     """
@@ -586,7 +586,7 @@ def cell_for_html(name, v, colorize=False):
 
 
 def render_html(r):
-    """输出 HTML 片段（季度明细各表），可直接嵌入报告 1.2 节。"""
+    """输出 HTML 片段（季度明细各表），作为报告 1.2 节的内部分析底稿。"""
     L = r["labels"]
     parts = []
 
