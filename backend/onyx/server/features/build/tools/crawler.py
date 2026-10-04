@@ -12,7 +12,10 @@ Works with any crawler service exposing the two-call contract
 from __future__ import annotations
 
 import os
+import threading
 import time
+import uuid
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -99,3 +102,93 @@ def build_crawler_client() -> CrawlerClient | None:
     if not base:
         return None
     return CrawlerClient(base, api_key=os.environ.get("CRAWLER_API_KEY") or None)
+
+
+class ContentProviderCrawler:
+    """Adapts the admin-configured web content provider to the crawl tool.
+
+    When no ``CRAWLER_BASE_URL`` service is deployed, the crawl tool falls
+    back to the provider an administrator configured under web content
+    providers (Firecrawl, the built-in OnyxWebCrawler, Exa, Tavily).
+    ``submit``/``poll`` run the fetch on a worker thread so the two-call
+    contract holds in-process; ``crawl_sync`` blocks on the result.
+    """
+
+    _MAX_WORKERS = 4
+
+    def __init__(self, provider: Any) -> None:
+        self._provider = provider
+        self._pool = ThreadPoolExecutor(max_workers=self._MAX_WORKERS)
+        self._futures: dict[str, tuple[str, Future]] = {}
+        self._lock = threading.Lock()
+
+    def submit(self, url: str) -> str:
+        job_id = uuid.uuid4().hex
+        future = self._pool.submit(self._provider.contents, [url])
+        with self._lock:
+            self._futures[job_id] = (url, future)
+        return job_id
+
+    def poll(self, job_id: str) -> CrawlResult:
+        with self._lock:
+            entry = self._futures.get(job_id)
+        if entry is None:
+            return CrawlResult(url="", status="failed", error="unknown job")
+        url, future = entry
+        if not future.done():
+            return CrawlResult(url=url, status="running")
+        with self._lock:
+            self._futures.pop(job_id, None)
+        try:
+            contents = future.result()
+            return CrawlResult(
+                url=url, status="done", content=self._content_of(contents[0])
+            )
+        except Exception as exc:
+            return CrawlResult(url=url, status="failed", error=str(exc))
+
+    def crawl_sync(self, url: str) -> CrawlResult:
+        try:
+            contents = self._provider.contents([url])
+            return CrawlResult(
+                url=url, status="done", content=self._content_of(contents[0])
+            )
+        except Exception as exc:
+            return CrawlResult(url=url, status="failed", error=str(exc))
+
+    def _content_of(self, web_content: Any) -> str:
+        if not getattr(web_content, "scrape_successful", True):
+            raise RuntimeError(
+                getattr(web_content, "failure_reason", None) or "scrape failed"
+            )
+        content = web_content.full_content
+        if not content:
+            raise RuntimeError("crawler returned empty content")
+        return content
+
+
+def build_content_provider_crawler() -> ContentProviderCrawler | None:
+    """Crawler backed by the admin-configured content provider, or None."""
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.db.web_search import fetch_active_web_content_provider
+    from onyx.tools.tool_implementations.web_search.providers import (
+        build_content_provider_from_config,
+    )
+    from shared_configs.enums import WebContentProviderType
+
+    with get_session_with_current_tenant() as db_session:
+        provider_model = fetch_active_web_content_provider(db_session)
+    if provider_model is None:
+        return None
+    provider = build_content_provider_from_config(
+        provider_type=WebContentProviderType(provider_model.provider_type),
+        api_key=(
+            provider_model.api_key.get_value(apply_mask=False)
+            if provider_model.api_key
+            else None
+        ),
+        config=provider_model.config,
+    )
+    if provider is None:
+        return None
+    return ContentProviderCrawler(provider)

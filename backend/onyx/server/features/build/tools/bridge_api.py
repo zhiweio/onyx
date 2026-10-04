@@ -121,6 +121,16 @@ def _request_registry(user: User) -> PlatformToolRegistry:
         return format_hits(query, search_provider.search(query, max_results))
 
     crawler = build_crawler_client()
+    if crawler is None:
+        # No dedicated crawler-platform deployment: serve the crawl tool from
+        # the web content provider configured in the admin panel (Firecrawl,
+        # the built-in OnyxWebCrawler, Exa, Tavily) so one admin setting
+        # covers chat and craft.
+        from onyx.server.features.build.tools.crawler import (
+            build_content_provider_crawler,
+        )
+
+        crawler = build_content_provider_crawler()
 
     def _crawl(url: str, wait: bool) -> str:
         if crawler is None:
