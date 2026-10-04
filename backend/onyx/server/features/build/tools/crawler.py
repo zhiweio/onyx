@@ -6,7 +6,11 @@ Works with any crawler service exposing the two-call contract
 - ``POST {base}/crawl`` {url} → {job_id}
 - ``GET {base}/crawl/{job_id}`` → {status, content|error}
 
-``CRAWLER_BASE_URL`` configures the endpoint; empty disables the tool.
+``CRAWLER_BASE_URL`` configures the endpoint. When it is empty, the crawl
+tool is served from the admin-configured web content provider instead
+(``build_content_provider_crawler``): Firecrawl, OnyxWebCrawler, Exa or
+Tavily — the same provider chat's open-url uses, with the same built-in
+fallback when nothing is configured.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ from typing import Any
 
 import requests
 
+from onyx.tools.tool_implementations.open_url.models import WebContent
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -156,21 +161,34 @@ class ContentProviderCrawler:
         except Exception as exc:
             return CrawlResult(url=url, status="failed", error=str(exc))
 
-    def _content_of(self, web_content: Any) -> str:
-        if not getattr(web_content, "scrape_successful", True):
-            raise RuntimeError(
-                getattr(web_content, "failure_reason", None) or "scrape failed"
-            )
-        content = web_content.full_content
-        if not content:
+    def _content_of(self, web_content: WebContent) -> str:
+        if not web_content.scrape_successful:
+            raise RuntimeError(web_content.failure_reason or "scrape failed")
+        if not web_content.full_content:
             raise RuntimeError("crawler returned empty content")
-        return content
+        return web_content.full_content
 
 
 def build_content_provider_crawler() -> ContentProviderCrawler | None:
-    """Crawler backed by the admin-configured content provider, or None."""
+    """Crawler backed by the admin-configured web content provider.
+
+    Mirrors the chat-side resolution in ``features/web_search/api.py``:
+    the active provider row is built from its stored key and config, and
+    when nothing is configured the built-in ``OnyxWebCrawler`` serves the
+    tool, so one admin setting covers chat and craft. A broken row
+    degrades to ``None`` (crawl tool unavailable) instead of raising —
+    this runs inside the tool-bridge registry build.
+    """
     from onyx.db.engine.sql_engine import get_session_with_current_tenant
     from onyx.db.web_search import fetch_active_web_content_provider
+    from onyx.tools.tool_implementations.open_url.onyx_web_crawler import (
+        DEFAULT_MAX_HTML_SIZE_BYTES,
+        DEFAULT_MAX_PDF_SIZE_BYTES,
+        OnyxWebCrawler,
+    )
+    from onyx.tools.tool_implementations.web_search.models import (
+        WebContentProviderConfig,
+    )
     from onyx.tools.tool_implementations.web_search.providers import (
         build_content_provider_from_config,
     )
@@ -178,17 +196,48 @@ def build_content_provider_crawler() -> ContentProviderCrawler | None:
 
     with get_session_with_current_tenant() as db_session:
         provider_model = fetch_active_web_content_provider(db_session)
+
     if provider_model is None:
-        return None
-    provider = build_content_provider_from_config(
-        provider_type=WebContentProviderType(provider_model.provider_type),
-        api_key=(
-            provider_model.api_key.get_value(apply_mask=False)
-            if provider_model.api_key
-            else None
-        ),
-        config=provider_model.config,
+        # Chat's open-url default: the built-in crawler is always available.
+        return ContentProviderCrawler(
+            OnyxWebCrawler(
+                max_pdf_size_bytes=DEFAULT_MAX_PDF_SIZE_BYTES,
+                max_html_size_bytes=DEFAULT_MAX_HTML_SIZE_BYTES,
+            )
+        )
+
+    api_key = (
+        provider_model.api_key.get_value(apply_mask=False)
+        if provider_model.api_key
+        else None
     )
+    is_builtin = (
+        provider_model.provider_type == WebContentProviderType.ONYX_WEB_CRAWLER.value
+    )
+    if is_builtin:
+        # The builder ignores the key for the built-in crawler type.
+        api_key = api_key or ""
+    elif api_key is None:
+        logger.warning(
+            "Active web content provider '%s' has no API key; crawl tool unavailable",
+            provider_model.name,
+        )
+        return None
+
+    try:
+        provider = build_content_provider_from_config(
+            provider_type=WebContentProviderType(provider_model.provider_type),
+            api_key=api_key,
+            config=provider_model.config or WebContentProviderConfig(),
+        )
+    except ValueError as exc:
+        logger.warning(
+            "Active web content provider '%s' is misconfigured (%s); "
+            "crawl tool unavailable",
+            provider_model.name,
+            exc,
+        )
+        return None
     if provider is None:
         return None
     return ContentProviderCrawler(provider)
