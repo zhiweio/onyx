@@ -1,5 +1,12 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
+import onyx.tools.tool_implementations.web_search.clients.baidu_client as baidu_client_module
+import onyx.tools.tool_implementations.web_search.clients.bocha_client as bocha_client_module
+from onyx.tools.tool_implementations.web_search.clients.baidu_client import BaiduClient
+from onyx.tools.tool_implementations.web_search.clients.bocha_client import BochaClient
 from onyx.tools.tool_implementations.web_search.clients.brave_client import BraveClient
 from onyx.tools.tool_implementations.web_search.clients.parallel_client import (
     ParallelClient,
@@ -139,3 +146,100 @@ def test_build_google_pse_provider_requires_search_engine_id() -> None:
             api_key="test-api-key",
             config={},
         )
+
+
+def test_provider_requires_api_key_bocha_baidu() -> None:
+    assert provider_requires_api_key(WebSearchProviderType.BOCHA) is True
+    assert provider_requires_api_key(WebSearchProviderType.BAIDU) is True
+
+
+def test_build_bocha_provider_requires_api_key() -> None:
+    with pytest.raises(ValueError, match="API key is required"):
+        build_search_provider_from_config(
+            provider_type=WebSearchProviderType.BOCHA,
+            api_key=None,
+            config={},
+        )
+
+
+def test_build_bocha_provider() -> None:
+    provider = build_search_provider_from_config(
+        provider_type=WebSearchProviderType.BOCHA,
+        api_key="test-api-key",
+        config={},
+    )
+    assert isinstance(provider, BochaClient)
+
+
+def test_build_baidu_provider_requires_api_key() -> None:
+    with pytest.raises(ValueError, match="API key is required"):
+        build_search_provider_from_config(
+            provider_type=WebSearchProviderType.BAIDU,
+            api_key=None,
+            config={},
+        )
+
+
+def test_build_baidu_provider() -> None:
+    provider = build_search_provider_from_config(
+        provider_type=WebSearchProviderType.BAIDU,
+        api_key="test-access-token",
+        config={},
+    )
+    assert isinstance(provider, BaiduClient)
+
+
+def test_bocha_client_parses_web_pages() -> None:
+    client = BochaClient(api_key="test-api-key", num_results=5)
+    payload = {
+        "data": {
+            "webPages": [
+                {
+                    "name": "增值税法全文",
+                    "url": "https://www.gov.cn/yaowen/liebiao/vat-law",
+                    "summary": "2026年1月1日起施行。",
+                },
+                {"name": "无链接条目", "url": "", "summary": "应被跳过"},
+            ]
+        }
+    }
+    with patch.object(
+        bocha_client_module.requests, "post", return_value=_fake_response(payload)
+    ):
+        results = client.search("增值税法")
+    assert len(results) == 1
+    assert results[0].title == "增值税法全文"
+    assert results[0].link == "https://www.gov.cn/yaowen/liebiao/vat-law"
+    assert "2026年1月1日" in results[0].snippet
+
+
+def test_baidu_client_parses_results() -> None:
+    client = BaiduClient(api_key="test-access-token", num_results=5)
+    payload = {
+        "results": [
+            {
+                "title": "雪龙集团最新公告",
+                "url": "https://www.cninfo.com.cn/xuelong",
+                "abstract": "雪龙集团公告摘要。",
+            },
+            {"title": "仅链接字段", "link": "https://example.com/link-only"},
+        ]
+    }
+    with patch.object(
+        baidu_client_module.requests, "get", return_value=_fake_response(payload)
+    ):
+        results = client.search("雪龙集团")
+    assert len(results) == 2
+    assert results[0].link == "https://www.cninfo.com.cn/xuelong"
+    assert results[1].link == "https://example.com/link-only"
+    assert results[1].snippet == ""
+
+
+def _fake_response(payload: dict) -> SimpleNamespace:
+    response = SimpleNamespace(
+        status_code=200,
+        payload=payload,
+        raise_for_status=lambda: None,
+    )
+    response.json = lambda: payload  # type: ignore[method-assign]
+    return response

@@ -9,7 +9,9 @@ export type WebSearchProviderType =
   | "searxng"
   | "brave"
   | "tavily"
-  | "parallel";
+  | "parallel"
+  | "bocha"
+  | "baidu";
 
 export type WebContentProviderType =
   | "firecrawl"

@@ -12,6 +12,8 @@ from onyx.tools.tool_implementations.open_url.onyx_web_crawler import (
     OnyxWebCrawler,
 )
 from onyx.tools.tool_implementations.open_url.tavily import TavilyExtractClient
+from onyx.tools.tool_implementations.web_search.clients.baidu_client import BaiduClient
+from onyx.tools.tool_implementations.web_search.clients.bocha_client import BochaClient
 from onyx.tools.tool_implementations.web_search.clients.brave_client import BraveClient
 from onyx.tools.tool_implementations.web_search.clients.exa_client import ExaClient
 from onyx.tools.tool_implementations.web_search.clients.google_pse_client import (
@@ -122,6 +124,10 @@ def build_search_provider_from_config(
         )
     if provider_type == WebSearchProviderType.PARALLEL:
         return ParallelClient(api_key=api_key, num_results=num_results)
+    if provider_type == WebSearchProviderType.BOCHA:
+        return BochaClient(api_key=api_key, num_results=num_results)
+    if provider_type == WebSearchProviderType.BAIDU:
+        return BaiduClient(api_key=api_key, num_results=num_results)
     if provider_type == WebSearchProviderType.GOOGLE_PSE:
         search_engine_id = (
             config.get("search_engine_id")

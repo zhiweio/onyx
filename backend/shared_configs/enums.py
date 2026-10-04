@@ -29,6 +29,8 @@ class WebSearchProviderType(str, Enum):
     BRAVE = "brave"
     TAVILY = "tavily"
     PARALLEL = "parallel"
+    BOCHA = "bocha"
+    BAIDU = "baidu"
 
 
 class WebContentProviderType(str, Enum):

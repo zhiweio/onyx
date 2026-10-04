@@ -41,6 +41,18 @@ export const SEARCH_PROVIDER_DETAILS: Record<
     logo: SvgSerper,
     apiKeyUrl: "https://serper.dev/api-key",
   },
+  bocha: {
+    label: "Bocha",
+    subtitle: "博查 Bochaai",
+    helper: "Connect to Bocha to set up web search.",
+    apiKeyUrl: "https://open.bochaai.com",
+  },
+  baidu: {
+    label: "Baidu",
+    subtitle: "百度搜索开放平台",
+    helper: "Connect to the Baidu Search Open API to set up web search.",
+    apiKeyUrl: "https://openapi.baidu.com",
+  },
   brave: {
     label: "Brave",
     subtitle: "Brave Search API",
@@ -117,6 +129,8 @@ const SEARCH_PROVIDER_CAPABILITIES: Record<
 > = {
   exa: { requiresApiKey: true, requiredConfigKeys: [] },
   serper: { requiresApiKey: true, requiredConfigKeys: [] },
+  bocha: { requiresApiKey: true, requiredConfigKeys: [] },
+  baidu: { requiresApiKey: true, requiredConfigKeys: [] },
   brave: { requiresApiKey: true, requiredConfigKeys: [] },
   google_pse: {
     requiresApiKey: true,
