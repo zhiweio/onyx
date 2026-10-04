@@ -73,8 +73,8 @@ def admin_patch_settings(
     ),
 ) -> Settings:
     # CE-only build: the EE tier resolver is physically absent, so every
-    # workspace runs at the community tier.
-    current_tier = Tier.COMMUNITY
+    # workspace runs at the enterprise tier (nothing is tier-gated).
+    current_tier = Tier.ENTERPRISE
 
     # Serialize the read-modify-write so two concurrent partial patches cannot
     # each merge onto a stale snapshot and drop the other's field.
@@ -148,8 +148,10 @@ def admin_patch_settings(
 
 
 def apply_license_status_to_settings(settings: Settings) -> Settings:
-    """MIT version: no-op, returns settings unchanged."""
-    return settings
+    """CE-only build has no license resolver; every workspace runs at the
+    enterprise tier so no feature is tier-gated. Also overrides any stale
+    community value persisted in the KV store."""
+    return settings.model_copy(update={"tier": Tier.ENTERPRISE})
 
 
 @basic_router.get("")
