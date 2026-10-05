@@ -160,7 +160,7 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
 
 
 def _parse_feishu_message_content(
-    msg_type: str, content: dict[str, Any]
+    msg_type: str, content: dict[str, Any], message_id: str
 ) -> tuple[str, list[InboundAttachment]] | None:
     """Extract (text, attachments) from one im message body; ``None`` for
     message types the bot does not answer (audio/media/stickers/shares)."""
@@ -171,12 +171,14 @@ def _parse_feishu_message_content(
     elif msg_type == "image":
         image_key = str(content.get("image_key") or "")
         if image_key:
-            attachments.append(InboundAttachment("image", image_key))
+            attachments.append(InboundAttachment("image", image_key, "", message_id))
     elif msg_type == "file":
         file_key = str(content.get("file_key") or "")
         file_name = str(content.get("file_name") or "file")
         if file_key:
-            attachments.append(InboundAttachment("file", file_key, file_name))
+            attachments.append(
+                InboundAttachment("file", file_key, file_name, message_id)
+            )
     elif msg_type == "post":
         # rich text: paragraphs carry text/img fragments
         texts: list[str] = []
@@ -197,7 +199,9 @@ def _parse_feishu_message_content(
                             image_key = str(node.get("image_key") or "")
                             if image_key:
                                 attachments.append(
-                                    InboundAttachment("image", image_key)
+                                    InboundAttachment(
+                                        "image", image_key, "", message_id
+                                    )
                                 )
         text = "\n".join(part for part in texts if part).strip()
     else:
@@ -256,7 +260,7 @@ def feishu_handle(
     except json.JSONDecodeError:
         content = {}
 
-    parsed = _parse_feishu_message_content(msg_type, content)
+    parsed = _parse_feishu_message_content(msg_type, content, msg_id)
     if parsed is None:
         return CallbackResult()
     text, attachments = parsed

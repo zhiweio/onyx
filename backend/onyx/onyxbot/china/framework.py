@@ -75,6 +75,7 @@ class InboundAttachment:
     kind: str  # image | file
     message_key: str  # image_key / file_key for the download API
     file_name: str = ""
+    message_id: str = ""  # containing message — resources API needs it
 
 
 @dataclass(frozen=True)
@@ -642,19 +643,21 @@ def _clear_pending_files(platform: str, platform_user_id: str) -> None:
 def _feishu_download(
     config: Any, token_mgr: Any, attachment: InboundAttachment
 ) -> tuple[bytes, str] | None:
-    """Download one Feishu attachment; returns (content, mime)."""
+    """Download one inbound attachment via the message-resources API.
+
+    ``/im/v1/files|images/{key}`` only serves resources the bot uploaded
+    itself; user-sent attachments hang off their message and must go
+    through ``/im/v1/messages/{message_id}/resources/{key}``."""
     import requests
 
     token = _feishu_token(config, token_mgr)
-    if attachment.kind == "image":
-        url = f"https://open.feishu.cn/open-apis/im/v1/images/{attachment.message_key}"
-        params: dict[str, str] = {}
-    else:
-        url = f"https://open.feishu.cn/open-apis/im/v1/files/{attachment.message_key}"
-        params = {"file_type": "file"}
+    resource_type = "image" if attachment.kind == "image" else "file"
     resp = requests.get(
-        url,
-        params=params,
+        (
+            f"https://open.feishu.cn/open-apis/im/v1/messages/"
+            f"{attachment.message_id}/resources/{attachment.message_key}"
+        ),
+        params={"type": resource_type},
         headers={"Authorization": f"Bearer {token}"},
         timeout=60,
     )
