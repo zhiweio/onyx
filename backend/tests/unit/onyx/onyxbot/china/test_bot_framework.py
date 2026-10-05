@@ -311,11 +311,14 @@ def test_feishu_markdown_converts_html() -> None:
 
     md = _feishu_markdown(
         '行1<br>行2 <a href="https://x.cn">链接</a> <b>加粗</b> &amp; 更多'
+        " /场景 <名称> <任务内容>"
     )
     assert "<br>" not in md and "<a " not in md and "<b>" not in md
     assert "[链接](https://x.cn)" in md
     assert "**加粗**" in md
     assert "&" in md and "&amp;" not in md
+    # content angle brackets survive as full-width, not stripped as tags
+    assert "＜名称＞ ＜任务内容＞" in md
 
 
 def test_feishu_card_content_uses_markdown_module() -> None:
@@ -343,3 +346,41 @@ def test_help_and_scenario_list_commands_registered() -> None:
     assert "我的场景" in _SCENARIO_LIST_COMMANDS
     reply = _help_reply()
     assert "/场景" in reply and "/reset" in reply and "/场景列表" in reply
+
+
+def test_feishu_reply_rich_falls_back_to_text(monkeypatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    sent = {}
+    monkeypatch.setattr(
+        framework,
+        "_feishu_send_card",
+        lambda config, mgr, chat_id, text: None,
+    )
+    monkeypatch.setattr(
+        framework,
+        "_feishu_send",
+        lambda config, mgr, chat_id, text: sent.update(chat_id=chat_id, text=text),
+    )
+    framework._feishu_reply_rich("cfg", "mgr", "oc_1", "**hi**")
+    assert sent == {"chat_id": "oc_1", "text": "**hi**"}
+
+
+def test_feishu_reply_rich_uses_card(monkeypatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    text_sent = {}
+    fallback_used = []
+    monkeypatch.setattr(
+        framework,
+        "_feishu_send_card",
+        lambda config, mgr, chat_id, text: text_sent.update(text=text) or "om_1",
+    )
+    monkeypatch.setattr(
+        framework,
+        "_feishu_send",
+        lambda config, mgr, chat_id, text: fallback_used.append(text),
+    )
+    framework._feishu_reply_rich("cfg", "mgr", "oc_1", "**hi**")
+    assert text_sent["text"] == "**hi**"
+    assert fallback_used == []

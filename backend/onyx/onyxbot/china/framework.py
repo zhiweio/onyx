@@ -343,7 +343,9 @@ def _answer_feishu(message: InboundMessage, provider_config: Any) -> None:
     token_mgr = AppTokenManager
     prepared = _prepare_turn(message, provider_config)
     if isinstance(prepared, str):
-        _feishu_send(provider_config, token_mgr, message.chat_id, prepared)
+        # Direct replies (menu commands, /场景 launches) carry markdown too —
+        # send them as cards, not plain text.
+        _feishu_reply_rich(provider_config, token_mgr, message.chat_id, prepared)
         return
 
     card_msg_id = _feishu_send_card(
@@ -474,7 +476,7 @@ def _send_reply(message: InboundMessage, config: Any, text: str) -> None:
             config, AppTokenManager, message.chat_id, message.platform_user_id, text
         )
     elif message.platform == "feishu":
-        _feishu_send(config, AppTokenManager, message.chat_id, text)
+        _feishu_reply_rich(config, AppTokenManager, message.chat_id, text)
     else:
         logger.warning("unknown platform %s", message.platform)
 
@@ -564,6 +566,13 @@ def _feishu_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
     ).raise_for_status()
 
 
+def _feishu_reply_rich(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
+    """Reply with a markdown card (converted for Feishu's subset); fall back
+    to plain text when the card cannot be sent."""
+    if _feishu_send_card(config, token_mgr, chat_id, text) is None:
+        _feishu_send(config, token_mgr, chat_id, text)
+
+
 _FEISHU_MD_HEADER_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$", re.MULTILINE)
 _FEISHU_MD_HR_RE = re.compile(r"^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$", re.MULTILINE)
 _FEISHU_MD_TABLE_DELIM_RE = re.compile(r"^\s*\|?\s*:?-{2,}[\s:|-]*\|?\s*$")
@@ -625,7 +634,9 @@ def _feishu_markdown(text: str) -> str:
     text = re.sub(r"</?(?:b|strong)>", "**", text)
     text = re.sub(r"</?(?:i|em)>", "*", text)
     text = re.sub(r"</?code>", "`", text)
-    text = re.sub(r"<[^>]+>", "", text)
+    # Remaining angle brackets are content (e.g. <任务内容>), not tags —
+    # full-width them instead of stripping, the markdown element would eat them
+    text = text.replace("<", "＜").replace(">", "＞")
     # headings → bold lines
     text = _FEISHU_MD_HEADER_RE.sub(lambda m: f"**{m.group(2)}**", text)
     # horizontal rules → a plain dash line
