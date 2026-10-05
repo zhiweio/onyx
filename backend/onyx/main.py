@@ -409,11 +409,17 @@ def start_agent_model_registry_refresher() -> None:
     logger = setup_logger()
 
     def _refresh_once() -> None:
+        # get_session() is a generator (FastAPI Depends style) — drive it with
+        # next() inside try/finally rather than `with`.
+        db_session = None
         try:
-            with get_session() as db_session:
-                registry.refresh_model_catalog(db_session)
+            db_session = next(get_session())
+            registry.refresh_model_catalog(db_session)
         except Exception:
             logger.warning("Agent model registry warm-up failed", exc_info=True)
+        finally:
+            if db_session is not None:
+                db_session.close()
 
     _refresh_once()
     interval = AGENT_MODEL_REGISTRY_REFRESH_SECONDS
