@@ -87,6 +87,7 @@ class InboundMessage:
     text: str
     sender_name: str = ""
     attachments: tuple[InboundAttachment, ...] = ()
+    is_group: bool = False  # group chat → retrieval downgrades to public docs
 
 
 @dataclass(frozen=True)
@@ -277,14 +278,26 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
             user = get_user_by_email(email, db_session)
             if user is None:
                 user = _provision_bot_user(db_session, email)
-        upsert_im_binding(
-            db_session,
-            user_id=user.id,
-            platform=message.platform,
-            platform_user_id=message.platform_user_id,
-            chat_id=message.chat_id,
-            display_name=message.sender_name,
-        )
+
+        # Group chats: the chat turn runs as a per-group shared account with
+        # no ACL grants, so retrieval is limited to public documents — answers
+        # derived from one member's private docs must not reach the group.
+        # Commands and scenario launches below still run as the sender.
+        if message.is_group:
+            group_email = _group_account_email(message, provider_config)
+            turn_user = get_user_by_email(group_email, db_session)
+            if turn_user is None:
+                turn_user = _provision_bot_user(db_session, group_email)
+        else:
+            turn_user = user
+            upsert_im_binding(
+                db_session,
+                user_id=user.id,
+                platform=message.platform,
+                platform_user_id=message.platform_user_id,
+                chat_id=message.chat_id,
+                display_name=message.sender_name,
+            )
 
         if command in _RESET_COMMANDS:
             _mark_reset(message.platform, message.platform_user_id)
@@ -333,7 +346,11 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         if start_fresh:
             _clear_pending_files(message.platform, message.platform_user_id)
             _clear_pending_skill(message.platform, message.platform_user_id)
-        session_id = None if start_fresh else _latest_session_id(db_session, user.id)
+        # Session continuity is per turn-user: the member's own session in
+        # DMs, the shared per-group session in group chats.
+        session_id = (
+            None if start_fresh else _latest_session_id(db_session, turn_user.id)
+        )
 
         trigger_reply = try_scenario_trigger(db_session, user, message.text)
         if trigger_reply is not None:
@@ -348,11 +365,13 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
                 )
             return trigger_reply
 
-        file_descriptors = (
-            _consume_pending_files(message.platform, message.platform_user_id)
-            if message.platform == "feishu"
-            else []
-        )
+        file_descriptors: list[dict[str, Any]] = []
+        if message.platform == "feishu" and not message.is_group:
+            # Parked files are owned by the sender; group turns run as the
+            # shared group account, which would fail the ownership check.
+            file_descriptors = _consume_pending_files(
+                message.platform, message.platform_user_id
+            )
         selected_skill_ids = None
         if message.platform == "feishu":
             selected_skill_ids = (
@@ -381,7 +400,7 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         file_descriptors=file_descriptors,
         selected_skill_ids=selected_skill_ids,
     )
-    return _PreparedTurn(user_id=user.id, request=request)
+    return _PreparedTurn(user_id=turn_user.id, request=request)
 
 
 def _iter_chat_stream(prepared: _PreparedTurn) -> Any:
@@ -531,6 +550,14 @@ def deterministic_email(platform: str, platform_user_id: str, config: Any) -> st
     # Every provider config model (and test stub) carries email_domain.
     domain = config.email_domain or BOT_EMAIL_DOMAIN_FALLBACK
     return f"{platform}-{platform_user_id}@{domain}"
+
+
+def _group_account_email(message: InboundMessage, config: Any) -> str:
+    """Deterministic per-group shared account: no ACL grants, so group chat
+    retrieval is limited to public documents; memories and sessions stay
+    scoped to this one group and cannot leak across groups."""
+    domain = config.email_domain or BOT_EMAIL_DOMAIN_FALLBACK
+    return f"{message.platform}-group-{message.chat_id}@{domain}"
 
 
 # ── real-identity resolution (open_id → union_id → SSO-linked user) ───────

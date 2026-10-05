@@ -247,6 +247,7 @@ def feishu_handle(
     event = payload.get("event") or {}
     message = event.get("message") or {}
     msg_type = str(message.get("message_type") or "")
+    is_group = str(message.get("chat_type") or "p2p") == "group"
     sender_id = ((event.get("sender") or {}).get("sender_id") or {}).get(
         "open_id"
     ) or ""
@@ -272,6 +273,7 @@ def feishu_handle(
             chat_id=chat_id,
             text=text,
             attachments=tuple(attachments),
+            is_group=is_group,
         )
     )
 
