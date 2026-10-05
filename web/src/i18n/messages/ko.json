@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "지정한 이메일로 된 계정이 이미 존재합니다."
       },
+      "confirmPassword": {
+        "label": "비밀번호 확인",
+        "placeholder": "비밀번호 확인",
+        "required": {
+          "error": "비밀번호를 다시 입력하세요"
+        }
+      },
       "continueAsGuest": {
         "label": "또는 게스트로 계속하기"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "비밀번호에는 소문자가 하나 이상 포함되어야 합니다"
+      },
+      "passwordMismatch": {
+        "error": "비밀번호가 일치하지 않습니다"
       },
       "passwordRequirements": {
         "label": "비밀번호 요건:"

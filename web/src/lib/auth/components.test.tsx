@@ -167,6 +167,7 @@ describe("Email/Password Signup Workflow", () => {
       "newuser@example.com"
     );
     await user.type(screen.getByTestId("password"), "Securepassword1");
+    await user.type(screen.getByTestId("confirm-password"), "Securepassword1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
@@ -179,6 +180,7 @@ describe("Email/Password Signup Workflow", () => {
       );
     });
 
+    // The confirm field is client-side UX only — it is never sent to the API.
     const signupBody = JSON.parse(fetchSpy.mock.calls[0][1].body);
     expect(signupBody).toEqual({
       email: "newuser@example.com",
@@ -216,6 +218,27 @@ describe("Email/Password Signup Workflow", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  test("rejects mismatched password confirmation", async () => {
+    const user = setupUser();
+
+    render(<EmailPasswordForm label="create" />);
+
+    await user.type(
+      screen.getByPlaceholderText(/email@yourcompany.com/i),
+      "newuser@example.com"
+    );
+    await user.type(screen.getByTestId("password"), "Securepassword1");
+    await user.type(screen.getByTestId("confirm-password"), "Differentpass1");
+
+    // Mismatched confirmation blocks submission.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /create account/i })
+      ).toBeDisabled();
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   test("shows error toast when email already exists", async () => {
     const user = setupUser();
 
@@ -232,6 +255,7 @@ describe("Email/Password Signup Workflow", () => {
       "existing@example.com"
     );
     await user.type(screen.getByTestId("password"), "Securepassword1");
+    await user.type(screen.getByTestId("confirm-password"), "Securepassword1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
@@ -257,6 +281,7 @@ describe("Email/Password Signup Workflow", () => {
       "user@example.com"
     );
     await user.type(screen.getByTestId("password"), "Securepassword1");
+    await user.type(screen.getByTestId("confirm-password"), "Securepassword1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
@@ -289,5 +314,12 @@ describe("Email/Password autofill attributes", () => {
     const passwordInput = screen.getByTestId("password");
     expect(passwordInput).toHaveAttribute("type", "password");
     expect(passwordInput).toHaveAttribute("autocomplete", "new-password");
+
+    const confirmPasswordInput = screen.getByTestId("confirm-password");
+    expect(confirmPasswordInput).toHaveAttribute("type", "password");
+    expect(confirmPasswordInput).toHaveAttribute(
+      "autocomplete",
+      "new-password"
+    );
   });
 });

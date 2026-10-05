@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "An account already exists with the specified email."
       },
+      "confirmPassword": {
+        "label": "Confirm password",
+        "placeholder": "Confirm password",
+        "required": {
+          "error": "Please confirm your password"
+        }
+      },
       "continueAsGuest": {
         "label": "or continue as guest"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "Password must contain at least one lowercase letter"
+      },
+      "passwordMismatch": {
+        "error": "Passwords do not match"
       },
       "passwordRequirements": {
         "label": "Password requirements:"

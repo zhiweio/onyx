@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "يوجد حساب بالفعل بالبريد الإلكتروني المحدد."
       },
+      "confirmPassword": {
+        "label": "تأكيد كلمة المرور",
+        "placeholder": "تأكيد كلمة المرور",
+        "required": {
+          "error": "يرجى تأكيد كلمة المرور"
+        }
+      },
       "continueAsGuest": {
         "label": "أو تابع كضيف"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل"
+      },
+      "passwordMismatch": {
+        "error": "كلمتا المرور غير متطابقتين"
       },
       "passwordRequirements": {
         "label": "متطلبات كلمة المرور:"

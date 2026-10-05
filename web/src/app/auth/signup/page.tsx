@@ -4,6 +4,8 @@ import { getAuthTypeMetadataSS, getAuthUrlSS } from "@/lib/auth/svcSS";
 import { AuthTypeMetadata } from "@/lib/auth/types";
 import { redirect } from "next/navigation";
 import { EmailPasswordForm, SignInButton } from "@/lib/auth/components";
+import ProviderSignInButton from "@/app/auth/login/ProviderSignInButton";
+import { AuthLayouts } from "@opal/layouts";
 import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import ReferralSourceSelector from "./ReferralSourceSelector";
 import AuthErrorDisplay from "@/components/auth/AuthErrorDisplay";
@@ -49,6 +51,7 @@ const Page = async (props: {
     return redirect("/auth/waiting-on-verification");
   }
   const cloud = authTypeMetadata?.multiTenant === true;
+  const ssoProviders = authTypeMetadata?.ssoProviders ?? [];
 
   // No auth metadata (backend unreachable), nothing to render here.
   if (authTypeMetadata?.multiTenant !== false && !cloud) {
@@ -105,6 +108,24 @@ const Page = async (props: {
               <div className="w-full flex flex-col mb-3">
                 <ReferralSourceSelector />
               </div>
+            </>
+          )}
+
+          {/* SSO sign-up is the same flow as SSO sign-in: the account is
+              provisioned on first login, so the buttons link straight into
+              the provider authorize flow. */}
+          {!cloud && ssoProviders.length > 0 && (
+            <>
+              <div className="flex flex-col w-full gap-2">
+                {ssoProviders.map((provider) => (
+                  <ProviderSignInButton
+                    key={provider.name}
+                    provider={provider}
+                    nextUrl={nextUrl ?? null}
+                  />
+                ))}
+              </div>
+              <AuthLayouts.OrSeparator title={t("signup.orDivider.text")} />
             </>
           )}
 

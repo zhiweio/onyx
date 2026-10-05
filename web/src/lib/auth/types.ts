@@ -6,7 +6,17 @@ export enum SessionEndReason {
   UNRECOGNIZED = "SESSION_UNRECOGNIZED",
 }
 
-export type SSOProviderType = "GOOGLE_OAUTH" | "OIDC" | "SAML";
+// Mirrors backend onyx.db.enums.SSOProviderType. The China workplace platform
+// values flow through /auth/type even though the union here was historically
+// Google/OIDC/SAML only.
+export type SSOProviderType =
+  | "GOOGLE_OAUTH"
+  | "OIDC"
+  | "SAML"
+  | "WECOM"
+  | "DINGTALK"
+  | "FEISHU"
+  | "WPS365";
 
 export interface SSOProviderOption {
   name: string;

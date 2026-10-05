@@ -18,9 +18,29 @@
 import { useState } from "react";
 import { Button } from "@opal/components";
 import { InputErrorText } from "@opal/layouts";
-import { SvgGoogle } from "@opal/logos";
-import { SSOProviderOption } from "@/lib/auth/types";
+import { SvgOrganization, SvgSimpleLoader } from "@opal/icons";
+import {
+  SvgDingTalk,
+  SvgFeishu,
+  SvgGoogle,
+  SvgWeCom,
+  SvgWps365,
+} from "@opal/logos";
+import type { IconFunctionComponent } from "@opal/types";
+import { SSOProviderOption, SSOProviderType } from "@/lib/auth/types";
 import { useTranslations } from "next-intl";
+
+// Brand logo per provider type. Generic OIDC/SAML providers have no product
+// logo, so they fall back to the organization mark.
+const PROVIDER_LOGO_BY_TYPE = {
+  GOOGLE_OAUTH: SvgGoogle,
+  OIDC: SvgOrganization,
+  SAML: SvgOrganization,
+  WECOM: SvgWeCom,
+  DINGTALK: SvgDingTalk,
+  FEISHU: SvgFeishu,
+  WPS365: SvgWps365,
+} satisfies Record<SSOProviderType, IconFunctionComponent>;
 
 interface ProviderSignInButtonProps {
   provider: SSOProviderOption;
@@ -35,7 +55,7 @@ export default function ProviderSignInButton({
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isGoogle = provider.providerType === "GOOGLE_OAUTH";
+  const Logo = PROVIDER_LOGO_BY_TYPE[provider.providerType];
 
   async function handleClick() {
     if (isRedirecting) return;
@@ -67,9 +87,9 @@ export default function ProviderSignInButton({
   return (
     <>
       <Button
-        prominence={isGoogle ? "secondary" : "primary"}
+        prominence="secondary"
         width="full"
-        icon={isGoogle ? SvgGoogle : undefined}
+        icon={isRedirecting ? SvgSimpleLoader : Logo}
         onClick={handleClick}
         disabled={isRedirecting}
       >

@@ -76,7 +76,7 @@ export default function LoginPage({
           <LoginText />
           {ssoProviders.length > 0 && (
             <>
-              <div className="flex flex-col w-full gap-4">
+              <div className="flex flex-col w-full gap-2">
                 {ssoProviders.map((provider) => (
                   <ProviderSignInButton
                     key={provider.name}

@@ -16,6 +16,7 @@ test.describe("Signup flow", () => {
     // Verify form elements are present
     await expect(page.getByTestId("email")).toBeVisible();
     await expect(page.getByTestId("password")).toBeVisible();
+    await expect(page.getByTestId("confirm-password")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Create account" })
     ).toBeVisible();
@@ -34,6 +35,7 @@ test.describe("Signup flow", () => {
 
     await page.getByTestId("email").fill(uniqueEmail);
     await page.getByTestId("password").fill(password);
+    await page.getByTestId("confirm-password").fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
 
     // Should redirect to the app page after successful signup
@@ -71,6 +73,28 @@ test.describe("Signup flow", () => {
     await expect(page).toHaveURL(/\/auth\/signup/);
   });
 
+  test("Signup fails when password confirmation does not match", async ({
+    page,
+  }) => {
+    await page.goto("/auth/signup");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByTestId("email").fill("newuser@example.com");
+    await page.getByTestId("password").fill("ValidPassword123!");
+    await page.getByTestId("confirm-password").fill("DifferentPassword1!");
+
+    // Trigger validation by blurring the confirm field
+    await page.getByTestId("confirm-password").blur();
+
+    await expect(page.getByText(/do not match/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Create account" })
+    ).toBeDisabled();
+
+    // Should stay on the signup page
+    await expect(page).toHaveURL(/\/auth\/signup/);
+  });
+
   test("Signup fails with existing email", async ({ page }) => {
     // Use an email that already exists (from global-setup)
     const existingEmail = "admin_user@example.com";
@@ -80,6 +104,7 @@ test.describe("Signup flow", () => {
 
     await page.getByTestId("email").fill(existingEmail);
     await page.getByTestId("password").fill("SomePassword123!");
+    await page.getByTestId("confirm-password").fill("SomePassword123!");
     await page.getByRole("button", { name: "Create account" }).click();
 
     // Wait for error message to appear
@@ -131,6 +156,7 @@ test.describe("Signup flow", () => {
 
     await page.getByTestId("email").fill(disposableEmail);
     await page.getByTestId("password").fill("ValidPassword123!");
+    await page.getByTestId("confirm-password").fill("ValidPassword123!");
     await page.getByRole("button", { name: "Create account" }).click();
 
     // Wait for error message to appear

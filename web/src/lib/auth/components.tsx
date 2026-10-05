@@ -27,7 +27,13 @@ import {
   passwordHasSpecialChar,
   passwordMeetsLengthRequirements,
 } from "@/lib/auth/utils";
-import { AuthLayouts, Content, InputVertical, toast } from "@opal/layouts";
+import {
+  AuthLayouts,
+  Content,
+  InputErrorText,
+  InputVertical,
+  toast,
+} from "@opal/layouts";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
 import PasswordInputTypeInField from "@/refresh-components/form/PasswordInputTypeInField";
 import { markdown } from "@opal/utils";
@@ -262,6 +268,7 @@ export function PasswordRequirements({ password }: PasswordRequirementsProps) {
 interface FormValues {
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 const SUBMIT_LABEL_KEYS = {
@@ -337,18 +344,29 @@ export function EmailPasswordForm({
         );
     }
 
+    const confirmPasswordSchema = isSignup
+      ? Yup.string()
+          .required(t("emailPasswordForm.confirmPassword.required.error"))
+          .oneOf(
+            [Yup.ref("password")],
+            t("emailPasswordForm.passwordMismatch.error")
+          )
+      : Yup.string();
+
     return Yup.object().shape({
       email: Yup.string()
         .email()
         .required()
         .transform((value: string) => value.toLowerCase()),
       password: passwordSchema.required(),
+      confirmPassword: confirmPasswordSchema,
     });
   }, [isSignup, authTypeMetadata, t]);
 
   const initialValues: FormValues = {
     email: defaultEmail?.toLowerCase() ?? "",
     password: "",
+    confirmPassword: "",
   };
 
   async function handleSubmit(values: FormValues) {
@@ -433,7 +451,7 @@ export function EmailPasswordForm({
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting, isValid, dirty, values, errors }) => {
+      {({ isSubmitting, isValid, dirty, values, errors, touched }) => {
         return (
           <AuthLayouts.FormBody>
             <AuthLayouts.Fields>
@@ -485,6 +503,28 @@ export function EmailPasswordForm({
                   <PasswordRequirements password={values.password} />
                 )}
               </div>
+
+              {isSignup && (
+                <InputVertical
+                  title={t("emailPasswordForm.confirmPassword.label")}
+                  withLabel="confirm-password"
+                >
+                  <PasswordInputTypeInField
+                    name="confirmPassword"
+                    placeholder={t(
+                      "emailPasswordForm.confirmPassword.placeholder"
+                    )}
+                    mask="native"
+                    data-testid="confirm-password"
+                    autoComplete="new-password"
+                  />
+                  {/* Field wrappers render errors as a border tint only, so
+                      the mismatch reason is spelled out here. */}
+                  {touched.confirmPassword && errors.confirmPassword && (
+                    <InputErrorText>{errors.confirmPassword}</InputErrorText>
+                  )}
+                </InputVertical>
+              )}
             </AuthLayouts.Fields>
 
             <AuthLayouts.Submit

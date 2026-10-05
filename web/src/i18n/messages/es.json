@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "Ya existe una cuenta con el correo electrónico indicado."
       },
+      "confirmPassword": {
+        "label": "Confirmar contraseña",
+        "placeholder": "Confirmar contraseña",
+        "required": {
+          "error": "Confirma tu contraseña"
+        }
+      },
       "continueAsGuest": {
         "label": "o continúa como invitado"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "La contraseña debe contener al menos una letra minúscula"
+      },
+      "passwordMismatch": {
+        "error": "Las contraseñas no coinciden"
       },
       "passwordRequirements": {
         "label": "Requisitos de la contraseña:"

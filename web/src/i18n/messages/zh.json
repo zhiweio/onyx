@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "使用指定电子邮件的账户已存在。"
       },
+      "confirmPassword": {
+        "label": "确认密码",
+        "placeholder": "确认密码",
+        "required": {
+          "error": "请再次输入密码"
+        }
+      },
       "continueAsGuest": {
         "label": "或以访客身份继续"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "密码必须至少包含一个小写字母"
+      },
+      "passwordMismatch": {
+        "error": "两次输入的密码不一致"
       },
       "passwordRequirements": {
         "label": "密码要求:"

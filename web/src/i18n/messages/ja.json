@@ -9317,6 +9317,13 @@
       "accountExists": {
         "error": "指定されたメールアドレスのアカウントは既に存在します。"
       },
+      "confirmPassword": {
+        "label": "パスワード（確認）",
+        "placeholder": "パスワード（確認）",
+        "required": {
+          "error": "パスワードを再入力してください"
+        }
+      },
       "continueAsGuest": {
         "label": "またはゲストとして続行"
       },
@@ -9354,6 +9361,9 @@
       },
       "passwordLowercase": {
         "error": "パスワードには小文字を少なくとも 1 文字含める必要があります"
+      },
+      "passwordMismatch": {
+        "error": "パスワードが一致しません"
       },
       "passwordRequirements": {
         "label": "パスワードの要件:"
