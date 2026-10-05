@@ -328,6 +328,11 @@ export interface WeComCredentialJson {
   wecom_corp_secret: string;
 }
 
+export interface WeComBotCredentialJson {
+  wecom_bot_id: string;
+  wecom_bot_secret: string;
+}
+
 export interface DingTalkCredentialJson {
   dingtalk_client_id: string;
   dingtalk_client_secret: string;
@@ -598,6 +603,14 @@ export const credentialTemplates: Record<ValidSources, any> = {
     wecom_corp_id: "",
     wecom_corp_secret: "",
   } as WeComCredentialJson,
+  wecom_docs: {
+    wecom_bot_id: "",
+    wecom_bot_secret: "",
+  } as WeComBotCredentialJson,
+  wecom_im: {
+    wecom_bot_id: "",
+    wecom_bot_secret: "",
+  } as WeComBotCredentialJson,
   dingtalk: {
     dingtalk_client_id: "",
     dingtalk_client_secret: "",

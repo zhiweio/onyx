@@ -117,6 +117,29 @@ class AdminDescriptorSpec(BaseModel):
     setup_instructions: str
 
 
+class OrgTokenSpec(BaseModel):
+    """Declarative description of an org-level *derived* access token.
+
+    Some providers authenticate server-to-server: the org credential (e.g. a
+    bot id/secret) never rides on the wire; instead the gate derives a
+    short-lived token from it via a token endpoint, caches it fleet-wide, and
+    merges it into the credential dict under ``token_key`` before rendering
+    ``auth_template``. The request-building/parsing logic for each ``kind``
+    lives in ``external_apps.org_token``; this spec only declares what a
+    provider needs, so the admin descriptor stays data-driven.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # Names the request builder in ``org_token._BUILDERS_BY_KIND``.
+    kind: str
+    # Org-credential keys the derivation needs; all must be present for the
+    # app to count as available.
+    credential_keys: tuple[str, ...]
+    # The derived credential's key in the merged dict handed to auth_template.
+    token_key: str = "access_token"
+
+
 class ProviderSpec(BaseModel):
     """The base declarative definition every built-in provider must supply:
     identity, the admin descriptor, and the action catalog. Pydantic enforces
@@ -130,6 +153,9 @@ class ProviderSpec(BaseModel):
     descriptor: AdminDescriptorSpec
     # The actions an admin can govern. Empty for a provider with no catalog yet.
     endpoint_catalog: list[EndpointSpec] = []
+    # Set when egress auth rides on a derived org-level token rather than
+    # per-user OAuth credentials (see :class:`OrgTokenSpec`).
+    org_token: OrgTokenSpec | None = None
 
 
 class OAuthProviderSpec(ProviderSpec):

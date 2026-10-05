@@ -324,6 +324,8 @@ class DocumentSource(str, Enum):
     DINGTALK_DRIVE = "dingtalk_drive"
     DINGTALK_TODO = "dingtalk_todo"
     WECOM_APPROVAL = "wecom_approval"
+    WECOM_DOCS = "wecom_docs"
+    WECOM_IM = "wecom_im"
 
 
 class FederatedConnectorSource(str, Enum):
@@ -870,4 +872,6 @@ DocumentSourceDescription: dict[DocumentSource, str] = {
     DocumentSource.DINGTALK_DRIVE: "钉钉云盘 (DingTalk drive)",
     DocumentSource.DINGTALK_TODO: "钉钉待办 (DingTalk todo)",
     DocumentSource.WECOM_APPROVAL: "企业微信审批 (WeCom approvals)",
+    DocumentSource.WECOM_DOCS: "企业微信在线文档 (WeCom online docs)",
+    DocumentSource.WECOM_IM: "企业微信群消息 (WeCom group messages)",
 }

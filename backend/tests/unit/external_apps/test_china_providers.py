@@ -65,13 +65,21 @@ def test_dingtalk_is_oauth_with_json_exchange() -> None:
     assert request.body["grantType"] == "authorization_code"
 
 
-def test_wecom_is_org_credential_only() -> None:
+def test_wecom_is_org_credential_only_with_derived_token() -> None:
+    """WeCom's CLI gateway has no per-user OAuth: org credentials are the
+    smart robot's bot_id/bot_secret, the bearer token is derived at egress
+    time (org_token spec), and the catalog governs the gateway surface."""
     provider = WeComProvider()
     assert not isinstance(provider, OAuthExternalAppProvider)
-    assert provider.spec.endpoint_catalog == []
-    assert provider.spec.descriptor.auth_template == {}
+    assert provider.spec.endpoint_catalog
+    assert provider.spec.descriptor.auth_template == {
+        "Authorization": "Bearer {access_token}"
+    }
     keys = {f.key for f in provider.spec.descriptor.required_org_credential_fields}
-    assert keys == {"corp_id", "corp_secret", "agent_id"}
+    assert keys == {"bot_id", "bot_secret"}
+    assert provider.spec.org_token is not None
+    assert provider.spec.org_token.kind == "wecom_cli"
+    assert provider.spec.org_token.credential_keys == ("bot_id", "bot_secret")
 
 
 def test_wps365_reuses_sso_account_endpoints() -> None:

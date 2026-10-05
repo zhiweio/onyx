@@ -9,7 +9,11 @@ from onyx.external_apps.models import (
     OrgCredentialFieldDescriptor,
 )
 from onyx.external_apps.providers.actions import EndpointSpec
-from onyx.external_apps.providers.base import ExternalAppProvider, OnyxManagedExtApp
+from onyx.external_apps.providers.base import (
+    ExternalAppProvider,
+    OnyxManagedExtApp,
+    OrgTokenSpec,
+)
 from onyx.external_apps.providers.dingtalk import DingTalkProvider
 from onyx.external_apps.providers.feishu import FeishuProvider
 from onyx.external_apps.providers.github import GitHubProvider
@@ -68,6 +72,16 @@ def get_onyx_managed_provider(app_type: ExternalAppType) -> OnyxManagedExtApp | 
     None`` is the "is this app Onyx-managed" check)."""
     provider = PROVIDERS.get(app_type)
     return provider if isinstance(provider, OnyxManagedExtApp) else None
+
+
+def get_org_token_spec(app_type: ExternalAppType) -> OrgTokenSpec | None:
+    """The derived org-token spec for an app_type, or ``None`` when the
+    provider is unknown or authenticates without one (per-user OAuth or no
+    injection at all)."""
+    provider = PROVIDERS.get(app_type)
+    if provider is None:
+        return None
+    return provider.spec.org_token
 
 
 def uses_cloud_scope(app_type: ExternalAppType) -> bool:

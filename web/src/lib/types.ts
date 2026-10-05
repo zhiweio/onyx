@@ -685,6 +685,8 @@ export enum ValidSources {
   DingTalkDrive = "dingtalk_drive",
   DingTalkTodo = "dingtalk_todo",
   WeComApproval = "wecom_approval",
+  WeComDocs = "wecom_docs",
+  WeComIm = "wecom_im",
 
   // Craft-specific sources
   CraftFile = "craft_file",

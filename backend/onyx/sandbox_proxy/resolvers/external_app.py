@@ -1,18 +1,25 @@
 """External-app credential resolver.
 
 Claims a request iff the matcher has attributed it to a connected `ExternalApp`
-(`ctx.matched_actions is not None`) and renders the app's `auth_template` from the org +
-per-user credentials via `resolve_injection_headers`. Per-header fail-open
-behaviour for missing placeholders lives in `build_auth_headers`.
+(`ctx.matched_actions is not None`) and renders the app's `auth_template` from
+the org + per-user credentials (plus any derived org-level token, see
+`external_apps.org_token`) via `resolve_injection_headers`. Per-header
+fail-open behaviour for missing placeholders lives in `build_auth_headers`;
+derived-token apps fail closed when the token can't be obtained.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 from mitmproxy import http
 
 from onyx.db.engine.sql_engine import get_session_with_tenant
 from onyx.db.enums import GatedAppKind
+from onyx.db.external_app import get_external_app_by_id
 from onyx.external_apps.credentials import resolve_injection_headers
+from onyx.external_apps.org_token import ensure_org_token
+from onyx.external_apps.providers.registry import get_org_token_spec
 from onyx.external_apps.token_refresh import ensure_fresh_credentials
 from onyx.sandbox_proxy.credential_injection import (
     CredentialResolver,
@@ -61,9 +68,40 @@ class ExternalAppResolver(CredentialResolver):
             ctx.sandbox.user_id,
         )
 
+        extra_credentials: dict[str, Any] = {}
+        with get_session_with_tenant(tenant_id=ctx.sandbox.tenant_id) as db:
+            app = get_external_app_by_id(db, external_app_id)
+            org_token_spec = get_org_token_spec(app.app_type) if app else None
+            if app is not None and org_token_spec is not None and app.enabled:
+                # Derived org token (e.g. WeCom CLI gateway): fetch/cache from
+                # the org credentials; never persisted to the credential tables.
+                token = ensure_org_token(
+                    tenant_id=ctx.sandbox.tenant_id,
+                    external_app_id=external_app_id,
+                    spec=org_token_spec,
+                    org_credentials=app.organization_credentials.get_value(
+                        apply_mask=False
+                    ),
+                )
+                if token is None:
+                    # Fail closed: without the token the request would travel
+                    # bare and die upstream with an opaque auth error.
+                    raise CredentialUnavailableError(
+                        f"org token derivation failed for app_id={external_app_id}",
+                        sandbox_detail=(
+                            "This app's server credentials are missing or were "
+                            "rejected. Ask an admin to check the app's "
+                            "organization credentials in Onyx."
+                        ),
+                    )
+                extra_credentials = {org_token_spec.token_key: token}
+
         with get_session_with_tenant(tenant_id=ctx.sandbox.tenant_id) as db:
             headers = resolve_injection_headers(
-                db, external_app_id, ctx.sandbox.user_id
+                db,
+                external_app_id,
+                ctx.sandbox.user_id,
+                extra_credentials=extra_credentials,
             )
 
         # Per-app debug line so `external_app_id` survives in logs even when

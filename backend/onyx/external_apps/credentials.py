@@ -8,6 +8,7 @@ from onyx.db.external_app import (
     get_external_app_user_credential,
 )
 from onyx.db.models import ExternalApp
+from onyx.external_apps.providers.registry import get_org_token_spec
 
 
 def build_auth_headers(
@@ -39,14 +40,17 @@ def resolve_injection_headers(
     db_session: Session,
     external_app_id: int,
     user_id: UUID,
+    extra_credentials: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Auth headers the egress proxy should inject for a *verified* request to
     ``external_app_id`` on behalf of ``user_id``.
 
     Returns ``{}`` when the app is gone or disabled, or when no header's
     placeholders can be filled. Merges the app's organization credentials with
-    the user's stored credentials (the user's win on key conflicts), then
-    renders the ``auth_template`` via :func:`build_auth_headers`.
+    the user's stored credentials (the user's win on key conflicts), then with
+    ``extra_credentials`` — derived values like an org-level access token that
+    live outside the credential tables — and renders the ``auth_template`` via
+    :func:`build_auth_headers`.
     """
     app = get_external_app_by_id(db_session, external_app_id)
     if app is None or not app.enabled:
@@ -60,6 +64,8 @@ def resolve_injection_headers(
     )
     if user_cred is not None:
         credentials.update(user_cred.user_credentials.get_value(apply_mask=False))
+    if extra_credentials:
+        credentials.update(extra_credentials)
 
     return build_auth_headers(app.auth_template, credentials)
 
@@ -71,11 +77,17 @@ def app_is_available(db_session: Session, app: ExternalApp, user_id: UUID) -> bo
     Distinguishes "no credential required" from "required credential unavailable":
     an app with an empty ``auth_template`` (an allowlist-only app that
     injects nothing) is available; an app whose template can't be filled is not.
-    Injection re-resolves later with an OAuth refresh, so this verdict-time render is the
-    cheap presence check, not the final one.
+    An org-token app (``spec.org_token`` set) is available when its org
+    credentials are complete — the token itself is derived at injection time.
+    Injection re-resolves later with an OAuth refresh or token derivation, so
+    this verdict-time render is the cheap presence check, not the final one.
     """
     if not app.enabled:
         return False
+    org_token_spec = get_org_token_spec(app.app_type)
+    if org_token_spec is not None:
+        org_credentials = app.organization_credentials.get_value(apply_mask=False)
+        return all(org_credentials.get(key) for key in org_token_spec.credential_keys)
     if not app.auth_template:
         return True
     return bool(resolve_injection_headers(db_session, app.id, user_id))

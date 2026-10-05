@@ -2261,6 +2261,89 @@ For example, specifying .*-alerts as a "channel to exclude" will cause the conne
     ],
     advanced_values: [],
   },
+  wecom_docs: {
+    description: "Configure WeCom Online Docs connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the WeCom Bot ID:",
+        label: "Bot ID",
+        name: "wecom_bot_id",
+        optional: false,
+        description:
+          "The smart robot's Bot ID (智能机器人 Bot ID), from the WeCom client's robot config.",
+      },
+      {
+        type: "text",
+        query: "Enter the WeCom Bot Secret:",
+        label: "Bot Secret",
+        name: "wecom_bot_secret",
+        optional: false,
+        description: "The smart robot's secret.",
+      },
+      {
+        type: "list",
+        query: "Document IDs to index:",
+        label: "Document IDs",
+        name: "doc_ids",
+        optional: true,
+        description:
+          "Explicit online-document ids to index. Combine with keywords, or leave both empty only if doc_ids is set.",
+      },
+      {
+        type: "list",
+        query: "Keywords to discover documents:",
+        label: "Keywords",
+        name: "keywords",
+        optional: true,
+        description:
+          "Each keyword runs a gateway document search; all hits are indexed.",
+      },
+    ],
+    advanced_values: [],
+  },
+  wecom_im: {
+    description: "Configure WeCom Group Messages connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the WeCom Bot ID:",
+        label: "Bot ID",
+        name: "wecom_bot_id",
+        optional: false,
+        description:
+          "The smart robot's Bot ID (智能机器人 Bot ID), from the WeCom client's robot config.",
+      },
+      {
+        type: "text",
+        query: "Enter the WeCom Bot Secret:",
+        label: "Bot Secret",
+        name: "wecom_bot_secret",
+        optional: false,
+        description: "The smart robot's secret.",
+      },
+      {
+        type: "number",
+        query: "Days of chat history to index:",
+        label: "History Days",
+        name: "history_days",
+        optional: true,
+        default: 7,
+        description:
+          "Index group chats the robot has messaged, this many days back (platform cap: 7).",
+      },
+      {
+        type: "list",
+        query: "Chat IDs to index (optional):",
+        label: "Chat IDs",
+        name: "chat_ids",
+        optional: true,
+        description:
+          "Restrict indexing to these chat ids. Leave empty to index every chat the robot is in.",
+      },
+    ],
+    advanced_values: [],
+  },
   wecom_approval: {
     description: "Configure WeCom Approvals connector",
     values: [

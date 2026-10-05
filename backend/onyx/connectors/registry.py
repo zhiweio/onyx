@@ -279,4 +279,12 @@ CONNECTOR_CLASS_MAP = {
         module_path="onyx.connectors.wecom_approval.connector",
         class_name="WeComApprovalConnector",
     ),
+    DocumentSource.WECOM_DOCS: ConnectorMapping(
+        module_path="onyx.connectors.wecom_docs.connector",
+        class_name="WeComDocsConnector",
+    ),
+    DocumentSource.WECOM_IM: ConnectorMapping(
+        module_path="onyx.connectors.wecom_im.connector",
+        class_name="WeComImConnector",
+    ),
 }

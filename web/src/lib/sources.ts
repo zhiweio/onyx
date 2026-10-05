@@ -522,6 +522,16 @@ export const SOURCE_METADATA_MAP: SourceMap = {
     displayName: "WeCom Approvals",
     category: SourceCategory.TicketingAndTaskManagement,
   },
+  wecom_docs: {
+    icon: SvgWeCom,
+    displayName: "WeCom Online Docs",
+    category: SourceCategory.Wiki,
+  },
+  wecom_im: {
+    icon: SvgWeCom,
+    displayName: "WeCom Group Messages",
+    category: SourceCategory.Messaging,
+  },
   sap_odata: {
     icon: SvgServer,
     displayName: "SAP (OData)",
