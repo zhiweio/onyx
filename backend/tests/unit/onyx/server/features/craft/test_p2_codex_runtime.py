@@ -236,7 +236,7 @@ def test_inject_items_placeholder_for_missing_output() -> None:
     db = _FakeDb()
     session_id = uuid4()
     append_tape_entry(
-        db,
+        db,  # ty: ignore[invalid-argument-type]
         session_id=session_id,
         turn_index=0,
         kind="harness_message",
@@ -252,7 +252,7 @@ def test_inject_items_placeholder_for_missing_output() -> None:
             }
         },
     )
-    items = build_inject_items(db, session_id)  # type: ignore[arg-type]
+    items = build_inject_items(db, session_id)  # ty: ignore[invalid-argument-type]
     call = next(i for i in items if i["type"] == "function_call")
     output = next(i for i in items if i["type"] == "function_call_output")
     assert call["call_id"] == output["call_id"]
@@ -267,7 +267,7 @@ def test_config_toml_shape() -> None:
         gateway_base_url="https://gw.internal/v1", model="openai/gpt-x"
     )
     assert 'model = "openai/gpt-x"' in toml
-    assert 'wire_api = "chat"' in toml
+    assert 'wire_api = "responses"' in toml
     assert 'base_url = "https://gw.internal/v1"' in toml
     assert 'approval_policy = "never"' in toml
     assert "[mcp_servers" not in toml  # v1: no external MCP on codex
@@ -328,8 +328,8 @@ def test_resolve_turn_runtime_scenario_pin(monkeypatch) -> None:
             return scenario
 
     choice = SessionManager.resolve_turn_runtime(
-        SimpleNamespace(_db_session=_Db()),  # type: ignore[arg-type]
-        session,  # type: ignore[arg-type]
+        SimpleNamespace(_db_session=_Db()),  # ty: ignore[invalid-argument-type]
+        session,  # ty: ignore[invalid-argument-type]
         purpose=RuntimePurpose.CHAT,
     )
     assert choice.runtime_id == "codex"
@@ -338,8 +338,8 @@ def test_resolve_turn_runtime_scenario_pin(monkeypatch) -> None:
     monkeypatch.setenv("SANDBOX_APPROVED_RUNTIMES", "opencode")
     monkeypatch.setattr(factory, "_router_singleton", None)
     fallback = SessionManager.resolve_turn_runtime(
-        SimpleNamespace(_db_session=_Db()),  # type: ignore[arg-type]
-        session,  # type: ignore[arg-type]
+        SimpleNamespace(_db_session=_Db()),  # ty: ignore[invalid-argument-type]
+        session,  # ty: ignore[invalid-argument-type]
         purpose=RuntimePurpose.CHAT,
     )
     assert fallback.runtime_id == "opencode"
@@ -373,7 +373,7 @@ def test_yield_branch_dispatches_to_codex(monkeypatch) -> None:
 
     out = list(
         SessionManager.yield_sandbox_events(
-            fake,  # type: ignore[arg-type]
+            fake,  # ty: ignore[invalid-argument-type]
             sandbox_row.id,
             session.id,
             "hello",
@@ -394,9 +394,9 @@ def test_codex_events_unavailable_backend_yields_error() -> None:
     )
     events = list(
         SessionManager._yield_codex_events(
-            fake,  # type: ignore[arg-type]
-            SimpleNamespace(id=uuid4()),
-            SimpleNamespace(id=uuid4()),
+            fake,  # ty: ignore[invalid-argument-type]
+            SimpleNamespace(id=uuid4()),  # ty: ignore[invalid-argument-type]
+            SimpleNamespace(id=uuid4()),  # ty: ignore[invalid-argument-type]
             "hello",
             None,
             None,

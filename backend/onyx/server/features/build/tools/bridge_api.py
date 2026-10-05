@@ -89,9 +89,6 @@ def _request_registry(user: User) -> PlatformToolRegistry:
     from onyx.db.platform_tool_log import log_tool_call
     from onyx.server.features.build.tools.crawler import build_crawler_client
     from onyx.server.features.build.tools.job_escalation import make_start_job_hook
-    from onyx.server.features.build.tools.mcp_gateway import (
-        default_gateway_servers,
-    )
     from onyx.server.features.build.tools.service_bindings import (
         make_user_scoped_search_fn,
     )
@@ -141,46 +138,15 @@ def _request_registry(user: User) -> PlatformToolRegistry:
             return f"[crawl] {url}: {result.error}"
         return f"[crawl] {url}\n\n{result.content}"
 
-    gateway = default_gateway_servers(audit=_gateway_audit(user))
-
-    def _mcp_call(server: str, tool: str, arguments: dict[str, Any]) -> str:
-        return gateway.call_tool_sync(
-            server=server,
-            tool=tool,
-            arguments=arguments,
-            user_id=str(user.id),
-        )
-
     return PlatformToolRegistry.build(
         ToolBindings(
             search_fn=make_user_scoped_search_fn(user),
-            mcp_call_fn=_mcp_call,
             web_search_fn=_web_search if search_provider is not None else None,
             crawl_fn=_crawl if crawler is not None else None,
             job_hook=make_start_job_hook(user),
             journal=_journal,
         )
     )
-
-
-def _gateway_audit(user: User) -> Any:
-    """Persist MCP gateway calls into the same audit table."""
-
-    def _audit(call: Any) -> None:
-        from onyx.db.engine.sql_engine import get_session_with_current_tenant
-        from onyx.db.platform_tool_log import log_tool_call
-
-        with get_session_with_current_tenant() as db_session:
-            log_tool_call(
-                db_session,
-                user_id=user.id,
-                tool=f"mcp_call:{call.server}:{call.tool}",
-                arguments=call.arguments,
-                ok=call.ok,
-                result_excerpt=call.error or "",
-            )
-
-    return _audit
 
 
 def _bridge_ctx(user: User) -> ToolContext:

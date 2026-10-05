@@ -113,6 +113,23 @@ def create_gateway_fastapi_app() -> FastAPI:
                 "every request"
             )
         SqlEngine.init_engine(pool_size=10, max_overflow=5)
+
+        # This uvicorn loop is persistent: pooled MCP sessions (upstream
+        # cache fills) reuse it. Other processes never register, so they
+        # keep the per-call path with zero cross-loop risk.
+        try:
+            from onyx.server.features.mcp.session_pool import (
+                get_mcp_session_pool,
+                register_persistent_mcp_loop,
+            )
+
+            register_persistent_mcp_loop()
+            pool = get_mcp_session_pool()
+            if pool is not None:
+                logger.info("MCP session pooling enabled %s", pool.stats())
+        except Exception:
+            logger.warning("MCP session pool registration failed", exc_info=True)
+
         try:
             from onyx.db.mcp_iceberg import ensure_mcp_iceberg_tables
 
@@ -142,6 +159,14 @@ def create_gateway_fastapi_app() -> FastAPI:
             yield
             _stack = None
             _started_slugs.clear()
+        try:
+            from onyx.server.features.mcp.session_pool import get_mcp_session_pool
+
+            pool = get_mcp_session_pool()
+            if pool is not None:
+                await pool.close_all()
+        except Exception:
+            logger.warning("MCP session pool shutdown failed", exc_info=True)
         logger.info("MCP gateway stopped")
 
     app = FastAPI(

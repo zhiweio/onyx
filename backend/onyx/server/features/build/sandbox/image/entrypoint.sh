@@ -52,6 +52,22 @@ import_proxy_ca \
     && echo "[entrypoint] imported proxy CA into Chromium NSS db" \
     || echo "[entrypoint] proxy CA not imported into NSS (browser runtime absent or CA missing)"
 
+# Single-container backends (Docker) run the sandbox daemon in this same
+# container; Kubernetes runs it as the native sidecar instead. Gated so the
+# k8s main container never double-binds 8731 in the shared netns.
+if [ "${SANDBOX_DAEMON_IN_MAIN:-}" = "1" ]; then
+    (
+        daemon_backoff=1
+        while true; do
+            /workspace/.venv/bin/python -m sandbox_daemon.server || true
+            sleep "$daemon_backoff"
+            daemon_backoff=$((daemon_backoff * 2))
+            [ "$daemon_backoff" -gt 15 ] && daemon_backoff=15
+        done
+    ) &
+    echo "[entrypoint] sandbox daemon started in background (SANDBOX_DAEMON_IN_MAIN=1)"
+fi
+
 backoff=1
 max_backoff=30
 

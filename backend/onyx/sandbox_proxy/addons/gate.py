@@ -719,9 +719,15 @@ class GateAddon:
         apply_research_user_agent(flow.request.headers, flow.request.host)
 
         gate_target = await self._resolve_and_match(flow)
-        # Strip the in-band session tags so they never reach the origin
+        # Strip the in-band session tags so they never reach EXTERNAL origins.
+        # The platform-tools bridge (api server) is the one destination that
+        # legitimately consumes the tag: it stamps per-session MCP context
+        # (request_skill et al.) from it. Only the platform ever writes the
+        # header (per-session opencode.json), so forwarding it to the api
+        # server leaks nothing the api server doesn't already own.
         flow.request.headers.pop("Proxy-Authorization", None)
-        flow.request.headers.pop(MCP_SESSION_TAG_HEADER, None)
+        if not _is_api_server(flow.request.host, flow.request.port):
+            flow.request.headers.pop(MCP_SESSION_TAG_HEADER, None)
         if gate_target is None:
             return
         ctx, matched_actions = gate_target

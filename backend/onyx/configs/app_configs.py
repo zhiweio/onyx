@@ -1670,6 +1670,19 @@ MCP_TOOL_CALL_TIMEOUT_SECONDS = int(
     os.environ.get("MCP_TOOL_CALL_TIMEOUT_SECONDS") or 300
 )
 
+# Pooled streamable-http MCP sessions (see features/mcp/session_pool.py).
+# Pooling applies only on event loops registered as persistent (the MCP
+# gateway process); every other caller keeps the per-call path, so this
+# defaults on with no cross-loop risk.
+MCP_SESSION_POOL_ENABLED = (
+    os.environ.get("MCP_SESSION_POOL_ENABLED", "true").lower() == "true"
+)
+MCP_SESSION_IDLE_TTL_SECONDS = float(
+    os.environ.get("MCP_SESSION_IDLE_TTL_SECONDS") or 120
+)
+MCP_SESSION_MAX_SIZE = int(os.environ.get("MCP_SESSION_MAX_SIZE") or 32)
+MCP_SESSION_INFLIGHT_CAP = int(os.environ.get("MCP_SESSION_INFLIGHT_CAP") or 8)
+
 
 #####
 # Miscellaneous

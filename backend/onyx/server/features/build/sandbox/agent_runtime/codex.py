@@ -168,7 +168,7 @@ class CodexRuntime(AgentRuntime):
 
     def list_messages(
         self,
-        opencode_session_id: str,
+        opencode_session_id: str,  # noqa: ARG002
         *,
         directory: str,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
@@ -182,8 +182,8 @@ class CodexRuntime(AgentRuntime):
 
     def get_message(
         self,
-        opencode_session_id: str,
-        message_id: str,
+        opencode_session_id: str,  # noqa: ARG002
+        message_id: str,  # noqa: ARG002
         *,
         directory: str,  # noqa: ARG002
     ) -> dict[str, Any] | None:

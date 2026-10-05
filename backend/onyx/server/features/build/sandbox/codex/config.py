@@ -45,7 +45,9 @@ def build_codex_config_toml(
         f"[model_providers.{GATEWAY_PROVIDER_ID}]",
         'name = "Onyx Gateway"',
         f'base_url = "{gateway_base_url.rstrip("/")}"',
-        'wire_api = "chat"',
+        # codex 0.156.x dropped wire_api="chat"; the gateway serves the
+        # Responses API at {base}/responses (openai passthrough included).
+        'wire_api = "responses"',
         f'env_key = "{GATEWAY_API_KEY_ENV}"',
     ]
     return "\n".join(lines) + "\n"

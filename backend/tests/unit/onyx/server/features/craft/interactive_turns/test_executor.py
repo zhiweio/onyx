@@ -4,6 +4,9 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
+from onyx.server.features.build.sandbox.agent_runtime.router import (
+    RuntimeChoice,
+)
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -57,6 +60,14 @@ def _stub_workspace_persist(
     )
 
 
+class _ExecResult:
+    def scalars(self) -> "_ExecResult":
+        return self
+
+    def all(self) -> list[object]:
+        return []
+
+
 class _FakeDbSession:
     def __init__(self) -> None:
         self.commits = 0
@@ -70,6 +81,9 @@ class _FakeDbSession:
 
     def scalar(self, *_args: object, **_kwargs: object) -> None:
         return None
+
+    def execute(self, *_args: object, **_kwargs: object) -> _ExecResult:
+        return _ExecResult()
 
 
 class _FakePromptSlot:
@@ -168,11 +182,7 @@ def _run_turn_with_events(
 
         def resolve_turn_runtime(
             self, *_args: object, **_kwargs: object
-        ) -> SimpleNamespace:
-            from onyx.server.features.build.sandbox.agent_runtime.router import (
-                RuntimeChoice,
-            )
-
+        ) -> RuntimeChoice:
             return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
 
         def prompt_slot(
@@ -693,11 +703,7 @@ def test_ownership_recheck_after_slot_acquire(
 
         def resolve_turn_runtime(
             self, *_args: object, **_kwargs: object
-        ) -> SimpleNamespace:
-            from onyx.server.features.build.sandbox.agent_runtime.router import (
-                RuntimeChoice,
-            )
-
+        ) -> RuntimeChoice:
             return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
@@ -866,11 +872,7 @@ def test_prompt_slot_busy_does_not_finish_reclaimed_turn(
 
         def resolve_turn_runtime(
             self, *_args: object, **_kwargs: object
-        ) -> SimpleNamespace:
-            from onyx.server.features.build.sandbox.agent_runtime.router import (
-                RuntimeChoice,
-            )
-
+        ) -> RuntimeChoice:
             return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
@@ -976,11 +978,7 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
 
         def resolve_turn_runtime(
             self, *_args: object, **_kwargs: object
-        ) -> SimpleNamespace:
-            from onyx.server.features.build.sandbox.agent_runtime.router import (
-                RuntimeChoice,
-            )
-
+        ) -> RuntimeChoice:
             return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
 
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
@@ -1190,11 +1188,7 @@ def _run_turn_with_batches(
 
         def resolve_turn_runtime(
             self, *_args: object, **_kwargs: object
-        ) -> SimpleNamespace:
-            from onyx.server.features.build.sandbox.agent_runtime.router import (
-                RuntimeChoice,
-            )
-
+        ) -> RuntimeChoice:
             return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
 
         def prompt_slot(

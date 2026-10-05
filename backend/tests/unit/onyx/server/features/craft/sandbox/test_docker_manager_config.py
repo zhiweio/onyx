@@ -530,6 +530,7 @@ def test_container_kwargs_env_is_a_minimal_allowlist(
         "OPENCODE_SERVER_PASSWORD",
         "OPENCODE_CONFIG_CONTENT",
         "ONYX_WEBAPP_ALLOWED_DEV_ORIGINS",
+        "SANDBOX_DAEMON_IN_MAIN",
     }
 
 
@@ -798,6 +799,8 @@ def test_proxy_kwargs_env_is_a_locked_allowlist(
         "OPENCODE_SERVER_PASSWORD",
         "OPENCODE_CONFIG_CONTENT",
         "ONYX_WEBAPP_ALLOWED_DEV_ORIGINS",
+        # In-container sandbox daemon (processes / codex bridge)
+        "SANDBOX_DAEMON_IN_MAIN",
         # firewall-init.sh contract
         "SANDBOX_PROXY_HOST",
         "SANDBOX_PROXY_PORT",

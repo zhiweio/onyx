@@ -589,6 +589,28 @@ def build_container_create_kwargs(
         # inherits the allowlist the managed start path also sets.
         "ONYX_WEBAPP_ALLOWED_DEV_ORIGINS": allowed_dev_origins(),
     }
+    # The daemon (8731) runs in-container on this backend: host-side signed
+    # calls (processes, snapshots from the heavy worker, the codex bridge)
+    # need the push public key; the private half stays with the api server.
+    try:
+        from onyx.server.features.build.sandbox.image.sandbox_daemon.contract import (
+            SIDECAR_PUSH_PUBLIC_KEY_ENV_VAR,
+        )
+        from onyx.server.features.build.sandbox.kubernetes.sidecar_client import (
+            get_push_key_pair,
+        )
+
+        _, push_public_key_b64 = get_push_key_pair()
+        env["SANDBOX_DAEMON_IN_MAIN"] = "1"
+        env[SIDECAR_PUSH_PUBLIC_KEY_ENV_VAR] = push_public_key_b64
+    except RuntimeError:
+        # No private key configured (k8s-style deployments keep the daemon
+        # in the sidecar): the daemon still serves in-pod Bearer callers.
+        env["SANDBOX_DAEMON_IN_MAIN"] = "1"
+        logger.warning(
+            "ONYX_SANDBOX_PUSH_PRIVATE_KEY unset: sandbox daemon will reject "
+            "host-signed calls (processes/codex bridge) on this sandbox"
+        )
 
     security_opts = ["no-new-privileges:true"]
     ports: dict[str, tuple[str, int | None]] = {}

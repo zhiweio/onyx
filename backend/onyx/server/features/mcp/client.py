@@ -141,7 +141,9 @@ def _create_mcp_client_function_runner(
         else sse_client
     )
 
-    async def run_client_function() -> T:
+    async def _fresh_call() -> T:
+        # The per-call path: new transport + session per invocation. This is
+        # the baseline behavior and the retry/fallback for pooled calls.
         # The gateway takes the tenant from the signed token in the
         # Authorization header, so nothing tenant-related is added here. An
         # earlier version sent X-Onyx-Tenant-Id, which let any holder of the
@@ -171,6 +173,23 @@ def _create_mcp_client_function_runner(
             ) as session:
                 _install_soft_tool_validation(session)
                 return await function(session, **kwargs)
+
+    async def run_client_function() -> T:
+        from onyx.server.features.mcp.session_pool import pooled_or_fresh_call
+
+        async def _pooled_function(session: ClientSession) -> T:
+            _install_soft_tool_validation(session)
+            return await function(session, **kwargs)
+
+        return await pooled_or_fresh_call(
+            _pooled_function,
+            server_url=server_url,
+            headers=dict(auth_headers),
+            transport=transport,
+            auth=auth,
+            fresh_call=_fresh_call,
+            read_timeout_seconds=MCP_TOOL_CALL_TIMEOUT_SECONDS,
+        )
 
     return run_client_function
 

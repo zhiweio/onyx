@@ -609,7 +609,6 @@ def _drive_interactive_turn(
 
             state = BuildStreamingState(turn_index=turn_index)
             deadline = time.monotonic() + budget_seconds
-            tape_stack.enter_context(tape_recording(session_id, turn_index, "opencode"))
 
             def interrupt_requested() -> bool:
                 nonlocal deadline_exceeded
@@ -751,6 +750,11 @@ def _drive_interactive_turn(
                     ),
                 )
                 runtime_is_opencode = runtime_choice.runtime_id == "opencode"
+                # Tape rows must carry the runtime that produced them: the
+                # codex replay filters on runtime='codex'.
+                tape_stack.enter_context(
+                    tape_recording(session_id, turn_index, runtime_choice.runtime_id)
+                )
 
                 # Only while holding the slot — a racing loser must not overwrite
                 # the live turn's stamp. Continuations don't restamp.
@@ -1171,6 +1175,27 @@ def _drive_interactive_turn(
                 prompt_slot_cm.__exit__(None, None, None)
     finally:
         tape_stack.close()
+        # request_skill links are filesystem-level (readable the same turn);
+        # the harness catalog refreshes exactly once, after the turn ends —
+        # disposing mid-turn would disturb the running prompt.
+        try:
+            from onyx.server.features.build.tools.implementations import (
+                take_skill_catalog_dirty,
+            )
+
+            if sandbox_id is not None and take_skill_catalog_dirty(session_id):
+                logger.info(
+                    "Refreshing skill catalog after mid-turn request_skill "
+                    "for session %s",
+                    session_id,
+                )
+                get_sandbox_manager().dispose_opencode_instance(sandbox_id, session_id)
+        except Exception:
+            logger.warning(
+                "Post-turn skill catalog refresh failed for %s",
+                session_id,
+                exc_info=True,
+            )
         lease_stop.set()
         if sandbox_id is not None and not skip_job_continue:
             try:

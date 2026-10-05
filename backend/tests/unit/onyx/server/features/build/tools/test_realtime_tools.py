@@ -1,4 +1,4 @@
-"""Unit tests for M6: MCP gateway, search providers, crawler, tool wiring."""
+"""Unit tests for M6: search providers, crawler, tool wiring."""
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -15,14 +15,7 @@ from onyx.server.features.build.tools.crawler import (
     CrawlerError,
 )
 from onyx.server.features.build.tools.implementations import (
-    McpCallTool,
     WebSearchTool,
-)
-from onyx.server.features.build.tools.mcp_gateway import (
-    GatewayServerConfig,
-    McpGatewayError,
-    McpGatewayService,
-    load_gateway_servers,
 )
 from onyx.server.features.build.tools.registry import (
     PlatformToolRegistry,
@@ -41,91 +34,6 @@ CTX = ToolContext(user_id="u1")
 
 
 # ── MCP gateway ───────────────────────────────────────────────────────────
-
-
-def test_gateway_config_parsing() -> None:
-    raw = '[{"name": "invoice", "url": "https://mcp.example/mcp", "headers": {"X-K": "v"}}, {"bad": 1}]'
-    servers = load_gateway_servers(raw)
-    assert set(servers) == {"invoice"}
-    assert servers["invoice"].url == "https://mcp.example/mcp"
-    assert servers["invoice"].headers == {"X-K": "v"}
-    assert load_gateway_servers("") == {}
-    with pytest.raises(McpGatewayError):
-        load_gateway_servers("not json")
-
-
-def test_gateway_allowlist_and_audit(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[Any] = []
-
-    async def fake_call(
-        _self: McpGatewayService, config: Any, tool: str, _args: dict[str, Any]
-    ) -> str:
-        return f"upstream:{config.name}:{tool}"
-
-    monkeypatch.setattr(McpGatewayService, "_call_upstream", fake_call)
-
-    service = McpGatewayService(
-        {"invoice": GatewayServerConfig(name="invoice", url="https://x")},
-        audit=calls.append,
-    )
-
-    # allowed
-    out = service.call_tool_sync(
-        server="invoice", tool="check", arguments={}, user_id="u1"
-    )
-    assert out == "upstream:invoice:check"
-    assert calls[-1].ok is True
-
-    # not granted
-    with pytest.raises(McpGatewayError, match="not granted"):
-        service.call_tool_sync(
-            server="invoice",
-            tool="check",
-            arguments={},
-            user_id="u1",
-            allowed_servers=set(),
-        )
-
-    # unknown server
-    with pytest.raises(McpGatewayError, match="unknown"):
-        service.call_tool_sync(server="nope", tool="t", arguments={}, user_id="u1")
-
-    # upstream failure is journaled as not ok
-    async def boom(
-        _self: McpGatewayService,
-        _config: Any,
-        _tool: str,
-        _args: dict[str, Any],
-    ) -> str:
-        raise RuntimeError("upstream down")
-
-    monkeypatch.setattr(McpGatewayService, "_call_upstream", boom)
-    with pytest.raises(RuntimeError):
-        service.call_tool_sync(
-            server="invoice", tool="check", arguments={}, user_id="u1"
-        )
-    assert calls[-1].ok is False
-    assert calls[-1].error == "upstream down"
-
-
-def test_mcp_call_tool_requires_and_degrades() -> None:
-    unbound = McpCallTool()
-    result = unbound.execute(
-        ToolInvocation(tool="mcp_call", arguments={"server": "s", "tool": "t"}), CTX
-    )
-    assert "unavailable" in result.text()
-
-    missing = McpCallTool(lambda _s, _t, _a: "ok").execute(
-        ToolInvocation(tool="mcp_call", arguments={}), CTX
-    )
-    assert "required" in missing.text()
-
-    failing = McpCallTool(
-        lambda _s, _t, _a: (_ for _ in ()).throw(RuntimeError("x"))
-    ).execute(
-        ToolInvocation(tool="mcp_call", arguments={"server": "s", "tool": "t"}), CTX
-    )
-    assert "gateway error" in failing.text()
 
 
 # ── search providers ──────────────────────────────────────────────────────
@@ -304,20 +212,9 @@ def test_crawler_timeout_raises(requests_mock: RequestsMocker) -> None:
 def test_registry_runs_bound_realtime_tools() -> None:
     registry = PlatformToolRegistry.build(
         ToolBindings(
-            mcp_call_fn=lambda s, t, _a: f"mcp:{s}/{t}",
             web_search_fn=lambda q, _n: f"search:{q}",
             crawl_fn=lambda u, _w: f"crawl:{u}",
         )
-    )
-    assert (
-        registry.call(
-            ToolInvocation(
-                tool="mcp_call",
-                arguments={"server": "invoice", "tool": "check", "arguments": {}},
-            ),
-            CTX,
-        ).text()
-        == "mcp:invoice/check"
     )
     assert (
         registry.call(
