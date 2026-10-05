@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from onyx.db.models import PlatformToolLog, User
@@ -141,13 +141,7 @@ def tool_call_stats(
     stmt = select(
         PlatformToolLog.tool,
         func.count().label("calls"),
-        func.sum(
-            func.coalesce(
-                # count ok=False without a bool-sum portability headache
-                func.cast(~PlatformToolLog.ok, func.Integer()),
-                0,
-            )
-        ).label("failures"),
+        func.sum(case((PlatformToolLog.ok.is_(False), 1), else_=0)).label("failures"),
         func.avg(PlatformToolLog.duration_ms).label("avg_ms"),
     ).group_by(PlatformToolLog.tool)
     if start is not None:
