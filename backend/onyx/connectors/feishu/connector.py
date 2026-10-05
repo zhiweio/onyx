@@ -320,20 +320,21 @@ class FeishuConnector(SlimConnectorWithPermSync, LoadConnector, PollConnector):
         return list(paginated(page))
 
     def _user_email(self, session: requests.Session, open_id: str) -> str | None:
-        """Resolve one open_id to a work email via the batch contact API."""
+        """Resolve one open_id to a work email via the single-user contact
+        API (the batch_get path mis-routes to /users/{id} on this API)."""
         if open_id in self._email_cache:
             return self._email_cache[open_id]
         email: str | None = None
         try:
             data = get_json(
                 session,
-                f"{FEISHU_BASE}/contact/v3/users/batch_get",
-                params={"user_id_type": "open_id", "user_ids": open_id},
+                f"{FEISHU_BASE}/contact/v3/users/{open_id}",
+                params={"user_id_type": "open_id"},
             )
             if data.get("code") in (0, None):
-                users = (data.get("data") or {}).get("users") or []
-                if users and users[0].get("email"):
-                    email = str(users[0]["email"])
+                user = (data.get("data") or {}).get("user") or {}
+                if user.get("email"):
+                    email = str(user["email"])
         except Exception:
             logger.debug("Feishu email lookup failed for %s", open_id)
         self._email_cache[open_id] = email

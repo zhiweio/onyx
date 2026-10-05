@@ -76,7 +76,7 @@ class InboundMessage:
 class _PreparedTurn:
     """Everything the chat engine needs after binding/scenario handling."""
 
-    email: str
+    user_id: Any
     request: Any  # SendMessageRequest
 
 
@@ -112,6 +112,9 @@ def upsert_im_binding(
             )
         )
     else:
+        # user_id follows the resolved identity: a later SSO login rebinds
+        # the chat from the shadow bot account to the human's account.
+        row.user_id = user_id
         row.chat_id = chat_id
         if display_name:
             row.display_name = display_name
@@ -250,9 +253,13 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
     )
     command = message.text.strip().lower()
     with get_session_with_current_tenant() as db_session:
-        user = get_user_by_email(email, db_session)
+        # Prefer the human's SSO-linked account; the deterministic bot
+        # account is the fallback for users who never logged in via SSO.
+        user = _resolve_onyx_user(db_session, message, provider_config)
         if user is None:
-            user = _provision_bot_user(db_session, email)
+            user = get_user_by_email(email, db_session)
+            if user is None:
+                user = _provision_bot_user(db_session, email)
         upsert_im_binding(
             db_session,
             user_id=user.id,
@@ -295,7 +302,7 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         chat_session_id=session_id,
         chat_session_info=None if session_id else ChatSessionCreationRequest(),
     )
-    return _PreparedTurn(email=email, request=request)
+    return _PreparedTurn(user_id=user.id, request=request)
 
 
 def _iter_chat_stream(prepared: _PreparedTurn) -> Any:
@@ -303,10 +310,10 @@ def _iter_chat_stream(prepared: _PreparedTurn) -> Any:
     for as long as the caller consumes the generator."""
     from onyx.chat.process_message import handle_stream_message_objects
     from onyx.db.engine.sql_engine import get_session_with_current_tenant
-    from onyx.db.users import get_user_by_email
+    from onyx.db.models import User
 
     with get_session_with_current_tenant() as db_session:
-        fresh_user = get_user_by_email(prepared.email, db_session)
+        fresh_user = db_session.scalar(select(User).where(User.id == prepared.user_id))
         assert fresh_user is not None
         yield from handle_stream_message_objects(
             prepared.request, fresh_user, bypass_acl=False
@@ -430,6 +437,71 @@ def deterministic_email(platform: str, platform_user_id: str, config: Any) -> st
     # Every provider config model (and test stub) carries email_domain.
     domain = config.email_domain or BOT_EMAIL_DOMAIN_FALLBACK
     return f"{platform}-{platform_user_id}@{domain}"
+
+
+# ── real-identity resolution (open_id → union_id → SSO-linked user) ───────
+
+# open_id → union_id is stable per app; cache per process to spare the
+# contact API one call per message.
+_UNION_ID_CACHE: dict[tuple[str, str], str | None] = {}
+
+
+def _feishu_union_id(config: Any, token_mgr: Any, open_id: str) -> str | None:
+    cache_key = (config.app_id, open_id)
+    if cache_key in _UNION_ID_CACHE:
+        return _UNION_ID_CACHE[cache_key]
+    union_id: str | None = None
+    try:
+        import requests
+
+        token = _feishu_token(config, token_mgr)
+        # single-user GET: the batch_get path routes to /users/{id} here and
+        # mis-parses "batch_get" as a user id
+        resp = requests.get(
+            f"https://open.feishu.cn/open-apis/contact/v3/users/{open_id}",
+            params={"user_id_type": "open_id"},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        user = (resp.json().get("data") or {}).get("user") or {}
+        union_id = user.get("union_id") or None
+    except Exception:
+        logger.warning("feishu union_id lookup failed for %s", open_id)
+    _UNION_ID_CACHE[cache_key] = union_id
+    return union_id
+
+
+def _resolve_onyx_user(
+    db_session: Session, message: InboundMessage, provider_config: Any
+) -> Any | None:
+    """The human's Onyx identity when their Feishu account is SSO-linked:
+    open_id → union_id → oauth_account(``feishu:{app_id}:{union_id}``).
+
+    Running the turn as that user keeps scenario/skill visibility and
+    document ACLs aligned with what the human sees on the web. Returns
+    None when unresolvable (no SSO linkage, contact API down) so the
+    caller falls back to the deterministic bot account."""
+    if message.platform != "feishu":
+        return None
+    from onyx.connectors.china_common import AppTokenManager
+    from onyx.db.models import OAuthAccount, User
+
+    union_id = _feishu_union_id(
+        provider_config, AppTokenManager, message.platform_user_id
+    )
+    if not union_id:
+        return None
+    account_id = f"feishu:{provider_config.app_id}:{union_id}"
+    return db_session.scalar(
+        select(User)
+        .join(OAuthAccount, OAuthAccount.user_id == User.id)
+        .where(
+            OAuthAccount.oauth_name == "feishu",
+            OAuthAccount.account_id == account_id,
+            User.is_active == True,  # noqa: E712
+        )
+        .limit(1)
+    )
 
 
 def _help_reply() -> str:
