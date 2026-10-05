@@ -2,7 +2,14 @@
 
 import { useId, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Button, Card, Checkbox, Tag, Text, type TagColor } from "@opal/components";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Tag,
+  Text,
+  type TagColor,
+} from "@opal/components";
 import { ConfirmationModalLayout, ContentAction } from "@opal/layouts";
 import { SvgRefreshCw, SvgServer, SvgSimpleLoader } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";

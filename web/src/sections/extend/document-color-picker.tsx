@@ -1004,11 +1004,7 @@ export function ColorPicker({
                 />
               </span>
             </SelectTrigger>
-            <SelectContent
-              align="end"
-              className="min-w-28"
-              position="popper"
-            >
+            <SelectContent align="end" className="min-w-28" position="popper">
               {COLOR_FORMAT_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}

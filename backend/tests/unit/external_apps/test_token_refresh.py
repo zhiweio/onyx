@@ -283,7 +283,9 @@ def _setup(
         "get_external_app_user_credential",
         MagicMock(side_effect=[_cred(c) for c in creds_sequence]),
     )
-    monkeypatch.setattr(tr, "_client_credentials", lambda _app: ("cid", "secret"))
+    monkeypatch.setattr(
+        tr, "_client_credentials", lambda _app, _provider: ("cid", "secret")
+    )
     upsert = MagicMock()
     disconnect = MagicMock()
     push = MagicMock()

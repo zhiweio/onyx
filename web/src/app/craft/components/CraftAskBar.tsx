@@ -7,8 +7,7 @@ import type { CraftJobResponse } from "@/app/craft/services/apiServices";
 
 export type AskBarAction = "approve" | "revise" | "reject";
 
-const REJECT_OPTION_RE =
-  /^(cancel|reject|decline|no|skip|拒绝|取消|否)$/i;
+const REJECT_OPTION_RE = /^(cancel|reject|decline|no|skip|拒绝|取消|否)$/i;
 
 function isRejectOption(option: string): boolean {
   return REJECT_OPTION_RE.test(option.trim());

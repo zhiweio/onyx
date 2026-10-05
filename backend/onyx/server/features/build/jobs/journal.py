@@ -19,6 +19,7 @@ INTERRUPT = "interrupt"
 RESUME = "resume"
 DRAIN = "run.drain"
 DELIVERY = "run.delivery"
+GRAPH_WARNING = "graph.warning"
 
 
 def emit(

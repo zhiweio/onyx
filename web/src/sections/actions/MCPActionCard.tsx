@@ -73,7 +73,7 @@ export interface MCPActionCardProps {
     serverId: number,
     toolId: string,
     enabled: boolean,
-    mutate: KeyedMutator<ToolSnapshot[]>,
+    mutate: KeyedMutator<ToolSnapshot[]>
   ) => void;
   // Per-user enablement (personal surface only). Undefined hides the switch
   // (gallery/admin use other controls).
@@ -81,13 +81,13 @@ export interface MCPActionCardProps {
   onServerEnabledToggle?: (serverId: number, enabled: boolean) => void;
   onRefreshTools?: (
     serverId: number,
-    mutate: KeyedMutator<ToolSnapshot[]>,
+    mutate: KeyedMutator<ToolSnapshot[]>
   ) => void;
   onUpdateToolsStatus?: (
     serverId: number,
     toolIds: number[],
     enabled: boolean,
-    mutate: KeyedMutator<ToolSnapshot[]>,
+    mutate: KeyedMutator<ToolSnapshot[]>
   ) => void;
 
   // Optional styling
@@ -204,7 +204,7 @@ export default function MCPActionCard({
   const { tools, isLoading, mutate } = useServerTools(
     server,
     isToolsExpanded,
-    surface,
+    surface
   );
 
   // Retry tools fetch when server transitions from FETCHING_TOOLS to CONNECTED
@@ -215,7 +215,7 @@ export default function MCPActionCard({
 
     if (statusChanged && tools.length === 0 && !hasRetriedTools.current) {
       console.log(
-        "Server status changed to CONNECTED with empty tools, retrying fetch",
+        "Server status changed to CONNECTED with empty tools, retrying fetch"
       );
       hasRetriedTools.current = true;
       mutate();
@@ -244,7 +244,7 @@ export default function MCPActionCard({
       filtered = filtered.filter(
         (tool) =>
           tool.name.toLowerCase().includes(query) ||
-          tool.description.toLowerCase().includes(query),
+          tool.description.toLowerCase().includes(query)
       );
     }
 
@@ -304,7 +304,7 @@ export default function MCPActionCard({
       status,
       title,
       toolCount,
-    ],
+    ]
   );
 
   const handleRename = async (newName: string) => {

@@ -140,7 +140,10 @@ export default function AuditPage() {
             </Tabs.List>
             <Tabs.Content value="tools">
               {tab === "tools" ? (
-                <ToolCallsTab key={`tools-${refreshKey}`} window={auditWindow} />
+                <ToolCallsTab
+                  key={`tools-${refreshKey}`}
+                  window={auditWindow}
+                />
               ) : null}
             </Tabs.Content>
             <Tabs.Content value="approvals">

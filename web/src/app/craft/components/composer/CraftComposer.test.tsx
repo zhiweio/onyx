@@ -2,6 +2,8 @@ import React, { createRef } from "react";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { render } from "@tests/setup/test-utils";
 import CraftComposer from "@/app/craft/components/composer/CraftComposer";
+import { buildEntryMenuItems } from "@/sections/input/buildEntryMenuItems";
+import type { LibraryEntry } from "@/app/craft/types/user-library";
 import {
   UploadFileStatus,
   type BuildFile,
@@ -44,9 +46,16 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
+let mockLibraryTree: LibraryEntry[] = [];
+
 jest.mock("swr", () => ({
   __esModule: true,
-  default: () => ({ data: [] }),
+  default: (key: unknown) => ({
+    data:
+      key === "/api/build/user-library/tree"
+        ? mockLibraryTree
+        : ([] as never[]),
+  }),
   SWRConfig: jest.requireActual("swr").SWRConfig,
 }));
 
@@ -70,8 +79,8 @@ jest.mock("@/providers/UserProvider", () => ({
 
 jest.mock("@/app/craft/components/ModelPickerButton", () => () => null);
 
-jest.mock("@/app/craft/components/buildEntryMenuItems", () => ({
-  buildEntryMenuItems: () => [],
+jest.mock("@/sections/input/buildEntryMenuItems", () => ({
+  buildEntryMenuItems: jest.fn(() => []),
 }));
 
 const emptySelection: SlashSelection = {
@@ -102,6 +111,19 @@ function builtinSkill(id: string): SkillsList["builtins"][number] {
     public_permission: "VIEWER",
     user_permission: null,
     external_app: null,
+  };
+}
+
+function libraryEntry(id: string, name: string): LibraryEntry {
+  return {
+    id,
+    name,
+    path: `/${name}`,
+    is_directory: false,
+    file_size: 1,
+    mime_type: "application/pdf",
+    sync_enabled: false,
+    created_at: "2026-07-28T00:00:00.000Z",
   };
 }
 
@@ -137,6 +159,7 @@ describe("CraftComposer", () => {
   beforeEach(() => {
     window.localStorage.clear();
     jest.clearAllMocks();
+    mockLibraryTree = [];
   });
 
   it("submits text, attachments, and the empty selection on Enter", () => {
@@ -176,7 +199,7 @@ describe("CraftComposer", () => {
 
     expect(onSubmit).toHaveBeenCalledWith("/pptx make slides", attachedFiles, {
       skillIds: ["pptx"],
-          scenarioId: null,
+      scenarioId: null,
     });
   });
 
@@ -202,7 +225,7 @@ describe("CraftComposer", () => {
       attachedFiles,
       {
         skillIds: [],
-              scenarioId: "pack-1",
+        scenarioId: "pack-1",
       }
     );
   });
@@ -246,6 +269,35 @@ describe("CraftComposer", () => {
 
     expect(onSubmit.mock.calls[0]?.[0]).toContain("@brand-guidelines.pdf");
     expect(onSubmit.mock.calls[0]?.[2]).toEqual(emptySelection);
+  });
+
+  it("toggles a library file in and out of the prompt as a file chip", () => {
+    mockLibraryTree = [libraryEntry("lib-1", "brand.pdf")];
+    const { editorHandleRef } = renderComposer();
+
+    const file = jest.mocked(buildEntryMenuItems).mock.calls.at(-1)?.[0]
+      .libraryFiles?.[0];
+    expect(file).toMatchObject({
+      id: "lib-1",
+      name: "brand.pdf",
+      checked: false,
+    });
+
+    act(() => {
+      file?.onToggle(true);
+    });
+    expect(
+      editorHandleRef.current?.getMentions().map((mention) => mention.value)
+    ).toEqual(["lib-1"]);
+
+    // The plus menu re-renders with the chip's state; toggling again removes it.
+    const checkedFile = jest.mocked(buildEntryMenuItems).mock.calls.at(-1)?.[0]
+      .libraryFiles?.[0];
+    expect(checkedFile?.checked).toBe(true);
+    act(() => {
+      checkedFile?.onToggle(false);
+    });
+    expect(editorHandleRef.current?.getMentions()).toEqual([]);
   });
 
   it("persists a draft per session and clears it on submit", async () => {
@@ -340,7 +392,7 @@ describe("CraftComposer", () => {
       // Post-submit rerender delivers the session's persistent selection.
       rerender({
         skillIds: ["pptx"],
-              scenarioId: null,
+        scenarioId: null,
       });
       // Now let the re-arm frame land.
       act(() => {

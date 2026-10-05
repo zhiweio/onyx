@@ -1,7 +1,7 @@
 import {
   buildEntryMenuItems,
   type EntryMenuTranslate,
-} from "@/app/craft/components/buildEntryMenuItems";
+} from "@/sections/input/buildEntryMenuItems";
 import { CRAFT_LIBRARY_PATH } from "@/app/craft/v1/constants";
 
 // Identity translator keeps assertions on stable key names.
@@ -35,7 +35,14 @@ describe("buildEntryMenuItems", () => {
   it("lists library files with a manage link to the library page", () => {
     const items = buildEntryMenuItems(
       handlers({
-        libraryFiles: [{ id: "file-1", name: "notes.pdf" }],
+        libraryFiles: [
+          {
+            id: "file-1",
+            name: "notes.pdf",
+            checked: false,
+            onToggle: jest.fn(),
+          },
+        ],
       }),
       tStub
     );
@@ -44,5 +51,27 @@ describe("buildEntryMenuItems", () => {
     expect(library?.rows.map((row) => row.label)).toEqual(["notes.pdf"]);
     expect(library?.manageHref).toBe(CRAFT_LIBRARY_PATH);
     expect(library?.onManage).toBeUndefined();
+  });
+
+  it("wires each library row's switch to the file's checked/onToggle state", () => {
+    const onToggle = jest.fn();
+    const items = buildEntryMenuItems(
+      handlers({
+        libraryFiles: [
+          {
+            id: "file-1",
+            name: "notes.pdf",
+            checked: true,
+            onToggle,
+          },
+        ],
+      }),
+      tStub
+    );
+    const row = panel(items, "library")?.rows[0];
+
+    expect(row?.checked).toBe(true);
+    row?.onCheckedChange(false);
+    expect(onToggle).toHaveBeenCalledWith(false);
   });
 });

@@ -103,7 +103,9 @@ export function isHostContinueMessage(metadata: unknown): boolean {
   if (!metadata || typeof metadata !== "object") {
     return false;
   }
-  return (metadata as { craft_job_continue?: boolean }).craft_job_continue === true;
+  return (
+    (metadata as { craft_job_continue?: boolean }).craft_job_continue === true
+  );
 }
 
 export function jobStatusTagColor(status: string): TagColor {

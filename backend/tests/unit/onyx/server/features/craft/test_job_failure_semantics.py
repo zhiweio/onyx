@@ -22,7 +22,6 @@ from onyx.server.features.build.interactive_turns.executor import (
 from onyx.server.features.build.jobs.assembler import assemble_brief
 from onyx.server.features.build.jobs.channels import empty_state
 from onyx.server.features.build.jobs.continuation import job_turn_budgets
-from onyx.server.features.build.jobs.gates import is_transient_turn_error
 from onyx.server.features.build.jobs.graph import compile_graph
 from onyx.server.features.build.jobs.kernel import (
     after_lane_turn,
@@ -32,6 +31,7 @@ from onyx.server.features.build.jobs.kernel import (
     persist_state,
 )
 from onyx.server.features.build.jobs.plan import parse_plan
+from onyx.server.features.build.jobs.turn_errors import is_transient_turn_error
 from onyx.server.features.build.timeouts import (
     INTERACTIVE_TURN_HARD_CAP_SECONDS,
     SCHEDULED_RUN_HARD_CAP_SECONDS,

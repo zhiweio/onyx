@@ -109,11 +109,7 @@ export function BuildLLMPopover({
         ? provider.model_configurations.filter(
             (model) =>
               model.is_visible &&
-              (isCraftRecommendedModel(
-                model,
-                provider.id,
-                workspaceDefault
-              ) ||
+              (isCraftRecommendedModel(model, provider.id, workspaceDefault) ||
                 isCurrent(model))
           )
         : provider.model_configurations.filter((model) => model.is_visible);
@@ -142,12 +138,7 @@ export function BuildLLMPopover({
     });
 
     return options;
-  }, [
-    showRecommendedOnly,
-    llmProviders,
-    currentSelection,
-    workspaceDefault,
-  ]);
+  }, [showRecommendedOnly, llmProviders, currentSelection, workspaceDefault]);
 
   // Group options by provider
   const groupedOptions = useMemo(() => {

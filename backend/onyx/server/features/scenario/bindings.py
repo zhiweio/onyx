@@ -144,14 +144,19 @@ def compile_scenario_plan(
 ) -> JobPlan:
     """Compile a scenario playbook into a host JobPlan.
 
-    Playbook phases become planned phases (``done_when`` becomes the
-    completion criteria); ``ask_delivery`` is on when any phase (or the
-    scenario default) gates delivery for human approval.
+    Playbook phases become planned phases: path-like ``done_when`` becomes
+    the gate's required paths, prose rides in ``notes`` (briefs state it;
+    the journal flags the vacuously-gated phase). ``ask_delivery`` is on
+    when any phase (or the scenario default) gates delivery;
+    ``ask_plan`` when any gate is ``approve_plan``.
     """
+    from onyx.server.features.build.jobs.plan import looks_like_relpath
+
     playbook = ScenarioPlaybook.model_validate(rules or {})
     policy = parse_scenario_policy(rules)
     phases: list[JobPlanPhase] = []
     ask_delivery = policy.bindings.gate == PhaseGate.APPROVE_DELIVERY
+    ask_plan = policy.bindings.gate == PhaseGate.APPROVE_PLAN
     for phase in playbook.phases:
         if not phase.id:
             continue
@@ -159,11 +164,15 @@ def compile_scenario_plan(
             gate_raw = phase.bindings.get("gate")
             if gate_raw == PhaseGate.APPROVE_DELIVERY.value:
                 ask_delivery = True
+            elif gate_raw == PhaseGate.APPROVE_PLAN.value:
+                ask_plan = True
+        prose = (phase.done_when or "").strip()
         phases.append(
             JobPlanPhase(
                 id=phase.id,
                 kind="phase",
-                done_when=[phase.done_when] if phase.done_when else [],
+                done_when=[prose] if looks_like_relpath(prose) else [],
+                notes="" if looks_like_relpath(prose) else prose,
             )
         )
     return JobPlan(
@@ -172,6 +181,7 @@ def compile_scenario_plan(
         lanes=[],
         inputs=list(playbook.required_inputs),
         ask_delivery=ask_delivery,
+        ask_plan=ask_plan,
         done_when=list(playbook.deliverables),
     )
 

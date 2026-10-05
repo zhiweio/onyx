@@ -35,6 +35,11 @@ def _looks_like_relpath(path: str) -> bool:
     return "/" in cleaned
 
 
+def looks_like_relpath(path: str) -> bool:
+    """Public coercion rule: done_when entries only count when path-like."""
+    return _looks_like_relpath(path)
+
+
 def _reject_escapes(value: Any) -> None:
     texts: list[str] = []
     if isinstance(value, str):
@@ -201,6 +206,10 @@ class JobPlanPhase(BaseModel):
     kind: str = "work"
     name: str | None = None
     done_when: list[str] = Field(default_factory=list)
+    # Prose completion criteria (a done_when sentence that is not a path).
+    # The gate cannot check prose; it rides along so briefs state it and
+    # journal warnings can flag vacuously-gated phases.
+    notes: str = ""
 
     @field_validator("id")
     @classmethod
@@ -224,6 +233,7 @@ class JobPlan(BaseModel):
     lanes: list[JobPlanLane] = Field(default_factory=list)
     inputs: list[str] = Field(default_factory=list)
     ask_delivery: bool = False
+    ask_plan: bool = False
     done_when: list[str] = Field(default_factory=list)
 
     @field_validator("goal")
@@ -244,6 +254,11 @@ class JobPlan(BaseModel):
     @field_validator("ask_delivery", mode="before")
     @classmethod
     def _ask_delivery(cls, value: Any) -> bool:
+        return _coerce_ask_delivery(value)
+
+    @field_validator("ask_plan", mode="before")
+    @classmethod
+    def _ask_plan(cls, value: Any) -> bool:
         return _coerce_ask_delivery(value)
 
     @field_validator("lanes", mode="before")

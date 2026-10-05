@@ -3,9 +3,11 @@
 The model set is a snapshot of the Onyx gateway catalog, which is built
 from the admin-configured LLM providers (the "Model Providers" tab) —
 the single source of truth shared with the sandbox serving path
-(``build_onyx_gateway_config``). The snapshot is refreshed by the admin
-listing endpoint (``registry_api.list_agent_models``) and consulted by
-the ``HarnessRouter``.
+(``build_onyx_gateway_config``). The snapshot is refreshed at startup and
+periodically by the api-server's registry refresher thread, lazily via
+``ensure_registry_ready`` on turn paths, and by the admin listing endpoint
+(``registry_api.list_agent_models``); it is consulted by the
+``HarnessRouter`` and context-window lookups.
 
 Runtime support matrix and probe/fingerprint helpers keep the QM-ported
 semantics:
@@ -25,6 +27,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Protocol
 
@@ -102,6 +106,75 @@ def _spec_from_catalog_entry(entry: CatalogEntry) -> AgentModelSpec:
 # Kept as a flat index so every lookup (router support matrix, default
 # resolution, fingerprinting) is catalog-aware without threading state.
 _MODEL_INDEX: dict[str, AgentModelSpec] = {}
+_INDEX_REFRESHED_AT: float | None = None
+_REFRESH_LOCK = threading.Lock()
+
+
+def sandbox_default_model_id(db_session: Any, catalog_ids: set[str]) -> str | None:
+    """Wire id of the effective sandbox default: craft default, else the
+    chat default. Absent from the catalog (or unset) means no marker."""
+    from onyx.db.llm import fetch_default_craft_model, fetch_default_llm_model
+
+    for model in (
+        fetch_default_craft_model(db_session),
+        fetch_default_llm_model(db_session),
+    ):
+        if model is None:
+            continue
+        candidate = f"{model.llm_provider_id}/{model.name}"
+        if candidate in catalog_ids:
+            return candidate
+    return None
+
+
+def refresh_model_catalog(db_session: Any) -> None:
+    """Rebuild the snapshot from the gateway catalog (all providers).
+
+    Never raises: a failed refresh leaves the previous snapshot in place,
+    so callers can run this from a background loop or turn entry."""
+    global _INDEX_REFRESHED_AT
+    try:
+        from onyx.db.llm import fetch_all_llm_providers_unfiltered
+        from onyx.server.gateway.model_catalog import build_gateway_model_catalog
+
+        catalog = build_gateway_model_catalog(
+            fetch_all_llm_providers_unfiltered(db_session)
+        )
+        apply_model_catalog_cache(
+            catalog,
+            sandbox_default_model_id(db_session, {d.id for d in catalog}),
+        )
+        _INDEX_REFRESHED_AT = time.monotonic()
+    except Exception:
+        logger.warning("Agent model registry refresh failed", exc_info=True)
+
+
+def ensure_registry_ready(db_session: Any, *, max_age_seconds: float = 300.0) -> None:
+    """Lazy stale-while-revalidate entry for turn paths.
+
+    Cheap when fresh (one lock-free timestamp check); single-flight when
+    stale so concurrent turns don't stampede the DB."""
+    refreshed_at = _INDEX_REFRESHED_AT
+    if (
+        refreshed_at is not None
+        and _MODEL_INDEX
+        and (time.monotonic() - refreshed_at) < max_age_seconds
+    ):
+        return
+    if not _REFRESH_LOCK.acquire(blocking=False):
+        # Another thread is refreshing; the previous snapshot stays served.
+        return
+    try:
+        refresh_model_catalog(db_session)
+    finally:
+        _REFRESH_LOCK.release()
+
+
+def registry_age_seconds() -> float | None:
+    """Seconds since the last successful refresh; None when never."""
+    if _INDEX_REFRESHED_AT is None:
+        return None
+    return time.monotonic() - _INDEX_REFRESHED_AT
 
 
 def apply_model_catalog_cache(

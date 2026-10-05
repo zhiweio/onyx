@@ -160,9 +160,7 @@ export default function CraftProjectFiles({
               }}
               onDragOver={(event) => event.preventDefault()}
               onDragLeave={(event) => {
-                if (
-                  event.currentTarget.contains(event.relatedTarget as Node)
-                ) {
+                if (event.currentTarget.contains(event.relatedTarget as Node)) {
                   return;
                 }
                 setDragging(false);

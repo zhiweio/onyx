@@ -4,10 +4,8 @@ import { craftProjectFileUrl } from "@/lib/craft-projects/api";
 import type { CraftProjectFile } from "@/lib/craft-projects/types";
 
 const WORKSPACE_PREFIXES = ["outputs/", "attachments/", "project/"] as const;
-const RELATIVE_ASSET_SOURCE =
-  String.raw`\s(?:src|href)=["'](?!https?:|data:|blob:|#|mailto:|javascript:)[^"']+["']`;
-const ASSET_ATTR_SOURCE =
-  String.raw`(\s(?:src|href)=["'])(?!https?:|data:|blob:|#|mailto:|javascript:)([^"']+)(["'])`;
+const RELATIVE_ASSET_SOURCE = String.raw`\s(?:src|href)=["'](?!https?:|data:|blob:|#|mailto:|javascript:)[^"']+["']`;
+const ASSET_ATTR_SOURCE = String.raw`(\s(?:src|href)=["'])(?!https?:|data:|blob:|#|mailto:|javascript:)([^"']+)(["'])`;
 
 function relativeAssetRe(): RegExp {
   return new RegExp(RELATIVE_ASSET_SOURCE, "i");
@@ -118,10 +116,13 @@ export async function rewriteProjectHtmlForPreview(
     return { html, revoke: () => undefined };
   }
 
-  const rewritten = html.replace(assetAttrRe(), (full, prefix, href, suffix) => {
-    const next = replacements.get(href);
-    return next ? `${prefix}${next}${suffix}` : full;
-  });
+  const rewritten = html.replace(
+    assetAttrRe(),
+    (full, prefix, href, suffix) => {
+      const next = replacements.get(href);
+      return next ? `${prefix}${next}${suffix}` : full;
+    }
+  );
 
   return {
     html: rewritten,

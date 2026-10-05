@@ -63,7 +63,7 @@ export default function ReportTemplatesPage() {
       (template) =>
         template.name.toLowerCase().includes(query) ||
         template.slug.toLowerCase().includes(query) ||
-        template.description.toLowerCase().includes(query),
+        template.description.toLowerCase().includes(query)
     );
   }, [templates, searchQuery]);
 
@@ -91,7 +91,7 @@ export default function ReportTemplatesPage() {
         toast.error(
           deleteError instanceof Error
             ? deleteError.message
-            : t("toasts.deleteFailed.message"),
+            : t("toasts.deleteFailed.message")
         );
       }
     } finally {

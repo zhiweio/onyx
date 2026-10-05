@@ -1539,14 +1539,16 @@ def _hydrate_reset_workspaces(
         if migrate_outputs
         else list_all_sessions_for_project(db_session, project_id)
     )
-    plans = [(row.id, row.nextjs_port, row.project_id) for row in sessions]
+    plans = [
+        (row.id, row.nextjs_port, row.project_id, row.skill_slugs) for row in sessions
+    ]
     connectable_apps_section = build_connectable_apps_list(
         get_connectable_apps_for_user(db_session, user)
     )
     mcp_servers = resolve_craft_mcp_servers(db_session, user)
     db_session.commit()
 
-    for session_id, nextjs_port, session_project_id in plans:
+    for session_id, nextjs_port, session_project_id, session_skill_slugs in plans:
         snapshot = (
             get_latest_snapshot_for_session(db_session, session_id)
             if migrate_outputs
@@ -1574,6 +1576,7 @@ def _hydrate_reset_workspaces(
                     connectable_apps_section=connectable_apps_section,
                     mcp_servers=mcp_servers,
                     share_workspace_from=share_workspace_from,
+                    skill_slugs=session_skill_slugs,
                 )
             if session_project_id is not None:
                 write_project_to_session(

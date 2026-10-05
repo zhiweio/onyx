@@ -2170,10 +2170,7 @@ export function FileSystem({
                   : "items"}
             </span>
             {selectedEntry ? (
-              <span
-                className="min-w-0 truncate"
-                title={selectedEntry.name}
-              >
+              <span className="min-w-0 truncate" title={selectedEntry.name}>
                 · “{selectedEntry.name}” selected
               </span>
             ) : null}

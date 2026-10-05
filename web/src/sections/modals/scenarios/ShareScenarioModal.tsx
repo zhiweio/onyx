@@ -102,52 +102,54 @@ export default function ShareScenarioModal({
           onClose={onClose}
         />
         <Modal.Body>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <Text>{isPublic ? t("org.on.label") : t("org.off.label")}</Text>
-            <Switch
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-              aria-label={t("org.on.label")}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Text>{isPublic ? t("org.on.label") : t("org.off.label")}</Text>
+              <Switch
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+                aria-label={t("org.on.label")}
+              />
+            </div>
+            <AddPeoplePicker
+              existingGroupIds={existingGroupIds}
+              existingUserIds={existingUserIds}
+              groups={groups ?? []}
+              users={users ?? []}
+              stagedGroups={stagedGroups}
+              stagedUsers={stagedUsers}
+              stagedPermission="VIEWER"
+              onStagedPermissionChange={() => undefined}
+              onAddUser={(user) => {
+                setStagedUsers((current) => [...current, user]);
+              }}
+              onAddGroup={(group) => {
+                setStagedGroups((current) => [...current, group]);
+              }}
+              onRemoveUser={(userId) => {
+                setStagedUsers((current) =>
+                  current.filter((user) => user.id !== userId)
+                );
+                setUserIds((current) => current.filter((id) => id !== userId));
+              }}
+              onRemoveGroup={(groupId) => {
+                setStagedGroups((current) =>
+                  current.filter((group) => group.id !== groupId)
+                );
+                setGroupIds((current) =>
+                  current.filter((id) => id !== groupId)
+                );
+              }}
             />
+            {(selectedUsers.length > 0 || selectedGroups.length > 0) && (
+              <Text color="text-02">
+                {[
+                  ...selectedUsers.map((user) => user.email),
+                  ...selectedGroups.map((group) => group.name),
+                ].join(", ")}
+              </Text>
+            )}
           </div>
-          <AddPeoplePicker
-            existingGroupIds={existingGroupIds}
-            existingUserIds={existingUserIds}
-            groups={groups ?? []}
-            users={users ?? []}
-            stagedGroups={stagedGroups}
-            stagedUsers={stagedUsers}
-            stagedPermission="VIEWER"
-            onStagedPermissionChange={() => undefined}
-            onAddUser={(user) => {
-              setStagedUsers((current) => [...current, user]);
-            }}
-            onAddGroup={(group) => {
-              setStagedGroups((current) => [...current, group]);
-            }}
-            onRemoveUser={(userId) => {
-              setStagedUsers((current) =>
-                current.filter((user) => user.id !== userId)
-              );
-              setUserIds((current) => current.filter((id) => id !== userId));
-            }}
-            onRemoveGroup={(groupId) => {
-              setStagedGroups((current) =>
-                current.filter((group) => group.id !== groupId)
-              );
-              setGroupIds((current) => current.filter((id) => id !== groupId));
-            }}
-          />
-          {(selectedUsers.length > 0 || selectedGroups.length > 0) && (
-            <Text color="text-02">
-              {[
-                ...selectedUsers.map((user) => user.email),
-                ...selectedGroups.map((group) => group.name),
-              ].join(", ")}
-            </Text>
-          )}
-        </div>
         </Modal.Body>
         <Modal.Footer>
           <Button prominence="secondary" onClick={onClose} disabled={saving}>

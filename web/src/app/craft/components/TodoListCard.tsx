@@ -62,7 +62,7 @@ function TodoItemRow({ todo }: { todo: TodoItem }) {
       <span
         className={cn(
           todo.status === "completed" && "line-through",
-          inProgress && "font-medium",
+          inProgress && "font-medium"
         )}
       >
         <Text
@@ -100,7 +100,7 @@ export default function TodoListCard({
   // Calculate progress stats
   const total = todoList.todos.length;
   const completed = todoList.todos.filter(
-    (t) => t.status === "completed",
+    (t) => t.status === "completed"
   ).length;
 
   // Determine background color based on state
@@ -114,14 +114,14 @@ export default function TodoListCard({
           "w-full border-[0.5px] rounded-lg overflow-hidden",
           allCompleted
             ? "bg-status-success-01 border-status-success-01"
-            : "bg-background-neutral-01 border-border-01",
+            : "bg-background-neutral-01 border-border-01"
         )}
       >
         <CollapsibleTrigger asChild>
           <button
             className={cn(
               "w-full flex items-center justify-between px-3 py-2",
-              "hover:bg-background-tint-02 transition-colors text-start",
+              "hover:bg-background-tint-02 transition-colors text-start"
             )}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -149,7 +149,7 @@ export default function TodoListCard({
             <SvgChevronDown
               className={cn(
                 "size-4 stroke-text-03 transition-transform duration-150 shrink-0",
-                !isOpen && "-rotate-90",
+                !isOpen && "-rotate-90"
               )}
             />
           </button>

@@ -27,16 +27,10 @@ function NewChannelConfigContent({ slackBotId }: { slackBotId: number }) {
     error: agentsError,
   } = useAgents();
 
-  const {
-    data: standardAnswerCategories,
-    isLoading: isStdAnswerLoading,
-  } = useStandardAnswerCategories();
+  const { data: standardAnswerCategories, isLoading: isStdAnswerLoading } =
+    useStandardAnswerCategories();
 
-  if (
-    isDocSetsLoading ||
-    isAgentsLoading ||
-    isStdAnswerLoading
-  ) {
+  if (isDocSetsLoading || isAgentsLoading || isStdAnswerLoading) {
     return <SvgSimpleLoader />;
   }
 
@@ -61,7 +55,6 @@ function NewChannelConfigContent({ slackBotId }: { slackBotId: number }) {
       />
     );
   }
-
 
   return (
     <SlackChannelConfigCreationForm

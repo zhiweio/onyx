@@ -45,13 +45,13 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       ? row.session_id === toolCall.subagentSessionId
       : !settled &&
         !!row.node_id &&
-        matchesLaneTaskToolId(toolCall.id, laneTaskToolId(row.node_id)),
+        matchesLaneTaskToolId(toolCall.id, laneTaskToolId(row.node_id))
   );
   const linkedSessionId = childSessionIdForTask(
     toolCall.id,
     toolCall.subagentSessionId,
     subagents.values(),
-    { allowRematch: !settled },
+    { allowRematch: !settled }
   );
   const subagent = useSubagent(linkedSessionId);
 
@@ -59,7 +59,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
     subagent?.status,
     toolCall.status,
     specialist?.status,
-    specialist ? craftJob?.status : undefined,
+    specialist ? craftJob?.status : undefined
   );
 
   const running = status === "running";
@@ -77,7 +77,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       toolCall.id,
       toolCall.subagentType ?? null,
       seedName,
-      toolCall.command || "",
+      toolCall.command || ""
     );
   }, [
     parentSessionId,
@@ -106,7 +106,7 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       toolCall.id,
       toolCall.subagentType ?? null,
       seedName,
-      toolCall.command || "",
+      toolCall.command || ""
     );
     viewSubagent(parentSessionId, linkedSessionId);
   }
@@ -120,14 +120,14 @@ export default function TaskBody({ toolCall }: ToolCardBodyProps) {
       aria-label={t("openSubagent")}
       className={cn(
         "group/subagent flex min-w-0 w-full items-center gap-2 rounded-04 py-0.5 text-start transition-colors",
-        linkedSessionId !== null && "hover:bg-background-tint-02",
+        linkedSessionId !== null && "hover:bg-background-tint-02"
       )}
     >
       <CATEGORY_AGENT_ICON className="h-4 w-4 shrink-0 stroke-text-03" />
       <span
         className={cn(
           "shrink-0 whitespace-nowrap font-medium",
-          running ? "text-text-04" : "text-text-04",
+          running ? "text-text-04" : "text-text-04"
         )}
       >
         {running ? <ShimmerText>{t("subagent")}</ShimmerText> : t("subagent")}

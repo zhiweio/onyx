@@ -135,7 +135,10 @@ export default function IdentitySection({
       </InputVertical>
 
       {mode === "catalog" && (
-        <InputVertical withLabel="scenario-slug" title={t("identity.slug.title")}>
+        <InputVertical
+          withLabel="scenario-slug"
+          title={t("identity.slug.title")}
+        >
           <InputTypeIn
             id="scenario-slug"
             value={draft.slug}
@@ -175,9 +178,7 @@ export default function IdentitySection({
                   state={draft.domain === item ? "selected" : "empty"}
                   padding={2}
                   rounding={3}
-                  onClick={
-                    fieldsLocked ? undefined : () => selectDomain(item)
-                  }
+                  onClick={fieldsLocked ? undefined : () => selectDomain(item)}
                 >
                   <Content
                     sizePreset="main-ui"
@@ -196,9 +197,7 @@ export default function IdentitySection({
                 padding={2}
                 rounding={3}
                 onClick={
-                  fieldsLocked
-                    ? undefined
-                    : () => selectDomain("custom")
+                  fieldsLocked ? undefined : () => selectDomain("custom")
                 }
               >
                 <Content

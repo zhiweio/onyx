@@ -135,7 +135,9 @@ function itemStatusDisplay(status: LoopItemStatus): BadgeDisplay {
 }
 
 export function LoopItemStatusBadge({ status }: { status: LoopItemStatus }) {
-  return <Badge {...itemStatusDisplay(status)} testId={`item-status-${status}`} />;
+  return (
+    <Badge {...itemStatusDisplay(status)} testId={`item-status-${status}`} />
+  );
 }
 
 function outputStateDisplay(state: LoopOutputState): BadgeDisplay {
@@ -184,7 +186,13 @@ export function LoopOutputStateBadge({ state }: { state: LoopOutputState }) {
   );
 }
 
-function Badge({ label, icon: Icon, className, iconClassName, testId }: BadgeDisplay & { testId: string }) {
+function Badge({
+  label,
+  icon: Icon,
+  className,
+  iconClassName,
+  testId,
+}: BadgeDisplay & { testId: string }) {
   return (
     <div
       className={cn(

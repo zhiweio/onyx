@@ -4,7 +4,13 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { useTranslations } from "next-intl";
-import { Button, InputTypeIn, InputTextArea, MessageCard, Text } from "@opal/components";
+import {
+  Button,
+  InputTypeIn,
+  InputTextArea,
+  MessageCard,
+  Text,
+} from "@opal/components";
 import {
   ConfirmationModalLayout,
   IllustrationContent,
@@ -26,10 +32,7 @@ import {
 import type { CraftProject } from "@/lib/craft-projects/types";
 import { isImplicitUntitledProject } from "@/lib/craft-projects/display";
 import CraftProjectCard from "@/sections/cards/CraftProjectCard";
-import {
-  CRAFT_PATH,
-  CRAFT_PROJECTS_PATH,
-} from "@/app/craft/v1/constants";
+import { CRAFT_PATH, CRAFT_PROJECTS_PATH } from "@/app/craft/v1/constants";
 import { CRAFT_SEARCH_PARAM_NAMES } from "@/app/craft/services/searchParams";
 import { useBuildSessionStore } from "@/app/craft/hooks/useBuildSessionStore";
 

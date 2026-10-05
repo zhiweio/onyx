@@ -276,6 +276,29 @@ OPENCODE_PROMPT_INACTIVITY_TIMEOUT_SECONDS = float(
 # contract with turn-budget.ts.
 TURN_BUDGET_FILE_NAME = ".onyx-turn-budget.json"
 
+# Host-side auto-compact: after a successful interactive (non-job) turn,
+# trigger the existing compact turn when the last reported context usage
+# crosses this share of the model's context window. 0 disables.
+CRAFT_AUTO_COMPACT_THRESHOLD = float(
+    os.environ.get("CRAFT_AUTO_COMPACT_THRESHOLD", "0.8")
+)
+
+# Agent model registry refresh cadence (seconds) in the api-server. The
+# registry is process-local memory; celery beat cannot refresh it, so a
+# lifespan daemon thread keeps it warm. 0 disables the periodic loop
+# (lazy turn-path refresh still applies). See agent_runtime/models.py.
+AGENT_MODEL_REGISTRY_REFRESH_SECONDS = float(
+    os.environ.get("AGENT_MODEL_REGISTRY_REFRESH_SECONDS", "300")
+)
+
+# Verbatim harness event tape: capture raw harness events before
+# translation (audit + codex replay + cross-runtime migration). Flips the
+# recorder side-channel on/off; the turn path never depends on it.
+CRAFT_TAPE_ENABLED = os.environ.get("CRAFT_TAPE_ENABLED", "true").lower() == "true"
+
+# Tape retention window for the prune-craft-tape beat.
+CRAFT_TAPE_RETENTION_DAYS = int(os.environ.get("CRAFT_TAPE_RETENTION_DAYS", "90"))
+
 # Prompt-slot lock lease; renewed on every sandbox event/keepalive, so a dead
 # holder strands the slot for at most this long.
 PROMPT_SLOT_LEASE_SECONDS = float(os.environ.get("PROMPT_SLOT_LEASE_SECONDS", "120.0"))

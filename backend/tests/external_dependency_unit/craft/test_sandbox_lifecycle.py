@@ -518,6 +518,7 @@ class _PushRecordingStub(StubSandboxManager):
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         self.ops.append("render_workspace")
         super().setup_session_workspace(
@@ -529,6 +530,7 @@ class _PushRecordingStub(StubSandboxManager):
             user_name,
             mcp_servers,
             share_workspace_from,
+            skill_slugs,
         )
 
     def restore_snapshot(

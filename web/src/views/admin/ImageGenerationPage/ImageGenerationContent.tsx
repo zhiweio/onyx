@@ -87,13 +87,15 @@ export default function ImageGenerationContent() {
           c.image_provider_id.startsWith("dashscope_") &&
           !catalogIds.has(c.image_provider_id)
       )
-      .map((c): ImageProvider => ({
-        image_provider_id: c.image_provider_id,
-        model_name: c.model_name,
-        provider_name: DASHSCOPE_PROVIDER_NAME,
-        title: c.llm_provider_name || c.model_name,
-        descriptionKey: "providers.bailianOther.description",
-      }));
+      .map(
+        (c): ImageProvider => ({
+          image_provider_id: c.image_provider_id,
+          model_name: c.model_name,
+          provider_name: DASHSCOPE_PROVIDER_NAME,
+          title: c.llm_provider_name || c.model_name,
+          descriptionKey: "providers.bailianOther.description",
+        })
+      );
     return dynamic;
   }, [configs]);
 

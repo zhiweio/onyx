@@ -23,7 +23,10 @@ export default function StringListEditor({
   return (
     <div className="flex flex-col gap-2">
       {values.map((value, index) => (
-        <div key={`${index}-${placeholder}`} className="flex items-center gap-2">
+        <div
+          key={`${index}-${placeholder}`}
+          className="flex items-center gap-2"
+        >
           <div className="min-w-0 flex-1">
             <InputTypeIn
               value={value}
@@ -42,7 +45,9 @@ export default function StringListEditor({
             icon={SvgTrash}
             disabled={disabled}
             aria-label={removeAriaLabel}
-            onClick={() => onChange(values.filter((_, itemIndex) => itemIndex !== index))}
+            onClick={() =>
+              onChange(values.filter((_, itemIndex) => itemIndex !== index))
+            }
           />
         </div>
       ))}

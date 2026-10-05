@@ -136,44 +136,44 @@ export default function TokenRateLimitsPanel({
       </Button>
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as PanelTab)}>
-          <Tabs.List>
-            <Tabs.Trigger value="global">
-              {t("panel.tabs.global.name")}
-            </Tabs.Trigger>
-            <Tabs.Trigger value="users">
-              {t("panel.tabs.users.name")}
-            </Tabs.Trigger>
-            <Tabs.Trigger value="groups">
-              {t("panel.tabs.groups.name")}
-            </Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="global">
-            <GenericTokenRateLimitTable
-              fetchUrl={GLOBAL_TOKEN_FETCH_URL}
-              description={t("panel.global.description")}
-            />
-          </Tabs.Content>
-          <Tabs.Content value="users">
-            <GenericTokenRateLimitTable
-              fetchUrl={USER_TOKEN_FETCH_URL}
-              description={t("panel.user.description")}
-            />
-          </Tabs.Content>
-          <Tabs.Content value="groups">
-            <GenericTokenRateLimitTable
-              fetchUrl={USER_GROUP_FETCH_URL}
-              description={t("panel.userGroup.description")}
-              responseMapper={(data: Record<string, TokenRateLimit[]>) =>
-                Object.entries(data).flatMap(([groupName, elements]) =>
-                  elements.map((element) => ({
-                    ...element,
-                    group_name: groupName,
-                  }))
-                )
-              }
-            />
-          </Tabs.Content>
-        </Tabs>
+        <Tabs.List>
+          <Tabs.Trigger value="global">
+            {t("panel.tabs.global.name")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="users">
+            {t("panel.tabs.users.name")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="groups">
+            {t("panel.tabs.groups.name")}
+          </Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="global">
+          <GenericTokenRateLimitTable
+            fetchUrl={GLOBAL_TOKEN_FETCH_URL}
+            description={t("panel.global.description")}
+          />
+        </Tabs.Content>
+        <Tabs.Content value="users">
+          <GenericTokenRateLimitTable
+            fetchUrl={USER_TOKEN_FETCH_URL}
+            description={t("panel.user.description")}
+          />
+        </Tabs.Content>
+        <Tabs.Content value="groups">
+          <GenericTokenRateLimitTable
+            fetchUrl={USER_GROUP_FETCH_URL}
+            description={t("panel.userGroup.description")}
+            responseMapper={(data: Record<string, TokenRateLimit[]>) =>
+              Object.entries(data).flatMap(([groupName, elements]) =>
+                elements.map((element) => ({
+                  ...element,
+                  group_name: groupName,
+                }))
+              )
+            }
+          />
+        </Tabs.Content>
+      </Tabs>
 
       <CreateRateLimitModal
         isOpen={modalIsOpen}

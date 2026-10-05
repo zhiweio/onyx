@@ -148,6 +148,8 @@ def assemble_brief(
         lines.extend(f"- {path}" for path in node.required_paths)
     else:
         lines.append("- Meet this node contract, then stop.")
+    if node.notes:
+        lines.append(f"- Prose criteria (gate cannot check this): {node.notes}")
     return "\n".join(lines)
 
 

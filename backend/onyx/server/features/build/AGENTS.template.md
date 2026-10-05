@@ -56,6 +56,11 @@ into it. Prefer updating an existing file over adding a new copy. Put
 scratch work under `outputs/` next to the deliverable, not at the session
 root.
 
+`.opencode/skills/` holds this session's bound skills, not the whole
+catalog. When a task clearly needs an unlisted skill, say which one and
+ask the user to enable it (they can pick it on their next message). Do
+not pretend an unlisted skill is available.
+
 ## Connectable apps
 
 Some org apps aren't set up for this user yet. When the task needs one, call

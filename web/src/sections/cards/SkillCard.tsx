@@ -198,7 +198,9 @@ export default function SkillCard({
                   icon={SvgBlocks}
                   title={item.name}
                   description={
-                    isInvalid ? t("skill.invalid.description") : item.description
+                    isInvalid
+                      ? t("skill.invalid.description")
+                      : item.description
                   }
                   sizePreset="main-ui"
                   variant="section"

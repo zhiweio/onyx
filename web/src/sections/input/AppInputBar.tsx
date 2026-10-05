@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { useTranslations } from "next-intl";
+import useSWR from "swr";
 import { MinimalAgent } from "@/lib/agents/types";
 import { LlmManager } from "@/lib/hooks";
 import { ChatState } from "@/app/app/interfaces";
@@ -62,13 +63,19 @@ import {
   type ComposerMention,
   type LexicalPromptInputHandle,
 } from "@/sections/input/lexical";
+import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
+import { buildEntryMenuItems } from "@/sections/input/buildEntryMenuItems";
 import useUserSkills from "@/hooks/useUserSkills";
 import {
   pickerEntryConnectionPath,
+  pickerEntryKey,
   toPickerSections,
   type PickerEntry,
+  type PickerFileEntry,
   type SlashSelection,
 } from "@/lib/skills/picker";
+import { SWR_KEYS } from "@/lib/swr-keys";
+import { fetchLibraryTree } from "@/app/craft/services/apiServices";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -110,7 +117,7 @@ export interface AppInputBarProps {
 /** Slash selection derived from the editor's chips. Chat never offers
  * scenarios, so the scenario field stays empty here. */
 function selectionFromMentions(
-  mentions: readonly ComposerMention[],
+  mentions: readonly ComposerMention[]
 ): SlashSelection {
   const skillIds: string[] = [];
   for (const mention of mentions) {
@@ -150,30 +157,106 @@ const AppInputBar = React.memo(
     const [isMuted, setIsMuted] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(
-      null,
+      null
     );
     const setMutedRef = useRef<((muted: boolean) => void) | null>(null);
     const queuedMessages = useCurrentQueuedMessages();
     const latestMessageRenderComplete = useCurrentLatestMessageRenderComplete();
     const enqueueCurrentMessage = useChatSessionStore(
-      (state) => state.enqueueCurrentMessage,
+      (state) => state.enqueueCurrentMessage
     );
     const removeCurrentQueuedMessage = useChatSessionStore(
-      (state) => state.removeCurrentQueuedMessage,
+      (state) => state.removeCurrentQueuedMessage
     );
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
 
     const editorRef = useRef<LexicalPromptInputHandle | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     // Mirror of the editor markdown for placeholder/search gating and the
     // mic flow; the submit path always reads the live editor text.
     const [message, setMessage] = useState(initialMessage);
+    const [mentions, setMentions] = useState<ComposerMention[]>([]);
     const isRecordingRef = useRef(isRecording);
 
     const { data: skillsData } = useUserSkills();
     const pickerSections = useMemo(
       () => toPickerSections(skillsData, undefined),
-      [skillsData],
+      [skillsData]
+    );
+
+    const entryMenuT = useTranslations("craft.entryMenu");
+    const { data: libraryTree } = useSWR(
+      SWR_KEYS.buildUserLibraryTree,
+      fetchLibraryTree
+    );
+    const libraryFileEntries = useMemo<PickerFileEntry[]>(
+      () =>
+        (libraryTree ?? [])
+          .filter((entry) => !entry.is_directory)
+          .map((entry) => ({
+            kind: "file" as const,
+            fileId: entry.id,
+            name: entry.name,
+            path: entry.path,
+            source: "library" as const,
+          })),
+      [libraryTree]
+    );
+
+    // File chips currently in the editor drive the plus-menu library toggles:
+    // checked = already attached, toggle inserts/removes the @mention chip.
+    const attachedFileMentionIds = useMemo(
+      () =>
+        new Set(
+          mentions
+            .filter((mention) => mention.category === "files")
+            .map((mention) => mention.value)
+        ),
+      [mentions]
+    );
+
+    const plusMenuItems = useMemo(
+      () =>
+        buildEntryMenuItems(
+          {
+            onAttachFiles: () => fileInputRef.current?.click(),
+            libraryFiles: libraryFileEntries.map((file) => ({
+              id: file.fileId,
+              name: file.name,
+              checked: attachedFileMentionIds.has(file.fileId),
+              onToggle: (checked: boolean) => {
+                if (checked) {
+                  editorRef.current?.insertMention(
+                    defaultEntryToMention(file, "@")
+                  );
+                } else {
+                  editorRef.current?.removeMention(pickerEntryKey(file));
+                }
+              },
+            })),
+          },
+          entryMenuT
+        ),
+      [libraryFileEntries, attachedFileMentionIds, entryMenuT]
+    );
+
+    // @ opens the same library files as the plus menu, matching craft.
+    const fileMentionTrigger = useMemo(
+      () => ({
+        id: "app-file-mention",
+        triggerChars: ["@"] as const,
+        sections: {
+          commands: [],
+          scenarios: [],
+          skills: [],
+          apps: [],
+          files: libraryFileEntries,
+        },
+        showWhenEmpty: true,
+        emptyMessage: entryMenuT("library.empty"),
+      }),
+      [libraryFileEntries, entryMenuT]
     );
 
     const { activePromptShortcuts } = usePromptShortcuts();
@@ -203,7 +286,7 @@ const AppInputBar = React.memo(
         onPick: (entry: PickerEntry): boolean => {
           if (entry.kind === "command") {
             const prompt = activePromptShortcuts.find(
-              (candidate) => candidate.prompt === entry.slug,
+              (candidate) => candidate.prompt === entry.slug
             );
             const content = prompt?.content ?? "";
             editorRef.current?.setText(content);
@@ -218,12 +301,7 @@ const AppInputBar = React.memo(
           return false;
         },
       }),
-      [
-        pickerSections,
-        promptCommands,
-        activePromptShortcuts,
-        toolConfiguration,
-      ],
+      [pickerSections, promptCommands, activePromptShortcuts, toolConfiguration]
     );
 
     // Skills-only menu on $ (ZCode's dedicated skills trigger; ¥/￥ for CJK
@@ -240,7 +318,7 @@ const AppInputBar = React.memo(
           files: [],
         },
       }),
-      [pickerSections],
+      [pickerSections]
     );
 
     const { state } = useQueryController();
@@ -264,6 +342,7 @@ const AppInputBar = React.memo(
     const isVoicePlaybackControllable = isVoicePlaybackActive && !isRecording;
     const isTTSActuallySpeaking = isTTSPlaying || isManualTTSPlaying;
     const appPosition = useAppPosition();
+    const { appName } = useSettings();
     const isNewSession = appPosition.isNewSession();
     const appMode = state.phase === "idle" ? state.appMode : undefined;
     const isSearchMode =
@@ -275,7 +354,7 @@ const AppInputBar = React.memo(
         : isRecording
           ? t("appInputBar.input.listeningPlaceholder")
           : isVoicePlaybackActive
-            ? t("appInputBar.input.speakingPlaceholder")
+            ? t("appInputBar.input.speakingPlaceholder", { appName })
             : isSearchMode
               ? t("appInputBar.input.searchPlaceholder")
               : t("appInputBar.input.placeholder");
@@ -305,7 +384,7 @@ const AppInputBar = React.memo(
         }
         stopTTS();
         const slash = selectionFromMentions(
-          editorRef.current?.getMentions() ?? [],
+          editorRef.current?.getMentions() ?? []
         );
         onSubmit(text, {
           skillIds: slash.skillIds,
@@ -314,7 +393,7 @@ const AppInputBar = React.memo(
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [stopTTS, onSubmit, draftScope],
+      [stopTTS, onSubmit, draftScope]
     );
 
     const handleQueueMessage = useCallback(
@@ -324,7 +403,7 @@ const AppInputBar = React.memo(
         clearComposerDraft("chat", draftScope);
         return true;
       },
-      [enqueueCurrentMessage, draftScope],
+      [enqueueCurrentMessage, draftScope]
     );
 
     const handleEditorChange = useCallback((text: string) => {
@@ -382,13 +461,13 @@ const AppInputBar = React.memo(
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
-        (file) => file.status === UserFileStatus.PROCESSING,
+        (file) => file.status === UserFileStatus.PROCESSING
       );
     }, [currentMessageFiles]);
 
     const hasUploadingFiles = useMemo(() => {
       return currentMessageFiles.some(
-        (file) => file.status === UserFileStatus.UPLOADING,
+        (file) => file.status === UserFileStatus.UPLOADING
       );
     }, [currentMessageFiles]);
 
@@ -407,14 +486,14 @@ const AppInputBar = React.memo(
 
         setPresentingDocument(documentForViewer);
       },
-      [setPresentingDocument],
+      [setPresentingDocument]
     );
 
     const handleRemoveMessageFile = useCallback(
       (fileId: string) => {
         setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
-      [setCurrentMessageFiles],
+      [setCurrentMessageFiles]
     );
 
     const combinedSettingsData = useSettings();
@@ -462,7 +541,7 @@ const AppInputBar = React.memo(
       if (modelConfigurationId != null) {
         for (const provider of providers) {
           const model = provider.model_configurations.find(
-            (candidate) => candidate.id === modelConfigurationId,
+            (candidate) => candidate.id === modelConfigurationId
           );
           if (model) return model;
         }
@@ -500,14 +579,14 @@ const AppInputBar = React.memo(
         // token_count is null until indexing finishes; don't hide the
         // processing indicator while a file's size is still unknown.
         const allTokenCountsKnown = currentIndexingFiles.every(
-          (file) => file.token_count !== null,
+          (file) => file.token_count !== null
         );
         if (!allTokenCountsKnown) {
           return false;
         }
         const currentFilesTokenTotal = currentMessageFiles.reduce(
           (acc, file) => acc + (file.token_count || 0),
-          0,
+          0
         );
         const totalTokens =
           (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
@@ -575,11 +654,12 @@ const AppInputBar = React.memo(
     const controlsHiddenClass = cn(
       "flex flex-row items-center",
       isSearchMode && "hidden",
-      controlsLoading && "invisible",
+      controlsLoading && "invisible"
     );
 
     const toolbarLeading = (
       <div className={controlsHiddenClass}>
+        <PlusMenuButton items={plusMenuItems} disabled={disabled} />
         {activeAgent && (
           // Keyed, so switching agents starts clean rather than carrying
           // the previous agent's open panel and search term across.
@@ -632,7 +712,7 @@ const AppInputBar = React.memo(
         {(() => {
           if (!activeAgent || forcedToolId === null) return null;
           const tool = activeAgent.tools.find(
-            (tool) => tool.id === forcedToolId,
+            (tool) => tool.id === forcedToolId
           );
           if (!tool) return null;
           return (
@@ -705,6 +785,17 @@ const AppInputBar = React.memo(
 
     return (
       <>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          multiple
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) handleFileUpload(Array.from(files));
+            e.target.value = "";
+          }}
+        />
         <Disabled disabled={disabled} allowClick>
           <div id="onyx-chat-input" className="relative w-full">
             {/* Voice waveform overlay (positioned outside normal flow to avoid resizing input) */}
@@ -747,7 +838,8 @@ const AppInputBar = React.memo(
               historyStorageKey={`onyx-prompt-history:chat:${user?.id ?? "anonymous"}`}
               draft={{ surface: "chat", scope: draftScope }}
               slashTrigger={slashTrigger}
-              mentionTriggers={[skillsTrigger]}
+              mentionTriggers={[skillsTrigger, fileMentionTrigger]}
+              onMentionsChange={setMentions}
               pasteTilesEnabled={user?.preferences?.paste_as_tile ?? false}
               topContent={attachedFiles}
               toolbarLeading={toolbarLeading}
@@ -829,7 +921,7 @@ const AppInputBar = React.memo(
         )}
       </>
     );
-  },
+  }
 );
 AppInputBar.displayName = "AppInputBar";
 

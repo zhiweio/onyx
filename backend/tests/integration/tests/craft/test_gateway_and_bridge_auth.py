@@ -87,12 +87,8 @@ def test_wrong_scope_pat_is_forbidden_on_both_surfaces(
 
 
 def test_gateway_scope_lists_models(admin_user: DATestUser) -> None:
-    token = _pat(
-        admin_user, "matrix-gateway", [Permission.USE_LLM_GATEWAY]
-    )
-    resp = client.get(
-        GATEWAY_MODELS, headers={"Authorization": f"Bearer {token}"}
-    )
+    token = _pat(admin_user, "matrix-gateway", [Permission.USE_LLM_GATEWAY])
+    resp = client.get(GATEWAY_MODELS, headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert isinstance(body.get("data"), list) and body["data"], (
@@ -101,9 +97,7 @@ def test_gateway_scope_lists_models(admin_user: DATestUser) -> None:
 
 
 def test_bridge_scope_initializes_platform_tools(admin_user: DATestUser) -> None:
-    token = _pat(
-        admin_user, "matrix-bridge", [Permission.USE_LLM_GATEWAY]
-    )
+    token = _pat(admin_user, "matrix-bridge", [Permission.USE_LLM_GATEWAY])
     headers = {"Authorization": f"Bearer {token}"}
 
     resp = client.post(BRIDGE_MCP, headers=headers, json=MCP_INITIALIZE)

@@ -63,7 +63,9 @@ describe("CraftLibraryPage", () => {
   it("renders a settings page with one empty dropzone", () => {
     renderLibrary();
 
-    expect(screen.getByTestId("CraftLibraryPage/container")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("CraftLibraryPage/container")
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("admin-page-title")).toHaveTextContent(
       "Library"
     );

@@ -1618,7 +1618,8 @@ export function PdfEditorPropertiesPanel({
     .filter((config) => isEditing || !config.editOnly);
   const values = React.useMemo<Record<string, unknown>>(() => {
     if (isEditing)
-      return selected[0].object as PdfAnnotationObject & Record<string, unknown>;
+      return selected[0].object as PdfAnnotationObject &
+        Record<string, unknown>;
     if (activeTool)
       return activeTool.defaults as typeof activeTool.defaults &
         Record<string, unknown>;

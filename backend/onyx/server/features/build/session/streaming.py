@@ -120,6 +120,10 @@ class BuildStreamingState:
         self.plan_message_id: UUID | None = None
 
         self.latest_context_usage: dict[str, Any] | None = None
+        # Per-message granular usage awaiting the LLM-request ledger.
+        # latest_context_usage is latest-wins (the UI ring), so granular
+        # data rides this list instead — one entry per assistant message.
+        self.llm_requests: list[dict[str, Any]] = []
 
         # Track what type of chunk we were last receiving
         self._last_chunk_type: str | None = None
@@ -725,12 +729,35 @@ def persist_sandbox_event(
     - tool_call_start: no-op (only completed tool calls persist).
     - tool_call_progress: TodoWrite saves every progress update; other
       tools save only on `status == "completed"`. Completed Task
-      sub-agent calls also emit a synthetic agent_message containing
-      the task output.
+      sub-agent calls also emit a synthetic agent_message containing the
+      task output.
     - agent_plan_update: upserted (only the latest plan per turn).
     - current_mode_update / prompt_response / error / unrecognized: not
       persisted by the interactive path; preserved here for parity.
+
+    The verbatim tape rides the same commit cadence: raw events recorded
+    upstream of translation are flushed here, and local-only context
+    events (compaction, turn errors) are recorded alongside.
     """
+    from onyx.server.features.build.sandbox.tape_recorder import (
+        flush_tape,
+        record_context_event,
+    )
+
+    if isinstance(sandbox_event, CompactionPacket):
+        record_context_event(
+            "compaction",
+            {"summary": sandbox_event.summary},
+        )
+    elif isinstance(sandbox_event, SandboxError):
+        record_context_event(
+            "turn_error",
+            {
+                "code": getattr(sandbox_event, "code", None),  # ods: ignore[getattr] - packet union members differ
+                "message": getattr(sandbox_event, "message", ""),  # ods: ignore[getattr]
+            },
+        )
+    flush_tape(db_session)
     if isinstance(sandbox_event, SSEKeepalive):
         return
 
@@ -740,6 +767,8 @@ def persist_sandbox_event(
         state.latest_context_usage = sandbox_event.model_dump(
             mode="json", by_alias=True
         )
+        if sandbox_event.message_id is not None:
+            state.llm_requests.append(sandbox_event.model_dump(mode="json"))
         return
 
     # Flush any pending chunks if the event type changed.
@@ -865,6 +894,83 @@ def finalize_persist(
             db_session=db_session,
         )
         state.latest_context_usage = None
+
+    if state.llm_requests:
+        _persist_llm_requests(db_session, session_id, state)
+
+
+def _persist_llm_requests(
+    db_session: DBSession, session_id: UUID, state: BuildStreamingState
+) -> None:
+    """Ledger + daily rollup for this turn's assistant-message usage.
+
+    Replayed messages (the harness re-reports them on every step) upsert
+    in place; only newly-inserted rows feed user_usage, so a replayed turn
+    never double-counts. Best-effort: a ledger failure must not fail the
+    turn's own persistence."""
+    from onyx.db.craft_llm_request import upsert_craft_llm_request
+    from onyx.db.user_usage import (
+        USER_USAGE_BUCKET_SECONDS,
+        record_user_usage,
+    )
+    from onyx.utils.datetime import get_window_start
+
+    session = db_session.get(BuildSession, session_id)
+    user_id = str(session.user_id) if session is not None and session.user_id else None
+    provider = session.agent_provider if session is not None else None
+    model = session.agent_model if session is not None else None
+    window_start = get_window_start(
+        datetime.now(tz=timezone.utc), period_seconds=USER_USAGE_BUCKET_SECONDS
+    )
+    try:
+        for packet in state.llm_requests:
+            message_id = packet.get("message_id")
+            if not isinstance(message_id, str) or not message_id:
+                continue
+            created = upsert_craft_llm_request(
+                db_session,
+                session_id=session_id,
+                turn_index=state.turn_index,
+                opencode_message_id=message_id,
+                provider=provider,
+                model=model,
+                input_tokens=int(packet.get("input_tokens") or 0),
+                output_tokens=int(packet.get("output_tokens") or 0),
+                reasoning_tokens=int(packet.get("reasoning_tokens") or 0),
+                cache_read_tokens=int(packet.get("cache_read_tokens") or 0),
+                cache_write_tokens=int(packet.get("cache_write_tokens") or 0),
+                cost=packet.get("cost"),
+            )
+            if created and user_id and model:
+                # opencode reports cost in dollars; user_usage stores cents.
+                cost = packet.get("cost")
+                record_user_usage(
+                    db_session,
+                    user_id,
+                    model=model,
+                    flow="craft",
+                    provider=provider,
+                    input_tokens=int(packet.get("input_tokens") or 0),
+                    output_tokens=(
+                        int(packet.get("output_tokens") or 0)
+                        + int(packet.get("reasoning_tokens") or 0)
+                    ),
+                    cache_read_tokens=int(packet.get("cache_read_tokens") or 0),
+                    cost_cents=round(float(cost) * 100)
+                    if isinstance(cost, (int, float))
+                    else 0.0,
+                    window_start=window_start,
+                    cache_creation_tokens=int(packet.get("cache_write_tokens") or 0),
+                )
+    except Exception:
+        logger.warning(
+            "LLM request ledger write failed for session %s",
+            session_id,
+            exc_info=True,
+        )
+        db_session.rollback()
+    finally:
+        state.llm_requests = []
 
 
 def stream_subagent_turn(

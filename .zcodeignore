@@ -1,0 +1,107 @@
+# editors
+.vscode/*
+!/.vscode/env_template.txt
+!/.vscode/env.web_template.txt
+!/.vscode/.env.k8s.template
+!/.vscode/launch.json
+!/.vscode/tasks.json
+.cursor/*
+!/.cursor/mcp.json
+!/.cursor/skills/
+
+# macos
+.DS_store
+
+# python
+.venv
+.mypy_cache
+.idea
+__pycache__/
+
+# testing
+/web/test-results/
+backend/onyx/agent_search/main/test_data.json
+backend/tests/regression/answer_quality/test_data.json
+backend/tests/regression/search_quality/eval-*
+backend/tests/regression/search_quality/search_eval_config.yaml
+backend/tests/regression/search_quality/*.json
+backend/onyx/evals/data/
+backend/onyx/evals/one_off/*.json
+*.log
+*.csv
+
+# secret files
+.env
+jira_test_env
+settings.json
+
+# others
+/deployment/data/nginx/app.conf
+/deployment/data/nginx/mcp.conf.inc
+/deployment/data/nginx/mcp_upstream.conf.inc
+*.sw?
+/backend/tests/regression/answer_quality/search_test_config.yaml
+*.egg-info
+
+# Local .terraform directories
+**/.terraform/*
+
+# Local .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Local .terraform.lock.hcl file
+.terraform.lock.hcl
+
+node_modules
+
+# MCP configs
+.playwright-mcp
+
+# codegraph index
+.codegraph/
+
+# plans (include symlinked plans dir too)
+plans
+
+# Local SearXNG deployment
+/searxng
+
+# Local Firecrawl deployment
+/firecrawl
+
+# Added context for LLMs
+.claude/CLAUDE.md
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+!.claude/settings.json
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

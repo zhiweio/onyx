@@ -16,10 +16,7 @@ export default function CraftLibraryPage() {
   const library = useUserLibrary();
 
   return (
-    <SettingsLayouts.Root
-      width="lg"
-      data-testid="CraftLibraryPage/container"
-    >
+    <SettingsLayouts.Root width="lg" data-testid="CraftLibraryPage/container">
       <SettingsLayouts.Header
         icon={SvgFolderOpen}
         title={t("page.title.text")}

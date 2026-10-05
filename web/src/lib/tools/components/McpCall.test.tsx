@@ -14,7 +14,7 @@ describe("McpSummaryLine", () => {
         serverName="Cognitational/deepwiki"
         toolName="Ask wiki question"
         running={false}
-      />,
+      />
     );
     expect(screen.getByText("MCP")).toBeInTheDocument();
     expect(screen.getByText("Cognitational/deepwiki")).toBeInTheDocument();
@@ -49,13 +49,13 @@ describe("McpCallDetails", () => {
       <McpCallDetails
         description="Ask any question about a repo"
         parameters={{ repoName: "vercel/next.js" }}
-      />,
+      />
     );
     fireEvent.click(screen.getByText("View call details"));
 
     expect(screen.getByText("Description")).toBeInTheDocument();
     expect(
-      screen.getByText("Ask any question about a repo"),
+      screen.getByText("Ask any question about a repo")
     ).toBeInTheDocument();
     expect(screen.getByText("Parameters")).toBeInTheDocument();
     expect(screen.getByText(/vercel\/next\.js/)).toBeInTheDocument();

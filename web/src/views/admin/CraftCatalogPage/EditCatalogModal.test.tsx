@@ -6,9 +6,7 @@ import type {
 } from "@/lib/system-catalog/types";
 import EditCatalogModal from "@/views/admin/CraftCatalogPage/EditCatalogModal";
 
-function skillItem(
-  overrides: Partial<SystemSkillItem> = {}
-): SystemSkillItem {
+function skillItem(overrides: Partial<SystemSkillItem> = {}): SystemSkillItem {
   return {
     id: "skill-1",
     slug: "chart",
@@ -68,8 +66,7 @@ describe("EditCatalogModal", () => {
           fallback: {
             [adminCatalogDetailKey("skills", item.id)]: {
               ...item,
-              instructions_markdown:
-                "# Chart skill\n\nDraw a chart from JSON.",
+              instructions_markdown: "# Chart skill\n\nDraw a chart from JSON.",
             },
           },
         },

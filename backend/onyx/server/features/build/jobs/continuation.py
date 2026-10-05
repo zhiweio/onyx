@@ -100,7 +100,7 @@ def maybe_continue_craft_job(
         flush_pending_job_enqueue(db_session, job=job, user_id=user_id)
         return
     if not turn_succeeded and not deadline_exceeded:
-        from onyx.server.features.build.jobs.gates import is_transient_turn_error
+        from onyx.server.features.build.jobs.turn_errors import is_transient_turn_error
 
         phase = current_phase(job.phases, job.current_phase_index)
         if phase is not None and is_transient_turn_error(turn_error_detail):

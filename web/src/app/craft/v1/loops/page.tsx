@@ -40,7 +40,9 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 const LOOPS_PAGE_SIZE = 20;
 
 const tc = createTableColumns<LoopListItem>();
-type LoopsListTranslate = ReturnType<typeof useTranslations<"craft.loops.listPage">>;
+type LoopsListTranslate = ReturnType<
+  typeof useTranslations<"craft.loops.listPage">
+>;
 
 function ledgerCounts(loop: LoopListItem): string {
   const parts: string[] = [];
@@ -136,7 +138,9 @@ export default function LoopsListPage() {
         header: t("columns.state"),
         weight: 11,
         enableSorting: false,
-        cell: (state: LoopListItem["state"]) => <LoopStateBadge state={state} />,
+        cell: (state: LoopListItem["state"]) => (
+          <LoopStateBadge state={state} />
+        ),
       }),
       tc.column("health", {
         header: t("columns.health"),
@@ -150,10 +154,7 @@ export default function LoopsListPage() {
         header: t("columns.ledger"),
         weight: 12,
         enableSorting: false,
-        cell: (
-          _value: Record<string, number>,
-          row: LoopListItem
-        ) => (
+        cell: (_value: Record<string, number>, row: LoopListItem) => (
           <Tooltip
             tooltip={t("ledgerTooltip", {
               queued: row.counts.queued ?? 0,
@@ -203,9 +204,7 @@ export default function LoopsListPage() {
               side="top"
             >
               <Button
-                icon={
-                  loop.state === "enabled" ? SvgPauseCircle : SvgPlayCircle
-                }
+                icon={loop.state === "enabled" ? SvgPauseCircle : SvgPlayCircle}
                 variant="default"
                 prominence="tertiary"
                 size="sm"
@@ -263,7 +262,9 @@ export default function LoopsListPage() {
             data={loops}
             columns={columns}
             getRowId={(row) => row.id}
-            pageSize={loops.length > 0 ? Math.min(loops.length, LOOPS_PAGE_SIZE) : 1}
+            pageSize={
+              loops.length > 0 ? Math.min(loops.length, LOOPS_PAGE_SIZE) : 1
+            }
             selectionBehavior="single-select"
             onRowClick={(row) => router.push(loopDetailPath(row.id))}
             emptyState={

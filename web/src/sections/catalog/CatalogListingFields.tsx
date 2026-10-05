@@ -151,9 +151,7 @@ export default function CatalogListingFields({
       >
         <InputTags
           tags={tags.map((tag) => ({ id: tag, label: tag }))}
-          onRemoveTag={(id) =>
-            onTagsChange(tags.filter((tag) => tag !== id))
-          }
+          onRemoveTag={(id) => onTagsChange(tags.filter((tag) => tag !== id))}
           onAdd={addTag}
           value={tagDraft}
           onChange={handleTagDraftChange}

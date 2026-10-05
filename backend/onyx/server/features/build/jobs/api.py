@@ -43,6 +43,7 @@ from onyx.server.features.build.jobs.continuation import (
     flush_pending_job_enqueue,
     remember_pending_enqueue,
 )
+from onyx.server.features.build.jobs.journal import GRAPH_WARNING, emit
 from onyx.server.features.build.jobs.kernel import (
     apply_deep_job_sandbox_resources,
     initialize_job_state,
@@ -110,6 +111,8 @@ def create_job_run(
     domain = (request.domain or "").strip().lower()
     scenario_id = request.scenario_id or session.scenario_id
     scenario_rules: dict[str, object] | None = None
+    scenario_skill_slugs: list[str] = []
+    scenario = None
     if scenario_id is not None:
         # Keep the session aligned so plain follow-up turns keep applying the
         # scenario (SCENARIO.md + resolved skills) even when the request
@@ -130,6 +133,18 @@ def create_job_run(
     # the domain default, so the scenario's declared phases drive execution.
     scenario_plan = None
     goal = (request.prompt or name).strip()
+    # The scenario's own skills bind the job exactly like picked chips:
+    # without this merge a scenario job loses its backbone skills.
+    if scenario is not None:
+        from onyx.db.scenario import resolve_scenario_skill_ids
+        from onyx.server.features.build.skill_binding import (
+            resolve_skill_refs_to_slugs,
+        )
+
+        scenario_skill_slugs = resolve_skill_refs_to_slugs(
+            db_session,
+            [str(skill_id) for skill_id in resolve_scenario_skill_ids(scenario, goal)],
+        )
     if scenario_rules is not None:
         from onyx.server.features.scenario.bindings import compile_scenario_plan
 
@@ -172,10 +187,13 @@ def create_job_run(
 
     # Prose mentions ("按 financial-report-analysis 技能…") bind the named
     # skill exactly like a picked chip would, for the planner and the lanes.
+    # Scenario-bound skills merge first so their order stays stable.
     from onyx.server.features.build.skill_binding import merge_selected_skills
+    from onyx.server.features.scenario.runtime import merge_skill_id_strings
 
-    bound_skill_ids = merge_selected_skills(
-        db_session, user, goal, request.selected_skill_ids
+    bound_skill_ids = merge_skill_id_strings(
+        scenario_skill_slugs,
+        merge_selected_skills(db_session, user, goal, request.selected_skill_ids),
     )
 
     initialize_job_state(
@@ -186,6 +204,26 @@ def create_job_run(
     )
     mark_job_running(job)
     start_run_journal(db_session, job)
+    if scenario_plan is not None:
+        vacuous = [
+            phase.id
+            for phase in scenario_plan.phases
+            if phase.id != "plan" and not phase.done_when and not phase.notes
+        ]
+        if vacuous:
+            emit(
+                db_session,
+                job_id=job.id,
+                event_type=GRAPH_WARNING,
+                payload={
+                    "warnings": [
+                        f"phase '{phase_id}' has no gate contract: no path-like "
+                        "done_when and no deliverable, so it completes on any "
+                        "successful turn"
+                        for phase_id in vacuous
+                    ]
+                },
+            )
     apply_deep_job_sandbox_resources(db_session, user_id=user.id)
     db_session.commit()
 
@@ -232,7 +270,7 @@ def create_job_run(
             prompt=prompt,
             visible_user_text=goal,
             selected_skill_ids=bound_skill_ids,
-            )
+        )
         if turn_id is None:
             # The escalating start_long_job turn still holds the turn lock:
             # park the plan brief; the post-turn continuation dispatches it.
@@ -353,17 +391,15 @@ def get_job(
     return CraftJobResponse.from_model(job)
 
 
-@router.post("/{job_id}/cancel")
-def cancel_job(
-    job_id: UUID,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
-    db_session: Session = Depends(get_session),
-) -> CraftJobResponse:
-    job = get_craft_job_for_user(db_session, job_id, user.id)
-    if job is None:
-        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
+def cancel_open_job_for_user(
+    db_session: Session, job: CraftJob, user_id: UUID
+) -> CraftJob:
+    """Cancel one craft job on behalf of its owner: stop leftover
+    specialists and lanes, settle task cards, and interrupt the host plus
+    specialist sessions. Shared by the REST endpoint and the China IM
+    ``/取消任务`` command."""
     if job.status in {CraftJobStatus.SUCCEEDED, CraftJobStatus.FAILED}:
-        return CraftJobResponse.from_model(job)
+        return job
     specialist_session_ids = [
         row.session_id
         for row in job.specialists
@@ -386,9 +422,22 @@ def cancel_job(
     session_manager = SessionManager(db_session)
     for session_id in (job.session_id, *specialist_session_ids):
         try:
-            session_manager.interrupt_message(session_id, user.id)
+            session_manager.interrupt_message(session_id, user_id)
         except Exception:
             pass
+    return job
+
+
+@router.post("/{job_id}/cancel")
+def cancel_job(
+    job_id: UUID,
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> CraftJobResponse:
+    job = get_craft_job_for_user(db_session, job_id, user.id)
+    if job is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Job not found")
+    job = cancel_open_job_for_user(db_session, job, user.id)
     return CraftJobResponse.from_model(job)
 
 

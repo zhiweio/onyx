@@ -45,14 +45,17 @@ _REDIS_KEY_PREFIX = "da_ea_oauth:"
 _REDIS_STATE_TTL_SECONDS = 600
 
 
-def _oauth_client_credentials(app: ExternalApp) -> tuple[str, str]:
+def _oauth_client_credentials(
+    app: ExternalApp, provider: OAuthExternalAppProvider
+) -> tuple[str, str]:
+    id_key, secret_key = provider.spec.client_credential_keys
     org_credentials = app.organization_credentials.get_value(apply_mask=False)
-    client_id = org_credentials.get("client_id")
-    client_secret = org_credentials.get("client_secret")
+    client_id = org_credentials.get(id_key)
+    client_secret = org_credentials.get(secret_key)
     if not client_id or not client_secret:
         raise OnyxError(
             OnyxErrorCode.INVALID_INPUT,
-            f"{app.name} is missing client_id or client_secret — "
+            f"{app.name} is missing {id_key} or {secret_key} — "
             "ask an admin to fill them in on the Manage Apps page.",
         )
     return client_id, client_secret
@@ -99,7 +102,7 @@ def start_external_app_oauth(
             "This app is currently disabled by an admin.",
         )
     provider = _oauth_provider_or_raise(app)
-    client_id, _client_secret = _oauth_client_credentials(app)
+    client_id, _client_secret = _oauth_client_credentials(app, provider)
 
     oauth_uuid = uuid.uuid4()
     state = base64.urlsafe_b64encode(oauth_uuid.bytes).rstrip(b"=").decode("ascii")
@@ -178,7 +181,7 @@ def handle_external_app_oauth_callback(
     provider = _oauth_provider_or_raise(app)
     oauth = provider.spec.oauth
     # Re-read in case the admin rotated creds between /start and /callback.
-    client_id, client_secret = _oauth_client_credentials(app)
+    client_id, client_secret = _oauth_client_credentials(app, provider)
 
     token_request = provider.build_token_exchange_request(
         request.code, client_id, client_secret, _frontend_callback_url()

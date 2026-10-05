@@ -34,7 +34,8 @@ test("enqueue while running, drag reorder, edit backfill, remove", async ({
 
   await session.typeMessage("start the long turn");
   await session.pressEnter();
-  await session.expectPrimaryAction(/Stop generating|停止生成/);  await enqueue(session, "first queued message");
+  await session.expectPrimaryAction(/Stop generating|停止生成/);
+  await enqueue(session, "first queued message");
   await enqueue(session, "second queued message");
   await expect(session.queuePanel).toContainText("2");
 

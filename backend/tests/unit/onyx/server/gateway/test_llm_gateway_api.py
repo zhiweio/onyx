@@ -14,9 +14,6 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 
-from onyx.server.gateway import api as gateway_api
-from onyx.server.gateway import stream_bridge
-from onyx.server.gateway.api import _MESSAGES_ADAPTER
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -53,6 +50,9 @@ from onyx.llm.multi_llm import LLMRateLimitError, LLMTimeoutError
 from onyx.server.auth_check import check_router_auth
 from onyx.server.features.build import craft_gateway
 from onyx.server.features.build.craft_gateway import gateway_request_flow
+from onyx.server.gateway import api as gateway_api
+from onyx.server.gateway import stream_bridge
+from onyx.server.gateway.api import _MESSAGES_ADAPTER
 from onyx.server.gateway.configs import GATEWAY_PATH_PREFIX, REASONING_EFFORT_HEADER
 from onyx.server.gateway.models import (
     ChatCompletionRequest,
@@ -987,9 +987,7 @@ def test_endpoint_threads_authorized_flow_to_handler() -> None:
         provider=provider,
         model_config=model_config,
         flow=LLMFlow.LLM_GATEWAY,
-        default_reasoning_effort=http_request.headers.get(
-            REASONING_EFFORT_HEADER
-        ),
+        default_reasoning_effort=http_request.headers.get(REASONING_EFFORT_HEADER),
     )
 
 
@@ -1970,9 +1968,7 @@ def test_responses_endpoint_resolves_model_same_way_as_chat_route() -> None:
         provider=provider,
         model_config=model_config,
         flow=LLMFlow.LLM_GATEWAY,
-        default_reasoning_effort=http_request.headers.get(
-            REASONING_EFFORT_HEADER
-        ),
+        default_reasoning_effort=http_request.headers.get(REASONING_EFFORT_HEADER),
     )
 
 

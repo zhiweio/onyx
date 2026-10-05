@@ -57,6 +57,10 @@ export function useQueryController(): QueryControllerValue {
  * context defaults above, whose `submit` routes every query to chat. The
  * search-driven controller returns with the rebuilt CE search surface.
  */
-export function QueryControllerProvider({ children }: { children?: ReactNode }) {
+export function QueryControllerProvider({
+  children,
+}: {
+  children?: ReactNode;
+}) {
   return <>{children}</>;
 }

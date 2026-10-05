@@ -114,9 +114,7 @@ def get_mcp_servers_by_owner(owner_email: str, db_session: Session) -> list[MCPS
     )
 
 
-def get_user_disabled_mcp_server_ids(
-    db_session: Session, user_id: UUID
-) -> set[int]:
+def get_user_disabled_mcp_server_ids(db_session: Session, user_id: UUID) -> set[int]:
     """Server ids the user turned off on /craft/v1/mcp-actions. Absence from
     this set means enabled — the opt-out model behind the single MCP
     enable/disable surface."""

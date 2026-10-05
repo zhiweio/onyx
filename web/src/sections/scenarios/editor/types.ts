@@ -60,7 +60,10 @@ export function conditionalsToRules(
   });
 }
 
-export function draftFingerprint(draft: ScenarioDraft, conditionals: ConditionalDraft[]): string {
+export function draftFingerprint(
+  draft: ScenarioDraft,
+  conditionals: ConditionalDraft[]
+): string {
   return JSON.stringify({
     name: draft.name,
     description: draft.description,

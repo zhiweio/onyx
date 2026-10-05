@@ -282,7 +282,8 @@ function InlineZcodeDiff({ rows }: { rows: InlineDiffRow[] }) {
               className={cn(
                 "min-w-0 flex-1 font-secondary-mono whitespace-pre-wrap wrap-break-word",
                 row.kind === "unchanged" && "text-text-03",
-                (row.kind === "added" || row.kind === "removed") && "text-text-04"
+                (row.kind === "added" || row.kind === "removed") &&
+                  "text-text-04"
               )}
             >
               {row.content ?? ""}

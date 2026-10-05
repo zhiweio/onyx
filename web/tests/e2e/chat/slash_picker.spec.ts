@@ -1,10 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "@tests/e2e/chat/fixtures";
 import { ChatPage } from "@tests/e2e/chat/ChatPage";
-import {
-  buildMockStream,
-  resetTurnCounter,
-} from "@tests/e2e/utils/chatMock";
+import { buildMockStream, resetTurnCounter } from "@tests/e2e/utils/chatMock";
 import { ensureOnboardingComplete } from "@tests/e2e/utils/chatActions";
 import { OnyxApiClient } from "@tests/e2e/utils/onyxApiClient";
 

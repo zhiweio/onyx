@@ -16,13 +16,48 @@ const SvgWandSparkles = ({ size, ...props }: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
-    <path d="m14 7 3 3" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M5 6v4" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M19 14v4" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M10 2v2" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M7 8H3" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M21 16h-4" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M11 3H9" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="m14 7 3 3"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5 6v4"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19 14v4"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M10 2v2"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7 8H3"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M21 16h-4"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M11 3H9"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 export default SvgWandSparkles;

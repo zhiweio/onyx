@@ -1,7 +1,13 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen, setupUser, waitFor, within } from "@tests/setup/test-utils";
+import {
+  render,
+  screen,
+  setupUser,
+  waitFor,
+  within,
+} from "@tests/setup/test-utils";
 import CraftProjectSandboxCard from "@/app/craft/components/CraftProjectSandboxCard";
 import type { CraftProjectSandbox } from "@/lib/craft-projects/types";
 

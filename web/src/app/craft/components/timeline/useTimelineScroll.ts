@@ -38,7 +38,7 @@ export function useTimelineScroll(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
   sessionId: string | null,
   /** Values whose growth should trigger a stick-to-bottom scroll. */
-  growthSignal: unknown,
+  growthSignal: unknown
 ): TimelineScrollState {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const userIntentUntilRef = useRef(0);
@@ -72,7 +72,7 @@ export function useTimelineScroll(
       try {
         window.localStorage.setItem(
           memoryKey(sessionKeyRef.current),
-          String(ratio),
+          String(ratio)
         );
       } catch {
         // Quota/private mode: position memory just doesn't persist.

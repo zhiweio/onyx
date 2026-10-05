@@ -1158,11 +1158,7 @@ function DocxEditorToolbar({
             >
               <SelectValue placeholder="Font" />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              className="z-40"
-              position="popper"
-            >
+            <SelectContent align="start" className="z-40" position="popper">
               {FONT_FAMILIES.map((fontFamily) => (
                 <SelectItem key={fontFamily} value={fontFamily}>
                   <span style={{ fontFamily }}>{fontFamily}</span>
@@ -1188,11 +1184,7 @@ function DocxEditorToolbar({
             >
               <SelectValue placeholder="Size" />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              className="z-40"
-              position="popper"
-            >
+            <SelectContent align="start" className="z-40" position="popper">
               {FONT_SIZE_OPTIONS.map((size) => (
                 <SelectItem key={size} value={String(size)}>
                   {size} pt
@@ -1218,11 +1210,7 @@ function DocxEditorToolbar({
             >
               <SelectValue placeholder="Spacing" />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              className="z-40"
-              position="popper"
-            >
+            <SelectContent align="start" className="z-40" position="popper">
               {LINE_SPACING_OPTIONS.map((spacing) => (
                 <SelectItem key={spacing} value={String(spacing)}>
                   {spacing}x
@@ -1649,11 +1637,7 @@ function DocxEditorToolbar({
               >
                 <SelectValue>{Math.round(zoomScale)}%</SelectValue>
               </SelectTrigger>
-              <SelectContent
-                align="end"
-                className="z-40"
-                position="popper"
-              >
+              <SelectContent align="end" className="z-40" position="popper">
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
                     {value}%

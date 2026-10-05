@@ -74,7 +74,8 @@ describe("craft job display helpers", () => {
       kind: "execute",
       toolName: "bash",
       title: "Running",
-      description: "ls /workspace/sessions/83f40b37-7f00-41dd-b7db-fe5c0b426068",
+      description:
+        "ls /workspace/sessions/83f40b37-7f00-41dd-b7db-fe5c0b426068",
       command: "ls /workspace/.opencode-data",
       status: "completed",
       rawOutput: "",

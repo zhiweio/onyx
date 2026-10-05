@@ -15,15 +15,21 @@ describe("ThoughtLevelSelect", () => {
     await user.click(screen.getByRole("button", { name: /max/i }));
 
     const menu = screen.getByRole("dialog");
-    expect(within(menu).getByRole("button", { name: "Off" })).toBeInTheDocument();
-    expect(within(menu).getByRole("button", { name: "Low" })).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "Off" })
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "Low" })
+    ).toBeInTheDocument();
     expect(
       within(menu).getByRole("button", { name: "Medium" })
     ).toBeInTheDocument();
     expect(
       within(menu).queryByRole("button", { name: "High" })
     ).not.toBeInTheDocument();
-    expect(within(menu).getByRole("button", { name: "Max" })).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "Max" })
+    ).toBeInTheDocument();
   });
 
   it("shows a stored High value as Max", () => {
@@ -51,7 +57,9 @@ describe("ThoughtLevelSelect", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /medium/i }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Max" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Max" })
+    );
 
     expect(onChange).toHaveBeenCalledWith("xhigh");
   });

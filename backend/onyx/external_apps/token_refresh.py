@@ -160,7 +160,7 @@ def _load_refresh_inputs(
     if stored is None or not needs_refresh(stored, datetime.now(timezone.utc)):
         return None
 
-    client = _client_credentials(app)
+    client = _client_credentials(app, provider)
     if client is None:
         logger.warning(
             "ea_token_refresh.missing_client_creds external_app_id=%s", external_app_id
@@ -182,11 +182,15 @@ def _read_stored_credentials(
     return user_cred.user_credentials.get_value(apply_mask=False)
 
 
-def _client_credentials(app: ExternalApp) -> tuple[str, str] | None:
-    """The app's OAuth client_id/client_secret, or None if an admin hasn't set them."""
+def _client_credentials(
+    app: ExternalApp, provider: OAuthExternalAppProvider
+) -> tuple[str, str] | None:
+    """The app's OAuth client id/secret under the provider's org-credential key
+    names, or None if an admin hasn't set them."""
+    id_key, secret_key = provider.spec.client_credential_keys
     org_credentials = app.organization_credentials.get_value(apply_mask=False)
-    client_id = org_credentials.get("client_id")
-    client_secret = org_credentials.get("client_secret")
+    client_id = org_credentials.get(id_key)
+    client_secret = org_credentials.get(secret_key)
     if not client_id or not client_secret:
         return None
     return client_id, client_secret

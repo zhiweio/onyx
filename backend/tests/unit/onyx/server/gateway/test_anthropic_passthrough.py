@@ -11,6 +11,9 @@ import pytest
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
+from onyx.llm.interfaces import LLMConfig
 from onyx.server.gateway import anthropic_passthrough, stream_bridge
 from onyx.server.gateway import api as gateway_api
 from onyx.server.gateway.anthropic_passthrough import (
@@ -26,9 +29,6 @@ from onyx.server.gateway.anthropic_passthrough import (
     handle_anthropic_passthrough,
     is_anthropic_passthrough_eligible,
 )
-from onyx.error_handling.error_codes import OnyxErrorCode
-from onyx.error_handling.exceptions import OnyxError
-from onyx.llm.interfaces import LLMConfig
 from onyx.server.gateway.models import (
     AnthropicCountTokensRequest,
     AnthropicMessagesRequest,

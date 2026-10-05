@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from onyx.cache.factory import get_cache_backend
 from onyx.cache.interface import CACHE_TRANSIENT_ERRORS, CacheBackend
 from onyx.db.engine.sql_engine import get_session_with_current_tenant
-from onyx.db.models import CraftJob, Sandbox
+from onyx.db.models import BuildSession, CraftJob, Sandbox
 from onyx.db.users import fetch_user_by_id
 from onyx.server.features.build.configs import (
     CRAFT_JOB_LEASE_TTL_SECONDS,
@@ -29,12 +30,18 @@ from onyx.server.features.build.interactive_turns.state import (
     TURN_STATUS_FAILED,
     TURN_STATUS_SUCCEEDED,
     InteractiveTurn,
+    InteractiveTurnLockError,
+    acquire_active_turn_lock,
     claim_turn_for_runner,
+    create_interactive_turn,
     finish_turn,
     get_active_turn,
     get_turn,
+    get_turn_for_request,
     touch_turn,
 )
+from onyx.server.features.build.packets import ContextUsagePacket
+from onyx.server.features.build.sandbox.agent_runtime.router import RuntimePurpose
 from onyx.server.features.build.sandbox.event_schema import (
     ActivityTimeoutError,
     PromptResponse,
@@ -85,6 +92,13 @@ _TOOL_TIMEOUT_CONTINUATION_PROMPT = (
     "the background, then continue."
 )
 
+_MAX_TOKENS_CONTINUATION_PROMPT = (
+    "Your last reply hit the model's output-length limit and was cut off. "
+    "Continue exactly where it stopped. Do not repeat text you already wrote. "
+    "If the result needs more than one reply, write the full output to a file "
+    "under outputs/ and summarize it in the reply."
+)
+
 
 _TURN_ERROR_SUFFIX = (
     "Files written to the workspace are saved — send a follow-up message to continue."
@@ -102,6 +116,8 @@ class _PromptResult:
     outcome: _PromptOutcome
     final_event_seen: bool = False
     cancelled: bool = False
+    stop_reason: str | None = None
+    used_tokens: int | None = None
 
 
 def _can_clear_interrupt_fence(
@@ -366,6 +382,115 @@ def _snapshot_session_workspace_after_turn(
     return thread
 
 
+def _context_limit_for(provider: str | None, model: str | None) -> int | None:
+    """Context window for the session's model from the runtime registry."""
+    if not provider or not model:
+        return None
+    try:
+        from onyx.server.features.build.sandbox.agent_runtime.models import (
+            iter_models,
+        )
+
+        for spec in iter_models():
+            if spec.provider != provider:
+                continue
+            if model in (
+                spec.model_id,
+                spec.model_id.rsplit("/", 1)[-1],
+                spec.display_name,
+            ):
+                return spec.context_window
+    except Exception:
+        logger.warning("Context-limit lookup failed", exc_info=True)
+    return None
+
+
+def _maybe_schedule_auto_compact(
+    *,
+    cache: CacheBackend,
+    session: BuildSession,
+    used_tokens: int | None,
+    turn_index: int,
+) -> None:
+    """Compact when the last turn pushed the context past the threshold.
+
+    Manual /compact exists, but users click it only after quality already
+    degraded; the usage packet arrives per assistant message, so deciding
+    here is free. Only interactive turns: job turns belong to the kernel's
+    budget/continuation. Best-effort — a failed schedule leaves the next
+    turn to try again."""
+    from onyx.server.features.build.configs import CRAFT_AUTO_COMPACT_THRESHOLD
+
+    if CRAFT_AUTO_COMPACT_THRESHOLD <= 0 or used_tokens is None:
+        return
+    if session.user_id is None or not session.opencode_session_id:
+        return
+    if not session.agent_provider or not session.agent_model:
+        return
+    limit = _context_limit_for(session.agent_provider, session.agent_model)
+    if limit is None:
+        return
+    if used_tokens < int(limit * CRAFT_AUTO_COMPACT_THRESHOLD):
+        return
+    client_request_id = f"auto-compact-{session.id}-{turn_index}"
+    lock = None
+    try:
+        lock = acquire_active_turn_lock(cache, session.id)
+        if (
+            get_turn_for_request(
+                cache=cache,
+                session_id=session.id,
+                user_id=session.user_id,
+                client_request_id=client_request_id,
+            )
+            is not None
+        ):
+            return
+        if (
+            get_active_turn(cache=cache, session_id=session.id, user_id=session.user_id)
+            is not None
+        ):
+            return
+        turn = create_interactive_turn(
+            cache=cache,
+            session_id=session.id,
+            user_id=session.user_id,
+            client_request_id=client_request_id,
+            prompt="",
+            turn_index=turn_index,
+            kind="compact",
+        )
+    except InteractiveTurnLockError:
+        return
+    except Exception:
+        logger.warning(
+            "Auto-compact turn creation failed for session %s",
+            session.id,
+            exc_info=True,
+        )
+        return
+    finally:
+        if lock is not None:
+            try:
+                lock.release()
+            except Exception:
+                pass
+    logger.info(
+        "Auto-compacting session %s: %s tokens of %s window",
+        session.id,
+        used_tokens,
+        limit,
+    )
+    try:
+        start_interactive_turn_runner(turn.turn_id)
+    except Exception:
+        logger.warning(
+            "Auto-compact runner failed to start for session %s",
+            session.id,
+            exc_info=True,
+        )
+
+
 def _skill_binding_preamble(selected_skill_ids: list[str] | None, prompt: str) -> str:
     """Hidden prefix binding the skills the user explicitly required.
 
@@ -386,6 +511,12 @@ def _skill_binding_preamble(selected_skill_ids: list[str] | None, prompt: str) -
         "from .opencode/skills, say so once and continue with the "
         "scenario pack.\n\n"
     )
+
+
+def _record_failed_turn(runtime_id: str, outcome: str) -> None:
+    from onyx.server.metrics.craft_sandbox import record_turn_outcome
+
+    record_turn_outcome(runtime_id, outcome)
 
 
 def _drive_interactive_turn(
@@ -419,6 +550,12 @@ def _drive_interactive_turn(
     job_id: UUID | None = None
     lease_stop = threading.Event()
     lease_lost = threading.Event()
+    # Tape recording wraps the whole drive: entered once the turn index and
+    # session are settled, exited with the turn (the finally below). Kept as
+    # an exit stack so early returns before entry have nothing to close.
+    from onyx.server.features.build.sandbox.tape_recorder import tape_recording
+
+    tape_stack = contextlib.ExitStack()
     try:
         with get_session_with_current_tenant() as db_session:
             session_manager = SessionManager(db_session)
@@ -472,6 +609,7 @@ def _drive_interactive_turn(
 
             state = BuildStreamingState(turn_index=turn_index)
             deadline = time.monotonic() + budget_seconds
+            tape_stack.enter_context(tape_recording(session_id, turn_index, "opencode"))
 
             def interrupt_requested() -> bool:
                 nonlocal deadline_exceeded
@@ -576,26 +714,62 @@ def _drive_interactive_turn(
                         allowed_mcp_ids = None
                 else:
                     allowed_mcp_ids = None
+                # The turn may bind skills (chips, scenario, prose) the
+                # session's linked catalog does not carry. Extend before
+                # reconcile so a regenerated config links the wider subset
+                # and the disposed instance re-reads it.
+                turn_skill_ids = (
+                    list(turn_state.selected_skill_ids or [])
+                    if turn_state is not None
+                    else []
+                )
+                if turn_skill_ids:
+                    try:
+                        session_manager.extend_session_skills(
+                            sandbox, session, turn_skill_ids
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Skill subset extension failed for session %s",
+                            session_id,
+                            exc_info=True,
+                        )
                 session_manager.reconcile_session_llm_config(
                     sandbox, session, user, allowed_server_ids=allowed_mcp_ids
                 )
                 db_session.commit()
 
+                # Per-turn runtime choice (purpose > request > scenario > org
+                # default). Gates the opencode-only flows below.
+                runtime_choice = session_manager.resolve_turn_runtime(
+                    session,
+                    purpose=RuntimePurpose.SCHEDULED
+                    if kind != "prompt"
+                    else RuntimePurpose.CHAT,
+                    requested_runtime=(
+                        turn_state.requested_runtime if turn_state is not None else None
+                    ),
+                )
+                runtime_is_opencode = runtime_choice.runtime_id == "opencode"
+
                 # Only while holding the slot — a racing loser must not overwrite
                 # the live turn's stamp. Continuations don't restamp.
-                session_manager.stamp_turn_deadline(
-                    sandbox.id,
-                    session_id,
-                    soft_budget_seconds=min(
-                        (
-                            budgets[0]
-                            if budgets is not None
-                            else INTERACTIVE_TURN_SOFT_BUDGET_SECONDS
+                # (opencode-only: the budget stamp feeds its turn plugin;
+                # codex turns rely on the host hard budget + interrupt.)
+                if runtime_is_opencode:
+                    session_manager.stamp_turn_deadline(
+                        sandbox.id,
+                        session_id,
+                        soft_budget_seconds=min(
+                            (
+                                budgets[0]
+                                if budgets is not None
+                                else INTERACTIVE_TURN_SOFT_BUDGET_SECONDS
+                            ),
+                            budget_seconds,
                         ),
-                        budget_seconds,
-                    ),
-                    hard_cap_seconds=budget_seconds,
-                )
+                        hard_cap_seconds=budget_seconds,
+                    )
 
                 if lease_lost.is_set():
                     ownership_lost_for_continue = True
@@ -637,6 +811,8 @@ def _drive_interactive_turn(
                     final_event_seen = False
                     cancelled_event_seen = False
                     timed_out = False
+                    stop_reason_seen: str | None = None
+                    usage_seen: int | None = None
 
                     if compact:
                         event_stream = session_manager.yield_sandbox_compact_events(
@@ -656,6 +832,16 @@ def _drive_interactive_turn(
                             # Job-kernel turns carry recalled memories in
                             # their host brief already.
                             skip_memory_recall=job_id is not None,
+                            purpose=(
+                                RuntimePurpose.SUBAGENT
+                                if job_id is not None
+                                else RuntimePurpose.CHAT
+                            ),
+                            requested_runtime=(
+                                turn_state.requested_runtime
+                                if turn_state is not None
+                                else None
+                            ),
                         )
 
                     for sandbox_event in event_stream:
@@ -746,12 +932,13 @@ def _drive_interactive_turn(
 
                         if isinstance(sandbox_event, PromptResponse):
                             final_event_seen = True
-                            cancelled_event_seen = (
-                                getattr(  # ods: ignore[getattr]
-                                    sandbox_event, "stop_reason", None
-                                )
-                                == "cancelled"
+                            stop_reason_seen = getattr(  # ods: ignore[getattr]
+                                sandbox_event, "stop_reason", None
                             )
+                            cancelled_event_seen = stop_reason_seen == "cancelled"
+
+                        if isinstance(sandbox_event, ContextUsagePacket):
+                            usage_seen = sandbox_event.used_tokens or None
 
                     if timed_out:
                         return _PromptResult(_PromptOutcome.TIMED_OUT)
@@ -759,6 +946,8 @@ def _drive_interactive_turn(
                         _PromptOutcome.COMPLETED,
                         final_event_seen=final_event_seen,
                         cancelled=cancelled_event_seen,
+                        stop_reason=stop_reason_seen,
+                        used_tokens=usage_seen,
                     )
 
                 result = _PromptResult(_PromptOutcome.COMPLETED)
@@ -779,19 +968,41 @@ def _drive_interactive_turn(
                             attachments if attempt == 0 else [],
                             can_continue=attempt < MAX_TIMEOUT_CONTINUATIONS,
                         )
-                        if result.outcome is not _PromptOutcome.TIMED_OUT:
-                            break
-                        # Flush the aborted step's partial output as its own message so it
-                        # can't merge with the continuation, then steer the agent.
-                        session_manager.finalize_persist(session_id, state)
-                        db_session.commit()
-                        logger.info(
-                            "Interactive turn %s step timed out; re-prompting (%s/%s)",
-                            turn_id,
-                            attempt + 1,
-                            MAX_TIMEOUT_CONTINUATIONS,
-                        )
-                        current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+                        if result.outcome is _PromptOutcome.TIMED_OUT:
+                            # Flush the aborted step's partial output as its own
+                            # message so it can't merge with the continuation,
+                            # then steer the agent.
+                            session_manager.finalize_persist(session_id, state)
+                            db_session.commit()
+                            logger.info(
+                                "Interactive turn %s step timed out; "
+                                "re-prompting (%s/%s)",
+                                turn_id,
+                                attempt + 1,
+                                MAX_TIMEOUT_CONTINUATIONS,
+                            )
+                            current_prompt = _TOOL_TIMEOUT_CONTINUATION_PROMPT
+                            continue
+                        if (
+                            result.outcome is _PromptOutcome.COMPLETED
+                            and result.stop_reason == "max_tokens"
+                            and attempt < MAX_TIMEOUT_CONTINUATIONS
+                        ):
+                            # Output-token continuation: the reply was cut off
+                            # by the length limit, not by choice. Flush the
+                            # partial reply, then ask for the remainder.
+                            session_manager.finalize_persist(session_id, state)
+                            db_session.commit()
+                            logger.info(
+                                "Interactive turn %s hit the output limit; "
+                                "continuing (%s/%s)",
+                                turn_id,
+                                attempt + 1,
+                                MAX_TIMEOUT_CONTINUATIONS,
+                            )
+                            current_prompt = _MAX_TOKENS_CONTINUATION_PROMPT
+                            continue
+                        break
 
                 if result.outcome is _PromptOutcome.TERMINATED:
                     if ownership_lost_for_continue:
@@ -822,6 +1033,7 @@ def _drive_interactive_turn(
                         "This turn was stopped after reaching its "
                         f"{max(1, round(budget_seconds / 60))}-minute time limit."
                     )
+                    _record_failed_turn(runtime_choice.runtime_id, "deadline")
                     turn_error_detail = f"hard time cap exceeded ({budget_seconds}s)"
                     finish_turn(
                         cache=cache,
@@ -836,6 +1048,7 @@ def _drive_interactive_turn(
                     persist_turn_error(
                         "This turn ended before the agent returned a final response."
                     )
+                    _record_failed_turn(runtime_choice.runtime_id, "no_final_event")
                     turn_error_detail = (
                         "Turn ended before opencode returned a final response."
                     )
@@ -850,6 +1063,7 @@ def _drive_interactive_turn(
 
                 if result.cancelled:
                     cancelled = True
+                    _record_failed_turn(runtime_choice.runtime_id, "cancelled")
                     finish_turn(
                         cache=cache,
                         turn_id=turn_id,
@@ -859,6 +1073,9 @@ def _drive_interactive_turn(
                     return
 
                 turn_succeeded = True
+                from onyx.server.metrics.craft_sandbox import record_turn_outcome
+
+                record_turn_outcome(runtime_choice.runtime_id, "succeeded")
                 finish_turn(
                     cache=cache,
                     turn_id=turn_id,
@@ -879,6 +1096,15 @@ def _drive_interactive_turn(
                         turn_index,
                     )
                     db_session.commit()
+                    if kind == "prompt" and runtime_is_opencode:
+                        # codex has no native compact; its replay budget
+                        # shrinks at inject time instead.
+                        _maybe_schedule_auto_compact(
+                            cache=cache,
+                            session=session,
+                            used_tokens=result.used_tokens,
+                            turn_index=turn_index,
+                        )
             except Exception as exc:
                 db_session.rollback()
                 logger.exception("Interactive turn %s failed", turn_id)
@@ -944,6 +1170,7 @@ def _drive_interactive_turn(
                     session_manager.clear_turn_deadline(sandbox.id, session_id)
                 prompt_slot_cm.__exit__(None, None, None)
     finally:
+        tape_stack.close()
         lease_stop.set()
         if sandbox_id is not None and not skip_job_continue:
             try:

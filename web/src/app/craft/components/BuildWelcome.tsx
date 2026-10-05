@@ -33,7 +33,7 @@ interface BuildWelcomeProps {
     message: string,
     files: BuildFile[],
     selection: SlashSelection,
-    model?: BuildLlmSelection | null,
+    model?: BuildLlmSelection | null
   ) => void;
   isRunning: boolean;
   /** When true, the composer is disabled while the sandbox starts. */
@@ -70,7 +70,7 @@ export default function BuildWelcome({
   const t = useTranslations("craft.welcome");
   const editorRef = useRef<LexicalPromptInputHandle | null>(null);
   const [selectedModel, setSelectedModel] = useState<BuildLlmSelection | null>(
-    null,
+    null
   );
   const handleWordmarkClick = useVideoBackgroundToggleClick();
   const { isAdmin, hasAnyProvider, isLoading } = useOnboarding();
@@ -101,8 +101,8 @@ export default function BuildWelcome({
             name: prefillScenario.name,
             description: prefillScenario.description,
           },
-          "/",
-        ),
+          "/"
+        )
       );
     }
     handle.focus();
@@ -112,7 +112,7 @@ export default function BuildWelcome({
   const { data: appsData } = useUserExternalApps();
   const pickerSections = useMemo(
     () => toPickerSections(skillsData, appsData),
-    [skillsData, appsData],
+    [skillsData, appsData]
   );
 
   // Craft can't build without a supported provider: inputs stay gated until

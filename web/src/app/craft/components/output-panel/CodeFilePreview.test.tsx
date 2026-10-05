@@ -7,13 +7,19 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: () => null, has: () => false }),
 }));
 
-const PYTHON = 'import json\n\ndef main():\n    return json.dumps({})\n';
+const PYTHON = "import json\n\ndef main():\n    return json.dumps({})\n";
 
 describe("CodeFilePreview", () => {
   it("renders a line gutter and highlights a known language", async () => {
-    render(<CodeFilePreview content={PYTHON} fileName="build.py"
+    render(
+      <CodeFilePreview
+        content={PYTHON}
+        fileName="build.py"
         filePath="outputs/build.py"
-        mimeType="text/x-python" isImage={false} />);
+        mimeType="text/x-python"
+        isImage={false}
+      />
+    );
 
     // Gutter: 1-based line numbers for all four lines.
     expect(screen.getByText("1")).toBeInTheDocument();
@@ -29,9 +35,15 @@ describe("CodeFilePreview", () => {
   });
 
   it("renders plain lines for an unregistered language", () => {
-    render(<CodeFilePreview content={"just text\n"} fileName="notes.weird"
+    render(
+      <CodeFilePreview
+        content={"just text\n"}
+        fileName="notes.weird"
         filePath="outputs/notes.weird"
-        mimeType="text/plain" isImage={false} />);
+        mimeType="text/plain"
+        isImage={false}
+      />
+    );
 
     expect(screen.getByText("just text")).toBeInTheDocument();
     expect(document.querySelector(".hljs-keyword")).toBeNull();

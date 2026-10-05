@@ -113,7 +113,7 @@ function QueuePanel<Message extends QueueEntry>({
 }: QueuePanelProps<Message>) {
   const t = useTranslations("craft.queuePanel");
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {

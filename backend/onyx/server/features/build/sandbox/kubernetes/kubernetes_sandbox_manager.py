@@ -128,6 +128,7 @@ from onyx.server.features.build.sandbox.session_workspace import (
     WORKSPACE_SETUP_COMPLETE_SENTINEL,
     build_session_workspace_setup_script,
     build_shared_workspace_dirs_snippet,
+    build_skills_link_snippet,
     build_workspace_exists_check_script,
     shared_parent_workspace_paths,
 )
@@ -308,11 +309,10 @@ class KubernetesSandboxManager(SandboxManager):
         self._image = SANDBOX_CONTAINER_IMAGE
         self._service_account = SANDBOX_SERVICE_ACCOUNT_NAME
         self._snapshot_manager = SnapshotManager(get_default_file_store())
-        self._sidecar_client = SidecarClient(
-            host=lambda sandbox_id: (
-                f"{self._get_pod_name(sandbox_id)}.{self._namespace}.svc.cluster.local"
-            )
+        self._daemon_host = lambda sandbox_id: (
+            f"{self._get_pod_name(sandbox_id)}.{self._namespace}.svc.cluster.local"
         )
+        self._sidecar_client = SidecarClient(host=self._daemon_host)
 
         self._init_serve_state()
 
@@ -1387,6 +1387,7 @@ class KubernetesSandboxManager(SandboxManager):
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         """Set up a session workspace within an existing sandbox pod.
 
@@ -1404,6 +1405,7 @@ class KubernetesSandboxManager(SandboxManager):
             session_id: The session ID for this workspace
             llm_config: LLM provider configuration for opencode.json
             user_name: User's name for personalization in AGENTS.md
+            skill_slugs: Per-session skill subset to link (None = full catalog)
 
         Raises:
             RuntimeError: If workspace setup fails
@@ -1446,6 +1448,7 @@ class KubernetesSandboxManager(SandboxManager):
             nextjs_port=nextjs_port,
             shared_outputs_path=shared_outputs_path,
             shared_attachments_path=shared_attachments_path,
+            skill_slugs=skill_slugs,
         )
 
         logger.info(
@@ -1922,6 +1925,7 @@ echo "Session cleanup complete"
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         """Rewrite generated session configuration and managed symlinks."""
         # nextjs_port stays in the signature to match the abstract contract
@@ -1931,6 +1935,7 @@ echo "Session cleanup complete"
         disabled_tools = get_opencode_disabled_tools()
         pod_name = self._get_pod_name(str(sandbox_id))
         session_path = shlex.quote(f"/workspace/sessions/{session_id}")
+        session_dir = f"/workspace/sessions/{session_id}"
         agent_instructions = self._load_agent_instructions(
             connectable_apps_section=connectable_apps_section,
             provider=agent_provider,
@@ -1969,11 +1974,11 @@ echo "Session cleanup complete"
         shared_dirs_snippet = build_shared_workspace_dirs_snippet(
             session_path, share_workspace_from
         )
+        skills_link_snippet = build_skills_link_snippet(session_dir, skill_slugs)
         config_script = f"""
 set -e
 mkdir -p {session_path}/.opencode
-ln -sfn /workspace/managed/skills {session_path}/.opencode/skills
-ln -sfn /workspace/managed/user_library {session_path}/user_library
+{skills_link_snippet}ln -sfn /workspace/managed/user_library {session_path}/user_library
 {shared_dirs_snippet}
 printf '%s' '{agent_instructions_escaped}' > {session_path}/AGENTS.md
 {session_opencode_config_setup}
@@ -1996,6 +2001,44 @@ fi
             tty=False,
         )
         logger.info("Session configuration files regenerated")
+
+    def relink_session_skills(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        skill_slugs: Sequence[str] | None,
+    ) -> None:
+        """Repoint ``.opencode/skills`` at a new subset (links only)."""
+        pod_name = self._get_pod_name(str(sandbox_id))
+        session_dir = f"/workspace/sessions/{session_id}"
+        script = (
+            "set -e\n"
+            f"mkdir -p {session_dir}/.opencode\n"
+            + build_skills_link_snippet(session_dir, skill_slugs)
+        )
+        try:
+            k8s_stream(
+                self._stream_core_api.connect_get_namespaced_pod_exec,
+                name=pod_name,
+                namespace=self._namespace,
+                container=_SANDBOX_CONTAINER_NAME,
+                command=["/bin/sh", "-c", script],
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
+        except ApiException as e:
+            raise RuntimeError(f"Failed to relink session skills: {e}") from e
+
+    def codex_transport(self):
+        """Signed transport to this pod's daemon codex bridge."""
+        from onyx.server.features.build.sandbox.codex.transport import CodexTransport
+        from onyx.server.features.build.sandbox.kubernetes.sidecar_client import (
+            _sign_sidecar_request,
+        )
+
+        return CodexTransport(host=self._daemon_host, signer=_sign_sidecar_request)
 
     def start_process(
         self,
@@ -2503,19 +2546,20 @@ echo "$base"
         if re.search(r'[;&|`$(){}[\]<>\'"\n\r\\]', path):
             raise ValueError("Invalid path: contains disallowed characters")
 
+        # Reject control characters. Unicode names (CJK, accents, spaces) are
+        # allowed: uploads accept them, so deletion must too.
+        if any(ord(char) < 32 or ord(char) == 127 for char in path):
+            raise ValueError("Invalid path: contains control characters")
+
         clean_path = path.lstrip("/")
 
-        # Verify path only contains safe characters (alphanumeric, dash, underscore, dot, forward slash)
-        if not re.match(r"^[a-zA-Z0-9_\-./]+$", clean_path):
-            raise ValueError("Invalid path: contains disallowed characters")
-
-        target_path = f"/workspace/sessions/{session_id}/{clean_path}"
+        target_path = shlex.quote(f"/workspace/sessions/{session_id}/{clean_path}")
 
         # Use exec to delete file
         exec_command = [
             "/bin/sh",
             "-c",
-            f'[ -f "{target_path}" ] && rm "{target_path}" && echo "DELETED" || echo "NOT_FOUND"',
+            f'[ -f {target_path} ] && rm {target_path} && echo "DELETED" || echo "NOT_FOUND"',
         ]
 
         try:

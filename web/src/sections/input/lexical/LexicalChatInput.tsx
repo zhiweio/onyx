@@ -106,7 +106,7 @@ function replaceEditorText(editor: LexicalEditor, text: string) {
       }
       root.getLastChild()?.selectEnd();
     },
-    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG },
+    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG }
   );
 }
 
@@ -128,13 +128,13 @@ function appendEditorText(editor: LexicalEditor, text: string) {
       paragraph.append($createTextNode(text));
       paragraph.selectEnd();
     },
-    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG },
+    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG }
   );
 }
 
 function insertEditorMention(
   editor: LexicalEditor,
-  mention: Parameters<typeof $createPromptMentionNode>[0],
+  mention: Parameters<typeof $createPromptMentionNode>[0]
 ) {
   editor.update(
     () => {
@@ -146,24 +146,24 @@ function insertEditorMention(
       selection.insertNodes([$createPromptMentionNode(mention), trailing]);
       trailing.selectEnd();
     },
-    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG },
+    { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG }
   );
 }
 
 function collectEditorMentions(
-  editor: LexicalEditor,
+  editor: LexicalEditor
 ): Parameters<typeof $createPromptMentionNode>[0][] {
   return collectEditorMentionsFromState(editor.getEditorState());
 }
 
 function collectEditorMentionsFromState(
-  editorState: EditorState,
+  editorState: EditorState
 ): Parameters<typeof $createPromptMentionNode>[0][] {
   return editorState.read(() =>
     $getRoot()
       .getAllTextNodes()
       .filter($isPromptMentionNode)
-      .map((node) => node.getMention()),
+      .map((node) => node.getMention())
   );
 }
 
@@ -174,7 +174,7 @@ function removeEditorMention(editor: LexicalEditor, id: string): boolean {
       .getAllTextNodes()
       .find(
         (candidate) =>
-          $isPromptMentionNode(candidate) && candidate.getMention().id === id,
+          $isPromptMentionNode(candidate) && candidate.getMention().id === id
       );
     if (!node) {
       return;
@@ -191,7 +191,7 @@ function removeEditorMention(editor: LexicalEditor, id: string): boolean {
           nextSibling.remove();
         }
       },
-      { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG },
+      { discrete: true, tag: PROGRAMMATIC_UPDATE_TAG }
     );
     removed = true;
   });
@@ -254,7 +254,7 @@ function KeyboardPlugin({
         }
         return true;
       },
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
 
     const unregisterBackspace = editor.registerCommand(
@@ -290,7 +290,7 @@ function KeyboardPlugin({
         node.getParent()?.selectEnd();
         return true;
       },
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
 
     return () => {
@@ -334,13 +334,13 @@ function TextContentPlugin({
             previousMentions.some(
               (mention, index) =>
                 nextMentions[index]?.id !== mention.id ||
-                nextMentions[index]?.markdown !== mention.markdown,
+                nextMentions[index]?.markdown !== mention.markdown
             );
           if (changed) {
             onMentionsChange(nextMentions);
           }
         }
-      },
+      }
     );
   }, [editor, onChange, onMentionsChange]);
 
@@ -363,7 +363,7 @@ function EmptyAttributePlugin() {
       const empty = editorState.read(
         () =>
           $getRoot().getTextContentSize() === 0 &&
-          $nodesOfType(PromptTileNode).length === 0,
+          $nodesOfType(PromptTileNode).length === 0
       );
       if (empty) {
         root.setAttribute("data-empty", "");
@@ -432,7 +432,7 @@ function PromptHistoryPlugin({
           // The user edited away from the browsed entry; exit history mode.
           historyIndexRef.current = null;
         }
-      },
+      }
     );
   }, [editor, entries]);
 
@@ -453,10 +453,10 @@ function PromptHistoryPlugin({
           }
           root.getLastChild()?.selectEnd();
         },
-        { tag: HISTORY_NAVIGATION_UPDATE_TAG },
+        { tag: HISTORY_NAVIGATION_UPDATE_TAG }
       );
     },
-    [editor],
+    [editor]
   );
 
   const handleHistoryNavigation = useCallback(
@@ -490,19 +490,19 @@ function PromptHistoryPlugin({
       applyHistoryEntry(result.nextIndex, result.nextValue);
       return true;
     },
-    [applyHistoryEntry, disabled, editor, entries],
+    [applyHistoryEntry, disabled, editor, entries]
   );
 
   useEffect(() => {
     const unregisterUp = editor.registerCommand(
       KEY_ARROW_UP_COMMAND,
       handleHistoryNavigation("up"),
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
     const unregisterDown = editor.registerCommand(
       KEY_ARROW_DOWN_COMMAND,
       handleHistoryNavigation("down"),
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
     return () => {
       unregisterUp();
@@ -573,18 +573,18 @@ function ChineseSlashAliasPlugin({ disabled }: { disabled?: boolean }) {
           }
           selection.insertText("/");
         },
-        { tag: PROGRAMMATIC_UPDATE_TAG },
+        { tag: PROGRAMMATIC_UPDATE_TAG }
       );
     };
 
     return editor.registerRootListener((rootElement, previousRootElement) => {
       previousRootElement?.removeEventListener(
         "beforeinput",
-        handleBeforeInput as EventListener,
+        handleBeforeInput as EventListener
       );
       rootElement?.addEventListener(
         "beforeinput",
-        handleBeforeInput as EventListener,
+        handleBeforeInput as EventListener
       );
     });
   }, [disabled, editor]);
@@ -701,7 +701,7 @@ function LexicalChatInput({
       });
       return submitResult;
     },
-    [editorApiRef, onSubmit],
+    [editorApiRef, onSubmit]
   );
 
   const initialConfig = useMemo(
@@ -713,7 +713,7 @@ function LexicalChatInput({
         console.error("[LexicalChatInput] editor error:", error);
       },
     }),
-    [],
+    []
   );
 
   // Lexical's ContentEditable props form a mutually exclusive union: an

@@ -90,7 +90,10 @@ function asPhaseList(value: unknown): ScenarioPlaybookPhase[] {
     const rawDone = record.done_when;
     let done_when: string | undefined;
     if (Array.isArray(rawDone)) {
-      done_when = rawDone.map((part) => String(part).trim()).filter(Boolean).join("; ");
+      done_when = rawDone
+        .map((part) => String(part).trim())
+        .filter(Boolean)
+        .join("; ");
     } else if (typeof rawDone === "string" && rawDone.trim()) {
       done_when = rawDone.trim();
     }
@@ -249,7 +252,9 @@ export function scenarioDomainTagColor(
 }
 
 export function canEditScenario(scenario: Scenario): boolean {
-  return scenario.access_level === "OWNER" || scenario.access_level === "EDITOR";
+  return (
+    scenario.access_level === "OWNER" || scenario.access_level === "EDITOR"
+  );
 }
 
 export function isWorkspaceScenario(scenario: Scenario): boolean {
@@ -276,10 +281,7 @@ export function buildScenarioRules(input: {
   };
 }
 
-function skillLabel(
-  raw: string,
-  labels?: Record<string, string>
-): string {
+function skillLabel(raw: string, labels?: Record<string, string>): string {
   const key = raw.trim();
   if (!key) return "";
   return labels?.[key] ?? key;
@@ -297,7 +299,10 @@ function renderExtraSkillRules(
       .map((needle) => needle.trim())
       .filter(Boolean);
     const intent = item.if.intent?.trim() ?? "";
-    const refs = [...(item.add_skill_ids ?? []), ...(item.add_skill_slugs ?? [])]
+    const refs = [
+      ...(item.add_skill_ids ?? []),
+      ...(item.add_skill_slugs ?? []),
+    ]
       .map((ref) => skillLabel(ref, skillLabels))
       .filter(Boolean);
     if (refs.length === 0 || (needles.length === 0 && !intent)) continue;

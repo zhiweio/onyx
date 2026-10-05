@@ -21,7 +21,7 @@ export function $getPromptMarkdown(node: LexicalNode = $getRoot()): string {
         !child.isInline() &&
         index < children.length - 1
           ? "\n\n"
-          : ""),
+          : "")
     )
     .join("");
 }

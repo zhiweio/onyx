@@ -56,7 +56,7 @@ interface Detection {
 }
 
 function $detectTrigger(
-  configs: readonly TriggerMenuConfig[],
+  configs: readonly TriggerMenuConfig[]
 ): Detection | null {
   const selection = $getSelection();
   if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
@@ -78,7 +78,7 @@ function $detectTrigger(
  *  a word start directly before the caret opens its menu. */
 export function detectTriggerInText(
   configs: readonly TriggerMenuConfig[],
-  textBeforeCaret: string,
+  textBeforeCaret: string
 ): Detection | null {
   if (!textBeforeCaret) {
     return null;
@@ -86,7 +86,7 @@ export function detectTriggerInText(
   for (const config of configs) {
     for (const triggerChar of config.triggerChars) {
       const match = new RegExp(
-        `(?:^|\\s)(${escapeRegExp(triggerChar)})([^\\s]*)$`,
+        `(?:^|\\s)(${escapeRegExp(triggerChar)})([^\\s]*)$`
       ).exec(textBeforeCaret);
       if (match) {
         return {
@@ -124,7 +124,7 @@ export function shouldOpenTriggerMenu(config: TriggerMenuConfig): boolean {
  * conventions the agent already understands. */
 export function defaultEntryToMention(
   entry: PickerEntry,
-  _triggerChar: string,
+  _triggerChar: string
 ): ComposerMention {
   const markdown = pickerEntryPromptPrefix(entry);
   switch (entry.kind) {
@@ -180,7 +180,7 @@ export function defaultEntryToMention(
 }
 
 function caretAnchorRect(
-  editor: ReturnType<typeof useLexicalComposerContext>[0],
+  editor: ReturnType<typeof useLexicalComposerContext>[0]
 ): DOMRect | null {
   const rootElement = editor.getRootElement();
   const domSelection = window.getSelection();
@@ -200,7 +200,7 @@ function caretAnchorRect(
     rect.left,
     rect.top,
     rootElement.getBoundingClientRect().width,
-    1,
+    1
   );
 }
 
@@ -253,7 +253,7 @@ function TriggerMenusPlugin({
         }
 
         const detection = editorState.read(() =>
-          $detectTrigger(configsRef.current),
+          $detectTrigger(configsRef.current)
         );
         if (!detection) {
           if (activeRef.current) {
@@ -262,7 +262,7 @@ function TriggerMenusPlugin({
           return;
         }
         const config = configsRef.current.find(
-          (candidate) => candidate.id === detection.configId,
+          (candidate) => candidate.id === detection.configId
         );
         if (!config || !shouldOpenTriggerMenu(config)) {
           if (activeRef.current) {
@@ -303,7 +303,7 @@ function TriggerMenusPlugin({
             anchorRect,
           };
         });
-      },
+      }
     );
   }, [disabled, editor]);
 
@@ -329,7 +329,7 @@ function TriggerMenusPlugin({
         return;
       }
       const config = configsRef.current.find(
-        (candidate) => candidate.id === current.configId,
+        (candidate) => candidate.id === current.configId
       );
       if (!config) {
         return;
@@ -355,12 +355,12 @@ function TriggerMenusPlugin({
             // Delete whatever trigger token the editor actually holds (the
             // search input can drive queries longer than the typed token).
             const match = new RegExp(
-              `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`,
+              `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`
             ).exec(content.slice(0, anchor.offset));
             if (match) {
               const tokenStart = anchor.offset - match[0].length;
               node.setTextContent(
-                content.slice(0, tokenStart) + content.slice(anchor.offset),
+                content.slice(0, tokenStart) + content.slice(anchor.offset)
               );
               node.select(tokenStart, tokenStart);
             }
@@ -373,10 +373,10 @@ function TriggerMenusPlugin({
           target.insertNodes([$createPromptMentionNode(mention), trailing]);
           trailing.selectEnd();
         },
-        { tag: PROGRAMMATIC_UPDATE_TAG },
+        { tag: PROGRAMMATIC_UPDATE_TAG }
       );
     },
-    [editor],
+    [editor]
   );
 
   /** Search-input edits: update the filtered query and mirror it into the
@@ -385,7 +385,7 @@ function TriggerMenusPlugin({
   const handleQueryChange = useCallback(
     (nextQuery: string) => {
       setActive((current) =>
-        current ? { ...current, query: nextQuery } : current,
+        current ? { ...current, query: nextQuery } : current
       );
       if (/\s/.test(nextQuery)) {
         return;
@@ -411,7 +411,7 @@ function TriggerMenusPlugin({
           }
           const content = node.getTextContent();
           const match = new RegExp(
-            `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`,
+            `(?:^|\\s)(${escapeRegExp(current.triggerChar)})([^\\s]*)$`
           ).exec(content.slice(0, anchor.offset));
           if (!match) {
             return;
@@ -421,16 +421,16 @@ function TriggerMenusPlugin({
             content.slice(0, tokenStart) +
               current.triggerChar +
               nextQuery +
-              content.slice(anchor.offset),
+              content.slice(anchor.offset)
           );
           const caretOffset =
             tokenStart + current.triggerChar.length + nextQuery.length;
           node.select(caretOffset, caretOffset);
         },
-        { tag: PROGRAMMATIC_UPDATE_TAG },
+        { tag: PROGRAMMATIC_UPDATE_TAG }
       );
     },
-    [editor],
+    [editor]
   );
 
   return (

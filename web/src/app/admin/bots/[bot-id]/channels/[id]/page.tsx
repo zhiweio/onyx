@@ -33,10 +33,8 @@ function EditSlackChannelConfigContent({ id }: { id: string }) {
     error: agentsError,
   } = useAgents();
 
-  const {
-    data: standardAnswerCategories,
-    isLoading: isStdAnswerLoading,
-  } = useStandardAnswerCategories();
+  const { data: standardAnswerCategories, isLoading: isStdAnswerLoading } =
+    useStandardAnswerCategories();
 
   const isLoading =
     isChannelsLoading ||

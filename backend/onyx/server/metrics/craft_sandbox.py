@@ -210,3 +210,20 @@ def track_sandbox_provision_in_progress() -> Generator[None]:
                     "Failed to decrement sandbox provisions in-progress gauge.",
                     exc_info=True,
                 )
+
+
+_turn_outcomes_total = Counter(
+    "onyx_craft_turn_total",
+    "Craft interactive turns by agent runtime and outcome.",
+    labelnames=["runtime", "outcome"],
+)
+
+
+def record_turn_outcome(runtime_id: str, outcome: str) -> None:
+    """Best-effort turn counter; never raises into the turn path."""
+    try:
+        _turn_outcomes_total.labels(runtime=runtime_id, outcome=outcome).inc()
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "Failed to record craft turn outcome.", exc_info=True
+        )

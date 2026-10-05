@@ -334,6 +334,14 @@ class SessionManager:
         user: User,
         allowed_server_ids: Collection[int] | None = (),
     ) -> None:
+        # Lazy registry refresh: one timestamp check when fresh; a cold or
+        # stale process-local snapshot self-heals here (startup + periodic
+        # refresher keep it warm between turns).
+        from onyx.server.features.build.sandbox.agent_runtime.models import (
+            ensure_registry_ready,
+        )
+
+        ensure_registry_ready(self._db_session)
         llm_config = self.session_llm_config(session, user)
         mcp_servers = resolve_craft_mcp_servers(
             self._db_session, user, allowed_server_ids=allowed_server_ids
@@ -429,6 +437,7 @@ class SessionManager:
             llm_config=llm_config,
             mcp_servers=mcp_servers,
             share_workspace_from=share_workspace_from,
+            skill_slugs=session.skill_slugs,
         )
         if session.opencode_session_id is not None:
             self._sandbox_manager.dispose_opencode_instance(sandbox.id, session.id)
@@ -498,6 +507,7 @@ class SessionManager:
                         share_workspace_from=_share_workspace_from_session(
                             self._db_session, session_id
                         ),
+                        skill_slugs=session.skill_slugs,
                     )
                     if session.opencode_session_id is not None:
                         self._sandbox_manager.dispose_opencode_instance(
@@ -522,6 +532,52 @@ class SessionManager:
             self._db_session.flush()
             self._db_session.refresh(sandbox)
             return session_runtime_stale(session, sandbox)
+
+    def extend_session_skills(
+        self,
+        sandbox: Sandbox,
+        session: BuildSession,
+        slugs: list[str],
+    ) -> bool:
+        """Add skills to the session's linked catalog when missing.
+
+        Called at turn entry when the turn binds skills (chips, scenario,
+        prose) the session's subset does not carry yet: relink the subset
+        directory and dispose the opencode instance so the next prompt sees
+        the wider catalog. Returns True when the catalog changed.
+        """
+        from onyx.server.features.build.skills_subset import sanitize_skill_slug
+
+        wanted = [
+            slug for slug in (sanitize_skill_slug(s or "") for s in slugs) if slug
+        ]
+        if not wanted:
+            return False
+        current = session.skill_slugs
+        if current is None:
+            # Legacy full-catalog session: it already links everything.
+            return False
+        if set(wanted) <= set(current):
+            return False
+        merged = list(current)
+        for slug in wanted:
+            if slug not in merged:
+                merged.append(slug)
+        session.skill_slugs = merged
+        self._db_session.flush()
+        try:
+            self._sandbox_manager.relink_session_skills(sandbox.id, session.id, merged)
+        except Exception:
+            self._db_session.rollback()
+            logger.warning(
+                "Could not relink skills for session %s; keeping prior catalog",
+                session.id,
+                exc_info=True,
+            )
+            return False
+        if session.opencode_session_id is not None:
+            self._sandbox_manager.dispose_opencode_instance(sandbox.id, session.id)
+        return True
 
     def ensure_sandbox_running(
         self,
@@ -656,6 +712,45 @@ class SessionManager:
             scenario_id=scenario_id,
             project_id=project_id,
         )
+        # The session's skill catalog starts as the core delivery set plus
+        # the scenario's bound skills; turns extend it when the user binds
+        # more (see extend_session_skills). This bounds the per-call
+        # catalog tax opencode pays on every LLM request.
+        from onyx.server.features.build.skills_subset import (
+            compute_session_skill_slugs,
+        )
+
+        scenario_refs: list[str] = []
+        if scenario_id is not None:
+            try:
+                from onyx.db.scenario import (
+                    get_scenario_for_user,
+                    resolve_scenario_skill_ids,
+                )
+
+                scenario = get_scenario_for_user(self._db_session, scenario_id, user)
+                if scenario is not None:
+                    scenario_refs = [
+                        str(skill_id)
+                        for skill_id in resolve_scenario_skill_ids(scenario, name or "")
+                    ]
+            except Exception:
+                logger.warning(
+                    "Could not resolve scenario skills for session subset",
+                    exc_info=True,
+                )
+        try:
+            build_session.skill_slugs = compute_session_skill_slugs(
+                self._db_session,
+                user,
+                scenario_skill_refs=scenario_refs,
+            )
+        except Exception:
+            logger.warning(
+                "Could not compute skill subset; linking full catalog",
+                exc_info=True,
+            )
+            build_session.skill_slugs = None
         # Port allocation is skipped for non-interactive origins (SCHEDULED,
         # SLACK): those sessions are headless, never attach a preview, and
         # pile up fast enough to exhaust the [3010, 3100) range on a busy
@@ -866,6 +961,7 @@ class SessionManager:
                 user_name=user_name,
                 mcp_servers=mcp_servers,
                 share_workspace_from=share_workspace_from,
+                skill_slugs=session.skill_slugs,
             )
             if session.scenario_id is not None:
                 try:
@@ -1429,6 +1525,170 @@ class SessionManager:
             sandbox_id, session_id, acquire_timeout=acquire_timeout
         )
 
+    def resolve_turn_runtime(
+        self,
+        build_session: BuildSession,
+        *,
+        purpose: Any = None,
+        requested_runtime: str | None = None,
+    ) -> Any:
+        """Resolve (runtime, model) for one turn via the HarnessRouter.
+
+        Precedence (router.py): purpose binding > explicit request >
+        scenario pin > org default. Scenario pins come from the playbook's
+        ``runtime`` key; the router rejects unapproved runtimes for
+        explicit requests and falls back for derived ones."""
+        from onyx.db.models import Scenario
+        from onyx.server.features.build.sandbox.agent_runtime.factory import (
+            resolve_runtime_for_turn,
+        )
+        from onyx.server.features.build.sandbox.agent_runtime.router import (
+            RuntimePurpose,
+            RuntimeResolutionRequest,
+        )
+        from onyx.server.features.scenario.bindings import parse_scenario_policy
+
+        scenario_runtime: str | None = None
+        if build_session.scenario_id is not None:
+            scenario = self._db_session.get(Scenario, build_session.scenario_id)
+            if scenario is not None:
+                policy = parse_scenario_policy(scenario.rules or {})
+                scenario_runtime = policy.runtime
+        try:
+            return resolve_runtime_for_turn(
+                RuntimeResolutionRequest(
+                    purpose=purpose if purpose is not None else RuntimePurpose.CHAT,
+                    requested_runtime=requested_runtime,
+                    scenario_runtime=scenario_runtime,
+                )
+            )
+        except Exception:
+            logger.warning(
+                "Runtime resolution failed for session %s; defaulting",
+                build_session.id,
+                exc_info=True,
+            )
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="", origin="fallback")
+
+    def _write_codex_config(
+        self, sandbox: Sandbox, build_session: BuildSession
+    ) -> None:
+        """Write config.toml + env file the daemon bridge feeds to codex."""
+        from onyx.server.features.build.sandbox.codex.config import (
+            build_codex_config_toml,
+            build_codex_env_file,
+        )
+
+        if build_session.user_id is None:
+            return
+        user = fetch_user_by_id(self._db_session, build_session.user_id)
+        if user is None:
+            return
+        llm_config = self.session_llm_config(build_session, user)
+        gateway_base = (llm_config.api_base or "").rstrip("/")
+        if not gateway_base:
+            return
+        config_toml = build_codex_config_toml(
+            gateway_base_url=gateway_base,
+            model=f"{llm_config.provider}/{llm_config.model_name}",
+        )
+        self._sandbox_manager.write_files_to_sandbox(
+            sandbox_id=sandbox.id,
+            mount_path="/workspace",
+            files={
+                "codex-home/config.toml": config_toml.encode("utf-8"),
+                "managed/codex-env": build_codex_env_file(
+                    llm_config.api_key or ""
+                ).encode("utf-8"),
+            },
+        )
+
+    def _codex_base_instructions(self, build_session: BuildSession) -> str:  # noqa: ARG002
+        """Reuse the AGENTS.md renderer for codex's base instructions."""
+        from onyx.server.features.build.sandbox.util.agent_instructions import (
+            generate_agent_instructions,
+        )
+
+        template_path = Path(__file__).resolve().parent.parent / "AGENTS.template.md"
+        return generate_agent_instructions(template_path, "")
+
+    def _yield_codex_events(
+        self,
+        sandbox: Sandbox,
+        build_session: BuildSession,
+        user_message_content: str,
+        should_interrupt: Callable[[], bool] | None,
+        turn_timeout_seconds: float | None,
+    ) -> Generator[Any, None, None]:
+        """Drive one turn on the codex runtime through the AgentRuntime ABC."""
+        from onyx.server.features.build.packets import ErrorPacket
+        from onyx.server.features.build.sandbox.agent_runtime.codex import CodexRuntime
+        from onyx.server.features.build.sandbox.codex.serve_client import (
+            CodexServeClient,
+        )
+        from onyx.server.features.build.sandbox.event_schema import PromptResponse
+
+        transport = self._sandbox_manager.codex_transport()
+        if transport is None:
+            yield ErrorPacket(message="codex runtime unavailable on this backend")
+            return
+        if not user_message_content.strip():
+            # Compact turns have no user text; codex has no native compact,
+            # so the turn is a no-op (history budget shrinks at replay).
+            yield PromptResponse.model_validate({"stopReason": "end_turn"})
+            return
+        self._write_codex_config(sandbox, build_session)
+        client = CodexServeClient(transport, sandbox.id)
+        runtime = CodexRuntime(
+            client,
+            session_id=build_session.id,
+            base_instructions=self._codex_base_instructions(build_session),
+        )
+        prompt = user_message_content
+        # Cross-runtime migration: when the session's tape holds another
+        # runtime's history (opencode → codex), lead with the flattened
+        # preamble so the fresh codex thread continues instead of starting
+        # over. Codex-native history replays via inject_items instead.
+        try:
+            from onyx.db.craft_tape import load_tape_entries
+            from onyx.server.features.build.sandbox.codex.replay import (
+                build_preamble_from_tape,
+            )
+
+            tape_rows = load_tape_entries(self._db_session, build_session.id, limit=50)
+            has_codex = any(row.runtime == "codex" for row in tape_rows)
+            has_other = any(row.runtime == "opencode" for row in tape_rows)
+            if has_other and not has_codex:
+                preamble = build_preamble_from_tape(self._db_session, build_session.id)
+                if preamble:
+                    prompt = f"{preamble}\n\n---\n\n{prompt}"
+        except Exception:
+            logger.warning(
+                "Cross-runtime preamble build failed for %s",
+                build_session.id,
+                exc_info=True,
+            )
+        try:
+            yield from runtime.send_message(
+                str(build_session.id),
+                directory=f"/workspace/sessions/{build_session.id}",
+                prompt=prompt,
+                timeout_s=200.0,
+                absolute_timeout_s=turn_timeout_seconds,
+                should_interrupt=should_interrupt,
+            )
+        except Exception as exc:
+            logger.warning("codex turn failed", exc_info=True)
+            from onyx.server.features.build.sandbox.event_schema import Error
+
+            yield Error.model_validate(
+                {"code": -1, "message": f"codex turn failed: {exc}"[:500]}
+            )
+
     def yield_sandbox_events(
         self,
         sandbox_id: UUID,
@@ -1440,12 +1700,34 @@ class SessionManager:
         turn_timeout_seconds: float | None = None,
         kind: str = "prompt",
         skip_memory_recall: bool = False,
+        purpose: Any = None,
+        requested_runtime: str | None = None,
     ) -> Generator[Any, None, None]:
         build_session = _streaming.load_turn_session(
             self._db_session, self._sandbox_manager, sandbox_id, session_id
         )
         if build_session is None:
             return
+        # Runtime dispatch: the router decides per turn (purpose > request >
+        # scenario pin > org default). The opencode path below stays
+        # byte-equivalent to before; codex drives through the AgentRuntime
+        # ABC (daemon bridge + tape replay).
+        choice = self.resolve_turn_runtime(
+            build_session, purpose=purpose, requested_runtime=requested_runtime
+        )
+        if choice.runtime_id == "codex":
+            from onyx.db.models import Sandbox as SandboxRow
+
+            sandbox_row = self._db_session.get(SandboxRow, sandbox_id)
+            if sandbox_row is not None:
+                yield from self._yield_codex_events(
+                    sandbox_row,
+                    build_session,
+                    user_message_content,
+                    should_interrupt,
+                    turn_timeout_seconds,
+                )
+                return
         yield from _streaming.yield_sandbox_events(
             self._db_session,
             self._sandbox_manager,
@@ -2466,6 +2748,26 @@ class SessionManager:
             # SandboxManager already logs the deletion details
             # Update heartbeat - file deletion is user activity that keeps sandbox alive
             update_sandbox_heartbeat(self._db_session, sandbox.id)
-            self._db_session.commit()
+
+        # Drop the archived copy too, or hydration writes the deleted
+        # attachment straight back into the workspace.
+        self._mark_archived_attachment_deleted(session_id, path)
+        self._db_session.commit()
 
         return deleted
+
+    def _mark_archived_attachment_deleted(self, session_id: UUID, path: str) -> None:
+        """Flag the attachment's archived catalog copy as deleted."""
+        from onyx.server.features.build.db.artifact import mark_artifact_deleted
+        from onyx.server.features.build.session.artifact_persist import (
+            ATTACHMENTS_PREFIX,
+        )
+
+        attachments_dir = "attachments/"
+        if not path.startswith(attachments_dir):
+            return
+        mark_artifact_deleted(
+            self._db_session,
+            session_id=session_id,
+            path=f"{ATTACHMENTS_PREFIX}{path[len(attachments_dir) :]}",
+        )

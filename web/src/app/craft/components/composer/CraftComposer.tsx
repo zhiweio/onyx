@@ -24,7 +24,7 @@ import { InputChipStrip } from "@/sections/input/InputChipStrip";
 import { PlusMenuButton } from "@/sections/input/PlusMenuButton";
 import { SelectButton } from "@opal/components";
 import { SvgWorkflow } from "@opal/icons";
-import { buildEntryMenuItems } from "@/app/craft/components/buildEntryMenuItems";
+import { buildEntryMenuItems } from "@/sections/input/buildEntryMenuItems";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
 import {
   useUploadFilesContext,
@@ -52,12 +52,12 @@ import { useUser } from "@/providers/UserProvider";
 /**
  * Craft composer: the full form of the shared Lexical kernel.
  *
- * Slash (/) opens scenarios, skills, apps, MCP servers, and the compact
- * command; @ opens user-library files. Picks become atomic chips whose
- * markdown serializes into the prompt, and skill/MCP/scenario chips also
- * drive the structured selection sent with the message. The session's
- * persistent selection is re-armed as chips after each send, matching the
- * old chip-strip behavior.
+ * Slash (/) opens scenarios, skills, apps, and the compact command; @ opens
+ * user-library files. Picks become atomic chips whose markdown serializes
+ * into the prompt, and skill/scenario chips also drive the structured
+ * selection sent with the message. The session's persistent selection is
+ * re-armed as chips after each send, matching the old chip-strip behavior.
+ * MCP servers are not picked here — enablement lives on /craft/v1/mcp-actions.
  */
 
 interface CraftComposerProps {
@@ -65,13 +65,13 @@ interface CraftComposerProps {
   onSubmit: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection,
+    selection: SlashSelection
   ) => void;
   /** Absent on the welcome screen, where there is no session to queue into. */
   onQueueMessage?: (
     message: string,
     files: BuildFile[],
-    selection: SlashSelection,
+    selection: SlashSelection
   ) => void;
   queuedMessages?: readonly QueuedMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
@@ -110,7 +110,7 @@ interface CraftComposerProps {
 }
 
 function selectionFromMentions(
-  mentions: readonly ComposerMention[],
+  mentions: readonly ComposerMention[]
 ): SlashSelection {
   const skillIds: string[] = [];
   let scenarioId: string | null = null;
@@ -178,7 +178,7 @@ function CraftComposer({
           name: scenario.name,
           description: scenario.description,
         })),
-    [scenarios],
+    [scenarios]
   );
 
   const pickerSections = useMemo(
@@ -196,12 +196,12 @@ function CraftComposer({
           ]
         : [],
     }),
-    [skillsData, appsData, scenarioEntries, compactAvailable, t],
+    [skillsData, appsData, scenarioEntries, compactAvailable, t]
   );
 
   const { data: libraryTree } = useSWR(
     SWR_KEYS.buildUserLibraryTree,
-    fetchLibraryTree,
+    fetchLibraryTree
   );
   const libraryFileEntries = useMemo(
     () =>
@@ -214,7 +214,7 @@ function CraftComposer({
           path: entry.path,
           source: "library" as const,
         })),
-    [libraryTree],
+    [libraryTree]
   );
 
   const fileMentionSections = useMemo(
@@ -225,7 +225,7 @@ function CraftComposer({
       apps: [],
       files: libraryFileEntries,
     }),
-    [libraryFileEntries],
+    [libraryFileEntries]
   );
 
   const slashTrigger = useMemo(
@@ -246,7 +246,7 @@ function CraftComposer({
         return false;
       },
     }),
-    [pickerSections, onCompact, router],
+    [pickerSections, onCompact, router]
   );
 
   // Skills-only menu on $ (ZCode's dedicated skills trigger; ¥/￥ for CJK
@@ -264,7 +264,7 @@ function CraftComposer({
         files: [],
       },
     }),
-    [pickerSections],
+    [pickerSections]
   );
 
   const fileMentionTrigger = useMemo(
@@ -276,7 +276,7 @@ function CraftComposer({
       showWhenEmpty: true,
       emptyMessage: entryMenuT("library.empty"),
     }),
-    [fileMentionSections, entryMenuT],
+    [fileMentionSections, entryMenuT]
   );
 
   // Restore the session's persistent slash selection as chips once the entry
@@ -297,7 +297,7 @@ function CraftComposer({
     }
     const entries = pickerEntriesFromSelection(
       pickerSections,
-      persistedSelection,
+      persistedSelection
     );
     if (entries.length === 0) {
       return;
@@ -315,7 +315,7 @@ function CraftComposer({
   // most recent pick.
   useEffect(() => {
     const scenarioMentions = mentions.filter(
-      (mention) => mention.category === "scenarios",
+      (mention) => mention.category === "scenarios"
     );
     if (scenarioMentions.length <= 1) {
       return;
@@ -327,7 +327,7 @@ function CraftComposer({
 
   const activeMentionEntries = useMemo<PickerEntry[]>(() => {
     const skillIds = new Set(
-      mentions.filter((m) => m.category === "skills").map((m) => m.value),
+      mentions.filter((m) => m.category === "skills").map((m) => m.value)
     );
     const active: PickerEntry[] = [];
     for (const skill of pickerSections.skills) {
@@ -356,7 +356,7 @@ function CraftComposer({
         }
       });
     },
-    [pickerSections, editorRef, sessionId],
+    [pickerSections, editorRef, sessionId]
   );
 
   const handleSubmit = useCallback(
@@ -370,7 +370,7 @@ function CraftComposer({
       rearmSelectionChips(selection);
       return true;
     },
-    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips],
+    [clearFiles, currentMessageFiles, editorRef, onSubmit, rearmSelectionChips]
   );
 
   const handleQueueMessage = useCallback(
@@ -391,7 +391,7 @@ function CraftComposer({
       editorRef,
       onQueueMessage,
       rearmSelectionChips,
-    ],
+    ]
   );
 
   const insertEntryAsChip = useCallback(
@@ -403,7 +403,19 @@ function CraftComposer({
       }
       editorRef.current?.insertMention(toMention(entry, "/"));
     },
-    [editorRef, router],
+    [editorRef, router]
+  );
+
+  // File chips currently in the editor drive the plus-menu library toggles:
+  // checked = already attached, toggle inserts/removes the @mention chip.
+  const attachedFileMentionIds = useMemo(
+    () =>
+      new Set(
+        mentions
+          .filter((mention) => mention.category === "files")
+          .map((mention) => mention.value)
+      ),
+    [mentions]
   );
 
   const plusMenuItems = useMemo(
@@ -414,11 +426,19 @@ function CraftComposer({
           libraryFiles: libraryFileEntries.map((file) => ({
             id: file.fileId,
             name: file.name,
+            checked: attachedFileMentionIds.has(file.fileId),
+            onToggle: (checked: boolean) => {
+              if (checked) {
+                editorRef.current?.insertMention(toMention(file, "@"));
+              } else {
+                editorRef.current?.removeMention(pickerEntryKey(file));
+              }
+            },
           })),
         },
-        entryMenuT,
+        entryMenuT
       ),
-    [libraryFileEntries, entryMenuT],
+    [libraryFileEntries, attachedFileMentionIds, editorRef, entryMenuT]
   );
 
   const topContent = (

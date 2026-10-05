@@ -483,10 +483,7 @@ function PptxToolbar({
               >
                 <SelectValue>{Math.round(zoom)}%</SelectValue>
               </SelectTrigger>
-              <SelectContent
-                align="end"
-                position="popper"
-              >
+              <SelectContent align="end" position="popper">
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
                     {value}%

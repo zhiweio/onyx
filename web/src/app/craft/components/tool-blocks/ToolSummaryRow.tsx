@@ -47,7 +47,7 @@ export function ToolSummaryRow({
   title,
 }: ToolSummaryRowProps) {
   const hasContent = [primaryText, secondaryText, diffCount, statusNode].some(
-    (node) => node != null && node !== false && node !== "",
+    (node) => node != null && node !== false && node !== ""
   );
 
   const sharedContent = (
@@ -104,7 +104,7 @@ export function ToolSummaryRow({
           aria-hidden
           className={cn(
             "size-4 shrink-0 stroke-text-03 opacity-0 transition-transform transition-opacity duration-200 ease-out group-hover/tool-summary:opacity-100",
-            isExpanded ? "rotate-90 opacity-100" : "rotate-0",
+            isExpanded ? "rotate-90 opacity-100" : "rotate-0"
           )}
         />
       </div>

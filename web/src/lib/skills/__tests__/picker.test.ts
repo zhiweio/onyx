@@ -166,10 +166,6 @@ describe("toPickerSections", () => {
     ]);
   });
 
-
-
-
-
   it("builds Apps independently of skill data", () => {
     const apps = [appFixture({ id: 7, name: "Slack", app_type: "SLACK" })];
     const result = toPickerSections(undefined, apps);
@@ -298,8 +294,6 @@ describe("filterPickerSections", () => {
     );
     expect(filterPickerSections(sections, "quarterly").skills).toEqual([]);
   });
-
-
 
   it("returns empty sections when nothing matches", () => {
     const empty = filterPickerSections(sections, "zzz");

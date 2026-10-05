@@ -197,11 +197,7 @@ class LLMProviderView(LLMProvider):
             object.__setattr__(
                 self,
                 "is_configured",
-                bool(
-                    self.api_key
-                    or self.custom_config
-                    or self.api_base
-                ),
+                bool(self.api_key or self.custom_config or self.api_base),
             )
         return self
 

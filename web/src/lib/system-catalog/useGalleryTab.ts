@@ -26,7 +26,7 @@ export function useGalleryTab({ kind, onForked }: UseGalleryTabOptions) {
   const t = useTranslations("craft.gallery");
   const [tab, setTab] = useState<GalleryTab>("mine");
   const [category, setCategory] = useState<SystemCatalogCategory | "all">(
-    "all",
+    "all"
   );
   const [previewItem, setPreviewItem] = useState<CatalogItem | null>(null);
   const [forkingId, setForkingId] = useState<string | null>(null);
@@ -45,18 +45,18 @@ export function useGalleryTab({ kind, onForked }: UseGalleryTabOptions) {
         toast.error(
           forkError instanceof Error
             ? forkError.message
-            : t("toasts.forkFailed.message"),
+            : t("toasts.forkFailed.message")
         );
       } finally {
         setForkingId(null);
       }
     },
-    [kind, onForked, t],
+    [kind, onForked, t]
   );
 
   const forkItem = useCallback(
     (item: CatalogItem) => void fork(item.id),
-    [fork],
+    [fork]
   );
 
   return {

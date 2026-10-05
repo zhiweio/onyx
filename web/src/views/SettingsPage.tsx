@@ -2023,11 +2023,9 @@ function AccountsAccessSettings() {
 
   const { data: allScopeOptions = [], error: scopeOptionsError } = useSWR<
     PatScopeOption[]
-  >(
-    showTokensSection ? SWR_KEYS.userPatScopes : null,
-    errorHandlingFetcher,
-    { fallbackData: [] }
-  );
+  >(showTokensSection ? SWR_KEYS.userPatScopes : null, errorHandlingFetcher, {
+    fallbackData: [],
+  });
   const currentTier = useSettings().tier;
   const scopeOptions = useMemo(
     () =>
@@ -2331,127 +2329,127 @@ function AccountsAccessSettings() {
               width="full"
             />
             (
-              <Card border="solid" padding={1} rounding={4}>
-                <Section alignItems="start" height="fit">
-                  <Section gap={0}>
-                    <Section flexDirection="row" padding={1} gap={2}>
-                      {pats.length === 0 ? (
-                        <Section
-                          padding={2}
-                          alignItems="start"
-                          data-testid="access-token-list-status"
-                        >
-                          <Text font="secondary-body" color="text-03">
-                            {isLoading
-                              ? t("apiKeys.list.loading")
-                              : t("apiKeys.list.empty")}
-                          </Text>
-                        </Section>
-                      ) : (
-                        <InputTypeIn
-                          placeholder={t("apiKeys.list.searchPlaceholder")}
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          searchIcon
-                          variant="internal"
-                        />
-                      )}
-                      <div className="shrink-0">
-                        <Button
-                          rightIcon={SvgPlusCircle}
-                          prominence="internal"
-                          interaction={
-                            tokenCreation.showCreateModal ? "active" : "rest"
-                          }
-                          onClick={tokenCreation.openTokenModal}
-                          disabled={!canCreatePAT}
-                          tooltip={
-                            !canCreatePAT
-                              ? t("apiKeys.list.noPermissionTooltip")
-                              : undefined
-                          }
-                        >
-                          {t("apiKeys.list.newTokenButton")}
-                        </Button>
-                      </div>
-                    </Section>
+            <Card border="solid" padding={1} rounding={4}>
+              <Section alignItems="start" height="fit">
+                <Section gap={0}>
+                  <Section flexDirection="row" padding={1} gap={2}>
+                    {pats.length === 0 ? (
+                      <Section
+                        padding={2}
+                        alignItems="start"
+                        data-testid="access-token-list-status"
+                      >
+                        <Text font="secondary-body" color="text-03">
+                          {isLoading
+                            ? t("apiKeys.list.loading")
+                            : t("apiKeys.list.empty")}
+                        </Text>
+                      </Section>
+                    ) : (
+                      <InputTypeIn
+                        placeholder={t("apiKeys.list.searchPlaceholder")}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        searchIcon
+                        variant="internal"
+                      />
+                    )}
+                    <div className="shrink-0">
+                      <Button
+                        rightIcon={SvgPlusCircle}
+                        prominence="internal"
+                        interaction={
+                          tokenCreation.showCreateModal ? "active" : "rest"
+                        }
+                        onClick={tokenCreation.openTokenModal}
+                        disabled={!canCreatePAT}
+                        tooltip={
+                          !canCreatePAT
+                            ? t("apiKeys.list.noPermissionTooltip")
+                            : undefined
+                        }
+                      >
+                        {t("apiKeys.list.newTokenButton")}
+                      </Button>
+                    </div>
+                  </Section>
 
-                    <Section gap={1}>
-                      {filteredPats.map((pat) => {
-                        const now = new Date();
-                        const createdDate = new Date(pat.created_at);
-                        const daysSinceCreation = Math.floor(
-                          (now.getTime() - createdDate.getTime()) /
+                  <Section gap={1}>
+                    {filteredPats.map((pat) => {
+                      const now = new Date();
+                      const createdDate = new Date(pat.created_at);
+                      const daysSinceCreation = Math.floor(
+                        (now.getTime() - createdDate.getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      );
+
+                      let expiryText = t("apiKeys.list.neverExpires");
+                      if (pat.expires_at) {
+                        const expiresDate = new Date(pat.expires_at);
+                        const daysUntilExpiry = Math.ceil(
+                          (expiresDate.getTime() - now.getTime()) /
                             (1000 * 60 * 60 * 24)
                         );
-
-                        let expiryText = t("apiKeys.list.neverExpires");
-                        if (pat.expires_at) {
-                          const expiresDate = new Date(pat.expires_at);
-                          const daysUntilExpiry = Math.ceil(
-                            (expiresDate.getTime() - now.getTime()) /
-                              (1000 * 60 * 60 * 24)
-                          );
-                          expiryText = t("apiKeys.list.expiresIn", {
-                            count: daysUntilExpiry,
-                          });
-                        }
-
-                        const scopeText =
-                          pat.scopes === null
-                            ? t(
-                                "apiKeys.createModal.permissions.fullAccessOption"
-                              )
-                            : pat.scopes
-                                .map((scope) => scopeLabels.get(scope) ?? scope)
-                                .join(", ");
-
-                        const createdText =
-                          daysSinceCreation === 0
-                            ? t("apiKeys.list.createdToday")
-                            : t("apiKeys.list.createdDaysAgo", {
-                                count: daysSinceCreation,
-                              });
-
-                        const middleText = t("apiKeys.list.middleText", {
-                          created: createdText,
-                          expiry: expiryText,
-                          scope: scopeText,
+                        expiryText = t("apiKeys.list.expiresIn", {
+                          count: daysUntilExpiry,
                         });
+                      }
 
-                        return (
-                          <Interactive.Container
-                            key={pat.id}
-                            size="fit"
-                            width="full"
-                          >
-                            <div className="w-full bg-background-tint-01">
-                              <AttachmentItemLayout
-                                icon={SvgKey}
-                                title={pat.name}
-                                description={pat.token_display}
-                                middleText={middleText}
-                                rightChildren={
-                                  <Button
-                                    icon={SvgTrash}
-                                    onClick={() => setTokenToDelete(pat)}
-                                    prominence="tertiary"
-                                    size="sm"
-                                    aria-label={t(
-                                      "apiKeys.list.deleteTokenAriaLabel",
-                                      { name: pat.name }
-                                    )}
-                                  />
-                                }
-                              />
-                            </div>
-                          </Interactive.Container>
-                        );
-                      })}
-                    </Section>
+                      const scopeText =
+                        pat.scopes === null
+                          ? t(
+                              "apiKeys.createModal.permissions.fullAccessOption"
+                            )
+                          : pat.scopes
+                              .map((scope) => scopeLabels.get(scope) ?? scope)
+                              .join(", ");
+
+                      const createdText =
+                        daysSinceCreation === 0
+                          ? t("apiKeys.list.createdToday")
+                          : t("apiKeys.list.createdDaysAgo", {
+                              count: daysSinceCreation,
+                            });
+
+                      const middleText = t("apiKeys.list.middleText", {
+                        created: createdText,
+                        expiry: expiryText,
+                        scope: scopeText,
+                      });
+
+                      return (
+                        <Interactive.Container
+                          key={pat.id}
+                          size="fit"
+                          width="full"
+                        >
+                          <div className="w-full bg-background-tint-01">
+                            <AttachmentItemLayout
+                              icon={SvgKey}
+                              title={pat.name}
+                              description={pat.token_display}
+                              middleText={middleText}
+                              rightChildren={
+                                <Button
+                                  icon={SvgTrash}
+                                  onClick={() => setTokenToDelete(pat)}
+                                  prominence="tertiary"
+                                  size="sm"
+                                  aria-label={t(
+                                    "apiKeys.list.deleteTokenAriaLabel",
+                                    { name: pat.name }
+                                  )}
+                                />
+                              }
+                            />
+                          </div>
+                        </Interactive.Container>
+                      );
+                    })}
                   </Section>
                 </Section>
-              </Card>
+              </Section>
+            </Card>
             )
           </Section>
         )}

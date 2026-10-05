@@ -21,7 +21,9 @@ export default function CodeFilePreview({
 }: FileRendererProps) {
   const language = useMemo(() => getLanguageFromPath(filePath), [filePath]);
   const lines = useMemo(() => content.split("\n"), [content]);
-  const highlight = useCodeHighlighter(!!language && lines.length <= MAX_HIGHLIGHT_LINES);
+  const highlight = useCodeHighlighter(
+    !!language && lines.length <= MAX_HIGHLIGHT_LINES
+  );
 
   // One pass once the lazy highlighter resolves; null until then renders
   // plain lines and the same rows re-render colored a tick later.
@@ -40,7 +42,11 @@ export default function CodeFilePreview({
               <tr key={idx} className="align-baseline">
                 <td
                   className="sticky left-0 select-none border-e-[0.5px] border-border-01 bg-background-code-01 px-2 py-0 text-end align-baseline"
-                  style={{ ...MONO_STYLE, minWidth: "3.5em", color: "var(--text-02)" }}
+                  style={{
+                    ...MONO_STYLE,
+                    minWidth: "3.5em",
+                    color: "var(--text-02)",
+                  }}
                 >
                   {idx + 1}
                 </td>

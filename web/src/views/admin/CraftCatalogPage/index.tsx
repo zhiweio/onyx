@@ -15,7 +15,12 @@ import {
 } from "@opal/layouts";
 import { InputTextArea } from "@opal/components";
 import SvgNoResult from "@opal/illustrations/no-result";
-import { SvgPlus, SvgSimpleLoader, SvgTrash, SvgUploadCloud } from "@opal/icons";
+import {
+  SvgPlus,
+  SvgSimpleLoader,
+  SvgTrash,
+  SvgUploadCloud,
+} from "@opal/icons";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { useCatalogEntries } from "@/lib/system-catalog/hooks";
 import {
@@ -83,10 +88,10 @@ export default function CraftCatalogPage() {
   const [kind, setKind] = useState<GalleryKind>("skills");
   const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState<SystemCatalogCategory | "all">(
-    "all",
+    "all"
   );
   const [status, setStatus] = useState<SystemCatalogPublishStatus | "all">(
-    "all",
+    "all"
   );
   const [view, setView] = useState<CatalogViewMode>("cards");
   const [page, setPage] = useState(1);
@@ -100,24 +105,23 @@ export default function CraftCatalogPage() {
 
   const categories = useMemo(
     () => collectCatalogCategories(entries),
-    [entries],
+    [entries]
   );
   const visibleEntries = useMemo(
     () =>
       filterCatalogItems(entries, {
         query: searchQuery,
         category,
-        statuses:
-          status === "all" ? ["DRAFT", "PUBLISHED"] : [status],
+        statuses: status === "all" ? ["DRAFT", "PUBLISHED"] : [status],
       }),
-    [entries, searchQuery, category, status],
+    [entries, searchQuery, category, status]
   );
   const orderedEntries = useMemo(() => {
     if (category !== "all") {
       return visibleEntries;
     }
     return groupCatalogItemsByCategory(visibleEntries).flatMap(
-      (group) => group.items,
+      (group) => group.items
     );
   }, [category, visibleEntries]);
 
@@ -149,14 +153,14 @@ export default function CraftCatalogPage() {
           actionError instanceof SystemCatalogRequestError ||
             actionError instanceof Error
             ? actionError.message
-            : t("toasts.actionFailed.message"),
+            : t("toasts.actionFailed.message")
         );
         return false;
       } finally {
         setPending(false);
       }
     },
-    [refresh, t],
+    [refresh, t]
   );
 
   async function handlePublish() {
@@ -165,7 +169,7 @@ export default function CraftCatalogPage() {
       async () => {
         await publishCatalogEntry(kind, publishTarget.id, changelog);
       },
-      t("toasts.published.message", { name: publishTarget.name }),
+      t("toasts.published.message", { name: publishTarget.name })
     );
     if (ok) {
       setPublishTarget(null);
@@ -178,7 +182,7 @@ export default function CraftCatalogPage() {
       async () => {
         await unpublishCatalogEntry(kind, entry.id);
       },
-      t("toasts.unpublished.message", { name: entry.name }),
+      t("toasts.unpublished.message", { name: entry.name })
     );
   }
 
@@ -186,7 +190,7 @@ export default function CraftCatalogPage() {
     if (!deleteTarget) return;
     const ok = await runAction(
       () => deleteCatalogEntry(kind, deleteTarget.id),
-      t("toasts.deleted.message", { name: deleteTarget.name }),
+      t("toasts.deleted.message", { name: deleteTarget.name })
     );
     if (ok) setDeleteTarget(null);
   }
@@ -197,7 +201,7 @@ export default function CraftCatalogPage() {
       async () => {
         await updateCatalogEntry(kind, editTarget.id, input);
       },
-      t("toasts.updated.message", { name: input.name ?? editTarget.name }),
+      t("toasts.updated.message", { name: input.name ?? editTarget.name })
     );
     if (ok) setEditTarget(null);
   }
@@ -288,9 +292,7 @@ export default function CraftCatalogPage() {
                     size="sm"
                     icon={SvgPlus}
                     onClick={() =>
-                      router.push(
-                        "/admin/craft/catalog/scenarios/new" as Route
-                      )
+                      router.push("/admin/craft/catalog/scenarios/new" as Route)
                     }
                   >
                     {t("actions.createScenario.label")}

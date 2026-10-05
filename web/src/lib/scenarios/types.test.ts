@@ -70,7 +70,9 @@ describe("scenario protocol preview", () => {
         ],
       },
     });
-    expect(preview).toContain("Use only these skills unless the user asks otherwise:");
+    expect(preview).toContain(
+      "Use only these skills unless the user asks otherwise:"
+    );
     expect(preview).toContain("## Domain");
     expect(preview).toContain("tax");
     expect(preview).toContain("## Extra skills");

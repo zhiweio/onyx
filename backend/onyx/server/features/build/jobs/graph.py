@@ -27,6 +27,14 @@ NodeKind = Literal[
     "review",
     "revise",
 ]
+
+
+class PlanValidationError(ValueError):
+    """The plan's graph cannot execute: a dependency cycle or a structural
+    defect. Surfaced as a plan-gate failure so the model gets one retry,
+    not a silently mutated schedule."""
+
+
 WorkerKind = Literal["opencode_turn", "host_pure"]
 IsolationKind = Literal["parent_session", "child_session"]
 # Kinds a node may declare. The first three members of channels.InterruptKind
@@ -61,12 +69,14 @@ class GraphNode(BaseModel):
     product_name: str = ""
     success_criteria: str = ""
     forbid: list[str] = Field(default_factory=list)
+    # Prose completion criteria from the playbook; rendered into briefs.
+    notes: str = ""
 
     def to_phase_dict(self, *, status: str = "pending") -> dict[str, Any]:
         return {
             "id": self.id,
-            "name": self.name,
             "kind": self.kind,
+            "name": self.name,
             "status": status,
             "worker": self.worker,
             "hitl": self.hitl,
@@ -75,11 +85,15 @@ class GraphNode(BaseModel):
             "depends_on": list(self.depends_on),
             "role": self.role,
             "skill_id": self.skill_id,
+            "notes": self.notes,
         }
 
 
 class JobGraph(BaseModel):
     nodes: list[GraphNode]
+    # Non-fatal schedule notes from compilation (e.g. dropped unresolvable
+    # lane deps). Journaled so intent changes are visible, never silent.
+    warnings: list[str] = Field(default_factory=list)
 
     def node_map(self) -> dict[str, GraphNode]:
         return {node.id: node for node in self.nodes}
@@ -103,7 +117,8 @@ class JobGraph(BaseModel):
 
 def compile_graph(_domain: str = "", plan: JobPlan | None = None) -> JobGraph:
     """Build the host graph from the model plan. Domain is a label only."""
-    nodes: list[GraphNode] = [_plan_node()]
+    nodes: list[GraphNode] = [_plan_node(approve=bool(plan and plan.ask_plan))]
+    warnings: list[str] = []
     if plan is None:
         return JobGraph(nodes=nodes)
 
@@ -126,7 +141,8 @@ def compile_graph(_domain: str = "", plan: JobPlan | None = None) -> JobGraph:
             role_to_node_id[lane.role] = node.id
         # Lane-to-lane dependencies: depends_on entries name another lane by
         # role (or any earlier node id such as "ingest"). Unresolvable names
-        # are dropped so a bad plan cannot orphan a lane behind a ghost node.
+        # are dropped so a bad plan cannot orphan a lane behind a ghost node,
+        # but each drop is recorded as a warning — never silent.
         for lane, node in zip(lanes, nodes[-len(lanes) :], strict=True):
             if not lane.depends_on:
                 continue
@@ -138,6 +154,10 @@ def compile_graph(_domain: str = "", plan: JobPlan | None = None) -> JobGraph:
                 if node_id is not None and node_id != node.id:
                     if node_id not in resolved:
                         resolved.append(node_id)
+                else:
+                    warnings.append(
+                        f"lane '{lane.role}' depends_on unknown '{dep}'; dropped"
+                    )
             nodes[nodes.index(node)] = node.model_copy(update={"depends_on": resolved})
         reconcile = _reconcile_node(lane_ids)
         reconcile = reconcile.model_copy(
@@ -160,12 +180,51 @@ def compile_graph(_domain: str = "", plan: JobPlan | None = None) -> JobGraph:
         work = work.model_copy(update={"id": _unique_id(used_ids, work.id)})
         nodes.append(work)
         predecessor = work.id
+    elif plan.done_when and not set(plan.done_when) <= set(
+        nodes[-1].required_paths if nodes else []
+    ):
+        # Deliverables must own a terminal gate even when the plan declares
+        # phases: without this node they never become required paths and the
+        # contract stops enforcing the scenario's promised outputs.
+        delivery = _delivery_node(predecessor, required=list(plan.done_when))
+        delivery = delivery.model_copy(update={"id": _unique_id(used_ids, delivery.id)})
+        nodes.append(delivery)
+        predecessor = delivery.id
 
     if plan.ask_delivery and not _has_review(nodes):
         review = _review_node(predecessor)
         review = review.model_copy(update={"id": _unique_id(used_ids, review.id)})
         nodes.append(review)
-    return JobGraph(nodes=nodes)
+    _assert_acyclic(nodes)
+    return JobGraph(nodes=nodes, warnings=warnings)
+
+
+def _assert_acyclic(nodes: list[GraphNode]) -> None:
+    """Reject dependency cycles. A cycle strands its members: they are never
+    ready, and an empty ready set must mean the job is done — not stuck."""
+    known = {node.id for node in nodes}
+    deps = {node.id: [dep for dep in node.depends_on if dep in known] for node in nodes}
+    state: dict[str, int] = {}
+    stack: list[str] = []
+
+    def visit(node_id: str) -> None:
+        mark = state.get(node_id, 0)
+        if mark == 2:
+            return
+        if mark == 1:
+            cycle = stack[stack.index(node_id) :] + [node_id]
+            raise PlanValidationError(
+                "PLAN.json dependency cycle: " + " -> ".join(cycle)
+            )
+        state[node_id] = 1
+        stack.append(node_id)
+        for dep in deps[node_id]:
+            visit(dep)
+        stack.pop()
+        state[node_id] = 2
+
+    for node_id in deps:
+        visit(node_id)
 
 
 def graph_from_snapshot(snapshot: dict[str, Any] | None) -> JobGraph | None:
@@ -216,13 +275,13 @@ def _skip_planned_phase(phase: JobPlanPhase) -> bool:
     return phase.kind.strip().lower() in _SKIP_PHASE_KINDS
 
 
-def _plan_node() -> GraphNode:
+def _plan_node(*, approve: bool = False) -> GraphNode:
     return GraphNode(
         id="plan",
         kind="plan",
         name="Plan",
         worker="opencode_turn",
-        hitl="none",
+        hitl="approve_plan" if approve else "none",
         input_channels=["goal"],
         output_channels=["plan", "todo"],
         required_paths=default_done_when("plan"),
@@ -283,6 +342,25 @@ def _work_node(predecessor: str, *, required: list[str]) -> GraphNode:
     )
 
 
+def _delivery_node(predecessor: str, *, required: list[str]) -> GraphNode:
+    return GraphNode(
+        id="delivery",
+        kind="compose",
+        name="Deliverables",
+        worker="opencode_turn",
+        depends_on=[predecessor],
+        input_channels=["plan", "artifacts"],
+        output_channels=["artifacts"],
+        required_paths=list(required),
+        product_name="Final deliverables",
+        success_criteria=(
+            "The job's declared deliverables exist and are non-empty. "
+            "Finish or fix them, then stop."
+        ),
+        forbid=["Do not start later nodes"],
+    )
+
+
 def _review_node(predecessor: str) -> GraphNode:
     return GraphNode(
         id="review",
@@ -320,6 +398,7 @@ def _phase_from_plan(
         product_name=name,
         success_criteria="Write the files this node lists, then stop.",
         forbid=["Do not start later nodes"],
+        notes=phase.notes.strip(),
     )
 
 

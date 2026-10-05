@@ -1,0 +1,91 @@
+---
+name: feishu
+description: Read and act on Feishu/Lark as the connected user — messages, docs, wiki, drive, sheets, bitable, tasks, calendar, contacts, approvals, and meeting minutes — via the bundled helper.
+---
+
+# Feishu
+
+Call the Feishu Open API as the connected user via the bundled helper.
+**You are already authenticated** — the egress proxy injects the user's
+Feishu token on the wire. Never ask for or handle tokens.
+
+{{ACTION_AVAILABILITY_SECTION}}
+
+## Usage
+
+    python .opencode/skills/feishu/feishu_api.py <command> [args]
+
+Output is JSON on stdout. A business failure prints
+`{"ok": false, "code": ..., "msg": "..."}` — surface the `msg` to the user.
+Every endpoint not covered below is reachable through `raw`:
+
+```
+python feishu_api.py raw GET /wiki/v2/spaces/7419.../nodes --param page_size=50
+python feishu_api.py raw POST /im/v1/messages --data '{"receive_id":"oc_x","msg_type":"text","content":"{\"text\":\"hi\"}"}'
+```
+
+IDs are tenant-specific — always list/search first, then use the returned ids.
+Message sends default to ASK for approval; expect an HTTP 403 with guidance
+while approval is pending, and tell the user to approve it in Onyx.
+
+### Chats & messages
+
+```
+feishu_api.py chats
+feishu_api.py history oc_1234 [--start 1730000000] [--end 1730003600]
+feishu_api.py read om_5678
+feishu_api.py send oc_1234 --text "Deploy finished"          # to a chat (chat_id)
+feishu_api.py send ou_5678 --receive-id-type open_id --text "hi"
+feishu_api.py send oc_1234 --msg-type interactive --content '{"config":...}'
+feishu_api.py reply om_5678 --text "on it"
+feishu_api.py search-messages "quarterly report"
+```
+
+### Documents & wiki
+
+```
+feishu_api.py search-docs "OKR 规划"
+feishu_api.py doc DOCNODE123        # plain text (docx raw content)
+feishu_api.py doc-blocks DOCNODE123 # structured blocks
+feishu_api.py doc-create "Weekly Notes" [--folder-token fld...]
+feishu_api.py wiki-spaces
+feishu_api.py wiki-nodes 741956...
+```
+
+A wiki node's `obj_token` is the document id for `doc` / `doc-blocks`.
+
+### Drive, sheets, bitable
+
+```
+feishu_api.py drive-files [--folder-token fld...]
+feishu_api.py download CNabC... -o ./report.xlsx
+feishu_api.py sheet-values CNabC... "sheetId!A1:D10"
+feishu_api.py sheet-write CNabC... "sheetId!A1:B2" '[["k","v"],["a",1]]'
+feishu_api.py bitable-tables CNabC...
+feishu_api.py bitable-records CNabC... tbl123
+feishu_api.py bitable-search CNabC... tbl123 --body '{"filter":{...}}'
+feishu_api.py bitable-create-record CNabC... tbl123 '{"标题":"x","状态":"todo"}'
+```
+
+### Tasks & calendar
+
+```
+feishu_api.py tasklists
+feishu_api.py tasks <tasklist_guid>
+feishu_api.py task-create "Review PR #12" --due 2026-10-09T18:00:00+08:00
+feishu_api.py task-complete <task_guid>
+feishu_api.py calendars
+feishu_api.py events cal_123 --start 2026-10-05T00:00:00+08:00 --end 2026-10-06T00:00:00+08:00
+feishu_api.py event-create cal_123 "Design review" --start ... --end ... --attendee ou_...
+```
+
+### Contacts & people
+
+```
+feishu_api.py user ou_5678
+feishu_api.py dept-users 0
+feishu_api.py resolve-users someone@example.com   # email -> open_id
+```
+
+To DM a colleague, resolve their email to an `open_id` first, then
+`send ou_... --receive-id-type open_id`.

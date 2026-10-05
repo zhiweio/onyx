@@ -132,8 +132,7 @@ export const DateRangePicker = memo(function DateRangePicker({
     <div
       className={cn(
         "inline-flex max-w-full shrink-0 items-center overflow-x-auto p-0.5",
-        className ??
-          "rounded-12 border border-border-02 bg-background-tint-03"
+        className ?? "rounded-12 border border-border-02 bg-background-tint-03"
       )}
       role="group"
       aria-label={t("group.ariaLabel")}

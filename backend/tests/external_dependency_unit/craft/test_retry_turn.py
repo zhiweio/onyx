@@ -44,7 +44,9 @@ class _FakeTurn:
 @pytest.fixture()
 def retry_machinery(monkeypatch: pytest.MonkeyPatch) -> StubSandboxManager:
     """Strip the cache/runner plumbing; keep DB + sandbox-manager real calls."""
-    monkeypatch.setattr(messages_module, "acquire_active_turn_lock", lambda *_a, **_k: _FakeLock())
+    monkeypatch.setattr(
+        messages_module, "acquire_active_turn_lock", lambda *_a, **_k: _FakeLock()
+    )
     monkeypatch.setattr(messages_module, "get_active_turn", lambda *_a, **_k: None)
     monkeypatch.setattr(
         messages_module,
@@ -54,7 +56,9 @@ def retry_machinery(monkeypatch: pytest.MonkeyPatch) -> StubSandboxManager:
     monkeypatch.setattr(
         messages_module, "start_interactive_turn_runner", lambda *_a, **_k: None
     )
-    monkeypatch.setattr(messages_module, "check_token_rate_limits", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        messages_module, "check_token_rate_limits", lambda *_a, **_k: None
+    )
     monkeypatch.setattr(
         messages_module, "session_runtime_stale", lambda *_a, **_k: False
     )

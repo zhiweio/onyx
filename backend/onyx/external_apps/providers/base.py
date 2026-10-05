@@ -137,6 +137,9 @@ class OAuthProviderSpec(ProviderSpec):
     OAuth 2.0 flow. Paired with :class:`OAuthExternalAppProvider`."""
 
     oauth: OAuthFlowSpec
+    # Org-credential keys holding the OAuth client id/secret. Most providers
+    # use the RFC-6749 names; Feishu's console calls them app_id/app_secret.
+    client_credential_keys: tuple[str, str] = ("client_id", "client_secret")
 
 
 class TokenExchangeRequest(BaseModel):

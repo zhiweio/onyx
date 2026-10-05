@@ -13,7 +13,8 @@ const copy: CatalogListingFieldCopy = {
   category: "Category",
   tags: "Tags",
   tagsPlaceholder: "Add a tag and press Enter",
-  tagsHint: "At most 20 tags, 32 characters each. Tags are stored in lowercase.",
+  tagsHint:
+    "At most 20 tags, 32 characters each. Tags are stored in lowercase.",
   count: (used, max) => `${used}/${max}`,
   categoryLabel: (category) => category,
 };

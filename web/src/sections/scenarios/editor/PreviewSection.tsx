@@ -12,11 +12,7 @@ export default function PreviewSection({ markdown }: PreviewSectionProps) {
 
   return (
     <div data-testid="ScenarioComposer/preview-toggle">
-      <Divider
-        foldable
-        title={t("sections.preview.title")}
-        defaultOpen={false}
-      >
+      <Divider foldable title={t("sections.preview.title")} defaultOpen={false}>
         <div
           id="scenario-preview"
           className="pt-2"

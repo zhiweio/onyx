@@ -16,7 +16,12 @@ const SvgSquareArrowUpRight = ({ size, ...props }: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
-    <path d="m9 15 6-6" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="m9 15 6-6"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 export default SvgSquareArrowUpRight;

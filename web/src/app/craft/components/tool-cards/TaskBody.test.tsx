@@ -64,12 +64,12 @@ describe("TaskBody (ZCode subagent row)", () => {
           subagentSessionId: childId,
           description: "Draft rebase plan",
         })}
-      />,
+      />
     );
     fireEvent.click(screen.getByTestId("subagent-row"));
     expect(
       useBuildSessionStore.getState().sessions.get(sessionId)
-        ?.viewedSubagentSessionId,
+        ?.viewedSubagentSessionId
     ).toBe(childId);
   });
 
@@ -79,8 +79,8 @@ describe("TaskBody (ZCode subagent row)", () => {
     fireEvent.click(row);
     expect(
       [...useBuildSessionStore.getState().sessions.values()].filter(
-        (session) => session.viewedSubagentSessionId,
-      ),
+        (session) => session.viewedSubagentSessionId
+      )
     ).toHaveLength(0);
   });
 
@@ -100,7 +100,7 @@ describe("TaskBody (ZCode subagent row)", () => {
         "lane-task-lane:literature",
         "literature",
         "Literature",
-        "",
+        ""
       );
 
     render(
@@ -112,7 +112,7 @@ describe("TaskBody (ZCode subagent row)", () => {
           subagentType: "literature",
           subagentSessionId: childId,
         })}
-      />,
+      />
     );
 
     // The summary keeps the latest activity as its secondary line.
@@ -142,7 +142,7 @@ describe("TaskBody (ZCode subagent row)", () => {
           subagentType: "explore",
           subagentSessionId: childId,
         })}
-      />,
+      />
     );
     expect(document.querySelector(".animate-spin")).not.toBeNull();
 
@@ -153,7 +153,7 @@ describe("TaskBody (ZCode subagent row)", () => {
           subagentSessionId: childId,
           status: "completed",
         })}
-      />,
+      />
     );
     expect(document.querySelector(".animate-spin")).toBeNull();
   });
@@ -174,7 +174,7 @@ describe("TaskBody (ZCode subagent row)", () => {
         "lane-task-lane:researcher",
         "researcher",
         "Researcher",
-        "",
+        ""
       );
 
     render(
@@ -186,7 +186,7 @@ describe("TaskBody (ZCode subagent row)", () => {
           status: "cancelled",
           description: "Researcher — epi.md",
         })}
-      />,
+      />
     );
 
     expect(document.querySelector(".animate-spin")).toBeNull();
@@ -209,7 +209,7 @@ describe("TaskBody (ZCode subagent row)", () => {
         "lane-task-lane:researcher",
         "researcher",
         "Researcher",
-        "",
+        ""
       );
     craftJobRef.current = {
       id: "job-2",
@@ -245,7 +245,7 @@ describe("TaskBody (ZCode subagent row)", () => {
           status: "cancelled",
           description: "Researcher — epi.md",
         })}
-      />,
+      />
     );
 
     expect(document.querySelector(".animate-spin")).toBeNull();

@@ -489,7 +489,9 @@ def _is_summary_message(state: _TurnState, msg_id: Any) -> bool:
     return isinstance(msg_id, str) and msg_id in state.summary_message_ids
 
 
-def _context_usage_from_info(info: dict[str, Any]) -> ContextUsagePacket | None:
+def _context_usage_from_info(
+    info: dict[str, Any], message_id: str | None = None
+) -> ContextUsagePacket | None:
     if info.get("summary") is True:
         return None
     tokens = info.get("tokens")
@@ -501,19 +503,26 @@ def _context_usage_from_info(info: dict[str, Any]) -> ContextUsagePacket | None:
     def _n(value: Any) -> int:
         return int(value) if isinstance(value, (int, float)) else 0
 
-    used = (
-        _n(tokens.get("input"))
-        + _n(tokens.get("output"))
-        + _n(tokens.get("reasoning"))
-        + _n(cache.get("read"))
-        + _n(cache.get("write"))
-    )
+    input_tokens = _n(tokens.get("input"))
+    output_tokens = _n(tokens.get("output"))
+    reasoning_tokens = _n(tokens.get("reasoning"))
+    cache_read = _n(cache.get("read"))
+    cache_write = _n(cache.get("write"))
+    used = input_tokens + output_tokens + reasoning_tokens + cache_read + cache_write
     if used <= 0:
         return None
     cost = info.get("cost")
     return ContextUsagePacket(
         used_tokens=used,
         cost=float(cost) if isinstance(cost, (int, float)) else None,
+        # Granular breakdown for the per-request ledger; the collapsed
+        # sum above stays the UI contract.
+        message_id=message_id if isinstance(message_id, str) else None,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        reasoning_tokens=reasoning_tokens,
+        cache_read_tokens=cache_read,
+        cache_write_tokens=cache_write,
     )
 
 
@@ -743,7 +752,9 @@ def translate_opencode_event(
         finish = info.get("finish")
         if isinstance(finish, str):
             state.last_finish = finish
-        usage = _context_usage_from_info(info)
+        usage = _context_usage_from_info(
+            info, message_id=msg_id if isinstance(msg_id, str) else None
+        )
         if usage is not None:
             yield usage
         # A message error DOES kill the turn — surface it.
@@ -1761,6 +1772,14 @@ class OpencodeServeClient:
                 continue
 
             last_activity_at = time.monotonic()
+
+            # Tape capture happens BEFORE translation: the recorder is a
+            # no-op contextvar read when no turn owns this thread's taping.
+            from onyx.server.features.build.sandbox.tape_recorder import (
+                record_raw_event,
+            )
+
+            record_raw_event(raw)
 
             for sandbox_event in translate_opencode_event(
                 raw,

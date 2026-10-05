@@ -93,7 +93,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
         t("nrf.page.filesFailed.toast", {
           count: lastFailedFiles.length,
           names,
-        }),
+        })
       );
       clearLastFailedFiles();
     }
@@ -157,13 +157,13 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
   // Document sidebar state (from store)
   const documentSidebarVisible = useDocumentSidebarVisible();
   const updateCurrentDocumentSidebarVisible = useChatSessionStore(
-    (state) => state.updateCurrentDocumentSidebarVisible,
+    (state) => state.updateCurrentDocumentSidebarVisible
   );
   const setCurrentSession = useChatSessionStore(
-    (state) => state.setCurrentSession,
+    (state) => state.setCurrentSession
   );
   const currentSessionId = useChatSessionStore(
-    (state) => state.currentSessionId,
+    (state) => state.currentSessionId
   );
 
   // Memoized callback for closing document sidebar
@@ -303,14 +303,14 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     async (acceptedFiles: File[]) => {
       handleMessageSpecificFileUpload(acceptedFiles);
     },
-    [handleMessageSpecificFileUpload],
+    [handleMessageSpecificFileUpload]
   );
 
   // Handle submit from AppInputBar - routes through query controller for search/chat classification
   const handleChatInputSubmit = useCallback(
     async (
       submittedMessage: string,
-      selection?: { skillIds?: string[]; mcpServerIds?: number[] },
+      selection?: { skillIds?: string[]; mcpServerIds?: number[] }
     ) => {
       if (!submittedMessage.trim()) return;
 
@@ -364,7 +364,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
       currentTabUrl,
       multiModel.isMultiModelActive,
       multiModel.selectedModels,
-    ],
+    ]
   );
 
   // Handle resubmit last message on error
@@ -402,7 +402,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
     // Notify the service worker so it stops sending tab URL updates
     window.parent.postMessage(
       { type: CHROME_MESSAGE.TAB_READING_DISABLED },
-      getPanelOrigin(),
+      getPanelOrigin()
     );
   }, [setCurrentSession, resetInputBar]);
 
@@ -418,14 +418,14 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
           ? CHROME_MESSAGE.TAB_READING_ENABLED
           : CHROME_MESSAGE.TAB_READING_DISABLED,
       },
-      getPanelOrigin(),
+      getPanelOrigin()
     );
   }, [tabReadingEnabled]);
 
   // Handle search result document click
   const handleSearchDocumentClick = useCallback(
     (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
-    [],
+    []
   );
 
   return (
@@ -434,7 +434,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
         "relative w-full h-full flex flex-col overflow-hidden",
         isSidePanel
           ? "bg-background"
-          : hasBackground && "bg-cover bg-center bg-fixed",
+          : hasBackground && "bg-cover bg-center bg-fixed"
       )}
       style={
         !isSidePanel && hasBackground
@@ -473,7 +473,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             {...getRootProps()}
             className={cn(
               "flex-1 min-h-0 w-full flex flex-col items-center outline-hidden",
-              isSidePanel && "px-3",
+              isSidePanel && "px-3"
             )}
           >
             {/* Chat area with messages */}
@@ -535,7 +535,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
               ref={inputRef}
               className={cn(
                 "w-full flex flex-col",
-                !isSidePanel && "max-w-(--app-page-main-content-width)",
+                !isSidePanel && "max-w-(--app-page-main-content-width)"
               )}
             >
               {hasMessages && activeAgent && (
@@ -595,7 +595,7 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
       <div
         className={cn(
           "absolute end-0 top-0 h-full z-20 overflow-hidden transition-all duration-300",
-          documentSidebarVisible ? "w-100" : "w-0",
+          documentSidebarVisible ? "w-100" : "w-0"
         )}
       >
         <DocumentsSidebar

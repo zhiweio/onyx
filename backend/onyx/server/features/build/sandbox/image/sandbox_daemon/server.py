@@ -2,6 +2,7 @@ import asyncio
 import base64
 import binascii
 import hashlib
+import json
 import os
 import secrets
 import tarfile
@@ -20,6 +21,9 @@ from sandbox_daemon import processes
 from sandbox_daemon.contract import (  # ty: ignore[unresolved-import]
     PROCESS_ROOT,
     PUSH_DAEMON_PORT,
+    SIDECAR_CODEX_EVENTS_PATH,
+    SIDECAR_CODEX_HEALTH_PATH,
+    SIDECAR_CODEX_RPC_PATH,
     SIDECAR_FILESYSTEM_LIST_PATH,
     SIDECAR_HEALTH_PATH,
     SIDECAR_OPENCODE_HISTORY_CREATE_PATH,
@@ -292,6 +296,105 @@ async def process_list(
 ) -> list[dict[str, object]]:
     _verify_process_auth(request, x_push_signature, x_push_timestamp)
     return await asyncio.to_thread(processes.list_processes, PROCESS_ROOT)
+
+
+# ── codex app-server bridge ─────────────────────────────────────────────
+# 501 (not 500) when the image shipped without the codex binary: callers
+# treat that as "runtime unavailable for this deployment", not an error.
+
+
+def _codex_bridge():
+    from sandbox_daemon.codex_bridge import CodexBridge  # ty: ignore[unresolved-import]
+
+    return CodexBridge.instance()
+
+
+@app.post(SIDECAR_CODEX_RPC_PATH)
+async def codex_rpc(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, object]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    from sandbox_daemon.codex_bridge import (
+        CodexBridgeError,  # ty: ignore[unresolved-import]
+    )
+
+    body = await request.body()
+    try:
+        payload = json.loads(body or b"{}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
+    method = payload.get("method")
+    params = payload.get("params") or {}
+    initialize = bool(payload.get("initialize"))
+    timeout_ms = float(payload.get("timeout_ms") or 30_000)
+    if not isinstance(method, str) or not isinstance(params, dict):
+        raise HTTPException(status_code=400, detail="method/params required")
+
+    def _call() -> dict[str, object]:
+        bridge = _codex_bridge()
+        if initialize:
+            bridge.initialize()
+        return {
+            "ok": True,
+            "result": bridge.rpc(method, params, timeout=timeout_ms / 1000.0),
+        }
+
+    try:
+        return await asyncio.to_thread(_call)
+    except CodexBridgeError as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get(SIDECAR_CODEX_EVENTS_PATH)
+def codex_events(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> StreamingResponse:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    from sandbox_daemon.codex_bridge import (
+        CodexBridgeError,  # ty: ignore[unresolved-import]
+    )
+
+    try:
+        _codex_bridge().initialize()
+    except CodexBridgeError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    import queue as _queue
+
+    bridge = _codex_bridge()
+    sub = bridge.subscribe()
+
+    def _stream() -> Iterator[bytes]:
+        try:
+            while True:
+                # Client disconnect surfaces as GeneratorExit on the next
+                # yield; the finally below unsubscribes.
+                try:
+                    message = sub.get(timeout=15.0)
+                except _queue.Empty:
+                    yield b": keepalive\n\n"
+                    continue
+                yield b"data: " + json.dumps(message).encode("utf-8") + b"\n\n"
+        finally:
+            bridge.unsubscribe(sub)
+
+    return StreamingResponse(
+        _stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
+    )
+
+
+@app.get(SIDECAR_CODEX_HEALTH_PATH)
+def codex_health(
+    request: Request,
+    x_push_signature: str | None = Header(default=None, alias="X-Push-Signature"),
+    x_push_timestamp: str | None = Header(default=None, alias="X-Push-Timestamp"),
+) -> dict[str, object]:
+    _verify_process_auth(request, x_push_signature, x_push_timestamp)
+    return _codex_bridge().status()
 
 
 @app.get(SIDECAR_HEALTH_PATH)

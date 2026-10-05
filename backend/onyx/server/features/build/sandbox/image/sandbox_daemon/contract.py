@@ -27,6 +27,11 @@ SIDECAR_PROCESS_ITEM_PREFIX = "/processes/{process_id}"
 SIDECAR_PROCESS_POLL_SUFFIX = "/poll"
 SIDECAR_PROCESS_INPUT_SUFFIX = "/input"
 SIDECAR_PROCESS_STOP_SUFFIX = "/stop"
+# codex app-server bridge (see codex_bridge.py). 501 when the image was
+# built without ENABLE_CODEX.
+SIDECAR_CODEX_RPC_PATH = "/codex/rpc"
+SIDECAR_CODEX_EVENTS_PATH = "/codex/events"
+SIDECAR_CODEX_HEALTH_PATH = "/codex/health"
 SIDECAR_PROCESS_LIST_PATH = "/processes-list"
 SIDECAR_PROCESS_TOKEN_ENV_VAR = "ONYX_SANDBOX_PROCESS_TOKEN"
 PROCESS_ROOT = "/var/lib/onyx-processes"

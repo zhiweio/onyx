@@ -57,7 +57,12 @@ export default function LoopDetailPage() {
   const router = useRouter();
   const loopId = params?.id;
 
-  const { data: loop, error, isLoading, mutate } = useSWR<LoopListItem>(
+  const {
+    data: loop,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<LoopListItem>(
     loopId ? SWR_KEYS.craftLoop(loopId) : null,
     errorHandlingFetcher,
     { revalidateOnFocus: false }
@@ -110,7 +115,9 @@ export default function LoopDetailPage() {
       setBusy(true);
       try {
         await setLoopAutopilot(loop.id, enabled);
-        toast.success(enabled ? t("toasts.autopilotOn") : t("toasts.autopilotOff"));
+        toast.success(
+          enabled ? t("toasts.autopilotOn") : t("toasts.autopilotOff")
+        );
         refreshAll();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("toasts.failed"));
@@ -377,7 +384,9 @@ export default function LoopDetailPage() {
 // Tables
 // ---------------------------------------------------------------------------
 
-type DetailTranslate = ReturnType<typeof useTranslations<"craft.loops.detailPage">>;
+type DetailTranslate = ReturnType<
+  typeof useTranslations<"craft.loops.detailPage">
+>;
 
 function buildOutputColumns(
   t: DetailTranslate,
@@ -420,7 +429,9 @@ function buildOutputColumns(
       header: t("outputs.columns.state"),
       weight: 16,
       enableSorting: false,
-      cell: (state: LoopOutput["state"]) => <LoopOutputStateBadge state={state} />,
+      cell: (state: LoopOutput["state"]) => (
+        <LoopOutputStateBadge state={state} />
+      ),
     }),
     tc.column("decided_at", {
       header: t("outputs.columns.decided"),
@@ -498,7 +509,9 @@ function buildItemColumns(
       header: t("ledger.columns.status"),
       weight: 14,
       enableSorting: false,
-      cell: (status: LoopItem["status"]) => <LoopItemStatusBadge status={status} />,
+      cell: (status: LoopItem["status"]) => (
+        <LoopItemStatusBadge status={status} />
+      ),
     }),
     tc.column("attempts", {
       header: t("ledger.columns.attempts"),
@@ -548,7 +561,13 @@ function buildItemColumns(
   ];
 }
 
-function GrantTable({ grants, t }: { grants: LoopGrant[]; t: DetailTranslate }) {
+function GrantTable({
+  grants,
+  t,
+}: {
+  grants: LoopGrant[];
+  t: DetailTranslate;
+}) {
   const tc = createTableColumns<LoopGrant>();
   const columns = [
     tc.column("ship_action", {
@@ -612,7 +631,9 @@ function GrantTable({ grants, t }: { grants: LoopGrant[]; t: DetailTranslate }) 
       data={grants}
       columns={columns}
       getRowId={(row) => row.id}
-      pageSize={grants.length > 0 ? Math.min(grants.length, DETAIL_PAGE_SIZE) : 1}
+      pageSize={
+        grants.length > 0 ? Math.min(grants.length, DETAIL_PAGE_SIZE) : 1
+      }
       emptyState={<Text color="text-03">{t("grants.empty")}</Text>}
     />
   );

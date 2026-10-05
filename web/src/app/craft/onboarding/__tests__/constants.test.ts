@@ -246,11 +246,7 @@ describe("isCraftRecommendedModel", () => {
       model_name: "deepseek-flash",
     };
     expect(
-      isCraftRecommendedModel(
-        model("deepseek-flash"),
-        65,
-        workspaceDefault
-      )
+      isCraftRecommendedModel(model("deepseek-flash"), 65, workspaceDefault)
     ).toBe(true);
     expect(
       isCraftRecommendedModel(

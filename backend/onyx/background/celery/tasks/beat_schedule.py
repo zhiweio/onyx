@@ -253,6 +253,32 @@ beat_task_templates: list[dict] = [
             "queue": OnyxCeleryQueues.PRIMARY,
         },
     },
+    # Craft deep-job keeper: reap lane specialists whose turn driver was
+    # lost (API restart) and re-dispatch idle jobs. Ticks are one indexed
+    # query when nothing is open; every action is idempotent and
+    # rate-limited per job by the self-heal marker.
+    {
+        "name": "craft-job-keeper-sweep",
+        "task": OnyxCeleryTask.CRAFT_JOB_KEEPER_SWEEP,
+        "schedule": timedelta(seconds=60),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": 45,
+            "queue": OnyxCeleryQueues.PRIMARY,
+        },
+    },
+    # Tape retention: drop verbatim harness-event rows past their window.
+    # Same shape as the MCP gateway log pruner (DB-only, LOW priority).
+    {
+        "name": "prune-craft-tape",
+        "task": OnyxCeleryTask.PRUNE_CRAFT_TAPE,
+        "schedule": timedelta(hours=6),
+        "options": {
+            "priority": OnyxCeleryPriority.LOW,
+            "expires": BEAT_EXPIRES_DEFAULT,
+            "queue": OnyxCeleryQueues.PRIMARY,
+        },
+    },
     # Sandbox sweep: background-snapshot changed sessions, sleep idle sandboxes.
     {
         "name": "cleanup-idle-sandboxes",

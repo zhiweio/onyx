@@ -10,7 +10,12 @@ const SvgBot = ({ size, ...props }: IconProps) => (
     stroke="currentColor"
     {...props}
   >
-    <path d="M12 8V4H8" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M12 8V4H8"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
     <rect
       width="16"
       height="12"
@@ -21,10 +26,30 @@ const SvgBot = ({ size, ...props }: IconProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
-    <path d="M2 14h2" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M20 14h2" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M15 13v2" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M9 13v2" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M2 14h2"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M20 14h2"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M15 13v2"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 13v2"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 export default SvgBot;

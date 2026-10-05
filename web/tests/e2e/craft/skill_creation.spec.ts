@@ -30,17 +30,20 @@ test("SKILL.md populates the create form after confirmation", async ({
     .locator('textarea[name="instructions_markdown"]')
     .fill("Typed instructions");
 
-  await page.locator('input[type="file"]').first().setInputFiles({
-    name: "SKILL.md",
-    mimeType: "text/markdown",
-    buffer: Buffer.from(
-      "---\n" +
-        "name: uploaded-skill\n" +
-        "description: Uploaded description\n" +
-        "---\n\n" +
-        "Uploaded instructions\n"
-    ),
-  });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "SKILL.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from(
+        "---\n" +
+          "name: uploaded-skill\n" +
+          "description: Uploaded description\n" +
+          "---\n\n" +
+          "Uploaded instructions\n"
+      ),
+    });
 
   const confirmation = page.getByRole("dialog").filter({
     has: page.getByRole("button", { name: /Import skill|导入技能/ }),

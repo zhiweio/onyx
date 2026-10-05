@@ -45,7 +45,6 @@ from onyx.server.features.build.jobs.gates import (
     ContractGateResult,
     evaluate_contract_gate,
     gate_retry_limit_detail,
-    is_transient_turn_error,
     named_search_required,
     retry_brief,
     retry_limit_error_detail,
@@ -64,6 +63,7 @@ from onyx.server.features.build.jobs.journal import (
     DELIVERY,
     DRAIN,
     GATE_FAIL,
+    GRAPH_WARNING,
     INTERRUPT,
     LANE_END,
     LANE_HEAL,
@@ -80,6 +80,7 @@ from onyx.server.features.build.jobs.phase_gate import (
     increment_gate_retries,
 )
 from onyx.server.features.build.jobs.plan import JobPlan, parse_plan_bytes
+from onyx.server.features.build.jobs.turn_errors import is_transient_turn_error
 from onyx.server.features.build.sandbox.factory import get_sandbox_manager
 from onyx.utils.logger import setup_logger
 
@@ -230,7 +231,7 @@ def after_worker_turn(
         )
         return
 
-    state = _commit_node_success(
+    committed = _commit_node_success(
         db_session,
         job=job,
         state=state,
@@ -239,6 +240,10 @@ def after_worker_turn(
         sandbox_id=sandbox_id,
         session_id=session_id,
     )
+    if committed is None:
+        # Plan gate already routed the failure to a retry.
+        return
+    state = committed
     _dispatch_next(
         db_session,
         job=job,
@@ -328,6 +333,7 @@ def finalize_job_failure(
         error_detail=error_detail,
         db_session=db_session,
     )
+    _notify_job_failed(job, error_detail=error_detail)
     open_rows = [
         row
         for row in job.specialists
@@ -611,6 +617,12 @@ def maybe_self_heal_job(
             CraftJobStatus.WAITING_LANES,
         }:
             return
+        if job.status == CraftJobStatus.WAITING_LANES:
+            # Headless lane sessions have no SSE watcher, so nothing else
+            # reaps a lane whose turn driver died with an API restart. A
+            # settlement here retries or fails it and re-drives the job.
+            if reap_inactive_lanes(db_session, job=job, user_id=user_id):
+                return
         if count_open_specialists(job) > 0:
             return
         state = load_state(job)
@@ -629,15 +641,6 @@ def maybe_self_heal_job(
         cache = get_cache_backend()
         if get_active_turn(cache=cache, session_id=job.session_id, user_id=job.user_id):
             return
-        if job.status == CraftJobStatus.WAITING_LANES:
-            graph = load_graph(job, state)
-            if any(is_lane_kind(node.kind) for node in graph.nodes) and any(
-                node.id not in state.completed_nodes
-                for node in graph.nodes
-                if is_lane_kind(node.kind)
-            ):
-                # Unfinished lanes: _spawn_lanes' heal/respawn path owns this.
-                return
         marker = cache.lock(f"craft:job:{job.id}:selfheal", timeout=60)
         if not marker.acquire(blocking=False):
             return
@@ -736,7 +739,13 @@ def _commit_node_success(
     produced: dict[str, Any],
     sandbox_id: UUID,
     session_id: UUID,
-) -> JobState:
+) -> JobState | None:
+    """Complete a node and persist its writes.
+
+    Returns None when the node was NOT completed: for a plan node whose
+    graph cannot be rebuilt the failure is routed to the gate-retry path
+    instead — silently continuing on the old graph would ignore the
+    model's plan (or a cycle would strand the job later)."""
     writes: dict[str, Any] = {
         "completed_nodes": [node.id],
         "last_node": node.id,
@@ -754,27 +763,24 @@ def _commit_node_success(
     }
     if node.kind == "plan":
         plan_writes = _plan_from_disk(sandbox_id, session_id, state)
-        if plan_writes:
-            writes.update(plan_writes)
-    state = apply_writes(state, writes)
-    if node.kind == "plan" and state.plan is not None:
-        from onyx.server.features.build.jobs.plan import JobPlan
-
-        try:
-            plan = JobPlan.model_validate(
-                {
-                    "goal": state.plan.goal,
-                    "phases": state.plan.phases,
-                    "lanes": state.plan.lanes,
-                    "inputs": state.plan.inputs,
-                    "ask_delivery": state.plan.ask_delivery,
-                    "done_when": state.plan.goal_done_when,
-                }
+        if plan_writes is None:
+            _fail_or_retry(
+                db_session,
+                job=job,
+                user_id=job.user_id,
+                state=state,
+                node=node,
+                gate=_invalid_plan_gate(node, "PLAN.json unreadable after gate"),
             )
-            graph = compile_graph(str(job.domain), plan)
-            state = apply_writes(state, {"graph": graph.to_snapshot()})
-        except Exception:
-            logger.exception("Could not recompile graph from PLAN.json")
+            return None
+        writes.update(plan_writes)
+        rebuilt = _rebuild_graph_writes(
+            db_session, job=job, state=state, node=node, plan_writes=plan_writes
+        )
+        if rebuilt is None:
+            return None
+        writes.update(rebuilt)
+    state = apply_writes(state, writes)
     state = apply_writes(state, {"step": state.step + 1})
     persist_state(job, state)
     _checkpoint(db_session, job, state, writes, node.id)
@@ -823,6 +829,82 @@ def _plan_from_disk(
     version = (state.plan.version + 1) if state.plan is not None else 1
     channel = PlanChannel.from_job_plan(plan, version=version)
     return {"plan": channel.model_dump(), "goal": plan.goal}
+
+
+def _rebuild_graph_writes(
+    db_session: Session,
+    *,
+    job: CraftJob,
+    state: JobState,
+    node: GraphNode,
+    plan_writes: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Compile the model's PLAN.json into a graph snapshot.
+
+    Returns the graph write, or None when compilation failed (already
+    routed to the plan gate retry — continuing on the previous graph would
+    silently discard the model's schedule). Non-fatal warnings (dropped
+    deps) are journaled, never silent."""
+    from onyx.server.features.build.jobs.plan import JobPlan
+
+    raw_plan = plan_writes.get("plan")
+    if not isinstance(raw_plan, dict):
+        _fail_or_retry(
+            db_session,
+            job=job,
+            user_id=job.user_id,
+            state=state,
+            node=node,
+            gate=_invalid_plan_gate(node, "plan channel missing"),
+        )
+        return None
+    try:
+        channel = PlanChannel.model_validate(raw_plan)
+        plan = JobPlan.model_validate(
+            {
+                "goal": channel.goal,
+                "phases": channel.phases,
+                "lanes": channel.lanes,
+                "inputs": channel.inputs,
+                "ask_delivery": channel.ask_delivery,
+                "done_when": channel.goal_done_when,
+            }
+        )
+        graph = compile_graph(str(job.domain), plan)
+    except Exception as exc:
+        logger.warning("PLAN.json graph recompile failed: %s", exc)
+        _fail_or_retry(
+            db_session,
+            job=job,
+            user_id=job.user_id,
+            state=state,
+            node=node,
+            gate=_invalid_plan_gate(node, str(exc)),
+        )
+        return None
+    if graph.warnings:
+        emit(
+            db_session,
+            job_id=job.id,
+            event_type=GRAPH_WARNING,
+            payload={"warnings": graph.warnings},
+        )
+    return {"graph": graph.to_snapshot()}
+
+
+def _invalid_plan_gate(node: GraphNode | None, reason: str) -> ContractGateResult:
+    from onyx.server.features.build.jobs.gates import GateMissing
+
+    return ContractGateResult(
+        passed=False,
+        missing=[
+            GateMissing(
+                path="outputs/plan/PLAN.json",
+                reason=f"plan graph invalid: {reason}"[:500],
+                owner_node=node.id if node is not None else "plan",
+            )
+        ],
+    )
 
 
 def _fail_or_retry(
@@ -911,6 +993,31 @@ def _dispatch_next(
     graph = load_graph(job, state)
     ready = ready_nodes(graph, state)
     if not ready:
+        completed = set(state.completed_nodes)
+        incomplete = [node for node in graph.nodes if node.id not in completed]
+        if incomplete:
+            # No runnable node while work remains: the schedule is stalled
+            # (cycle or unsatisfiable deps). Success here would be a lie.
+            emit(
+                db_session,
+                job_id=job.id,
+                event_type=DRAIN,
+                payload={
+                    "reason": "graph_stalled",
+                    "incomplete_nodes": [node.id for node in incomplete],
+                },
+            )
+            finalize_job_failure(
+                db_session,
+                job=job,
+                user_id=user_id,
+                error_detail=(
+                    "Job graph stalled: no runnable node but "
+                    f"{len(incomplete)} node(s) incomplete "
+                    f"({', '.join(node.id for node in incomplete[:5])})"
+                ),
+            )
+            return
         emit(
             db_session,
             job_id=job.id,
@@ -1010,7 +1117,7 @@ def _run_host_and_continue(
     produced = scan_artifacts(
         sandbox_id=sandbox_id, session_id=session_id, producer_node=node.id
     )
-    state = _commit_node_success(
+    committed = _commit_node_success(
         db_session,
         job=job,
         state=state,
@@ -1019,6 +1126,10 @@ def _run_host_and_continue(
         sandbox_id=sandbox_id,
         session_id=session_id,
     )
+    if committed is None:
+        # Plan gate already routed the failure to a retry.
+        return
+    state = committed
     if extra:
         state = apply_writes(state, extra)
         persist_state(job, state)
@@ -1988,7 +2099,13 @@ def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) ->
     """Fail RUNNING specialists that sat past the phase budget with no activity."""
     if job.status not in {CraftJobStatus.WAITING_LANES}:
         return False
-    budget = max(int(job.phase_budget_seconds or 0), 1)
+    from onyx.server.features.build.configs import CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS
+
+    # A null/zero budget must not degenerate into an instant reap: a lane
+    # whose turn started seconds ago is alive even with no budget recorded.
+    budget = max(
+        int(job.phase_budget_seconds or CRAFT_DEEP_JOB_PHASE_BUDGET_SECONDS), 1
+    )
     now = datetime.now(timezone.utc)
     reaped = False
     from onyx.db.craft_job import mark_specialist_finished
@@ -2005,16 +2122,29 @@ def reap_inactive_lanes(db_session: Session, *, job: CraftJob, user_id: UUID) ->
             error_detail="Lane inactive",
         )
         reaped = True
+        # The detail carries the transient marker ("lane inactive"), so the
+        # settlement retries the lane once instead of failing the job.
         after_lane_turn(
             db_session,
             job=job,
             user_id=user_id,
             specialist_ok=False,
             node_id=specialist.node_id,
+            turn_error_detail="Lane inactive: turn driver was lost",
+            specialist_session_id=specialist.session_id,
         )
     if reaped:
         _safe_commit(db_session)
     return reaped
+
+
+def _job_im_link(job: CraftJob) -> tuple[str, str]:
+    """(full URL, scenario display name) for job notifications."""
+    from onyx.configs.app_configs import WEB_DOMAIN
+    from onyx.onyxbot.china.scenario_trigger import im_job_display_name
+
+    url = f"{WEB_DOMAIN}/craft/v1?sessionId={job.session_id}"
+    return url, im_job_display_name(job.name)
 
 
 def _notify_job_finished(job: CraftJob, *, artifact_count: int) -> None:
@@ -2026,14 +2156,36 @@ def _notify_job_finished(job: CraftJob, *, artifact_count: int) -> None:
     try:
         from onyx.onyxbot.china.framework import dispatch_im_notification
 
+        url, display = _job_im_link(job)
         dispatch_im_notification(
             user_id=job.user_id,
-            title=f"Craft job succeeded: {job.name}",
+            title=f"✅ 场景任务完成:{display}",
             description=(
-                f"{artifact_count} artifact(s) delivered. "
-                f"Open: /craft/v1?sessionId={job.session_id}"
+                f"产出 {artifact_count} 个文件。"
+                f"[打开任务]({url})\nsessionId: {job.session_id}"
             ),
-            link=f"/craft/v1?sessionId={job.session_id}",
+            link=url,
         )
     except Exception:
         logger.warning("job-finished IM push failed", exc_info=True)
+
+
+def _notify_job_failed(job: CraftJob, *, error_detail: str) -> None:
+    """Best-effort IM push when a job fails — IM users have no other way
+    to learn a run ended (and that their job slot freed up)."""
+    try:
+        from onyx.onyxbot.china.framework import dispatch_im_notification
+
+        url, display = _job_im_link(job)
+        reason = (error_detail or "").strip()
+        description = f"[打开任务]({url})\nsessionId: {job.session_id}"
+        if reason:
+            description = f"{reason[:200]}\n{description}"
+        dispatch_im_notification(
+            user_id=job.user_id,
+            title=f"❌ 场景任务失败:{display}",
+            description=description,
+            link=url,
+        )
+    except Exception:
+        logger.warning("job-failed IM push failed", exc_info=True)

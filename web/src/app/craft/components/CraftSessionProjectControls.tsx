@@ -56,15 +56,19 @@ export function useCraftSessionProjectControls({
         setPicking(false);
       } catch (error) {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : t("toast.moveProjectFailed")
+          error instanceof Error ? error.message : t("toast.moveProjectFailed")
         );
       } finally {
         setBusy(false);
       }
     },
-    [assignBuildSessionProject, onProjectsChanged, sessionId, t, visibleProjects]
+    [
+      assignBuildSessionProject,
+      onProjectsChanged,
+      sessionId,
+      t,
+      visibleProjects,
+    ]
   );
 
   const handleSaveAs = useCallback(async () => {
@@ -89,13 +93,7 @@ export function useCraftSessionProjectControls({
     } finally {
       setBusy(false);
     }
-  }, [
-    assignBuildSessionProject,
-    onProjectsChanged,
-    saveName,
-    sessionId,
-    t,
-  ]);
+  }, [assignBuildSessionProject, onProjectsChanged, saveName, sessionId, t]);
 
   const menuItems = picking
     ? [

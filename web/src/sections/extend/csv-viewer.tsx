@@ -768,10 +768,7 @@ export function CsvViewer({ className, data, search = false }: CsvViewerProps) {
                 >
                   <SelectValue>{Math.round(zoom * 100)}%</SelectValue>
                 </SelectTrigger>
-                <SelectContent
-                  align="end"
-                  position="popper"
-                >
+                <SelectContent align="end" position="popper">
                   {ZOOM_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option.toString()}>
                       {Math.round(option * 100)}%

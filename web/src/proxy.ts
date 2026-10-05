@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import {
-  SERVER_SIDE_ONLY__AUTH_COOKIE_NAME,
-} from "./lib/constants";
+import { SERVER_SIDE_ONLY__AUTH_COOKIE_NAME } from "./lib/constants";
 
 // Route prefixes that never allow anonymous access, so we fast-fail at the edge
 // when no auth cookie is present. "/app" is intentionally excluded: it allows

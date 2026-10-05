@@ -16,9 +16,7 @@ import {
   ImageGenFormChildProps,
   ImageGenSubmitPayload,
 } from "@/views/admin/ImageGenerationPage/forms/types";
-import {
-  ImageProvider,
-} from "@/views/admin/ImageGenerationPage/constants";
+import { ImageProvider } from "@/views/admin/ImageGenerationPage/constants";
 import {
   DashscopeImageModel,
   ImageGenerationConfigView,
@@ -118,8 +116,7 @@ function transformValues(
   };
 }
 
-interface DashscopeImageGenFieldsProps
-  extends ImageGenFormChildProps<DashscopeImageGenFormValues> {
+interface DashscopeImageGenFieldsProps extends ImageGenFormChildProps<DashscopeImageGenFormValues> {
   existingConfig?: ImageGenerationConfigView;
 }
 
@@ -241,11 +238,7 @@ function DashscopeImageGenFields(props: DashscopeImageGenFieldsProps) {
         <FormikField<string>
           name="workspace_id"
           render={(field, helper, meta, state) => (
-            <FormField
-              name="workspace_id"
-              state={state}
-              className="w-full"
-            >
+            <FormField name="workspace_id" state={state} className="w-full">
               <FormField.Label>
                 {t("dashscope.workspaceId.label")}
               </FormField.Label>
@@ -274,11 +267,7 @@ function DashscopeImageGenFields(props: DashscopeImageGenFieldsProps) {
         <FormikField<string>
           name="custom_api_base"
           render={(field, helper, meta, state) => (
-            <FormField
-              name="custom_api_base"
-              state={state}
-              className="w-full"
-            >
+            <FormField name="custom_api_base" state={state} className="w-full">
               <FormField.Label>
                 {t("dashscope.customBase.label")}
               </FormField.Label>
@@ -408,9 +397,7 @@ function DashscopeImageGenFields(props: DashscopeImageGenFieldsProps) {
                 </div>
                 <Button
                   prominence="tertiary"
-                  icon={
-                    isFetchingModels ? SvgSimpleLoader : SvgRefreshCw
-                  }
+                  icon={isFetchingModels ? SvgSimpleLoader : SvgRefreshCw}
                   onClick={() => void fetchModels(false)}
                   disabled={disabled || isFetchingModels || !canFetchModels}
                   tooltip={
@@ -460,8 +447,7 @@ export function DashscopeImageGenForm(props: ImageGenFormBaseProps) {
         }),
         custom_api_base: Yup.string().when("region", {
           is: DASHSCOPE_CUSTOM_REGION,
-          then: (schema) =>
-            schema.required(t("dashscope.customBase.required")),
+          then: (schema) => schema.required(t("dashscope.customBase.required")),
           otherwise: (schema) => schema.notRequired(),
         }),
         model_name: Yup.string().required(t("dashscope.models.required")),
@@ -484,7 +470,10 @@ export function DashscopeImageGenForm(props: ImageGenFormBaseProps) {
       transformValues={(values) => transformValues(values, imageProvider)}
     >
       {(childProps) => (
-        <DashscopeImageGenFields {...childProps} existingConfig={existingConfig} />
+        <DashscopeImageGenFields
+          {...childProps}
+          existingConfig={existingConfig}
+        />
       )}
     </ImageGenFormWrapper>
   );

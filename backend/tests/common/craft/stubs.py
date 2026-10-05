@@ -190,6 +190,7 @@ class StubSandboxManager(SandboxManager):
         self.cleanup_session_workspace_silent: bool = False
         self.dispose_opencode_instance_silent: bool = False
         self.regenerate_session_config_silent: bool = False
+        self.relink_session_skills_silent: bool = False
         self.restore_snapshot_silent: bool = False
         self.write_sandbox_file_silent: bool = False
         self.write_files_to_sandbox_silent: bool = False
@@ -216,6 +217,7 @@ class StubSandboxManager(SandboxManager):
         self.setup_session_workspace_count: int = 0
         self.cleanup_session_workspace_count: int = 0
         self.regenerate_session_config_count: int = 0
+        self.relink_session_skills_count: int = 0
         self.create_snapshot_count: int = 0
         self.create_opencode_history_snapshot_count: int = 0
         self.restore_snapshot_count: int = 0
@@ -359,6 +361,7 @@ class StubSandboxManager(SandboxManager):
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         self.setup_session_workspace_count += 1
         self.last_setup_session_workspace_payload = {
@@ -370,6 +373,7 @@ class StubSandboxManager(SandboxManager):
             "user_name": user_name,
             "mcp_servers": mcp_servers,
             "share_workspace_from": share_workspace_from,
+            "skill_slugs": list(skill_slugs) if skill_slugs is not None else None,
         }
         if not self.setup_session_workspace_silent:
             raise _not_configured("setup_session_workspace")
@@ -400,6 +404,7 @@ class StubSandboxManager(SandboxManager):
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         self.session_runtime_call_order.append("regenerate_session_config")
         self.regenerate_session_config_count += 1
@@ -414,9 +419,25 @@ class StubSandboxManager(SandboxManager):
             "llm_config": llm_config,
             "mcp_servers": mcp_servers,
             "share_workspace_from": share_workspace_from,
+            "skill_slugs": list(skill_slugs) if skill_slugs is not None else None,
         }
         if not self.regenerate_session_config_silent:
             raise _not_configured("regenerate_session_config")
+
+    def relink_session_skills(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        skill_slugs: Sequence[str] | None,
+    ) -> None:
+        self.relink_session_skills_count += 1
+        self.last_relink_session_skills_payload = {
+            "sandbox_id": sandbox_id,
+            "session_id": session_id,
+            "skill_slugs": list(skill_slugs) if skill_slugs is not None else None,
+        }
+        if not self.relink_session_skills_silent:
+            raise _not_configured("relink_session_skills")
 
     def create_snapshot(
         self,

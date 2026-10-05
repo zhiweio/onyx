@@ -145,6 +145,7 @@ from onyx.server.features.build.sandbox.session_workspace import (
     SESSIONS_ROOT,
     build_session_workspace_setup_script,
     build_shared_workspace_dirs_snippet,
+    build_skills_link_snippet,
     build_workspace_exists_check_script,
     shared_parent_workspace_paths,
 )
@@ -303,15 +304,18 @@ def _sanitize_relative_path(path: str) -> str:
 
 def _validate_strict_path(path: str) -> None:
     """
-    Rejects paths with traversal, URL escapes, null bytes, or shell
-    metacharacters.
+    Rejects paths with traversal, URL escapes, null bytes, control characters,
+    or shell metacharacters.
+
+    Unicode names (CJK, accents, spaces) are allowed: uploads accept them, so
+    deletion must too. Interpolated paths must still be shell-quoted.
     """
     if ".." in path or "%" in path or "\x00" in path:
         raise ValueError("Invalid path: potential path traversal detected")
     if re.search(r'[;&|`$(){}[\]<>\'"\n\r\\]', path):
         raise ValueError("Invalid path: contains disallowed characters")
-    if not re.match(r"^[a-zA-Z0-9_\-./]+$", path.lstrip("/")):
-        raise ValueError("Invalid path: contains disallowed characters")
+    if any(ord(char) < 32 or ord(char) == 127 for char in path):
+        raise ValueError("Invalid path: contains control characters")
 
 
 _COMPOSE_INTERNAL_HOSTNAMES = {
@@ -811,18 +815,7 @@ class DockerSandboxManager(SandboxManager):
 
     def _process_client(self, sandbox_id: UUID):
         """Signed HTTP client bound to the container's daemon address."""
-        container = self._get_container(sandbox_id)
-        if container is None:
-            raise RuntimeError(f"container not found for {sandbox_id}")
-        networks = (container.attrs or {}).get("NetworkSettings") or {}
-        nets = networks.get("Networks") or {}
-        ip = None
-        for net in nets.values():
-            ip = net.get("IPAddress")
-            if ip:
-                break
-        if not ip:
-            raise RuntimeError(f"no IP for sandbox {sandbox_id}")
+        ip = self._daemon_ip(sandbox_id)
         from onyx.server.features.build.sandbox.kubernetes.sidecar_client import (
             _sign_sidecar_request,
         )
@@ -831,6 +824,27 @@ class DockerSandboxManager(SandboxManager):
         # The sandbox daemon verifies Ed25519 push signatures; the signer is
         # shared with the Kubernetes sidecar client.
         return ProcessClient(host=lambda _sid: ip, signer=_sign_sidecar_request)
+
+    def _daemon_ip(self, sandbox_id: UUID) -> str:
+        container = self._get_container(sandbox_id)
+        if container is None:
+            raise RuntimeError(f"container not found for {sandbox_id}")
+        networks = (container.attrs or {}).get("NetworkSettings") or {}
+        nets = networks.get("Networks") or {}
+        for net in nets.values():
+            ip = net.get("IPAddress")
+            if ip:
+                return ip
+        raise RuntimeError(f"no IP for sandbox {sandbox_id}")
+
+    def codex_transport(self):
+        """Signed transport to this sandbox daemon's codex bridge."""
+        from onyx.server.features.build.sandbox.codex.transport import CodexTransport
+        from onyx.server.features.build.sandbox.kubernetes.sidecar_client import (
+            _sign_sidecar_request,
+        )
+
+        return CodexTransport(host=self._daemon_ip, signer=_sign_sidecar_request)
 
     def start_process(
         self,
@@ -1351,6 +1365,7 @@ class DockerSandboxManager(SandboxManager):
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         container = self._require_container(sandbox_id)
         session_path = f"{SESSIONS_ROOT}/{session_id}"
@@ -1383,6 +1398,7 @@ class DockerSandboxManager(SandboxManager):
             nextjs_port=nextjs_port,
             shared_outputs_path=shared_outputs_path,
             shared_attachments_path=shared_attachments_path,
+            skill_slugs=skill_slugs,
         )
 
         logger.info(
@@ -1791,6 +1807,7 @@ fi
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         """Rewrite generated session configuration and managed symlinks."""
         # nextjs_port stays in the signature to match the abstract contract
@@ -1834,11 +1851,11 @@ fi
         shared_dirs_snippet = build_shared_workspace_dirs_snippet(
             session_path, share_workspace_from
         )
+        skills_link_snippet = build_skills_link_snippet(session_path, skill_slugs)
         script = f"""
 set -e
 mkdir -p {session_path}/.opencode
-ln -sfn {MANAGED_SKILLS_PATH} {session_path}/.opencode/skills
-ln -sfn {MANAGED_USER_LIBRARY_PATH} {session_path}/user_library
+{skills_link_snippet}ln -sfn {MANAGED_USER_LIBRARY_PATH} {session_path}/user_library
 {shared_dirs_snippet}
 printf '%s' {shlex.quote(agents_md)} > {session_path}/AGENTS.md
 {session_opencode_config_setup}
@@ -1854,6 +1871,27 @@ fi
             )
         except ExecError as e:
             raise RuntimeError(f"Failed to regenerate session config: {e}") from e
+
+    def relink_session_skills(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        skill_slugs: Sequence[str] | None,
+    ) -> None:
+        """Repoint ``.opencode/skills`` at a new subset (links only)."""
+        container = self._require_container(sandbox_id)
+        session_path = f"{SESSIONS_ROOT}/{session_id}"
+        script = f"""
+set -e
+mkdir -p {session_path}/.opencode
+{build_skills_link_snippet(session_path, skill_slugs)}"""
+        try:
+            _run_in_container_as_sandbox_user(
+                container,
+                ["/bin/sh", "-c", script],
+            )
+        except ExecError as e:
+            raise RuntimeError(f"Failed to relink session skills: {e}") from e
 
     def _load_serve_connection_info(
         self, sandbox_id: UUID
@@ -2127,14 +2165,14 @@ fi
         container = self._require_container(sandbox_id)
         _validate_strict_path(path)
         clean_path = path.lstrip("/")
-        target = f"{SESSIONS_ROOT}/{session_id}/{clean_path}"
+        target = shlex.quote(f"{SESSIONS_ROOT}/{session_id}/{clean_path}")
         try:
             result = _run_in_container_as_sandbox_user(
                 container,
                 [
                     "/bin/sh",
                     "-c",
-                    f'[ -f "{target}" ] && rm "{target}" && echo "DELETED" || echo "NOT_FOUND"',
+                    f'[ -f {target} ] && rm {target} && echo "DELETED" || echo "NOT_FOUND"',
                 ],
                 check=False,
             )

@@ -20,7 +20,7 @@ interface PromptHistoryNavigationResult {
 export function appendPromptHistoryEntry(
   entries: readonly string[],
   entry: string,
-  limit = MAX_PROMPT_HISTORY,
+  limit = MAX_PROMPT_HISTORY
 ): string[] {
   const trimmed = entry.trim();
   if (!trimmed) {
@@ -37,7 +37,7 @@ export function appendPromptHistoryEntry(
 export function navigatePromptHistory(
   entries: readonly string[],
   currentIndex: number | null,
-  direction: PromptHistoryDirection,
+  direction: PromptHistoryDirection
 ): PromptHistoryNavigationResult {
   if (entries.length === 0) {
     return { nextIndex: currentIndex, nextValue: "", shouldHandle: false };
@@ -111,11 +111,11 @@ export function readStoredPromptHistory(storageKey: string): string[] {
 /** Persist one submitted prompt; returns the resulting in-memory history. */
 export function appendStoredPromptHistory(
   storageKey: string,
-  entry: string,
+  entry: string
 ): string[] {
   const next = appendPromptHistoryEntry(
     readStoredPromptHistory(storageKey),
-    entry,
+    entry
   );
   const storage = getStorage();
   try {

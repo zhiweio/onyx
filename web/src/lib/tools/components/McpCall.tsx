@@ -83,7 +83,7 @@ export function McpSummaryLine({
       <span
         className={cn(
           "shrink-0 whitespace-nowrap font-medium",
-          running ? "text-text-04" : "text-text-04",
+          running ? "text-text-04" : "text-text-04"
         )}
       >
         {running ? <ShimmerText>{t("label")}</ShimmerText> : t("label")}
@@ -159,7 +159,7 @@ export function McpCallDetails({
   const [open, setOpen] = useState(false);
   const prettyParams = useMemo(
     () => (parameters ? JSON.stringify(parameters, null, 2) : null),
-    [parameters],
+    [parameters]
   );
 
   return (
@@ -172,7 +172,7 @@ export function McpCallDetails({
           <SvgChevronDown
             className={cn(
               "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-              !open && "-rotate-90",
+              !open && "-rotate-90"
             )}
           />
           <Text font="secondary-body" color="text-04">

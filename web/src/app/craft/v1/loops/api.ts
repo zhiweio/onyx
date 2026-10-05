@@ -54,7 +54,9 @@ export async function updateLoopState(
   );
 }
 
-export async function deleteLoop(loopId: string): Promise<{ success: boolean }> {
+export async function deleteLoop(
+  loopId: string
+): Promise<{ success: boolean }> {
   return mutate<{ success: boolean }>(
     `${API_BASE}/${loopId}`,
     "DELETE",

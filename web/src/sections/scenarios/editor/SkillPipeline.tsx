@@ -56,8 +56,14 @@ function SortableSkillRow({
   onMove,
 }: SortableSkillRowProps) {
   const t = useTranslations("craft.scenarioEditor");
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: skill.key, disabled: fieldsLocked });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: skill.key, disabled: fieldsLocked });
 
   return (
     <div

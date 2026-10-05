@@ -12,8 +12,13 @@ import pytest
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
+from onyx.llm.interfaces import LLMConfig
+from onyx.llm.multi_llm import LitellmLLM
 from onyx.server.gateway import api as gateway_api
 from onyx.server.gateway import openai_passthrough, stream_bridge
+from onyx.server.gateway.models import ResponsesRequest
 from onyx.server.gateway.openai_passthrough import (
     _SANITIZED_ERROR,
     _base_url,
@@ -28,11 +33,6 @@ from onyx.server.gateway.openai_passthrough import (
     handle_openai_responses_passthrough,
     is_openai_passthrough_eligible,
 )
-from onyx.error_handling.error_codes import OnyxErrorCode
-from onyx.error_handling.exceptions import OnyxError
-from onyx.llm.interfaces import LLMConfig
-from onyx.llm.multi_llm import LitellmLLM
-from onyx.server.gateway.models import ResponsesRequest
 from onyx.tracing.flows import LLMFlow
 from tests.unit.onyx.server.gateway.test_llm_gateway_api import (
     _ConfigOnlyLLM,

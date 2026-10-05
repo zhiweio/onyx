@@ -111,7 +111,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
         domSelection.addRange(range);
       }
     },
-    [clearHighlight, editor],
+    [clearHighlight, editor]
   );
 
   // ---- DOM selection watcher (deselect + Ctrl+A in-selection border) -----
@@ -131,13 +131,13 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
       for (const el of tileElementsIn(root)) {
         el.classList.toggle(
           "rich-input-tile-in-selection",
-          !domSelection.isCollapsed && range.intersectsNode(el),
+          !domSelection.isCollapsed && range.intersectsNode(el)
         );
       }
       const highlighted = highlightedKeyRef.current;
       if (highlighted !== null) {
         const el = root.querySelector<HTMLElement>(
-          `[data-tile-node-key="${highlighted}"]`,
+          `[data-tile-node-key="${highlighted}"]`
         );
         const stillCovered =
           el !== null && !domSelection.isCollapsed && range.intersectsNode(el);
@@ -168,7 +168,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
      *  this; reading the DOM (not Lexical's model) sidesteps the async
      *  selection reconciliation that races rapid keystrokes. */
     const domAdjacentTileKey = (
-      direction: "before" | "after",
+      direction: "before" | "after"
     ): string | null => {
       const root = editor.getRootElement();
       const sel = window.getSelection();
@@ -262,7 +262,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
           }
           trailing.selectEnd();
         },
-        { tag: PROGRAMMATIC_UPDATE_TAG },
+        { tag: PROGRAMMATIC_UPDATE_TAG }
       );
     };
 
@@ -370,7 +370,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
       ) {
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           const key = domAdjacentTileKey(
-            event.key === "ArrowLeft" ? "before" : "after",
+            event.key === "ArrowLeft" ? "before" : "after"
           );
           if (key !== null) {
             event.preventDefault();
@@ -441,7 +441,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
             // Discrete: write the DOM selection synchronously, or the next
             // rapid keystroke reconciles the stale DOM caret back into the
             // model and the move is lost.
-            { discrete: true },
+            { discrete: true }
           );
           return;
         }
@@ -492,7 +492,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
           event.stopImmediatePropagation();
           const root = editor.getRootElement();
           const element = root?.querySelector<HTMLElement>(
-            `[data-tile-node-key="${found.key}"]`,
+            `[data-tile-node-key="${found.key}"]`
           );
           setPopover({ ...found, element: element ?? null });
         }
@@ -561,7 +561,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
     (newText: string) => {
       const key = popover?.key;
       setPopover((current) =>
-        current ? { ...current, text: newText } : current,
+        current ? { ...current, text: newText } : current
       );
       if (key === undefined) {
         return;
@@ -583,7 +583,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
         node.getWritable().__text = newText;
       });
     },
-    [editor, popover?.key],
+    [editor, popover?.key]
   );
 
   const expandTile = useCallback(() => {
@@ -601,7 +601,7 @@ export function PasteTilesPlugin({ enabled }: PasteTilesPluginProps) {
         node.replace($createTextNode(node.getText()));
         editor.focus();
       },
-      { tag: PROGRAMMATIC_UPDATE_TAG },
+      { tag: PROGRAMMATIC_UPDATE_TAG }
     );
   }, [editor, popover?.key]);
 

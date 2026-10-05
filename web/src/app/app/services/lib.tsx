@@ -25,7 +25,7 @@ import { Packet } from "./streamingModels";
 
 export async function updateLlmOverrideForChatSession(
   chatSessionId: string,
-  newAlternateModel: string,
+  newAlternateModel: string
 ) {
   const response = await fetch("/api/chat/update-chat-session-model", {
     method: "PUT",
@@ -42,7 +42,7 @@ export async function updateLlmOverrideForChatSession(
 
 export async function updateTemperatureOverrideForChatSession(
   chatSessionId: string,
-  newTemperature: number,
+  newTemperature: number
 ) {
   const response = await fetch("/api/chat/update-chat-session-temperature", {
     method: "PUT",
@@ -59,7 +59,7 @@ export async function updateTemperatureOverrideForChatSession(
 
 export async function updateReasoningEffortForChatSession(
   chatSessionId: string,
-  newReasoningEffort: ReasoningEffortOverride | null,
+  newReasoningEffort: ReasoningEffortOverride | null
 ) {
   const response = await fetch("/api/chat/update-chat-session-reasoning", {
     method: "PUT",
@@ -79,7 +79,7 @@ export async function createChatSession(
   description: string | null,
   projectId: number | null,
   incognito: boolean = false,
-  incognitoSessionId: string | null = null,
+  incognitoSessionId: string | null = null
 ): Promise<string> {
   const createChatSessionResponse = await fetch(
     "/api/chat/create-chat-session",
@@ -95,11 +95,11 @@ export async function createChatSession(
         incognito,
         incognito_session_id: incognitoSessionId,
       }),
-    },
+    }
   );
   if (!createChatSessionResponse.ok) {
     console.error(
-      `Failed to create chat session - ${createChatSessionResponse.status}`,
+      `Failed to create chat session - ${createChatSessionResponse.status}`
     );
     throw Error("Failed to create chat session");
   }
@@ -271,7 +271,7 @@ export async function* sendMessage({
 
 // Drops keepalive heartbeats so stream consumers only ever see run state.
 async function* withoutHeartbeats(
-  stream: AsyncGenerator<PacketType, void, unknown>,
+  stream: AsyncGenerator<PacketType, void, unknown>
 ): AsyncGenerator<PacketType, void, unknown> {
   for await (const packet of stream) {
     if ("obj" in packet && packet.obj.type === "chat_heartbeat") {
@@ -288,11 +288,11 @@ async function* withoutHeartbeats(
 export async function* resumeStream(
   chatSessionId: string,
   cursor: number,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): AsyncGenerator<PacketType, void, unknown> {
   const response = await fetch(
     `/api/chat/chat-session/${chatSessionId}/resume-stream?cursor=${cursor}`,
-    { signal },
+    { signal }
   );
 
   if (!response.ok) {
@@ -305,7 +305,7 @@ export async function* resumeStream(
 
 export async function setPreferredResponse(
   userMessageId: number,
-  preferredResponseId: number,
+  preferredResponseId: number
 ): Promise<Response> {
   return fetch("/api/chat/set-preferred-response", {
     method: "PUT",
@@ -348,7 +348,7 @@ export async function handleChatFeedback(
   messageId: number,
   feedback: FeedbackType,
   feedbackDetails: string,
-  predefinedFeedback: string | undefined,
+  predefinedFeedback: string | undefined
 ) {
   const response = await fetch("/api/chat/create-chat-message-feedback", {
     method: "POST",
@@ -373,14 +373,14 @@ export async function removeChatFeedback(messageId: number) {
       headers: {
         "Content-Type": "application/json",
       },
-    },
+    }
   );
   return response;
 }
 
 export async function renameChatSession(
   chatSessionId: string,
-  newName: string,
+  newName: string
 ) {
   const response = await fetch(`/api/chat/rename-chat-session`, {
     method: "PUT",
@@ -400,7 +400,7 @@ export async function deleteChatSession(chatSessionId: string) {
     `/api/chat/delete-chat-session/${chatSessionId}`,
     {
       method: "DELETE",
-    },
+    }
   );
   return response;
 }
@@ -417,14 +417,14 @@ export async function deleteAllChatSessions() {
 
 export async function getAvailableContextTokens(
   chatSessionId: string,
-  modelConfigurationId?: number | null,
+  modelConfigurationId?: number | null
 ): Promise<number | null> {
   const params =
     modelConfigurationId != null
       ? `?model_configuration_id=${modelConfigurationId}`
       : "";
   const response = await fetch(
-    `/api/chat/available-context-tokens/${chatSessionId}${params}`,
+    `/api/chat/available-context-tokens/${chatSessionId}${params}`
   );
   if (!response.ok) {
     return null;
@@ -435,7 +435,7 @@ export async function getAvailableContextTokens(
 
 export function processRawChatHistory(
   rawMessages: BackendMessage[],
-  packets: Packet[][],
+  packets: Packet[][]
 ): Map<number, Message> {
   const messages: Map<number, Message> = new Map();
   const parentMessageChildrenMap: Map<number, number[]> = new Map();
@@ -539,14 +539,14 @@ export function buildChatUrl(
   chatSessionId: string | null,
   personaId: number | null,
   search?: boolean,
-  skipReload?: boolean,
+  skipReload?: boolean
 ) {
   const finalSearchParams: string[] = [];
   if (chatSessionId) {
     finalSearchParams.push(
       `${
         search ? SEARCH_PARAM_NAMES.SEARCH_ID : SEARCH_PARAM_NAMES.CHAT_ID
-      }=${chatSessionId}`,
+      }=${chatSessionId}`
     );
   }
   if (personaId !== null) {
@@ -573,7 +573,7 @@ export function buildChatUrl(
 }
 
 export async function uploadFilesForChat(
-  files: File[],
+  files: File[]
 ): Promise<[FileDescriptor[], string | null]> {
   const formData = new FormData();
   files.forEach((file) => {

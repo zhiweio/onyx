@@ -184,6 +184,46 @@ def test_delete_missing_file_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        # Uploads accept unicode names (sanitize_filename is \w-based and
+        # unicode-aware); deletion must accept them too.
+        "雪龙集团2021.pdf",
+        "résumé-final.txt",
+    ],
+)
+def test_delete_unicode_filename_upload(admin_user: DATestUser, filename: str) -> None:
+    session_id = _create_session_id(admin_user)
+    path = _seed_file(admin_user, session_id, name=filename)
+    assert path == f"attachments/{filename}"
+
+    response = client.delete(
+        _delete_file_url(session_id, path),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    assert response.status_code == 204
+
+    # Second delete finds nothing -> 404, the workspace copy is gone.
+    repeat = client.delete(
+        _delete_file_url(session_id, path),
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    assert repeat.status_code == 404
+
+    listing = client.get(
+        _files_url(session_id),
+        params={"path": "attachments"},
+        headers=admin_user.headers,
+        cookies=admin_user.cookies,
+    )
+    assert listing.status_code == 200
+    entry_names = [entry["name"] for entry in listing.json().get("entries", [])]
+    assert filename not in entry_names
+
+
 def test_download_artifact_rejects_path_traversal(
     shared_session: SharedSession,
 ) -> None:

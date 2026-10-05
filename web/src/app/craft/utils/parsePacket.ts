@@ -92,7 +92,7 @@ export function parsePacket(raw: unknown): ParsedPacket {
             const prompt = typeof item.prompt === "string" ? item.prompt : "";
             const itemOptions = Array.isArray(item.options)
               ? item.options.filter(
-                  (opt): opt is string => typeof opt === "string",
+                  (opt): opt is string => typeof opt === "string"
                 )
               : [];
             if (!prompt && itemOptions.length === 0) {
@@ -170,10 +170,10 @@ function extractThoughtTiming(p: Record<string, unknown>): {
 } {
   const meta = (p._meta as Record<string, unknown> | undefined) ?? {};
   const durationMs = asFiniteNumber(
-    p.duration_ms ?? p.durationMs ?? meta.duration_ms ?? meta.durationMs,
+    p.duration_ms ?? p.durationMs ?? meta.duration_ms ?? meta.durationMs
   );
   const thoughtStartedAtMs = asFiniteNumber(
-    meta.thought_started_at_ms ?? meta.thoughtStartedAtMs,
+    meta.thought_started_at_ms ?? meta.thoughtStartedAtMs
   );
   return {
     ...(durationMs != null ? { durationMs } : {}),
@@ -190,7 +190,7 @@ function extractThoughtTiming(p: Record<string, unknown>): {
  */
 function detectSkillName(
   p: Record<string, unknown>,
-  toolName: ToolName,
+  toolName: ToolName
 ): string | null {
   if (toolName !== "unknown") return null;
   const rawName = getToolNameRaw(p);
@@ -215,7 +215,7 @@ function resolveSkillName(
   toolName: ToolName,
   kind: ToolKind,
   ri: Record<string, unknown> | null,
-  command: string,
+  command: string
 ): string | null {
   return (
     detectSkillName(p, toolName) ??
@@ -329,7 +329,7 @@ function extractText(content: unknown): string {
       return content
         .filter(
           (c: Record<string, unknown>) =>
-            c?.type === "text" && typeof c.text === "string",
+            c?.type === "text" && typeof c.text === "string"
         )
         .map((c: Record<string, unknown>) => c.text)
         .join("");
@@ -400,10 +400,10 @@ function extractDiffPath(p: Record<string, unknown>): string {
 /** Extract file path and new-file flag from opencode's patch format.
  *  Format: "*** Update File: path" or "*** Add File: path" */
 function extractPatchInfo(
-  patchText: string,
+  patchText: string
 ): { path: string; isNew: boolean } | null {
   const match = patchText.match(
-    /\*\*\*\s+(Update|Add|Delete)\s+File:\s*(.+?)(?:\n|$)/,
+    /\*\*\*\s+(Update|Add|Delete)\s+File:\s*(.+?)(?:\n|$)/
   );
   if (match?.[2]) {
     return {
@@ -421,7 +421,7 @@ function buildDescription(
   kind: ToolKind,
   filePath: string,
   ri: Record<string, unknown> | null,
-  rawDescription: string,
+  rawDescription: string
 ): string {
   // Task tool: spawns a subagent. Read as "Spawning subagent: <description>".
   if (toolName === "task") {
@@ -470,7 +470,7 @@ function buildDescription(
 function buildTitle(
   toolName: ToolName,
   kind: ToolKind,
-  isNewFile: boolean,
+  isNewFile: boolean
 ): string {
   // Edit/write: distinguish "Writing" (new file) vs "Editing" (existing)
   if (kind === "edit") return isNewFile ? "Writing" : "Editing";
@@ -518,7 +518,7 @@ function extractRawOutputText(
   toolName: ToolName,
   kind: ToolKind,
   p: Record<string, unknown>,
-  ro: Record<string, unknown> | null,
+  ro: Record<string, unknown> | null
 ): string {
   // Task tool: show the prompt (not the output JSON)
   if (toolName === "task") {
@@ -579,7 +579,7 @@ function extractFileContent(content: unknown): string {
     if (item?.type === "content" && item?.content?.type === "text") {
       const text = item.content.text as string;
       const fileMatch = text.match(
-        /<file>\n?([\s\S]*?)\n?\(End of file[^)]*\)\n?<\/file>/,
+        /<file>\n?([\s\S]*?)\n?\(End of file[^)]*\)\n?<\/file>/
       );
       if (fileMatch?.[1]) {
         return fileMatch[1].replace(/^\d+\| /gm, "");
@@ -622,14 +622,14 @@ function extractTaskOutput(ro: Record<string, unknown> | null): string | null {
 }
 
 function extractTaskSessionId(
-  ro: Record<string, unknown> | null,
+  ro: Record<string, unknown> | null
 ): string | null {
   if (!ro?.output || typeof ro.output !== "string") return null;
   const text = ro.output;
   const taskIdMatch = text.match(/^task_id:\s*([^\s(]+)/m);
   if (taskIdMatch?.[1]) return taskIdMatch[1];
   const metadataMatch = text.match(
-    /<task_metadata>[\s\S]*?(?:session_id|task_id):\s*([^\s<]+)[\s\S]*?<\/task_metadata>/i,
+    /<task_metadata>[\s\S]*?(?:session_id|task_id):\s*([^\s<]+)[\s\S]*?<\/task_metadata>/i
   );
   return metadataMatch?.[1] ?? null;
 }
@@ -696,7 +696,7 @@ function parseToolCallStart(p: Record<string, unknown>): ParsedToolCallStart {
 }
 
 function parseToolCallProgress(
-  p: Record<string, unknown>,
+  p: Record<string, unknown>
 ): ParsedToolCallProgress {
   const toolName = resolveToolName(p);
   const rawKind = p.kind as string | null;
@@ -761,7 +761,7 @@ function parseToolCallProgress(
     kind,
     filePath,
     ri,
-    rawDescription,
+    rawDescription
   );
 
   // ── Output (freeform → sanitizePathsInText) ───────────────────

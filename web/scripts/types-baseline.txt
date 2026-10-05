@@ -1,6 +1,6 @@
 # Pre-existing tsc errors grandfathered by scripts/types-check.mjs.
 # Shrink by fixing code, then: bun run types:baseline-update
-# 250 entries.
+# 246 entries.
 lib/opal/src/layouts/content/ContentXl.tsx(223,13): error TS2322: Type '{ font: TextFont; color: "inherit"; maxLines: number | undefined; strikethrough: boolean | undefined; title: string; className: string | undefined; onClick: (() => void) | undefined; children: string | RichStr; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
 src/app/admin/bots/[bot-id]/channels/SlackChannelConfigCreationForm.tsx(34,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
 src/app/admin/bots/[bot-id]/channels/SlackChannelConfigFormFields.tsx(45,18): error TS2304: Cannot find name 'StandardAnswerCategory'.
@@ -32,8 +32,6 @@ src/lib/languageModels/index.ts(292,3): error TS1117: An object literal cannot h
 src/lib/languageModels/index.ts(294,3): error TS1117: An object literal cannot have multiple properties with the same name.
 src/lib/languageModels/index.ts(296,3): error TS1117: An object literal cannot have multiple properties with the same name.
 src/lib/languageModels/index.ts(297,3): error TS1117: An object literal cannot have multiple properties with the same name.
-src/lib/scenarios/hooks.ts(421,13): error TS2322: Type 'ScenarioRules' is not assignable to type 'Record<string, unknown>'.
-src/lib/scenarios/hooks.ts(430,13): error TS2322: Type 'ScenarioRules' is not assignable to type 'Record<string, unknown>'.
 src/lib/settings/svcSS.ts(104,29): error TS2339: Property 'ok' does not exist on type 'never'.
 src/lib/settings/svcSS.ts(105,57): error TS2339: Property 'json' does not exist on type 'never'.
 src/lib/settings/svcSS.ts(106,36): error TS2339: Property 'status' does not exist on type 'never'.
@@ -46,7 +44,6 @@ src/lib/settings/svcSS.ts(92,28): error TS2339: Property 'status' does not exist
 src/lib/settings/svcSS.ts(96,32): error TS2339: Property 'status' does not exist on type 'never'.
 src/lib/settings/svcSS.ts(97,45): error TS2339: Property 'text' does not exist on type 'never'.
 src/lib/system-catalog/types.test.ts(189,9): error TS2353: Object literal may only specify known properties, and 'is_built_in_content' does not exist in type 'CatalogItem'.
-src/lib/tools/components/ManageConnectionsView.tsx(95,17): error TS2322: Type '{ key: string; font: "secondary-body"; color: "text-03"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
 src/sections/actions/modals/AddMCPServerModal.tsx(240,49): error TS2345: Argument of type '{ is_public: boolean; groups: number[]; users: string[]; pack_slug: string; name: string; slug: string | undefined; description: string | undefined; upstream_url: string | undefined; credentials: { ...; } | { ...; }; }' is not assignable to parameter of type '{ pack_slug: string; name?: string | undefined; slug?: string | undefined; description?: string | undefined; upstream_url?: string | undefined; credentials?: Record<string, string> | undefined; is_public?: boolean | undefined; groups?: number[] | undefined; users?: string[] | undefined; }'.
 src/sections/actions/modals/AddMCPServerModal.tsx(247,63): error TS2345: Argument of type '{ is_public: boolean; groups: number[]; users: string[]; pack_slug: string; name: string; slug: string | undefined; description: string | undefined; upstream_url: string | undefined; credentials: { ...; } | { ...; }; }' is not assignable to parameter of type '{ pack_slug: string; name?: string | undefined; slug?: string | undefined; description?: string | undefined; upstream_url?: string | undefined; credentials?: Record<string, string> | undefined; is_public?: boolean | undefined; groups?: number[] | undefined; users?: string[] | undefined; }'.
 src/sections/document-preview/saveProjectFile.ts(11,26): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
@@ -232,11 +229,10 @@ src/sections/extend/xlsx-viewer.tsx(783,17): error TS2322: Type '"icon-sm"' is n
 src/sections/extend/xlsx-viewer.tsx(852,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
 src/sections/extend/xlsx-viewer.tsx(872,17): error TS2322: Type '{ size: string; className: string; "aria-label": string; children: Element; }' is not assignable to type 'IntrinsicAttributes & Omit<SelectTriggerProps & RefAttributes<HTMLButtonElement>, "ref"> & RefAttributes<...>'.
 src/sections/extend/xlsx-viewer.tsx(894,17): error TS2322: Type '"icon-sm"' is not assignable to type '"default" | "icon" | "lg" | "sm" | null | undefined'.
-src/sections/input/PlusMenuButton.tsx(128,17): error TS2322: Type '{ key: string; font: "secondary-body"; color: "text-03"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
+src/sections/input/PlusMenuButton.tsx(131,17): error TS2322: Type '{ key: string; font: "secondary-body"; color: "text-03"; className: string; children: string; }' is not assignable to type 'IntrinsicAttributes & TextProps'.
 src/sections/modals/languageModels/DashscopeModal.tsx(267,11): error TS2739: Type '{ id?: number; name?: string; test_model_name?: string; is_public: boolean; is_auto_mode: boolean; groups: number[]; personas: number[]; model_configurations: ModelConfiguration[]; custom_config?: Record<string, string>; api_key: string; api_base: string; }' is missing the following properties from type 'DashscopeModalValues': workspace_id, region, custom_api_base
 src/sections/modals/languageModels/ModelSettingsPopover.tsx(172,19): error TS2322: Type '{ value: string; disabled: boolean; onChange: (e: ChangeEvent<HTMLInputElement, HTMLInputElement>) => void; }' is not assignable to type 'IntrinsicAttributes & InputTypeInProps'.
 src/sections/scenarios/editor/OutputSection.tsx(79,36): error TS2339: Property 'description' does not exist on type '{ slug: string; name: string; }'.
-src/sections/scenarios/editor/ScenarioComposer.tsx(297,11): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
 src/views/CraftProjectDetailPage.tsx(314,15): error TS2322: Type 'KeyedMutator<CraftProject>' is not assignable to type '() => void | Promise<void>'.
 src/views/admin/AuditPage/RecordTables.tsx(131,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditApproval>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditApproval[]; total_items: number; }>'.
 src/views/admin/AuditPage/RecordTables.tsx(220,5): error TS2345: Argument of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<PaginatedResult<AuditQuarantine>>' is not assignable to parameter of type '(window: AuditWindow, args: { q: string; offset: number; limit: number; }) => Promise<{ items: AuditQuarantine[]; total_items: number; }>'.

@@ -56,7 +56,7 @@ function promptFromToolCall(toolCall: ToolCallState): string {
 
 function findParentTaskToolCall(
   session: BuildSessionData,
-  subagentSessionId: string,
+  subagentSessionId: string
 ): ToolCallState | null {
   const streamItems = [
     ...session.messages.flatMap((message) => {
@@ -69,7 +69,7 @@ function findParentTaskToolCall(
     session.subagents.get(subagentSessionId)?.parentToolCallId ?? "";
   if (currentParent) {
     const parentItem = streamItems.find(
-      (item) => item.type === "tool_call" && item.toolCall.id === currentParent,
+      (item) => item.type === "tool_call" && item.toolCall.id === currentParent
     );
     return parentItem?.type === "tool_call" ? parentItem.toolCall : null;
   }
@@ -77,7 +77,7 @@ function findParentTaskToolCall(
   const linkedParentIds = new Set(
     Array.from(session.subagents.values())
       .map((subagent) => subagent.parentToolCallId)
-      .filter(Boolean),
+      .filter(Boolean)
   );
   for (const item of [...streamItems].reverse()) {
     if (item.type !== "tool_call") continue;
@@ -102,58 +102,58 @@ function findParentTaskToolCall(
 export function useBuildStreaming() {
   const { mutate: globalMutate } = useSWRConfig();
   const appendMessageToSession = useBuildSessionStore(
-    (state) => state.appendMessageToSession,
+    (state) => state.appendMessageToSession
   );
   const addArtifactToSession = useBuildSessionStore(
-    (state) => state.addArtifactToSession,
+    (state) => state.addArtifactToSession
   );
   const setAbortController = useBuildSessionStore(
-    (state) => state.setAbortController,
+    (state) => state.setAbortController
   );
   const abortCurrentSession = useBuildSessionStore(
-    (state) => state.abortCurrentSession,
+    (state) => state.abortCurrentSession
   );
   const updateSessionData = useBuildSessionStore(
-    (state) => state.updateSessionData,
+    (state) => state.updateSessionData
   );
 
   // Stream item actions
   const appendStreamItem = useBuildSessionStore(
-    (state) => state.appendStreamItem,
+    (state) => state.appendStreamItem
   );
   const updateLastStreamingText = useBuildSessionStore(
-    (state) => state.updateLastStreamingText,
+    (state) => state.updateLastStreamingText
   );
   const updateLastStreamingThinking = useBuildSessionStore(
-    (state) => state.updateLastStreamingThinking,
+    (state) => state.updateLastStreamingThinking
   );
   const updateToolCallStreamItem = useBuildSessionStore(
-    (state) => state.updateToolCallStreamItem,
+    (state) => state.updateToolCallStreamItem
   );
   const cancelLatestInFlightToolCallStreamItem = useBuildSessionStore(
-    (state) => state.cancelLatestInFlightToolCallStreamItem,
+    (state) => state.cancelLatestInFlightToolCallStreamItem
   );
   const upsertTodoListStreamItem = useBuildSessionStore(
-    (state) => state.upsertTodoListStreamItem,
+    (state) => state.upsertTodoListStreamItem
   );
   const clearStreamItems = useBuildSessionStore(
-    (state) => state.clearStreamItems,
+    (state) => state.clearStreamItems
   );
   const triggerWebappRefresh = useBuildSessionStore(
-    (state) => state.triggerWebappRefresh,
+    (state) => state.triggerWebappRefresh
   );
   const triggerFilesRefresh = useBuildSessionStore(
-    (state) => state.triggerFilesRefresh,
+    (state) => state.triggerFilesRefresh
   );
   const openMarkdownPreview = useBuildSessionStore(
-    (state) => state.openMarkdownPreview,
+    (state) => state.openMarkdownPreview
   );
 
   const reconcileInterruptedTurn = useCallback(
     async (
       sessionId: string,
       interruptedTurnId: string | null,
-      generation: number,
+      generation: number
     ): Promise<void> => {
       // Only act while this is still the interrupt we launched for; otherwise a
       // newer turn (a queued auto-send bumps the generation) would be clobbered.
@@ -174,7 +174,7 @@ export function useBuildStreaming() {
           .getState()
           .loadSession(sessionId, { force: true, preferPersisted: true })
           .catch((err) =>
-            console.warn("[Streaming] Failed to reload settled turn:", err),
+            console.warn("[Streaming] Failed to reload settled turn:", err)
           );
         if (!ownsInterrupt(null)) return;
         updateSessionData(sessionId, {
@@ -198,7 +198,7 @@ export function useBuildStreaming() {
         } catch (err) {
           console.warn(
             "[Streaming] Failed to reconcile interrupted turn:",
-            err,
+            err
           );
           continue;
         }
@@ -224,24 +224,24 @@ export function useBuildStreaming() {
       if (turnGone) await settle();
       else updateSessionData(sessionId, { isInterrupting: false });
     },
-    [updateSessionData],
+    [updateSessionData]
   );
 
   // Subagent routing actions
   const recordSubagentToolCall = useBuildSessionStore(
-    (state) => state.recordSubagentToolCall,
+    (state) => state.recordSubagentToolCall
   );
   const seedSubagentMeta = useBuildSessionStore(
-    (state) => state.seedSubagentMeta,
+    (state) => state.seedSubagentMeta
   );
   const markSubagentComplete = useBuildSessionStore(
-    (state) => state.markSubagentComplete,
+    (state) => state.markSubagentComplete
   );
   const appendSubagentResponseChunk = useBuildSessionStore(
-    (state) => state.appendSubagentResponseChunk,
+    (state) => state.appendSubagentResponseChunk
   );
   const appendSubagentThinkingChunk = useBuildSessionStore(
-    (state) => state.appendSubagentThinkingChunk,
+    (state) => state.appendSubagentThinkingChunk
   );
 
   const handleCompletedFileChange = useCallback(
@@ -257,13 +257,13 @@ export function useBuildStreaming() {
         triggerFilesRefresh(sid);
       }
     },
-    [triggerWebappRefresh, triggerFilesRefresh, openMarkdownPreview],
+    [triggerWebappRefresh, triggerFilesRefresh, openMarkdownPreview]
   );
 
   const createStreamPacketProcessor = useCallback(
     (
       sessionId: string,
-      options?: { onPromptResponse?: () => void; expectedTurnId?: string },
+      options?: { onPromptResponse?: () => void; expectedTurnId?: string }
     ) => {
       let accumulatedText = "";
       let accumulatedThinking = "";
@@ -275,7 +275,7 @@ export function useBuildStreaming() {
         (item) =>
           item.type === "tool_call" &&
           item.toolCall.kind === "execute" &&
-          item.toolCall.status === "completed",
+          item.toolCall.status === "completed"
       );
       const lastCurrentItem = currentItems[currentItems.length - 1];
       if (lastCurrentItem?.type === "text") {
@@ -360,7 +360,7 @@ export function useBuildStreaming() {
             parentToolCallId,
             parentToolCall?.subagentType ?? null,
             parentToolCall ? subagentNameFromToolCall(parentToolCall) : "",
-            parentToolCall ? promptFromToolCall(parentToolCall) : "",
+            parentToolCall ? promptFromToolCall(parentToolCall) : ""
           );
         }
 
@@ -394,7 +394,7 @@ export function useBuildStreaming() {
               appendSubagentResponseChunk(
                 sessionId,
                 parsed.sessionId,
-                parsed.text,
+                parsed.text
               );
               break;
             }
@@ -430,7 +430,7 @@ export function useBuildStreaming() {
               appendSubagentThinkingChunk(
                 sessionId,
                 parsed.sessionId,
-                parsed.text,
+                parsed.text
               );
               break;
             }
@@ -480,7 +480,7 @@ export function useBuildStreaming() {
                 parentToolCallId,
                 toolCallStateFromStart(parsed),
                 parsed.subagentType,
-                "",
+                ""
               );
               lastItemType = "tool";
               break;
@@ -504,7 +504,7 @@ export function useBuildStreaming() {
                 parsed.toolCallId,
                 parsed.subagentType,
                 subagentNameFromToolCall(startedToolCall),
-                promptFromToolCall(startedToolCall),
+                promptFromToolCall(startedToolCall)
               );
             }
 
@@ -565,7 +565,7 @@ export function useBuildStreaming() {
             // tool-call list, not the main transcript.
             if (subagentClass.kind === "child") {
               const parentToolCallId = seedFromParentTask(
-                subagentClass.subagentSessionId,
+                subagentClass.subagentSessionId
               );
               recordSubagentToolCall(
                 sessionId,
@@ -573,7 +573,7 @@ export function useBuildStreaming() {
                 parentToolCallId,
                 toolCallStateFromProgress(parsed),
                 null,
-                "",
+                ""
               );
               break;
             }
@@ -587,14 +587,14 @@ export function useBuildStreaming() {
                 parsed.toolCallId,
                 parsed.subagentType,
                 subagentNameFromTask(parsed),
-                parsed.command,
+                parsed.command
               );
               if (parsed.status === "completed") {
                 markSubagentComplete(
                   sessionId,
                   subagentClass.subagentSessionId,
                   "done",
-                  cleanTaskOutput(parsed.taskOutput),
+                  cleanTaskOutput(parsed.taskOutput)
                 );
               } else if (
                 parsed.status === "failed" ||
@@ -604,7 +604,7 @@ export function useBuildStreaming() {
                   sessionId,
                   subagentClass.subagentSessionId,
                   "failed",
-                  cleanTaskOutput(parsed.taskOutput),
+                  cleanTaskOutput(parsed.taskOutput)
                 );
               }
             }
@@ -617,7 +617,7 @@ export function useBuildStreaming() {
                 .getState()
                 .sessions.get(sessionId);
               const subagent = Array.from(
-                session?.subagents.values() ?? [],
+                session?.subagents.values() ?? []
               ).find((candidate) => {
                 return candidate.parentToolCallId === parsed.toolCallId;
               });
@@ -628,7 +628,7 @@ export function useBuildStreaming() {
                   parsed.toolCallId,
                   parsed.subagentType,
                   subagentNameFromTask(parsed),
-                  parsed.command,
+                  parsed.command
                 );
               }
             }
@@ -695,7 +695,7 @@ export function useBuildStreaming() {
                   }
                 })
                 .catch((err) =>
-                  console.error("Failed to fetch session for webapp URL:", err),
+                  console.error("Failed to fetch session for webapp URL:", err)
                 );
             }
             break;
@@ -726,7 +726,7 @@ export function useBuildStreaming() {
                 .filter(
                   (item) =>
                     item.type !== "connect_app_request" &&
-                    item.type !== "question_ask",
+                    item.type !== "question_ask"
                 )
                 .map((item) => ({
                   ...item,
@@ -864,7 +864,7 @@ export function useBuildStreaming() {
       markSubagentComplete,
       appendSubagentResponseChunk,
       appendSubagentThinkingChunk,
-    ],
+    ]
   );
 
   /**
@@ -875,7 +875,7 @@ export function useBuildStreaming() {
       sessionId: string,
       turnId: string,
       signal: AbortSignal,
-      onSettled?: () => void,
+      onSettled?: () => void
     ): Promise<void> => {
       const existingSession = useBuildSessionStore
         .getState()
@@ -920,7 +920,7 @@ export function useBuildStreaming() {
           status: "active" | "failed";
           error: string;
           isInterrupting: boolean;
-        }>,
+        }>
       ) => {
         const currentSession = useBuildSessionStore
           .getState()
@@ -996,8 +996,8 @@ export function useBuildStreaming() {
                 .catch((err) =>
                   console.warn(
                     "[Streaming] Failed to reload settled turn:",
-                    err,
-                  ),
+                    err
+                  )
                 );
             }
           }
@@ -1007,7 +1007,7 @@ export function useBuildStreaming() {
         }
       }
     },
-    [updateSessionData, clearStreamItems, createStreamPacketProcessor],
+    [updateSessionData, clearStreamItems, createStreamPacketProcessor]
   );
 
   /**
@@ -1020,7 +1020,7 @@ export function useBuildStreaming() {
       content: string,
       model?: BuildLlmSelection | null,
       attachments: BuildMessageAttachment[] = [],
-      selectedSkillIds: string[] = [],
+      selectedSkillIds: string[] = []
     ): Promise<void> => {
       const currentState = useBuildSessionStore.getState();
       const existingSession = currentState.sessions.get(sessionId);
@@ -1055,7 +1055,7 @@ export function useBuildStreaming() {
           model,
           attachments,
           selectedSkillIds,
-          existingSession?.reasoningEffort ?? DEFAULT_THOUGHT_LEVEL,
+          existingSession?.reasoningEffort ?? DEFAULT_THOUGHT_LEVEL
         );
         const currentSession = useBuildSessionStore
           .getState()
@@ -1118,7 +1118,7 @@ export function useBuildStreaming() {
       appendStreamItem,
       clearStreamItems,
       streamTurnEvents,
-    ],
+    ]
   );
 
   const streamCompact = useCallback(
@@ -1149,7 +1149,7 @@ export function useBuildStreaming() {
         const turn = await createCompactTurn(
           sessionId,
           crypto.randomUUID(),
-          controller.signal,
+          controller.signal
         );
         updateSessionData(sessionId, {
           activeTurnId: turn.turn_id,
@@ -1193,7 +1193,7 @@ export function useBuildStreaming() {
         }
       }
     },
-    [setAbortController, updateSessionData, appendStreamItem, streamTurnEvents],
+    [setAbortController, updateSessionData, appendStreamItem, streamTurnEvents]
   );
 
   /**
@@ -1229,14 +1229,14 @@ export function useBuildStreaming() {
       reconcileInterruptedTurn,
       updateSessionData,
       cancelLatestInFlightToolCallStreamItem,
-    ],
+    ]
   );
 
   const streamScheduledRunEvents = useCallback(
     async (
       sessionId: string,
       signal: AbortSignal,
-      onSettled?: () => void,
+      onSettled?: () => void
     ): Promise<void> => {
       updateSessionData(sessionId, { status: "running" });
       clearStreamItems(sessionId);
@@ -1251,7 +1251,7 @@ export function useBuildStreaming() {
               settledFromPromptResponse = true;
               onSettled?.();
             },
-          }),
+          })
         );
       } catch (err) {
         if ((err as Error).name === "AbortError") {
@@ -1281,7 +1281,7 @@ export function useBuildStreaming() {
         }
       }
     },
-    [updateSessionData, clearStreamItems, createStreamPacketProcessor],
+    [updateSessionData, clearStreamItems, createStreamPacketProcessor]
   );
 
   return useMemo(
@@ -1300,6 +1300,6 @@ export function useBuildStreaming() {
       streamScheduledRunEvents,
       streamTurnEvents,
       abortCurrentSession,
-    ],
+    ]
   );
 }

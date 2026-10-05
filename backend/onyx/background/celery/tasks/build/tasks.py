@@ -118,6 +118,56 @@ def cleanup_idle_sandboxes_task(self: Task, *, tenant_id: str) -> None:  # noqa:
 
 
 @shared_task(  # ty: ignore[invalid-argument-type]
+    name=OnyxCeleryTask.PRUNE_CRAFT_TAPE,
+    soft_time_limit=300,
+    bind=True,
+    ignore_result=True,
+)
+def prune_craft_tape_task(self: Task, *, tenant_id: str) -> None:  # noqa: ARG001
+    """Drop tape rows past the retention window.
+
+    The tape is an audit/replay asset with a bounded window; sessions keep
+    their BuildMessage transcript forever, so pruning loses no user-visible
+    history."""
+    from onyx.db.craft_tape import prune_tape_before, tape_retention_cutoff
+    from onyx.server.features.build.configs import CRAFT_TAPE_RETENTION_DAYS
+
+    with get_session_with_current_tenant() as db_session:
+        removed = prune_tape_before(
+            db_session, tape_retention_cutoff(CRAFT_TAPE_RETENTION_DAYS)
+        )
+        db_session.commit()
+    if removed:
+        task_logger.info("prune_craft_tape removed=%s tenant=%s", removed, tenant_id)
+
+
+@shared_task(  # ty: ignore[invalid-argument-type]
+    name=OnyxCeleryTask.CRAFT_JOB_KEEPER_SWEEP,
+    soft_time_limit=120,
+    bind=True,
+    ignore_result=True,
+)
+def craft_job_keeper_sweep_task(self: Task, *, tenant_id: str) -> None:  # noqa: ARG001
+    """Keeper lane for craft deep jobs: reap lane specialists whose turn
+    driver was lost (API restart, swallowed exception) and re-dispatch idle
+    jobs. Every action inside is idempotent and rate-limited per job (the
+    60s self-heal marker), so overlapping ticks cannot storm."""
+    from onyx.db.craft_job import list_driven_craft_jobs
+    from onyx.server.features.build.jobs.kernel import maybe_self_heal_job
+
+    with get_session_with_current_tenant() as db_session:
+        jobs = list_driven_craft_jobs(db_session)
+        for job in jobs:
+            if job.user_id is None:
+                continue
+            try:
+                maybe_self_heal_job(db_session, job=job, user_id=job.user_id)
+            except Exception:
+                task_logger.exception("craft_job_keeper failed for %s", job.id)
+                db_session.rollback()
+
+
+@shared_task(  # ty: ignore[invalid-argument-type]
     name=OnyxCeleryTask.GUARDIAN_REVIEW_DRAIN,
     soft_time_limit=300,
     bind=True,

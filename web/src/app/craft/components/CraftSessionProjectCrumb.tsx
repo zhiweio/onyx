@@ -39,9 +39,7 @@ export default function CraftSessionProjectCrumb({
     onProjectsChanged: refresh,
   });
 
-  const label = project
-    ? project.name
-    : t("sessionProject.ungrouped.label");
+  const label = project ? project.name : t("sessionProject.ungrouped.label");
   const href = project
     ? (`${CRAFT_PROJECTS_PATH}/${project.id}` as Route)
     : undefined;

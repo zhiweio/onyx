@@ -96,7 +96,7 @@ export function $createPromptTileNode(text: string): PromptTileNode {
 }
 
 export function $isPromptTileNode(
-  node: LexicalNode | null | undefined,
+  node: LexicalNode | null | undefined
 ): node is PromptTileNode {
   return node instanceof PromptTileNode;
 }
@@ -108,7 +108,7 @@ export function $isPromptTileNode(
  */
 export function selectionCoversExactly(
   selection: RangeSelection,
-  node: PromptTileNode,
+  node: PromptTileNode
 ): boolean {
   const points = selection.getStartEndPoints();
   if (!points) {

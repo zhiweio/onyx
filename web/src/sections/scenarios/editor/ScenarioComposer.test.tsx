@@ -37,11 +37,7 @@ function emptyDraft(overrides: Partial<ScenarioDraft> = {}): ScenarioDraft {
   };
 }
 
-function ComposerHarness({
-  mode = "user",
-}: {
-  mode?: ScenarioEditorMode;
-}) {
+function ComposerHarness({ mode = "user" }: { mode?: ScenarioEditorMode }) {
   const [draft, setDraft] = useState<ScenarioDraft>(emptyDraft);
   const [conditionals, setConditionals] = useState<ConditionalDraft[]>([]);
   const canSave =
@@ -59,7 +55,9 @@ function ComposerHarness({
       fieldsLocked={false}
       draft={draft}
       conditionals={conditionals}
-      onDraftChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+      onDraftChange={(patch) =>
+        setDraft((current) => ({ ...current, ...patch }))
+      }
       onConditionalsChange={setConditionals}
       skillCatalog={SKILLS}
       templates={[{ slug: "rpt", name: "Audit report" }]}
@@ -106,7 +104,10 @@ describe("ScenarioComposer", () => {
     const save = screen.getByTestId("ScenarioComposer/save");
     expect(save).toBeDisabled();
 
-    await user.type(screen.getByPlaceholderText("Scenario name"), "Due diligence");
+    await user.type(
+      screen.getByPlaceholderText("Scenario name"),
+      "Due diligence"
+    );
     expect(save).toBeDisabled();
 
     await addSkillByName(user, "Alpha skill");
@@ -126,7 +127,8 @@ describe("ScenarioComposer", () => {
     const firstRow = screen.getByTestId("SkillPipeline/row-skill-a");
     const secondRow = screen.getByTestId("SkillPipeline/row-skill-b");
     expect(
-      firstRow.compareDocumentPosition(secondRow) & Node.DOCUMENT_POSITION_FOLLOWING
+      firstRow.compareDocumentPosition(secondRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
 
     const handle = within(firstRow).getByRole("button", {

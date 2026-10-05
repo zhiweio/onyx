@@ -6609,6 +6609,7 @@ class MCPServer__UserDisabled(Base):
     a row means enabled — the opt-out model keeps existing users' behavior
     unchanged and gives /craft/v1/mcp-actions the single enable/disable
     surface."""
+
     __tablename__ = "mcp_server__user_disabled"
     mcp_server_id: Mapped[int] = mapped_column(
         ForeignKey("mcp_server.id", ondelete="CASCADE"), primary_key=True
@@ -7456,6 +7457,12 @@ class BuildSession(Base):
     )
     skills_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mcp_config_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The per-session skill subset actually linked into .opencode/skills.
+    # None means "full catalog" (legacy sessions); a list is the exact set
+    # of linked slugs, so a turn can diff against it before extending.
+    skill_slugs: Mapped[list[str] | None] = mapped_column(
+        PGJSONB, nullable=True, default=None
+    )
     scenario_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("scenario.id", ondelete="SET NULL"),
@@ -9476,4 +9483,81 @@ class PlatformToolLog(Base):
     __table_args__ = (
         Index("ix_platform_tool_log_user_time", "user_id", "created_at"),
         Index("ix_platform_tool_log_session_time", "session_id", "created_at"),
+    )
+
+
+class CraftLLMRequest(Base):
+    """Per-request LLM ledger for craft sessions.
+
+    One row per harness assistant message that reported usage. The harness
+    reports the same message several times (message.updated fires per
+    step), so writes upsert on (session_id, opencode_message_id) and the
+    daily user_usage rollup only adds newly-inserted rows — replays never
+    double-count."""
+
+    __tablename__ = "craft_llm_request"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    turn_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    opencode_message_id: Mapped[str] = mapped_column(String, nullable=False)
+    provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    model: Mapped[str | None] = mapped_column(String, nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reasoning_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "opencode_message_id",
+            name="uq_craft_llm_request_session_message",
+        ),
+        Index("ix_craft_llm_request_session_time", "session_id", "created_at"),
+    )
+
+
+class CraftTapeEntry(Base):
+    """Verbatim harness event tape for craft sessions.
+
+    Append-only rows captured BEFORE lossy translation (see
+    ``SandboxEventEnvelope``): the model-visible history as the harness
+    produced it. Consumers: codex thread replay (``thread/inject_items``
+    is rebuilt from these rows), cross-runtime session migration, and
+    audit. ``id`` doubles as the per-session sequence number. Payloads
+    over the configured cap are truncated in place with a marker;
+    retention is handled by the prune-craft-tape beat."""
+
+    __tablename__ = "craft_tape_entry"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    turn_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    subtype: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_craft_tape_session_seq", "session_id", "id"),
+        Index("ix_craft_tape_session_kind", "session_id", "kind"),
     )

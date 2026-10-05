@@ -380,6 +380,57 @@ def validate_no_vector_db_settings() -> None:
         )
 
 
+def start_agent_model_registry_refresher() -> None:
+    """Warm the agent model registry at startup and keep it fresh.
+
+    The registry is api-server process memory (router support matrix,
+    context-window lookups); celery beat cannot refresh it. One warm pass
+    now (best-effort — a cold DB must not block startup) plus a daemon
+    loop on the configured cadence. 0 disables the loop; lazy turn-path
+    refresh (``ensure_registry_ready``) still applies.
+
+    Single-tenant only: multi-tenant providers live per tenant, and this
+    thread has no tenant context — there, the lazy turn-path refresh
+    (which runs inside the request's tenant context) is the mechanism."""
+    import threading
+
+    from shared_configs.configs import MULTI_TENANT
+
+    if MULTI_TENANT:
+        return
+
+    from onyx.db.engine.sql_engine import get_session
+    from onyx.server.features.build.configs import (
+        AGENT_MODEL_REGISTRY_REFRESH_SECONDS,
+    )
+    from onyx.server.features.build.sandbox.agent_runtime import models as registry
+    from onyx.utils.logger import setup_logger
+
+    logger = setup_logger()
+
+    def _refresh_once() -> None:
+        try:
+            with get_session() as db_session:
+                registry.refresh_model_catalog(db_session)
+        except Exception:
+            logger.warning("Agent model registry warm-up failed", exc_info=True)
+
+    _refresh_once()
+    interval = AGENT_MODEL_REGISTRY_REFRESH_SECONDS
+    if interval <= 0:
+        return
+
+    def _loop() -> None:
+        while not stop.wait(interval):
+            _refresh_once()
+
+    stop = threading.Event()
+    thread = threading.Thread(
+        target=_loop, name="agent-model-registry-refresher", daemon=True
+    )
+    thread.start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     validate_no_vector_db_settings()
@@ -494,6 +545,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
 
         recover_stuck_user_files(POSTGRES_DEFAULT_SCHEMA)
         start_periodic_poller(POSTGRES_DEFAULT_SCHEMA)
+
+    start_agent_model_registry_refresher()
 
     yield
 

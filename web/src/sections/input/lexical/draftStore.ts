@@ -90,7 +90,7 @@ function writeDraftFile(key: string, file: DraftFile): boolean {
 
 export function readComposerDraft(
   surface: string,
-  scope: string,
+  scope: string
 ): ComposerDraftSnapshot | null {
   const draft = readDraftFile(storageKey(surface, scope)).scopes[scope];
   if (!draft || !draft.text.trim()) {
@@ -102,7 +102,7 @@ export function readComposerDraft(
 export function persistComposerDraft(
   surface: string,
   scope: string,
-  draft: ComposerDraftSnapshot,
+  draft: ComposerDraftSnapshot
 ): boolean {
   const key = storageKey(surface, scope);
   const file = readDraftFile(key);

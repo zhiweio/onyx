@@ -9,13 +9,24 @@ test.describe("Craft slash picker", () => {
 
   let welcome: CraftWelcomePage;
 
-  async function guarded(page: import("@playwright/test").Page, name: string, flow: () => Promise<void>) {
+  async function guarded(
+    page: import("@playwright/test").Page,
+    name: string,
+    flow: () => Promise<void>
+  ) {
     try {
       await welcome.goto();
-      console.log(`NAV[${name}] url=${page.url()} pages=${page.context().pages().length}`);
+      console.log(
+        `NAV[${name}] url=${page.url()} pages=${page.context().pages().length}`
+      );
       await flow();
     } catch (err) {
-      await page.screenshot({ path: `output/playwright/fail-${name}.png`, fullPage: true }).catch(() => {});
+      await page
+        .screenshot({
+          path: `output/playwright/fail-${name}.png`,
+          fullPage: true,
+        })
+        .catch(() => {});
       const count = await page.getByRole("textbox").count();
       console.log(`FAIL[${name}] textboxes=${count} url=${page.url()}`);
       throw err;
@@ -33,7 +44,9 @@ test.describe("Craft slash picker", () => {
     welcome = new CraftWelcomePage(page);
   });
 
-  test("slash lists a built-in skill on the welcome input", async ({ page }) => {
+  test("slash lists a built-in skill on the welcome input", async ({
+    page,
+  }) => {
     await guarded(page, "t1", async () => {
       await welcome.dismissIntro();
       if (await welcome.lockedState.isVisible().catch(() => false)) {

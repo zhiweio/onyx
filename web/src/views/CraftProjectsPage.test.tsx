@@ -120,8 +120,12 @@ describe("CraftProjectsPage", () => {
     mockStartSession.mockResolvedValue({ id: "session-123" });
     render(<CraftProjectsPage />);
 
-    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start chat" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start chat" })
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
 

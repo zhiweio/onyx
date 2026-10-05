@@ -21,7 +21,10 @@ describe("canAcceptCatalogTag", () => {
     expect(
       canAcceptCatalogTag(
         "next",
-        Array.from({ length: CATALOG_TAGS_MAX_COUNT }, (_, index) => `t${index}`)
+        Array.from(
+          { length: CATALOG_TAGS_MAX_COUNT },
+          (_, index) => `t${index}`
+        )
       )
     ).toBe(false);
   });

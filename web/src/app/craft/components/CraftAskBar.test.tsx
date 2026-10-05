@@ -22,7 +22,11 @@ function job(kind: string): CraftJobResponse {
     specialists: [],
     interrupt: {
       kind,
-      payload: { goal: "GLP-1", summary: "Proposed next steps for: GLP-1", steps: ["Literature"] },
+      payload: {
+        goal: "GLP-1",
+        summary: "Proposed next steps for: GLP-1",
+        steps: ["Literature"],
+      },
     },
   };
 }
@@ -31,9 +35,7 @@ describe("CraftAskBar", () => {
   it("shows start chips for a plan interrupt", async () => {
     const user = setupUser();
     const onJobAction = jest.fn();
-    render(
-      <CraftAskBar job={job("approve_plan")} onJobAction={onJobAction} />
-    );
+    render(<CraftAskBar job={job("approve_plan")} onJobAction={onJobAction} />);
 
     expect(screen.getByTestId("craft-ask-bar")).toBeInTheDocument();
     expect(screen.getByTestId("craft-ask-approve")).toHaveTextContent("Start");
@@ -43,7 +45,9 @@ describe("CraftAskBar", () => {
   });
 
   it("shows accept chips for a delivery interrupt", () => {
-    render(<CraftAskBar job={job("approve_delivery")} onJobAction={jest.fn()} />);
+    render(
+      <CraftAskBar job={job("approve_delivery")} onJobAction={jest.fn()} />
+    );
     expect(screen.getByTestId("craft-ask-approve")).toHaveTextContent("Accept");
     expect(screen.getByTestId("craft-ask-revise")).toHaveTextContent(
       "Request changes"

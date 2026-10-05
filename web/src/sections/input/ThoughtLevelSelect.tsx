@@ -52,8 +52,7 @@ export default function ThoughtLevelSelect({
   const defaultAllowed =
     [...options]
       .reverse()
-      .find((effort) => composerStopIndex(effort) <= allowedStop) ??
-    options[0];
+      .find((effort) => composerStopIndex(effort) <= allowedStop) ?? options[0];
 
   if (!supportsReasoning) return null;
 

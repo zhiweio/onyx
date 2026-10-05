@@ -76,7 +76,7 @@ export default function ReportTemplateEditorPage({
         slug: template.slug,
         description: template.description,
         body: template.body,
-      }),
+      })
     );
     setHydratedId(template.id);
   }, [hydratedId, template]);
@@ -119,7 +119,7 @@ export default function ReportTemplateEditorPage({
         toast.success(t("toasts.saved.message"));
         // SAFETY: created.id is the UUID of the template that was just saved.
         router.replace(
-          `${CRAFT_REPORT_TEMPLATES_PATH}/edit/${created.id}` as Route,
+          `${CRAFT_REPORT_TEMPLATES_PATH}/edit/${created.id}` as Route
         );
       } else if (template) {
         await updateReportTemplate(template.id, {
@@ -137,7 +137,7 @@ export default function ReportTemplateEditorPage({
       toast.error(
         saveError instanceof Error
           ? saveError.message
-          : t("toasts.saveFailed.message"),
+          : t("toasts.saveFailed.message")
       );
     } finally {
       setSaving(false);

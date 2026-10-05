@@ -699,10 +699,7 @@ function DocxToolbar({
               >
                 <SelectValue>{Math.round(zoomScale)}%</SelectValue>
               </SelectTrigger>
-              <SelectContent
-                align="end"
-                position="popper"
-              >
+              <SelectContent align="end" position="popper">
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
                     {value}%

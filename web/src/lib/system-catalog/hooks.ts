@@ -21,7 +21,7 @@ import type {
 function useCatalogList<T extends CatalogItem>(key: string | null) {
   const { data, error, isLoading, mutate } = useSWR<CatalogListResponse<T>>(
     key,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   return {
     data: data?.items ?? [],
@@ -33,30 +33,30 @@ function useCatalogList<T extends CatalogItem>(key: string | null) {
 
 export function useGallerySkills(enabled = true) {
   return useCatalogList<SystemSkillItem>(
-    enabled ? galleryListKey("skills") : null,
+    enabled ? galleryListKey("skills") : null
   );
 }
 
 export function useGalleryScenarios(enabled = true) {
   return useCatalogList<SystemScenarioItem>(
-    enabled ? galleryListKey("scenarios") : null,
+    enabled ? galleryListKey("scenarios") : null
   );
 }
 
 export function useGalleryReportTemplates(enabled = true) {
   return useCatalogList<SystemReportTemplateItem>(
-    enabled ? galleryListKey("report-templates") : null,
+    enabled ? galleryListKey("report-templates") : null
   );
 }
 
 /** Detail fetch, used by the preview modal to pull the full body. */
 export function useGalleryItem<T extends AnyCatalogItem>(
   kind: GalleryKind,
-  entryId: string | undefined,
+  entryId: string | undefined
 ) {
   const { data, error, isLoading } = useSWR<T>(
     entryId ? galleryDetailKey(kind, entryId) : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   return { data, error, isLoading };
 }
@@ -67,11 +67,11 @@ export function useCatalogEntries<T extends CatalogItem>(kind: GalleryKind) {
 
 export function useCatalogItem<T extends CatalogItem>(
   kind: GalleryKind,
-  entryId: string | undefined,
+  entryId: string | undefined
 ) {
   const { data, error, isLoading, mutate } = useSWR<T>(
     entryId ? adminCatalogDetailKey(kind, entryId) : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   return { data, error, isLoading, refresh: mutate };
 }

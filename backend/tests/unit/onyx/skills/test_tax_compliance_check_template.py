@@ -27,7 +27,9 @@ def test_compliance_template_entry_is_contract_style() -> None:
 
 def test_compliance_scenario_binds_the_template() -> None:
     entry = next(
-        item for item in BUILT_IN_SCENARIO_ENTRIES if item.slug == "tax-compliance-check"
+        item
+        for item in BUILT_IN_SCENARIO_ENTRIES
+        if item.slug == "tax-compliance-check"
     )
     assert entry.report_template_slug == "tax_compliance_check"
     assert entry.category is SystemCatalogCategory.TAX

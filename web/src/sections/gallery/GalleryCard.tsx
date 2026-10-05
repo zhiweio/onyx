@@ -28,7 +28,7 @@ export interface GalleryCardProps {
 function stopAndCall(
   event: MouseEvent<HTMLElement>,
   handler: ((item: CatalogItem) => void) | undefined,
-  item: CatalogItem,
+  item: CatalogItem
 ) {
   event.stopPropagation();
   handler?.(item);

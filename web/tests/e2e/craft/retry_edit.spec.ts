@@ -43,10 +43,7 @@ async function mockHistory(
   await mockCraftBackend(page, { messages });
 }
 
-function mockRetryTurn(
-  page: Page,
-  bodies: Record<string, unknown>[]
-): void {
+function mockRetryTurn(page: Page, bodies: Record<string, unknown>[]): void {
   void page.route("**/api/build/sessions/**/retry-turn", async (route) => {
     bodies.push(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({

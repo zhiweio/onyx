@@ -92,8 +92,7 @@ export function useCustomAnalyticsScript(): string | null {
   const { isLoading, error, ee_features_enabled } = useSettings();
   const { user } = useUser();
   const shouldFetch =
-    !!user &&
-    (!isLoading && !error && ee_features_enabled !== false);
+    !!user && !isLoading && !error && ee_features_enabled !== false;
 
   const { data } = useSWR<string>(
     shouldFetch ? SWR_KEYS.customAnalyticsScript : null,

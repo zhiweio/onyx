@@ -1,7 +1,7 @@
 from onyx.db.enums import ExternalAppType
 from onyx.external_apps.providers.base import OAuthExternalAppProvider
 from onyx.external_apps.providers.dingtalk import DingTalkProvider
-from onyx.external_apps.providers.feishu import FeishuAction
+from onyx.external_apps.providers.feishu import FeishuAction, FeishuProvider
 from onyx.external_apps.providers.registry import (
     PROVIDERS,
     fetch_available_built_in_apps,
@@ -36,10 +36,22 @@ def test_feishu_catalog_covers_core_actions() -> None:
         FeishuAction.MESSAGE_SEND,
         FeishuAction.DOCS_SEARCH,
         FeishuAction.DOC_READ,
-    } == ids
+    } <= ids
     # Message sending governs tighter than reads by default.
     send = next(e for e in catalog if e.id == FeishuAction.MESSAGE_SEND)
     assert send.default_policy.value == "ASK"
+
+
+def test_feishu_oauth_uses_app_id_credential_keys() -> None:
+    """Feishu's console calls the OAuth client credentials app_id/app_secret;
+    the start/refresh paths must look those keys up, not client_id/secret."""
+    provider = FeishuProvider()
+    assert isinstance(provider, OAuthExternalAppProvider)
+    assert provider.spec.client_credential_keys == ("app_id", "app_secret")
+    org_fields = {
+        f.key for f in provider.spec.descriptor.required_org_credential_fields
+    }
+    assert org_fields == set(provider.spec.client_credential_keys)
 
 
 def test_dingtalk_is_oauth_with_json_exchange() -> None:

@@ -10,6 +10,9 @@ export type EntryMenuTranslate = ReturnType<
 interface LibraryFile {
   id: string;
   name: string;
+  /** Whether the file is already attached to the prompt as a chip. */
+  checked: boolean;
+  onToggle: (checked: boolean) => void;
 }
 
 export interface EntryMenuHandlers {
@@ -18,17 +21,18 @@ export interface EntryMenuHandlers {
 }
 
 /**
- * Maps the craft plus menu onto the generic PlusMenuButton model. Skills and
- * MCP servers are deliberately NOT selectable here: skills come from the
- * composer's / and $ menus, and MCP enablement lives on
- * /craft/v1/mcp-actions (single source of truth).
+ * Maps the chat-style plus menu onto the generic PlusMenuButton model: direct
+ * file attach plus the user-library drill-in. Skills and MCP servers are
+ * deliberately NOT selectable here: skills come from the composer's / and $
+ * menus, and MCP enablement lives on /craft/v1/mcp-actions (single source of
+ * truth).
  */
 export function buildEntryMenuItems(
   {
     onAttachFiles,
     libraryFiles = [],
   }: Pick<EntryMenuHandlers, "onAttachFiles" | "libraryFiles">,
-  t: EntryMenuTranslate,
+  t: EntryMenuTranslate
 ): Array<PlusMenuItem | null> {
   return [
     {
@@ -50,8 +54,8 @@ export function buildEntryMenuItems(
           key: file.id,
           icon: SvgFileText,
           label: file.name,
-          checked: false,
-          onCheckedChange: () => undefined,
+          checked: file.checked,
+          onCheckedChange: file.onToggle,
         })),
       },
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useFocusOnMount } from "@opal/hooks";
 import {
@@ -61,10 +61,13 @@ function PanelView({
   panel,
   onBack,
   onManage,
+  onToggleRow,
 }: {
   panel: PlusMenuPanel;
   onBack: () => void;
   onManage: () => void;
+  /** Runs a row's toggle through the popover's keep-open guard. */
+  onToggleRow: (row: PlusMenuPanelRow, checked: boolean) => void;
 }) {
   const t = useTranslations("actions");
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,7 +147,7 @@ function PanelView({
                     row.onSelect();
                     return;
                   }
-                  row.onCheckedChange(!row.checked);
+                  onToggleRow(row, !row.checked);
                 }}
                 rightChildren={
                   // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation-only wrapper so the switch doesn't trigger the row; keyboard goes through the Switch itself
@@ -157,7 +160,7 @@ function PanelView({
                       aria-label={t("switchList.toggle.ariaLabel", {
                         name: row.label,
                       })}
-                      onCheckedChange={row.onCheckedChange}
+                      onCheckedChange={(checked) => onToggleRow(row, checked)}
                     />
                   </span>
                 }
@@ -177,6 +180,31 @@ export function PlusMenuButton({
   const t = useTranslations("chat.input");
   const [open, setOpen] = useState(false);
   const [panelKey, setPanelKey] = useState<string | null>(null);
+  // Toggling a row can move focus into the prompt editor (e.g. inserting a
+  // file chip); Radix reads that as focus-outside and would close the panel
+  // mid-multi-select. Suppress that dismissal for the duration of the
+  // synchronous toggle and hand focus back to the control that had it.
+  const keepOpenRef = useRef(false);
+
+  const toggleRowKeepingOpen = useCallback(
+    (row: PlusMenuPanelRow, checked: boolean) => {
+      const active = document.activeElement;
+      keepOpenRef.current = true;
+      try {
+        row.onCheckedChange(checked);
+      } finally {
+        keepOpenRef.current = false;
+      }
+      if (
+        active instanceof HTMLElement &&
+        active !== document.activeElement &&
+        document.contains(active)
+      ) {
+        active.focus({ preventScroll: true });
+      }
+    },
+    []
+  );
 
   const close = useCallback(() => {
     setOpen(false);
@@ -246,12 +274,16 @@ export function PlusMenuButton({
         align="start"
         width="lg"
         onCloseAutoFocus={(event) => event.preventDefault()}
+        onFocusOutside={(event) => {
+          if (keepOpenRef.current) event.preventDefault();
+        }}
       >
         <div data-testid="craft-plus-menu">
           {activePanel ? (
             <PanelView
               panel={activePanel}
               onBack={() => setPanelKey(null)}
+              onToggleRow={toggleRowKeepingOpen}
               onManage={() => {
                 activePanel.onManage?.();
                 close();

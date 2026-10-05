@@ -184,6 +184,7 @@ def ensure_session_ready(
                 share_workspace_from=_share_workspace_from_session(
                     db_session, session_id
                 ),
+                skill_slugs=session.skill_slugs,
             )
         if session.scenario_id is not None:
             write_scenario_md_to_session(

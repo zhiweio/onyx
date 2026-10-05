@@ -2,12 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Text } from "@opal/components";
-import {
-  SvgTerminalSmall,
-  SvgFileText,
-  SvgEdit,
-  SvgSearch,
-} from "@opal/icons";
+import { SvgTerminalSmall, SvgFileText, SvgEdit, SvgSearch } from "@opal/icons";
 import { CATEGORY_AGENT_ICON } from "@/lib/skills/categoryIcons";
 import { ToolLayout } from "@/app/craft/components/tool-blocks/ToolLayout";
 import ToolCallBlock from "@/app/craft/components/tool-blocks/ToolCallBlock";

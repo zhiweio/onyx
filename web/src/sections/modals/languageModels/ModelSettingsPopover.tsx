@@ -182,7 +182,9 @@ export function ModelSettingsPopover({
                   value={model.max_input_tokens?.toString() ?? ""}
                   placeholder={t("modelSettings.contextWindow.placeholder")}
                   onChange={(e) =>
-                    onChange({ max_input_tokens: parseTokenField(e.target.value) })
+                    onChange({
+                      max_input_tokens: parseTokenField(e.target.value),
+                    })
                   }
                 />
               </InputVertical>

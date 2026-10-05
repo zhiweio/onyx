@@ -39,7 +39,7 @@ async function handle<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new SystemCatalogRequestError(
       await readError(response),
-      response.status,
+      response.status
     );
   }
   if (response.status === 204) {
@@ -56,7 +56,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }),
+    })
   );
 }
 
@@ -64,7 +64,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 
 export function galleryListKey(
   kind: GalleryKind,
-  filters?: { query?: string; category?: SystemCatalogCategory },
+  filters?: { query?: string; category?: SystemCatalogCategory }
 ): string {
   const params = new URLSearchParams();
   if (filters?.query) params.set("q", filters.query);
@@ -79,14 +79,14 @@ export function galleryDetailKey(kind: GalleryKind, entryId: string): string {
 
 export async function listGallerySkills(): Promise<SystemSkillItem[]> {
   const payload = await handle<CatalogListResponse<SystemSkillItem>>(
-    await fetch(galleryListKey("skills")),
+    await fetch(galleryListKey("skills"))
   );
   return payload.items;
 }
 
 export async function listGalleryScenarios(): Promise<SystemScenarioItem[]> {
   const payload = await handle<CatalogListResponse<SystemScenarioItem>>(
-    await fetch(galleryListKey("scenarios")),
+    await fetch(galleryListKey("scenarios"))
   );
   return payload.items;
 }
@@ -95,24 +95,24 @@ export async function listGalleryReportTemplates(): Promise<
   SystemReportTemplateItem[]
 > {
   const payload = await handle<CatalogListResponse<SystemReportTemplateItem>>(
-    await fetch(galleryListKey("report-templates")),
+    await fetch(galleryListKey("report-templates"))
   );
   return payload.items;
 }
 
 export async function getGalleryItem<T extends AnyCatalogItem>(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): Promise<T> {
   return handle<T>(await fetch(galleryDetailKey(kind, entryId)));
 }
 
 export async function forkGalleryItem(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): Promise<ForkResponse> {
   return handle<ForkResponse>(
-    await fetch(`${GALLERY_URL}/${kind}/${entryId}/fork`, { method: "POST" }),
+    await fetch(`${GALLERY_URL}/${kind}/${entryId}/fork`, { method: "POST" })
   );
 }
 
@@ -124,23 +124,23 @@ export function adminCatalogListKey(kind: GalleryKind): string {
 
 export function adminCatalogDetailKey(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): string {
   return `${ADMIN_URL}/${kind}/${entryId}`;
 }
 
 export async function getCatalogEntry<T extends CatalogItem>(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): Promise<T> {
   return handle<T>(await fetch(adminCatalogDetailKey(kind, entryId)));
 }
 
 export async function listCatalogEntries<T extends CatalogItem>(
-  kind: GalleryKind,
+  kind: GalleryKind
 ): Promise<T[]> {
   const payload = await handle<CatalogListResponse<T>>(
-    await fetch(adminCatalogListKey(kind)),
+    await fetch(adminCatalogListKey(kind))
   );
   return payload.items;
 }
@@ -193,7 +193,7 @@ export interface CatalogPatchInput {
 
 export async function createCatalogEntry<T extends CatalogItem>(
   kind: GalleryKind,
-  input: CatalogCreateInput,
+  input: CatalogCreateInput
 ): Promise<T> {
   return postJson<T>(`${ADMIN_URL}/${kind}`, input);
 }
@@ -201,42 +201,42 @@ export async function createCatalogEntry<T extends CatalogItem>(
 export async function updateCatalogEntry<T extends CatalogItem>(
   kind: GalleryKind,
   entryId: string,
-  input: CatalogPatchInput,
+  input: CatalogPatchInput
 ): Promise<T> {
   return handle<T>(
     await fetch(`${ADMIN_URL}/${kind}/${entryId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
-    }),
+    })
   );
 }
 
 export async function publishCatalogEntry<T extends CatalogItem>(
   kind: GalleryKind,
   entryId: string,
-  changelog: string,
+  changelog: string
 ): Promise<T> {
   return postJson<T>(`${ADMIN_URL}/${kind}/${entryId}/publish`, { changelog });
 }
 
 export async function unpublishCatalogEntry<T extends CatalogItem>(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): Promise<T> {
   return handle<T>(
     await fetch(`${ADMIN_URL}/${kind}/${entryId}/unpublish`, {
       method: "POST",
-    }),
+    })
   );
 }
 
 export async function deleteCatalogEntry(
   kind: GalleryKind,
-  entryId: string,
+  entryId: string
 ): Promise<void> {
   await handle<void>(
-    await fetch(`${ADMIN_URL}/${kind}/${entryId}`, { method: "DELETE" }),
+    await fetch(`${ADMIN_URL}/${kind}/${entryId}`, { method: "DELETE" })
   );
 }
 
@@ -252,13 +252,13 @@ export async function uploadCatalogSkillBundle(input: {
   form.append("category", input.category);
   form.append("tags", input.tags.join(","));
   return handle<SystemSkillItem>(
-    await fetch(`${ADMIN_URL}/skills/upload`, { method: "POST", body: form }),
+    await fetch(`${ADMIN_URL}/skills/upload`, { method: "POST", body: form })
   );
 }
 
 export async function uploadCatalogReportTemplateDocx(
   entryId: string,
-  file: File,
+  file: File
 ): Promise<SystemReportTemplateItem> {
   const form = new FormData();
   form.append("asset", file);
@@ -266,7 +266,7 @@ export async function uploadCatalogReportTemplateDocx(
     await fetch(`${ADMIN_URL}/report-templates/${entryId}/docx`, {
       method: "POST",
       body: form,
-    }),
+    })
   );
 }
 

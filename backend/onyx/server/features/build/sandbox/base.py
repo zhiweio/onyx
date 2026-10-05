@@ -221,13 +221,17 @@ class SandboxManager(_ServeMixin, ABC):
         user_name: str | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         """Set up a session workspace within an existing sandbox.
 
         Creates the per-session directory structure:
         - sessions/$session_id/outputs/
         - sessions/$session_id/venv/
-        - sessions/$session_id/.opencode/skills (symlink → managed skills dir)
+        - sessions/$session_id/.opencode/skills (subset of the managed
+          skills when ``skill_slugs`` is given; symlink to the full
+          managed dir otherwise — opencode bills every linked skill's
+          catalog entry on each LLM call, so the subset bounds that cost)
         - sessions/$session_id/AGENTS.md
         - sessions/$session_id/attachments/
 
@@ -246,6 +250,7 @@ class SandboxManager(_ServeMixin, ABC):
             nextjs_port: Port for the Next.js dev server, or None for headless.
             connectable_apps_section: Pre-rendered ``{{CONNECTABLE_APPS_LIST}}`` (may be empty).
             user_name: User's name for personalization in AGENTS.md
+            skill_slugs: Per-session skill subset to link (None = full catalog)
 
         Raises:
             RuntimeError: If workspace setup fails
@@ -285,9 +290,36 @@ class SandboxManager(_ServeMixin, ABC):
         llm_config: CraftLLMProviderConfig | None = None,
         mcp_servers: Sequence[CraftMCPServerConfig] = (),
         share_workspace_from: UUID | None = None,
+        skill_slugs: Sequence[str] | None = None,
     ) -> None:
         """Rewrite generated session configuration without replacing outputs."""
         ...
+
+    @abstractmethod
+    def relink_session_skills(
+        self,
+        sandbox_id: UUID,
+        session_id: UUID,
+        skill_slugs: Sequence[str] | None,
+    ) -> None:
+        """Repoint ``sessions/$id/.opencode/skills`` at a new subset.
+
+        Lightweight sibling of ``regenerate_session_config`` for the one
+        case where only the skill catalog changed (a skill named mid-turn):
+        rewrites the links only. The caller owns disposing the opencode
+        instance so a fresh one re-reads the catalog.
+
+        Raises:
+            RuntimeError: If the relink exec fails
+        """
+        ...
+
+    def codex_transport(self):
+        """Signed transport to this sandbox daemon's codex bridge.
+
+        Returns None on backends without codex support; callers treat that
+        as "codex runtime unavailable" and the router falls back."""
+        return None
 
     @abstractmethod
     def create_snapshot(

@@ -216,6 +216,7 @@ def send_message(
             turn_index=turn_index,
             attachments=prompt_attachments,
             selected_skill_ids=selected_skill_ids,
+            requested_runtime=(request.runtime or "").strip() or None,
         )
 
         try:

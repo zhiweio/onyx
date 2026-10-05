@@ -14,6 +14,7 @@ interruption converges on the same completed workspace.
 
 import base64
 import shlex
+from collections.abc import Sequence
 from pathlib import Path
 from uuid import UUID
 
@@ -52,6 +53,36 @@ def build_workspace_exists_check_script(session_path: str) -> str:
         f'[ ! -f "{session_path}/{SETUP_IN_PROGRESS_MARKER}" ]; '
         f'then echo "WORKSPACE_FOUND"; else echo "WORKSPACE_MISSING"; fi'
     )
+
+
+def build_skills_link_snippet(
+    session_path: str, skill_slugs: Sequence[str] | None
+) -> str:
+    """Point ``.opencode/skills`` at the managed root or a subset view.
+
+    A subset is a real directory holding one symlink per bound skill.
+    opencode injects every linked skill's name+description into each LLM
+    call, so the subset is what bounds the catalog tax. An empty or unsafe
+    subset falls back to the full root — never a broken catalog.
+    """
+    from onyx.server.features.build.skills_subset import sanitize_skill_slug
+
+    dest = f"{session_path}/.opencode/skills"
+    slugs = [
+        slug
+        for slug in (sanitize_skill_slug(s or "") for s in skill_slugs or [])
+        if slug
+    ]
+    if not slugs:
+        return f"ln -sfn {MANAGED_SKILLS_PATH} {dest}\n"
+    lines = [f"rm -rf {dest}", f"mkdir -p {dest}"]
+    seen: set[str] = set()
+    for slug in slugs:
+        if slug in seen:
+            continue
+        seen.add(slug)
+        lines.append(f"ln -sfn {MANAGED_SKILLS_PATH}/{slug} {dest}/{slug}")
+    return "\n".join(lines) + "\n"
 
 
 def shared_parent_workspace_paths(
@@ -107,6 +138,7 @@ def build_session_workspace_setup_script(
     nextjs_port: int | None,
     shared_outputs_path: str | None = None,
     shared_attachments_path: str | None = None,
+    skill_slugs: Sequence[str] | None = None,
 ) -> str:
     """Build the shell script that creates a session workspace.
 
@@ -141,6 +173,7 @@ def build_session_workspace_setup_script(
     attachments_section_b64 = base64.b64encode(
         ATTACHMENTS_SECTION_CONTENT.encode()
     ).decode()
+    skills_link_snippet = build_skills_link_snippet(session_path, skill_slugs)
 
     return f"""
 set -e
@@ -173,8 +206,7 @@ ln -sfn {session_path}/.venv/bin/pip {session_path}/bin/pip
 # which fails if the mount is a real directory. Dangling until the first
 # push lands is fine; nothing reads these during the rest of setup.
 mkdir -p {session_path}/.opencode
-ln -sfn {MANAGED_SKILLS_PATH} {session_path}/.opencode/skills
-echo "Linked skills to {MANAGED_SKILLS_PATH}"
+{skills_link_snippet}echo "Linked skills for {session_path}"
 ln -sfn {MANAGED_USER_LIBRARY_PATH} {session_path}/user_library
 echo "Linked user_library to {MANAGED_USER_LIBRARY_PATH}"
 

@@ -63,4 +63,31 @@ describe("PlusMenuButton", () => {
     expect(onCheckedChange).toHaveBeenCalledWith(true);
     expect(screen.getByPlaceholderText("Search skills...")).toBeVisible();
   });
+
+  it("keeps the panel open when a toggle moves focus outside it", async () => {
+    const user = setupUser();
+    // Inserting a file chip focuses the prompt editor, which Radix reads as
+    // focus-outside; the panel must survive that and hand focus back.
+    const onCheckedChange = jest.fn(() => {
+      const outside = screen.getByTestId("focus-stealer");
+      (outside as HTMLElement).focus();
+    });
+    skillsItem.panel!.rows[0]!.onCheckedChange = onCheckedChange;
+
+    render(
+      <>
+        <button data-testid="focus-stealer" aria-label="Outside" />
+        <PlusMenuButton items={[skillsItem]} />
+      </>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open add menu" }));
+    await user.click(screen.getByRole("button", { name: "Skills" }));
+
+    await user.click(screen.getByRole("switch", { name: "Toggle PPTX" }));
+
+    expect(onCheckedChange).toHaveBeenCalledWith(true);
+    expect(screen.getByPlaceholderText("Search skills...")).toBeVisible();
+    expect(screen.getByRole("switch", { name: "Toggle PPTX" })).toHaveFocus();
+  });
 });

@@ -190,7 +190,9 @@ describe("CraftProjectDetailPage", () => {
     expect(screen.getByText("Sandbox")).toBeInTheDocument();
     expect(screen.getByText("Not started")).toBeInTheDocument();
     expect(
-      screen.getByText("The agent follows these rules in every chat in this project.")
+      screen.getByText(
+        "The agent follows these rules in every chat in this project."
+      )
     ).toBeInTheDocument();
     expect(
       screen.getByText("This text appears under the project name.")

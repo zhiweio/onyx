@@ -23,7 +23,7 @@ function matches(reference: string, hint: string): boolean {
  */
 export function resolveToolHints(
   hints: PromptToolHints | undefined,
-  skills: HintSkill[],
+  skills: HintSkill[]
 ): ResolvedToolSelection {
   const skillIds = (hints?.skillSlugs ?? [])
     .map((hint) => skills.find((skill) => matches(skill.slug, hint))?.slug)

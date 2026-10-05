@@ -768,6 +768,28 @@ def fetch_first_accessible_llm_provider_by_type(
     return provider
 
 
+def fetch_all_llm_providers_unfiltered(db_session: Session) -> list[LLMProviderView]:
+    """Every provider row, ignoring user access rules.
+
+    For the agent model registry snapshot (runtime support matrix, context
+    windows, default marker): those questions are deployment-wide, so the
+    index holds the superset. Per-user visibility stays enforced where it
+    matters — the per-turn sandbox catalog (``build_onyx_gateway_config``)
+    filters by the session user."""
+    provider_models = db_session.scalars(
+        select(LLMProviderModel)
+        .order_by(LLMProviderModel.id.asc())
+        .options(
+            selectinload(LLMProviderModel.model_configurations),
+            selectinload(LLMProviderModel.groups),
+            selectinload(LLMProviderModel.personas),
+        )
+    )
+    return [
+        LLMProviderView.from_model(p, include_api_key=False) for p in provider_models
+    ]
+
+
 def fetch_all_accessible_llm_providers(
     db_session: Session, user: User
 ) -> list[LLMProviderView]:

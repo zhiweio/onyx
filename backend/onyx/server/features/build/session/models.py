@@ -265,6 +265,9 @@ class MessageRequest(BaseModel):
     model: str | None = None
     reasoning_effort: ReasoningEffort | None = None
     selected_skill_ids: list[str] = Field(default_factory=list)
+    # Per-message agent-runtime override (HarnessRouter's explicit-request
+    # precedence level). Must be in the deployment's approved set.
+    runtime: str | None = None
 
 
 class RetryTurnRequest(BaseModel):

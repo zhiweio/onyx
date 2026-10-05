@@ -49,7 +49,9 @@ FROM ${BASE_IMAGE_REGISTRY}/library/python:3.13-slim@sha256:f82c96458eedc847b233
 # server at session-setup, but their runtime tools must already be in the image.
 ARG ENABLE_SKILLS=true
 ARG ENABLE_BROWSER=true
+ARG ENABLE_CODEX=true
 ARG OPENCODE_VERSION=1.18.19
+ARG CODEX_VERSION=0.156.1
 ARG AGENT_BROWSER_VERSION=0.31.1
 
 # firewall-init.sh needs: iptables (egress lockdown), ca-certificates (trust
@@ -220,6 +222,17 @@ USER sandbox
 RUN curl -fsSL -o /tmp/opencode-install.sh https://opencode.ai/install && \
     bash /tmp/opencode-install.sh --version "${OPENCODE_VERSION}" --no-modify-path && \
     rm /tmp/opencode-install.sh
+# Second agent runtime: the codex CLI (app-server JSON-RPC over stdio,
+# driven through the sandbox daemon's /codex bridge). Pinned like opencode;
+# upgrade in a dedicated PR with the bridge contract tests. Global npm
+# installs need root (EACCES under /usr/local/lib/node_modules as sandbox).
+USER root
+RUN if [ "$ENABLE_CODEX" = "true" ]; then \
+      npm install -g @openai/codex@${CODEX_VERSION}; \
+    else \
+      echo "Skipping codex install (ENABLE_CODEX=false)"; \
+    fi
+USER sandbox
 # Pre-warm Bun's tarball cache so per-session installs hit a local store.
 # Pass --build-arg WARM_BUN_CACHE=false when the build network rejects npm TLS.
 ARG WARM_BUN_CACHE=true

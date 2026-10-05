@@ -162,8 +162,7 @@ export default function CraftProjectFilePreview({
   }, [kind, payload]);
 
   const markdownUrlTransform = useMemo(
-    () =>
-      makeProjectMarkdownPreviewUrlTransform(projectId, file.path, files),
+    () => makeProjectMarkdownPreviewUrlTransform(projectId, file.path, files),
     [file.path, files, projectId]
   );
 

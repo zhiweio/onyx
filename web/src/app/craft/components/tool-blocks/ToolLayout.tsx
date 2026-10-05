@@ -72,7 +72,7 @@ function ToolLayoutComponent({
 }: ToolLayoutProps) {
   const t = useTranslations("craft.toolBlocks");
   const [isOpen, setIsOpen] = useState(
-    () => getToolLayoutOpen(toolId) ?? false,
+    () => getToolLayoutOpen(toolId) ?? false
   );
   const [shouldRenderContent, setShouldRenderContent] = useState(isOpen);
   const [isFailureCopied, setIsFailureCopied] = useState(false);

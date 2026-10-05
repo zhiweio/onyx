@@ -19,13 +19,13 @@ export type {
 // Every backend field name variant is listed ONCE here.
 
 export function getRawInput(
-  p: Record<string, unknown>,
+  p: Record<string, unknown>
 ): Record<string, unknown> | null {
   return (p.raw_input ?? p.rawInput ?? null) as Record<string, unknown> | null;
 }
 
 export function getRawOutput(
-  p: Record<string, unknown>,
+  p: Record<string, unknown>
 ): Record<string, unknown> | null {
   return (p.raw_output ?? p.rawOutput ?? null) as Record<
     string,

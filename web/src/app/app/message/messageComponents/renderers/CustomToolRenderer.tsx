@@ -59,23 +59,23 @@ function HighlightedJsonCode({ code }: HighlightedJsonCodeProps) {
 
 function constructCustomToolState(
   packets: CustomToolPacket[],
-  fallbackToolName: string,
+  fallbackToolName: string
 ) {
   const toolStart = packets.find(
-    (p) => p.obj.type === PacketType.CUSTOM_TOOL_START,
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_START
   )?.obj as CustomToolStart | null;
   const toolDeltas = packets
     .filter((p) => p.obj.type === PacketType.CUSTOM_TOOL_DELTA)
     .map((p) => p.obj as CustomToolDelta);
   const toolEnd = packets.find(
     (p) =>
-      p.obj.type === PacketType.SECTION_END || p.obj.type === PacketType.ERROR,
+      p.obj.type === PacketType.SECTION_END || p.obj.type === PacketType.ERROR
   )?.obj as SectionEnd | null;
 
   const toolName =
     toolStart?.tool_name || toolDeltas[0]?.tool_name || fallbackToolName;
   const toolArgsPacket = packets.find(
-    (p) => p.obj.type === PacketType.CUSTOM_TOOL_ARGS,
+    (p) => p.obj.type === PacketType.CUSTOM_TOOL_ARGS
   )?.obj as CustomToolArgs | null;
   const toolArgs = toolArgsPacket?.tool_args ?? null;
   const latestDelta = toolDeltas[toolDeltas.length - 1] || null;
@@ -174,14 +174,14 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   const toolArgsJson = useMemo(
     () => (toolArgs ? JSON.stringify(toolArgs, null, 2) : null),
-    [toolArgs],
+    [toolArgs]
   );
   const dataJson = useMemo(
     () =>
       data !== undefined && data !== null && typeof data === "object"
         ? JSON.stringify(data, null, 2)
         : null,
-    [data],
+    [data]
   );
 
   const content = useMemo(
@@ -308,7 +308,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
           )}
         </div>
       ),
-    [toolArgsJson, dataJson, data, fileIds, error, isRunning, t, mcp, toolArgs],
+    [toolArgsJson, dataJson, data, fileIds, error, isRunning, t, mcp, toolArgs]
   );
 
   // Auth error: always render FULL with error surface

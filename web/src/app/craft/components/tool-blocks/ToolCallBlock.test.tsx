@@ -99,7 +99,7 @@ describe("ToolCallBlock", () => {
     render(
       <ToolCallBlock
         toolCall={bashTool({ status: "failed", rawOutput: "boom: exit 1" })}
-      />,
+      />
     );
     expect(screen.getByText("Failed")).toBeInTheDocument();
   });
@@ -119,7 +119,7 @@ describe("ToolGroupRow", () => {
           bashTool({ id: "b", kind: "search", command: "", rawOutput: "y" }),
         ]}
         autoCollapse={false}
-      />,
+      />
     );
     expect(screen.getByText("Explored 2 tools")).toBeInTheDocument();
   });
@@ -130,7 +130,7 @@ describe("ToolGroupRow", () => {
         phase="run"
         tools={[bashTool({ status: "in_progress" })]}
         autoCollapse={false}
-      />,
+      />
     );
     // While live the group auto-opens.
     expect(getToolLayoutOpen("group:tool-1")).toBe(true);
@@ -140,7 +140,7 @@ describe("ToolGroupRow", () => {
         phase="run"
         tools={[bashTool({ status: "completed" })]}
         autoCollapse
-      />,
+      />
     );
     expect(getToolLayoutOpen("group:tool-1")).toBe(false);
   });

@@ -97,7 +97,9 @@ test("pending tool approval renders; approve once posts the decision", async ({
   });
 
   await region
-    .getByRole("button", { name: /仅批准此操作一次|Approve this action once|批准一次|Approve once/ })
+    .getByRole("button", {
+      name: /仅批准此操作一次|Approve this action once|批准一次|Approve once/,
+    })
     .click();
   await expect.poll(() => decisions.length).toBe(1);
   expect(decisions[0]).toEqual({ decision: "APPROVED" });
@@ -125,7 +127,9 @@ test("approve for session posts the session grant", async ({ page }) => {
   );
 
   await region
-    .getByRole("button", { name: /批准此会话中的匹配操作|Approve matching actions for this session|批准整个会话|Approve for session/ })
+    .getByRole("button", {
+      name: /批准此会话中的匹配操作|Approve matching actions for this session|批准整个会话|Approve for session/,
+    })
     .click();
   await expect.poll(() => grants.length).toBe(1);
 });
@@ -160,9 +164,7 @@ test("quarantine card: host scope + approve posts scoped release", async ({
   );
 
   // The approve action button is labeled "Allow/放行（<scope>）".
-  await region
-    .getByRole("button", { name: /放行|Allow/ })
-    .click();
+  await region.getByRole("button", { name: /放行|Allow/ }).click();
   await expect.poll(() => releases.length).toBe(1);
   expect(releases[0]).toEqual({ decision: "APPROVED", scope: "HOST" });
 });

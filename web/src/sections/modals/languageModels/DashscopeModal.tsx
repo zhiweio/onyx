@@ -170,9 +170,7 @@ function DashscopeModalInternals({
         </Section>
       </InputPadder>
 
-      <APIKeyField
-        subDescription={t("dashscope.apiKeyField.description")}
-      />
+      <APIKeyField subDescription={t("dashscope.apiKeyField.description")} />
 
       {!isOnboarding && (
         <>

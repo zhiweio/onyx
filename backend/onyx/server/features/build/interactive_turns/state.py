@@ -60,6 +60,9 @@ class InteractiveTurn:
     runner_id: str | None = None
     kind: Literal["prompt", "compact"] = "prompt"
     selected_skill_ids: list[str] | None = None
+    # Per-turn agent-runtime override (explicit-request precedence level of
+    # the HarnessRouter); None lets purpose/scenario/org-default decide.
+    requested_runtime: str | None = None
     # Claim-local flag for stale-RUNNING recovery; not persisted (see _save_turn).
     reclaimed: bool = False
 
@@ -88,6 +91,7 @@ def create_interactive_turn(
     attachments: list[PromptAttachment] | None = None,
     kind: Literal["prompt", "compact"] = "prompt",
     selected_skill_ids: list[str] | None = None,
+    requested_runtime: str | None = None,
 ) -> InteractiveTurn:
     now = datetime.now(tz=timezone.utc)
     turn = InteractiveTurn(
@@ -101,6 +105,7 @@ def create_interactive_turn(
         last_heartbeat_at=now,
         kind=kind,
         selected_skill_ids=selected_skill_ids or [],
+        requested_runtime=requested_runtime,
     )
     _save_turn(cache, turn, ex=ACTIVE_TURN_TTL_SECONDS)
     cache.set(
@@ -332,6 +337,7 @@ def _load_turn(raw: bytes | None) -> InteractiveTurn | None:
                 else "prompt"
             ),
             selected_skill_ids=list(payload.get("selected_skill_ids") or []),
+            requested_runtime=payload.get("requested_runtime"),
         )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None

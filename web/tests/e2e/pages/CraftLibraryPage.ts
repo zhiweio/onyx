@@ -61,7 +61,9 @@ export class CraftLibraryPage {
   }
 
   sidebarTab(): Locator {
-    return this.page.getByRole("button", { name: /^(Library|资料库)$/ }).first();
+    return this.page
+      .getByRole("button", { name: /^(Library|资料库)$/ })
+      .first();
   }
 
   async openNewFolderPanel(): Promise<void> {

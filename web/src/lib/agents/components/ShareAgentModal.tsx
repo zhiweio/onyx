@@ -431,26 +431,23 @@ export function ShareAgentModal({
         return;
       }
 
-      const error = await updateAgentShares(
-        agentId,
-        {
-          group_shares: effectiveState.groupShares
-            .filter((share) => share.group_id !== agent?.owner_group?.id)
-            .map((share) => ({
-              group_id: share.group_id,
-              permission: share.permission,
-            })),
-          is_public: effectiveState.isPublic,
-          label_ids: labelIds.length > 0 ? labelIds : undefined,
-          public_permission: effectiveState.publicPermission,
-          user_shares: effectiveState.userShares
-            .filter((share) => share.user.id !== agent?.owner?.id)
-            .map((share) => ({
-              permission: share.permission,
-              user_id: share.user.id,
-            })),
-        },
-      );
+      const error = await updateAgentShares(agentId, {
+        group_shares: effectiveState.groupShares
+          .filter((share) => share.group_id !== agent?.owner_group?.id)
+          .map((share) => ({
+            group_id: share.group_id,
+            permission: share.permission,
+          })),
+        is_public: effectiveState.isPublic,
+        label_ids: labelIds.length > 0 ? labelIds : undefined,
+        public_permission: effectiveState.publicPermission,
+        user_shares: effectiveState.userShares
+          .filter((share) => share.user.id !== agent?.owner?.id)
+          .map((share) => ({
+            permission: share.permission,
+            user_id: share.user.id,
+          })),
+      });
 
       if (error) {
         toast.error(error);

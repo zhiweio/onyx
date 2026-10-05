@@ -84,8 +84,7 @@ export default function EditCatalogModal({
     }
   }, [item, kind]);
 
-  const nameMax =
-    kind === "skills" ? CATALOG_SKILL_NAME_MAX : CATALOG_NAME_MAX;
+  const nameMax = kind === "skills" ? CATALOG_SKILL_NAME_MAX : CATALOG_NAME_MAX;
   const canSave =
     !pending &&
     name.trim().length > 0 &&

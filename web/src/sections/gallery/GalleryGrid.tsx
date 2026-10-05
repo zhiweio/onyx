@@ -57,14 +57,14 @@ export default function GalleryGrid({
   const categories = useMemo(() => collectCatalogCategories(items), [items]);
   const visibleItems = useMemo(
     () => filterCatalogItems(items, { query: searchQuery, category }),
-    [items, searchQuery, category],
+    [items, searchQuery, category]
   );
   const orderedItems = useMemo(() => {
     if (category !== "all") {
       return visibleItems;
     }
     return groupCatalogItemsByCategory(visibleItems).flatMap(
-      (group) => group.items,
+      (group) => group.items
     );
   }, [category, visibleItems]);
 

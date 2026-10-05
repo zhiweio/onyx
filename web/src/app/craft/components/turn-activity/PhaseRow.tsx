@@ -84,7 +84,7 @@ const THINKING_MARKDOWN_OVERRIDES = {
 function rowTriggerClass(expandable: boolean): string {
   return cn(
     "group flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden py-0.5 text-left",
-    expandable && "rounded-sm hover:bg-background-tint-02",
+    expandable && "rounded-sm hover:bg-background-tint-02"
   );
 }
 
@@ -212,7 +212,7 @@ export function ThoughtRow({
             <SvgChevronDown
               className={cn(
                 "size-3.5 shrink-0 stroke-text-03 transition-transform duration-150",
-                !isOpen && "-rotate-90",
+                !isOpen && "-rotate-90"
               )}
             />
           </button>

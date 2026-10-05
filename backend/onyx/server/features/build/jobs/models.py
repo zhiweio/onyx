@@ -84,6 +84,17 @@ class CraftJobTimelineItem(BaseModel):
     label: str
 
 
+class CraftJobUsageResponse(BaseModel):
+    """Token/cost totals for a job: its own session plus every lane's."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    reasoning_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    cost: float | None = None
+
+
 class CraftJobResponse(BaseModel):
     id: UUID
     session_id: UUID
@@ -102,6 +113,7 @@ class CraftJobResponse(BaseModel):
     artifacts: list[CraftJobArtifactResponse] = Field(default_factory=list)
     events: list[CraftJobEventResponse] = Field(default_factory=list)
     interrupt: CraftJobInterruptResponse | None = None
+    usage: CraftJobUsageResponse | None = None
 
     @classmethod
     def from_model(cls, job: CraftJob) -> "CraftJobResponse":
@@ -168,7 +180,49 @@ class CraftJobResponse(BaseModel):
             ],
             events=events,
             interrupt=interrupt,
+            usage=_usage_for_job(job),
         )
+
+
+def _usage_for_job(job: CraftJob) -> CraftJobUsageResponse | None:
+    """Sum the LLM ledger across the job's session and its lanes."""
+    from sqlalchemy.orm.exc import UnmappedInstanceError
+
+    from onyx.db.craft_llm_request import session_llm_usage_totals
+
+    try:
+        db_session = object_session(job)
+    except UnmappedInstanceError:
+        # Test doubles without ORM state carry no ledger to sum.
+        return None
+    if db_session is None:
+        return None
+    session_ids = [job.session_id] + [
+        row.session_id for row in (job.specialists or []) if row.session_id is not None
+    ]
+    totals = session_llm_usage_totals(db_session, session_ids)
+    if not totals:
+        return None
+    summed = {
+        key: sum(item.get(key, 0.0) for item in totals.values())
+        for key in (
+            "input_tokens",
+            "output_tokens",
+            "reasoning_tokens",
+            "cache_read_tokens",
+            "cache_write_tokens",
+            "cost",
+        )
+    }
+    costs = [item["cost"] for item in totals.values() if item.get("cost")]
+    return CraftJobUsageResponse(
+        input_tokens=int(summed["input_tokens"]),
+        output_tokens=int(summed["output_tokens"]),
+        reasoning_tokens=int(summed["reasoning_tokens"]),
+        cache_read_tokens=int(summed["cache_read_tokens"]),
+        cache_write_tokens=int(summed["cache_write_tokens"]),
+        cost=sum(costs) if costs else None,
+    )
 
 
 def _timeline_from_phases(

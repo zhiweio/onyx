@@ -34,10 +34,8 @@ describe("project preview asset paths", () => {
       "charts/revenue_q.png",
     ]);
     expect(
-      findProjectFileForWorkspacePath(
-        [chart],
-        "outputs/charts/revenue_q.png"
-      )?.id
+      findProjectFileForWorkspacePath([chart], "outputs/charts/revenue_q.png")
+        ?.id
     ).toBe("chart-1");
   });
 
@@ -70,7 +68,8 @@ describe("project preview asset paths", () => {
   });
 
   it("leaves self-contained HTML unchanged", async () => {
-    const html = '<html><body><img src="data:image/png;base64,AAA"></body></html>';
+    const html =
+      '<html><body><img src="data:image/png;base64,AAA"></body></html>';
     const result = await rewriteProjectHtmlForPreview(
       html,
       "/report.html",

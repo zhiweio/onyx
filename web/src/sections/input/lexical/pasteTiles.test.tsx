@@ -23,7 +23,7 @@ function pastePlainText(element: HTMLElement, text: string) {
 }
 
 function renderEditor(
-  props: Partial<React.ComponentProps<typeof ChatPromptEditor>> = {},
+  props: Partial<React.ComponentProps<typeof ChatPromptEditor>> = {}
 ) {
   const editorRef = createRef<LexicalPromptInputHandle | null>();
   const onSubmit = jest.fn((_text: string) => true);
@@ -34,7 +34,7 @@ function renderEditor(
       editorRef={editorRef}
       onSubmit={onSubmit}
       {...props}
-    />,
+    />
   );
   return { editorRef, onSubmit };
 }
@@ -57,10 +57,10 @@ describe("paste tiles on the lexical kernel", () => {
     const tile = document.querySelector<HTMLElement>("[data-rich-tile]");
     expect(tile!.getAttribute("data-text")).toBe(LARGE_TEXT);
     expect(
-      tile!.querySelector(".rich-input-tile-preview")?.textContent,
+      tile!.querySelector(".rich-input-tile-preview")?.textContent
     ).toContain("line 1");
     expect(tile!.querySelector(".rich-input-tile-meta")?.textContent).toContain(
-      "4 lines",
+      "4 lines"
     );
   });
 
@@ -119,7 +119,7 @@ describe("paste tiles on the lexical kernel", () => {
       expect(document.querySelector("[data-rich-tile]")).not.toBeNull();
     });
     const remove = document.querySelector<HTMLElement>(
-      "[data-rich-tile-remove]",
+      "[data-rich-tile-remove]"
     );
     expect(remove).not.toBeNull();
     fireEvent.click(remove!);

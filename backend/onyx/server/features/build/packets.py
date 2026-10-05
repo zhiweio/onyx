@@ -102,9 +102,22 @@ class QuestionAskPacket(BasePacket):
 
 
 class ContextUsagePacket(BasePacket):
+    """Context usage for one assistant message.
+
+    ``used_tokens``/``cost`` are the collapsed view the UI ring consumes.
+    The granular fields ride along for the per-request ledger (they are
+    None when the harness did not report them) and are ignored by older
+    clients."""
+
     type: Literal["context_usage"] = "context_usage"
     used_tokens: int
     cost: float | None = None
+    message_id: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    reasoning_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_write_tokens: int | None = None
 
 
 class CompactionPacket(BasePacket):

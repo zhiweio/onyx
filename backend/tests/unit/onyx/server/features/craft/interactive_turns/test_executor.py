@@ -166,6 +166,15 @@ def _run_turn_with_events(
         def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
             reconcile_calls.append(args + tuple(kwargs.values()))
 
+        def resolve_turn_runtime(
+            self, *_args: object, **_kwargs: object
+        ) -> SimpleNamespace:
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
+
         def prompt_slot(
             self,
             sandbox_id_arg: UUID,
@@ -187,8 +196,10 @@ def _run_turn_with_events(
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
             skip_memory_recall: bool = False,
+            purpose: object = None,
+            requested_runtime: str | None = None,
         ) -> Iterator[object]:
-            del skip_memory_recall
+            del skip_memory_recall, purpose, requested_runtime
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
             assert prompt == "hello"
@@ -680,6 +691,15 @@ def test_ownership_recheck_after_slot_acquire(
         def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
+        def resolve_turn_runtime(
+            self, *_args: object, **_kwargs: object
+        ) -> SimpleNamespace:
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
+
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
@@ -707,8 +727,10 @@ def test_ownership_recheck_after_slot_acquire(
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
             skip_memory_recall: bool = False,
+            purpose: object = None,
+            requested_runtime: str | None = None,
         ) -> Iterator[object]:
-            del skip_memory_recall
+            del skip_memory_recall, purpose, requested_runtime
             nonlocal yield_sandbox_events_called
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
@@ -842,6 +864,15 @@ def test_prompt_slot_busy_does_not_finish_reclaimed_turn(
         def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
+        def resolve_turn_runtime(
+            self, *_args: object, **_kwargs: object
+        ) -> SimpleNamespace:
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
+
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
             stamp_calls.append(True)
@@ -943,6 +974,15 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
         def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
+        def resolve_turn_runtime(
+            self, *_args: object, **_kwargs: object
+        ) -> SimpleNamespace:
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
+
         def stamp_turn_deadline(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
@@ -970,8 +1010,10 @@ def test_lost_runner_does_not_clear_reclaimed_turn_interrupt(
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
             skip_memory_recall: bool = False,
+            purpose: object = None,
+            requested_runtime: str | None = None,
         ) -> Iterator[object]:
-            del skip_memory_recall
+            del skip_memory_recall, purpose, requested_runtime
             nonlocal reclaimed
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
@@ -1146,6 +1188,15 @@ def _run_turn_with_batches(
         def reconcile_session_llm_config(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
 
+        def resolve_turn_runtime(
+            self, *_args: object, **_kwargs: object
+        ) -> SimpleNamespace:
+            from onyx.server.features.build.sandbox.agent_runtime.router import (
+                RuntimeChoice,
+            )
+
+            return RuntimeChoice(runtime_id="opencode", model_id="m", origin="test")
+
         def prompt_slot(
             self,
             sandbox_id_arg: UUID,
@@ -1167,8 +1218,10 @@ def _run_turn_with_batches(
             should_interrupt: object,
             should_abort_on_teardown: Callable[[], bool],
             skip_memory_recall: bool = False,
+            purpose: object = None,
+            requested_runtime: str | None = None,
         ) -> Iterator[object]:
-            del skip_memory_recall
+            del skip_memory_recall, purpose, requested_runtime
             assert sandbox_id_arg == sandbox_id
             assert session_id_arg == session_id
             assert attachments == []
