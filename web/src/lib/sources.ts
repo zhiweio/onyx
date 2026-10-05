@@ -74,6 +74,9 @@ interface PartialSourceMetadata {
   icon: React.FC<{ size?: number; className?: string }>;
   displayName: string;
   category: SourceCategory;
+  // Additional categories the source should also be listed under on the
+  // Add Connector page (a platform can span e.g. storage and wiki)
+  extraCategories?: SourceCategory[];
   isPopular?: boolean;
   docs?: string;
   oauthSupported?: boolean;
@@ -473,6 +476,9 @@ export const SOURCE_METADATA_MAP: SourceMap = {
     icon: SvgWeCom,
     displayName: "WeCom",
     category: SourceCategory.Storage,
+    // WeCom has no separate wiki product; its drive/docs serve as the
+    // team knowledge base
+    extraCategories: [SourceCategory.Wiki],
   },
   dingtalk: {
     icon: SvgDingTalk,
@@ -483,6 +489,38 @@ export const SOURCE_METADATA_MAP: SourceMap = {
     icon: SvgWps365,
     displayName: "WPS 365",
     category: SourceCategory.Storage,
+    // WPS cloud docs serve as the team knowledge base
+    extraCategories: [SourceCategory.Wiki],
+  },
+  feishu_drive: {
+    icon: SvgFeishu,
+    displayName: "Feishu Drive",
+    category: SourceCategory.Storage,
+  },
+  feishu_im: {
+    icon: SvgFeishu,
+    displayName: "Feishu Messages",
+    category: SourceCategory.Messaging,
+  },
+  feishu_task: {
+    icon: SvgFeishu,
+    displayName: "Feishu Tasks",
+    category: SourceCategory.TicketingAndTaskManagement,
+  },
+  dingtalk_drive: {
+    icon: SvgDingTalk,
+    displayName: "DingTalk Drive",
+    category: SourceCategory.Storage,
+  },
+  dingtalk_todo: {
+    icon: SvgDingTalk,
+    displayName: "DingTalk Todo",
+    category: SourceCategory.TicketingAndTaskManagement,
+  },
+  wecom_approval: {
+    icon: SvgWeCom,
+    displayName: "WeCom Approvals",
+    category: SourceCategory.TicketingAndTaskManagement,
   },
   sap_odata: {
     icon: SvgServer,

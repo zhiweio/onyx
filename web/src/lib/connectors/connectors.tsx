@@ -2093,6 +2093,216 @@ For example, specifying .*-alerts as a "channel to exclude" will cause the conne
     ],
     advanced_values: [],
   },
+  // China capability-specific connectors (one source per platform capability)
+  feishu_drive: {
+    description: "Configure Feishu Drive connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the Feishu App ID:",
+        label: "App ID",
+        name: "feishu_app_id",
+        optional: false,
+        description: "The enterprise self-built app's App ID (应用 App ID).",
+      },
+      {
+        type: "text",
+        query: "Enter the Feishu App Secret:",
+        label: "App Secret",
+        name: "feishu_app_secret",
+        optional: false,
+        description: "The app's App Secret from the developer console.",
+      },
+    ],
+    advanced_values: [
+      {
+        type: "list",
+        query: "Root folder tokens to index:",
+        label: "Root Folders",
+        name: "root_folder_tokens",
+        optional: true,
+        description:
+          "Drive folder tokens to index. Leave empty to index the app's own root folder.",
+      },
+    ],
+  },
+  feishu_im: {
+    description: "Configure Feishu Messages connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the Feishu App ID:",
+        label: "App ID",
+        name: "feishu_app_id",
+        optional: false,
+        description: "The enterprise self-built app's App ID (应用 App ID).",
+      },
+      {
+        type: "text",
+        query: "Enter the Feishu App Secret:",
+        label: "App Secret",
+        name: "feishu_app_secret",
+        optional: false,
+        description: "The app's App Secret from the developer console.",
+      },
+      {
+        type: "number",
+        query: "Days of chat history to index:",
+        label: "History Days",
+        name: "history_days",
+        optional: true,
+        default: 90,
+        description:
+          "Index group chats the bot belongs to, this many days back.",
+      },
+      {
+        type: "list",
+        query: "Chat IDs to index (optional):",
+        label: "Chat IDs",
+        name: "chat_ids",
+        optional: true,
+        description:
+          "Restrict indexing to these chat ids. Leave empty to index every chat the bot is in.",
+      },
+    ],
+    advanced_values: [],
+  },
+  feishu_task: {
+    description: "Configure Feishu Tasks connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the Feishu App ID:",
+        label: "App ID",
+        name: "feishu_app_id",
+        optional: false,
+        description: "The enterprise self-built app's App ID (应用 App ID).",
+      },
+      {
+        type: "text",
+        query: "Enter the Feishu App Secret:",
+        label: "App Secret",
+        name: "feishu_app_secret",
+        optional: false,
+        description: "The app's App Secret from the developer console.",
+      },
+    ],
+    advanced_values: [],
+  },
+  dingtalk_drive: {
+    description: "Configure DingTalk Drive connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the DingTalk AppKey:",
+        label: "Client ID (AppKey)",
+        name: "dingtalk_client_id",
+        optional: false,
+        description: "The enterprise app's AppKey from the developer console.",
+      },
+      {
+        type: "text",
+        query: "Enter the DingTalk AppSecret:",
+        label: "Client Secret (AppSecret)",
+        name: "dingtalk_client_secret",
+        optional: false,
+        description: "The enterprise app's AppSecret.",
+      },
+      {
+        type: "text",
+        query: "Enter the operator unionId:",
+        label: "Operator Union ID",
+        name: "operator_union_id",
+        optional: false,
+        description:
+          "unionId of the account whose view of 钉盘 is indexed (the drive APIs act on behalf of a user).",
+      },
+    ],
+    advanced_values: [
+      {
+        type: "list",
+        query: "Space IDs to index (optional):",
+        label: "Space IDs",
+        name: "space_ids",
+        optional: true,
+        description:
+          "Restrict indexing to these 钉盘 space ids. Leave empty to index all org spaces visible to the operator.",
+      },
+    ],
+  },
+  dingtalk_todo: {
+    description: "Configure DingTalk Todo connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the DingTalk AppKey:",
+        label: "Client ID (AppKey)",
+        name: "dingtalk_client_id",
+        optional: false,
+        description: "The enterprise app's AppKey from the developer console.",
+      },
+      {
+        type: "text",
+        query: "Enter the DingTalk AppSecret:",
+        label: "Client Secret (AppSecret)",
+        name: "dingtalk_client_secret",
+        optional: false,
+        description: "The enterprise app's AppSecret.",
+      },
+      {
+        type: "text",
+        query: "Enter the operator unionId:",
+        label: "Operator Union ID",
+        name: "operator_union_id",
+        optional: false,
+        description:
+          "The todo API is user-scoped: this account's todos are indexed.",
+      },
+    ],
+    advanced_values: [],
+  },
+  wecom_approval: {
+    description: "Configure WeCom Approvals connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the WeCom Corp ID:",
+        label: "Corp ID",
+        name: "wecom_corp_id",
+        optional: false,
+        description: "WeCom enterprise ID (企业ID), from the admin console.",
+      },
+      {
+        type: "text",
+        query: "Enter the WeCom Corp Secret:",
+        label: "Corp Secret",
+        name: "wecom_corp_secret",
+        optional: false,
+        description:
+          "The self-built app's secret with OA approval data access.",
+      },
+      {
+        type: "number",
+        query: "Days of approval history to index:",
+        label: "History Days",
+        name: "history_days",
+        optional: true,
+        default: 90,
+        description: "Index approval requests submitted this many days back.",
+      },
+    ],
+    advanced_values: [
+      {
+        type: "list",
+        query: "Template IDs to index (optional):",
+        label: "Template IDs",
+        name: "template_ids",
+        optional: true,
+        description:
+          "Restrict indexing to these approval template ids. Leave empty to index all approvals.",
+      },
+    ],
+  },
   sap_odata: {
     description: "Configure SAP (OData) connector",
     values: [

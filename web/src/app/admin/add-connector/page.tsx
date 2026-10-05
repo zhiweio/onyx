@@ -170,7 +170,10 @@ export default function Page() {
       return sources.filter(
         (source) =>
           source.displayName.toLowerCase().includes(lowerSearchTerm) ||
-          source.category.toLowerCase().includes(lowerSearchTerm)
+          source.category.toLowerCase().includes(lowerSearchTerm) ||
+          (source.extraCategories ?? []).some((category) =>
+            category.toLowerCase().includes(lowerSearchTerm)
+          )
       );
     },
     [searchTerm]
@@ -192,7 +195,8 @@ export default function Page() {
       (acc, category) => {
         acc[category] = sources.filter(
           (source) =>
-            source.category === category &&
+            (source.category === category ||
+              (source.extraCategories ?? []).includes(category)) &&
             (filtered.includes(source) ||
               category.toLowerCase().includes(searchTerm.toLowerCase()))
         );

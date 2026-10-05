@@ -33,12 +33,15 @@
 | `wiki:wiki` | 应用 | (仅测试造数需要)创建空间/节点 |
 | `docx:document:readonly` | 应用 | 连接器:读文档纯文本 |
 | `docx:document` | 应用 | (仅测试造数需要)写文档块 |
-| `drive:drive:readonly` | 应用 | 连接器:权限成员(ACL) |
+| `drive:drive:readonly` | 应用 | 连接器:云盘目录/文件下载 + 权限成员(ACL) |
 | `im:message` | 应用 | 机器人:发消息 |
+| `im:message.group_msg` | 应用 | 连接器:读取群历史消息(2026-10 实测所需权限名,缺它报 230027) |
 | `im:message.p2p_msg:readonly` | 应用 | 机器人:接收单聊事件 |
 | `im:message.group_at_msg:readonly` | 应用 | 机器人:接收群@事件 |
 | `im:message.group_at_msg.include_bot:readonly` | 应用 | 机器人:接收含其他机器人群的@事件 |
-| `im:chat:readonly` | 应用 | 机器人:群信息 |
+| `im:chat:readonly` | 应用 | 机器人:群信息;连接器:群列表/群成员(ACL) |
+| `task:tasklist:read` | 应用 | 连接器:任务清单读取(缺它报 99991672) |
+| `task:task:read` | 应用 | 连接器:任务读取 |
 
 ### 1.4 事件与回调
 
@@ -112,10 +115,64 @@ SSO 授权页会申请 `contact:user.base:readonly` + `contact:user.email:readon
 
 ### 3.3 连接器
 
-管理后台 → 连接器 → 飞书,凭据填 `feishu_app_id` / `feishu_app_secret`。
-保存时 `validate_connector_settings` 会实际调飞书校验(坏密钥→凭据错误;缺 wiki 权限→权限错误)。
+飞书按能力拆成 4 个源,凭据都填同一份 `feishu_app_id` / `feishu_app_secret`
+(同一应用,无需在飞书后台建多个应用):
 
-## 4. 端到端验证清单
+| 源 | 分类 | 索引内容 | 专属配置 |
+|---|---|---|---|
+| `feishu` | 知识库与 Wiki | 知识空间 → 节点树 → docx 正文 | 无 |
+| `feishu_drive` | 云存储 | 云盘文件夹(默认应用根目录,可配 `root_folder_tokens`);docx 走纯文本导出,sheet/bitable 导出 CSV,上传文件下载后走标准解析 | 根目录 token 列表 |
+| `feishu_im` | 即时通讯 | 机器人所在群聊历史,按群×天成档(默认近 90 天,可配) | `history_days`、`chat_ids` |
+| `feishu_task` | 任务工单 | 任务清单 → 任务(参与者解析成 ACL) | 无 |
+
+保存时 `validate_connector_settings` 会实际调飞书校验(坏密钥→凭据错误;缺对应
+权限→权限错误)。前置条件:
+
+- 知识空间/云盘目录:应用需被加入对应空间(见第 2 节)。
+- 群聊历史:机器人必须在目标群里;不在的群读不到。
+- ACL 邮箱解析:应用可用范围需覆盖成员(见 1.6)。
+
+### 3.4 Craft 外部应用（/admin/craft/apps）
+
+Craft 的 agent 在沙箱里以**用户身份**实时调飞书 Open API(读+写),与连接器的
+应用身份定时索引互补。管理后台 /admin/craft/apps → 添加「Feishu」,组织凭据填同一份
+`app_id` / `app_secret`;每个成员在 /craft/v1/apps 用 OAuth 连自己的账号。
+
+动作目录(58 个)覆盖 IM、文档(docx)、知识库(wiki)、云盘(drive)、电子表格、
+多维表格(bitable)、任务、日历、通讯录、审批、妙记、消息搜索。默认策略:读=ALWAYS、
+创建/发送/更新=ASK(沙箱里逐次审批)、删除=DENY,管理员可逐项改。
+
+需要的权限(均免审,改完必须发新版本):
+
+| 域 | Scope |
+|---|---|
+| IM | `im:message`、`im:message:readonly`、`im:chat`、`im:chat:readonly`、`im:resource`(消息资源下载) |
+| 文档 | `docx:document`、`docx:document:readonly` |
+| 知识库 | `wiki:wiki`、`wiki:wiki:readonly` |
+| 云盘 | `drive:drive`、`drive:drive:readonly` |
+| 电子表格 | `sheets:spreadsheet`、`sheets:spreadsheet:readonly` |
+| 多维表格 | `bitable:app`、`bitable:app:readonly` |
+| 任务 | `task:task`、`task:task:readonly` |
+| 日历 | `calendar:calendar`、`calendar:calendar:readonly` |
+| 通讯录 | `contact:user.base:readonly`、`contact:contact.base:readonly` |
+| 审批 | `approval:approval`、`approval:approval:readonly`(若免审列表搜不到则跳过该域) |
+| 妙记 | `minutes:minutes:readonly` |
+| 搜索 | 控制台搜「搜索」按需开(消息搜索/文档搜索) |
+
+安全设置 → 重定向 URL 需包含 `http://localhost:3000/craft/v1/apps/oauth/callback`
+(生产换真实域名)。令牌刷新/续期由 Onyx 代理层自动处理(passport 标准 OAuth2,
+refresh token 轮转)。
+
+## 4. 中国平台能力矩阵(连接器分类覆盖)
+
+| 平台 | 知识库与 Wiki | 云存储 | 即时通讯 | 任务工单 |
+|---|---|---|---|---|
+| 飞书 | `feishu` ✅ | `feishu_drive` ✅ | `feishu_im` ✅ | `feishu_task` ✅ |
+| 钉钉 | `dingtalk` ✅ | `dingtalk_drive` ✅(需 operator unionId,待联调验证) | ❌ 无群历史消息开放 API | `dingtalk_todo` ⚠️ 用户级(待办 API 按 unionId 查询) |
+| 企业微信 | `wecom` ✅(微盘即其知识库,同一连接器跨两类展示) | `wecom` ✅ | ❌ 仅付费「会话存档」有历史消息(需 license + C SDK,不做) | `wecom_approval` ✅(OA 审批单当工单,待联调验证) |
+| WPS 365 | `wps365` ✅(云文档即其知识库,同一连接器跨两类展示) | `wps365` ✅ | ❌ 无消息 API | ❌ 无任务 API |
+
+## 5. 端到端验证清单
 
 1. **SSO**:登录页点「飞书」→ 授权 → 回跳进入 `/app`;`oauth_account` 表新增
    `oauth_name='feishu'` 的关联。
@@ -125,7 +182,7 @@ SSO 授权页会申请 `contact:user.base:readonly` + `contact:user.email:readon
 3. **机器人**:`POST /onyxbot/feishu/callback` 模拟 `im.message.receive_v1`(header.token 填
    Verification Token)→ 几秒后飞书里收到 LLM 回复;`china_im_binding` 表有绑定记录。
 
-## 5. 本地开发的已知限制
+## 6. 本地开发的已知限制
 
 - ngrok 免费版每次重启域名会变,需同步更新飞书后台的回调地址;生产请用固定域名。
 - 容器部署时改代码需 `docker cp` 进 `onyx-api_server-1` / `onyx-background-1` 后重启

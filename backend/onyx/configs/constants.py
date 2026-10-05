@@ -317,6 +317,13 @@ class DocumentSource(str, Enum):
     DINGTALK = "dingtalk"
     WPS365 = "wps365"
     SAP_ODATA = "sap_odata"
+    # China capability-specific sources (one source per platform capability)
+    FEISHU_DRIVE = "feishu_drive"
+    FEISHU_IM = "feishu_im"
+    FEISHU_TASK = "feishu_task"
+    DINGTALK_DRIVE = "dingtalk_drive"
+    DINGTALK_TODO = "dingtalk_todo"
+    WECOM_APPROVAL = "wecom_approval"
 
 
 class FederatedConnectorSource(str, Enum):
@@ -751,6 +758,8 @@ class OnyxCeleryTask:
     SCHEDULED_TASKS_CLEANUP_STUCK = "scheduled_tasks_cleanup_stuck"
     LOOPS_FIRE_SWEEP = "loops_fire_sweep"
     LOOPS_FIRE_ITEM = "loops_fire_item"
+    CRAFT_JOB_KEEPER_SWEEP = "craft_job_keeper_sweep"
+    PRUNE_CRAFT_TAPE = "prune_craft_tape"
 
     CHECK_FOR_DOCUMENTS_FOR_OPENSEARCH_MIGRATION_TASK = (
         "check_for_documents_for_opensearch_migration_task"
@@ -852,4 +861,10 @@ DocumentSourceDescription: dict[DocumentSource, str] = {
     DocumentSource.DINGTALK: "钉钉知识库 (DingTalk knowledge base)",
     DocumentSource.WPS365: "WPS365 云文档 (WPS365 cloud files)",
     DocumentSource.SAP_ODATA: "SAP 业务数据 (SAP OData entity sets)",
+    DocumentSource.FEISHU_DRIVE: "飞书云盘 (Feishu drive)",
+    DocumentSource.FEISHU_IM: "飞书消息 (Feishu messages)",
+    DocumentSource.FEISHU_TASK: "飞书任务 (Feishu tasks)",
+    DocumentSource.DINGTALK_DRIVE: "钉钉云盘 (DingTalk drive)",
+    DocumentSource.DINGTALK_TODO: "钉钉待办 (DingTalk todo)",
+    DocumentSource.WECOM_APPROVAL: "企业微信审批 (WeCom approvals)",
 }

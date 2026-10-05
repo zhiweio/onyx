@@ -1,10 +1,15 @@
 """WPS365 connector: indexes cloud documents via the WPS open API.
 
-Lists files from the team drive (file list API), downloading text-like
-files directly. Base URL is configurable per deployment region.
+Lists files from the cloud drive (file list API), downloads each one, and
+parses it with the standard Onyx file extractor (pdf/docx/xlsx/pptx/html
+plus text). Base URL is configurable per deployment region.
 
 Credentials: ``wps365_client_id`` / ``wps365_client_secret`` /
 optional ``wps365_base_url`` (default https://open.wps.cn).
+
+NOTE: the list API is called defensively with an optional parent folder
+filter; folder traversal coverage depends on the tenant's API version and
+still needs live verification.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from onyx.connectors.china_common import (
     AppTokenManager,
     ChinaConnectorError,
     clean_identifier,
+    file_bytes_to_text,
 )
 from onyx.connectors.interfaces import (
     GenerateDocumentsOutput,
@@ -37,22 +43,17 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 DEFAULT_BASE = "https://open.wps.cn"
-_TEXT_SUFFIXES = (
-    ".txt",
-    ".md",
-    ".csv",
-    ".json",
-    ".xml",
-    ".log",
-    ".html",
-    ".docx",
-    ".pdf",
-)
+_MAX_FILE_BYTES = 64 * 1024 * 1024
 
 
 class WPS365Connector(LoadConnector, PollConnector):
-    def __init__(self, batch_size: int = INDEX_BATCH_SIZE) -> None:
+    def __init__(
+        self,
+        batch_size: int = INDEX_BATCH_SIZE,
+        parent_file_id: str = "",
+    ) -> None:
         self.batch_size = batch_size
+        self.parent_file_id = parent_file_id
         self._client_id: str | None = None
         self._client_secret: str | None = None
         self._base = DEFAULT_BASE
@@ -94,9 +95,12 @@ class WPS365Connector(LoadConnector, PollConnector):
         files: list[dict[str, Any]] = []
         offset = 0
         while True:
+            params: dict[str, Any] = {"offset": offset, "limit": 100}
+            if self.parent_file_id:
+                params["parent_id"] = self.parent_file_id
             resp = session.get(
                 f"{self._base}/openapi/file/wpscloud/v1/files",
-                params={"offset": offset, "limit": 100},
+                params=params,
                 timeout=30,
             )
             resp.raise_for_status()
@@ -110,12 +114,27 @@ class WPS365Connector(LoadConnector, PollConnector):
     def _download(self, session: requests.Session, file_id: str) -> bytes | None:
         resp = session.get(
             f"{self._base}/openapi/file/wpscloud/v1/files/{file_id}/download",
-            timeout=60,
+            timeout=120,
         )
         if resp.status_code != 200:
             logger.warning("WPS365 download %s -> %s", file_id, resp.status_code)
             return None
         return resp.content
+
+    @staticmethod
+    def _file_name(item: dict[str, Any]) -> str:
+        return str(item.get("name") or item.get("file_name") or "")
+
+    @staticmethod
+    def _file_id(item: dict[str, Any]) -> str:
+        return str(item.get("file_id") or item.get("id") or "")
+
+    @staticmethod
+    def _modified_time(item: dict[str, Any]) -> float:
+        for key in ("modify_time", "mtime", "update_time", "create_time"):
+            if item.get(key):
+                return float(item[key])
+        return 0.0
 
     def _load(
         self, start: float | None = None, end: float | None = None
@@ -125,11 +144,11 @@ class WPS365Connector(LoadConnector, PollConnector):
         # `Iterator[list[Document | HierarchyNode]]` yield type.
         batch: list[Document | HierarchyNode] = []
         for item in self._list_files(session):
-            name = str(item.get("name") or item.get("file_name") or "")
-            file_id = str(item.get("file_id") or item.get("id") or "")
-            if not file_id or not name.lower().endswith(_TEXT_SUFFIXES):
+            file_id = self._file_id(item)
+            name = self._file_name(item)
+            if not file_id or not name:
                 continue
-            updated = float(item.get("modify_time") or item.get("mtime") or 0)
+            updated = self._modified_time(item)
             if start is not None and updated < start:
                 continue
             if end is not None and updated >= end:
@@ -137,20 +156,12 @@ class WPS365Connector(LoadConnector, PollConnector):
             content = self._download(session, file_id)
             if not content:
                 continue
-            if name.endswith(".pdf") or name.endswith(".docx"):
-                # binary formats flow through the standard document
-                # parser by providing the raw bytes below; text path
-                # covers plain formats.
-                try:
-                    text = content.decode("utf-8")
-                except UnicodeDecodeError:
-                    logger.info("WPS365 skipping binary %s (parser hook M8)", name)
-                    continue
-            else:
-                try:
-                    text = content.decode("utf-8")
-                except UnicodeDecodeError:
-                    continue
+            if len(content) > _MAX_FILE_BYTES:
+                logger.warning("WPS365 file %s too large; skipping", file_id)
+                continue
+            text = file_bytes_to_text(content, name)
+            if not text:
+                continue
             title = clean_identifier(name, file_id)
             batch.append(
                 Document(
@@ -158,7 +169,7 @@ class WPS365Connector(LoadConnector, PollConnector):
                     source=DocumentSource.WPS365,
                     semantic_identifier=title,
                     title=title,
-                    sections=[TextSection(text=text)],
+                    sections=[TextSection(text=f"{title}\n\n{text}")],
                     metadata={"wps365_file": name},
                     doc_updated_at=updated or None,
                 )

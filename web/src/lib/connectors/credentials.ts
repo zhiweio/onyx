@@ -578,11 +578,35 @@ export const credentialTemplates: Record<ValidSources, any> = {
     feishu_app_id: "",
     feishu_app_secret: "",
   } as FeishuCredentialJson,
+  feishu_drive: {
+    feishu_app_id: "",
+    feishu_app_secret: "",
+  } as FeishuCredentialJson,
+  feishu_im: {
+    feishu_app_id: "",
+    feishu_app_secret: "",
+  } as FeishuCredentialJson,
+  feishu_task: {
+    feishu_app_id: "",
+    feishu_app_secret: "",
+  } as FeishuCredentialJson,
   wecom: {
     wecom_corp_id: "",
     wecom_corp_secret: "",
   } as WeComCredentialJson,
+  wecom_approval: {
+    wecom_corp_id: "",
+    wecom_corp_secret: "",
+  } as WeComCredentialJson,
   dingtalk: {
+    dingtalk_client_id: "",
+    dingtalk_client_secret: "",
+  } as DingTalkCredentialJson,
+  dingtalk_drive: {
+    dingtalk_client_id: "",
+    dingtalk_client_secret: "",
+  } as DingTalkCredentialJson,
+  dingtalk_todo: {
     dingtalk_client_id: "",
     dingtalk_client_secret: "",
   } as DingTalkCredentialJson,

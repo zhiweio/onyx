@@ -679,6 +679,12 @@ export enum ValidSources {
   DingTalk = "dingtalk",
   WPS365 = "wps365",
   SapOData = "sap_odata",
+  FeishuDrive = "feishu_drive",
+  FeishuIm = "feishu_im",
+  FeishuTask = "feishu_task",
+  DingTalkDrive = "dingtalk_drive",
+  DingTalkTodo = "dingtalk_todo",
+  WeComApproval = "wecom_approval",
 
   // Craft-specific sources
   CraftFile = "craft_file",

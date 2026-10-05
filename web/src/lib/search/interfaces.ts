@@ -132,6 +132,9 @@ export interface SourceMetadata {
   icon: React.FC<{ size?: number; className?: string }>;
   displayName: string;
   category: SourceCategory;
+  // Additional categories the source should also be listed under on the
+  // Add Connector page (a platform can span e.g. storage and wiki)
+  extraCategories?: SourceCategory[];
   shortDescription?: string;
   internalName: ValidSources;
   adminUrl: string;

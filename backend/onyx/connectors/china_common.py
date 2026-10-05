@@ -89,9 +89,24 @@ def paginated(
     logger.warning("pagination cap (%s pages) hit; stopping early", max_pages)
 
 
+def _http_error(resp: requests.Response) -> ChinaConnectorError:
+    """Turn a non-2xx response that still carries a JSON error body (the
+    normal style for Chinese platform APIs) into a readable error."""
+    try:
+        data = resp.json()
+    except Exception:
+        data = {}
+    code = data.get("code", data.get("errcode"))
+    msg = data.get("msg", data.get("errmsg")) or resp.text[:200]
+    if code is not None or msg:
+        return ChinaConnectorError(f"HTTP {resp.status_code} (code={code}): {msg}")
+    return ChinaConnectorError(f"HTTP {resp.status_code}")
+
+
 def get_json(session: requests.Session, url: str, **kwargs: Any) -> dict[str, Any]:
     resp = session.get(url, timeout=30, **kwargs)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise _http_error(resp)
     return resp.json()
 
 
@@ -103,7 +118,8 @@ def post_json(
     **kwargs: Any,
 ) -> dict[str, Any]:
     resp = session.post(url, json=json_body, timeout=30, **kwargs)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise _http_error(resp)
     return resp.json()
 
 
@@ -126,3 +142,33 @@ def fetch_text_or_none(
 def clean_identifier(name: str, fallback: str) -> str:
     name = (name or "").strip()
     return name if name else fallback
+
+
+def file_bytes_to_text(content: bytes, file_name: str) -> str | None:
+    """Decode downloaded file bytes to text through the standard Onyx file
+    parser (pdf/docx/xlsx/pptx/html). Falls back to a strict UTF-8/GBK
+    decode for plain text (also covers environments where the parser stack
+    is unavailable). Returns None when nothing readable comes out, so one
+    bad download never sinks the indexing batch."""
+    from io import BytesIO
+
+    from onyx.file_processing.extract_file_text import extract_file_text
+
+    try:
+        text = extract_file_text(
+            BytesIO(content), file_name, break_on_unprocessable=False
+        )
+    except Exception:
+        logger.exception("file text extraction failed: %s", file_name)
+        text = None
+    if text and text.strip():
+        return text
+    for encoding in ("utf-8", "gbk"):
+        try:
+            decoded = content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        # NUL bytes mean binary content that merely happened to decode
+        if decoded.strip() and "\x00" not in decoded:
+            return decoded
+    return None

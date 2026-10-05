@@ -254,4 +254,29 @@ CONNECTOR_CLASS_MAP = {
         module_path="onyx.connectors.sap_odata.connector",
         class_name="SapODataConnector",
     ),
+    # China capability-specific sources (one source per platform capability)
+    DocumentSource.FEISHU_DRIVE: ConnectorMapping(
+        module_path="onyx.connectors.feishu_drive.connector",
+        class_name="FeishuDriveConnector",
+    ),
+    DocumentSource.FEISHU_IM: ConnectorMapping(
+        module_path="onyx.connectors.feishu_im.connector",
+        class_name="FeishuImConnector",
+    ),
+    DocumentSource.FEISHU_TASK: ConnectorMapping(
+        module_path="onyx.connectors.feishu_task.connector",
+        class_name="FeishuTaskConnector",
+    ),
+    DocumentSource.DINGTALK_DRIVE: ConnectorMapping(
+        module_path="onyx.connectors.dingtalk_drive.connector",
+        class_name="DingTalkDriveConnector",
+    ),
+    DocumentSource.DINGTALK_TODO: ConnectorMapping(
+        module_path="onyx.connectors.dingtalk_todo.connector",
+        class_name="DingTalkTodoConnector",
+    ),
+    DocumentSource.WECOM_APPROVAL: ConnectorMapping(
+        module_path="onyx.connectors.wecom_approval.connector",
+        class_name="WeComApprovalConnector",
+    ),
 }
