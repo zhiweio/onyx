@@ -930,6 +930,7 @@ _CRAFT_STATUS_LABELS = {
 def _my_tasks_reply(db_session: Session, user: Any) -> str:
     from onyx.db.craft_job import list_open_craft_jobs_for_user
     from onyx.db.enums import SessionOrigin
+    from onyx.onyxbot.china.scenario_trigger import craft_job_link, im_job_display_name
     from onyx.server.settings.store import load_settings
 
     jobs = list_open_craft_jobs_for_user(db_session, user.id, origin=SessionOrigin.IM)
@@ -942,13 +943,16 @@ def _my_tasks_reply(db_session: Session, user: Any) -> str:
             str(getattr(job.status, "value", str(job.status))).lower(),
             str(job.status),
         )
+        display = im_job_display_name(job.name)
         lines.append(
-            f"{idx}. **{job.name}** — {label}\n   /craft/v1?sessionId={job.session_id}"
+            f"{idx}. [{display}]({craft_job_link(job.session_id)}) — {label}"
+            f"\n   sessionId: {job.session_id}"
         )
     listing = "\n".join(lines)
     return (
         f"📋 运行中的场景任务({len(jobs)}/{limit}):\n{listing}\n\n"
-        "完成或失败会自动通知你;/取消任务 <序号> 可取消并释放额度。"
+        "点击任务名可在浏览器打开;完成或失败会自动通知你;"
+        "/取消任务 <序号> 可取消并释放额度。"
     )
 
 

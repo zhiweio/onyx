@@ -134,7 +134,7 @@ def test_launches_job_and_returns_link() -> None:
         ),
         patch(
             "onyx.onyxbot.china.scenario_trigger._launch_job",
-            return_value="/craft/v1?sessionId=s1",
+            return_value=("https://onyx.test/craft/v1?sessionId=s1", "s1"),
         ) as launch,
     ):
         reply = try_scenario_trigger(
@@ -211,10 +211,11 @@ def test_launch_job_creates_session_and_job() -> None:
             _fake_create_job_run,
         ),
     ):
-        link = scenario_trigger._launch_job(
+        link, session_id = scenario_trigger._launch_job(
             cast(Session, _Db()), user=_User(), scenario=scenario, prompt="分析A公司"
         )
-    assert link == f"/craft/v1?sessionId={_BuildSession.id}"
+    assert session_id == str(_BuildSession.id)
+    assert link == f"http://localhost:3000/craft/v1?sessionId={_BuildSession.id}"
     assert created["scenario_id"] == scenario.id
     assert created["name"] == "IM: 财税风控"
     job_request = created["job_request"]
@@ -267,7 +268,7 @@ def test_concurrency_limit_allows_under_cap() -> None:
         ),
         patch(
             "onyx.onyxbot.china.scenario_trigger._launch_job",
-            return_value="/craft/v1?sessionId=s1",
+            return_value=("https://onyx.test/craft/v1?sessionId=s1", "s1"),
         ) as launch,
     ):
         reply = try_scenario_trigger(

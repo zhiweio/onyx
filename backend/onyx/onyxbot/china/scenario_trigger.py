@@ -90,7 +90,9 @@ def try_scenario_trigger(db_session: Session, user: Any, text: str) -> str | Non
         return _limit_reached_reply(open_jobs)
 
     try:
-        link = _launch_job(db_session, user=user, scenario=scenario, prompt=payload)
+        link, session_id = _launch_job(
+            db_session, user=user, scenario=scenario, prompt=payload
+        )
     except Exception:
         logger.exception("IM scenario trigger failed for %s", name)
         return (
@@ -98,9 +100,24 @@ def try_scenario_trigger(db_session: Session, user: Any, text: str) -> str | Non
             "\nFailed to start the scenario; retry later or use the web UI."
         )
     return (
-        f"任务已创建:场景「{name}」。\n进度与审批: {link}\n\n"
+        f"任务已创建:场景「{name}」。\n"
+        f"[打开任务]({link})\nsessionId: {session_id}\n\n"
         "任务完成或失败会自动通知你;/我的任务 查看运行中的任务。"
     )
+
+
+def craft_job_link(session_id: Any) -> str:
+    """Full web URL of a Craft session — IM cards render it as a clickable
+    link that opens in the browser."""
+    from onyx.configs.app_configs import WEB_DOMAIN
+
+    return f"{WEB_DOMAIN}/craft/v1?sessionId={session_id}"
+
+
+def im_job_display_name(name: str) -> str:
+    """Job name minus the launcher prefix — the scenario name reads better
+    as link text than ``IM: 税务合规体检``."""
+    return name[len("IM: ") :] if name.startswith("IM: ") else name
 
 
 def _limit_reached_reply(open_jobs: list[Any]) -> str:
@@ -117,18 +134,23 @@ def _limit_reached_reply(open_jobs: list[Any]) -> str:
     lines = []
     for idx, job in enumerate(open_jobs, start=1):
         label = status_labels.get(job.status, job.status.value)
+        display = im_job_display_name(job.name)
         lines.append(
-            f"{idx}. {job.name} — {label}\n   /craft/v1?sessionId={job.session_id}"
+            f"{idx}. [{display}]({craft_job_link(job.session_id)}) — {label}"
+            f"\n   sessionId: {job.session_id}"
         )
     listing = "\n".join(lines)
     return (
         f"⚠️ 你已有 {len(open_jobs)} 个场景任务在运行,暂时无法启动新任务。"
         f"\n{listing}\n\n"
-        "任务完成会自动通知你;用 /我的任务 查看,/取消任务 <序号> 可取消并释放额度。"
+        "点击任务名可在浏览器打开;任务完成会自动通知你;"
+        "用 /我的任务 查看,/取消任务 <序号> 可取消并释放额度。"
     )
 
 
-def _launch_job(db_session: Session, *, user: Any, scenario: Any, prompt: str) -> str:
+def _launch_job(
+    db_session: Session, *, user: Any, scenario: Any, prompt: str
+) -> tuple[str, str]:
     from onyx.db.enums import SessionOrigin
     from onyx.server.features.build.jobs.api import create_job_run
     from onyx.server.features.build.jobs.models import CraftJobCreateRequest
@@ -154,7 +176,7 @@ def _launch_job(db_session: Session, *, user: Any, scenario: Any, prompt: str) -
             start=True,
         ),
     )
-    return f"/craft/v1?sessionId={build_session.id}"
+    return craft_job_link(build_session.id), str(build_session.id)
 
 
 def _usage_reply() -> str:
