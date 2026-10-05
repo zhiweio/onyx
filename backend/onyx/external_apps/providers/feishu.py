@@ -23,7 +23,10 @@ im:resource (消息图片/文件下载，若无此项则跳过)、docx:document 
 wiki:wiki 与 wiki:wiki:readonly (知识库)、drive:drive 与 drive:drive:readonly (云盘读写)、\
 sheets:spreadsheet 与 sheets:spreadsheet:readonly (电子表格)、bitable:app 与 bitable:app:readonly \
 (多维表格)、task:task 与 task:task:readonly (任务)、calendar:calendar 与 calendar:calendar:readonly \
-(日历)、contact:user.base:readonly 与 contact:contact.base:readonly (通讯录)。\
+(日历)、contact:user.base:readonly 与 contact:contact.base:readonly (通讯录)、\
+mail:mail 与 mail:mail:readonly (邮箱)、vc:vc 与 vc:vc:readonly (视频会议)、\
+okr:okr 与 okr:okr:readonly (OKR)、board:board 与 board:board:readonly (画板)、\
+attendance:attendance (考勤)。\
 搜索、审批、妙记等域的权限按需在权限管理页搜索开启；全部勾选后必须在「版本管理与发布」\
 创建并发布新版本才生效。"""
 
@@ -120,6 +123,36 @@ class FeishuAction(ExternalAppAction):
     MINUTES_TRANSCRIPT_GET = "feishu.minutes.transcript.get"
     # --- Search ---
     MESSAGE_SEARCH = "feishu.search.message"
+    # --- Mail ---
+    MAILBOX_GET = "feishu.mail.mailbox.get"
+    MAIL_MESSAGES_LIST = "feishu.mail.messages.list"
+    MAIL_MESSAGE_GET = "feishu.mail.message.get"
+    MAIL_SEND = "feishu.mail.send"
+    MAIL_DRAFT_CREATE = "feishu.mail.draft.create"
+    MAIL_DRAFT_UPDATE = "feishu.mail.draft.update"
+    MAIL_DRAFT_SEND = "feishu.mail.draft.send"
+    MAIL_FOLDERS_LIST = "feishu.mail.folders.list"
+    MAIL_LABELS_LIST = "feishu.mail.labels.list"
+    # --- VC (video meetings) ---
+    VC_MEETINGS_LIST = "feishu.vc.meetings.list"
+    VC_MEETING_GET = "feishu.vc.meeting.get"
+    VC_PARTICIPANTS_LIST = "feishu.vc.participants.list"
+    VC_MEETING_REPORTS = "feishu.vc.meeting.reports"
+    VC_RESERVE_CREATE = "feishu.vc.reserve.create"
+    VC_RESERVE_GET = "feishu.vc.reserve.get"
+    VC_RESERVE_DELETE = "feishu.vc.reserve.delete"
+    # --- OKR ---
+    OKR_PERIODS_LIST = "feishu.okr.periods.list"
+    OKR_PERIOD_GET = "feishu.okr.period.get"
+    OKR_USER_OKRS = "feishu.okr.user_okrs"
+    # --- Whiteboard ---
+    BOARD_NODES_LIST = "feishu.board.nodes.list"
+    BOARD_CREATE = "feishu.board.create"
+    # --- Attendance (sensitive personal data — ASK even though it's a read) ---
+    ATTENDANCE_TASKS_QUERY = "feishu.attendance.tasks.query"
+    # --- Drive comments ---
+    DRIVE_COMMENTS_LIST = "feishu.drive.comments.list"
+    DRIVE_COMMENT_CREATE = "feishu.drive.comment.create"
 
 
 # open.feishu.cn REST surface; every action rides with the user_access_token
@@ -901,6 +934,269 @@ _ENDPOINTS: list[EndpointSpec] = [
         description="Search messages the user can see by keyword.",
         matches=(RestRoute(method="POST", path="/open-apis/search/v2/message"),),
         default_policy=EndpointPolicy.ALWAYS,
+    ),
+    # ============================== Mail ==============================
+    EndpointSpec(
+        id=FeishuAction.MAILBOX_GET,
+        normalised_name="Get mailbox profile",
+        description="Fetch a user mailbox's metadata (primary address).",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_MESSAGES_LIST,
+        normalised_name="List mail messages",
+        description="List the messages in a mailbox folder/label.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_MESSAGE_GET,
+        normalised_name="Read an email",
+        description="Read a single email's content and attachments metadata.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/{message_id}",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_SEND,
+        normalised_name="Send an email",
+        description="Send an email directly from the user's mailbox.",
+        matches=(
+            RestRoute(
+                method="POST",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/send",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_DRAFT_CREATE,
+        normalised_name="Create an email draft",
+        description="Create a draft email (not sent).",
+        matches=(
+            RestRoute(
+                method="POST",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_DRAFT_UPDATE,
+        normalised_name="Update an email draft",
+        description="Edit an existing draft email.",
+        matches=(
+            RestRoute(
+                method="PUT",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_DRAFT_SEND,
+        normalised_name="Send a draft",
+        description="Send an existing draft email.",
+        matches=(
+            RestRoute(
+                method="POST",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}/send",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_FOLDERS_LIST,
+        normalised_name="List mail folders",
+        description="List the mailbox's folders.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.MAIL_LABELS_LIST,
+        normalised_name="List mail labels",
+        description="List the mailbox's labels.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/labels",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    # ============================== VC (video meetings) ==============================
+    EndpointSpec(
+        id=FeishuAction.VC_MEETINGS_LIST,
+        normalised_name="List video meetings",
+        description="List video meetings in a time range.",
+        matches=(RestRoute(method="GET", path="/open-apis/vc/v1/meetings"),),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_MEETING_GET,
+        normalised_name="Get a meeting",
+        description="Fetch a video meeting's details.",
+        matches=(
+            RestRoute(method="GET", path="/open-apis/vc/v1/meetings/{meeting_id}"),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_PARTICIPANTS_LIST,
+        normalised_name="List meeting participants",
+        description="List a video meeting's participants.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/vc/v1/meetings/{meeting_id}/participants",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_MEETING_REPORTS,
+        normalised_name="Get meeting reports",
+        description="Fetch a video meeting's participation reports.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/vc/v1/meetings/{meeting_id}/reports",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_RESERVE_CREATE,
+        normalised_name="Schedule a video meeting",
+        description="Reserve/schedule a video meeting.",
+        matches=(RestRoute(method="POST", path="/open-apis/vc/v1/reserves"),),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_RESERVE_GET,
+        normalised_name="Get a meeting reservation",
+        description="Fetch a video meeting reservation's details.",
+        matches=(
+            RestRoute(method="GET", path="/open-apis/vc/v1/reserves/{reserve_id}"),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.VC_RESERVE_DELETE,
+        normalised_name="Cancel a meeting reservation",
+        description="Cancel a scheduled video meeting.",
+        matches=(
+            RestRoute(method="DELETE", path="/open-apis/vc/v1/reserves/{reserve_id}"),
+        ),
+        default_policy=EndpointPolicy.DENY,
+    ),
+    # ============================== OKR ==============================
+    EndpointSpec(
+        id=FeishuAction.OKR_PERIODS_LIST,
+        normalised_name="List OKR periods",
+        description="List the OKR cycles (quarters/years) of the tenant.",
+        matches=(RestRoute(method="GET", path="/open-apis/okr/v1/periods"),),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.OKR_PERIOD_GET,
+        normalised_name="Get an OKR period",
+        description="Fetch an OKR period's details.",
+        matches=(
+            RestRoute(method="GET", path="/open-apis/okr/v1/periods/{period_id}"),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.OKR_USER_OKRS,
+        normalised_name="Read a user's OKRs",
+        description="Read a user's objectives and key results for given periods.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/okr/v1/users/{user_id}/user_okrs",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    # ============================== Whiteboard ==============================
+    EndpointSpec(
+        id=FeishuAction.BOARD_NODES_LIST,
+        normalised_name="Read a whiteboard",
+        description="Read a whiteboard's nodes (shapes, text, connectors).",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/board/v1/whiteboards/{board_id}/nodes",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.BOARD_CREATE,
+        normalised_name="Create a whiteboard",
+        description="Create a new whiteboard.",
+        matches=(RestRoute(method="POST", path="/open-apis/board/v1/whiteboards"),),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    # ============================== Attendance ==============================
+    EndpointSpec(
+        id=FeishuAction.ATTENDANCE_TASKS_QUERY,
+        normalised_name="Query attendance records",
+        description="Query check-in records. Sensitive personal data — requires "
+        "approval by default even though it is a read.",
+        matches=(
+            RestRoute(
+                method="POST",
+                path="/open-apis/attendance/v1/user_tasks/query",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
+    ),
+    # ============================== Drive comments ==============================
+    EndpointSpec(
+        id=FeishuAction.DRIVE_COMMENTS_LIST,
+        normalised_name="List file comments",
+        description="List the comments on a drive file.",
+        matches=(
+            RestRoute(
+                method="GET",
+                path="/open-apis/drive/v1/files/{file_token}/comments",
+            ),
+        ),
+        default_policy=EndpointPolicy.ALWAYS,
+    ),
+    EndpointSpec(
+        id=FeishuAction.DRIVE_COMMENT_CREATE,
+        normalised_name="Comment on a file",
+        description="Add a comment to a drive file.",
+        matches=(
+            RestRoute(
+                method="POST",
+                path="/open-apis/drive/v1/files/{file_token}/comments",
+            ),
+        ),
+        default_policy=EndpointPolicy.ASK,
     ),
 ]
 

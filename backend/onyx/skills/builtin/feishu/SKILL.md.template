@@ -89,3 +89,25 @@ feishu_api.py resolve-users someone@example.com   # email -> open_id
 
 To DM a colleague, resolve their email to an `open_id` first, then
 `send ou_... --receive-id-type open_id`.
+
+### Mail, meetings, OKR, whiteboard (via raw)
+
+The helper has no dedicated subcommands for these — call them through `raw`:
+
+```
+feishu_api.py raw GET /mail/v1/user_mailboxes/me/messages --param folder_id=INBOX --param page_size=20
+feishu_api.py raw GET /mail/v1/user_mailboxes/me/messages/<message_id>
+feishu_api.py raw POST /mail/v1/user_mailboxes/me/drafts --data '{"to":["a@x.com"],"subject":"Hi","body":"<p>…</p>"}'
+feishu_api.py raw POST /mail/v1/user_mailboxes/me/drafts/<draft_id>/send
+feishu_api.py raw GET /vc/v1/meetings --param start_time=... --param end_time=...
+feishu_api.py raw GET /vc/v1/meetings/<meeting_id>/participants
+feishu_api.py raw GET /okr/v1/periods
+feishu_api.py raw GET /okr/v1/users/<open_id>/user_okrs --param period_ids=...
+feishu_api.py raw GET /board/v1/whiteboards/<board_id>/nodes
+```
+
+Email sends go to the drafts API first by default; sending directly needs the
+user's explicit confirmation in chat. Attendance and any other surface work
+the same way via `raw` (attendance queries require approval by default).
+Slower-changing surfaces (slides, 妙搭) also flow through `raw` and prompt
+for approval once per action.

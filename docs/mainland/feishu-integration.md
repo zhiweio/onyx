@@ -138,9 +138,11 @@ Craft 的 agent 在沙箱里以**用户身份**实时调飞书 Open API(读+写)
 应用身份定时索引互补。管理后台 /admin/craft/apps → 添加「Feishu」,组织凭据填同一份
 `app_id` / `app_secret`;每个成员在 /craft/v1/apps 用 OAuth 连自己的账号。
 
-动作目录(58 个)覆盖 IM、文档(docx)、知识库(wiki)、云盘(drive)、电子表格、
-多维表格(bitable)、任务、日历、通讯录、审批、妙记、消息搜索。默认策略:读=ALWAYS、
+动作目录(100 个)覆盖 IM、文档(docx)、知识库(wiki)、云盘(drive)、电子表格、
+多维表格(bitable)、任务、日历、通讯录、审批、妙记、消息搜索、邮箱(mail)、
+视频会议(vc)、OKR、画板(board)、考勤(查询默认需审批)。默认策略:读=ALWAYS、
 创建/发送/更新=ASK(沙箱里逐次审批)、删除=DENY,管理员可逐项改。
+未列入目录的端点(幻灯片 slides、妙搭等)走整域兜底策略,同样逐次审批,不影响使用。
 
 需要的权限(均免审,改完必须发新版本):
 
@@ -155,6 +157,11 @@ Craft 的 agent 在沙箱里以**用户身份**实时调飞书 Open API(读+写)
 | 任务 | `task:task`、`task:task:readonly` |
 | 日历 | `calendar:calendar`、`calendar:calendar:readonly` |
 | 通讯录 | `contact:user.base:readonly`、`contact:contact.base:readonly` |
+| 邮箱 | `mail:mail`、`mail:mail:readonly` |
+| 视频会议 | `vc:vc`、`vc:vc:readonly` |
+| OKR | `okr:okr`、`okr:okr:readonly` |
+| 画板 | `board:board`、`board:board:readonly` |
+| 考勤 | `attendance:attendance`(可能需绑定考勤应用,搜不到则跳过该域) |
 | 审批 | `approval:approval`、`approval:approval:readonly`(若免审列表搜不到则跳过该域) |
 | 妙记 | `minutes:minutes:readonly` |
 | 搜索 | 控制台搜「搜索」按需开(消息搜索/文档搜索) |

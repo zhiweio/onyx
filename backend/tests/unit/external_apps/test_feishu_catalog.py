@@ -338,6 +338,120 @@ def _matching_actions(method: str, path: str) -> set[str]:
             "/open-apis/search/v2/message",
             {FeishuAction.MESSAGE_SEARCH},
         ),
+        # Mail. POST /send disambiguates from the {message_id} read route.
+        (
+            "GET",
+            "/open-apis/mail/v1/user_mailboxes/me",
+            {FeishuAction.MAILBOX_GET},
+        ),
+        (
+            "GET",
+            "/open-apis/mail/v1/user_mailboxes/me/messages",
+            {FeishuAction.MAIL_MESSAGES_LIST},
+        ),
+        (
+            "GET",
+            "/open-apis/mail/v1/user_mailboxes/me/messages/m_1",
+            {FeishuAction.MAIL_MESSAGE_GET},
+        ),
+        (
+            "POST",
+            "/open-apis/mail/v1/user_mailboxes/me/messages/send",
+            {FeishuAction.MAIL_SEND},
+        ),
+        (
+            "POST",
+            "/open-apis/mail/v1/user_mailboxes/me/drafts",
+            {FeishuAction.MAIL_DRAFT_CREATE},
+        ),
+        (
+            "PUT",
+            "/open-apis/mail/v1/user_mailboxes/me/drafts/d_1",
+            {FeishuAction.MAIL_DRAFT_UPDATE},
+        ),
+        (
+            "POST",
+            "/open-apis/mail/v1/user_mailboxes/me/drafts/d_1/send",
+            {FeishuAction.MAIL_DRAFT_SEND},
+        ),
+        (
+            "GET",
+            "/open-apis/mail/v1/user_mailboxes/me/folders",
+            {FeishuAction.MAIL_FOLDERS_LIST},
+        ),
+        (
+            "GET",
+            "/open-apis/mail/v1/user_mailboxes/me/labels",
+            {FeishuAction.MAIL_LABELS_LIST},
+        ),
+        # VC.
+        ("GET", "/open-apis/vc/v1/meetings", {FeishuAction.VC_MEETINGS_LIST}),
+        (
+            "GET",
+            "/open-apis/vc/v1/meetings/mtg_1",
+            {FeishuAction.VC_MEETING_GET},
+        ),
+        (
+            "GET",
+            "/open-apis/vc/v1/meetings/mtg_1/participants",
+            {FeishuAction.VC_PARTICIPANTS_LIST},
+        ),
+        (
+            "GET",
+            "/open-apis/vc/v1/meetings/mtg_1/reports",
+            {FeishuAction.VC_MEETING_REPORTS},
+        ),
+        ("POST", "/open-apis/vc/v1/reserves", {FeishuAction.VC_RESERVE_CREATE}),
+        (
+            "GET",
+            "/open-apis/vc/v1/reserves/rsv_1",
+            {FeishuAction.VC_RESERVE_GET},
+        ),
+        (
+            "DELETE",
+            "/open-apis/vc/v1/reserves/rsv_1",
+            {FeishuAction.VC_RESERVE_DELETE},
+        ),
+        # OKR.
+        ("GET", "/open-apis/okr/v1/periods", {FeishuAction.OKR_PERIODS_LIST}),
+        (
+            "GET",
+            "/open-apis/okr/v1/periods/p_1",
+            {FeishuAction.OKR_PERIOD_GET},
+        ),
+        (
+            "GET",
+            "/open-apis/okr/v1/users/ou_1/user_okrs",
+            {FeishuAction.OKR_USER_OKRS},
+        ),
+        # Whiteboard.
+        (
+            "GET",
+            "/open-apis/board/v1/whiteboards/bd_1/nodes",
+            {FeishuAction.BOARD_NODES_LIST},
+        ),
+        (
+            "POST",
+            "/open-apis/board/v1/whiteboards",
+            {FeishuAction.BOARD_CREATE},
+        ),
+        # Attendance (sensitive — ASK by default).
+        (
+            "POST",
+            "/open-apis/attendance/v1/user_tasks/query",
+            {FeishuAction.ATTENDANCE_TASKS_QUERY},
+        ),
+        # Drive comments.
+        (
+            "GET",
+            "/open-apis/drive/v1/files/CNabC/comments",
+            {FeishuAction.DRIVE_COMMENTS_LIST},
+        ),
+        (
+            "POST",
+            "/open-apis/drive/v1/files/CNabC/comments",
+            {FeishuAction.DRIVE_COMMENT_CREATE},
+        ),
     ],
 )
 def test_route_resolves_to_expected_action(
@@ -373,13 +487,20 @@ def test_every_domain_is_represented() -> None:
         "feishu.approval.",
         "feishu.minutes.",
         "feishu.search.",
+        "feishu.mail.",
+        "feishu.vc.",
+        "feishu.okr.",
+        "feishu.board.",
+        "feishu.attendance.",
     ):
         assert any(id.startswith(prefix) for id in ids), prefix
 
 
 def test_default_policies_follow_convention() -> None:
     """GETs are reads (ALWAYS), DELETEs are DENY, and every other write is
-    ASK — except the explicitly read-shaped POST queries listed here."""
+    ASK — except the explicitly read-shaped POST queries listed here. The
+    attendance query POST is intentionally NOT exempt: check-in records are
+    sensitive personal data, so it stays behind ASK approval."""
     read_posts = {
         FeishuAction.DOCS_SEARCH,
         FeishuAction.BITABLE_RECORDS_SEARCH,

@@ -111,12 +111,23 @@ def _create_request(
 
 
 def test_all_built_ins_are_onyx_managed() -> None:
-    """Every built-in skill id has a registered provider, and all are currently
-    Onyx-managed. When a future built-in opts out (not an ``OnyxManagedExtApp``,
-    e.g. admins supply their own OAuth app), update this deliberately."""
+    """Registry invariants. Deliberate opt-outs, update this when they change:
+    - DINGTALK / WECOM / WPS365 register providers (egress domains only,
+      empty catalogs) without a bundled built-in skill.
+    - FEISHU ships a built-in skill but is admin-configured (org supplies its
+      own app_id/app_secret), so it is not Onyx-managed."""
     built_in = set(EXTERNAL_APP_BUILT_IN_SKILL_IDS)
-    assert set(PROVIDERS) == built_in  # provider registry ↔ built-in skill ids
-    assert set(_MANAGED_APP_TYPES) == built_in
+    providers = set(PROVIDERS)
+    # Every built-in skill has a registered provider.
+    assert built_in <= providers
+    # The only providers without bundled skills are the China ones.
+    assert providers - built_in == {
+        ExternalAppType.DINGTALK,
+        ExternalAppType.WECOM,
+        ExternalAppType.WPS365,
+    }
+    # Feishu is the only skilled built-in that is not Onyx-managed.
+    assert set(_MANAGED_APP_TYPES) == built_in - {ExternalAppType.FEISHU}
 
 
 # ---------------------------------------------------------------------------
