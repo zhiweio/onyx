@@ -716,41 +716,7 @@ class SessionManager:
         # the scenario's bound skills; turns extend it when the user binds
         # more (see extend_session_skills). This bounds the per-call
         # catalog tax opencode pays on every LLM request.
-        from onyx.server.features.build.skills_subset import (
-            compute_session_skill_slugs,
-        )
-
-        scenario_refs: list[str] = []
-        if scenario_id is not None:
-            try:
-                from onyx.db.scenario import (
-                    get_scenario_for_user,
-                    resolve_scenario_skill_ids,
-                )
-
-                scenario = get_scenario_for_user(self._db_session, scenario_id, user)
-                if scenario is not None:
-                    scenario_refs = [
-                        str(skill_id)
-                        for skill_id in resolve_scenario_skill_ids(scenario, name or "")
-                    ]
-            except Exception:
-                logger.warning(
-                    "Could not resolve scenario skills for session subset",
-                    exc_info=True,
-                )
-        try:
-            build_session.skill_slugs = compute_session_skill_slugs(
-                self._db_session,
-                user,
-                scenario_skill_refs=scenario_refs,
-            )
-        except Exception:
-            logger.warning(
-                "Could not compute skill subset; linking full catalog",
-                exc_info=True,
-            )
-            build_session.skill_slugs = None
+        self._apply_initial_skill_slugs(build_session, user, scenario_id)
         # Port allocation is skipped for non-interactive origins (SCHEDULED,
         # SLACK): those sessions are headless, never attach a preview, and
         # pile up fast enough to exhaust the [3010, 3100) range on a busy
@@ -773,6 +739,52 @@ class SessionManager:
             share_workspace_from=share_workspace_from,
         )
         return build_session
+
+    def _apply_initial_skill_slugs(
+        self, build_session: BuildSession, user: Any, scenario_id: UUID | None
+    ) -> None:
+        """Seed the session's skill subset (core set + scenario skills).
+
+        Both creation paths must do this: create_session (project runs) and
+        get_or_create_empty_session (every other craft session). Failure
+        falls back to the full catalog (None), never blocking creation."""
+        from onyx.server.features.build.skills_subset import (
+            compute_session_skill_slugs,
+        )
+
+        scenario_refs: list[str] = []
+        if scenario_id is not None:
+            try:
+                from onyx.db.scenario import (
+                    get_scenario_for_user,
+                    resolve_scenario_skill_ids,
+                )
+
+                scenario = get_scenario_for_user(self._db_session, scenario_id, user)
+                if scenario is not None:
+                    scenario_refs = [
+                        str(skill_id)
+                        for skill_id in resolve_scenario_skill_ids(
+                            scenario, build_session.name or ""
+                        )
+                    ]
+            except Exception:
+                logger.warning(
+                    "Could not resolve scenario skills for session subset",
+                    exc_info=True,
+                )
+        try:
+            build_session.skill_slugs = compute_session_skill_slugs(
+                self._db_session,
+                user,
+                scenario_skill_refs=scenario_refs,
+            )
+        except Exception:
+            logger.warning(
+                "Could not compute skill subset; linking full catalog",
+                exc_info=True,
+            )
+            build_session.skill_slugs = None
 
     def get_or_create_empty_session(
         self,
@@ -825,6 +837,7 @@ class SessionManager:
                 scenario_id=scenario_id,
                 project_id=None,
             )
+            self._apply_initial_skill_slugs(session, user, scenario_id)
             if not headless:
                 reserve_nextjs_port__no_commit(self._db_session, session)
             self._db_session.commit()
@@ -836,8 +849,15 @@ class SessionManager:
         session = existing
         if name is not None:
             session.name = name
+        scenario_changed = (
+            scenario_id is not None and session.scenario_id != scenario_id
+        )
         if scenario_id is not None:
             session.scenario_id = scenario_id
+        if scenario_changed or session.skill_slugs is None:
+            # Legacy rows (pre-subset) or a newly pinned scenario: reseed the
+            # subset so the catalog tax applies from this session on.
+            self._apply_initial_skill_slugs(session, user, session.scenario_id)
         self._db_session.commit()
         logger.info(
             "Found existing empty session %s (status=%s) for user %s",
@@ -995,6 +1015,19 @@ class SessionManager:
                     logger.exception(
                         "Failed to write project files for session %s", session_id
                     )
+            try:
+                from onyx.server.features.build.session.memory_files import (
+                    write_memory_md_to_session,
+                )
+
+                write_memory_md_to_session(
+                    self._db_session,
+                    self._sandbox_manager,
+                    sandbox.id,
+                    session_id,
+                )
+            except Exception:
+                logger.exception("Failed to write MEMORY.md for session %s", session_id)
             try:
                 from onyx.server.features.build.session.artifact_persist import (
                     restore_archived_files_to_session,
@@ -1594,17 +1627,20 @@ class SessionManager:
             return
         config_toml = build_codex_config_toml(
             gateway_base_url=gateway_base,
-            model=f"{llm_config.provider}/{llm_config.model_name}",
+            # Wire model id only ({llm_provider_id}/{name}); a provider
+            # prefix would double up ("onyx/137/glm") and miss the catalog.
+            model=llm_config.model_name,
         )
-        self._sandbox_manager.write_files_to_sandbox(
-            sandbox_id=sandbox.id,
-            mount_path="/workspace",
-            files={
-                "codex-home/config.toml": config_toml.encode("utf-8"),
-                "managed/codex-env": build_codex_env_file(
-                    llm_config.api_key or ""
-                ).encode("utf-8"),
-            },
+        # Two single-file writes: write_files_to_sandbox is an atomic
+        # DIRECTORY swap (it would replace /workspace wholesale); the
+        # config and env file land as files beside existing content.
+        self._sandbox_manager.write_sandbox_file(
+            sandbox.id, "codex-home/config.toml", config_toml
+        )
+        self._sandbox_manager.write_sandbox_file(
+            sandbox.id,
+            "managed/codex-env",
+            build_codex_env_file(llm_config.api_key or ""),
         )
 
     def _codex_base_instructions(self, build_session: BuildSession) -> str:  # noqa: ARG002

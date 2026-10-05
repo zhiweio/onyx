@@ -153,6 +153,9 @@ def test_generate_agent_instructions_fills_connectable_list_from_template() -> N
 
     assert "## Connectable apps" in content
     assert "numeric external app ID from the list below" in content
-    assert "with its slug" not in content
+    # The removed blurb told users to enable skills by picking chips;
+    # request_skill replaced it (the phrase still appears legitimately
+    # in the request_skill sentence, so guard the old wording exactly).
+    assert "they can pick it on their next message" not in content
     assert "- External app ID `42`: **SENTINEL_CONNECTABLE**" in content
     assert _unresolved_placeholders(content) == set()

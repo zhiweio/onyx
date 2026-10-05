@@ -173,6 +173,7 @@ def create_project__no_commit(
     description: str = "",
     instructions: str | None = None,
     user_group_id: int | None = None,
+    memory_enabled: bool = False,
 ) -> CraftProject:
     trimmed = name.strip()
     if not trimmed:
@@ -188,6 +189,7 @@ def create_project__no_commit(
         description=description.strip(),
         instructions=instructions.strip() if instructions else None,
         user_group_id=user_group_id,
+        memory_enabled=memory_enabled,
     )
     db_session.add(project)
     db_session.flush()
@@ -202,6 +204,7 @@ def create_project(
     description: str = "",
     instructions: str | None = None,
     user_group_id: int | None = None,
+    memory_enabled: bool = False,
 ) -> CraftProject:
     project = create_project__no_commit(
         db_session,
@@ -210,6 +213,7 @@ def create_project(
         description=description,
         instructions=instructions,
         user_group_id=user_group_id,
+        memory_enabled=memory_enabled,
     )
     db_session.commit()
     db_session.refresh(project)
@@ -225,6 +229,7 @@ def update_project(
     instructions: str | None = None,
     user_group_id: int | None = None,
     set_user_group: bool = False,
+    memory_enabled: bool | None = None,
     acting_user: User | None = None,
 ) -> CraftProject:
     if name is not None:
@@ -245,6 +250,12 @@ def update_project(
         ):
             raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Not a member of that group")
         project.user_group_id = user_group_id
+    # Memory switch is owner-only (like group sharing): curators can edit
+    # content but not widen the project's data-retention surface.
+    if memory_enabled is not None:
+        if acting_user is None or acting_user.id != project.user_id:
+            raise OnyxError(OnyxErrorCode.NOT_FOUND, "Project not found")
+        project.memory_enabled = memory_enabled
     db_session.commit()
     db_session.refresh(project)
     return project

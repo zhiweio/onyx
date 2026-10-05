@@ -67,6 +67,7 @@ export interface CraftProject {
   description: string;
   instructions: string | null;
   user_group_id?: number | null;
+  memory_enabled?: boolean;
   file_count: number;
   session_count: number;
   created_at: string;
@@ -85,4 +86,5 @@ export interface CraftProjectUpsert {
   description?: string;
   instructions?: string | null;
   user_group_id?: number | null;
+  memory_enabled?: boolean;
 }

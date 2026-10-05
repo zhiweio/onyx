@@ -14495,6 +14495,11 @@
         },
         "upload": {
           "label": "Datei hochladen"
+        },
+        "memory": {
+          "title": "Projektspeicher",
+          "description": "Wenn aktiv, rufen die Sitzungen dieses Projekts Langzeit-Erinnerungen ab: Präferenzen, Konventionen und Entscheidungen früherer Sitzungen (eigene und vom Projektteam geteilte). Nur der Projekteigner kann dies ändern.",
+          "toggle": "Langzeit-Erinnerung für die Sitzungen dieses Projekts aktivieren"
         }
       },
       "empty": {

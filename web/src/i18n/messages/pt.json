@@ -14495,6 +14495,11 @@
         },
         "upload": {
           "label": "Enviar arquivo"
+        },
+        "memory": {
+          "title": "Memória do projeto",
+          "description": "Quando ativa, as sessões deste projeto recuperam memórias de longo prazo: preferências, convenções e decisões de sessões anteriores (suas e compartilhadas pela equipe). Somente o proprietário do projeto pode alterar isso.",
+          "toggle": "Ativar memória de longo prazo para as sessões deste projeto"
         }
       },
       "empty": {

@@ -14501,6 +14501,11 @@
         },
         "upload": {
           "label": "Upload file"
+        },
+        "memory": {
+          "title": "Project memory",
+          "description": "When on, this project's sessions recall long-term memories: preferences, conventions, and decisions from earlier sessions (yours and this project team's shared ones). Only the project owner can change this.",
+          "toggle": "Enable long-term memory for this project's sessions"
         }
       },
       "empty": {

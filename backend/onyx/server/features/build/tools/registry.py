@@ -47,7 +47,6 @@ class ToolBindings:
     question_hook: impl.QuestionHook | None = None
     background_hook: impl.BackgroundHook | None = None
     job_hook: impl.StartJobHook | None = None
-    mcp_call_fn: impl.McpCallFn | None = None
     web_search_fn: impl.WebSearchFn | None = None
     crawl_fn: impl.CrawlFn | None = None
     journal: JournalFn | None = None
@@ -67,11 +66,13 @@ class PlatformToolRegistry:
             impl.QuestionTool(bindings.question_hook),
             impl.BackgroundTool(bindings.background_hook),
             impl.StartLongJobTool(bindings.job_hook),
-            impl.mcp_call_tool(bindings.mcp_call_fn),
             impl.web_search_tool(bindings.web_search_fn),
             impl.crawl_tool(bindings.crawl_fn),
             impl.connector_query_tool(),
             impl.check_report_tool(),
+            impl.request_skill_tool(),
+            impl.memory_write_tool(),
+            impl.memory_search_tool(),
         ]
         return cls(
             tools={tool.name: tool for tool in catalog},

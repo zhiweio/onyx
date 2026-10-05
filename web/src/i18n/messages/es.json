@@ -14495,6 +14495,11 @@
         },
         "upload": {
           "label": "Cargar archivo"
+        },
+        "memory": {
+          "title": "Memoria del proyecto",
+          "description": "Al activarla, las sesiones de este proyecto recuperan recuerdos a largo plazo: preferencias, convenciones y decisiones de sesiones anteriores (propias y compartidas del equipo). Solo el propietario del proyecto puede cambiar esto.",
+          "toggle": "Activar la memoria a largo plazo para las sesiones de este proyecto"
         }
       },
       "empty": {

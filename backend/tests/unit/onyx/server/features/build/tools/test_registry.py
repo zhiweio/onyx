@@ -39,11 +39,13 @@ def test_catalog_shape_is_stable() -> None:
         "question",
         "background",
         "start_long_job",
-        "mcp_call",
         "web_search",
         "crawl",
         "connector_query",
         "check_report",
+        "request_skill",
+        "memory_write",
+        "memory_search",
     }
     defs = registry.definitions()
     assert all({"name", "description", "inputSchema"} <= set(d) for d in defs)
@@ -73,7 +75,6 @@ def test_unbound_services_report_structured_unavailability() -> None:
         "question": {"prompt": "p"},
         "background": {"action": "list"},
         "start_long_job": {"goal": "write a report"},
-        "mcp_call": {"server": "s", "tool": "t"},
     }
     for tool, arguments in unbound_args.items():
         result = registry.call(ToolInvocation(tool=tool, arguments=arguments), CTX)

@@ -598,11 +598,31 @@ def yield_sandbox_events(
         if skip_memory_recall:
             prompt_content = user_message_content
         else:
-            from onyx.memory.long_term import maybe_craft_recall_prompt
+            from onyx.memory.long_term import (
+                maybe_craft_recall_context,
+                render_memory_markdown,
+            )
 
-            prompt_content = maybe_craft_recall_prompt(
+            prompt_content, _scope, recalled = maybe_craft_recall_context(
                 db_session, session_id, user_message_content
             )
+            if recalled:
+                # Keep the workspace copy in step with the preamble so the
+                # agent can re-read mid-turn; strictly best-effort.
+                try:
+                    sandbox_manager.write_sandbox_file(
+                        sandbox_id,
+                        f"sessions/{session_id}/MEMORY.md",
+                        render_memory_markdown(
+                            recalled, _scope.project_id if _scope else None
+                        ),
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to write MEMORY.md for session %s",
+                        session_id,
+                        exc_info=True,
+                    )
         event_stream = sandbox_manager.send_message(
             sandbox_id,
             session_id,
@@ -753,8 +773,8 @@ def persist_sandbox_event(
         record_context_event(
             "turn_error",
             {
-                "code": getattr(sandbox_event, "code", None),  # ods: ignore[getattr] - packet union members differ
-                "message": getattr(sandbox_event, "message", ""),  # ods: ignore[getattr]
+                "code": sandbox_event.code,
+                "message": sandbox_event.message,
             },
         )
     flush_tape(db_session)

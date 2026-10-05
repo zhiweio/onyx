@@ -21,6 +21,7 @@ class CraftProjectUpsertRequest(BaseModel):
     description: str = ""
     instructions: str | None = None
     user_group_id: int | None = None
+    memory_enabled: bool = False
 
 
 class CraftProjectPatchRequest(BaseModel):
@@ -28,6 +29,7 @@ class CraftProjectPatchRequest(BaseModel):
     description: str | None = None
     instructions: str | None = None
     user_group_id: int | None = None
+    memory_enabled: bool | None = None
 
 
 class CraftProjectFileResponse(BaseModel):
@@ -118,6 +120,7 @@ class CraftProjectResponse(BaseModel):
     description: str
     instructions: str | None
     user_group_id: int | None = None
+    memory_enabled: bool = False
     file_count: int
     session_count: int
     created_at: datetime
@@ -147,6 +150,7 @@ class CraftProjectResponse(BaseModel):
             description=project.description,
             instructions=project.instructions,
             user_group_id=project.user_group_id,
+            memory_enabled=project.memory_enabled,
             file_count=file_count,
             session_count=session_count,
             created_at=project.created_at,

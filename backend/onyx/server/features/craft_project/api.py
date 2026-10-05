@@ -148,6 +148,7 @@ def create_craft_project(
         description=request.description,
         instructions=request.instructions,
         user_group_id=request.user_group_id,
+        memory_enabled=request.memory_enabled,
     )
     return _detail(db_session, project, user)
 
@@ -178,6 +179,11 @@ def patch_craft_project(
         instructions=request.instructions,
         user_group_id=request.user_group_id,
         set_user_group="user_group_id" in request.model_fields_set,
+        memory_enabled=(
+            request.memory_enabled
+            if "memory_enabled" in request.model_fields_set
+            else None
+        ),
         acting_user=user,
     )
     return _detail(db_session, project, user)

@@ -14495,6 +14495,11 @@
         },
         "upload": {
           "label": "Importer un fichier"
+        },
+        "memory": {
+          "title": "Mémoire du projet",
+          "description": "Une fois activée, les sessions de ce projet rappellent des souvenirs à long terme : préférences, conventions et décisions des sessions précédentes (les vôtres et celles partagées par l'équipe). Seul le propriétaire du projet peut modifier ce réglage.",
+          "toggle": "Activer la mémoire à long terme pour les sessions de ce projet"
         }
       },
       "empty": {

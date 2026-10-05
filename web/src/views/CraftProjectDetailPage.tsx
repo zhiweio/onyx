@@ -10,6 +10,7 @@ import {
   InputTextArea,
   LineItemButton,
   MessageCard,
+  Switch,
   Text,
   type TagColor,
 } from "@opal/components";
@@ -27,6 +28,7 @@ import {
   SvgSimpleLoader,
   SvgSliders,
   SvgTrash,
+  SvgUserCheck,
 } from "@opal/icons";
 import { Section } from "@/layouts/general-layouts";
 import CraftProjectFiles from "@/app/craft/components/CraftProjectFiles";
@@ -119,6 +121,7 @@ export default function CraftProjectDetailPage({
     name?: string;
     description?: string;
     instructions?: string | null;
+    memory_enabled?: boolean;
   }): Promise<boolean> {
     if (!data) return false;
     setSaving(true);
@@ -409,6 +412,36 @@ export default function CraftProjectDetailPage({
                     {t("detail.save.label")}
                   </Button>
                 )}
+              </Section>
+            </Card>
+
+            <Card border="solid" rounding={4} padding={4}>
+              <Section
+                gap={3}
+                alignItems="stretch"
+                justifyContent="start"
+                height="auto"
+              >
+                <Content
+                  icon={SvgUserCheck}
+                  title={t("detail.memory.title")}
+                  description={t("detail.memory.description")}
+                  sizePreset="main-ui"
+                  variant="section"
+                  width="full"
+                />
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={data?.memory_enabled === true}
+                    disabled={saving || data === undefined}
+                    onCheckedChange={(checked: boolean) =>
+                      void persistProject({ memory_enabled: checked })
+                    }
+                  />
+                  <p className="text-sm text-neutral-600">
+                    {t("detail.memory.toggle")}
+                  </p>
+                </div>
               </Section>
             </Card>
 

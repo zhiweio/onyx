@@ -1,5 +1,8 @@
 """Postgres access for long-term memory. All queries include user_id."""
 
+# ruff: noqa: S608 - raw pgvector SQL; scope predicates interpolated here
+# are compile-time constants, never user input.
+
 from __future__ import annotations
 
 import datetime
@@ -25,6 +28,21 @@ class RecalledMemory:
     source_surface: str
     project_id: UUID | None
     distance: float
+
+
+@dataclass(frozen=True)
+class MemoryScope:
+    """Hard read scope for recall queries (P5).
+
+    Own user-scope rows are always readable; when ``project_id`` is set,
+    rows scoped to that project are readable too (any owner) — the caller
+    is responsible for having verified the user's read grant on the
+    project. No other cross-user access exists: with ``project_id=None``
+    only the user's own project-less rows match.
+    """
+
+    user_id: UUID
+    project_id: UUID | None = None
 
 
 def _vector_literal(embedding: list[float]) -> str:
@@ -160,11 +178,10 @@ def touch_last_used(db_session: Session, memory_ids: list[int]) -> None:
 def recall_by_vector(
     db_session: Session,
     *,
-    user_id: UUID,
+    scope: MemoryScope,
     embedding: list[float],
     embedding_model: str,
     limit: int,
-    project_id: UUID | None = None,
 ) -> list[RecalledMemory]:
     try:
         db_session.execute(text("SET LOCAL hnsw.iterative_scan = 'strict_order'"))
@@ -172,13 +189,19 @@ def recall_by_vector(
         pass
     vec = _vector_literal(embedding)
     fetch_limit = max(limit * 2, limit)
+    if scope.project_id is not None:
+        scope_where = (
+            "(user_id = :user_id AND project_id IS NULL) OR project_id = :project_id"
+        )
+    else:
+        scope_where = "user_id = :user_id AND project_id IS NULL"
     rows = db_session.execute(
         text(
-            """
+            f"""
             SELECT id, text, kind, source, source_surface, project_id,
                    (embedding <=> CAST(:q AS vector)) AS distance
             FROM long_term_memory
-            WHERE user_id = :user_id
+            WHERE ({scope_where})
               AND deleted_at IS NULL
               AND embedding IS NOT NULL
               AND embedding_model = :embedding_model
@@ -188,7 +211,8 @@ def recall_by_vector(
         ),
         {
             "q": vec,
-            "user_id": user_id,
+            "user_id": scope.user_id,
+            "project_id": str(scope.project_id) if scope.project_id else None,
             "embedding_model": embedding_model,
             "lim": fetch_limit,
         },
@@ -205,32 +229,44 @@ def recall_by_vector(
         )
         for row in rows
     ]
-    if project_id is not None:
+    if scope.project_id is not None:
+        # Same-project memories sort first (small distance bonus).
         recalled.sort(
             key=lambda item: (
-                item.distance - (0.03 if item.project_id == project_id else 0.0)
+                item.distance - (0.03 if item.project_id == scope.project_id else 0.0)
             )
         )
     return recalled[:limit]
 
 
 def recall_by_literal(
-    db_session: Session, user_id: UUID, query: str, limit: int
+    db_session: Session, scope: MemoryScope, query: str, limit: int
 ) -> list[RecalledMemory]:
     pattern = f"%{query.strip()[:80]}%"
+    if scope.project_id is not None:
+        scope_where = (
+            "(user_id = :user_id AND project_id IS NULL) OR project_id = :project_id"
+        )
+    else:
+        scope_where = "user_id = :user_id AND project_id IS NULL"
     rows = db_session.execute(
         text(
-            """
+            f"""
             SELECT id, text, kind, source, source_surface, project_id
             FROM long_term_memory
-            WHERE user_id = :user_id
+            WHERE ({scope_where})
               AND deleted_at IS NULL
               AND text ILIKE :pattern
             ORDER BY last_used_at DESC
             LIMIT :lim
             """
         ),
-        {"user_id": user_id, "pattern": pattern, "lim": limit},
+        {
+            "user_id": scope.user_id,
+            "project_id": str(scope.project_id) if scope.project_id else None,
+            "pattern": pattern,
+            "lim": limit,
+        },
     ).all()
     return [
         RecalledMemory(
@@ -299,26 +335,33 @@ def count_extract_rows(db_session: Session, user_id: UUID) -> int:
     )
 
 
-def has_active_memories(db_session: Session, user_id: UUID) -> bool:
+def has_active_memories(db_session: Session, scope: MemoryScope) -> bool:
     """Existence probe so recall can skip the query embedding entirely for
-    users whose store is empty (the common case before first extraction).
+    scopes with no content (the common case before first extraction).
     ``embedding`` is a pgvector column without an ORM mapping, so this
     mirrors recall_by_vector's raw-SQL access."""
-    from sqlalchemy import text
-
+    if scope.project_id is not None:
+        scope_where = (
+            "(user_id = :user_id AND project_id IS NULL) OR project_id = :project_id"
+        )
+    else:
+        scope_where = "user_id = :user_id AND project_id IS NULL"
     return (
         db_session.execute(
             text(
-                """
+                f"""
                 SELECT 1
                 FROM long_term_memory
-                WHERE user_id = :user_id
+                WHERE ({scope_where})
                   AND deleted_at IS NULL
                   AND embedding IS NOT NULL
                 LIMIT 1
                 """
             ),
-            {"user_id": str(user_id)},
+            {
+                "user_id": str(scope.user_id),
+                "project_id": str(scope.project_id) if scope.project_id else None,
+            },
         ).scalar()
         is not None
     )
