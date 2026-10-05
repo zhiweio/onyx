@@ -299,6 +299,48 @@ CRAFT_TAPE_ENABLED = os.environ.get("CRAFT_TAPE_ENABLED", "true").lower() == "tr
 # Tape retention window for the prune-craft-tape beat.
 CRAFT_TAPE_RETENTION_DAYS = int(os.environ.get("CRAFT_TAPE_RETENTION_DAYS", "90"))
 
+# request_skill mid-turn catalog refresh: the dirty flag lives long enough
+# to survive the turn that set it (turn cap is minutes, not hours).
+SKILL_CATALOG_DIRTY_TTL_SECONDS = int(
+    os.environ.get("SKILL_CATALOG_DIRTY_TTL_SECONDS", "7200")
+)
+
+# ── Craft golden-set eval pipeline (P4) ─────────────────────────────────
+# Master gate for the eval admin API + pipeline. Nightly regression has its
+# own gate below (default off: each run is a batch of real-model long tasks).
+CRAFT_EVAL_ENABLED = os.environ.get("CRAFT_EVAL_ENABLED", "true").lower() == "true"
+
+# Fresh-context judge model. Unset → tenant default LLM (self-grading risk
+# when the evaluated agent uses the same model). When set, the provider
+# display name + model must match an existing LLM provider.
+CRAFT_EVAL_JUDGE_PROVIDER = (
+    os.environ.get("CRAFT_EVAL_JUDGE_PROVIDER", "").strip() or None
+)
+CRAFT_EVAL_JUDGE_MODEL = os.environ.get("CRAFT_EVAL_JUDGE_MODEL", "").strip() or None
+CRAFT_EVAL_JUDGE_TIMEOUT_SECONDS = int(
+    os.environ.get("CRAFT_EVAL_JUDGE_TIMEOUT_SECONDS", "180")
+)
+
+# Weighted criterion pass ratio a case needs to count as PASS.
+CRAFT_EVAL_PASS_THRESHOLD = float(os.environ.get("CRAFT_EVAL_PASS_THRESHOLD", "0.8"))
+
+# Fallback per-case wall-clock budget when the case YAML sets none.
+CRAFT_EVAL_CASE_BUDGET_SECONDS = int(
+    os.environ.get("CRAFT_EVAL_CASE_BUDGET_SECONDS", "1800")
+)
+
+# Nightly regression beat (default off — real model cost per run).
+CRAFT_EVAL_NIGHTLY_ENABLED = (
+    os.environ.get("CRAFT_EVAL_NIGHTLY_ENABLED", "false").lower() == "true"
+)
+CRAFT_EVAL_NIGHTLY_HOUR = int(os.environ.get("CRAFT_EVAL_NIGHTLY_HOUR", "2"))
+
+# Finished-run retention for the eval prune sweep.
+CRAFT_EVAL_RETENTION_DAYS = int(os.environ.get("CRAFT_EVAL_RETENTION_DAYS", "90"))
+
+# Service account that owns eval sessions/sandboxes (created on first run).
+CRAFT_EVAL_USER_EMAIL = os.environ.get("CRAFT_EVAL_USER_EMAIL", "craft-eval@onyx.local")
+
 # Prompt-slot lock lease; renewed on every sandbox event/keepalive, so a dead
 # holder strands the slot for at most this long.
 PROMPT_SLOT_LEASE_SECONDS = float(os.environ.get("PROMPT_SLOT_LEASE_SECONDS", "120.0"))

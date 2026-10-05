@@ -1,0 +1,74 @@
+slug: tax-vat-filing-workpaper-golden
+name: 增值税申报底稿(2026-08)
+domain: tax
+scenario_slug: tax-vat-filing-workpaper
+skill_slugs:
+  - caishui-skill
+  - tax-policy-verify
+  - xlsx
+user_prompt: |
+  请为杭州星澜智造有限公司编制 2026 年 8 月(所属期)的增值税申报前底稿。全部输入
+  已放在会话工作区 inputs/vat/ 目录下:销项发票台账 sales_invoices.csv、进项发票台账
+  purchase_invoices.csv、当月科目余额表 trial_balance_2026-08.csv。另知:上期结转
+  留抵税额为 35000.00 元;本月无进项转出以外的转出事项、无预缴。
+
+  要求:
+  1. 核对发票台账与账载进销项,注意用途备注——用于集体福利的进项不得抵扣,需做
+     进项税额转出处理,不得静默抵减。
+  2. 全程用十进制精确计算,金额保留两位小数,不要用浮点近似。
+  3. 产出三份交付物(路径必须一致):
+     - outputs/workpapers/vat_reconciliation.csv:逐发票与 bridge 汇总行;
+     - outputs/workpapers/vat_summary.json:固定 schema
+       {"output_tax": number, "deductible_input_tax": number,
+        "input_tax_transfer_out": number, "prior_period_credit": number,
+        "payable_vat": number}(单位:元,两位小数数字);
+     - outputs/workpapers/filing_review_checklist.md:申报前检查清单,明确区分
+       "底稿事项"与"需人工确认的官方动作"(提交申报、缴款、红字发票),并至少
+       配三张图(VAT bridge 瀑布图、发票税率结构图、月度趋势图),图注带编号与
+       来源行。
+  4. 不要编造发票号、金额或政策文号;本地口径拿不准的标「未核验」。
+  5. 交付物中不得残留 {{占位符}} 或草稿标记(草稿/待修改/TODO)。
+inputs:
+  - path: inputs/vat/sales_invoices.csv
+    file: vat/sales_invoices.csv
+  - path: inputs/vat/purchase_invoices.csv
+    file: vat/purchase_invoices.csv
+  - path: inputs/vat/trial_balance_2026-08.csv
+    file: vat/trial_balance_2026-08.csv
+expected_paths:
+  - outputs/workpapers/vat_reconciliation.csv
+  - outputs/workpapers/vat_summary.json
+  - outputs/workpapers/filing_review_checklist.md
+value_anchors:
+  - path: outputs/workpapers/vat_summary.json
+    json_path: output_tax
+    equals: 806000.0
+  - path: outputs/workpapers/vat_summary.json
+    json_path: deductible_input_tax
+    equals: 567700.0
+  - path: outputs/workpapers/vat_summary.json
+    json_path: input_tax_transfer_out
+    equals: 11700.0
+  - path: outputs/workpapers/vat_summary.json
+    json_path: prior_period_credit
+    equals: 35000.0
+  - path: outputs/workpapers/vat_summary.json
+    json_path: payable_vat
+    equals: 203300.0
+rubric:
+  - id: decimal-math
+    criterion: 全程十进制精确计算,VAT bridge(销项−可抵扣进项+进项转出−留抵=应纳)算术闭合,发票、账面与申报草表之间的每一处差异都有解释或列入未解决清单,没有静默抵减或轧差。
+    weight: 3
+  - id: welfare-input-exclusion
+    criterion: 集体福利购进(礼盒 90,000 元,税额 11,700 元)被明确识别为不可抵扣并做了进项税额转出处理,处理过程在底稿中可见。
+    weight: 3
+  - id: checklist-separation
+    criterion: filing_review_checklist.md 明确区分"底稿事项"与"需人工确认的官方动作"(提交申报、缴款、红字发票),官方动作不会被描述为已执行。
+    weight: 2
+  - id: charts-embedded
+    criterion: 检查清单配了至少三张图(VAT bridge 瀑布、税率结构、月度趋势),每张图有编号图注与来源行。
+    weight: 1
+  - id: no-fabrication
+    criterion: 未编造发票号、金额或政策文号;本地口径不确定处标注「未核验」而非给出想当然的结论。
+    weight: 2
+budget_seconds: 1800

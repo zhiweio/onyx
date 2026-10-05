@@ -1,0 +1,65 @@
+slug: tax-compliance-check-golden
+name: 税务合规体检报告(星澜智造 2025)
+domain: tax
+scenario_slug: tax-compliance-check
+skill_slugs:
+  - tax-tax-audit
+  - tax-policy-verify
+  - vivid-figures-skill
+  - chart-gen
+report_contract_slug: tax_compliance_check
+user_prompt: |
+  请对杭州星澜智造有限公司开展 2025 年度税务合规体检,并产出正式报告。全部证据已
+  预置在会话工作区 inputs/tax/evidence_pack.md(科目余额节选、申报与账面核对、行业
+  对标、处罚记录、内控自查、红旗线索),直接引用即可,不需要再调用外部检索工具。
+
+  要求:
+  1. 五块自检(申报一致性、税负合理性、内控有效性、舞弊红旗、优惠适用性)逐块给出
+     健康/关注/预警评级,每条评级挂证据行(注明证据包小节与数据项),证据不足标
+     「待核验」。
+  2. 产出 outputs/analysis/selfcheck.json:固定 schema {"entity": string, "period": string,
+     "ratings": {"申报一致性": "健康|关注|预警", "税负合理性": ..., "内控有效性": ...,
+     "舞弊红旗": ..., "优惠适用性": ...}}(entity=公司全称,period="2025 年度")。
+  3. 产出 outputs/report.md:按内容契约组织(范围与口径、五块体检、红旗与解释、整改与
+     结论),红旗项逐条给出证据与管理层解释或待核验;整改清单含动作、责任角色与时限;
+     引用政策处带文号与条款;图不少于 5 张(税负对比、申报与账面差异、评级汇总、红旗
+     分布、整改时间线),每张表/图有编号图注与来源行。
+  4. 报告保持「非审计意见」边界并保留免责声明;正文不出现工具名、技能名、outputs/ 等
+     内部路径;无 {{占位符}} 与草稿标记。
+  5. 不把体检表述为审计意见或申报立场;整改建议不得旨在掩盖违规。
+inputs:
+  - path: inputs/tax/evidence_pack.md
+    file: compliance/evidence_pack.md
+expected_paths:
+  - outputs/analysis/selfcheck.json
+  - outputs/report.md
+value_anchors:
+  - path: outputs/analysis/selfcheck.json
+    json_path: entity
+    equals: 杭州星澜智造有限公司
+  - path: outputs/analysis/selfcheck.json
+    json_path: period
+    equals: 2025 年度
+  - path: outputs/analysis/selfcheck.json
+    json_path: ratings.舞弊红旗
+    equals: 预警
+rubric:
+  - id: ratings-evidence-bound
+    criterion: 五块评级逐块给出且每条都挂了证据行(证据包小节+数据项),没有凭感觉定级;证据不足处标「待核验」而非猜测。
+    weight: 3
+  - id: redflag-shareholder-loan
+    criterion: 股东借款 4,500,000 元超期未还被识别为红旗并按财税〔2003〕158 号指出视同分红风险(20% 补税测算可选),管理层解释或待核验状态明确。
+    weight: 3
+  - id: declaration-gap-explained
+    criterion: 增值税申报 20,050,000 与账面 21,520,000 的 470,000 元差异被解释为跨期认证的时间性差异,未定性为偷漏税,也未静默忽略。
+    weight: 2
+  - id: remediation-actionable
+    criterion: 整改清单含动作、责任角色与时限,且区分了「底稿/内部管理动作」与「需公司决策或对外动作」;建议不含掩盖违规的安排。
+    weight: 2
+  - id: policy-citations
+    criterion: 引用的税收政策带文号与条款(如财税〔2003〕158 号),未编造文号;拿不准的本地口径标「未核验」。
+    weight: 2
+  - id: no-internal-leak
+    criterion: 报告正文无工具名、技能名、MCP 服务器名、outputs/ 内部路径;免责声明与「非审计意见」边界保留;无占位符与草稿标记。
+    weight: 2
+budget_seconds: 2400

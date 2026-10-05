@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "Échec du chargement des utilisateurs. Essayez d'actualiser la page."
+      },
+      "evaluations": {
+        "title": "Évaluations",
+        "description": "Régression de référence pour les tâches verticales de Craft : exécute les cas intégrés en mode headless, les note via des vérifications déterministes et un juge LLM, et suit les résultats entre les exécutions.",
+        "runAll": "Tout exécuter",
+        "refresh": "Actualiser",
+        "summary": {
+          "status": "Statut de la dernière exécution",
+          "score": "Dernier score",
+          "passed": "Cas réussis",
+          "lastRun": "Dernière exécution"
+        },
+        "runs": {
+          "title": "Exécutions",
+          "created": "Créée",
+          "trigger": "Déclencheur",
+          "status": "Statut",
+          "score": "Score",
+          "cases": "Cas",
+          "model": "Modèle",
+          "emptyTitle": "Aucune exécution d'évaluation pour le moment",
+          "emptyDescription": "Lance une exécution pour obtenir une référence.",
+          "triggerValue": {
+            "manual": "Manuel",
+            "nightly": "Nocturne"
+          }
+        },
+        "status": {
+          "queued": "En file",
+          "running": "En cours",
+          "succeeded": "Réussie",
+          "failed": "Échouée",
+          "regressed": "Régressée",
+          "pending": "En attente",
+          "pass": "Réussi",
+          "error": "Erreur",
+          "fail": "Échoué"
+        },
+        "cases": {
+          "title": "Catalogue de cas",
+          "name": "Cas",
+          "domain": "Domaine",
+          "anchors": "Ancres",
+          "rubric": "Critères",
+          "budget": "Budget",
+          "runCase": "Exécuter",
+          "emptyTitle": "Aucun cas d'évaluation",
+          "emptyDescription": "Aucun cas d'évaluation dans ce build."
+        },
+        "detail": {
+          "title": "Détail de l'exécution",
+          "passed": "réussis",
+          "regressions": "Régressions par rapport à l'exécution précédente",
+          "findings": "Vérifications déterministes",
+          "judge": "Juge LLM",
+          "judgeError": "Erreur du juge",
+          "error": "Erreur de l'exécution",
+          "transcript": "Voir la transcription",
+          "transcriptTitle": "Transcription de la session",
+          "transcriptEmpty": "Aucun message enregistré pour cette session.",
+          "transcriptFailed": "Échec du chargement de la transcription"
+        },
+        "toasts": {
+          "triggered": "Exécution lancée",
+          "triggering": "Lancement…",
+          "triggerFailed": "Échec du lancement",
+          "loadFailed": "Échec du chargement"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "Évaluations"
         }
       },
       "sections": {

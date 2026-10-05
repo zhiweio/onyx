@@ -1,0 +1,93 @@
+slug: finance-tax-risk-report-golden
+name: 五年财税与经营风险报告(星澜智造)
+domain: finance
+scenario_slug: finance-tax-risk-report
+skill_slugs:
+  - finance-tax-risk-report
+  - vivid-figures-skill
+  - chart-gen
+  - docx
+report_contract_slug: finance_tax_risk_report
+user_prompt: |
+  请以杭州星澜智造股份有限公司(合成案例,深交所 fictitious 代码 301999.SZ)2021-2025
+  五年年报为证据,撰写一份五年期财税与经营风险分析报告。全部输入已在会话工作区:
+  - inputs/finance/annual_summary.csv:五年三表摘要(已经审计,除 2024 年保留意见项);
+  - inputs/finance/research_pack.md:外部检索结果包(企查查/智慧芽/同花顺摘录 + 期后事项
+    + 税务申报口径),直接引用即可,不需要再调用外部检索工具。
+
+  要求:
+  1. 产出 outputs/analysis/statements.json:固定 schema
+     {"years": {"2021": {"revenue": number, "net_profit": number,
+     "operating_cash_flow": number}, ..., "2025": {...}}},数字与年报摘要一致(单位:元,
+     数字型,保留原始精度)。
+  2. 产出 outputs/analysis/kpi_dashboard.json:由代码脚本从 statements.json 计算,不手填;
+     至少含各年毛利率代理指标、净利率、经营现金流/净利润比、研发强度。
+  3. 产出 outputs/report.md:按内容契约组织(总览与核心看板、数据与趋势、风险、建议与
+     结论),风险条目用 TX-xx(财税)/ OP-xx(经营)编号,从 01 连续;风险等级只有
+     高/中/低(评分映射 56/20/4)。
+  4. 报告中每个数字可溯源:年报摘要、外部检索结果包(注明来源与数据项)或公司税务
+     口径摘录。期后事项(2026H1 业绩快报、定增预案)单独成章,标注「未经审计,仅作
+     趋势观察」,不并入五年趋势表。
+  5. 图不少于 8 张,覆盖每个数据章节;每张表/图有编号图注与来源行。
+  6. 报告正文不得出现 MCP 工具名、服务器名(qcc-*、hithink-* 等)、outputs/ 等内部路径
+     与 /tmp/ 临时路径;无 {{占位符}} 与草稿标记;免责声明保留在报告末尾。
+inputs:
+  - path: inputs/finance/annual_summary.csv
+    file: taxrisk/annual_summary.csv
+  - path: inputs/finance/research_pack.md
+    file: taxrisk/research_pack.md
+expected_paths:
+  - outputs/analysis/statements.json
+  - outputs/analysis/kpi_dashboard.json
+  - outputs/report.md
+value_anchors:
+  - path: outputs/analysis/statements.json
+    json_path: years.2021.revenue
+    equals: 9860000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2022.revenue
+    equals: 10240000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2023.revenue
+    equals: 9415000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2024.revenue
+    equals: 8703000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2025.revenue
+    equals: 8150000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2023.net_profit
+    equals: 312000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2024.net_profit
+    equals: 96000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2024.operating_cash_flow
+    equals: -58000000.0
+  - path: outputs/analysis/statements.json
+    json_path: years.2025.operating_cash_flow
+    equals: 620000000.0
+rubric:
+  - id: figure-sourcing
+    criterion: 报告中每个数字都能溯源:标注年报摘要、外部检索结果包(来源+数据项)或公司税务口径摘录三者之一;没有任何凭空出现、输入夹具中不存在的数字。
+    weight: 3
+  - id: no-internal-leak
+    criterion: 报告正文不出现 MCP 工具名、服务器 slug(qcc-*、hithink-* 等)、outputs/ 等内部路径或 /tmp/ 临时路径。
+    weight: 3
+  - id: subsequent-events-isolated
+    criterion: 期后事项(2026H1 快报、定增预案)单独成章并标注「未经审计,仅作趋势观察」,未并入五年趋势表或五年均值计算。
+    weight: 2
+  - id: risk-id-continuity
+    criterion: TX-xx / OP-xx 风险编号从 01 连续、不跳号不重复,风险等级只使用高/中/低且映射 56/20/4 评分,没有发明新等级。
+    weight: 2
+  - id: cash-quality-closed-loop
+    criterion: 报告对"利润是不是真的、现金能不能验证利润"给出闭环回答:至少覆盖 2023-2025 净利润与经营现金流的背离及 2024 年负现金流的解释(如诉讼赔付、存货等,依据夹具或合理推演并标注)。
+    weight: 2
+  - id: tax-analysis
+    criterion: 财税分析覆盖:高新 15% 税率的可持续性(2026-10 到期复审)、研发加计扣除与年报口径一致性、增值税税负率逐年下滑的原因提示,且均引用夹具中的税务口径摘录。
+    weight: 2
+  - id: disclaimer-survives
+    criterion: 报告末尾保留免责声明,全文无 {{占位符}} 与草稿/待修改/TODO 标记。
+    weight: 2
+budget_seconds: 2700

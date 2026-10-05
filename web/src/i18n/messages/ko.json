@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "사용자를 불러오지 못했습니다. 페이지를 새로 고쳐 보세요."
+      },
+      "evaluations": {
+        "title": "평가",
+        "description": "Craft 수직 작업용 골든셋 회귀:내장 케이스를 헤드리스로 실행하고 결정적 검사와 fresh-context LLM 심사로 채점하며 실행 간 결과를 추적합니다.",
+        "runAll": "전체 실행",
+        "refresh": "새로 고침",
+        "summary": {
+          "status": "최근 실행 상태",
+          "score": "최근 점수",
+          "passed": "통과한 케이스",
+          "lastRun": "마지막 실행"
+        },
+        "runs": {
+          "title": "실행 기록",
+          "created": "생성",
+          "trigger": "트리거",
+          "status": "상태",
+          "score": "점수",
+          "cases": "케이스",
+          "model": "모델",
+          "emptyTitle": "아직 평가 실행이 없습니다",
+          "emptyDescription": "실행을 트리거하여 기준선을 확보하세요.",
+          "triggerValue": {
+            "manual": "수동",
+            "nightly": "야간"
+          }
+        },
+        "status": {
+          "queued": "대기 중",
+          "running": "실행 중",
+          "succeeded": "성공",
+          "failed": "실패",
+          "regressed": "회귀",
+          "pending": "보류",
+          "pass": "통과",
+          "error": "오류",
+          "fail": "실패"
+        },
+        "cases": {
+          "title": "케이스 카탈로그",
+          "name": "케이스",
+          "domain": "도메인",
+          "anchors": "앵커",
+          "rubric": "기준",
+          "budget": "예산",
+          "runCase": "실행",
+          "emptyTitle": "평가 케이스 없음",
+          "emptyDescription": "이 빌드에는 평가 케이스가 없습니다."
+        },
+        "detail": {
+          "title": "실행 상세",
+          "passed": "통과",
+          "regressions": "이전 실행 대비 회귀",
+          "findings": "결정적 검사",
+          "judge": "LLM 심사",
+          "judgeError": "저지 오류",
+          "error": "실행 오류",
+          "transcript": "기록 보기",
+          "transcriptTitle": "세션 기록",
+          "transcriptEmpty": "이 세션에 기록된 메시지가 없습니다.",
+          "transcriptFailed": "기록을 불러오지 못했습니다"
+        },
+        "toasts": {
+          "triggered": "평가 실행이 시작되었습니다",
+          "triggering": "시작 중…",
+          "triggerFailed": "평가 실행 시작 실패",
+          "loadFailed": "데이터 로드 실패"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "평가"
         }
       },
       "sections": {

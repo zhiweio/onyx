@@ -19,7 +19,11 @@ from onyx.configs.constants import (
     OnyxCeleryQueues,
     OnyxCeleryTask,
 )
-from onyx.server.features.build.configs import SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS
+from onyx.server.features.build.configs import (
+    CRAFT_EVAL_NIGHTLY_ENABLED,
+    CRAFT_EVAL_NIGHTLY_HOUR,
+    SANDBOX_IDLE_CLEANUP_INTERVAL_SECONDS,
+)
 from shared_configs.configs import MULTI_TENANT
 
 # choosing 15 minutes because it roughly gives us enough time to process many tasks
@@ -415,6 +419,25 @@ if (
                 # If the task was not dequeued in this time, revoke it.
                 "expires": BEAT_EXPIRES_DEFAULT,
                 "queue": OnyxCeleryQueues.OPENSEARCH_MIGRATION,
+            },
+        }
+    )
+
+
+# Nightly craft golden-set regression (P4). Off by default: each run is a
+# batch of real-model long tasks. Long expires so a delayed worker still
+# picks it up; the run itself is idempotent per run row.
+if CRAFT_EVAL_NIGHTLY_ENABLED:
+    beat_task_templates.append(
+        {
+            "name": "nightly-craft-eval",
+            "task": OnyxCeleryTask.CRAFT_EVAL_NIGHTLY,
+            "schedule": crontab(hour=CRAFT_EVAL_NIGHTLY_HOUR, minute=0),
+            "options": {
+                "priority": OnyxCeleryPriority.LOW,
+                "expires": BEAT_EXPIRES_DEFAULT,
+                "queue": OnyxCeleryQueues.SCHEDULED_TASKS,
+                "work_gated": True,
             },
         }
     )

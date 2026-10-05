@@ -197,6 +197,13 @@ export const SWR_KEYS = {
   buildSessionLiveApprovals: (sessionId: string) =>
     `/api/build/approvals/sessions/${sessionId}/live`,
 
+  // ── Craft Evaluations (admin) ─────────────────────────────────────────────
+  craftEvalCases: "/api/build/admin/evals/cases",
+  craftEvalRuns: (limit: number) =>
+    `/api/build/admin/evals/runs?limit=${encodeURIComponent(limit)}`,
+  craftEvalRunDetail: (runId: string) =>
+    `/api/build/admin/evals/runs/${encodeURIComponent(runId)}`,
+
   // ── Token Rate Limits ─────────────────────────────────────────────────────
   globalTokenRateLimits: "/api/admin/token-rate-limits/global",
   userTokenRateLimits: "/api/admin/token-rate-limits/users",

@@ -82,6 +82,9 @@ from onyx.db.enums import (
     ConnectorCredentialPairStatus,
     ContentQuarantineDecision,
     ContentReleaseScope,
+    CraftEvalCaseStatus,
+    CraftEvalRunStatus,
+    CraftEvalRunTrigger,
     CraftJobSpecialistStatus,
     CraftJobStatus,
     CraftLoopHealth,
@@ -7319,6 +7322,11 @@ class CraftProject(Base):
         ForeignKey("user_group.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Project-level long-term memory switch (P5): owner-enables memory for
+    # this project's sessions; ORs with user.craft_use_long_term_memory.
+    memory_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -9453,7 +9461,7 @@ class ChinaIMBinding(Base):
 class PlatformToolLog(Base):
     """Append-only journal of platform tool calls from agent runtimes.
 
-    One row per rag_search / mcp_call / web_search / crawl / question /
+    One row per rag_search / web_search / crawl / question /
     background invocation through the tool bridge (plus MCP gateway
     calls and model probes), for the audit report page.
     """
@@ -9560,4 +9568,117 @@ class CraftTapeEntry(Base):
     __table_args__ = (
         Index("ix_craft_tape_session_seq", "session_id", "id"),
         Index("ix_craft_tape_session_kind", "session_id", "kind"),
+    )
+
+
+class CraftEvalRun(Base):
+    """One execution of the craft golden-set eval pipeline.
+
+    Runs the built-in eval cases headlessly against the current tenant LLM
+    and records the aggregated score. ``model_provider``/``model_name``
+    snapshot the evaluated configuration so cross-run comparison stays
+    meaningful after model changes. ``summary`` holds the per-case scores
+    and the regression diff against the previous run.
+    """
+
+    __tablename__ = "craft_eval_run"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    trigger: Mapped[CraftEvalRunTrigger] = mapped_column(
+        Enum(CraftEvalRunTrigger, native_enum=False, name="craftevalruntrigger"),
+        nullable=False,
+        default=CraftEvalRunTrigger.MANUAL,
+    )
+    status: Mapped[CraftEvalRunStatus] = mapped_column(
+        Enum(CraftEvalRunStatus, native_enum=False, name="craftevalrunstatus"),
+        nullable=False,
+        default=CraftEvalRunStatus.QUEUED,
+    )
+    # Admin who triggered a manual run (None for nightly).
+    created_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    passed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Aggregated score in [0, 1]; ERROR cases count as 0 (fail-closed).
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Snapshot of the evaluated tenant model for cross-run comparison.
+    model_provider: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    case_results: Mapped[list["CraftEvalCaseResult"]] = relationship(
+        "CraftEvalCaseResult",
+        back_populates="run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="CraftEvalCaseResult.id",
+    )
+
+    __table_args__ = (Index("ix_craft_eval_run_created", desc("created_at")),)
+
+
+class CraftEvalCaseResult(Base):
+    """Per-case outcome of one eval run.
+
+    ``deterministic_findings`` mirrors the postcheck Finding shape plus
+    existence/anchor checks; ``judge_verdict`` holds the fresh-context LLM
+    judge's per-criterion verdicts. ``session_id`` deep-links to the build
+    session (and its tape) for forensic replay.
+    """
+
+    __tablename__ = "craft_eval_case_result"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("craft_eval_run.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    case_slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[CraftEvalCaseStatus] = mapped_column(
+        Enum(CraftEvalCaseStatus, native_enum=False, name="craftevalcasestatus"),
+        nullable=False,
+        default=CraftEvalCaseStatus.PENDING,
+    )
+    # Weighted criterion pass ratio in [0, 1] across both judge layers.
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    deterministic_findings: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    judge_verdict: Mapped[dict[str, Any]] = mapped_column(
+        postgresql.JSONB(), nullable=False, default=dict
+    )
+    session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("build_session.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    run: Mapped[CraftEvalRun] = relationship(
+        "CraftEvalRun", back_populates="case_results"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "case_slug"),
+        Index("ix_craft_eval_case_slug", "case_slug"),
     )

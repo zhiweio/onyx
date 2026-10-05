@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "Die Benutzer konnten nicht geladen werden. Bitte laden Sie die Seite neu."
+      },
+      "evaluations": {
+        "title": "Evaluierungen",
+        "description": "Goldstandard-Regression für Craft-Aufgaben: eingebaute Fälle headless ausführen, mit deterministischen Prüfungen und einem LLM-Judge bewerten und Ergebnisse über Läufe verfolgen.",
+        "runAll": "Alle Fälle ausführen",
+        "refresh": "Aktualisieren",
+        "summary": {
+          "status": "Status des letzten Laufs",
+          "score": "Letzter Score",
+          "passed": "Bestandene Fälle",
+          "lastRun": "Letzter Lauf"
+        },
+        "runs": {
+          "title": "Läufe",
+          "created": "Erstellt",
+          "trigger": "Auslöser",
+          "status": "Status",
+          "score": "Ergebnis",
+          "cases": "Fälle",
+          "model": "Modell",
+          "emptyTitle": "Noch keine Eval-Läufe",
+          "emptyDescription": "Löse einen Lauf aus, um einen Referenzwert zu erhalten.",
+          "triggerValue": {
+            "manual": "Manuell",
+            "nightly": "Nächtlich"
+          }
+        },
+        "status": {
+          "queued": "Warteschlange",
+          "running": "Läuft",
+          "succeeded": "Erfolgreich",
+          "failed": "Fehlgeschlagen",
+          "regressed": "Regressiert",
+          "pending": "Ausstehend",
+          "pass": "Bestanden",
+          "error": "Fehler",
+          "fail": "Nicht bestanden"
+        },
+        "cases": {
+          "title": "Fallkatalog",
+          "name": "Fall",
+          "domain": "Domäne",
+          "anchors": "Anker",
+          "rubric": "Kriterien",
+          "budget": "Budget",
+          "runCase": "Ausführen",
+          "emptyTitle": "Keine Eval-Fälle",
+          "emptyDescription": "Keine Evaluierungsfälle in diesem Build."
+        },
+        "detail": {
+          "title": "Laufdetails",
+          "passed": "bestanden",
+          "regressions": "Regressionen gegenüber dem vorherigen Lauf",
+          "findings": "Deterministische Prüfungen",
+          "judge": "LLM-Judge",
+          "judgeError": "Judge-Fehler",
+          "error": "Lauffehler",
+          "transcript": "Verlauf anzeigen",
+          "transcriptTitle": "Sitzungsverlauf",
+          "transcriptEmpty": "Für diese Sitzung wurden keine Nachrichten aufgezeichnet.",
+          "transcriptFailed": "Verlauf konnte nicht geladen werden"
+        },
+        "toasts": {
+          "triggered": "Lauf ausgelöst",
+          "triggering": "Wird ausgelöst…",
+          "triggerFailed": "Auslösen fehlgeschlagen",
+          "loadFailed": "Laden fehlgeschlagen"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "Evaluierungen"
         }
       },
       "sections": {

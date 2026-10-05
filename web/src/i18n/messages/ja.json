@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "ユーザーの読み込みに失敗しました。ページを再読み込みしてください。"
+      },
+      "evaluations": {
+        "title": "評価",
+        "description": "Craft の垂直タスク向けゴールデンセット回帰:内蔵ケースをヘッドレス実行し、決定論的チェックと fresh-context LLM ジャッジで採点、実行間で結果を追跡します。",
+        "runAll": "全ケース実行",
+        "refresh": "更新",
+        "summary": {
+          "status": "最新実行のステータス",
+          "score": "最新スコア",
+          "passed": "合格ケース",
+          "lastRun": "最終実行"
+        },
+        "runs": {
+          "title": "実行履歴",
+          "created": "作成",
+          "trigger": "トリガー",
+          "status": "状態",
+          "score": "スコア",
+          "cases": "ケース",
+          "model": "モデル",
+          "emptyTitle": "評価実行はまだありません",
+          "emptyDescription": "実行を開始してベースラインを取得しましょう。",
+          "triggerValue": {
+            "manual": "手動",
+            "nightly": "夜間"
+          }
+        },
+        "status": {
+          "queued": "待機中",
+          "running": "実行中",
+          "succeeded": "成功",
+          "failed": "失敗",
+          "regressed": "リグレッション",
+          "pending": "保留",
+          "pass": "合格",
+          "error": "エラー",
+          "fail": "不合格"
+        },
+        "cases": {
+          "title": "ケースカタログ",
+          "name": "ケース",
+          "domain": "ドメイン",
+          "anchors": "アンカー",
+          "rubric": "判定基準",
+          "budget": "予算",
+          "runCase": "実行",
+          "emptyTitle": "評価ケースがありません",
+          "emptyDescription": "このビルドに評価ケースは含まれていません。"
+        },
+        "detail": {
+          "title": "実行詳細",
+          "passed": "合格",
+          "regressions": "前回実行からのリグレッション",
+          "findings": "決定論的チェック",
+          "judge": "LLM ジャッジ",
+          "judgeError": "ジャッジエラー",
+          "error": "実行エラー",
+          "transcript": "記録を表示",
+          "transcriptTitle": "セッション記録",
+          "transcriptEmpty": "このセッションにはメッセージが記録されていません。",
+          "transcriptFailed": "記録の読み込みに失敗しました"
+        },
+        "toasts": {
+          "triggered": "評価を実行しました",
+          "triggering": "起動中…",
+          "triggerFailed": "評価の起動に失敗しました",
+          "loadFailed": "データの読み込みに失敗しました"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "評価"
         }
       },
       "sections": {

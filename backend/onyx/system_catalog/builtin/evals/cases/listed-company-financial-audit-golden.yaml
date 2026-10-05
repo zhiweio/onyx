@@ -1,0 +1,70 @@
+slug: listed-company-financial-audit-golden
+name: 上市公司财务审计报告(星澜智造)
+domain: finance
+scenario_slug: listed-company-financial-audit
+skill_slugs:
+  - listed-co-entity-resolve
+  - listed-co-filings-normalize
+  - listed-co-metric-audit
+  - listed-co-credit-legal
+  - listed-co-industry-context
+  - listed-co-ip-rd
+  - listed-co-red-blue-review
+  - listed-co-report-compose
+  - docx
+report_contract_slug: listed_company_audit
+user_prompt: |
+  请对杭州星澜智造股份有限公司(合成案例,fictitious 代码 301999.SZ)执行上市公司
+  财务审计分析并成稿。全部输入已在会话工作区:
+  - inputs/audit/annual_summary.csv:2021-2025 五年三表摘要;
+  - inputs/audit/research_pack.md:外部检索结果包(股权、诉讼处罚、专利研发、行业对标、
+    期后事项、税务口径),直接引用即可,不需要再调用外部检索工具。
+
+  要求:
+  1. 产出 outputs/entity.json:固定 schema {"name": string, "ticker": string},值分别为
+     「杭州星澜智造股份有限公司」与「301999.SZ」。
+  2. 产出 outputs/normalized/ratios.csv:由代码脚本从年报摘要计算的五年关键财务比率
+     (净利率、经营现金流/净利润、研发强度、资产负债率可用净资产与总资产推算、营收
+     增速),不手填。
+  3. 产出 outputs/report.md:对照行业、股权与诉讼处罚、知识产权与研发完成审计分析;
+     2024 年保留意见(存货减计充分性)必须被识别并讨论;数字均标注年报页(以
+     annual_summary.csv 行引用)或外部检索来源;核对不平项留在例外说明,不写进正文
+     结论;图不少于 5 张并覆盖审计各节,每张表/图有编号图注与来源行。
+  4. 报告正文不出现 MCP 工具名、服务器 slug、技能名与 outputs/ 等内部路径;无
+     {{占位符}} 与草稿标记;免责声明保留在报告末尾。
+inputs:
+  - path: inputs/audit/annual_summary.csv
+    file: taxrisk/annual_summary.csv
+  - path: inputs/audit/research_pack.md
+    file: taxrisk/research_pack.md
+expected_paths:
+  - outputs/entity.json
+  - outputs/normalized/ratios.csv
+  - outputs/report.md
+value_anchors:
+  - path: outputs/entity.json
+    json_path: name
+    equals: 杭州星澜智造股份有限公司
+  - path: outputs/entity.json
+    json_path: ticker
+    equals: 301999.SZ
+rubric:
+  - id: qualified-opinion-identified
+    criterion: 2024 年年报的保留意见(存货减计充分性)被明确识别,并在分析中讨论了其对 2024 年净利润 96,000,000 元可信度的影响。
+    weight: 3
+  - id: ratio-computation
+    criterion: ratios.csv 的比率与年报摘要数字一致(净利率 2023≈3.31%、2024≈1.10% 量级正确),且由脚本计算而非手填,计算过程可追溯。
+    weight: 2
+  - id: credit-legal-covered
+    criterion: 信用法律风险覆盖了股权质押(31.5%)、诉讼败诉计提 52,000,000 元(2024)与税务小额处罚,并评估其影响,均引用检索结果包。
+    weight: 2
+  - id: ip-rd-covered
+    criterion: 知识产权与研发分析覆盖专利族规模、核心专利到期时间(2029-08/2031-03)与研发强度趋势(研发费用五年数据),并关联技术人员流失风险。
+    weight: 2
+  - id: figure-sourcing
+    criterion: 每个数字可溯源(年报摘要行或外部检索来源+数据项);报告中没有出现输入夹具中不存在的数字。
+    weight: 3
+  - id: no-internal-leak
+    criterion: 报告正文无工具名、服务器 slug、技能名、内部路径;无占位符与草稿标记;免责声明保留。
+    weight: 2
+budget_seconds: 2400

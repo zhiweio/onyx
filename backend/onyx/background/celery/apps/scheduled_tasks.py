@@ -142,6 +142,9 @@ celery_app.autodiscover_tasks(
             # (see beat_schedule); without this module the worker rejects
             # them as unregistered every 15s.
             "onyx.background.celery.tasks.build",
+            # Craft golden-set eval runs (P4): one case is a real-model long
+            # task, same shape as the scheduled-task executor above.
+            "onyx.background.celery.tasks.craft_evals",
         ]
     )
 )

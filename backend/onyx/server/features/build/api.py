@@ -8,6 +8,9 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.server.features.build.approvals.api import router as approvals_router
 from onyx.server.features.build.debug import router as debug_router
 from onyx.server.features.build.env_vars.api import router as env_vars_router
+from onyx.server.features.build.evals.api import (
+    admin_router as evals_admin_router,
+)
 from onyx.server.features.build.external_apps.api import (
     admin_router as external_apps_admin_router,
 )
@@ -54,6 +57,7 @@ admin_router = APIRouter(
     dependencies=[Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS))],
 )
 admin_router.include_router(external_apps_admin_router, tags=["build"])
+admin_router.include_router(evals_admin_router, tags=["build"])
 
 
 @admin_router.get("/base-instructions")

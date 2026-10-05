@@ -1,0 +1,70 @@
+slug: biomed-clinical-initiation-golden
+name: 临床期立项调研(NX-204)
+domain: biomed
+scenario_slug: biomed-clinical-initiation
+skill_slugs:
+  - document-ingest
+  - biomed-literature
+  - biomed-patent-fto
+  - biomed-clinical-intel
+  - biomed-regulatory
+  - biomed-clinical-initiation
+  - docx
+report_contract_slug: initiation_report
+user_prompt: |
+  请对 NovaThera Bio 的临床期资产 NX-204(EGFR exon20ins NSCLC,口服小分子,II 期)
+  做临床期立项深度调研,给出 go / conditional-go / no-go 立项建议。全部证据已预置在
+  会话工作区 inputs/biomed/initiation_pack.md(药物信息、竞品临床格局、关键文献、
+  专利、流行病学、注册路径),直接引用并注明标识符即可,不需要再调用外部检索工具;
+  未提供的数据不得凭模型记忆编造,缺失处标注数据缺口。
+
+  要求:
+  1. 产出规范化台账(路径必须一致):
+     - outputs/normalized/sources.csv:全部引用来源(标识符列必填,如 NCT 号/PMID/
+       专利号/数据库名称);
+     - outputs/normalized/pipeline.csv:竞品与自身管线(药物、公司、阶段、关键数据);
+     - outputs/normalized/readouts.csv:关键读出(ORR/PFS/OS/TRAE,带来源标识符);
+     - outputs/normalized/assumptions.csv:全部估算假设(如患者池推算、定价,标注
+       「估算」);
+     - outputs/normalized/risks.csv:风险台账(竞争、注册、安全性、专利、商业化)。
+  2. 产出 outputs/markdown/clinical-initiation-report.md:决策因子打分(证据权重表)、
+     患者池测算(标注估算)、PoS 评估(标注估算)、注册路径(中欧美)、销售双情景
+     (基准/保守,标注估算)、风险与缓解;给出明确决策建议与理由;图不少于 5 张
+     (竞争格局、打分对比、读出对比、患者池瀑布、销售情景),每张表/图有编号图注
+     与来源行。
+  3. 每条关键论断都能对上 sources.csv 里的标识符;衍生数字(销售、患者池、PoS)标注
+     为估算;报告正文不出现 MCP 工具名、服务器 slug 与 outputs/ 等内部路径;无
+     {{占位符}} 与草稿标记;不得给出 FTO 法律意见。
+inputs:
+  - path: inputs/biomed/initiation_pack.md
+    file: biomed/initiation_pack.md
+expected_paths:
+  - outputs/normalized/sources.csv
+  - outputs/normalized/pipeline.csv
+  - outputs/normalized/readouts.csv
+  - outputs/normalized/assumptions.csv
+  - outputs/normalized/risks.csv
+  - outputs/markdown/clinical-initiation-report.md
+rubric:
+  - id: claims-have-identifiers
+    criterion: 报告中每条关键论断(疗效数字、竞品状态、专利到期、流行病学)都能对应 sources.csv 中的标识符(NCT/PMID/专利号等);没有夹具之外的编造数据。
+    weight: 3
+  - id: estimates-labeled
+    criterion: 患者池、PoS、销售峰值、定价等衍生数字全部标注为估算,并在 assumptions.csv 留下可复核的假设;直接观测数据未被标成估算。
+    weight: 3
+  - id: decision-explicit
+    criterion: 报告给出明确的 go/conditional-go/no-go 建议且理由闭环:至少覆盖对 sunvozertinib 已获批(ORR 60.8%)与自身 ORR 44.7% 的竞争定位、FDA 加速批准先例的撤回风险、专利到 2038 的窗口。
+    weight: 3
+  - id: regulatory-path
+    criterion: 注册路径分中欧美三地展开且与夹具一致(FDA 加速批准+确认性试验、CDE 突破性/附条件、EMA 条件批准),未发明不存在的认定(如"已获 FDA 批准")。
+    weight: 2
+  - id: no-fto-opinion
+    criterion: 专利部分明确声明不构成 FTO 法律意见,仅描述专利格局。
+    weight: 2
+  - id: data-gaps-named
+    criterion: 一线扩展队列未读出、海外数据缺乏等缺口被明确列为数据缺口/风险,而不是用推测填补。
+    weight: 2
+  - id: no-internal-leak
+    criterion: 报告正文无 MCP 工具名、服务器 slug、内部路径;无占位符与草稿标记。
+    weight: 2
+budget_seconds: 2700

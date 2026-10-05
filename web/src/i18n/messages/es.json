@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "No se pudieron cargar los usuarios. Prueba a actualizar la página."
+      },
+      "evaluations": {
+        "title": "Evaluaciones",
+        "description": "Regresión de referencia para tareas verticales de Craft: ejecuta los casos integrados sin interfaz, los puntúa con comprobaciones deterministas y un juez LLM, y sigue los resultados entre ejecuciones.",
+        "runAll": "Ejecutar todos",
+        "refresh": "Actualizar",
+        "summary": {
+          "status": "Estado de la última ejecución",
+          "score": "Última puntuación",
+          "passed": "Casos aprobados",
+          "lastRun": "Última ejecución"
+        },
+        "runs": {
+          "title": "Ejecuciones",
+          "created": "Creada",
+          "trigger": "Origen",
+          "status": "Estado",
+          "score": "Puntaje",
+          "cases": "Casos",
+          "model": "Modelo",
+          "emptyTitle": "Aún no hay ejecuciones de evaluación",
+          "emptyDescription": "Ejecuta una evaluación para obtener una línea base.",
+          "triggerValue": {
+            "manual": "Manual",
+            "nightly": "Nocturno"
+          }
+        },
+        "status": {
+          "queued": "En cola",
+          "running": "En curso",
+          "succeeded": "Completada",
+          "failed": "Fallida",
+          "regressed": "Regresión",
+          "pending": "Pendiente",
+          "pass": "Aprobado",
+          "error": "Error",
+          "fail": "Reprobado"
+        },
+        "cases": {
+          "title": "Catálogo de casos",
+          "name": "Caso",
+          "domain": "Dominio",
+          "anchors": "Anclas",
+          "rubric": "Criterios",
+          "budget": "Presupuesto",
+          "runCase": "Ejecutar",
+          "emptyTitle": "Sin casos de evaluación",
+          "emptyDescription": "Este build no incluye casos de evaluación."
+        },
+        "detail": {
+          "title": "Detalle de ejecución",
+          "passed": "aprobados",
+          "regressions": "Regresiones frente a la ejecución anterior",
+          "findings": "Comprobaciones deterministas",
+          "judge": "Juez LLM",
+          "judgeError": "Error del juez",
+          "error": "Error de la ejecución",
+          "transcript": "Ver transcripción",
+          "transcriptTitle": "Transcripción de la sesión",
+          "transcriptEmpty": "No se registraron mensajes en esta sesión.",
+          "transcriptFailed": "No se pudo cargar la transcripción"
+        },
+        "toasts": {
+          "triggered": "Ejecución lanzada",
+          "triggering": "Lanzando…",
+          "triggerFailed": "No se pudo lanzar la ejecución",
+          "loadFailed": "Error al cargar los datos"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "Evaluaciones"
         }
       },
       "sections": {

@@ -1,0 +1,47 @@
+slug: biomed-literature-brief-golden
+name: IL-33/ST2 哮喘靶点文献简报
+domain: biomed
+scenario_slug: null
+skill_slugs:
+  - document-ingest
+  - biomed-literature
+user_prompt: |
+  请基于会话工作区 inputs/biomed/literature_pack.md(预置文献检索结果,含 RCT、临床前、
+  遗传学、综述与缺口,直接引用 PMID 即可,不需要再调用外部检索工具),撰写一份
+  IL-33/ST2 轴在哮喘中的靶点证据简报。
+
+  要求:
+  1. 产出 outputs/research/literature/queries.md:记录本简报采用的"检索式"(对预置
+     包的筛选规则)与纳入/排除标准,保证可复现。
+  2. 产出 outputs/literature_brief.md:按主题组织(临床证据、机制、遗传学因果、
+     生物标志物分层、证据缺口),每个主题下分级陈述证据(RCT > 临床前/遗传学 >
+     综述观点),每条关键论断标注 PMID;明确区分"直接试验证据"与"作者观点";
+     未覆盖处(头对头、儿童、长期安全性)列入证据缺口,不用推测填补。
+  3. 文末给出证据强度小结:哪个结论最硬(RCT+MR 一致)、哪个最弱(sST2 分层,
+     队列结论不一);全文无 {{占位符}} 与草稿标记,不得编造 PMID 或数字。
+inputs:
+  - path: inputs/biomed/literature_pack.md
+    file: biomed/literature_pack.md
+expected_paths:
+  - outputs/research/literature/queries.md
+  - outputs/literature_brief.md
+rubric:
+  - id: theme-organized
+    criterion: 简报按主题分组(临床证据/机制/遗传学/生物标志物/缺口),不是逐篇文献罗列摘要;主题之间有综合与对比(如抗 IL-33 与抗 ST2 效应量对比)。
+    weight: 3
+  - id: evidence-graded
+    criterion: 每个主题内的陈述带证据分级(RCT > 临床前/遗传学 > 综述观点),RCT 数字(RR 0.45、RRR 27%、OR 0.88)与 PMID 一一对应,未篡改数字。
+    weight: 3
+  - id: citations-complete
+    criterion: 每条关键论断都标注了来源 PMID,且 PMID 确实存在于输入夹具中;没有编造的 PMID 或数字。
+    weight: 3
+  - id: gaps-named
+    criterion: 头对头比较、儿童人群、长期安全性三个缺口被明确列入证据缺口,未用推测填补;sST2 分层证据的不一致性被如实呈现。
+    weight: 2
+  - id: strength-summary
+    criterion: 文末证据强度小结正确:MR+RCT 一致处最硬,sST2 分层最弱(队列结论方向不一)。
+    weight: 2
+  - id: queries-reproducible
+    criterion: queries.md 记录了筛选规则与纳入/排除标准,内容可复现,不是空模板。
+    weight: 2
+budget_seconds: 1500

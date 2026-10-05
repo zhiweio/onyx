@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "加载用户失败。请尝试刷新页面。"
+      },
+      "evaluations": {
+        "title": "评测",
+        "description": "Craft 垂直任务的金标准回归:headless 运行内置评测集,用确定性检查加 fresh-context LLM 评审打分,并跨 run 追踪结果。",
+        "runAll": "运行全部用例",
+        "refresh": "刷新",
+        "summary": {
+          "status": "最近运行状态",
+          "score": "最近得分",
+          "passed": "通过用例",
+          "lastRun": "上次运行"
+        },
+        "runs": {
+          "title": "运行记录",
+          "created": "创建时间",
+          "trigger": "触发方式",
+          "status": "状态",
+          "score": "得分",
+          "cases": "用例",
+          "model": "模型",
+          "emptyTitle": "暂无评估运行",
+          "emptyDescription": "触发一次运行以获得基线。",
+          "triggerValue": {
+            "manual": "手动",
+            "nightly": "夜间"
+          }
+        },
+        "status": {
+          "queued": "排队中",
+          "running": "运行中",
+          "succeeded": "通过",
+          "failed": "失败",
+          "regressed": "回归",
+          "pending": "待运行",
+          "pass": "通过",
+          "error": "错误",
+          "fail": "未过"
+        },
+        "cases": {
+          "title": "用例目录",
+          "name": "用例",
+          "domain": "领域",
+          "anchors": "数值锚点",
+          "rubric": "判据",
+          "budget": "预算",
+          "runCase": "运行",
+          "emptyTitle": "暂无评估用例",
+          "emptyDescription": "此构建未打包评测用例。"
+        },
+        "detail": {
+          "title": "运行详情",
+          "passed": "通过",
+          "regressions": "相对上一轮的回归",
+          "findings": "确定性检查",
+          "judge": "LLM 评审",
+          "judgeError": "评审错误",
+          "error": "运行错误",
+          "transcript": "查看会话记录",
+          "transcriptTitle": "会话记录",
+          "transcriptEmpty": "该会话没有记录任何消息。",
+          "transcriptFailed": "加载会话记录失败"
+        },
+        "toasts": {
+          "triggered": "已触发评测运行",
+          "triggering": "触发中…",
+          "triggerFailed": "触发评测运行失败",
+          "loadFailed": "加载评测数据失败"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "品牌定制"
+        },
+        "craftEvaluations": {
+          "label": "评测"
         }
       },
       "sections": {

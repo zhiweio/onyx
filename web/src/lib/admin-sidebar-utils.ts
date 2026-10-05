@@ -29,6 +29,7 @@ export type AdminNavItemId =
   | "craftAccess"
   | "craftApps"
   | "craftCatalog"
+  | "craftEvaluations"
   | "craftPreferences"
   | "agents"
   | "mcpActions"
@@ -84,6 +85,7 @@ export const NAV_ITEM_IDS: Record<
   CRAFT_ACCESS: "craftAccess",
   CRAFT_APPS: "craftApps",
   CRAFT_CATALOG: "craftCatalog",
+  CRAFT_EVALUATIONS: "craftEvaluations",
   CRAFT_PREFERENCES: "craftPreferences",
   AGENTS: "agents",
   MCP_ACTIONS: "mcpActions",

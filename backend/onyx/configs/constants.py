@@ -354,6 +354,7 @@ class NotificationType(str, Enum):
     CRAFT_CONTENT_QUARANTINED = "craft_content_quarantined"
     LOOP_OUTPUT_HELD = "loop_output_held"
     LOOP_ITEM_FAILED = "loop_item_failed"
+    CRAFT_EVAL_RUN_ALERT = "craft_eval_run_alert"
 
 
 class BlobType(str, Enum):
@@ -760,6 +761,8 @@ class OnyxCeleryTask:
     LOOPS_FIRE_ITEM = "loops_fire_item"
     CRAFT_JOB_KEEPER_SWEEP = "craft_job_keeper_sweep"
     PRUNE_CRAFT_TAPE = "prune_craft_tape"
+    CRAFT_EVAL_RUN = "craft_eval_run"
+    CRAFT_EVAL_NIGHTLY = "craft_eval_nightly"
 
     CHECK_FOR_DOCUMENTS_FOR_OPENSEARCH_MIGRATION_TASK = (
         "check_for_documents_for_opensearch_migration_task"

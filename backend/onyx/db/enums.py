@@ -455,6 +455,46 @@ class SessionOrigin(str, PyEnum):
     JOB = "JOB"
     # China IM bot scenario command (Feishu/WeCom/DingTalk).
     IM = "IM"
+    # Golden-set eval session driven by the craft eval pipeline. Hidden from
+    # the sidebar; owned by the dedicated eval service user.
+    EVAL = "EVAL"
+
+
+class CraftEvalRunTrigger(str, PyEnum):
+    """What started a craft eval run."""
+
+    MANUAL = "manual"
+    NIGHTLY = "nightly"
+
+
+class CraftEvalRunStatus(str, PyEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    REGRESSED = "regressed"
+
+    def is_terminal(self) -> bool:
+        return self in (
+            CraftEvalRunStatus.SUCCEEDED,
+            CraftEvalRunStatus.FAILED,
+            CraftEvalRunStatus.REGRESSED,
+        )
+
+
+class CraftEvalCaseStatus(str, PyEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    PASS = "pass"
+    FAIL = "fail"
+    ERROR = "error"
+
+    def is_terminal(self) -> bool:
+        return self in (
+            CraftEvalCaseStatus.PASS,
+            CraftEvalCaseStatus.FAIL,
+            CraftEvalCaseStatus.ERROR,
+        )
 
 
 class CraftJobStatus(str, PyEnum):

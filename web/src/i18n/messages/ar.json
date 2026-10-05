@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "فشل تحميل المستخدمين. يرجى تحديث الصفحة."
+      },
+      "evaluations": {
+        "title": "التقييمات",
+        "description": "اختبار الانحدار المرجعي لمهام Craft الرأسية: تشغيل الحالات المدمجة بدون واجهة، وتقييمها بفحوص حتمية ومحكّم LLM، وتتبع النتائج بين التشغيلات.",
+        "runAll": "تشغيل كل الحالات",
+        "refresh": "تحديث",
+        "summary": {
+          "status": "حالة آخر عملية",
+          "score": "آخر نتيجة",
+          "passed": "الحالات الناجحة",
+          "lastRun": "آخر عملية"
+        },
+        "runs": {
+          "title": "التشغيلات",
+          "created": "الإنشاء",
+          "trigger": "المُشغِّل",
+          "status": "الحالة",
+          "score": "النتيجة",
+          "cases": "الحالات",
+          "model": "النموذج",
+          "emptyTitle": "لا توجد عمليات تقييم بعد",
+          "emptyDescription": "شغّل عملية للحصول على خط أساس.",
+          "triggerValue": {
+            "manual": "يدوي",
+            "nightly": "ليلي"
+          }
+        },
+        "status": {
+          "queued": "في الانتظار",
+          "running": "قيد التشغيل",
+          "succeeded": "نجح",
+          "failed": "فشل",
+          "regressed": "انحدار",
+          "pending": "معلّق",
+          "pass": "ناجح",
+          "error": "خطأ",
+          "fail": "راسب"
+        },
+        "cases": {
+          "title": "كتالوج الحالات",
+          "name": "الحالة",
+          "domain": "المجال",
+          "anchors": "المراسي",
+          "rubric": "المعايير",
+          "budget": "الميزانية",
+          "runCase": "تشغيل",
+          "emptyTitle": "لا توجد حالات تقييم",
+          "emptyDescription": "لا تتضمن هذه البنية حالات تقييم."
+        },
+        "detail": {
+          "title": "تفاصيل التشغيل",
+          "passed": "ناجحة",
+          "regressions": "الانحدارات مقارنة بالتشغيل السابق",
+          "findings": "الفحوص الحتمية",
+          "judge": "محكّم LLM",
+          "judgeError": "خطأ في الحكم",
+          "error": "خطأ في العملية",
+          "transcript": "عرض السجل",
+          "transcriptTitle": "سجل الجلسة",
+          "transcriptEmpty": "لم تُسجَّل أي رسائل في هذه الجلسة.",
+          "transcriptFailed": "فشل تحميل السجل"
+        },
+        "toasts": {
+          "triggered": "تم بدء التشغيل",
+          "triggering": "جارٍ البدء…",
+          "triggerFailed": "فشل بدء التشغيل",
+          "loadFailed": "فشل تحميل البيانات"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "التقييمات"
         }
       },
       "sections": {

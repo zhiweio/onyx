@@ -2930,6 +2930,74 @@
       },
       "usersLoadError": {
         "description": "Failed to load users. Please try refreshing the page."
+      },
+      "evaluations": {
+        "title": "Evaluations",
+        "description": "Golden-set regression for Craft vertical tasks: run the built-in cases headlessly, score them with deterministic checks plus a fresh-context LLM judge, and track results across runs.",
+        "runAll": "Run all cases",
+        "refresh": "Refresh",
+        "summary": {
+          "status": "Latest run status",
+          "score": "Latest score",
+          "passed": "Cases passed",
+          "lastRun": "Last run"
+        },
+        "runs": {
+          "title": "Runs",
+          "created": "Created",
+          "trigger": "Trigger",
+          "status": "Status",
+          "score": "Score",
+          "cases": "Cases",
+          "model": "Model",
+          "emptyTitle": "No eval runs yet",
+          "emptyDescription": "Trigger a run to get a baseline.",
+          "triggerValue": {
+            "manual": "Manual",
+            "nightly": "Nightly"
+          }
+        },
+        "status": {
+          "queued": "Queued",
+          "running": "Running",
+          "succeeded": "Succeeded",
+          "failed": "Failed",
+          "regressed": "Regressed",
+          "pending": "Pending",
+          "pass": "Pass",
+          "error": "Error",
+          "fail": "Fail"
+        },
+        "cases": {
+          "title": "Case catalog",
+          "name": "Case",
+          "domain": "Domain",
+          "anchors": "Anchors",
+          "rubric": "Rubric",
+          "budget": "Budget",
+          "runCase": "Run",
+          "emptyTitle": "No eval cases",
+          "emptyDescription": "No eval cases are packaged in this build."
+        },
+        "detail": {
+          "title": "Run detail",
+          "passed": "passed",
+          "regressions": "Regressions vs previous run",
+          "findings": "Deterministic checks",
+          "judge": "LLM judge",
+          "judgeError": "Judge error",
+          "error": "Run error",
+          "transcript": "View transcript",
+          "transcriptTitle": "Session transcript",
+          "transcriptEmpty": "No messages were recorded for this session.",
+          "transcriptFailed": "Failed to load transcript"
+        },
+        "toasts": {
+          "triggered": "Eval run triggered",
+          "triggering": "Triggering…",
+          "triggerFailed": "Failed to trigger eval run",
+          "loadFailed": "Failed to load eval data"
+        }
       }
     },
     "craftPreferences": {
@@ -15750,6 +15818,9 @@
         },
         "branding": {
           "label": "Branding"
+        },
+        "craftEvaluations": {
+          "label": "Evaluations"
         }
       },
       "sections": {
