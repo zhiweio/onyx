@@ -384,3 +384,28 @@ def test_feishu_reply_rich_uses_card(monkeypatch) -> None:
     framework._feishu_reply_rich("cfg", "mgr", "oc_1", "**hi**")
     assert text_sent["text"] == "**hi**"
     assert fallback_used == []
+
+
+def test_split_for_cards_prefers_paragraph_boundaries() -> None:
+    from onyx.onyxbot.china.framework import _split_for_cards
+
+    text = "段落一\n\n" + "x" * 200 + "\n\n" + "段落二\n\n" + "y" * 200
+    chunks = _split_for_cards(text, 150)
+    assert len(chunks) >= 2
+    for chunk in chunks:
+        assert len(chunk) <= 150 or "\n\n" not in chunk[:150]
+    assert "".join(c.replace("\n", "") for c in chunks).startswith("段落一")
+
+
+def test_split_for_cards_hard_cuts_oversized_paragraph() -> None:
+    from onyx.onyxbot.china.framework import _split_for_cards
+
+    chunks = _split_for_cards("z" * 500, 120)
+    assert all(len(c) <= 120 for c in chunks)
+    assert "".join(chunks) == "z" * 500
+
+
+def test_split_for_cards_single_chunk_short_text() -> None:
+    from onyx.onyxbot.china.framework import _split_for_cards
+
+    assert _split_for_cards("短文本", 100) == ["短文本"]

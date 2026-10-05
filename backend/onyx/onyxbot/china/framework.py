@@ -473,18 +473,33 @@ def _answer_feishu(message: InboundMessage, provider_config: Any) -> None:
         return
 
     display = answer.strip()
-    if len(display) <= _FEISHU_CARD_MAX_CHARS:
-        _feishu_update_card(provider_config, token_mgr, card_msg_id, display)
-        return
+    chunks = _split_for_cards(display, _FEISHU_CARD_MAX_CHARS)
+    # First chunk updates the streaming card in place; extra chunks go out
+    # as their own cards so every page renders markdown (no raw-text DMs).
+    _feishu_update_card(provider_config, token_mgr, card_msg_id, chunks[0])
+    total = len(chunks)
+    for i, chunk in enumerate(chunks[1:], start=2):
+        part = f"**({i}/{total})**\n\n{chunk}"
+        if _feishu_send_card(provider_config, token_mgr, message.chat_id, part) is None:
+            _feishu_send(provider_config, token_mgr, message.chat_id, chunk)
 
-    # Too long for one card: truncate the card preview and DM the full text.
-    _feishu_update_card(
-        provider_config,
-        token_mgr,
-        card_msg_id,
-        display[:_FEISHU_CARD_MAX_CHARS] + "\n\n……(内容较长,完整回答已单独发送)",
-    )
-    _feishu_send(provider_config, token_mgr, message.chat_id, display)
+
+def _split_for_cards(text: str, limit: int) -> list[str]:
+    """Split long text into card-sized chunks at paragraph or line
+    boundaries; a single oversized paragraph is hard-cut."""
+    chunks: list[str] = []
+    rest = text.strip()
+    while len(rest) > limit:
+        cut = rest.rfind("\n\n", 0, limit)
+        if cut < limit // 2:
+            cut = rest.rfind("\n", 0, limit)
+        if cut < limit // 2:
+            cut = limit
+        chunks.append(rest[:cut].rstrip())
+        rest = rest[cut:].lstrip("\n")
+    if rest:
+        chunks.append(rest)
+    return chunks or [text]
 
 
 def _answer_from_prepared(prepared: _PreparedTurn) -> str | None:
