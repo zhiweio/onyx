@@ -1082,7 +1082,11 @@ class ConnectorCredentialPair(Base):
         overlaps="document_set",
     )
     index_attempts: Mapped[list["IndexAttempt"]] = relationship(
-        "IndexAttempt", back_populates="connector_credential_pair"
+        "IndexAttempt",
+        back_populates="connector_credential_pair",
+        # without this, deleting a CC pair tries to NULL the NOT NULL
+        # connector_credential_pair_id on its attempts and blows up
+        cascade="all, delete-orphan",
     )
 
     # the user id of the user that created this cc pair

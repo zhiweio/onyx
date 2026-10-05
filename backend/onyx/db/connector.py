@@ -10,8 +10,13 @@ from onyx.db.enums import IndexingMode
 from onyx.db.models import (
     Connector,
     ConnectorCredentialPair,
+    DocPermissionSyncAttempt,
+    DocumentSet__ConnectorCredentialPair,
+    ExternalGroupPermissionSyncAttempt,
     FederatedConnector,
     IndexAttempt,
+    IndexAttemptError,
+    UserGroup__ConnectorCredentialPair,
 )
 from onyx.kg.models import KGConnectorData
 from onyx.server.documents.models import ConnectorBase, ObjectCreationIdResponse
@@ -164,6 +169,29 @@ def delete_connector(
         return StatusResponse(
             success=True, message="Connector was already deleted", data=connector_id
         )
+
+    # attempt-history and association rows have no DB-level cascade on the
+    # CC pair FK; clear them explicitly or the delete fails on FK NO ACTION
+    cc_pair_ids = [cc_pair.id for cc_pair in connector.credentials]
+    if cc_pair_ids:
+        # children of index_attempt must go before the attempts themselves
+        for attempt_model in (
+            IndexAttemptError,
+            DocPermissionSyncAttempt,
+            ExternalGroupPermissionSyncAttempt,
+            IndexAttempt,
+        ):
+            db_session.query(attempt_model).filter(
+                attempt_model.connector_credential_pair_id.in_(cc_pair_ids)  # type: ignore[attr-defined]
+            ).delete(synchronize_session=False)
+        db_session.query(DocumentSet__ConnectorCredentialPair).filter(
+            DocumentSet__ConnectorCredentialPair.connector_credential_pair_id.in_(
+                cc_pair_ids
+            )
+        ).delete(synchronize_session=False)
+        db_session.query(UserGroup__ConnectorCredentialPair).filter(
+            UserGroup__ConnectorCredentialPair.cc_pair_id.in_(cc_pair_ids)
+        ).delete(synchronize_session=False)
 
     db_session.delete(connector)
     return StatusResponse(
