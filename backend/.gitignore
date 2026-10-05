@@ -6,6 +6,8 @@ site_crawls/
 api_keys.py
 *ipynb
 .env*
+# Test isolation config: DB name and bucket name only — never put secrets here.
+!tests/integration/.env
 vespa-app.zip
 dynamic_config_storage/
 celerybeat-schedule*

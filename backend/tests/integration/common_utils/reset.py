@@ -25,6 +25,12 @@ from tests.integration.common_utils.timeout import run_with_timeout_multiproc
 
 logger = setup_logger()
 
+# backend/ — anchor alembic paths so resets work from any CWD (pytest may run
+# from the repo root per AGENTS.md, where a relative "alembic.ini" would fail).
+BACKEND_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
+)
+
 
 def _run_migrations(
     database_url: str,
@@ -37,7 +43,8 @@ def _run_migrations(
     logging.getLogger("alembic").setLevel(logging.CRITICAL)
 
     # Create an Alembic configuration object
-    alembic_cfg = Config("alembic.ini")
+    alembic_cfg = Config(os.path.join(BACKEND_DIR, "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", os.path.join(BACKEND_DIR, "alembic"))
     alembic_cfg.set_section_option("logger_alembic", "level", "WARN")
     alembic_cfg.attributes["configure_logger"] = False
     alembic_cfg.config_ini_section = config_name
