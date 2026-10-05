@@ -326,3 +326,20 @@ def test_feishu_card_content_uses_markdown_module() -> None:
     card = _json.loads(_feishu_card_content("# 标题"))
     assert card["elements"][0]["tag"] == "markdown"
     assert card["elements"][0]["content"] == "**标题**"
+
+
+def test_help_and_scenario_list_commands_registered() -> None:
+    from onyx.onyxbot.china.framework import (
+        _HELP_COMMANDS,
+        _SCENARIO_LIST_COMMANDS,
+        _help_reply,
+    )
+
+    assert "/帮助" in _HELP_COMMANDS and "/help" in _HELP_COMMANDS
+    # Feishu custom-menu items send their label as the message, so the menu
+    # labels must be registered aliases
+    assert "使用帮助" in _HELP_COMMANDS
+    assert "/场景列表" in _SCENARIO_LIST_COMMANDS
+    assert "我的场景" in _SCENARIO_LIST_COMMANDS
+    reply = _help_reply()
+    assert "/场景" in reply and "/reset" in reply and "/场景列表" in reply

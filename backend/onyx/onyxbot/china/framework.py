@@ -43,6 +43,14 @@ BOT_EMAIL_DOMAIN_FALLBACK = "im.local"
 _RESET_COMMANDS = frozenset({"/reset", "/new", "/新对话", "新对话"})
 _RESET_FLAG_TTL_SECONDS = 7 * 24 * 3600
 
+# Slash commands answered directly (menu items send these as messages).
+# Feishu's custom menu sends the item name as the message, so the friendly
+# menu labels double as command aliases.
+_HELP_COMMANDS = frozenset({"/help", "/帮助", "帮助", "使用帮助"})
+_SCENARIO_LIST_COMMANDS = frozenset(
+    {"/场景列表", "/场景 list", "/scenarios", "场景列表", "我的场景"}
+)
+
 # Feishu interactive-card streaming: throttle cadence and size limits.
 # lark_md in cards renders most markdown but not tables; very long answers
 # overflow the card, so they fall back to a plain text message.
@@ -258,6 +266,12 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
             _mark_reset(message.platform, message.platform_user_id)
             return "好的,已重置对话。下一条消息将开启全新的会话。"
 
+        if command in _HELP_COMMANDS:
+            return _help_reply()
+
+        if command in _SCENARIO_LIST_COMMANDS:
+            return _scenario_list_reply(db_session, user)
+
         start_fresh = _consume_reset_flag(message.platform, message.platform_user_id)
         session_id = None if start_fresh else _latest_session_id(db_session, user.id)
 
@@ -414,6 +428,37 @@ def deterministic_email(platform: str, platform_user_id: str, config: Any) -> st
     # Every provider config model (and test stub) carries email_domain.
     domain = config.email_domain or BOT_EMAIL_DOMAIN_FALLBACK
     return f"{platform}-{platform_user_id}@{domain}"
+
+
+def _help_reply() -> str:
+    return (
+        "🤖 **Onyx 机器人使用指南**\n"
+        "- 直接发消息即可提问:回答会检索已接入的知识库(如飞书知识库)并按需联网\n"
+        "- **/场景** <名称> <任务内容>:启动自动化场景任务\n"
+        "- **/场景列表**:查看当前可用的场景\n"
+        "- **/reset**:开启新对话(清除上下文;长期记忆保留)\n"
+        "- **/帮助**:显示本指南"
+    )
+
+
+def _scenario_list_reply(db_session: Session, user: Any) -> str:
+    from onyx.db.scenario import list_scenarios_for_user
+
+    scenarios = list_scenarios_for_user(db_session, user)
+    if not scenarios:
+        return "📋 当前没有可用场景。场景由管理员在广场配置。"
+    lines = []
+    for scenario in scenarios:
+        line = f"- **{scenario.name}**"
+        description = (scenario.description or "").strip()
+        if description:
+            line += f":{description.splitlines()[0][:60]}"
+        lines.append(line)
+    return (
+        f"📋 可用场景({len(scenarios)}):\n"
+        + "\n".join(lines)
+        + "\n\n用 **/场景 <名称> <任务内容>** 启动。"
+    )
 
 
 # ── replies + push ────────────────────────────────────────────────────────
