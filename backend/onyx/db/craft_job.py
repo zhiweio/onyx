@@ -9,8 +9,9 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus
+from onyx.db.enums import CraftJobSpecialistStatus, CraftJobStatus, SessionOrigin
 from onyx.db.models import (
+    BuildSession,
     CraftJob,
     CraftJobCheckpoint,
     CraftJobEvent,
@@ -61,6 +62,27 @@ def get_open_job_for_session(db_session: Session, session_id: UUID) -> CraftJob 
         )
         .order_by(CraftJob.created_at.desc())
         .limit(1)
+    )
+
+
+def list_driven_craft_jobs(db_session: Session, *, limit: int = 100) -> list[CraftJob]:
+    """Open jobs whose turn-driven superstep needs an external keeper.
+
+    Headless lane sessions have no SSE watcher and the turn runner is an
+    in-process thread, so an API restart can strand a job with dead RUNNING
+    specialists and no driver. The keeper beat sweeps exactly these."""
+    return list(
+        db_session.scalars(
+            select(CraftJob)
+            .options(selectinload(CraftJob.specialists))
+            .where(
+                CraftJob.status.in_(
+                    [CraftJobStatus.RUNNING, CraftJobStatus.WAITING_LANES]
+                )
+            )
+            .order_by(CraftJob.created_at.desc())
+            .limit(limit)
+        )
     )
 
 
@@ -137,6 +159,30 @@ def user_has_open_craft_job(db_session: Session, user_id: UUID) -> bool:
         )
         is not None
     )
+
+
+def list_open_craft_jobs_for_user(
+    db_session: Session,
+    user_id: UUID,
+    origin: SessionOrigin | None = None,
+) -> list[CraftJob]:
+    """The user's open (non-terminal) CraftJobs, newest first.
+
+    ``origin`` narrows to sessions of one creation source — the IM
+    concurrency limit counts only IM-launched jobs so web usage stays
+    unrestricted."""
+    stmt = (
+        select(CraftJob)
+        .join(BuildSession, BuildSession.id == CraftJob.session_id)
+        .where(
+            CraftJob.user_id == user_id,
+            CraftJob.status.in_(OPEN_JOB_STATUSES),
+        )
+        .order_by(CraftJob.created_at.desc())
+    )
+    if origin is not None:
+        stmt = stmt.where(BuildSession.origin == origin)
+    return list(db_session.scalars(stmt).all())
 
 
 def project_has_craft_job(db_session: Session, project_id: UUID) -> bool:

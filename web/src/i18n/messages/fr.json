@@ -8748,6 +8748,15 @@
         },
         "saved": "Barre latérale mise à jour",
         "saveFailed": "Échec de la mise à jour"
+      },
+      "concurrency": {
+        "title": "Scenario job concurrency cap",
+        "description": "Max scenario tasks running at once per user via the bot (Feishu/WeCom/DingTalk); web is not limited. 1-10.",
+        "label": "Per-user concurrency cap",
+        "save": "Save",
+        "saved": "Concurrency cap updated",
+        "saveFailed": "Update failed",
+        "invalid": "Enter an integer between 1 and 10"
       }
     }
   },

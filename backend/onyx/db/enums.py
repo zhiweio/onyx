@@ -441,6 +441,9 @@ class SessionOrigin(str, PyEnum):
     SLACK:       session started by a Slack thread mention. Surfaces in
                  Slack (and a future admin list), not the user sidebar.
                  Excluded from the Craft sidebar list.
+    IM:          session started from a China IM bot (Feishu/WeCom/
+                 DingTalk) scenario command. Excluded from the Craft
+                 sidebar list; IM concurrency limits key off this origin.
     JOB:         specialist session spawned by a Craft long job. Excluded
                  from the Craft sidebar list.
     """
@@ -450,6 +453,8 @@ class SessionOrigin(str, PyEnum):
     SLACK = "SLACK"
     # Specialist session spawned by a Craft long job. Hidden from the sidebar.
     JOB = "JOB"
+    # China IM bot scenario command (Feishu/WeCom/DingTalk).
+    IM = "IM"
 
 
 class CraftJobStatus(str, PyEnum):

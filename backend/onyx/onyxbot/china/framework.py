@@ -17,6 +17,8 @@ binding and DM the user through the same reply senders.
 
 from __future__ import annotations
 
+import datetime
+import io
 import json
 import re
 import threading
@@ -28,6 +30,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from onyx.configs.constants import FileOrigin
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -50,6 +53,8 @@ _HELP_COMMANDS = frozenset({"/help", "/帮助", "帮助", "使用帮助"})
 _SCENARIO_LIST_COMMANDS = frozenset(
     {"/场景列表", "/场景 list", "/scenarios", "场景列表", "我的场景"}
 )
+_MY_TASKS_COMMANDS = frozenset({"/tasks", "/任务", "/我的任务", "我的任务"})
+_CANCEL_TASK_COMMANDS = frozenset({"/取消任务", "/取消", "/cancel"})
 
 # Feishu interactive-card streaming: throttle cadence and size limits.
 # lark_md in cards renders most markdown but not tables; very long answers
@@ -63,6 +68,16 @@ class CallbackRejected(Exception):
 
 
 @dataclass(frozen=True)
+class InboundAttachment:
+    """One attachment carried by an inbound Feishu message, before it is
+    downloaded and stored in Onyx's file store."""
+
+    kind: str  # image | file
+    message_key: str  # image_key / file_key for the download API
+    file_name: str = ""
+
+
+@dataclass(frozen=True)
 class InboundMessage:
     platform: str  # wecom | dingtalk | feishu
     msg_id: str
@@ -70,6 +85,7 @@ class InboundMessage:
     chat_id: str  # group or DM conversation id
     text: str
     sender_name: str = ""
+    attachments: tuple[InboundAttachment, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -279,12 +295,72 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         if command in _SCENARIO_LIST_COMMANDS:
             return _scenario_list_reply(db_session, user)
 
+        if command in _MY_TASKS_COMMANDS:
+            return _my_tasks_reply(db_session, user)
+
+        # /取消任务 carries an index argument, so match by prefix
+        if command in _CANCEL_TASK_COMMANDS or command.startswith(
+            tuple(prefix + " " for prefix in _CANCEL_TASK_COMMANDS)
+        ):
+            return _cancel_task_reply(db_session, user, message.text)
+
+        # Feishu skill command: /技能 [关键词|序号], or the bare menu label
+        if message.platform == "feishu" and (
+            command == "技能"
+            or command.startswith("/技能")
+            or command.startswith("/skill")
+        ):
+            return _skills_command_reply(
+                db_session,
+                user,
+                message.text,
+                message.platform,
+                message.platform_user_id,
+            )
+
+        # Inbound Feishu attachments: download and park for the next text.
+        # A post message carries text too — park its images and fall through
+        # so text + attachments are consumed by the same turn.
+        if message.attachments and message.platform == "feishu":
+            ack = _collect_feishu_attachments(
+                db_session, user, message, provider_config
+            )
+            if ack is not None and not message.text.strip():
+                return ack
+
         start_fresh = _consume_reset_flag(message.platform, message.platform_user_id)
+        if start_fresh:
+            _clear_pending_files(message.platform, message.platform_user_id)
+            _clear_pending_skill(message.platform, message.platform_user_id)
         session_id = None if start_fresh else _latest_session_id(db_session, user.id)
 
         trigger_reply = try_scenario_trigger(db_session, user, message.text)
         if trigger_reply is not None:
+            # parked attachments are kept for the next chat message; tell the
+            # user where they went instead of silently dropping them
+            pending = _read_pending_files(message.platform, message.platform_user_id)
+            if pending:
+                names = ", ".join(str(f.get("name") or "附件") for f in pending[:5])
+                trigger_reply = (
+                    f"{trigger_reply}\n\n📎 随消息的 {len(pending)} 个附件已存入你的"
+                    f"文件空间({names});场景任务暂不读取附件,可在网页端会话中引用。"
+                )
             return trigger_reply
+
+        file_descriptors = (
+            _consume_pending_files(message.platform, message.platform_user_id)
+            if message.platform == "feishu"
+            else []
+        )
+        selected_skill_ids = None
+        if message.platform == "feishu":
+            selected_skill_ids = (
+                None
+                if start_fresh
+                else _consume_pending_skill(message.platform, message.platform_user_id)
+            )
+            if selected_skill_ids:
+                selected_skill_ids = [selected_skill_ids]
 
     origin_value = {
         "wecom": MessageOrigin.WECOMBOT,
@@ -301,6 +377,8 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         # (pydantic v2 ignores non-self returns there).
         chat_session_id=session_id,
         chat_session_info=None if session_id else ChatSessionCreationRequest(),
+        file_descriptors=file_descriptors,
+        selected_skill_ids=selected_skill_ids,
     )
     return _PreparedTurn(user_id=user.id, request=request)
 
@@ -504,15 +582,395 @@ def _resolve_onyx_user(
     )
 
 
+# ── pending attachments (Feishu images/files → Onyx chat files) ──────────
+
+_PENDING_FILES_PREFIX = "china_bot:files:"
+_PENDING_FILES_TTL_SECONDS = 24 * 3600
+_MAX_PENDING_FILES = 10
+
+# pending skill selection: applied to the next chat message
+_SKILL_FLAG_PREFIX = "china_bot:skill:"
+_SKILL_FLAG_TTL_SECONDS = 30 * 60
+
+
+def _pending_files_key(platform: str, platform_user_id: str) -> str:
+    return f"{_PENDING_FILES_PREFIX}{platform}:{platform_user_id}"
+
+
+def _read_pending_files(platform: str, platform_user_id: str) -> list[dict[str, Any]]:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        raw = client.get(_pending_files_key(platform, platform_user_id))
+        files = json.loads(raw) if raw else []
+        return files if isinstance(files, list) else []
+    except Exception:
+        logger.warning("pending file list read failed", exc_info=True)
+        return []
+
+
+def _write_pending_files(
+    platform: str, platform_user_id: str, files: list[dict[str, Any]]
+) -> None:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        client.set(
+            _pending_files_key(platform, platform_user_id),
+            json.dumps(files, ensure_ascii=False),
+            ex=_PENDING_FILES_TTL_SECONDS,
+        )
+    except Exception:
+        logger.warning("pending file list write failed", exc_info=True)
+
+
+def _clear_pending_files(platform: str, platform_user_id: str) -> None:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        client.delete(_pending_files_key(platform, platform_user_id))
+    except Exception:
+        logger.warning("pending file list clear failed", exc_info=True)
+
+
+def _feishu_download(
+    config: Any, token_mgr: Any, attachment: InboundAttachment
+) -> tuple[bytes, str] | None:
+    """Download one Feishu attachment; returns (content, mime)."""
+    import requests
+
+    token = _feishu_token(config, token_mgr)
+    if attachment.kind == "image":
+        url = f"https://open.feishu.cn/open-apis/im/v1/images/{attachment.message_key}"
+        params: dict[str, str] = {}
+    else:
+        url = f"https://open.feishu.cn/open-apis/im/v1/files/{attachment.message_key}"
+        params = {"file_type": "file"}
+    resp = requests.get(
+        url,
+        params=params,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.content, (resp.headers.get("Content-Type") or "").split(";")[0]
+
+
+def _store_feishu_attachment(
+    db_session: Session,
+    user: Any,
+    config: Any,
+    token_mgr: Any,
+    attachment: InboundAttachment,
+) -> tuple[dict[str, Any], str] | str:
+    """Download + store one attachment as the user's Onyx file.
+
+    Returns ``(file_descriptor, display_name)`` on success or an error
+    message string on rejection."""
+    import mimetypes
+
+    from onyx.configs.app_configs import DEFAULT_USER_FILE_MAX_UPLOAD_SIZE_MB
+    from onyx.db.enums import UserFileStatus
+    from onyx.db.models import UserFile
+    from onyx.file_processing.file_types import OnyxMimeTypes
+    from onyx.file_store.file_store import get_default_file_store
+    from onyx.server.query_and_chat.chat_utils import mime_type_to_chat_file_type
+
+    try:
+        downloaded = _feishu_download(config, token_mgr, attachment)
+    except Exception:
+        logger.exception("feishu attachment download failed")
+        return f"❌ {attachment.file_name or attachment.kind} 下载失败,请重试"
+    if downloaded is None:
+        return f"❌ {attachment.file_name or attachment.kind} 下载失败"
+    content, content_mime = downloaded
+
+    name = attachment.file_name or (
+        f"feishu-image.{content_mime.split('/')[-1] or 'png'}"
+        if attachment.kind == "image"
+        else "feishu-file"
+    )
+    mime = mimetypes.guess_type(name)[0] or (
+        content_mime if content_mime else "application/octet-stream"
+    )
+
+    max_bytes = DEFAULT_USER_FILE_MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        return (
+            f"❌ {name} 超过大小上限({DEFAULT_USER_FILE_MAX_UPLOAD_SIZE_MB}MB),已跳过"
+        )
+    normalized = mime.lower()
+    if normalized not in OnyxMimeTypes.ALLOWED_MIME_TYPES and (
+        f"{normalized.split('/')[0]}/*" not in OnyxMimeTypes.ALLOWED_MIME_TYPES
+    ):
+        return f"❌ {name}:暂不支持该文件类型({mime})"
+
+    descriptor_type = mime_type_to_chat_file_type(mime)
+    file_id = get_default_file_store().save_file(
+        io.BytesIO(content),
+        display_name=name,
+        file_origin=FileOrigin.USER_FILE,
+        file_type=mime,
+    )
+    user_file = UserFile(
+        id=uuid4(),
+        user_id=user.id,
+        file_id=file_id,
+        name=name,
+        token_count=max(1, len(content) // 4),
+        content_type=mime,
+        file_type=mime,
+        status=UserFileStatus.SKIPPED,
+        last_accessed_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    db_session.add(user_file)
+    db_session.commit()
+    descriptor = {
+        "id": file_id,
+        "type": descriptor_type.value,
+        "name": name,
+        "user_file_id": str(user_file.id),
+    }
+    return descriptor, name
+
+
 def _help_reply() -> str:
     return (
         "🤖 **Onyx 机器人使用指南**\n"
         "- 直接发消息即可提问:回答会检索已接入的知识库(如飞书知识库)并按需联网\n"
+        "- **附件**:先发图片/文件(可多个),再发文字说明即可一并处理\n"
+        "- **/技能** 或 /技能 <关键词>:查看/搜索技能,/技能 <序号> 选中后下一条消息携带技能执行\n"
         "- **/场景** <名称> <任务内容>:启动自动化场景任务\n"
         "- **/场景列表**:查看当前可用的场景\n"
-        "- **/reset**:开启新对话(清除上下文;长期记忆保留)\n"
+        "- **/我的任务**:查看运行中的场景任务(每人同时最多有限额内的任务)\n"
+        "- **/取消任务** <序号>:取消一个运行中的任务并释放额度\n"
+        "- **/reset**:开启新对话(清除上下文、待用附件与技能)\n"
         "- **/帮助**:显示本指南"
     )
+
+
+def _collect_feishu_attachments(
+    db_session: Session,
+    user: Any,
+    message: InboundMessage,
+    provider_config: Any,
+) -> str | None:
+    """Download and park inbound attachments for the next chat message.
+
+    Returns an ack/error reply; ``None`` when everything is already at the
+    per-user pending cap."""
+    from onyx.connectors.china_common import AppTokenManager
+
+    token_mgr = AppTokenManager
+    pending = _read_pending_files(message.platform, message.platform_user_id)
+    collected: list[str] = []
+    errors: list[str] = []
+    for attachment in message.attachments:
+        if len(pending) >= _MAX_PENDING_FILES:
+            errors.append(
+                f"❌ {attachment.file_name or attachment.kind}:待处理附件已满({_MAX_PENDING_FILES} 个),先发送文字消息处理它们"
+            )
+            continue
+        result = _store_feishu_attachment(
+            db_session, user, provider_config, token_mgr, attachment
+        )
+        if isinstance(result, str):
+            errors.append(result)
+            continue
+        descriptor, display_name = result
+        pending.append(descriptor)
+        collected.append(display_name)
+    _write_pending_files(message.platform, message.platform_user_id, pending)
+
+    parts = []
+    if collected:
+        parts.append(
+            f"📎 已收到:{'、'.join(collected)}(待处理 {len(pending)}/{_MAX_PENDING_FILES})。"
+            "补充文字说明后发送,即可连同附件一起处理。"
+        )
+    if errors:
+        parts.append("\n".join(errors))
+    return "\n".join(parts) if parts else None
+
+
+def _consume_pending_files(
+    platform: str, platform_user_id: str
+) -> list[dict[str, Any]]:
+    files = _read_pending_files(platform, platform_user_id)
+    if files:
+        _clear_pending_files(platform, platform_user_id)
+    return files
+
+
+# ── pending skill selection ───────────────────────────────────────────────
+
+
+def _skill_flag_key(platform: str, platform_user_id: str) -> str:
+    return f"{_SKILL_FLAG_PREFIX}{platform}:{platform_user_id}"
+
+
+def _consume_pending_skill(platform: str, platform_user_id: str) -> str | None:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        key = _skill_flag_key(platform, platform_user_id)
+        raw = client.get(key)
+        if raw:
+            client.delete(key)
+            return raw if isinstance(raw, str) else raw.decode("utf-8")
+    except Exception:
+        logger.warning("pending skill read failed", exc_info=True)
+    return None
+
+
+def _clear_pending_skill(platform: str, platform_user_id: str) -> None:
+    try:
+        from onyx.redis.redis_pool import get_redis_client
+        from shared_configs.contextvars import get_current_tenant_id
+
+        client = get_redis_client(tenant_id=get_current_tenant_id())
+        client.delete(_skill_flag_key(platform, platform_user_id))
+    except Exception:
+        logger.warning("pending skill clear failed", exc_info=True)
+
+
+def _skills_command_reply(
+    db_session: Session,
+    user: Any,
+    text: str,
+    platform: str,
+    platform_user_id: str,
+) -> str:
+    """/技能 [关键词|序号]:list, search, or select a runtime skill."""
+    from onyx.db.skill import list_runtime_skills_for_user
+
+    skills = list_runtime_skills_for_user(db_session=db_session, user=user)
+    arg = ""
+    stripped = text.strip()
+    for prefix in ("/技能", "/skill"):
+        if stripped.startswith(prefix):
+            arg = stripped[len(prefix) :].strip()
+            break
+    else:
+        if stripped == "技能":
+            arg = ""
+
+    if not skills:
+        return "🧰 当前没有可用技能。技能由管理员上传配置。"
+
+    if arg.isdigit():
+        idx = int(arg)
+        if idx < 1 or idx > len(skills):
+            return f"序号超出范围:当前共 {len(skills)} 个技能。见 /技能。"
+        skill = sorted(skills, key=lambda s: s.updated_at, reverse=True)[idx - 1]
+        try:
+            from onyx.redis.redis_pool import get_redis_client
+            from shared_configs.contextvars import get_current_tenant_id
+
+            client = get_redis_client(tenant_id=get_current_tenant_id())
+            client.set(
+                _skill_flag_key(platform, platform_user_id),
+                skill.name,
+                ex=_SKILL_FLAG_TTL_SECONDS,
+            )
+        except Exception:
+            logger.warning("pending skill write failed", exc_info=True)
+            return "技能选择暂不可用,请稍后重试。"
+        return (
+            f"✅ 已选技能「{skill.name}」。下一条消息将携带该技能执行;"
+            "发 /取消技能 取消。"
+        )
+
+    keyword = arg
+    if keyword:
+        lowered = keyword.lower()
+        matches = [
+            s
+            for s in skills
+            if lowered in s.name.lower() or lowered in (s.description or "").lower()
+        ]
+        if not matches:
+            return f"未找到包含「{keyword}」的技能。发 /技能 查看全部。"
+        shown = matches[:10]
+    else:
+        shown = sorted(skills, key=lambda s: s.updated_at, reverse=True)[:10]
+
+    lines = [
+        f"{i}. **{s.name}**:{(s.description or '').strip().splitlines()[0][:60]}"
+        for i, s in enumerate(shown, start=1)
+    ]
+    listing = "\n".join(lines)
+    scope = (
+        f"(匹配「{keyword}」{len(matches)} 个,显示前 10)"
+        if keyword
+        else f"(共 {len(skills)} 个,显示最近更新)"
+    )
+    return (
+        f"🧰 可用技能 {scope}:\n{listing}\n\n"
+        "搜索:/技能 <关键词>;选择:/技能 <序号>;选中后下一条消息携带技能执行。"
+    )
+
+
+_CRAFT_STATUS_LABELS = {
+    "pending": "排队中",
+    "running": "运行中",
+    "waiting_lanes": "运行中",
+    "interrupted": "待处理(需在网页端确认)",
+}
+
+
+def _my_tasks_reply(db_session: Session, user: Any) -> str:
+    from onyx.db.craft_job import list_open_craft_jobs_for_user
+    from onyx.db.enums import SessionOrigin
+    from onyx.server.settings.store import load_settings
+
+    jobs = list_open_craft_jobs_for_user(db_session, user.id, origin=SessionOrigin.IM)
+    if not jobs:
+        return "📭 当前没有运行中的场景任务。用 /场景 <名称> <任务内容> 启动。"
+    limit = load_settings().im_craft_job_concurrency_limit
+    lines = []
+    for idx, job in enumerate(jobs, start=1):
+        label = _CRAFT_STATUS_LABELS.get(
+            str(getattr(job.status, "value", str(job.status))).lower(),
+            str(job.status),
+        )
+        lines.append(
+            f"{idx}. **{job.name}** — {label}\n   /craft/v1?sessionId={job.session_id}"
+        )
+    listing = "\n".join(lines)
+    return (
+        f"📋 运行中的场景任务({len(jobs)}/{limit}):\n{listing}\n\n"
+        "完成或失败会自动通知你;/取消任务 <序号> 可取消并释放额度。"
+    )
+
+
+def _cancel_task_reply(db_session: Session, user: Any, text: str) -> str:
+    from onyx.db.craft_job import list_open_craft_jobs_for_user
+    from onyx.db.enums import SessionOrigin
+    from onyx.server.features.build.jobs.api import cancel_open_job_for_user
+
+    arg = (
+        text.strip().split(maxsplit=1)[1].strip()
+        if len(text.strip().split(maxsplit=1)) > 1
+        else ""
+    )
+    if not arg.isdigit():
+        return "用法:/取消任务 <序号>(序号见 /我的任务 列表)"
+    jobs = list_open_craft_jobs_for_user(db_session, user.id, origin=SessionOrigin.IM)
+    idx = int(arg)
+    if idx < 1 or idx > len(jobs):
+        return f"序号超出范围:当前共 {len(jobs)} 个运行中的任务。见 /我的任务。"
+    job = jobs[idx - 1]
+    cancel_open_job_for_user(db_session, job, user.id)
+    return f"✅ 已取消:{job.name}。额度已释放,可以启动新的任务了。"
 
 
 def _scenario_list_reply(db_session: Session, user: Any) -> str:

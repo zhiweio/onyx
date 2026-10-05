@@ -78,6 +78,17 @@ def try_scenario_trigger(db_session: Session, user: Any, text: str) -> str | Non
     name, payload = split
     scenario = next(s for s in scenarios if s.name == name)
 
+    from onyx.db.craft_job import list_open_craft_jobs_for_user
+    from onyx.db.enums import SessionOrigin
+    from onyx.server.settings.store import load_settings
+
+    open_jobs = list_open_craft_jobs_for_user(
+        db_session, user.id, origin=SessionOrigin.IM
+    )
+    limit = load_settings().im_craft_job_concurrency_limit
+    if len(open_jobs) >= limit:
+        return _limit_reached_reply(open_jobs)
+
     try:
         link = _launch_job(db_session, user=user, scenario=scenario, prompt=payload)
     except Exception:
@@ -86,10 +97,39 @@ def try_scenario_trigger(db_session: Session, user: Any, text: str) -> str | Non
             f"场景「{name}」启动失败,请稍后重试或在 Web 端启动。"
             "\nFailed to start the scenario; retry later or use the web UI."
         )
-    return f"任务已创建:场景「{name}」。\n进度与审批: {link}"
+    return (
+        f"任务已创建:场景「{name}」。\n进度与审批: {link}\n\n"
+        "任务完成或失败会自动通知你;/我的任务 查看运行中的任务。"
+    )
+
+
+def _limit_reached_reply(open_jobs: list[Any]) -> str:
+    """Rejection card when the user's IM job concurrency is exhausted:
+    list what is running so the message doubles as a status view."""
+    from onyx.db.enums import CraftJobStatus
+
+    status_labels = {
+        CraftJobStatus.PENDING: "排队中",
+        CraftJobStatus.RUNNING: "运行中",
+        CraftJobStatus.WAITING_LANES: "运行中",
+        CraftJobStatus.INTERRUPTED: "待处理(需在网页端确认)",
+    }
+    lines = []
+    for idx, job in enumerate(open_jobs, start=1):
+        label = status_labels.get(job.status, job.status.value)
+        lines.append(
+            f"{idx}. {job.name} — {label}\n   /craft/v1?sessionId={job.session_id}"
+        )
+    listing = "\n".join(lines)
+    return (
+        f"⚠️ 你已有 {len(open_jobs)} 个场景任务在运行,暂时无法启动新任务。"
+        f"\n{listing}\n\n"
+        "任务完成会自动通知你;用 /我的任务 查看,/取消任务 <序号> 可取消并释放额度。"
+    )
 
 
 def _launch_job(db_session: Session, *, user: Any, scenario: Any, prompt: str) -> str:
+    from onyx.db.enums import SessionOrigin
     from onyx.server.features.build.jobs.api import create_job_run
     from onyx.server.features.build.jobs.models import CraftJobCreateRequest
     from onyx.server.features.build.session.manager import SessionManager
@@ -100,6 +140,7 @@ def _launch_job(db_session: Session, *, user: Any, scenario: Any, prompt: str) -
         user_id=user.id,
         name=f"IM: {scenario.name}",
         scenario_id=scenario.id,
+        origin=SessionOrigin.IM,
     )
     db_session.commit()
     create_job_run(

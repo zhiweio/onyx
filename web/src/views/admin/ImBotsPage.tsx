@@ -152,6 +152,70 @@ function PlatformCard({ meta }: { meta: PlatformMeta }) {
   );
 }
 
+function ConcurrencyConfigCard() {
+  const t = useTranslations("admin.imBots");
+  const settings = useSettings();
+  const [pending, setPending] = useState(false);
+  const [value, setValue] = useState<string | null>(null);
+
+  const saved = settings?.im_craft_job_concurrency_limit;
+  const current = value ?? (saved != null ? String(saved) : "2");
+
+  const save = async () => {
+    const parsed = Number.parseInt(value ?? "", 10);
+    if (
+      Number.isNaN(parsed) ||
+      parsed < 1 ||
+      parsed > 10 ||
+      String(parsed) !== (value ?? "").trim()
+    ) {
+      toast.error(t("concurrency.invalid"));
+      return;
+    }
+    setPending(true);
+    try {
+      await updateAdminSettings({
+        im_craft_job_concurrency_limit: parsed,
+      } as Partial<Settings>);
+      toast.success(t("concurrency.saved"));
+      setValue(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("concurrency.saveFailed"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Card border="solid" rounding={4}>
+      <InputHorizontal
+        title={t("concurrency.title")}
+        description={t("concurrency.description")}
+        disabled={pending}
+        withLabel
+      >
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={current}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={pending}
+          aria-label={t("concurrency.label")}
+          className="w-20 rounded border border-border-01 bg-background-background px-2 py-1 text-sm"
+        />
+        <Button
+          prominence="internal"
+          disabled={pending}
+          onClick={() => void save()}
+        >
+          {t("concurrency.save")}
+        </Button>
+      </InputHorizontal>
+    </Card>
+  );
+}
+
 interface VisibilityToggleProps {
   field: "slack_integration_visible" | "discord_integration_visible";
   title: string;
@@ -219,6 +283,8 @@ export default function ImBotsPage() {
           {PLATFORMS.map((meta) => (
             <PlatformCard key={meta.platform} meta={meta} />
           ))}
+
+          <ConcurrencyConfigCard />
 
           <div className="pt-4">
             <Text font="main-ui-action" color="text-03">

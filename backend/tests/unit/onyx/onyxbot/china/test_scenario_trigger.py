@@ -65,9 +65,37 @@ class _User:
     id = "user-1"
 
 
+class _Job:
+    def __init__(self, name: str, session_id: str, status: str = "RUNNING") -> None:
+        self.name = name
+        self.session_id = session_id
+        self.status = _Status(status)
+
+
+class _Status:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
 def _trigger(text: str, scenarios: list[_Scenario]) -> str | None:
-    with patch("onyx.db.scenario.list_scenarios_for_user", return_value=scenarios):
+    with (
+        patch("onyx.db.scenario.list_scenarios_for_user", return_value=scenarios),
+        patch(
+            "onyx.db.craft_job.list_open_craft_jobs_for_user",
+            return_value=[],
+        ),
+        patch(
+            "onyx.server.settings.store.load_settings",
+            return_value=_settings(2),
+        ),
+    ):
         return try_scenario_trigger(cast(Session, object()), _User(), text)
+
+
+def _settings(limit: int) -> Any:
+    from types import SimpleNamespace
+
+    return SimpleNamespace(im_craft_job_concurrency_limit=limit)
 
 
 def test_non_command_falls_through_to_chat() -> None:
@@ -97,6 +125,14 @@ def test_launches_job_and_returns_link() -> None:
             return_value=[_Scenario("财税风控")],
         ),
         patch(
+            "onyx.db.craft_job.list_open_craft_jobs_for_user",
+            return_value=[],
+        ),
+        patch(
+            "onyx.server.settings.store.load_settings",
+            return_value=_settings(2),
+        ),
+        patch(
             "onyx.onyxbot.china.scenario_trigger._launch_job",
             return_value="/craft/v1?sessionId=s1",
         ) as launch,
@@ -115,6 +151,14 @@ def test_launch_failure_degrades_to_a_reply_not_an_error() -> None:
         patch(
             "onyx.db.scenario.list_scenarios_for_user",
             return_value=[_Scenario("财税风控")],
+        ),
+        patch(
+            "onyx.db.craft_job.list_open_craft_jobs_for_user",
+            return_value=[],
+        ),
+        patch(
+            "onyx.server.settings.store.load_settings",
+            return_value=_settings(2),
         ),
         patch(
             "onyx.onyxbot.china.scenario_trigger._launch_job",
@@ -177,3 +221,59 @@ def test_launch_job_creates_session_and_job() -> None:
     assert isinstance(job_request, dict)
     assert job_request["prompt"] == "分析A公司"
     assert job_request["start"] is True
+
+
+def test_concurrency_limit_rejects_with_running_list() -> None:
+    jobs = [_Job("任务A", "sess-a"), _Job("任务B", "sess-b")]
+    with (
+        patch(
+            "onyx.db.scenario.list_scenarios_for_user",
+            return_value=[_Scenario("财税风控")],
+        ),
+        patch(
+            "onyx.db.craft_job.list_open_craft_jobs_for_user",
+            return_value=jobs,
+        ),
+        patch(
+            "onyx.server.settings.store.load_settings",
+            return_value=_settings(2),
+        ),
+        patch("onyx.onyxbot.china.scenario_trigger._launch_job") as launch,
+    ):
+        reply = try_scenario_trigger(
+            cast(Session, object()), _User(), "/场景 财税风控 分析"
+        )
+    launch.assert_not_called()
+    assert reply is not None
+    assert "2 个场景任务在运行" in reply
+    assert "任务A" in reply and "任务B" in reply
+    assert "/取消任务" in reply
+
+
+def test_concurrency_limit_allows_under_cap() -> None:
+    jobs = [_Job("任务A", "sess-a")]
+    with (
+        patch(
+            "onyx.db.scenario.list_scenarios_for_user",
+            return_value=[_Scenario("财税风控")],
+        ),
+        patch(
+            "onyx.db.craft_job.list_open_craft_jobs_for_user",
+            return_value=jobs,
+        ),
+        patch(
+            "onyx.server.settings.store.load_settings",
+            return_value=_settings(2),
+        ),
+        patch(
+            "onyx.onyxbot.china.scenario_trigger._launch_job",
+            return_value="/craft/v1?sessionId=s1",
+        ) as launch,
+    ):
+        reply = try_scenario_trigger(
+            cast(Session, object()), _User(), "/场景 财税风控 分析"
+        )
+    launch.assert_called_once()
+    assert reply is not None
+    assert "任务已创建" in reply
+    assert "自动通知" in reply

@@ -114,6 +114,12 @@ class Settings(BaseModel):
     slack_integration_visible: bool = False
     discord_integration_visible: bool = False
 
+    # Max concurrent CraftJobs per user for scenario runs launched from the
+    # China IM bots (Feishu/WeCom/DingTalk). Web launches are not limited —
+    # IM users cannot see job weight in-chat, so the cap bounds the blast
+    # radius of accidental or abusive repeated triggers.
+    im_craft_job_concurrency_limit: int = Field(default=2, ge=1, le=10)
+
     # Seat usage - populated by license enforcement when seat limit is exceeded
     seat_count: int | None = None
     used_seats: int | None = None

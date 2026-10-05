@@ -113,6 +113,10 @@ export interface Settings {
   slack_integration_visible?: boolean;
   discord_integration_visible?: boolean;
 
+  // Max concurrent CraftJobs per user for scenario runs launched from the
+  // China IM bots (Feishu/WeCom/DingTalk). Configured on the IM Bots page.
+  im_craft_job_concurrency_limit?: number | null;
+
   // Application version from the ONYX_VERSION env var on the server.
   version?: string | null;
   // Hard ceiling for user_file_max_upload_size_mb, derived from env var.

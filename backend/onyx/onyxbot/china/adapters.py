@@ -11,7 +11,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from onyx.onyxbot.china import crypto
-from onyx.onyxbot.china.framework import CallbackRejected, InboundMessage
+from onyx.onyxbot.china.framework import (
+    CallbackRejected,
+    InboundAttachment,
+    InboundMessage,
+)
 
 
 @dataclass(frozen=True)
@@ -155,6 +159,56 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
 # ── Feishu ────────────────────────────────────────────────────────────────
 
 
+def _parse_feishu_message_content(
+    msg_type: str, content: dict[str, Any]
+) -> tuple[str, list[InboundAttachment]] | None:
+    """Extract (text, attachments) from one im message body; ``None`` for
+    message types the bot does not answer (audio/media/stickers/shares)."""
+    text = ""
+    attachments: list[InboundAttachment] = []
+    if msg_type == "text":
+        text = str(content.get("text", ""))
+    elif msg_type == "image":
+        image_key = str(content.get("image_key") or "")
+        if image_key:
+            attachments.append(InboundAttachment("image", image_key))
+    elif msg_type == "file":
+        file_key = str(content.get("file_key") or "")
+        file_name = str(content.get("file_name") or "file")
+        if file_key:
+            attachments.append(InboundAttachment("file", file_key, file_name))
+    elif msg_type == "post":
+        # rich text: paragraphs carry text/img fragments
+        texts: list[str] = []
+        post = content.get("content")
+        if isinstance(post, dict):
+            for paragraphs in post.values():
+                if not isinstance(paragraphs, list):
+                    continue
+                for paragraph in paragraphs:
+                    if not isinstance(paragraph, list):
+                        continue
+                    for node in paragraph:
+                        if not isinstance(node, dict):
+                            continue
+                        if node.get("tag") == "text":
+                            texts.append(str(node.get("text") or ""))
+                        elif node.get("tag") == "img":
+                            image_key = str(node.get("image_key") or "")
+                            if image_key:
+                                attachments.append(
+                                    InboundAttachment("image", image_key)
+                                )
+        text = "\n".join(part for part in texts if part).strip()
+    else:
+        return None
+    if msg_type == "text" and not text:
+        return None
+    if msg_type in ("image", "file") and not attachments:
+        return None
+    return text, attachments
+
+
 def feishu_handle(
     config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]
 ) -> CallbackResult:
@@ -189,24 +243,31 @@ def feishu_handle(
     event = payload.get("event") or {}
     message = event.get("message") or {}
     msg_type = str(message.get("message_type") or "")
-    if msg_type != "text":
-        return CallbackResult()
-    try:
-        content = json.loads(message.get("content") or "{}").get("text", "")
-    except json.JSONDecodeError:
-        content = ""
     sender_id = ((event.get("sender") or {}).get("sender_id") or {}).get(
         "open_id"
     ) or ""
-    if not (sender_id and content):
+    chat_id = str(message.get("chat_id") or sender_id)
+    msg_id = str(message.get("message_id") or "")
+    if not sender_id:
         return CallbackResult()
+
+    try:
+        content = json.loads(message.get("content") or "{}")
+    except json.JSONDecodeError:
+        content = {}
+
+    parsed = _parse_feishu_message_content(msg_type, content)
+    if parsed is None:
+        return CallbackResult()
+    text, attachments = parsed
     return CallbackResult(
         message=InboundMessage(
             platform="feishu",
-            msg_id=str(message.get("message_id") or ""),
+            msg_id=msg_id,
             platform_user_id=sender_id,
-            chat_id=str(message.get("chat_id") or sender_id),
-            text=content.strip(),
+            chat_id=chat_id,
+            text=text,
+            attachments=tuple(attachments),
         )
     )
 
