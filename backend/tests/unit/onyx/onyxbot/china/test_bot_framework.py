@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import struct
+from collections.abc import Callable
 
 import pytest
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -616,3 +617,244 @@ def test_dingtalk_check_url_echo_carries_appkey_suffix() -> None:
     suffix = raw[20 + msg_len :].decode()
     assert suffix == "dk"
     assert raw[20 : 20 + msg_len].decode() == "success"
+
+
+def test_dingtalk_answer_streams_card_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The streaming answer writes throttled INPUTING frames into the card and
+    closes with one finalize frame plus the FINISHED flow state."""
+    from onyx.onyxbot.china import framework
+    from onyx.server.query_and_chat.placement import Placement
+    from onyx.server.query_and_chat.streaming_models import (
+        AgentResponseDelta,
+        Packet,
+    )
+
+    calls: list[tuple[str, str, dict]] = []
+    monkeypatch.setattr(
+        framework,
+        "_dingtalk_card_api",
+        lambda _config, _mgr, method, path, payload: calls.append(
+            (method, path, payload)
+        ),
+    )
+    monkeypatch.setattr(framework.time, "sleep", lambda _s: None)
+    # monotonic call order: init, delta1 check, post-update stamp, delta2 check
+    clock = iter([0.0, 10.0, 10.0, 10.6])
+    monkeypatch.setattr(framework.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(framework, "_prepare_turn", lambda _msg, _cfg: object())
+    monkeypatch.setattr(
+        framework,
+        "_iter_chat_stream",
+        lambda _prepared: iter(
+            [
+                Packet(
+                    placement=Placement(turn_index=0),
+                    obj=AgentResponseDelta(content="第一段"),
+                ),
+                Packet(
+                    placement=Placement(turn_index=0),
+                    obj=AgentResponseDelta(content="第二段"),
+                ),
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        framework, "_dingtalk_card_start", lambda _msg, _cfg, _mgr: "track-1"
+    )
+
+    message = framework.InboundMessage(
+        platform="dingtalk",
+        msg_id="m1",
+        platform_user_id="staff-9",
+        chat_id="cidD",
+        text="hi",
+    )
+    framework._answer_dingtalk(message, _DingCfg())
+
+    methods = [(m, p) for m, p, _ in calls]
+    assert methods == [
+        ("PUT", "/v1.0/card/instances"),  # throttled INPUTING update
+        ("PUT", "/v1.0/card/streaming"),  # finalize frame
+        ("PUT", "/v1.0/card/instances"),  # FINISHED flow state
+    ]
+    params = calls[0][2]["cardData"]["cardParamMap"]
+    assert params["flowStatus"] == framework._DINGTALK_FLOW_INPUTING
+    # only the first delta had accumulated when the throttle window opened
+    assert params["msgContent"] == "第一段"
+    stream_payload = calls[1][2]
+    assert stream_payload["isFinalize"] is True
+    assert stream_payload["content"] == "第一段第二段"
+    assert calls[2][2]["cardData"]["cardParamMap"]["flowStatus"] == (
+        framework._DINGTALK_FLOW_FINISHED
+    )
+
+
+def test_dingtalk_answer_marks_card_failed_on_stream_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.chat.models import StreamingError
+    from onyx.onyxbot.china import framework
+    from onyx.server.query_and_chat.placement import Placement
+    from onyx.server.query_and_chat.streaming_models import (
+        AgentResponseDelta,
+        Packet,
+    )
+
+    calls: list[tuple[str, str, dict]] = []
+    monkeypatch.setattr(
+        framework,
+        "_dingtalk_card_api",
+        lambda _config, _mgr, method, path, payload: calls.append(
+            (method, path, payload)
+        ),
+    )
+    monkeypatch.setattr(framework.time, "sleep", lambda _s: None)
+    clock = iter([0.0, 10.0])
+    monkeypatch.setattr(framework.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(framework, "_prepare_turn", lambda _msg, _cfg: object())
+    monkeypatch.setattr(
+        framework,
+        "_iter_chat_stream",
+        lambda _prepared: iter(
+            [
+                StreamingError(error="boom"),
+                Packet(
+                    placement=Placement(turn_index=0),
+                    obj=AgentResponseDelta(content="x"),
+                ),
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        framework, "_dingtalk_card_start", lambda _msg, _cfg, _mgr: "track-1"
+    )
+
+    message = framework.InboundMessage(
+        platform="dingtalk",
+        msg_id="m1",
+        platform_user_id="staff-9",
+        chat_id="cidD",
+        text="hi",
+    )
+    framework._answer_dingtalk(message, _DingCfg())
+
+    assert len(calls) == 1
+    params = calls[0][2]["cardData"]["cardParamMap"]
+    assert params["flowStatus"] == framework._DINGTALK_FLOW_FAILED
+    assert "boom" in params["msgContent"]
+
+
+def test_wecom_send_posts_text_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    gets: list[tuple[str, dict]] = []
+    posts: list[tuple[str, dict]] = []
+
+    def fake_get(
+        url: str, params: dict[str, str] | None = None, **_kwargs: object
+    ) -> object:
+        gets.append((url, params or {}))
+        return type(
+            "R", (), {"json": lambda _self: {"access_token": "tok", "expires_in": 7200}}
+        )()
+
+    def fake_post(
+        url: str, json: dict[str, object] | None = None, **_kwargs: object
+    ) -> object:
+        posts.append((url, json or {}))
+        return type("R", (), {"raise_for_status": lambda _self: None})()
+
+    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("requests.post", fake_post)
+
+    class _TokenMgr:
+        def __init__(self, fetch: Callable[[], tuple[str, int]]) -> None:
+            self._fetch = fetch
+
+        def get(self) -> str:
+            token, _expires = self._fetch()
+            return token
+
+    framework._wecom_send(_WeComCfg(), _TokenMgr, "zhang", "回答")
+
+    url, params = gets[0]
+    assert url == "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
+    assert params["corpid"] == "ww1" and params["corpsecret"] == "s"
+
+    url, body = posts[0]
+    assert url == "https://qyapi.weixin.qq.com/cgi-bin/message/send"
+    assert body["touser"] == "zhang"
+    assert body["msgtype"] == "text"
+    assert body["agentid"] == 1000002
+    assert body["text"]["content"] == "回答"
+
+
+def test_wecom_send_truncates_to_message_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.onyxbot.china import framework
+
+    bodies: list[dict] = []
+    monkeypatch.setattr(
+        "requests.get",
+        lambda _url, **_kw: type(
+            "R", (), {"json": lambda _self: {"access_token": "tok"}}
+        )(),
+    )
+    monkeypatch.setattr(
+        "requests.post",
+        lambda _url, **kwargs: (
+            bodies.append(kwargs.get("json") or {})
+            or type("R", (), {"raise_for_status": lambda _self: None})()
+        ),
+    )
+
+    class _TokenMgr:
+        def __init__(self, fetch: Callable[[], tuple[str, int]]) -> None:
+            self._fetch = fetch
+
+        def get(self) -> str:
+            token, _expires = self._fetch()
+            return token
+
+    framework._wecom_send(_WeComCfg(), _TokenMgr, "zhang", "x" * 2500)
+    assert len(bodies[0]["text"]["content"]) == 2000
+
+
+def test_seen_before_dedups_by_msg_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    class _FakeRedis:
+        def __init__(self) -> None:
+            self.keys: set[str] = set()
+
+        def set(self, key: str, _value: str, ex: int, nx: bool) -> bool:
+            del ex
+            assert nx is True
+            if key in self.keys:
+                return False
+            self.keys.add(key)
+            return True
+
+    fake = _FakeRedis()
+    monkeypatch.setattr(
+        # called as get_redis_client(tenant_id=...); swallow the kwarg
+        "onyx.redis.redis_pool.get_redis_client",
+        lambda **_kwargs: fake,
+    )
+    monkeypatch.setattr(
+        "shared_configs.contextvars.get_current_tenant_id", lambda: "tenant"
+    )
+
+    assert framework.seen_before("dingtalk", "m1") is False
+    # platform retries of the same msg id are dropped
+    assert framework.seen_before("dingtalk", "m1") is True
+    assert framework.seen_before("dingtalk", "m2") is False
+    assert framework.seen_before("wecom", "m1") is False
+
+    # redis down → fail closed (drop the callback rather than double-answer)
+    def _broken(_tenant_id: str) -> object:
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr("onyx.redis.redis_pool.get_redis_client", _broken)
+    assert framework.seen_before("dingtalk", "m3") is True

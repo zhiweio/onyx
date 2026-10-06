@@ -3,10 +3,10 @@
 Indexes wiki workspaces through the new DingTalk OpenAPI (org-level app
 credentials): lists workspaces, walks each node tree, and assembles
 document text from the doc-suite block list. The wiki APIs act on behalf
-of a user, so credentials include that user's unionId.
+of a user, so the connector config carries that user's unionId.
 
-Credentials: ``dingtalk_client_id`` / ``dingtalk_client_secret`` /
-``dingtalk_operator_union_id``.
+Credentials: ``dingtalk_client_id`` / ``dingtalk_client_secret``.
+Connector config: ``operator_union_id``.
 """
 
 from __future__ import annotations
@@ -35,15 +35,20 @@ logger = setup_logger()
 
 
 class DingTalkConnector(LoadConnector, PollConnector):
-    def __init__(self, batch_size: int = INDEX_BATCH_SIZE) -> None:
+    def __init__(
+        self,
+        batch_size: int = INDEX_BATCH_SIZE,
+        operator_union_id: str | None = None,
+    ) -> None:
         self.batch_size = batch_size
+        self.operator_union_id = operator_union_id
         self._client: DingTalkClient | None = None
 
     def load_credentials(self, credentials: dict[str, Any]) -> dict[str, Any] | None:
         self._client = DingTalkClient(
             credentials["dingtalk_client_id"],
             credentials["dingtalk_client_secret"],
-            credentials.get("dingtalk_operator_union_id"),
+            self.operator_union_id,
         )
         return None
 

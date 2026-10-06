@@ -81,7 +81,12 @@ def compute_session_skill_slugs(
         ordered.extend(
             resolve_skill_refs_to_slugs(db_session, list(scenario_skill_refs))
         )
-    ordered.extend(selected_skill_ids or [])
+    # User-picked chips arrive as skill UUIDs; normalize them to runtime
+    # slugs the same way scenario refs are, or the links dangle.
+    if selected_skill_ids:
+        ordered.extend(
+            resolve_skill_refs_to_slugs(db_session, list(selected_skill_ids))
+        )
     ordered.extend(extra_slugs or [])
     seen: set[str] = set()
     result: list[str] = []

@@ -112,3 +112,21 @@ HTTP 配置均已保存且通道验证通过（保存时出现"修改成功"）�
 - 群聊历史不可回溯索引（见 §2.2）。
 - 机器人 HTTP 回调地址变更后需重新保存并发布应用版本。
 - ngrok 等隧道域名重启会变化，需同步更新控制台两处回调地址。
+
+## 5. 端到端验证清单（2026-10-06 实测）
+
+| 场景 | 验证方式 | 结果 |
+| --- | --- | --- |
+| Bot 凭据 | 管理端 `POST /api/admin/onyxbot-china/dingtalk/verify` | ✅ |
+| 单聊 AI 卡片流式 | 模拟加密回调（真实 staffId）；AI 卡片走官方公共模板 | ✅ `china_im_binding` 落库、卡片帧全部 200 |
+| 卡片模板 | 卡片平台 AI 卡片；自建模板未发布时可用官方公共模板 ID `02fcf2f4-5e02-4a85-b672-46d1f715543e.schema` | ✅ 写入 `bot_card_template_id` |
+| Craft 应用 | craft 会话调 `dingtalk_api.py kb.list` | ✅ proxy 门控 `dingtalk.kb.list policy=ALWAYS` + org token 注入，真实返回知识库 |
+| 知识库连接器 | UI 配置（凭据=AppKey/Secret，连接器配置=operator_union_id）→ 同步 | ✅ 抓取 9 篇、blocks 正文完整；向量写入见下方环境说明 |
+| SSO 扫码登录 | 登录页点钉钉 → 授权 | 待真机配合 |
+
+> **环境已知问题（非钉钉专属）**：本部署的 `indexing_model_server` 实际加载
+> `thenlper/gte-small`（384 维），而全部 `search_settings` 与 opensearch 既有索引
+> 按 768 维（nomic）声明/创建。docprocessing 写向量时维度不匹配 → 所有连接器
+> （含飞书/企微）的向量写入同样失败。恢复需统一嵌入模型并全量重建索引。
+> 机器人 Stream 通道：api_server 启动即连（`dingtalk stream client started`），
+> 控制台事件订阅页显示 已连接Stream · 在线。

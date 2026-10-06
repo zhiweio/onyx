@@ -2045,28 +2045,12 @@ For example, specifying .*-alerts as a "channel to exclude" will cause the conne
     values: [
       {
         type: "text",
-        query: "Enter the DingTalk AppKey:",
-        label: "Client ID (AppKey)",
-        name: "dingtalk_client_id",
-        optional: false,
-        description: "The enterprise app's AppKey from the developer console.",
-      },
-      {
-        type: "text",
-        query: "Enter the DingTalk AppSecret:",
-        label: "Client Secret (AppSecret)",
-        name: "dingtalk_client_secret",
-        optional: false,
-        description: "The enterprise app's AppSecret.",
-      },
-      {
-        type: "text",
         query: "Enter the operator unionId:",
         label: "Operator Union ID",
-        name: "dingtalk_operator_union_id",
+        name: "operator_union_id",
         optional: true,
         description:
-          "unionId of the user the wiki APIs act as (found via user detail in the developer console).",
+          "unionId of the user the wiki APIs act as (the wiki APIs require an operatorId; found via user detail in the developer console).",
       },
     ],
     advanced_values: [],

@@ -633,6 +633,10 @@ export const credentialTemplates: Record<ValidSources, any> = {
 };
 
 export const credentialDisplayNames: Record<string, string> = {
+  // DingTalk
+  dingtalk_client_id: "DingTalk AppKey (Client ID)",
+  dingtalk_client_secret: "DingTalk AppSecret (Client Secret)",
+
   // Github
   github_access_token: "GitHub Access Token",
   github_base_url:

@@ -30,11 +30,7 @@ from onyx.connectors.wps365.connector import WPS365Connector
 
 FEISHU_CREDS = {"feishu_app_id": "cli_x", "feishu_app_secret": "fs-secret"}
 WECOM_CREDS = {"wecom_corp_id": "ww1", "wecom_corp_secret": "wm-secret"}
-DING_CREDS = {
-    "dingtalk_client_id": "dk",
-    "dingtalk_client_secret": "ds",
-    "dingtalk_operator_union_id": "op1",
-}
+DING_CREDS = {"dingtalk_client_id": "dk", "dingtalk_client_secret": "ds"}
 SAP_CREDS = {
     "sap_odata_base_url": "https://sap.example.com/sap/opu/odata/sap/API_SRV",
     "sap_odata_user": "sapuser",
@@ -309,7 +305,7 @@ def test_dingtalk_connector_indexes_knowledge_base(
         },
     )
 
-    connector = DingTalkConnector()
+    connector = DingTalkConnector(operator_union_id="op1")
     connector.load_credentials(DING_CREDS)
     docs = [
         d for b in connector.load_from_state() for d in b if isinstance(d, Document)
