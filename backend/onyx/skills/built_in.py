@@ -257,6 +257,9 @@ _REGISTRY: Final = BuiltInSkillRegistry(
         ExternalAppBuiltInProvider(skill_id="notion", app_type=ExternalAppType.NOTION),
         ExternalAppBuiltInProvider(skill_id="feishu", app_type=ExternalAppType.FEISHU),
         ExternalAppBuiltInProvider(skill_id="wecom", app_type=ExternalAppType.WECOM),
+        ExternalAppBuiltInProvider(
+            skill_id="dingtalk", app_type=ExternalAppType.DINGTALK
+        ),
     )
 )
 

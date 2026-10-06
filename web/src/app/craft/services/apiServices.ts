@@ -389,7 +389,7 @@ export async function checkPreProvisionedSession(
  * Extract text content from message_metadata.
  * For user_message: {type: "user_message", content: {type: "text", text: "..."}}
  */
-function extractContentFromMetadata(
+export function extractContentFromMetadata(
   metadata: Record<string, any> | null | undefined
 ): string {
   if (!metadata) return "";

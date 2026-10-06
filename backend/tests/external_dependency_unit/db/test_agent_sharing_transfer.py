@@ -253,16 +253,10 @@ def test_transfer_rejects_builtin_persona(db_session: Session) -> None:
     target = create_test_user(db_session, "target")
     persona = create_test_persona(db_session, owner, builtin_persona=True)
 
-    try:
-        with pytest.raises(ValueError):
-            transfer_persona_ownership(
-                persona_id=persona.id,
-                user=owner,
-                db_session=db_session,
-                new_owner_user_id=target.id,
-            )
-    finally:
-        # This suite commits to the shared dev DB and rows persist; a leaked
-        # builtin-flagged persona must not outlive the test.
-        persona.deleted = True
-        db_session.commit()
+    with pytest.raises(ValueError):
+        transfer_persona_ownership(
+            persona_id=persona.id,
+            user=owner,
+            db_session=db_session,
+            new_owner_user_id=target.id,
+        )

@@ -30,7 +30,11 @@ from onyx.connectors.wps365.connector import WPS365Connector
 
 FEISHU_CREDS = {"feishu_app_id": "cli_x", "feishu_app_secret": "fs-secret"}
 WECOM_CREDS = {"wecom_corp_id": "ww1", "wecom_corp_secret": "wm-secret"}
-DING_CREDS = {"dingtalk_client_id": "dk", "dingtalk_client_secret": "ds"}
+DING_CREDS = {
+    "dingtalk_client_id": "dk",
+    "dingtalk_client_secret": "ds",
+    "dingtalk_operator_union_id": "op1",
+}
 SAP_CREDS = {
     "sap_odata_base_url": "https://sap.example.com/sap/opu/odata/sap/API_SRV",
     "sap_odata_user": "sapuser",
@@ -252,25 +256,57 @@ def test_dingtalk_connector_indexes_knowledge_base(
         json={"accessToken": "dt", "expireIn": 7200},
     )
     requests_mock.get(
-        "https://api.dingtalk.com/v1.0/kb/orgs/knowledgeBases",
+        "https://api.dingtalk.com/v2.0/wiki/workspaces",
         json={
-            "result": {
-                "knowledgeBases": [{"knowledgeBaseId": "kb1", "name": "研发知识库"}]
-            }
+            "workspaces": [
+                {
+                    "workspaceId": "kb1",
+                    "name": "研发知识库",
+                    "rootNodeId": "root1",
+                }
+            ]
         },
     )
-    requests_mock.get(
-        "https://api.dingtalk.com/v1.0/kb/knowledgeBases/kb1/nodes",
-        json={
+
+    def nodes_callback(request: Any, _context: Any) -> dict[str, Any]:
+        parent = request.qs.get("parentNodeId", [""])[0]
+        if parent == "root1":
+            return {
+                "nodes": [{"nodeId": "fold1", "type": "FOLDER", "name": "指南"}],
+                "nextToken": -1,
+            }
+        return {
             "nodes": [
-                {"nodeId": "n1", "title": "发布流程", "editTime": 1750000000},
+                {
+                    "nodeId": "n1",
+                    "type": "FILE",
+                    "name": "发布流程",
+                    "modifiedTimestamp": 1750000000000,
+                }
             ],
             "nextToken": -1,
-        },
-    )
+        }
+
+    requests_mock.get("https://api.dingtalk.com/v2.0/wiki/nodes", json=nodes_callback)
     requests_mock.get(
-        "https://api.dingtalk.com/v1.0/kb/nodes/n1/content",
-        json={"content": "1. 提交 MR\n2. 评审"},
+        "https://api.dingtalk.com/v1.0/doc/suites/documents/n1/blocks",
+        json={
+            "result": {
+                "data": [
+                    {
+                        "blockType": "heading",
+                        "heading": {"level": "heading-1", "text": "发布流程"},
+                        "index": 0,
+                    },
+                    {
+                        "blockType": "paragraph",
+                        "paragraph": {"text": "1. 提交 MR"},
+                        "index": 1,
+                    },
+                ]
+            },
+            "success": True,
+        },
     )
 
     connector = DingTalkConnector()
@@ -281,6 +317,8 @@ def test_dingtalk_connector_indexes_knowledge_base(
     assert len(docs) == 1
     assert docs[0].id == "dingtalk-kb-n1"
     assert docs[0].semantic_identifier == "研发知识库/发布流程"
+    assert "# 发布流程" in docs[0].get_text_content()
+    assert "1. 提交 MR" in docs[0].get_text_content()
 
 
 def test_sap_odata_parses_v2_wrapper(requests_mock: RequestsMocker) -> None:

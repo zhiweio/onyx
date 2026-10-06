@@ -188,3 +188,55 @@ def test_expires_in_is_honoured_and_clamped(monkeypatch: pytest.MonkeyPatch) -> 
     _install_redis(monkeypatch, _TtlRedis())
     assert ot.ensure_org_token("t1", 1, _SPEC, _CREDS) == "t"
     assert ttl_box["ex"] == ot._MAX_TTL_S - ot._TTL_MARGIN_S
+
+
+_DINGTALK_SPEC = OrgTokenSpec(
+    kind="dingtalk_corp",
+    credential_keys=("client_id", "client_secret"),
+    response_token_key="accessToken",
+    response_expires_key="expireIn",
+)
+_DINGTALK_CREDS = {"client_id": "dingX", "client_secret": "secretX"}
+
+
+def test_dingtalk_corp_maps_renamed_response_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DingTalk's accessToken endpoint speaks appKey/appSecret and answers
+    accessToken/expireIn — the spec's response keys must reach the parser."""
+    captured: dict[str, Any] = {}
+
+    def _post(url: str, json: dict[str, Any], timeout: float) -> requests.Response:
+        del timeout
+        captured["url"] = url
+        captured["body"] = json
+        return _response(200, {"accessToken": "corp-tok", "expireIn": 7200})
+
+    monkeypatch.setattr(ot.requests, "post", _post)
+    ttl_box: dict[str, int | None] = {"ex": None}
+
+    class _TtlRedis(_FakeRedis):
+        def set(self, key: str, value: str, ex: int | None = None) -> None:
+            ttl_box["ex"] = ex
+            super().set(key, value, ex=ex)
+
+    _install_redis(monkeypatch, _TtlRedis())
+    token = ot.ensure_org_token("t1", 1, _DINGTALK_SPEC, _DINGTALK_CREDS)
+
+    assert token == "corp-tok"
+    assert captured["url"] == ot._DINGTALK_CORP_TOKEN_URL
+    assert captured["body"] == {"appKey": "dingX", "appSecret": "secretX"}
+    # expireIn 7200 clamps to the 7100 cap, then loses the 60s margin.
+    assert ttl_box["ex"] == ot._MAX_TTL_S - ot._TTL_MARGIN_S
+
+
+def test_dingtalk_corp_missing_token_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ot.requests,
+        "post",
+        lambda *_a, **_k: _response(200, {"expireIn": 7200}),
+    )
+    _install_redis(monkeypatch, _FakeRedis())
+    assert ot.ensure_org_token("t1", 1, _DINGTALK_SPEC, _DINGTALK_CREDS) is None

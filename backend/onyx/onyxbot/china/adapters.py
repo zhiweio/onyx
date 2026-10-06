@@ -16,6 +16,9 @@ from onyx.onyxbot.china.framework import (
     InboundAttachment,
     InboundMessage,
 )
+from onyx.utils.logger import setup_logger
+
+logger = setup_logger()
 
 
 @dataclass(frozen=True)
@@ -103,32 +106,82 @@ def _wecom_parse_xml(xml: str) -> tuple[str, dict[str, str]]:
 # ── DingTalk ──────────────────────────────────────────────────────────────
 
 
+def _dingtalk_echo_response(config: Any, plaintext: str) -> CallbackResult:
+    """Encrypted-echo reply per the console's 加解密 protocol: encrypt
+    ``success`` with the app's AppKey as envelope suffix (the console
+    validates the suffix when decrypting) and carry the response's own
+    signature material. Field names follow the platform SDK exactly
+    (``timeStamp`` is camel-cased there)."""
+    import secrets
+    import time
+
+    encrypt = crypto.dingtalk_encrypt(config.bot_aes_key, plaintext, config.client_id)
+    timestamp = str(int(time.time() * 1000))
+    nonce = secrets.token_hex(8)
+    body: dict[str, Any] = {
+        "encrypt": encrypt,
+        "timeStamp": timestamp,
+        "nonce": nonce,
+    }
+    token = config.bot_token
+    if token:
+        body["msg_signature"] = crypto.dingtalk_signature(
+            token, timestamp, nonce, encrypt
+        )
+    return CallbackResult(body=body)
+
+
 def dingtalk_handle(
     config: Any, query: dict[str, str], body: dict[str, Any], headers: dict[str, str]
 ) -> CallbackResult:
-    del query
-    """DingTalk enterprise robot: body {encrypt}; URL verification carries
-    the literal 'success' plaintext, normal events carry a JSON payload."""
-    del headers
+    """DingTalk enterprise robot: body {encrypt}; URL/channel verification
+    carries an encrypted challenge (literal 'success' or
+    ``{"EventType":"check_url"}``) that must be echoed back re-encrypted with
+    fresh signature material; normal events carry a JSON payload."""
     encrypted = str(body.get("encrypt") or "")
     if not encrypted:
         raise CallbackRejected("dingtalk callback without encrypt")
     if config.bot_aes_key is None:
         raise CallbackRejected("dingtalk bot not configured on this provider")
+    bot_token = config.bot_token
+    if bot_token:
+        # Optional hardening: the platform signs (token, timestamp, nonce,
+        # encrypt) as sorted SHA-1; the three params ride the query string or
+        # the headers depending on console generation.
+        merged = {**headers, **query}
+
+        def _param(name: str) -> str:
+            return merged.get(name) or merged.get(name.capitalize()) or ""
+
+        signature = _param("signature")
+        timestamp = _param("timestamp")
+        nonce = _param("nonce")
+        expected = crypto.dingtalk_signature(bot_token, timestamp, nonce, encrypted)
+        if not (signature and timestamp and nonce) or signature != expected:
+            raise CallbackRejected("dingtalk callback signature mismatch")
     try:
         plaintext = crypto.dingtalk_decrypt(config.bot_aes_key, encrypted)
     except crypto.CallbackCryptoError as exc:
         raise CallbackRejected(str(exc)) from exc
 
     if plaintext.strip().strip('"') == "success":
-        return CallbackResult(
-            body={"encrypt": crypto.dingtalk_encrypt(config.bot_aes_key, "success")}
-        )
+        return _dingtalk_echo_response(config, "success")
 
     try:
         payload = json.loads(plaintext)
     except json.JSONDecodeError:
         return CallbackResult()
+
+    # Channel check ({"EventType":"check_url"}): the protocol replies with
+    # the encrypted literal "success" plus signature material.
+    if isinstance(payload, dict) and payload.get("EventType") == "check_url":
+        return _dingtalk_echo_response(config, "success")
+    return _dingtalk_parse_payload(payload)
+
+
+def parse_robot_payload(payload: dict[str, Any]) -> CallbackResult:
+    """Public parse for the Stream-mode client: the websocket payload has the
+    same shape as the HTTP callback's decrypted JSON."""
     return _dingtalk_parse_payload(payload)
 
 
@@ -142,6 +195,8 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
         else str(payload.get("text") or "")
     )
     msg_id = str(payload.get("msgId") or payload.get("messageId") or "")
+    # conversationType "1" = 1:1 with the robot, "2" = group chat
+    is_group = str(payload.get("conversationType") or "") == "2"
     if not (sender and text):
         return CallbackResult()
     return CallbackResult(
@@ -152,6 +207,7 @@ def _dingtalk_parse_payload(payload: dict[str, Any]) -> CallbackResult:
             chat_id=conversation or sender,
             text=text.strip(),
             sender_name=str(payload.get("senderNick") or ""),
+            is_group=is_group,
         )
     )
 

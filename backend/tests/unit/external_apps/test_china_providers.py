@@ -1,6 +1,6 @@
 from onyx.db.enums import ExternalAppType
 from onyx.external_apps.providers.base import OAuthExternalAppProvider
-from onyx.external_apps.providers.dingtalk import DingTalkProvider
+from onyx.external_apps.providers.dingtalk import DingTalkAction, DingTalkProvider
 from onyx.external_apps.providers.feishu import FeishuAction, FeishuProvider
 from onyx.external_apps.providers.registry import (
     PROVIDERS,
@@ -54,15 +54,46 @@ def test_feishu_oauth_uses_app_id_credential_keys() -> None:
     assert org_fields == set(provider.spec.client_credential_keys)
 
 
-def test_dingtalk_is_oauth_with_json_exchange() -> None:
+def test_dingtalk_is_org_credential_with_derived_token() -> None:
+    """DingTalk's new-gen OpenAPI authenticates corp-wide: org credentials are
+    the app's client_id/client_secret, the access token is derived at egress
+    time (org_token spec), and the catalog governs api.dingtalk.com only —
+    the legacy oapi host takes the token as a query param the header template
+    can't inject."""
     provider = DingTalkProvider()
-    assert isinstance(provider, OAuthExternalAppProvider)
-    request = provider.build_token_exchange_request(
-        "code-1", "client-id", "client-secret", "https://example.com/cb"
-    )
-    assert request.json_encoded is True
-    assert request.body["clientId"] == "client-id"
-    assert request.body["grantType"] == "authorization_code"
+    assert not isinstance(provider, OAuthExternalAppProvider)
+    assert provider.spec.descriptor.upstream_url_patterns == [
+        "https://api\\.dingtalk\\.com/.*"
+    ]
+    assert provider.spec.descriptor.auth_template == {
+        "x-acs-dingtalk-access-token": "{access_token}"
+    }
+    keys = {f.key for f in provider.spec.descriptor.required_org_credential_fields}
+    assert keys == {"client_id", "client_secret"}
+    assert provider.spec.org_token is not None
+    assert provider.spec.org_token.kind == "dingtalk_corp"
+    assert provider.spec.org_token.credential_keys == ("client_id", "client_secret")
+    # DingTalk renames the token response fields.
+    assert provider.spec.org_token.response_token_key == "accessToken"
+    assert provider.spec.org_token.response_expires_key == "expireIn"
+
+
+def test_dingtalk_catalog_covers_core_actions() -> None:
+    catalog = get_endpoint_catalog(ExternalAppType.DINGTALK)
+    ids = {endpoint.id for endpoint in catalog}
+    assert {
+        DingTalkAction.KB_LIST,
+        DingTalkAction.DRIVE_FILES_LIST,
+        DingTalkAction.TODO_TASKS_LIST,
+        DingTalkAction.CALENDAR_EVENTS_LIST,
+        DingTalkAction.CONTACT_USERS_SEARCH,
+    } <= ids
+    # The token endpoints and deletes are denied by default; sends need approval.
+    by_id = {endpoint.id: endpoint for endpoint in catalog}
+    assert by_id[DingTalkAction.AUTH_CORP_TOKEN].default_policy.value == "DENY"
+    assert by_id[DingTalkAction.TODO_TASK_DELETE].default_policy.value == "DENY"
+    assert by_id[DingTalkAction.ROBOT_O2O_SEND].default_policy.value == "ASK"
+    assert by_id[DingTalkAction.KB_NODE_CONTENT_GET].default_policy.value == "ALWAYS"
 
 
 def test_wecom_is_org_credential_only_with_derived_token() -> None:

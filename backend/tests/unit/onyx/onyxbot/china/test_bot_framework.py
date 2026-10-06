@@ -137,6 +137,8 @@ class _DingCfg:
     email_domain = "corp.example.cn"
     robot_code = "rc1"
     bot_aes_key = DING_AES_KEY
+    bot_token: str | None = None
+    bot_card_template_id: str | None = None
 
 
 class _FeishuCfg:
@@ -355,12 +357,12 @@ def test_feishu_reply_rich_falls_back_to_text(monkeypatch) -> None:
     monkeypatch.setattr(
         framework,
         "_feishu_send_card",
-        lambda config, mgr, chat_id, text: None,
+        lambda _config, _mgr, _chat_id, _text: None,
     )
     monkeypatch.setattr(
         framework,
         "_feishu_send",
-        lambda config, mgr, chat_id, text: sent.update(chat_id=chat_id, text=text),
+        lambda _config, _mgr, chat_id, text: sent.update(chat_id=chat_id, text=text),
     )
     framework._feishu_reply_rich("cfg", "mgr", "oc_1", "**hi**")
     assert sent == {"chat_id": "oc_1", "text": "**hi**"}
@@ -374,12 +376,12 @@ def test_feishu_reply_rich_uses_card(monkeypatch) -> None:
     monkeypatch.setattr(
         framework,
         "_feishu_send_card",
-        lambda config, mgr, chat_id, text: text_sent.update(text=text) or "om_1",
+        lambda _config, _mgr, _chat_id, text: text_sent.update(text=text) or "om_1",
     )
     monkeypatch.setattr(
         framework,
         "_feishu_send",
-        lambda config, mgr, chat_id, text: fallback_used.append(text),
+        lambda _config, _mgr, _chat_id, text: fallback_used.append(text),
     )
     framework._feishu_reply_rich("cfg", "mgr", "oc_1", "**hi**")
     assert text_sent["text"] == "**hi**"
@@ -409,3 +411,208 @@ def test_split_for_cards_single_chunk_short_text() -> None:
     from onyx.onyxbot.china.framework import _split_for_cards
 
     assert _split_for_cards("短文本", 100) == ["短文本"]
+
+
+# ── dingtalk: signature, group parse, card streaming ──────────────────────
+
+
+def test_dingtalk_signature_verification_optional() -> None:
+    key = base64.b64decode(DING_AES_KEY)
+    payload = {
+        "conversationId": "cid01",
+        "senderStaffId": "staff-9",
+        "conversationType": "1",
+        "text": {"content": "hi"},
+        "msgId": "m1",
+    }
+    encrypted = base64.b64encode(
+        _aes_encrypt(key, _envelope(json.dumps(payload), ""))
+    ).decode()
+
+    cfg = _DingCfg()
+    cfg.bot_token = "tok"
+    timestamp, nonce = "1700000000", "n1"
+    signature = crypto.dingtalk_signature("tok", timestamp, nonce, encrypted)
+    ok = adapters.dingtalk_handle(
+        cfg,
+        {"signature": signature, "timestamp": timestamp, "nonce": nonce},
+        {"encrypt": encrypted},
+        {},
+    )
+    assert ok.message is not None
+
+    # bad / missing signature params are refused
+    with pytest.raises(CallbackRejected):
+        adapters.dingtalk_handle(
+            cfg,
+            {"signature": "bad", "timestamp": timestamp, "nonce": nonce},
+            {"encrypt": encrypted},
+            {},
+        )
+    with pytest.raises(CallbackRejected):
+        adapters.dingtalk_handle(cfg, {}, {"encrypt": encrypted}, {})
+
+    # no token configured → signature unchecked
+    result = adapters.dingtalk_handle(_DingCfg(), {}, {"encrypt": encrypted}, {})
+    assert result.message is not None
+
+
+def test_dingtalk_parse_sets_group_flag() -> None:
+    parse = adapters._dingtalk_parse_payload
+    group = parse(
+        {
+            "conversationId": "cidG",
+            "senderStaffId": "s1",
+            "conversationType": "2",
+            "text": {"content": "hello"},
+        }
+    )
+    assert group.message is not None and group.message.is_group is True
+    direct = parse(
+        {
+            "conversationId": "cidD",
+            "senderStaffId": "s1",
+            "conversationType": "1",
+            "text": {"content": "hello"},
+        }
+    )
+    assert direct.message is not None and direct.message.is_group is False
+
+
+def test_dingtalk_card_start_targets_conversation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.onyxbot.china import framework
+
+    calls: list[tuple[str, str, dict]] = []
+    monkeypatch.setattr(
+        framework,
+        "_dingtalk_card_api",
+        lambda _config, _mgr, method, path, payload: calls.append(
+            (method, path, payload)
+        ),
+    )
+    monkeypatch.setattr(framework.time, "sleep", lambda _s: None)
+
+    cfg = _DingCfg()
+    cfg.bot_card_template_id = "tpl1"
+    message = framework.InboundMessage(
+        platform="dingtalk",
+        msg_id="m1",
+        platform_user_id="staff-9",
+        chat_id="cidG",
+        text="hi",
+        is_group=True,
+    )
+    out_track_id = framework._dingtalk_card_start(message, cfg, None)
+    assert out_track_id is not None
+    method, path, create_payload = calls[0]
+    assert (method, path) == ("POST", "/v1.0/card/instances")
+    assert create_payload["cardTemplateId"] == "tpl1"
+    assert create_payload["callbackType"] == "STREAM"
+    _, _, deliver = calls[1]
+    assert deliver["openSpaceId"] == "dtv1.card//IM_GROUP.cidG"
+    assert deliver["imGroupOpenDeliverModel"] == {"robotCode": "rc1"}
+
+    # no template configured → no card
+    assert framework._dingtalk_card_start(message, _DingCfg(), None) is None
+
+
+def test_dingtalk_card_finish_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    calls: list[tuple[str, str, dict]] = []
+    monkeypatch.setattr(
+        framework,
+        "_dingtalk_card_api",
+        lambda _config, _mgr, method, path, payload: calls.append(
+            (method, path, payload)
+        ),
+    )
+    monkeypatch.setattr(framework.time, "sleep", lambda _s: None)
+
+    framework._dingtalk_card_finish("cfg", None, "track-1", "最终回答")
+    method, path, stream_payload = calls[0]
+    assert (method, path) == ("PUT", "/v1.0/card/streaming")
+    assert stream_payload["outTrackId"] == "track-1"
+    assert stream_payload["key"] == "msgContent"
+    assert stream_payload["content"] == "最终回答"
+    assert stream_payload["isFull"] is True
+    assert stream_payload["isFinalize"] is True
+    _, _, flow_payload = calls[1]
+    params = flow_payload["cardData"]["cardParamMap"]
+    assert params["flowStatus"] == framework._DINGTALK_FLOW_FINISHED
+    assert params["msgContent"] == "最终回答"
+
+
+def test_dingtalk_send_group_vs_direct(monkeypatch: pytest.MonkeyPatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    posts: list[tuple[str, dict]] = []
+    monkeypatch.setattr(framework, "_dingtalk_token", lambda _config, _mgr: "tok")
+    monkeypatch.setattr(
+        "requests.post",
+        lambda url, **kwargs: (
+            posts.append((url, kwargs.get("json") or {}))
+            or type("R", (), {"raise_for_status": lambda _self: None})()
+        ),
+    )
+
+    cfg = _DingCfg()
+    framework._dingtalk_send(cfg, None, "cidG", "staff-9", "群里回答", is_group=True)
+    url, body = posts[0]
+    assert url.endswith("/v1.0/robot/groupMessages/send")
+    assert body["openConversationId"] == "cidG"
+    assert body["robotCode"] == "rc1"
+    assert json.loads(body["msgParam"])["text"] == "群里回答"
+
+    framework._dingtalk_send(cfg, None, "cidD", "staff-9", "单聊回答")
+    url, body = posts[1]
+    assert url.endswith("/v1.0/robot/oToMessages/batchSend")
+    assert body["userIds"] == ["staff-9"]
+    assert json.loads(body["msgParam"])["content"] == "单聊回答"
+
+
+def test_dingtalk_reply_rich_falls_back_without_template(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.onyxbot.china import framework
+
+    sends: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        framework,
+        "_dingtalk_send",
+        lambda _config, _mgr, _chat_id, _user_id, text, *, is_group=False: sends.append(
+            (text, is_group)
+        ),
+    )
+    message = framework.InboundMessage(
+        platform="dingtalk",
+        msg_id="m1",
+        platform_user_id="staff-9",
+        chat_id="cidD",
+        text="hi",
+    )
+    framework._dingtalk_reply_rich(message, _DingCfg(), None, "命令回复")
+    assert sends == [("命令回复", False)]
+
+
+def test_dingtalk_check_url_echo_carries_appkey_suffix() -> None:
+    """The console decrypts our echo reply and validates the envelope suffix
+    against the app's AppKey (suiteKey), per the official crypto SDK."""
+    from onyx.onyxbot.china import adapters
+
+    result = adapters._dingtalk_echo_response(_DingCfg(), "success")
+    assert result.body is not None
+    encrypt = result.body["encrypt"]
+    # Console-side decrypt: key + padding, then suffix must equal the AppKey.
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    key = base64.b64decode(DING_AES_KEY + "=" * (-len(DING_AES_KEY) % 4))
+    dec = Cipher(algorithms.AES(key), modes.CBC(key[:16])).decryptor()
+    raw = dec.update(base64.b64decode(encrypt)) + dec.finalize()
+    raw = raw[: -raw[-1]]  # strip PKCS7 padding
+    msg_len = struct.unpack(">I", raw[16:20])[0]
+    suffix = raw[20 + msg_len :].decode()
+    assert suffix == "dk"
+    assert raw[20 : 20 + msg_len].decode() == "success"

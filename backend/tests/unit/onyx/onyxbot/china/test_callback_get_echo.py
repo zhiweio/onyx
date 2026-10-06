@@ -1,4 +1,4 @@
-"""GET callback handshake tests (WeCom URL verification; 405 for others)."""
+"""GET callback handshake tests (WeCom URL verification; DingTalk 200 probe; 405 for Feishu)."""
 
 import base64
 import struct
@@ -102,8 +102,15 @@ def test_wecom_get_echo_rejects_bad_signature() -> None:
     assert resp.status_code == 403
 
 
-def test_non_wecom_get_answers_405() -> None:
+def test_dingtalk_get_probe_answers_200() -> None:
+    """DingTalk's console probes the callback with a bare GET that must
+    answer 200 before the platform accepts the URL."""
+    resp = _client().get("/onyxbot/dingtalk/callback")
+    assert resp.status_code == 200
+    assert resp.text == "success"
+
+
+def test_feishu_get_answers_405() -> None:
     with patch("onyx.server.onyxbot_china_api._bot_configs", return_value=[]):
-        for platform in ("dingtalk", "feishu"):
-            resp = _client().get(f"/onyxbot/{platform}/callback")
-            assert resp.status_code == 405
+        resp = _client().get("/onyxbot/feishu/callback")
+        assert resp.status_code == 405

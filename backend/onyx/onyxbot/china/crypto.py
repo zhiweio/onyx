@@ -7,9 +7,10 @@ with per-platform key derivation and signature schemes:
 - WeCom: key = Base64Decode(EncodingAESKey + "="), signature =
   SHA-1 over the sorted (token, timestamp, nonce, encrypt) tuple; the
   envelope suffix is the corp_id.
-- DingTalk (enterprise robot): key = Base64Decode(aesKey), no signature
-  header; URL verification decrypts to a JSON payload whose content is
-  echoed back re-encrypted.
+- DingTalk (enterprise robot): key = Base64Decode(aesKey); callbacks carry
+  the same sorted-SHA1 signature as WeCom (checked when the optional
+  ``bot_token`` is configured); URL verification decrypts to a JSON payload
+  whose content is echoed back re-encrypted.
 - Feishu: key = SHA-256(encrypt_key); no signature (the token field in
   the body is checked); URL verification echoes ``challenge``.
 
@@ -127,16 +128,33 @@ def wecom_verify_echo(
 # ── DingTalk ──────────────────────────────────────────────────────────────
 
 
+def _dingtalk_key(aes_key_b64: str) -> bytes:
+    """Console-generated aes keys may omit the base64 padding."""
+    return base64.b64decode(aes_key_b64 + "=" * (-len(aes_key_b64) % 4))
+
+
+def dingtalk_signature(token: str, timestamp: str, nonce: str, encrypt: str) -> str:
+    """Same sorted-SHA1 scheme as WeCom; checked when ``bot_token`` is set."""
+    items = sorted([token, timestamp, nonce, encrypt])
+    # SHA-1 is mandated by the platform callback signature protocol.
+    return hashlib.sha1("".join(items).encode("utf-8")).hexdigest()  # noqa: S324
+
+
 def dingtalk_decrypt(aes_key_b64: str, encrypted_b64: str) -> str:
-    key = base64.b64decode(aes_key_b64)
+    key = _dingtalk_key(aes_key_b64)
     plaintext = _aes_cbc_decrypt(key, base64.b64decode(encrypted_b64))
-    msg, _suffix = _unwrap_envelope(plaintext)
+    msg, suffix = _unwrap_envelope(plaintext)
+    # The envelope suffix is the app's AppKey; the platform checks it on our
+    # replies, but inbound messages are accepted regardless (lenient read).
+    del suffix
     return msg
 
 
-def dingtalk_encrypt(aes_key_b64: str, msg: str) -> str:
-    key = base64.b64decode(aes_key_b64)
-    return base64.b64encode(_aes_cbc_encrypt(key, _wrap_envelope(msg, ""))).decode()
+def dingtalk_encrypt(aes_key_b64: str, msg: str, suffix: str = "") -> str:
+    """The suffix is the app's AppKey (suiteKey) — the console validates it
+    when decrypting our echo replies, so callers must pass it."""
+    key = _dingtalk_key(aes_key_b64)
+    return base64.b64encode(_aes_cbc_encrypt(key, _wrap_envelope(msg, suffix))).decode()
 
 
 def dingtalk_verify_echo(aes_key_b64: str, encrypted_b64: str) -> str:

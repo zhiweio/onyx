@@ -1,10 +1,12 @@
 """DingTalk (钉钉) knowledge base connector.
 
-Indexes knowledge base documents through the new DingTalk OpenAPI
-(org-level app credentials): lists knowledge bases, their pages, and
-fetches page content.
+Indexes wiki workspaces through the new DingTalk OpenAPI (org-level app
+credentials): lists workspaces, walks each node tree, and assembles
+document text from the doc-suite block list. The wiki APIs act on behalf
+of a user, so credentials include that user's unionId.
 
-Credentials: ``dingtalk_client_id`` / ``dingtalk_client_secret``.
+Credentials: ``dingtalk_client_id`` / ``dingtalk_client_secret`` /
+``dingtalk_operator_union_id``.
 """
 
 from __future__ import annotations
@@ -39,7 +41,9 @@ class DingTalkConnector(LoadConnector, PollConnector):
 
     def load_credentials(self, credentials: dict[str, Any]) -> dict[str, Any] | None:
         self._client = DingTalkClient(
-            credentials["dingtalk_client_id"], credentials["dingtalk_client_secret"]
+            credentials["dingtalk_client_id"],
+            credentials["dingtalk_client_secret"],
+            credentials.get("dingtalk_operator_union_id"),
         )
         return None
 
@@ -52,16 +56,18 @@ class DingTalkConnector(LoadConnector, PollConnector):
         # list is invariant, so the batch must match the declared
         # `Iterator[list[Document | HierarchyNode]]` yield type.
         batch: list[Document | HierarchyNode] = []
-        for kb in client.knowledge_bases():
-            kb_id = str(kb.get("knowledgeBaseId") or kb.get("id") or "")
-            if not kb_id:
+        for workspace in client.knowledge_bases():
+            kb_id = str(workspace.get("workspaceId") or workspace.get("id") or "")
+            root_node_id = str(workspace.get("rootNodeId") or "")
+            if not kb_id or not root_node_id:
                 continue
-            kb_name = clean_identifier(str(kb.get("name", "")), kb_id)
-            for node in client.knowledge_base_nodes(kb_id):
+            kb_name = clean_identifier(str(workspace.get("name", "")), kb_id)
+            for node in client.knowledge_base_nodes(root_node_id):
                 node_id = str(node.get("nodeId") or node.get("id") or "")
                 if not node_id:
                     continue
-                updated = float(node.get("editTime") or node.get("updatedTime") or 0)
+                # v2 wiki timestamps are epoch milliseconds.
+                updated = float(node.get("modifiedTimestamp") or 0) / 1000
                 if start is not None and updated < start:
                     continue
                 if end is not None and updated >= end:
@@ -69,7 +75,7 @@ class DingTalkConnector(LoadConnector, PollConnector):
                 content = client.node_content(node_id)
                 if not content:
                     continue
-                title = clean_identifier(str(node.get("title", "")), node_id)
+                title = clean_identifier(str(node.get("name", "")), node_id)
                 text = f"{title}\n\n{content}"
                 batch.append(
                     Document(

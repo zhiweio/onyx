@@ -19,10 +19,14 @@
 ## 2. 钉钉（dingtalk）
 
 1. 钉钉开放平台 → 应用开发 → 企业内部应用 → 机器人，开启"消息接收模式 = HTTP 模式"。
-2. 消息接收地址填 `https://你的域名/onyxbot/dingtalk/callback`，生成 aesKey。
+2. 消息接收地址填 `https://你的域名/onyxbot/dingtalk/callback`，记下 Token 与数据加密密钥（aesKey）。
 3. 记下 `robotCode`（机器人编码）与应用的 `AppKey`/`AppSecret`。
-4. Onyx 侧 DINGTALK Provider 配置：`client_id`/`client_secret`/`robot_code`/`bot_aes_key`/`email_domain`。
-5. URL 验证：平台发送解密后为 `success` 的密文，端点回加密的 `success`。
+4. （可选，推荐）AI 卡片流式回复：卡片平台（钉钉开放平台 → 卡片）创建 AI 卡片模板，
+   模板变量需含 `msgContent`（回复正文）与 `flowStatus`（流式状态），记下模板 ID。
+5. Onyx 侧 DINGTALK Provider 配置：`client_id`/`client_secret`/`robot_code`/`bot_aes_key`/`bot_token`/
+   `bot_card_template_id`/`email_domain`。`bot_token` 选填（填了则校验回调签名）；
+   `bot_card_template_id` 选填（填了则回复走 AI 卡片流式，否则为完成后单条纯文本）。
+6. URL 验证：平台发送解密后为 `success` 的密文，端点回加密的 `success`。
 
 ## 3. 飞书（feishu）
 
@@ -39,7 +43,8 @@
 - **认证**：无会话登录——每平台的签名/解密验证即认证（企微 SHA1 签名+corp 校验、钉钉 AES、飞书 token）。
 - **应答时限**：平台要求 1-5 秒内回 200。端点内联完成验签/去重/URL 验证；真正回答在后台线程（进程内聊天引擎），答复通过平台 API 异步回发。
 - **多轮上下文**：每个 (平台, 用户) 复用最近一个会话，多轮对话共享上下文；发 `/reset`（或 `/新对话`）开启新会话。注意 Onyx 的用户长期记忆（memory 表）跨会话生效，重置会话不会清除已提取的记忆。
-- **飞书流式回答**：飞书先回一张"正在思考…"交互卡片，生成过程中按 1.5s 节流原地更新卡片，完成时定格全文；超过 3500 字的卡片放不下的部分以纯文本消息补发。企微/钉钉仍为完成后单条回复。
+- **飞书流式回答**：飞书先回一张"正在思考…"交互卡片，生成过程中按 1.5s 节流原地更新卡片，完成时定格全文；超过 3500 字的卡片放不下的部分以纯文本消息补发。企微仍为完成后单条回复。
+- **钉钉流式回答**：配置 AI 卡片模板后，钉钉与飞书同款体验——AI 卡片随生成流式更新（打字机效果），完成定格全文；卡片容量 20000 字，超出部分以纯文本补发。群聊消息在群内以卡片/群消息回复（而非私信）；未配置卡片模板时退回完成后单条纯文本。
 - **飞书 markdown 渲染**：所有飞书回复（含命令直回与推送）均以交互卡片发送并用 markdown 模块渲染；发卡前做语法转换——`#` 标题转粗体、GFM 表格转"**列名**: 值"键值列表、HTML（`<br>`/`<a>`/`<b>` 等）转对应 markdown、其余尖括号转全角、分隔线转"———"。代码块、列表、引用、链接原样透传。卡片 markdown 不支持表格与标题语法，故需转换。
 - **去重**：Redis SETNX on msg id（平台会重试回调）。Redis 不可用时丢弃回调（宁可少答不重复答）。
 - **用户映射与权限**：每条消息先做身份解析——飞书 open_id → 通讯录 API 取 union_id → `oauth_account`（SSO 登录时写入的 `feishu:{app_id}:{union_id}`）→ 真实 Onyx 账号。解析成功即以本人身份运行对话与场景，**场景/技能可见性、文档 ACL 与网页端完全一致**；未做过 SSO 登录的用户回退确定性影子账号 `{platform}-{platform_user_id}@{email_domain}`（仅能看到公开资源），首次 SSO 登录后自动切换并保留会话绑定。

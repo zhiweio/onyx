@@ -274,9 +274,29 @@ export const CONFIG_FIELDS_BY_TYPE: Record<SSOProviderType, SSOConfigField[]> =
         name: "bot_aes_key",
         label: "IM Bot AES Key",
         kind: "password",
-        description: "DingTalk event-stream AES key. Stored encrypted.",
+        description:
+          "DingTalk callback message key (数据加密密钥). Stored encrypted.",
         optional: true,
         placeholder: "AES key",
+      },
+      {
+        name: "bot_token",
+        label: "IM Bot Signature Token",
+        kind: "password",
+        description:
+          "DingTalk callback signature token (消息接收 Token). Stored encrypted.",
+        optional: true,
+        placeholder: "Signature token",
+      },
+      {
+        name: "bot_card_template_id",
+        label: "AI Card Template ID",
+        kind: "text",
+        description:
+          "AI-card template id from the DingTalk card platform. Set to stream " +
+          "bot replies as cards.",
+        optional: true,
+        placeholder: "Card template id",
       },
     ],
     FEISHU: [

@@ -554,6 +554,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
 
     start_agent_model_registry_refresher()
 
+    # DingTalk Stream-mode bot: outbound WebSocket, no public callback URL.
+    # Daemon threads per enabled provider; config changes need a restart.
+    if not MULTI_TENANT:
+        from onyx.onyxbot.china.stream_client import start_enabled_stream_clients
+
+        started = start_enabled_stream_clients()
+        if started:
+            logger.notice("DingTalk stream clients started: %s", started)
+
     yield
 
     # Flush buffered per-user usage before disposing the DB engines its drain

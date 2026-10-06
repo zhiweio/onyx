@@ -71,6 +71,7 @@ import {
 import AdminListHeader from "@/sections/admin/AdminListHeader";
 import BrowsePagination from "@/sections/gallery/BrowsePagination";
 import { MCPServer } from "@/lib/tools/types";
+import type { ToolSnapshot } from "@/lib/tools/types";
 import type { IconProps } from "@opal/types";
 import { useTierAtLeast } from "@/hooks/useTierAtLeast";
 import { Tier } from "@/lib/settings/types";
@@ -81,6 +82,11 @@ const mcpEntryMatches = (
   entry: { server: MCPServer; tools: MCPServerCardTool[] },
   query: string
 ) => mcpServerMatches(entry.server, query);
+
+const openApiToolMatches = (tool: ToolSnapshot, query: string) =>
+  tool.name.toLowerCase().includes(query) ||
+  tool.display_name.toLowerCase().includes(query) ||
+  tool.description.toLowerCase().includes(query);
 
 interface DefaultAgentConfiguration {
   tool_ids: number[];
@@ -770,6 +776,19 @@ export default function ChatPreferencesPage() {
   }));
 
   const mcpList = useSearchablePagination(mcpServersWithTools, mcpEntryMatches);
+  const openApiList = useSearchablePagination(openApiTools, openApiToolMatches);
+
+  // One search box filters both the MCP server list and the OpenAPI actions
+  // list; each list paginates independently.
+  const handleActionSearch = useCallback(
+    (query: string) => {
+      mcpList.setSearchQuery(query);
+      openApiList.setSearchQuery(query);
+    },
+    [mcpList.setSearchQuery, openApiList.setSearchQuery]
+  );
+  const hasActionEntries =
+    mcpServersWithTools.length > 0 || openApiTools.length > 0;
 
   // Default agent configuration (system prompt)
   const { data: defaultAgentConfig, mutate: mutateDefaultAgent } =
@@ -1304,11 +1323,11 @@ export default function ChatPreferencesPage() {
 
                     {/* MCP Servers & OpenAPI Tools */}
                     <Section gap={2} alignItems="stretch">
-                      {mcpServersWithTools.length > 0 && (
+                      {hasActionEntries && (
                         <AdminListHeader
                           hasItems
                           searchQuery={mcpList.searchQuery}
-                          onSearchQueryChange={mcpList.setSearchQuery}
+                          onSearchQueryChange={handleActionSearch}
                           emptyStateText=""
                         />
                       )}
@@ -1328,7 +1347,7 @@ export default function ChatPreferencesPage() {
                         onPageChange={mcpList.setPage}
                         units={t("mcpServer.pagination.units")}
                       />
-                      {openApiTools.map((tool) => (
+                      {openApiList.pageItems.map((tool) => (
                         <Card key={tool.id} border="solid" rounding={4}>
                           <InputHorizontal
                             icon={SvgActions}
@@ -1345,6 +1364,12 @@ export default function ChatPreferencesPage() {
                           </InputHorizontal>
                         </Card>
                       ))}
+                      <BrowsePagination
+                        page={openApiList.safePage}
+                        totalItems={openApiList.filtered.length}
+                        onPageChange={openApiList.setPage}
+                        units={t("mcpServer.pagination.units")}
+                      />
                     </Section>
                   </SimpleCollapsible.Content>
                 </SimpleCollapsible>

@@ -112,24 +112,22 @@ def _create_request(
 
 def test_all_built_ins_are_onyx_managed() -> None:
     """Registry invariants. Deliberate opt-outs, update this when they change:
-    - DINGTALK / WPS365 register providers (egress domains only, empty
-      catalogs) without a bundled built-in skill.
-    - FEISHU / WECOM ship built-in skills but are admin-configured (the org
-      supplies its own app_id/app_secret / bot_id/bot_secret), so they are
-      not Onyx-managed."""
+    - WPS365 registers a provider (egress domains only, empty catalog) without
+      a bundled built-in skill.
+    - FEISHU / WECOM / DINGTALK ship built-in skills but are admin-configured
+      (the org supplies its own app credentials), so they are not Onyx-managed."""
     built_in = set(EXTERNAL_APP_BUILT_IN_SKILL_IDS)
     providers = set(PROVIDERS)
     # Every built-in skill has a registered provider.
     assert built_in <= providers
-    # The only providers without bundled skills are the China ones.
-    assert providers - built_in == {
-        ExternalAppType.DINGTALK,
-        ExternalAppType.WPS365,
-    }
-    # Feishu and WeCom are the only skilled built-ins that are not managed.
+    # The only provider without a bundled skill is WPS365.
+    assert providers - built_in == {ExternalAppType.WPS365}
+    # Feishu, WeCom, and DingTalk are the only skilled built-ins that are not
+    # managed.
     assert set(_MANAGED_APP_TYPES) == built_in - {
         ExternalAppType.FEISHU,
         ExternalAppType.WECOM,
+        ExternalAppType.DINGTALK,
     }
 
 

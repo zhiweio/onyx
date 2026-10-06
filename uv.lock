@@ -1382,6 +1382,19 @@ wheels = [
 ]
 
 [[package]]
+name = "dingtalk-stream"
+version = "0.24.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "requests" },
+    { name = "websockets" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4c/44/102dede3f371277598df6aa9725b82e3add068c729333c7a5dbc12764579/dingtalk_stream-0.24.3-py3-none-any.whl", hash = "sha256:2160403656985962878bf60cdf5adf41619f21067348e06f07a7c7eebf5943ad", size = 27813 },
+]
+
+[[package]]
 name = "discord-py"
 version = "2.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4261,6 +4274,7 @@ dependencies = [
     { name = "aioboto3" },
     { name = "brotli" },
     { name = "cohere" },
+    { name = "dingtalk-stream" },
     { name = "fastapi" },
     { name = "fsspec" },
     { name = "google-genai" },
@@ -4439,6 +4453,7 @@ requires-dist = [
     { name = "aioboto3", specifier = "==15.1.0" },
     { name = "brotli", specifier = ">=1.2.0" },
     { name = "cohere", specifier = "==7.0.5" },
+    { name = "dingtalk-stream", specifier = "==0.24.3" },
     { name = "fastapi", specifier = "==0.133.1" },
     { name = "fsspec", specifier = "==2026.7.0" },
     { name = "google-genai", specifier = "==2.18.1" },

@@ -104,6 +104,12 @@ class DingTalkProviderConfig(_ChinaProviderConfig):
     # IM bot (enterprise internal robot) callback + replies
     robot_code: str | None = None
     bot_aes_key: str | None = Field(default=None, json_schema_extra={"secret": True})
+    # Callback request-signature token (console 消息接收配置 → Token); when set,
+    # callbacks without a matching SHA1 signature are refused.
+    bot_token: str | None = None
+    # AI-card template id (卡片平台); when set, bot replies stream into a card
+    # instead of single plain-text messages.
+    bot_card_template_id: str | None = None
 
 
 class FeishuProviderConfig(_ChinaProviderConfig):

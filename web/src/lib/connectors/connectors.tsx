@@ -2059,6 +2059,15 @@ For example, specifying .*-alerts as a "channel to exclude" will cause the conne
         optional: false,
         description: "The enterprise app's AppSecret.",
       },
+      {
+        type: "text",
+        query: "Enter the operator unionId:",
+        label: "Operator Union ID",
+        name: "dingtalk_operator_union_id",
+        optional: true,
+        description:
+          "unionId of the user the wiki APIs act as (found via user detail in the developer console).",
+      },
     ],
     advanced_values: [],
   },

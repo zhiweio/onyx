@@ -56,39 +56,45 @@ def _bot_configs(db_session: Any, platform: str) -> list[Any]:
 async def china_bot_callback_get(platform: str, request: Request) -> Response:
     """WeCom configures callback URLs with a GET handshake: the query carries
     an encrypted ``echostr`` that must be decrypted and returned verbatim.
-    DingTalk/Feishu verify over POST, so they answer 405 here."""
-    if platform != "wecom":
-        return JSONResponse({"error": "method not allowed"}, status_code=405)
+    DingTalk's console probes the callback with a bare GET that must answer
+    200 before the platform accepts the URL. Feishu verifies over POST, so it
+    answers 405 here."""
+    if platform == "wecom":
+        echostr = request.query_params.get("echostr", "")
+        if not echostr:
+            return JSONResponse({"error": "missing echostr"}, status_code=400)
 
-    echostr = request.query_params.get("echostr", "")
-    if not echostr:
-        return JSONResponse({"error": "missing echostr"}, status_code=400)
+        with get_session_with_current_tenant() as db_session:
+            configs = _bot_configs(db_session, platform)
+        if not configs:
+            return JSONResponse({"error": "bot not configured"}, status_code=404)
 
-    with get_session_with_current_tenant() as db_session:
-        configs = _bot_configs(db_session, platform)
-    if not configs:
-        return JSONResponse({"error": "bot not configured"}, status_code=404)
+        last_error: Exception | None = None
+        for config in configs:
+            if config.bot_token is None or config.bot_encoding_aes_key is None:
+                continue
+            try:
+                plaintext = crypto.wecom_verify_echo(
+                    token=config.bot_token,
+                    encoding_aes_key=config.bot_encoding_aes_key,
+                    signature=request.query_params.get("msg_signature", ""),
+                    timestamp=request.query_params.get("timestamp", ""),
+                    nonce=request.query_params.get("nonce", ""),
+                    encrypted_b64=echostr,
+                    corp_id=config.corp_id,
+                )
+            except crypto.CallbackCryptoError as exc:
+                last_error = exc
+                continue
+            return PlainTextResponse(plaintext)
+        logger.warning("china bot wecom GET echo rejected: %s", last_error)
+        return JSONResponse({"error": "verification failed"}, status_code=403)
 
-    last_error: Exception | None = None
-    for config in configs:
-        if config.bot_token is None or config.bot_encoding_aes_key is None:
-            continue
-        try:
-            plaintext = crypto.wecom_verify_echo(
-                token=config.bot_token,
-                encoding_aes_key=config.bot_encoding_aes_key,
-                signature=request.query_params.get("msg_signature", ""),
-                timestamp=request.query_params.get("timestamp", ""),
-                nonce=request.query_params.get("nonce", ""),
-                encrypted_b64=echostr,
-                corp_id=config.corp_id,
-            )
-        except crypto.CallbackCryptoError as exc:
-            last_error = exc
-            continue
-        return PlainTextResponse(plaintext)
-    logger.warning("china bot wecom GET echo rejected: %s", last_error)
-    return JSONResponse({"error": "verification failed"}, status_code=403)
+    if platform == "dingtalk":
+        # Reachability probe: a bare GET (no params) must answer 200.
+        return PlainTextResponse("success")
+
+    return JSONResponse({"error": "method not allowed"}, status_code=405)
 
 
 @router.post("/{platform}/callback")

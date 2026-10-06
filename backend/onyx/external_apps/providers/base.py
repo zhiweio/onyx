@@ -138,6 +138,10 @@ class OrgTokenSpec(BaseModel):
     credential_keys: tuple[str, ...]
     # The derived credential's key in the merged dict handed to auth_template.
     token_key: str = "access_token"
+    # The token/expiry fields in the token endpoint's response body. DingTalk
+    # answers ``accessToken``/``expireIn``; the default covers the rest.
+    response_token_key: str = "token"
+    response_expires_key: str = "expires_in"
 
 
 class ProviderSpec(BaseModel):

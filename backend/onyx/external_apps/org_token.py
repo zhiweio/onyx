@@ -65,8 +65,24 @@ def _build_wecom_cli_request(
     return _WECOM_CLI_TOKEN_URL, body
 
 
+_DINGTALK_CORP_KIND = "dingtalk_corp"
+_DINGTALK_CORP_TOKEN_URL = "https://api.dingtalk.com/v1.0/oauth2/accessToken"
+
+
+def _build_dingtalk_corp_request(
+    org_credentials: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    """DingTalk's enterprise accessToken: the appKey/appSecret swap for a
+    ~7200s token that rides as ``x-acs-dingtalk-access-token``."""
+    return _DINGTALK_CORP_TOKEN_URL, {
+        "appKey": str(org_credentials.get("client_id") or ""),
+        "appSecret": str(org_credentials.get("client_secret") or ""),
+    }
+
+
 _BUILDERS_BY_KIND: dict[str, Callable[[dict[str, Any]], tuple[str, dict[str, Any]]]] = {
     _WECOM_CLI_KIND: _build_wecom_cli_request,
+    _DINGTALK_CORP_KIND: _build_dingtalk_corp_request,
 }
 
 # --- Fetch & cache ---------------------------------------------------------------
@@ -123,11 +139,15 @@ def _fetch_org_token(
             payload.get("errcode"),
         )
         return None
-    token = payload.get("token")
+    token = payload.get(spec.response_token_key)
     if not token:
-        logger.warning("org_token.no_token_in_response kind=%s", spec.kind)
+        logger.warning(
+            "org_token.no_token_in_response kind=%s response_key=%s",
+            spec.kind,
+            spec.response_token_key,
+        )
         return None
-    ttl = _cache_ttl_seconds(payload.get("expires_in")) - _TTL_MARGIN_S
+    ttl = _cache_ttl_seconds(payload.get(spec.response_expires_key)) - _TTL_MARGIN_S
     return str(token), max(60, ttl)
 
 

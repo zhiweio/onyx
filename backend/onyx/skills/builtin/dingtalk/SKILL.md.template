@@ -1,0 +1,85 @@
+---
+name: dingtalk
+description: Read and act on DingTalk (钉钉) — knowledge base docs, drive (钉盘) files, todo, calendar, contacts, robot messages, and AI cards — via the bundled helper.
+---
+
+# DingTalk (钉钉)
+
+Call DingTalk's new-gen OpenAPI via the bundled helper. **You are already
+authenticated** — the egress proxy injects the enterprise access token on the
+wire. Never ask for or handle tokens.
+
+{{ACTION_AVAILABILITY_SECTION}}
+
+## Usage
+
+    python .opencode/skills/dingtalk/dingtalk_api.py <command> [args]
+
+Output is JSON on stdout. A failure prints
+`{"ok": false, "http_status": ..., "error": ...}` (or `errcode`/`errmsg`) —
+surface the error message to the user. HTTP 403 with guidance means the action
+needs approval (writes default to ASK); tell the user to approve it in Onyx.
+
+List named routes with `routes`. Path placeholders (`{unionId}`, `{spaceId}`,
+`{taskId}`, ...) are filled from `--data` fields; remaining GET fields become
+query params, non-GET fields the JSON body.
+
+```
+dingtalk_api.py routes
+dingtalk_api.py call <route> --data '<json>'
+dingtalk_api.py raw GET /v1.0/<path> --data '<json>'   # escape hatch
+```
+
+### Knowledge base (钉钉文档 wiki)
+
+Knowledge base calls need `operatorId` — the unionId of the acting user.
+
+```
+dingtalk_api.py call kb.list --data '{"operatorId":"<unionId>"}' --paginate
+dingtalk_api.py call kb.nodes --data '{"operatorId":"<unionId>","parentNodeId":"<nodeId>"}' --paginate
+dingtalk_api.py call kb.content --data '{"operatorId":"<unionId>","docKey":"<nodeId>","startIndex":0,"endIndex":199}'
+```
+
+List a workspace's tree by walking from its `rootNodeId`; node lists
+return `nodes` plus a `nextToken` cursor. `kb.content` returns document
+blocks (`result.data`, `blockType` + text payload) between the given
+top-level indexes; page forward from the last `index` until an empty
+page.
+
+### Drive (钉盘)
+
+```
+dingtalk_api.py call drive.spaces --data '{"unionId":"..."}'
+dingtalk_api.py call drive.files --data '{"spaceId":"...","unionId":"...","parentId":"0"}' --paginate
+dingtalk_api.py call drive.download --data '{"spaceId":"...","fileId":"...","unionId":"..."}'
+```
+
+`drive.download` returns a pre-signed, time-limited CDN URL — fetch it
+directly, without any auth header.
+
+### Todo, calendar, contacts
+
+```
+dingtalk_api.py call todo.list --data '{"unionId":"..."}' --paginate
+dingtalk_api.py call todo.create --data '{"unionId":"...","subject":"...","description":"..."}'
+dingtalk_api.py call calendar.events --data '{"userId":"...","calendarId":"primary"}'
+dingtalk_api.py call calendar.create --data '{"userId":"...","calendarId":"primary","title":"...","start":...,"end":...}'
+dingtalk_api.py call contact.search --data '{"queryWord":"张三","offset":0,"size":10}'
+dingtalk_api.py call contact.user --data '{"unionId":"..."}'
+```
+
+The enterprise token has no "me": for personal drive/todo/calendar data,
+resolve the target person first — `contact.search` by name, then
+`contact.user` to turn a `staffId` into a `unionId` — or ask the user.
+Calendar APIs key on `userId` (staffId); drive/todo on `unionId`.
+
+### Robot messages & AI cards
+
+```
+dingtalk_api.py call robot.o2o --data '{"robotCode":"...","userIds":["..."],"msgKey":"sampleText","msgParam":"{\"content\":\"hi\"}"}'
+dingtalk_api.py call robot.group --data '{"robotCode":"...","openConversationId":"...","msgKey":"sampleMarkdown","msgParam":"{\"title\":\"...\",\"text\":\"...\"}"}'
+```
+
+`msgParam` is a JSON **string**, not a nested object. Sends default to ASK
+approval — expect HTTP 403 while approval is pending, and tell the user to
+approve it in Onyx. Deletes (todo/calendar) are denied.

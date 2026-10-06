@@ -62,6 +62,18 @@ _CANCEL_TASK_COMMANDS = frozenset({"/取消任务", "/取消", "/cancel"})
 _FEISHU_CARD_UPDATE_INTERVAL_SECONDS = 1.5
 _FEISHU_CARD_MAX_CHARS = 3500
 
+# DingTalk AI-card streaming (same protocol family as the official CLI):
+# the card platform throttles rapid frames (~800ms floor) and races
+# back-to-back deliver/content/finalize frames, so frames keep a gap; the
+# card holds 20000 chars and overflow goes out as plain text messages.
+_DINGTALK_CARD_UPDATE_INTERVAL_SECONDS = 1.5
+_DINGTALK_CARD_FRAME_GAP_SECONDS = 0.5
+_DINGTALK_CARD_MAX_CHARS = 20000
+# flowStatus states of the AI-card template contract.
+_DINGTALK_FLOW_INPUTING = "2"
+_DINGTALK_FLOW_FINISHED = "3"
+_DINGTALK_FLOW_FAILED = "5"
+
 
 class CallbackRejected(Exception):
     """Verification refused the callback; router answers 403."""
@@ -189,6 +201,10 @@ def _answer_safely(message: InboundMessage, provider_config: Any) -> None:
             # Feishu answers stream into an interactive card the user can
             # watch grow; other platforms get one final message.
             _answer_feishu(message, provider_config)
+        elif message.platform == "dingtalk":
+            # DingTalk mirrors the Feishu experience when the provider row
+            # carries an AI-card template id; plain single message otherwise.
+            _answer_dingtalk(message, provider_config)
         else:
             reply = _answer(message, provider_config)
             if reply:
@@ -411,7 +427,11 @@ def _iter_chat_stream(prepared: _PreparedTurn) -> Any:
     from onyx.db.models import User
 
     with get_session_with_current_tenant() as db_session:
-        fresh_user = db_session.scalar(select(User).where(User.id == prepared.user_id))
+        fresh_user = db_session.scalar(
+            select(User).where(
+                User.id == prepared.user_id  # ty: ignore[invalid-argument-type]
+            )
+        )
         assert fresh_user is not None
         yield from handle_stream_message_objects(
             prepared.request, fresh_user, bypass_acl=False
@@ -521,6 +541,267 @@ def _split_for_cards(text: str, limit: int) -> list[str]:
     return chunks or [text]
 
 
+# ── dingtalk AI-card streaming answer ─────────────────────────────────────
+
+
+def _answer_dingtalk(message: InboundMessage, provider_config: Any) -> None:
+    """Answer a DingTalk message, streaming progress into an AI card when the
+    provider row carries ``bot_card_template_id``; a single plain message
+    otherwise. Group chats reply in the group either way."""
+    from onyx.chat.models import StreamingError
+    from onyx.connectors.china_common import AppTokenManager
+    from onyx.server.query_and_chat.streaming_models import AgentResponseDelta, Packet
+
+    token_mgr = AppTokenManager
+    prepared = _prepare_turn(message, provider_config)
+    if isinstance(prepared, str):
+        # Direct replies (menu commands, /场景 launches) ride a card too.
+        _dingtalk_reply_rich(message, provider_config, token_mgr, prepared)
+        return
+
+    card_id = _dingtalk_card_start(message, provider_config, token_mgr)
+    if card_id is None:
+        # No card support — behave like the other plain-text platforms.
+        reply = _answer_from_prepared(prepared)
+        if reply:
+            _dingtalk_send(
+                provider_config,
+                token_mgr,
+                message.chat_id,
+                message.platform_user_id,
+                reply,
+                is_group=message.is_group,
+            )
+        return
+
+    answer = ""
+    error_msg: str | None = None
+    last_update = time.monotonic()
+    try:
+        for packet in _iter_chat_stream(prepared):
+            if isinstance(packet, StreamingError):
+                error_msg = packet.error
+                break
+            if not isinstance(packet, Packet):
+                continue
+            if isinstance(packet.obj, AgentResponseDelta) and packet.obj.content:
+                answer += packet.obj.content
+                now = time.monotonic()
+                if now - last_update >= _DINGTALK_CARD_UPDATE_INTERVAL_SECONDS:
+                    _dingtalk_card_set_flow(
+                        provider_config,
+                        token_mgr,
+                        card_id,
+                        _DINGTALK_FLOW_INPUTING,
+                        answer,
+                    )
+                    last_update = time.monotonic()
+    except Exception:
+        logger.exception("dingtalk streaming answer failed for %s", message.msg_id)
+        error_msg = error_msg or "处理过程中出现错误"
+
+    if not answer.strip() and not error_msg:
+        error_msg = "未生成回答"
+
+    if error_msg:
+        detail = f"⚠️ 回答失败:{error_msg}"
+        _dingtalk_card_set_flow(
+            provider_config, token_mgr, card_id, _DINGTALK_FLOW_FAILED, detail
+        )
+        return
+
+    display = answer.strip()
+    # The card holds the first chunk; overflow beyond its capacity goes out
+    # as follow-up plain-text messages.
+    _dingtalk_card_finish(
+        provider_config, token_mgr, card_id, display[:_DINGTALK_CARD_MAX_CHARS]
+    )
+    overflow = display[_DINGTALK_CARD_MAX_CHARS:]
+    if overflow:
+        for chunk in _split_for_cards(overflow, _DINGTALK_CARD_MAX_CHARS):
+            _dingtalk_send(
+                provider_config,
+                token_mgr,
+                message.chat_id,
+                message.platform_user_id,
+                chunk,
+                is_group=message.is_group,
+            )
+
+
+def _dingtalk_reply_rich(
+    message: InboundMessage, config: Any, token_mgr: Any, text: str
+) -> None:
+    """Reply to a command-style message through the AI card when configured,
+    falling back to a plain text send."""
+    card_id = _dingtalk_card_start(message, config, token_mgr)
+    if card_id is None:
+        _dingtalk_send(
+            config,
+            token_mgr,
+            message.chat_id,
+            message.platform_user_id,
+            text,
+            is_group=message.is_group,
+        )
+        return
+    _dingtalk_card_finish(config, token_mgr, card_id, text)
+
+
+def _dingtalk_robot_code(config: Any) -> str:
+    # Robot code defaults to the AppKey for enterprise internal apps.
+    return str(config.robot_code or config.client_id)
+
+
+def _dingtalk_card_api(
+    config: Any, token_mgr: Any, method: str, path: str, payload: dict[str, Any]
+) -> None:
+    """One authenticated card-API request. The deliver endpoint reports
+    per-target failures INSIDE a HTTP 200 (`{"success": false, ...}`), so
+    both layers are checked."""
+    import requests
+
+    token = _dingtalk_token(config, token_mgr)
+    resp = requests.request(
+        method,
+        f"https://api.dingtalk.com{path}",
+        headers={
+            "x-acs-dingtalk-access-token": token,
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=15,
+    )
+    resp.raise_for_status()
+    try:
+        body = resp.json()
+    except ValueError:
+        return
+    if isinstance(body, dict) and body.get("success") is False:
+        raise RuntimeError(f"card API business failure: {str(body)[:200]}")
+
+
+def _dingtalk_card_start(
+    message: InboundMessage, config: Any, token_mgr: Any
+) -> str | None:
+    """Create + deliver a streaming AI card into the conversation the message
+    came from. Returns the outTrackId, or None (any failure → the caller
+    falls back to plain text)."""
+    template_id = config.bot_card_template_id
+    if not template_id:
+        return None
+    try:
+        out_track_id = f"onyx_{uuid4()}"
+        _dingtalk_card_api(
+            config,
+            token_mgr,
+            "POST",
+            "/v1.0/card/instances",
+            {
+                "cardTemplateId": template_id,
+                "outTrackId": out_track_id,
+                "cardData": {"cardParamMap": {"config": '{"autoLayout":true}'}},
+                "callbackType": "STREAM",
+                "imGroupOpenSpaceModel": {"supportForward": True},
+                "imRobotOpenSpaceModel": {"supportForward": True},
+            },
+        )
+        deliver: dict[str, Any] = {"outTrackId": out_track_id, "userIdType": 1}
+        if message.is_group:
+            deliver["openSpaceId"] = f"dtv1.card//IM_GROUP.{message.chat_id}"
+            deliver["imGroupOpenDeliverModel"] = {
+                "robotCode": _dingtalk_robot_code(config)
+            }
+        else:
+            deliver["openSpaceId"] = f"dtv1.card//IM_ROBOT.{message.platform_user_id}"
+            deliver["imRobotOpenDeliverModel"] = {
+                "spaceType": "IM_ROBOT",
+                "robotCode": _dingtalk_robot_code(config),
+                "extension": {"dynamicSummary": "true"},
+            }
+        _dingtalk_card_api(
+            config, token_mgr, "POST", "/v1.0/card/instances/deliver", deliver
+        )
+        # Back-to-back deliver → content → finalize frames race the client's
+        # card fetch and intermittently render "内容加载失败".
+        time.sleep(_DINGTALK_CARD_FRAME_GAP_SECONDS)
+        return out_track_id
+    except Exception:
+        logger.warning(
+            "dingtalk card start failed; falling back to text", exc_info=True
+        )
+        return None
+
+
+def _dingtalk_card_params(flow_status: str, content: str) -> dict[str, str]:
+    """The cardParamMap contract of the AI-card template (msgContent carries
+    the markdown the streaming frames write into)."""
+    return {
+        "flowStatus": flow_status,
+        "msgContent": content,
+        "staticMsgContent": "",
+        "sys_full_json_obj": '{"order":["msgContent"]}',
+        "config": '{"autoLayout":true}',
+    }
+
+
+def _dingtalk_card_set_flow(
+    config: Any, token_mgr: Any, out_track_id: str, flow_status: str, content: str
+) -> None:
+    """Update the card instance's flow state (and content); failures are
+    logged, never raised — a missed intermediate update must not kill the
+    answer."""
+    try:
+        _dingtalk_card_api(
+            config,
+            token_mgr,
+            "PUT",
+            "/v1.0/card/instances",
+            {
+                "outTrackId": out_track_id,
+                "cardData": {
+                    "cardParamMap": _dingtalk_card_params(flow_status, content)
+                },
+                "cardUpdateOptions": {"updateCardDataByKey": True},
+            },
+        )
+    except Exception:
+        logger.warning(
+            "dingtalk card flow update failed for %s", out_track_id, exc_info=True
+        )
+
+
+def _dingtalk_card_finish(
+    config: Any, token_mgr: Any, out_track_id: str, content: str
+) -> None:
+    """Close the card: the finalized streaming frame plus the FINISHED flow
+    state, with the frame gap the client needs between the two."""
+    try:
+        _dingtalk_card_api(
+            config,
+            token_mgr,
+            "PUT",
+            "/v1.0/card/streaming",
+            {
+                "outTrackId": out_track_id,
+                "guid": str(uuid4()),
+                "key": "msgContent",
+                "content": content[:_DINGTALK_CARD_MAX_CHARS],
+                "isFull": True,
+                "isFinalize": True,
+                "isError": False,
+            },
+        )
+        time.sleep(_DINGTALK_CARD_FRAME_GAP_SECONDS)
+        _dingtalk_card_set_flow(
+            config, token_mgr, out_track_id, _DINGTALK_FLOW_FINISHED, content
+        )
+    except Exception:
+        logger.warning(
+            "dingtalk card finish failed for %s", out_track_id, exc_info=True
+        )
+
+
 def _answer_from_prepared(prepared: _PreparedTurn) -> str | None:
     from onyx.chat.process_message import gather_stream
 
@@ -615,11 +896,14 @@ def _resolve_onyx_user(
     account_id = f"feishu:{provider_config.app_id}:{union_id}"
     return db_session.scalar(
         select(User)
-        .join(OAuthAccount, OAuthAccount.user_id == User.id)
+        .join(
+            OAuthAccount,
+            OAuthAccount.user_id == User.id,  # ty: ignore[invalid-argument-type]
+        )
         .where(
-            OAuthAccount.oauth_name == "feishu",
-            OAuthAccount.account_id == account_id,
-            User.is_active == True,  # noqa: E712
+            OAuthAccount.oauth_name == "feishu",  # ty: ignore[invalid-argument-type]
+            OAuthAccount.account_id == account_id,  # ty: ignore[invalid-argument-type]
+            User.is_active == True,  # noqa: E712  # ty: ignore[invalid-argument-type]
         )
         .limit(1)
     )
@@ -945,19 +1229,16 @@ def _skills_command_reply(
         if not matches:
             return f"未找到包含「{keyword}」的技能。发 /技能 查看全部。"
         shown = matches[:10]
+        scope = f"(匹配「{keyword}」{len(matches)} 个,显示前 10)"
     else:
         shown = sorted(skills, key=lambda s: s.updated_at, reverse=True)[:10]
+        scope = f"(共 {len(skills)} 个,显示最近更新)"
 
     lines = [
         f"{i}. **{s.name}**:{(s.description or '').strip().splitlines()[0][:60]}"
         for i, s in enumerate(shown, start=1)
     ]
     listing = "\n".join(lines)
-    scope = (
-        f"(匹配「{keyword}」{len(matches)} 个,显示前 10)"
-        if keyword
-        else f"(共 {len(skills)} 个,显示最近更新)"
-    )
     return (
         f"🧰 可用技能 {scope}:\n{listing}\n\n"
         "搜索:/技能 <关键词>;选择:/技能 <序号>;选中后下一条消息携带技能执行。"
@@ -985,7 +1266,7 @@ def _my_tasks_reply(db_session: Session, user: Any) -> str:
     lines = []
     for idx, job in enumerate(jobs, start=1):
         label = _CRAFT_STATUS_LABELS.get(
-            str(getattr(job.status, "value", str(job.status))).lower(),
+            str(job.status.value).lower(),
             str(job.status),
         )
         display = im_job_display_name(job.name)
@@ -1052,7 +1333,12 @@ def _send_reply(message: InboundMessage, config: Any, text: str) -> None:
         _wecom_send(config, AppTokenManager, message.chat_id, text)
     elif message.platform == "dingtalk":
         _dingtalk_send(
-            config, AppTokenManager, message.chat_id, message.platform_user_id, text
+            config,
+            AppTokenManager,
+            message.chat_id,
+            message.platform_user_id,
+            text,
+            is_group=message.is_group,
         )
     elif message.platform == "feishu":
         _feishu_reply_rich(config, AppTokenManager, message.chat_id, text)
@@ -1086,9 +1372,7 @@ def _wecom_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
     ).raise_for_status()
 
 
-def _dingtalk_send(
-    config: Any, token_mgr: Any, _chat_id: str, user_id: str, text: str
-) -> None:
+def _dingtalk_token(config: Any, token_mgr: Any) -> str:
     import requests
 
     def fetch() -> tuple[str, int]:
@@ -1100,12 +1384,44 @@ def _dingtalk_send(
         data = resp.json()
         return str(data["accessToken"]), int(data.get("expireIn", 7200))
 
-    token = token_mgr(fetch).get()
+    return token_mgr(fetch).get()
+
+
+def _dingtalk_send(
+    config: Any,
+    token_mgr: Any,
+    chat_id: str,
+    user_id: str,
+    text: str,
+    *,
+    is_group: bool = False,
+) -> None:
+    """Reply in the conversation the message came from: group chats get a
+    markdown message in the group, direct chats a robot 1:1 send."""
+    import requests
+
+    token = _dingtalk_token(config, token_mgr)
+    if is_group and chat_id:
+        title = text.strip().splitlines()[0][:30] if text.strip() else "Onyx"
+        requests.post(
+            "https://api.dingtalk.com/v1.0/robot/groupMessages/send",
+            headers={"x-acs-dingtalk-access-token": token},
+            json={
+                "robotCode": _dingtalk_robot_code(config),
+                "openConversationId": chat_id,
+                "msgKey": "sampleMarkdown",
+                "msgParam": json.dumps(
+                    {"title": title, "text": text[:2000]}, ensure_ascii=False
+                ),
+            },
+            timeout=15,
+        ).raise_for_status()
+        return
     requests.post(
         "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend",
         headers={"x-acs-dingtalk-access-token": token},
         json={
-            "robotCode": config.robot_code,
+            "robotCode": _dingtalk_robot_code(config),
             "userIds": [user_id],
             "msgKey": "sampleText",
             "msgParam": json.dumps({"content": text[:2000]}, ensure_ascii=False),
