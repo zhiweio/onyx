@@ -192,3 +192,48 @@ def verify_china_bot(
         logger.warning("china bot verify failed (%s): %s", platform, exc)
         return ChinaBotVerifyResponse(ok=False, detail=str(exc))
     return ChinaBotVerifyResponse(ok=True)
+
+
+def _apply_platform_surface(platform: str, config: Any) -> tuple[dict[str, Any], bool]:
+    """Push the platform's native quick-interaction surface (WeCom chat
+    menu / DingTalk single-chat quick entrances). Returns (api response,
+    success)."""
+    from onyx.connectors.china_common import AppTokenManager
+    from onyx.onyxbot.china.framework import _wecom_menu_create
+
+    if platform == "wecom":
+        body = _wecom_menu_create(config, AppTokenManager)
+        return body, body.get("errcode") == 0
+    raise ValueError(f"{platform} has no programmatic menu surface; use the console")
+
+
+@admin_router.post("/{platform}/menu")
+def refresh_china_bot_menu(
+    platform: str,
+    current_user: User = Depends(
+        require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)
+    ),
+    db_session: Session = Depends(get_session),
+) -> ChinaBotVerifyResponse:
+    """(Re)create the platform's native quick-interaction surface: the WeCom
+    chat-bottom menu (click buttons → command aliases)."""
+    del current_user
+    if platform not in ("wecom", "dingtalk"):
+        return ChinaBotVerifyResponse(
+            ok=False, detail="feishu menus are configured in the Feishu console"
+        )
+
+    provider_type = _BOT_PLATFORMS[platform]
+    configs = _china_bot_configs(db_session, provider_type)
+    ready_configs = [c for c in configs if _bot_fields_set(platform, c)]
+    if not ready_configs:
+        return ChinaBotVerifyResponse(ok=False, detail="bot credentials missing")
+
+    try:
+        _body, ok = _apply_platform_surface(platform, ready_configs[0])
+    except Exception as exc:
+        logger.warning("china bot menu refresh failed (%s): %s", platform, exc)
+        return ChinaBotVerifyResponse(ok=False, detail=str(exc))
+    if not ok:
+        return ChinaBotVerifyResponse(ok=False, detail=str(_body))
+    return ChinaBotVerifyResponse(ok=True)

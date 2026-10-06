@@ -11,8 +11,12 @@ started from the api_server lifespan. Config changes need a restart.
 """
 
 import threading
+from typing import TYPE_CHECKING, Protocol
 
 from onyx.utils.logger import setup_logger
+
+if TYPE_CHECKING:
+    import dingtalk_stream
 
 logger = setup_logger()
 
@@ -20,14 +24,25 @@ _LOCK = threading.Lock()
 _THREADS: dict[int, threading.Thread] = {}
 
 
-def _handler_for(config: object) -> "dingtalk_stream.CallbackHandler":  # noqa: F821
+class _StreamBotConfig(Protocol):
+    """The provider-config attributes the stream client touches."""
+
+    client_id: str
+    client_secret: str
+    robot_code: str | None
+    bot_aes_key: str | None
+
+
+def _handler_for(config: _StreamBotConfig) -> "dingtalk_stream.CallbackHandler":
     import dingtalk_stream
 
     from onyx.onyxbot.china.adapters import parse_robot_payload
     from onyx.onyxbot.china.framework import answer_message_async, seen_before
 
     class _StreamChatbotHandler(dingtalk_stream.ChatbotHandler):
-        async def process(self, callback: "dingtalk_stream.CallbackMessage"):  # noqa: F821
+        async def process(
+            self, callback: "dingtalk_stream.CallbackMessage"
+        ) -> tuple[int, str]:  # ty: ignore[invalid-method-override]
             try:
                 payload = callback.data
                 if not isinstance(payload, dict):
@@ -45,7 +60,7 @@ def _handler_for(config: object) -> "dingtalk_stream.CallbackHandler":  # noqa: 
     return _StreamChatbotHandler()
 
 
-def start_stream_client(provider_id: int, config: object) -> bool:
+def start_stream_client(provider_id: int, config: _StreamBotConfig) -> bool:
     """Start (or keep) the stream client for one provider. Returns whether a
     new thread was started."""
     import dingtalk_stream
@@ -91,7 +106,7 @@ def start_enabled_stream_clients() -> list[int]:
                 )
                 config = _config_for(provider, dict(stored))
                 # Same enablement marker as the HTTP callback bot.
-                if getattr(config, "bot_aes_key", None) is None:
+                if config.bot_aes_key is None:
                     continue
                 if start_stream_client(provider.id, config):
                     started.append(provider.id)

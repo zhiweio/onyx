@@ -537,13 +537,14 @@ def test_dingtalk_card_finish_frames(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (method, path) == ("PUT", "/v1.0/card/streaming")
     assert stream_payload["outTrackId"] == "track-1"
     assert stream_payload["key"] == "msgContent"
-    assert stream_payload["content"] == "最终回答"
+    assert stream_payload["content"].startswith("最终回答")
+    assert framework._DINGTALK_COMMAND_HINT in stream_payload["content"]
     assert stream_payload["isFull"] is True
     assert stream_payload["isFinalize"] is True
     _, _, flow_payload = calls[1]
     params = flow_payload["cardData"]["cardParamMap"]
     assert params["flowStatus"] == framework._DINGTALK_FLOW_FINISHED
-    assert params["msgContent"] == "最终回答"
+    assert params["msgContent"].startswith("最终回答")
 
 
 def test_dingtalk_send_group_vs_direct(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -565,13 +566,13 @@ def test_dingtalk_send_group_vs_direct(monkeypatch: pytest.MonkeyPatch) -> None:
     assert url.endswith("/v1.0/robot/groupMessages/send")
     assert body["openConversationId"] == "cidG"
     assert body["robotCode"] == "rc1"
-    assert json.loads(body["msgParam"])["text"] == "群里回答"
+    assert json.loads(body["msgParam"])["text"].startswith("群里回答")
 
     framework._dingtalk_send(cfg, None, "cidD", "staff-9", "单聊回答")
     url, body = posts[1]
     assert url.endswith("/v1.0/robot/oToMessages/batchSend")
     assert body["userIds"] == ["staff-9"]
-    assert json.loads(body["msgParam"])["content"] == "单聊回答"
+    assert json.loads(body["msgParam"])["content"].startswith("单聊回答")
 
 
 def test_dingtalk_reply_rich_falls_back_without_template(
@@ -680,10 +681,10 @@ def test_dingtalk_answer_streams_card_frames(monkeypatch: pytest.MonkeyPatch) ->
     params = calls[0][2]["cardData"]["cardParamMap"]
     assert params["flowStatus"] == framework._DINGTALK_FLOW_INPUTING
     # only the first delta had accumulated when the throttle window opened
-    assert params["msgContent"] == "第一段"
+    assert params["msgContent"].startswith("第一段")
     stream_payload = calls[1][2]
     assert stream_payload["isFinalize"] is True
-    assert stream_payload["content"] == "第一段第二段"
+    assert stream_payload["content"].startswith("第一段第二段")
     assert calls[2][2]["cardData"]["cardParamMap"]["flowStatus"] == (
         framework._DINGTALK_FLOW_FINISHED
     )
@@ -858,3 +859,136 @@ def test_seen_before_dedups_by_msg_id(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("onyx.redis.redis_pool.get_redis_client", _broken)
     assert framework.seen_before("dingtalk", "m3") is True
+
+
+def test_wecom_click_menu_event_maps_to_command() -> None:
+    """A WeCom chat-menu click (MsgType=event, Event=click) is answered as if
+    the user had sent the button's EventKey command text."""
+    from onyx.onyxbot.china import adapters
+
+    xml = (
+        "<xml><ToUserName><![CDATA[ww1]]></ToUserName>"
+        "<MsgType><![CDATA[event]]></MsgType>"
+        "<Event><![CDATA[click]]></Event>"
+        "<EventKey><![CDATA[使用帮助]]></EventKey>"
+        "<FromUserName><![CDATA[zhang]]></FromUserName>"
+        "<CreateTime>1750000000</CreateTime></xml>"
+    )
+    encrypted = base64.b64encode(
+        _aes_encrypt(AES_KEY_32, _envelope(xml, "ww1"))
+    ).decode()
+    token, timestamp, nonce = "tok", "1700000000", "n1"
+    signature = crypto.wecom_signature(token, timestamp, nonce, encrypted)
+
+    result = adapters.wecom_handle(
+        _WeComCfg(),
+        {"msg_signature": signature, "timestamp": timestamp, "nonce": nonce},
+        {"Encrypt": encrypted},
+        {},
+    )
+    assert result.message is not None
+    assert result.message.text == "使用帮助"
+    assert result.message.platform_user_id == "zhang"
+    # menu events carry no MsgId; the dedup id composes time+user+key
+    assert result.message.msg_id == "1750000000-zhang-使用帮助"
+
+
+def test_wecom_non_click_event_is_acknowledged() -> None:
+    from onyx.onyxbot.china import adapters
+
+    xml = (
+        "<xml><ToUserName><![CDATA[ww1]]></ToUserName>"
+        "<MsgType><![CDATA[event]]></MsgType>"
+        "<Event><![CDATA[subscribe]]></Event>"
+        "<FromUserName><![CDATA[zhang]]></FromUserName>"
+        "<CreateTime>1750000000</CreateTime></xml>"
+    )
+    encrypted = base64.b64encode(
+        _aes_encrypt(AES_KEY_32, _envelope(xml, "ww1"))
+    ).decode()
+    signature = crypto.wecom_signature("tok", "1700000000", "n1", encrypted)
+    result = adapters.wecom_handle(
+        _WeComCfg(),
+        {"msg_signature": signature, "timestamp": "1700000000", "nonce": "n1"},
+        {"Encrypt": encrypted},
+        {},
+    )
+    assert result.message is None
+
+
+def test_wecom_menu_create_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    from onyx.onyxbot.china import framework
+
+    posts: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        "requests.get",
+        lambda _url, **_kw: type(
+            "R", (), {"json": lambda _self: {"access_token": "tok"}}
+        )(),
+    )
+
+    def fake_post(url: str, json: dict | None = None, **_kw: object) -> object:
+        posts.append((url, json or {}))
+        return type(
+            "R",
+            (),
+            {
+                "json": lambda _self: {"errcode": 0},
+                "raise_for_status": lambda _self: None,
+            },
+        )()
+
+    monkeypatch.setattr("requests.post", fake_post)
+
+    class _TokenMgr:
+        def __init__(self, fetch: Callable[[], tuple[str, int]]) -> None:
+            self._fetch = fetch
+
+        def get(self) -> str:
+            token, _expires = self._fetch()
+            return token
+
+    body = framework._wecom_menu_create(_WeComCfg(), _TokenMgr)
+    assert body == {"errcode": 0}
+    url, payload = posts[0]
+    assert url.startswith("https://qyapi.weixin.qq.com/cgi-bin/menu/create")
+    buttons = payload["button"]
+    # two submenus + one top-level click button, every leaf maps to an alias
+    assert len(buttons) == 3
+    leaves = [b for b in buttons if "key" in b]
+    subs = [s for b in buttons for s in b.get("sub_button", [])]
+    assert {leaf["key"] for leaf in leaves} == {"使用帮助"}
+    assert {s["key"] for s in subs} == {"新对话", "我的任务", "我的场景", "技能"}
+    assert all(s["type"] == "click" for s in subs)
+
+
+def test_dingtalk_reply_appends_command_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.onyxbot.china import framework
+
+    bodies: list[dict] = []
+    monkeypatch.setattr(framework, "_dingtalk_token", lambda _config, _mgr: "tok")
+
+    def fake_post(_url: str, json: dict | None = None, **_kw: object) -> object:
+        bodies.append(json or {})
+        return type("R", (), {"raise_for_status": lambda _self: None})()
+
+    monkeypatch.setattr("requests.post", fake_post)
+
+    framework._dingtalk_send(_DingCfg(), None, "cidD", "staff-9", "回答正文")
+    content = json.loads(bodies[0]["msgParam"])["content"]
+    assert content.startswith("回答正文")
+    assert framework._DINGTALK_COMMAND_HINT in content
+
+
+def test_skill_command_not_feishu_gated() -> None:
+    """The skill command (menu label 技能) must answer on every platform."""
+    import inspect
+
+    from onyx.onyxbot.china import framework
+
+    src = inspect.getsource(framework._prepare_turn)
+    skill_branch = src[src.index('command == "技能"') :]
+    header = skill_branch[: skill_branch.index("return")]
+    assert "feishu" not in header

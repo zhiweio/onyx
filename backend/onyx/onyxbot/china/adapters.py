@@ -65,6 +65,22 @@ def wecom_handle(
     msg_type, fields = _wecom_parse_xml(plaintext)
     if msg_type == "echo":
         return CallbackResult(body={"msg": fields["echo"]})
+    if msg_type == "event":
+        # Menu clicks (Event=click) carry the preset command in EventKey and
+        # are answered as if the user had sent that text. Events carry no
+        # MsgId, so the dedup id composes the second-resolution CreateTime
+        # with the user and key to survive two clicks in the same second.
+        if fields["event"] == "click" and fields["event_key"]:
+            return CallbackResult(
+                message=InboundMessage(
+                    platform="wecom",
+                    msg_id=f"{fields['create_time']}-{fields['from']}-{fields['event_key']}",
+                    platform_user_id=fields["from"],
+                    chat_id=fields["from"],
+                    text=fields["event_key"],
+                )
+            )
+        return CallbackResult()  # other events acknowledged, not answered
     if msg_type != "text":
         return CallbackResult()  # non-text events acknowledged, not answered
     return CallbackResult(
@@ -100,6 +116,9 @@ def _wecom_parse_xml(xml: str) -> tuple[str, dict[str, str]]:
         "msg_id": field("MsgId") or field("CreateTime"),
         "from": field("FromUserName"),
         "content": field("Content").strip(),
+        "create_time": field("CreateTime"),
+        "event": field("Event").strip(),
+        "event_key": field("EventKey").strip(),
     }
 
 

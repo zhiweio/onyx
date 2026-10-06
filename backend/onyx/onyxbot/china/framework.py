@@ -74,6 +74,13 @@ _DINGTALK_FLOW_INPUTING = "2"
 _DINGTALK_FLOW_FINISHED = "3"
 _DINGTALK_FLOW_FAILED = "5"
 
+# DingTalk has no click-to-send menu primitive; every reply advertises the
+# command aliases instead (the same labels the WeCom menu and the Feishu
+# floating menu send as messages).
+_DINGTALK_COMMAND_HINT = (
+    "\n\n---\n🆕 新对话 · 📋 场景列表 · 🧰 技能 · ❓ 帮助（回复文字即可）"
+)
+
 
 class CallbackRejected(Exception):
     """Verification refused the callback; router answers 403."""
@@ -334,8 +341,9 @@ def _prepare_turn(message: InboundMessage, provider_config: Any) -> _PreparedTur
         ):
             return _cancel_task_reply(db_session, user, message.text)
 
-        # Feishu skill command: /技能 [关键词|序号], or the bare menu label
-        if message.platform == "feishu" and (
+        # Skill command: /技能 [关键词|序号], or the bare menu label
+        # (WeCom's chat menu and DingTalk's hint line send the same label).
+        if (
             command == "技能"
             or command.startswith("/技能")
             or command.startswith("/skill")
@@ -777,6 +785,7 @@ def _dingtalk_card_finish(
     """Close the card: the finalized streaming frame plus the FINISHED flow
     state, with the frame gap the client needs between the two."""
     try:
+        content = content + _DINGTALK_COMMAND_HINT if content.strip() else content
         _dingtalk_card_api(
             config,
             token_mgr,
@@ -1171,6 +1180,14 @@ def _clear_pending_skill(platform: str, platform_user_id: str) -> None:
         logger.warning("pending skill clear failed", exc_info=True)
 
 
+def _first_line(text: str | None, *, fallback: str) -> str:
+    """First non-empty line of a free-text field; empty fields collapse."""
+    for line in (text or "").strip().splitlines():
+        if line.strip():
+            return line.strip()
+    return fallback
+
+
 def _skills_command_reply(
     db_session: Session,
     user: Any,
@@ -1235,7 +1252,7 @@ def _skills_command_reply(
         scope = f"(共 {len(skills)} 个,显示最近更新)"
 
     lines = [
-        f"{i}. **{s.name}**:{(s.description or '').strip().splitlines()[0][:60]}"
+        f"{i}. **{s.name}**:{_first_line(s.description, fallback=s.name)[:60]}"
         for i, s in enumerate(shown, start=1)
     ]
     listing = "\n".join(lines)
@@ -1372,6 +1389,52 @@ def _wecom_send(config: Any, token_mgr: Any, chat_id: str, text: str) -> None:
     ).raise_for_status()
 
 
+# Chat-bottom menu mirroring the Feishu floating menu: every button's key is
+# a command alias _prepare_turn already answers.
+_WECOM_MENU_BUTTONS: list[dict[str, Any]] = [
+    {
+        "name": "对话",
+        "sub_button": [
+            {"type": "click", "name": "🆕 新对话", "key": "新对话"},
+            {"type": "click", "name": "📋 我的任务", "key": "我的任务"},
+        ],
+    },
+    {
+        "name": "发现",
+        "sub_button": [
+            {"type": "click", "name": "📋 我的场景", "key": "我的场景"},
+            {"type": "click", "name": "🧰 技能", "key": "技能"},
+        ],
+    },
+    {"type": "click", "name": "❓ 使用帮助", "key": "使用帮助"},
+]
+
+
+def _wecom_menu_create(config: Any, token_mgr: Any) -> dict[str, Any]:
+    """Create the app's chat-bottom custom menu (click buttons → command
+    aliases). Returns the WeCom API response for errcode checking."""
+    import requests
+
+    def fetch() -> tuple[str, int]:
+        resp = requests.get(
+            "https://qyapi.weixin.qq.com/cgi-bin/gettoken",
+            params={"corpid": config.corp_id, "corpsecret": config.corp_secret},
+            timeout=15,
+        )
+        data = resp.json()
+        return str(data["access_token"]), int(data.get("expires_in", 7200))
+
+    token = token_mgr(fetch).get()
+    resp = requests.post(
+        "https://qyapi.weixin.qq.com/cgi-bin/menu/create",
+        params={"access_token": token, "agentid": int(config.agent_id)},
+        json={"button": _WECOM_MENU_BUTTONS},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return dict(resp.json())
+
+
 def _dingtalk_token(config: Any, token_mgr: Any) -> str:
     import requests
 
@@ -1400,6 +1463,9 @@ def _dingtalk_send(
     markdown message in the group, direct chats a robot 1:1 send."""
     import requests
 
+    # Truncate the body so the hint always survives the platform limit.
+    body_limit = max(0, 2000 - len(_DINGTALK_COMMAND_HINT))
+    text = text[:body_limit] + _DINGTALK_COMMAND_HINT if text.strip() else text
     token = _dingtalk_token(config, token_mgr)
     if is_group and chat_id:
         title = text.strip().splitlines()[0][:30] if text.strip() else "Onyx"
