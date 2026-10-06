@@ -22,7 +22,6 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import Truncated from "@/refresh-components/texts/Truncated";
 import {
-  FiChevronDown,
   FiChevronRight,
   FiLock,
   FiUnlock,
@@ -83,54 +82,59 @@ function SummaryRow({
   return (
     <TableRow
       onClick={onToggle}
-      className="border-border dark:hover:bg-neutral-800 dark:border-neutral-700 group hover:bg-background-settings-hover/20 bg-background-sidebar py-4 rounded-xs border! cursor-pointer"
+      className="group hover:bg-background-tint-02 bg-background-tint-01 py-4 rounded-xs border! border-border cursor-pointer"
     >
-      <TableCell>
-        <div className="text-xl flex items-center truncate ellipsis gap-x-2 font-semibold">
-          <div className="cursor-pointer">
-            {isOpen ? (
-              <FiChevronDown size={20} />
-            ) : (
-              <FiChevronRight size={20} />
-            )}
-          </div>
-          <SourceIcon iconSize={20} sourceType={source} />
-          {getSourceDisplayName(source)}
+      <TableCell className="min-w-0">
+        <div className="flex min-w-0 items-center gap-x-2">
+          <FiChevronRight
+            size={20}
+            className={`shrink-0 text-text-03 transition-transform duration-200 group-hover:text-text-04 ${
+              isOpen ? "rotate-90" : ""
+            }`}
+          />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background-neutral-00 shadow-xs">
+            <SourceIcon iconSize={20} sourceType={source} />
+          </span>
+          <Truncated className="text-xl font-semibold">
+            {getSourceDisplayName(source)}
+          </Truncated>
         </div>
       </TableCell>
 
       <TableCell>
-        <div className="text-sm text-neutral-500 dark:text-neutral-300">
+        <div className="text-sm text-text-03">
           {t("status.summary.totalConnectors.label")}
         </div>
-        <div className="text-xl font-semibold">{summary.total_connectors}</div>
+        <div className="mt-0.5 text-lg font-semibold tabular-nums">
+          {summary.total_connectors}
+        </div>
       </TableCell>
 
       <TableCell>
-        <div className="text-sm text-neutral-500 dark:text-neutral-300">
+        <div className="text-sm text-text-03">
           {t("status.summary.activeConnectors.label")}
         </div>
-        <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+        <div className="mt-0.5 text-lg font-semibold tabular-nums">
           {summary.active_connectors}/{summary.total_connectors}
-        </p>
+        </div>
       </TableCell>
 
       {businessTier && (
         <TableCell>
-          <div className="text-sm text-neutral-500 dark:text-neutral-300">
+          <div className="text-sm text-text-03">
             {t("status.summary.publicConnectors.label")}
           </div>
-          <p className="flex text-xl mx-auto font-semibold items-center text-lg mt-1">
+          <div className="mt-0.5 text-lg font-semibold tabular-nums">
             {summary.public_connectors}/{summary.total_connectors}
-          </p>
+          </div>
         </TableCell>
       )}
 
       <TableCell>
-        <div className="text-sm text-neutral-500 dark:text-neutral-300">
+        <div className="text-sm text-text-03">
           {t("status.summary.totalDocsIndexed.label")}
         </div>
-        <div className="text-xl font-semibold">
+        <div className="mt-0.5 text-lg font-semibold tabular-nums">
           {summary.total_docs_indexed.toLocaleString()}
         </div>
       </TableCell>
@@ -300,6 +304,14 @@ export function CCPairIndexingStatusTable({
 
   return (
     <Table className="-mt-8 table-fixed">
+      <colgroup>
+        <col className="w-[30%]" />
+        <col />
+        <col />
+        {businessTier && <col />}
+        <col />
+        <col className="w-[8%]" />
+      </colgroup>
       <TableHeader>
         <ConnectorRow
           invisible
@@ -346,7 +358,7 @@ export function CCPairIndexingStatusTable({
                 )}
                 {!sourceLoadingStates[ccPairStatus.source] && (
                   <>
-                    <TableRow className="border border-border dark:border-neutral-700">
+                    <TableRow className="border border-border bg-background-tint-02 dark:border-neutral-700">
                       <TableHead>{t("status.table.name.header")}</TableHead>
                       <TableHead>
                         {t("status.table.lastIndexed.header")}

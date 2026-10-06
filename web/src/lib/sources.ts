@@ -93,10 +93,10 @@ interface PartialSourceMetadata {
 }
 
 type SourceMap = {
-  [K in ValidSources | "federated_slack"]: PartialSourceMetadata;
+  [K in ValidSources | "federated_slack" | "mock_connector"]: PartialSourceMetadata;
 };
 
-const slackMetadata = {
+const slackMetadata: PartialSourceMetadata = {
   icon: SvgSlack,
   displayName: "Slack",
   category: SourceCategory.Messaging,
@@ -107,7 +107,7 @@ const slackMetadata = {
   federated: true,
   federatedTooltip:
     "⚠️ WARNING: Federated Slack results in significantly greater latency and lower search quality.",
-  baseSourceType: "slack",
+  baseSourceType: ValidSources.Slack,
 };
 
 export const SOURCE_METADATA_MAP: SourceMap = {
@@ -559,7 +559,7 @@ export const SOURCE_METADATA_MAP: SourceMap = {
     displayName: "Mock Connector",
     category: SourceCategory.Other,
   },
-} as SourceMap;
+};
 
 function fillSourceMetadata(
   partialMetadata: PartialSourceMetadata,
