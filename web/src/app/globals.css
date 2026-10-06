@@ -395,3 +395,97 @@
 .container {
   margin-bottom: 1rem;
 }
+
+/* Tape status-dot spinner (dsh StateDot port): a quiet full ring sits behind a
+   centered breathing arc; both share one 1.5s period and get pinned to document
+   time zero so every visible spinner rotates in phase. */
+.tape-dot-spinner {
+  flex: none;
+}
+
+.tape-dot-spinner-motion {
+  transform-origin: center;
+  animation: tape-dot-spin 1.5s linear infinite;
+}
+
+.tape-dot-spinner-track,
+.tape-dot-spinner-arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.tape-dot-spinner-track {
+  opacity: 0.25;
+}
+
+.tape-dot-spinner-arc {
+  stroke-dasharray: 12 150;
+  animation: tape-dot-dash 1.5s ease-in-out infinite;
+}
+
+@keyframes tape-dot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tape-dot-dash {
+  0% {
+    stroke-dasharray: 12 150;
+    stroke-dashoffset: 0;
+  }
+
+  50% {
+    stroke-dasharray: 24 150;
+    stroke-dashoffset: -6;
+  }
+
+  100% {
+    stroke-dasharray: 12 150;
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tape-dot-spinner-motion,
+  .tape-dot-spinner-arc {
+    animation: none;
+  }
+
+  .tape-dot-spinner-arc {
+    stroke-dasharray: 18 150;
+    stroke-dashoffset: -3;
+  }
+}
+
+/* Tape row title marquee fade masks (dsh Rows.module.css port): while the
+   marquee travels, the clipping edges fade over 12px instead of hard-cutting
+   a character; the resting state keeps the ellipsis at full strength. */
+.tape-row-title[data-scrolled] {
+  mask-image: linear-gradient(to right, transparent, #000 12px);
+}
+
+.tape-row-title[data-clipped] {
+  mask-image: linear-gradient(to left, transparent, #000 12px);
+}
+
+.tape-row-title[data-scrolled][data-clipped] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12px,
+    #000 calc(100% - 12px),
+    transparent
+  );
+}
+
+/* The unclipped hover state drops the ellipsis, which would otherwise cover
+   the characters the marquee reached. Guarded because a touch tap latches
+   `:hover` on the row after the title has already returned. */
+@media (hover: hover) {
+  .tape-row:hover .tape-row-title {
+    text-overflow: clip;
+  }
+}

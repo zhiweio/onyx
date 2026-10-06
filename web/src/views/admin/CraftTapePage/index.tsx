@@ -1,112 +1,86 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * Admin execution-tape entry (/admin/craft/tapes): the tenant-wide stats
+ * strip (tiles, outcome/runtime breakdowns, daily series chart) above the
+ * same dsh-style master-detail browser as the personal entry, reading the
+ * FULL_ADMIN_PANEL_ACCESS-scoped /api/build/admin/tape base.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Card,
-  InputTypeIn,
-  Table,
-  Tag,
-  createTableColumns,
-} from "@opal/components";
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  Tooltip as ChartTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Card, Tag } from "@opal/components";
 import { SettingsLayouts, toast } from "@opal/layouts";
-import { MetricCell } from "@/components/admin/TableCells";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
+import TapeListBrowser from "@/components/craft-tape/TapeListBrowser";
+import TapeNoSelection from "@/components/craft-tape/TapeNoSelection";
+import ReasonTag from "@/components/craft-tape/ReasonTag";
 import TapeSessionDetail from "@/components/craft-tape/TapeSessionDetail";
+import { useTapeSelection } from "@/components/craft-tape/useTapeSelection";
+import { isoDaysAgo } from "@/components/craft-tape/constants";
 import { fetchTapeStats, fetchTapeStatsSeries } from "@/lib/craft-tape/api";
 import type {
   TapeSessionItem,
   TapeStats,
   TapeStatsSeriesPoint,
 } from "@/lib/craft-tape/types";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { errorMessage } from "@/views/admin/McpGatewayPage/format";
-import TapeSessionsTable from "./TapeSessionsTable";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/sections/extend/ui/resizable";
 
 const ROUTE = ADMIN_ROUTES.CRAFT_TAPE;
 
 const WINDOW_OPTIONS = [7, 30, 90] as const;
 
-const ORIGINS = [
-  "interactive",
-  "scheduled",
-  "slack",
-  "job",
-  "im",
-  "eval",
-] as const;
-
-const SORT_OPTIONS = ["created_at", "name", "last_activity"] as const;
-
-function isoDaysAgo(days: number): string {
-  const date = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  return date.toISOString();
-}
-
-const seriesTc = createTableColumns<TapeStatsSeriesPoint>();
-
 export default function CraftTapePage() {
   const t = useTranslations("admin.craftTape");
+  const { selectedId, select } = useTapeSelection();
+  const [knownSessions, setKnownSessions] = useState<
+    Map<string, TapeSessionItem>
+  >(new Map());
   const [days, setDays] = useState<number>(30);
-  const [origin, setOrigin] = useState<string>("");
-  const [userQInput, setUserQInput] = useState("");
-  const userQ = useDebouncedValue(userQInput, 300);
-  const [sort, setSort] = useState<string>("created_at");
-  const [order, setOrder] = useState<string>("desc");
   const [stats, setStats] = useState<TapeStats | null>(null);
   const [series, setSeries] = useState<TapeStatsSeriesPoint[]>([]);
-  const [selected, setSelected] = useState<TapeSessionItem | null>(null);
-
-  const window = useMemo(
-    () => ({ from: isoDaysAgo(days), to: new Date().toISOString() }),
-    [days]
-  );
 
   useEffect(() => {
+    const window = {
+      from: isoDaysAgo(days),
+      to: new Date().toISOString(),
+    };
     fetchTapeStats(window)
       .then(setStats)
       .catch((error) => toast.error(errorMessage(error, t("loadFailed"))));
     fetchTapeStatsSeries(window)
       .then((result) => setSeries(result.series))
       .catch(() => setSeries([]));
-  }, [window, t]);
+  }, [days, t]);
 
-  const handleSelect = useCallback((session: TapeSessionItem) => {
-    setSelected(session);
-  }, []);
-
-  const seriesColumns = useMemo(
-    () => [
-      seriesTc.column("day", {
-        header: t("series.col.day"),
-        weight: 25,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={value} />,
-      }),
-      seriesTc.column("sessions", {
-        header: t("series.col.sessions"),
-        weight: 25,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={String(value)} />,
-      }),
-      seriesTc.column("turns", {
-        header: t("series.col.turns"),
-        weight: 25,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={String(value)} />,
-      }),
-      seriesTc.column("events", {
-        header: t("series.col.events"),
-        weight: 25,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={String(value)} />,
-      }),
-    ],
-    [t]
+  const onItemsKnown = useMemo(
+    () => (items: TapeSessionItem[]) => {
+      setKnownSessions((current) => {
+        const next = new Map(current);
+        for (const item of items) next.set(item.session_id, item);
+        return next.size === current.size ? current : next;
+      });
+    },
+    []
   );
 
+  const selected = selectedId ? (knownSessions.get(selectedId) ?? null) : null;
+
   return (
-    <SettingsLayouts.Root>
+    <SettingsLayouts.Root width="full">
       <SettingsLayouts.Header
         icon={ROUTE.icon}
         title={t("page.title")}
@@ -125,137 +99,181 @@ export default function CraftTapePage() {
               </div>
             </Card>
           ) : (
-            <Card padding={3} rounding={3}>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                <div>
-                  <div className="text-xs text-neutral-500">
-                    {t("overview.sessions")}
-                  </div>
-                  <div className="text-xl font-medium">
-                    {stats?.sessions ?? 0}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">
-                    {t("overview.turns")}
-                  </div>
-                  <div className="text-xl font-medium">{stats?.turns ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">
-                    {t("overview.events")}
-                  </div>
-                  <div className="text-xl font-medium">
-                    {stats?.events ?? 0}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">
-                    {t("overview.outputTokens")}
-                  </div>
-                  <div className="text-xl font-medium">
-                    {(stats?.output_tokens ?? 0).toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">
-                    {t("overview.cost")}
-                  </div>
-                  <div className="text-xl font-medium">
-                    ${(stats?.cost ?? 0).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </Card>
+            <StatsOverview
+              stats={stats}
+              series={series}
+              days={days}
+              onDays={setDays}
+            />
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex h-[calc(100dvh-32rem)] min-h-[26rem]">
+            <ResizablePanelGroup orientation="horizontal">
+              <ResizablePanel defaultSize="30" minSize="20" className="h-full">
+                <TapeListBrowser
+                  variant="admin"
+                  selectedId={selectedId}
+                  onSelect={(session) => select(session.session_id)}
+                  onItemsKnown={onItemsKnown}
+                />
+              </ResizablePanel>
+              <ResizableHandle />
+              <ResizablePanel defaultSize="70" className="h-full">
+                {selectedId ? (
+                  <div className="h-full overflow-y-auto pl-4 pr-1">
+                    <TapeSessionDetail
+                      key={selectedId}
+                      sessionId={selectedId}
+                      session={selected}
+                      variant="admin"
+                      onClose={() => select(null)}
+                    />
+                  </div>
+                ) : (
+                  <TapeNoSelection />
+                )}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        </div>
+      </SettingsLayouts.Body>
+    </SettingsLayouts.Root>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stats overview strip
+// ---------------------------------------------------------------------------
+
+function StatsOverview({
+  stats,
+  series,
+  days,
+  onDays,
+}: {
+  stats: TapeStats;
+  series: TapeStatsSeriesPoint[];
+  days: number;
+  onDays: (days: number) => void;
+}) {
+  const t = useTranslations("admin.craftTape");
+  const reasons = Object.entries(stats.by_reason).sort(([, a], [, b]) => b - a);
+  const runtimes = Object.entries(stats.by_runtime).sort(
+    ([, a], [, b]) => b - a
+  );
+
+  return (
+    <Card padding={3} rounding={3}>
+      <div className="flex flex-col gap-3">
+        {/* Tiles + window selector */}
+        <div className="flex flex-wrap items-end gap-6">
+          <StatTile
+            label={t("overview.sessions")}
+            value={String(stats.sessions)}
+          />
+          <StatTile label={t("overview.turns")} value={String(stats.turns)} />
+          <StatTile label={t("overview.events")} value={String(stats.events)} />
+          <StatTile
+            label={t("overview.outputTokens")}
+            value={stats.output_tokens.toLocaleString()}
+          />
+          <StatTile
+            label={t("overview.cost")}
+            value={`$${stats.cost.toFixed(2)}`}
+          />
+          <div
+            className="ml-auto flex items-center gap-1"
+            data-testid="craft-tape-window"
+          >
             {WINDOW_OPTIONS.map((option) => (
               <button
                 key={option}
                 type="button"
-                onClick={() => setDays(option)}
-                className={`rounded-md border px-2 py-1 text-xs ${
+                onClick={() => onDays(option)}
+                className={`rounded-md px-2 py-1 text-xs ${
                   days === option
-                    ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                    : "border-neutral-300 text-neutral-600 dark:border-neutral-600 dark:text-neutral-300"
+                    ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                    : "text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                 }`}
                 data-testid={`craft-tape-window-${option}`}
               >
                 {t("filters.days", { days: option })}
               </button>
             ))}
-            <select
-              aria-label={t("filters.origin")}
-              value={origin}
-              onChange={(event) => setOrigin(event.target.value)}
-              className="rounded-md border border-neutral-300 bg-transparent px-2 py-1 text-xs dark:border-neutral-600"
-              data-testid="craft-tape-origin"
-            >
-              <option value="">{t("filters.allOrigins")}</option>
-              {ORIGINS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("filters.sort")}
-              value={`${sort}:${order}`}
-              onChange={(event) => {
-                const [nextSort, nextOrder] = event.target.value.split(":");
-                setSort(nextSort ?? "created_at");
-                setOrder(nextOrder ?? "desc");
-              }}
-              className="rounded-md border border-neutral-300 bg-transparent px-2 py-1 text-xs dark:border-neutral-600"
-              data-testid="craft-tape-sort"
-            >
-              {SORT_OPTIONS.flatMap((key) =>
-                (["desc", "asc"] as const).map((dir) => (
-                  <option key={`${key}:${dir}`} value={`${key}:${dir}`}>
-                    {t(`filters.sortKey.${key}`)} {t(`filters.sortDir.${dir}`)}
-                  </option>
-                ))
-              )}
-            </select>
-            <div className="w-56">
-              <InputTypeIn
-                searchIcon
-                placeholder={t("filters.userPlaceholder")}
-                aria-label={t("filters.user")}
-                value={userQInput}
-                onChange={(event) => setUserQInput(event.target.value)}
-                data-testid="craft-tape-user-filter"
-              />
-            </div>
           </div>
-
-          <TapeSessionsTable
-            window={window}
-            origin={origin}
-            userQ={userQ}
-            sort={sort}
-            order={order}
-            onSelect={handleSelect}
-          />
-
-          {selected ? (
-            <TapeSessionDetail session={selected} variant="admin" />
-          ) : null}
-
-          {series.length > 0 ? (
-            <Card padding={3} rounding={3}>
-              <Table
-                data={series}
-                columns={seriesColumns}
-                getRowId={(row) => row.day}
-                pageSize={10}
-                variant="rows"
-              />
-            </Card>
-          ) : null}
         </div>
-      </SettingsLayouts.Body>
-    </SettingsLayouts.Root>
+
+        {/* Breakdown chips */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {reasons.map(([reason, count]) => (
+            <span key={reason} className="flex items-center gap-1.5 text-xs">
+              <ReasonTag reason={reason} />
+              <span className="text-neutral-500">{count}</span>
+            </span>
+          ))}
+          {runtimes.map(([runtime, count]) => (
+            <span
+              key={runtime}
+              className="flex items-center gap-1 font-mono text-xs text-neutral-500 dark:text-neutral-400"
+            >
+              {runtime}
+              <span className="text-neutral-400 dark:text-neutral-500">
+                ×{count}
+              </span>
+            </span>
+          ))}
+        </div>
+
+        {/* Daily series */}
+        {series.length > 0 ? (
+          <div
+            className="h-24 text-neutral-400 dark:text-neutral-500"
+            data-testid="craft-tape-series-chart"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={series}
+                margin={{ top: 4, right: 4, left: 4, bottom: 0 }}
+              >
+                <XAxis
+                  dataKey="day"
+                  tickFormatter={shortDay}
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis hide />
+                <ChartTooltip
+                  cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                />
+                <Bar
+                  dataKey="sessions"
+                  fill="currentColor"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : null}
+      </div>
+    </Card>
   );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-neutral-500 dark:text-neutral-400">
+        {label}
+      </span>
+      <span className="text-xl font-medium leading-7">{value}</span>
+    </div>
+  );
+}
+
+function shortDay(day: string): string {
+  const parts = day.split("-");
+  return parts.length === 3 ? `${parts[1]}-${parts[2]}` : day;
 }

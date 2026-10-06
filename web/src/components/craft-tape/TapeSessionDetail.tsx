@@ -1,26 +1,19 @@
 "use client";
 
 /**
- * Shared tape session detail: turn table + event timeline + cinematic
- * replay + JSONL export. Used by the admin entry (all users' sessions)
- * and the personal entry (own sessions only); the variant only selects
- * which API base serves the data — server-side authorization differs,
- * the rendering core is one component (dsh: one render path, many shells).
+ * Shared tape session detail — the dsh conversation surface ported to tapes:
+ * a status-dot header with meta and actions (export, copy link, close), a
+ * trajectory/replay view toggle (trajectory is the default because it renders
+ * from the first event page; the replay player mounts only when its tab
+ * opens), and the turn rail scoping both views to one turn. Used by the admin
+ * and personal entries; the variant only selects which API base serves data.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  Button,
-  Card,
-  Table,
-  Tabs,
-  Tag,
-  createTableColumns,
-} from "@opal/components";
+import { Button, Tabs } from "@opal/components";
 import { toast } from "@opal/layouts";
-import { JsonBlock } from "@/components/admin/JsonBlock";
-import { DateTimeCell, MetricCell } from "@/components/admin/TableCells";
+import { SvgCopy, SvgDownload, SvgX } from "@opal/icons";
 import {
   exportMyTapeSession,
   exportTapeSession,
@@ -37,98 +30,61 @@ import type {
   TapeTurnItem,
 } from "@/lib/craft-tape/types";
 import { errorMessage } from "@/views/admin/McpGatewayPage/format";
+import { formatTokenCount, originKeyLabel, sessionTitle } from "./constants";
+import { relativeTimeFromIso } from "./relativeTime";
+import { sessionTapeStatus, turnTapeStatus } from "./tapeStatus";
 import TapeReplayPlayer from "./TapeReplayPlayer";
+import TapeStatusDot from "./TapeStatusDot";
+import TapeTrajectoryView from "./TapeTrajectoryView";
+import TapeTurnRail from "./TapeTurnRail";
+import { useTickingNow } from "./useTickingNow";
 
-const tc = createTableColumns<TapeTurnItem>();
-
-const REASON_TAG_COLORS: Record<string, "green" | "red" | "amber" | "gray"> = {
-  completed: "green",
-  error: "red",
-  aborted: "amber",
-  interrupted: "amber",
-  deadline_exceeded: "amber",
-};
-
-interface TapeSessionDetailProps {
-  session: TapeSessionItem;
+export interface TapeSessionDetailProps {
+  sessionId: string;
+  /**
+   * The list row for this session, when it has been seen — deep links open
+   * before the list reaches the row, and the header degrades gracefully.
+   */
+  session: TapeSessionItem | null;
   /** "admin" reads every session; "personal" reads only the caller's own. */
   variant: "admin" | "personal";
-}
-
-function EventRow({
-  event,
-  pairedIds,
-}: {
-  event: TapeEventItem;
-  pairedIds: Set<string>;
-}) {
-  const t = useTranslations("craftTape");
-  const [expanded, setExpanded] = useState(false);
-  const interrupted = event.annotations.includes("interrupted");
-  const pairKeys = event.annotations
-    .map((annotation) => annotation.split(":", 2)[1])
-    .filter((id): id is string => id !== undefined);
-  const paired = pairKeys.some((key) => pairedIds.has(key));
-
-  return (
-    <div
-      className={`flex flex-col gap-1 rounded-md border p-2 ${
-        paired
-          ? "border-l-4 border-l-blue-400 dark:border-l-blue-500"
-          : "border-l-4 border-l-transparent"
-      } border-neutral-200 dark:border-neutral-700`}
-      data-testid={`craft-tape-event-${event.source_id}`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs text-neutral-500">
-          #{event.source_id}
-        </span>
-        <Tag
-          title={event.kind}
-          color={event.kind === "context_event" ? "blue" : "gray"}
-        />
-        <span className="font-mono text-xs">{event.subtype}</span>
-        {interrupted ? (
-          <Tag title={t("reasons.interrupted")} color="amber" />
-        ) : null}
-        <span className="ml-auto text-xs text-neutral-500">
-          {new Date(event.created_at).toLocaleString()}
-        </span>
-      </div>
-      <button
-        type="button"
-        className="w-fit text-left text-xs text-neutral-500 underline"
-        onClick={() => setExpanded((value) => !value)}
-      >
-        {expanded ? t("events.hidePayload") : t("events.showPayload")}
-      </button>
-      {expanded ? <JsonBlock value={event.payload} /> : null}
-    </div>
-  );
+  onClose: () => void;
 }
 
 export default function TapeSessionDetail({
+  sessionId,
   session,
   variant,
+  onClose,
 }: TapeSessionDetailProps) {
   const t = useTranslations("craftTape");
+  const now = useTickingNow();
   const isPersonal = variant === "personal";
+
   const [turns, setTurns] = useState<TapeTurnItem[]>([]);
   const [events, setEvents] = useState<TapeEventItem[]>([]);
   const [nextSourceId, setNextSourceId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [turnFilter, setTurnFilter] = useState<number | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    // New selection: drop the previous session's data before refetching.
+    setTurns([]);
+    setEvents([]);
+    setNextSourceId(null);
+    setTurnFilter(null);
+    setError(null);
     setLoading(true);
+    let cancelled = false;
     const turnsLoader = isPersonal
-      ? listMyTapeTurns(session.session_id)
-      : listTapeTurns(session.session_id);
+      ? listMyTapeTurns(sessionId)
+      : listTapeTurns(sessionId);
     const eventsLoader = isPersonal
-      ? listMyTapeEvents(session.session_id)
-      : listTapeEvents(session.session_id);
+      ? listMyTapeEvents(sessionId)
+      : listTapeEvents(sessionId);
     Promise.all([turnsLoader, eventsLoader])
       .then(([turnList, eventList]) => {
         if (cancelled) return;
@@ -136,212 +92,216 @@ export default function TapeSessionDetail({
         setEvents(eventList.items);
         setNextSourceId(eventList.next_source_id);
       })
-      .catch((error) => toast.error(errorMessage(error, t("loadFailed"))))
+      .catch((err) => {
+        if (!cancelled) setError(err);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [session.session_id, isPersonal, t]);
+  }, [sessionId, isPersonal, reloadKey]);
 
-  const loadMore = useCallback(() => {
+  const loadMoreEvents = useCallback(() => {
     if (nextSourceId === null) return;
     const loader = isPersonal
-      ? listMyTapeEvents(session.session_id, nextSourceId)
-      : listTapeEvents(session.session_id, nextSourceId);
+      ? listMyTapeEvents(sessionId, nextSourceId)
+      : listTapeEvents(sessionId, nextSourceId);
     loader
       .then((page) => {
         setEvents((current) => [...current, ...page.items]);
         setNextSourceId(page.next_source_id);
       })
-      .catch((error) => toast.error(errorMessage(error, t("loadFailed"))));
-  }, [nextSourceId, session.session_id, isPersonal, t]);
+      .catch((err) => toast.error(errorMessage(err, t("loadFailed"))));
+  }, [nextSourceId, sessionId, isPersonal, t]);
 
-  const pairedIds = useMemo(() => {
-    const settled = new Set<string>();
-    for (const event of events) {
-      for (const annotation of event.annotations) {
-        const [kind, id] = annotation.split(":", 2);
-        if ((kind === "result" || kind === "call") && id !== undefined) {
-          settled.add(id);
-        }
-      }
-    }
-    return settled;
-  }, [events]);
-
-  const turnColumns = useMemo(
-    () => [
-      tc.column("turn_index", {
-        header: t("turns.col.turn"),
-        weight: 8,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={`#${value}`} />,
-      }),
-      tc.column("runtime", {
-        header: t("turns.col.runtime"),
-        weight: 10,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={value} />,
-      }),
-      tc.column("model", {
-        header: t("turns.col.model"),
-        weight: 16,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={value ?? "—"} />,
-      }),
-      tc.column("started_at", {
-        header: t("turns.col.started"),
-        weight: 16,
-        enableSorting: false,
-        cell: (value) =>
-          value ? <DateTimeCell value={value} /> : <span>—</span>,
-      }),
-      tc.column("event_count", {
-        header: t("turns.col.events"),
-        weight: 9,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={String(value)} />,
-      }),
-      tc.column("output_tokens", {
-        header: t("turns.col.tokens"),
-        weight: 10,
-        enableSorting: false,
-        cell: (value) => (
-          <MetricCell value={value === null ? "—" : value.toLocaleString()} />
-        ),
-      }),
-      tc.column("turn_end_reason", {
-        header: t("turns.col.reason"),
-        weight: 12,
-        enableSorting: false,
-        cell: (value) =>
-          value ? (
-            <Tag title={value} color={REASON_TAG_COLORS[value] ?? "gray"} />
-          ) : (
-            <Tag title={t("reasons.interrupted")} color="amber" />
-          ),
-      }),
-      tc.column("tier", {
-        header: t("turns.col.tier"),
-        weight: 10,
-        enableSorting: false,
-        cell: (value) => <MetricCell value={value} />,
-      }),
-    ],
-    [t]
+  const fetchReplay = useCallback(
+    (id: string, args: { afterSourceId?: number | null }) =>
+      isPersonal ? fetchMyTapeReplay(id, args) : fetchTapeReplay(id, args),
+    [isPersonal]
   );
 
-  const visibleEvents =
-    turnFilter === null
-      ? events
-      : events.filter((event) => event.turn_index === turnFilter);
+  const headerStatus = useMemo(() => {
+    if (session) return sessionTapeStatus(session);
+    const lastTurn = turns[turns.length - 1];
+    return lastTurn ? turnTapeStatus(lastTurn) : ("idle" as const);
+  }, [session, turns]);
+
+  const title = session ? sessionTitle(session) : sessionId.slice(0, 8);
+  const createdBucket = session
+    ? relativeTimeFromIso(session.created_at, now)
+    : null;
+  const outputTokens = turns.reduce(
+    (sum, turn) => sum + (turn.output_tokens ?? 0),
+    0
+  );
+  const cost = turns.reduce((sum, turn) => sum + (turn.cost ?? 0), 0);
+  const metaParts = [
+    session?.user_email ?? session?.user_id ?? null,
+    session?.origin ? originKeyLabel(session.origin, t) : null,
+    session?.runtimes?.length ? session.runtimes.join(" / ") : null,
+    createdBucket
+      ? createdBucket.unit === "now"
+        ? t("time.now")
+        : t(`time.${createdBucket.unit}`, { n: createdBucket.n })
+      : null,
+  ].filter((part): part is string => part !== null);
+
+  const copyLink = useCallback(() => {
+    const url = `${window.location.origin}${window.location.pathname}?sessionId=${sessionId}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast.success(t("browser.linkCopied")))
+      .catch(() => toast.error(t("browser.linkCopyFailed")));
+  }, [sessionId, t]);
+
+  if (error) {
+    return (
+      <div
+        className="flex h-full flex-col items-center justify-center gap-2"
+        data-testid="craft-tape-detail-error"
+      >
+        <span className="text-sm text-neutral-500">
+          {errorMessage(error, t("loadFailed"))}
+        </span>
+        <Button
+          prominence="secondary"
+          onClick={() => setReloadKey((key) => key + 1)}
+        >
+          {t("browser.retry")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <Card padding={3} rounding={3} data-testid="craft-tape-detail">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-col">
-          <span className="font-medium">
-            {session.name ?? session.session_id.slice(0, 8)}
+    <div
+      className="flex h-full min-h-0 flex-col"
+      data-testid="craft-tape-detail"
+    >
+      {/* Header */}
+      <div className="flex items-start gap-2 px-1 pb-2">
+        <span className="mt-1.5 flex-none">
+          <TapeStatusDot status={headerStatus} />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-base font-medium leading-6">
+            {title}
           </span>
-          <span className="text-xs text-neutral-500">
-            {session.user_email ?? session.user_id ?? "—"} ·{" "}
-            {session.origin ?? "—"}
+          <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+            {metaParts.join(" · ")}
+          </span>
+          <span className="truncate text-xs text-neutral-400">
+            {t("detail.turns", { count: turns.length })}
+            {" · "}
+            {t("detail.tokens", { count: formatTokenCount(outputTokens) })}
+            {" · "}
+            {t("detail.cost", { cost: cost.toFixed(2) })}
           </span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex flex-none items-center gap-1">
           <Button
             prominence="secondary"
+            icon={SvgDownload}
             disabled={isExporting}
             onClick={() => {
               setIsExporting(true);
               const exporter = isPersonal
-                ? exportMyTapeSession(session.session_id)
-                : exportTapeSession(session.session_id);
+                ? exportMyTapeSession(sessionId)
+                : exportTapeSession(sessionId);
               exporter
-                .catch((error) =>
-                  toast.error(errorMessage(error, t("loadFailed")))
-                )
+                .catch((err) => toast.error(errorMessage(err, t("loadFailed"))))
                 .finally(() => setIsExporting(false));
             }}
+            data-testid="craft-tape-export"
           >
             {t("export")}
           </Button>
+          <HeaderIconButton
+            label={t("browser.copyLink")}
+            onClick={copyLink}
+            testId="craft-tape-copy-link"
+          >
+            <SvgCopy className="h-4 w-4" />
+          </HeaderIconButton>
+          <HeaderIconButton
+            label={t("detail.close")}
+            onClick={onClose}
+            testId="craft-tape-close"
+          >
+            <SvgX className="h-4 w-4" />
+          </HeaderIconButton>
         </div>
       </div>
 
-      <div className="pt-4">
-        <Table
-          data={turns}
-          columns={turnColumns}
-          getRowId={(row) => String(row.turn_index)}
-          pageSize={10}
-          variant="rows"
-          footer={{ units: t("table.footerUnits") }}
-          onRowClick={(row) =>
-            setTurnFilter((current) =>
-              current === row.turn_index ? null : row.turn_index
-            )
-          }
-          emptyState={
-            <span className="text-sm text-neutral-500">
-              {loading ? t("table.loading") : t("turns.empty")}
-            </span>
-          }
-        />
-      </div>
-
-      <div className="pt-4">
-        <Tabs defaultValue="timeline">
+      {/* Views: trajectory (default, cheap) and replay (lazy — the player
+          drains the full packet timeline, so it loads only when opened). */}
+      <div className="min-h-0 flex-1">
+        <Tabs defaultValue="trajectory">
           <Tabs.List>
-            <Tabs.Trigger value="timeline">{t("events.title")}</Tabs.Trigger>
-            <Tabs.Trigger value="replay">{t("replay.title")}</Tabs.Trigger>
+            <Tabs.Trigger value="trajectory" data-testid="tape-tab-trajectory">
+              {t("trajectory.title")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="replay" data-testid="tape-tab-replay">
+              {t("replay.title")}
+            </Tabs.Trigger>
           </Tabs.List>
-          <Tabs.Content value="timeline">
-            <div className="flex flex-col gap-2 pt-2">
-              {turnFilter !== null ? (
-                <button
-                  type="button"
-                  className="w-fit text-xs underline"
-                  onClick={() => setTurnFilter(null)}
-                >
-                  {t("events.clearTurnFilter", { turn: turnFilter })}
-                </button>
-              ) : null}
-              <div className="flex max-h-[28rem] flex-col gap-1 overflow-y-auto pr-1">
-                {visibleEvents.map((event) => (
-                  <EventRow
-                    key={event.source_id}
-                    event={event}
-                    pairedIds={pairedIds}
-                  />
-                ))}
-                {visibleEvents.length === 0 && !loading ? (
-                  <span className="text-sm text-neutral-500">
-                    {t("events.empty")}
-                  </span>
-                ) : null}
+          <Tabs.Content value="trajectory">
+            <div className="flex min-h-0 gap-1 pt-2">
+              <div className="min-w-0 flex-1">
+                <TapeTrajectoryView
+                  turns={turns}
+                  events={events}
+                  loading={loading}
+                  nextSourceId={nextSourceId}
+                  onLoadMore={loadMoreEvents}
+                  turnFilter={turnFilter}
+                  onTurnFilterChange={setTurnFilter}
+                />
               </div>
-              {nextSourceId !== null ? (
-                <div>
-                  <Button prominence="secondary" onClick={loadMore}>
-                    {t("events.loadMore")}
-                  </Button>
-                </div>
-              ) : null}
+              <TapeTurnRail
+                turns={turns}
+                activeTurn={turnFilter}
+                onSelectTurn={setTurnFilter}
+              />
             </div>
           </Tabs.Content>
           <Tabs.Content value="replay">
             <div className="pt-2">
               <TapeReplayPlayer
-                sessionId={session.session_id}
-                fetchReplay={isPersonal ? fetchMyTapeReplay : fetchTapeReplay}
+                sessionId={sessionId}
+                fetchReplay={fetchReplay}
               />
             </div>
           </Tabs.Content>
         </Tabs>
       </div>
-    </Card>
+    </div>
+  );
+}
+
+function HeaderIconButton({
+  label,
+  testId,
+  onClick,
+  children,
+}: {
+  label: string;
+  testId: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+      data-testid={testId}
+    >
+      {children}
+    </button>
   );
 }

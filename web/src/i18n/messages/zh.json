@@ -8833,11 +8833,6 @@
         "description": "全量逐字记录的 Craft agent 执行。浏览会话、检查事件时间线、导出规范 JSONL。"
       },
       "loadFailed": "加载执行记录失败",
-      "export": "导出 JSONL",
-      "table": {
-        "footerUnits": "条记录",
-        "loading": "加载中..."
-      },
       "overview": {
         "disabled": "归档未启用",
         "disabledHint": "启用 CRAFT_TAPE_ARCHIVE_ENABLED 将执行记录归档到 Iceberg 湖；热窗口记录仍写入 Postgres。",
@@ -8848,71 +8843,10 @@
         "cost": "费用"
       },
       "filters": {
-        "days": "近 {days} 天",
-        "origin": "会话来源",
-        "allOrigins": "全部来源",
-        "user": "按用户邮箱筛选",
-        "userPlaceholder": "用户邮箱",
-        "sort": "排序",
-        "sortKey": {
-          "created_at": "创建时间",
-          "name": "任务名称",
-          "last_activity": "最近活动"
-        },
-        "sortDir": {
-          "desc": "↓",
-          "asc": "↑"
-        }
+        "days": "近 {days} 天"
       },
-      "sessions": {
-        "searchPlaceholder": "按名称搜索会话",
-        "empty": "该时间窗口内没有已记录的会话",
-        "col": {
-          "created": "创建时间",
-          "name": "会话",
-          "user": "用户",
-          "origin": "来源",
-          "turns": "回合",
-          "events": "事件",
-          "tokens": "输出 tokens",
-          "lastReason": "最近结果"
-        }
-      },
-      "turns": {
-        "empty": "没有已记录的回合",
-        "col": {
-          "turn": "回合",
-          "runtime": "运行时",
-          "model": "模型",
-          "started": "开始时间",
-          "events": "事件",
-          "tokens": "输出 tokens",
-          "reason": "结果",
-          "tier": "存储层"
-        }
-      },
-      "events": {
-        "title": "事件时间线",
-        "showPayload": "展开载荷",
-        "hidePayload": "收起载荷",
-        "loadMore": "加载更多事件",
-        "empty": "没有已记录的事件",
-        "clearTurnFilter": "正在查看回合 #{turn} — 清除"
-      },
-      "series": {
-        "col": {
-          "day": "日期",
-          "sessions": "会话",
-          "turns": "回合",
-          "events": "事件"
-        }
-      },
-      "reasons": {
-        "completed": "已完成",
-        "aborted": "已中止",
-        "error": "出错",
-        "interrupted": "已中断",
-        "deadline_exceeded": "超时限"
+      "chart": {
+        "title": "每日会话数"
       }
     }
   },
@@ -16791,23 +16725,35 @@
     "loadFailed": "加载执行记录失败",
     "export": "导出 JSONL",
     "table": {
-      "footerUnits": "条记录",
       "loading": "加载中..."
     },
+    "status": {
+      "running": "进行中",
+      "done": "已完成",
+      "warning": "已停止",
+      "error": "失败",
+      "idle": "空闲"
+    },
+    "time": {
+      "now": "刚刚",
+      "minutes": "{n}分钟",
+      "hours": "{n}小时",
+      "days": "{n}天",
+      "months": "{n}个月",
+      "years": "{n}年"
+    },
+    "origins": {
+      "interactive": "交互",
+      "scheduled": "计划任务",
+      "slack": "Slack",
+      "job": "作业",
+      "im": "IM",
+      "eval": "评测",
+      "unknown": "未知"
+    },
     "filters": {
-      "days": "近 {days} 天",
       "origin": "会话来源",
-      "allOrigins": "全部来源",
-      "sort": "排序",
-      "sortKey": {
-        "created_at": "创建时间",
-        "name": "任务名称",
-        "last_activity": "最近活动"
-      },
-      "sortDir": {
-        "desc": "↓",
-        "asc": "↑"
-      }
+      "allOrigins": "全部来源"
     },
     "reasons": {
       "completed": "已完成",
@@ -16816,38 +16762,76 @@
       "interrupted": "已中断",
       "deadline_exceeded": "超时限"
     },
-    "sessions": {
-      "col": {
-        "created": "创建时间",
-        "name": "会话",
-        "user": "用户",
-        "origin": "来源",
-        "turns": "回合",
-        "events": "事件",
-        "tokens": "输出 tokens",
-        "lastReason": "最近结果"
-      }
+    "browser": {
+      "title": "会话",
+      "search": "搜索会话",
+      "searchPlaceholder": "按任务名称搜索",
+      "viewOptions": "视图选项",
+      "groupBy": "分组方式",
+      "groupTime": "按日期",
+      "groupOrigin": "按来源",
+      "groupFlat": "平铺列表",
+      "sortBy": "排序方式",
+      "sort_recent": "最近活跃",
+      "sort_newest": "最新创建",
+      "sort_oldest": "最早创建",
+      "sort_name": "名称 A–Z",
+      "timeRange": "时间范围",
+      "last_7": "最近 7 天",
+      "last_30": "最近 30 天",
+      "last_90": "最近 90 天",
+      "allTime": "全部时间",
+      "userFilter": "按用户过滤",
+      "userPlaceholder": "用户邮箱",
+      "today": "今天",
+      "yesterday": "昨天",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "earlier": "更早",
+      "showMore": "显示更多 {count} 条",
+      "showLess": "收起",
+      "loadMore": "加载更多({loaded}/{total})",
+      "endOfList": "已加载全部会话",
+      "empty": "没有匹配的会话",
+      "emptyHint": "试试扩大时间范围或清除筛选条件。",
+      "retry": "重试",
+      "copyLink": "复制链接",
+      "linkCopied": "链接已复制到剪贴板",
+      "linkCopyFailed": "复制链接失败",
+      "created": "创建于 {time}",
+      "noSelectionTitle": "未选择会话",
+      "noSelectionHint": "在左侧选择一个会话,查看其执行轨迹、回放或导出 JSONL。"
     },
     "turns": {
-      "empty": "没有已记录的回合",
-      "col": {
-        "turn": "回合",
-        "runtime": "运行时",
-        "model": "模型",
-        "started": "开始时间",
-        "events": "事件",
-        "tokens": "输出 tokens",
-        "reason": "结果",
-        "tier": "存储层"
-      }
+      "turn": "回合",
+      "turnOf": "回合 #{turn}",
+      "ungrouped": "未分组事件"
     },
     "events": {
-      "title": "事件时间线",
       "showPayload": "展开载荷",
       "hidePayload": "收起载荷",
       "loadMore": "加载更多事件",
-      "empty": "没有已记录的事件",
-      "clearTurnFilter": "正在查看回合 #{turn} — 清除"
+      "empty": "没有已记录的事件"
+    },
+    "trajectory": {
+      "title": "执行轨迹",
+      "search": "筛选事件",
+      "kind": "事件类型",
+      "kindAll": "全部类型",
+      "kindHarness": "Harness",
+      "kindContext": "上下文",
+      "collapseAll": "折叠全部回合",
+      "expandAll": "展开全部回合",
+      "context": "上下文",
+      "paired": "调用 → 结果 已配对",
+      "deltaRun": "{count} 个增量块 · +{chars} 字符",
+      "empty": "没有符合当前筛选条件的事件"
+    },
+    "detail": {
+      "turns": "{count} 个回合",
+      "tokens": "{count} 输出 token",
+      "cost": "${cost}",
+      "close": "关闭"
     },
     "replay": {
       "title": "回放",
@@ -16862,14 +16846,13 @@
       "scrubber": "回放进度",
       "skipped": "跳过 {count} 个事件",
       "interrupted": "完成前被中断",
-      "loadFailed": "加载回放数据失败"
+      "loadFailed": "加载回放数据失败",
+      "toBottom": "回到最新",
+      "scrubHint": "拖动进度条或点击播放来回放此会话。"
     },
     "myPage": {
       "title": "执行记录",
-      "description": "逐字记录的你本人 Craft 任务执行——浏览、回放、导出。",
-      "searchPlaceholder": "按任务名称搜索",
-      "empty": "该时间窗口内没有已记录的会话",
-      "clearSelection": "关闭详情"
+      "description": "逐字记录的你本人 Craft 任务执行——浏览、回放、导出。"
     }
   }
 }

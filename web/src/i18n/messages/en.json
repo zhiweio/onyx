@@ -8833,11 +8833,6 @@
         "description": "Every craft agent execution, recorded verbatim. Browse sessions, inspect the event timeline, and export canonical JSONL."
       },
       "loadFailed": "Failed to load execution tape data",
-      "export": "Export JSONL",
-      "table": {
-        "footerUnits": "records",
-        "loading": "Loading..."
-      },
       "overview": {
         "disabled": "Archiving disabled",
         "disabledHint": "Enable CRAFT_TAPE_ARCHIVE_ENABLED to archive tapes into the Iceberg lake. Hot-window tape is still recorded in Postgres.",
@@ -8848,71 +8843,10 @@
         "cost": "Cost"
       },
       "filters": {
-        "days": "Last {days} days",
-        "origin": "Session origin",
-        "allOrigins": "All origins",
-        "user": "Filter by user email",
-        "userPlaceholder": "User email",
-        "sort": "Sort",
-        "sortKey": {
-          "created_at": "Created",
-          "name": "Task name",
-          "last_activity": "Last activity"
-        },
-        "sortDir": {
-          "desc": "↓",
-          "asc": "↑"
-        }
+        "days": "Last {days} days"
       },
-      "sessions": {
-        "searchPlaceholder": "Search sessions by name",
-        "empty": "No recorded sessions in this window",
-        "col": {
-          "created": "Created",
-          "name": "Session",
-          "user": "User",
-          "origin": "Origin",
-          "turns": "Turns",
-          "events": "Events",
-          "tokens": "Output tokens",
-          "lastReason": "Last outcome"
-        }
-      },
-      "turns": {
-        "empty": "No turns recorded",
-        "col": {
-          "turn": "Turn",
-          "runtime": "Runtime",
-          "model": "Model",
-          "started": "Started",
-          "events": "Events",
-          "tokens": "Output tokens",
-          "reason": "Outcome",
-          "tier": "Tier"
-        }
-      },
-      "events": {
-        "title": "Event timeline",
-        "showPayload": "Show payload",
-        "hidePayload": "Hide payload",
-        "loadMore": "Load more events",
-        "empty": "No events recorded",
-        "clearTurnFilter": "Showing turn #{turn} — clear"
-      },
-      "series": {
-        "col": {
-          "day": "Day",
-          "sessions": "Sessions",
-          "turns": "Turns",
-          "events": "Events"
-        }
-      },
-      "reasons": {
-        "completed": "Completed",
-        "aborted": "Aborted",
-        "error": "Error",
-        "interrupted": "Interrupted",
-        "deadline_exceeded": "Deadline exceeded"
+      "chart": {
+        "title": "Sessions per day"
       }
     }
   },
@@ -16791,23 +16725,35 @@
     "loadFailed": "Failed to load execution tape data",
     "export": "Export JSONL",
     "table": {
-      "footerUnits": "records",
       "loading": "Loading..."
     },
+    "status": {
+      "running": "Running",
+      "done": "Completed",
+      "warning": "Stopped",
+      "error": "Failed",
+      "idle": "Idle"
+    },
+    "time": {
+      "now": "now",
+      "minutes": "{n}m",
+      "hours": "{n}h",
+      "days": "{n}d",
+      "months": "{n}mo",
+      "years": "{n}y"
+    },
+    "origins": {
+      "interactive": "Interactive",
+      "scheduled": "Scheduled",
+      "slack": "Slack",
+      "job": "Job",
+      "im": "IM",
+      "eval": "Eval",
+      "unknown": "Unknown"
+    },
     "filters": {
-      "days": "Last {days} days",
       "origin": "Session origin",
-      "allOrigins": "All origins",
-      "sort": "Sort",
-      "sortKey": {
-        "created_at": "Created",
-        "name": "Task name",
-        "last_activity": "Last activity"
-      },
-      "sortDir": {
-        "desc": "↓",
-        "asc": "↑"
-      }
+      "allOrigins": "All origins"
     },
     "reasons": {
       "completed": "Completed",
@@ -16816,38 +16762,76 @@
       "interrupted": "Interrupted",
       "deadline_exceeded": "Deadline exceeded"
     },
-    "sessions": {
-      "col": {
-        "created": "Created",
-        "name": "Session",
-        "user": "User",
-        "origin": "Origin",
-        "turns": "Turns",
-        "events": "Events",
-        "tokens": "Output tokens",
-        "lastReason": "Last outcome"
-      }
+    "browser": {
+      "title": "Sessions",
+      "search": "Search sessions",
+      "searchPlaceholder": "Search by task name",
+      "viewOptions": "View options",
+      "groupBy": "Group by",
+      "groupTime": "Date",
+      "groupOrigin": "Origin",
+      "groupFlat": "Flat list",
+      "sortBy": "Sort by",
+      "sort_recent": "Recently active",
+      "sort_newest": "Newest created",
+      "sort_oldest": "Oldest created",
+      "sort_name": "Name A–Z",
+      "timeRange": "Time range",
+      "last_7": "Last 7 days",
+      "last_30": "Last 30 days",
+      "last_90": "Last 90 days",
+      "allTime": "All time",
+      "userFilter": "Filter by user",
+      "userPlaceholder": "User email",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "earlier": "Earlier",
+      "showMore": "Show {count} more",
+      "showLess": "Show less",
+      "loadMore": "Load more ({loaded}/{total})",
+      "endOfList": "All sessions loaded",
+      "empty": "No sessions match",
+      "emptyHint": "Try widening the time range or clearing filters.",
+      "retry": "Retry",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied to clipboard",
+      "linkCopyFailed": "Failed to copy link",
+      "created": "Created {time}",
+      "noSelectionTitle": "No session selected",
+      "noSelectionHint": "Pick a session on the left to inspect its trajectory, replay it, or export the JSONL."
     },
     "turns": {
-      "empty": "No turns recorded",
-      "col": {
-        "turn": "Turn",
-        "runtime": "Runtime",
-        "model": "Model",
-        "started": "Started",
-        "events": "Events",
-        "tokens": "Output tokens",
-        "reason": "Outcome",
-        "tier": "Tier"
-      }
+      "turn": "Turn",
+      "turnOf": "Turn #{turn}",
+      "ungrouped": "Ungrouped events"
     },
     "events": {
-      "title": "Event timeline",
       "showPayload": "Show payload",
       "hidePayload": "Hide payload",
       "loadMore": "Load more events",
-      "empty": "No events recorded",
-      "clearTurnFilter": "Showing turn #{turn} — clear"
+      "empty": "No events recorded"
+    },
+    "trajectory": {
+      "title": "Trajectory",
+      "search": "Filter events",
+      "kind": "Event kind",
+      "kindAll": "All kinds",
+      "kindHarness": "Harness",
+      "kindContext": "Context",
+      "collapseAll": "Collapse all turns",
+      "expandAll": "Expand all turns",
+      "context": "context",
+      "paired": "Paired call → result",
+      "deltaRun": "{count} delta chunks · +{chars} chars",
+      "empty": "No events match the current filters"
+    },
+    "detail": {
+      "turns": "{count} turns",
+      "tokens": "{count} output tokens",
+      "cost": "${cost}",
+      "close": "Close"
     },
     "replay": {
       "title": "Replay",
@@ -16855,21 +16839,20 @@
       "empty": "No replayable events",
       "play": "Play",
       "pause": "Pause",
-      "speed": "Speed",
-      "prevTurn": "Prev turn",
+      "speed": "Playback speed",
+      "prevTurn": "Previous turn",
       "nextTurn": "Next turn",
       "jumpEnd": "Jump to end",
       "scrubber": "Replay position",
       "skipped": "{count} events skipped",
       "interrupted": "Interrupted before this finished",
-      "loadFailed": "Failed to load replay data"
+      "loadFailed": "Failed to load replay data",
+      "toBottom": "Jump to latest",
+      "scrubHint": "Drag the scrubber or press play to replay this session."
     },
     "myPage": {
       "title": "Execution Records",
-      "description": "Your craft task executions, recorded verbatim — browse, replay, and export.",
-      "searchPlaceholder": "Search by task name",
-      "empty": "No recorded sessions in this window",
-      "clearSelection": "Close detail"
+      "description": "Your craft task executions, recorded verbatim — browse, replay, and export."
     }
   }
 }

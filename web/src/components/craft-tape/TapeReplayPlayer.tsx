@@ -9,12 +9,24 @@
  * the cursor by one entry; turn markers segment the fold the same way the
  * live stream does, and folded turns render through the craft `FoldRow`
  * model so replayed frames match live ones.
+ *
+ * The shell is dsh chat-view shaped: a centered column that follows the tail
+ * while the reader sits at the bottom (with a return-to-bottom pill when they
+ * scroll up), icon transport controls, and a popover speed menu.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button, Tag } from "@opal/components";
+import { Button, Popover, PopoverMenu, Tag } from "@opal/components";
 import { toast } from "@opal/layouts";
+import {
+  SvgChevronDown,
+  SvgChevronLeft,
+  SvgChevronRight,
+  SvgPauseCircle,
+  SvgPlayCircle,
+} from "@opal/icons";
+import { cn } from "@opal/utils";
 import type { StreamItem } from "@/app/craft/types/displayTypes";
 import { foldTurnStream, type FoldRow } from "@/lib/craft/foldTurnStream";
 import type { ReplayPacketItem, ReplayPage } from "@/lib/craft-tape/types";
@@ -29,6 +41,9 @@ const SPEEDS = [
 ] as const;
 
 const MAX_REPLAY_ENTRIES = 5000;
+
+/* The reader counts as "at the tail" while the viewport bottom is this close. */
+const FOLLOW_TAIL_THRESHOLD_PX = 48;
 
 interface TapeReplayPlayerProps {
   sessionId: string;
@@ -206,7 +221,9 @@ export default function TapeReplayPlayer({
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState<number>(SPEEDS[1].ms);
+  const [followingTail, setFollowingTail] = useState(true);
   const entriesRef = useRef<ReplayPacketItem[]>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,6 +274,38 @@ export default function TapeReplayPlayer({
     }
   }, [playing, cursor, entries]);
 
+  // Follow the tail while the reader sits at the bottom (dsh chat scroll).
+  useEffect(() => {
+    if (!followingTail) return;
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [cursor, followingTail]);
+
+  // Space toggles playback unless the user is interacting with a control.
+  useEffect(() => {
+    if (entries === null || entries.length === 0) return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.code !== "Space") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "BUTTON" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (!playing && cursor >= entries.length) {
+        setCursor(0);
+      }
+      setPlaying((value) => !value);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [entries, cursor, playing]);
+
   const total = entries?.length ?? 0;
   const { committed } = useMemo(
     () => (entries ? stateUpTo(entries, cursor) : { committed: [] }),
@@ -303,70 +352,149 @@ export default function TapeReplayPlayer({
   }
 
   return (
-    <div className="flex flex-col gap-3" data-testid="tape-replay-player">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          prominence="primary"
+    <div className="flex flex-col gap-2" data-testid="tape-replay-player">
+      {/* Transport bar */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={playing ? t("replay.pause") : t("replay.play")}
           onClick={() => {
-            if (cursor >= total) setCursor(0);
+            if (!playing && cursor >= total) setCursor(0);
             setPlaying((value) => !value);
           }}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
+          data-testid="tape-replay-play"
         >
-          {playing ? t("replay.pause") : t("replay.play")}
-        </Button>
-        <select
-          aria-label={t("replay.speed")}
-          value={speedMs}
-          onChange={(event) => setSpeedMs(Number(event.target.value))}
-          className="rounded-md border border-neutral-300 bg-transparent px-2 py-1 text-xs dark:border-neutral-600"
+          {playing ? (
+            <SvgPauseCircle className="h-6 w-6" />
+          ) : (
+            <SvgPlayCircle className="h-6 w-6" />
+          )}
+        </button>
+        <button
+          type="button"
+          aria-label={t("replay.prevTurn")}
+          onClick={() => jumpTurn(-1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+          data-testid="tape-replay-prev-turn"
         >
-          {SPEEDS.map((speed) => (
-            <option key={speed.label} value={speed.ms}>
-              {speed.label}
-            </option>
-          ))}
-        </select>
-        <Button prominence="secondary" onClick={() => jumpTurn(-1)}>
-          {t("replay.prevTurn")}
-        </Button>
-        <Button prominence="secondary" onClick={() => jumpTurn(1)}>
-          {t("replay.nextTurn")}
-        </Button>
-        <Button
-          prominence="secondary"
+          <SvgChevronLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          aria-label={t("replay.nextTurn")}
+          onClick={() => jumpTurn(1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+          data-testid="tape-replay-next-turn"
+        >
+          <SvgChevronRight className="h-4 w-4" />
+        </button>
+        <Popover>
+          <Popover.Trigger asChild>
+            <button
+              type="button"
+              aria-label={t("replay.speed")}
+              className="flex h-7 items-center rounded-md border border-neutral-300 px-2 font-mono text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              data-testid="tape-replay-speed"
+            >
+              {SPEEDS.find((speed) => speed.ms === speedMs)?.label ?? "1x"}
+            </button>
+          </Popover.Trigger>
+          <Popover.Content align="start" width="sm">
+            <PopoverMenu>
+              {SPEEDS.map((speed) => (
+                <button
+                  key={speed.label}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={speed.ms === speedMs}
+                  onClick={() => setSpeedMs(speed.ms)}
+                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  <span>{speed.label}</span>
+                  {speed.ms === speedMs ? (
+                    <span className="text-xs">✓</span>
+                  ) : null}
+                </button>
+              ))}
+            </PopoverMenu>
+          </Popover.Content>
+        </Popover>
+        <span className="ml-1 font-mono text-xs text-neutral-400">
+          {cursor}/{total}
+          {skipped > 0 ? ` · ${t("replay.skipped", { count: skipped })}` : ""}
+        </span>
+        <button
+          type="button"
+          className="ml-auto text-xs text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           onClick={() => {
             setPlaying(false);
             setCursor(total);
           }}
+          data-testid="tape-replay-jump-end"
         >
           {t("replay.jumpEnd")}
-        </Button>
-        <span className="text-xs text-neutral-500">
-          {cursor}/{total}
-          {skipped > 0 ? ` · ${t("replay.skipped", { count: skipped })}` : ""}
-        </span>
+        </button>
       </div>
 
-      <div>
-        <input
-          type="range"
-          min={0}
-          max={total}
-          value={cursor}
-          aria-label={t("replay.scrubber")}
-          onChange={(event) => {
-            setPlaying(false);
-            setCursor(Number(event.target.value));
+      {/* Scrubber */}
+      <input
+        type="range"
+        min={0}
+        max={total}
+        value={cursor}
+        aria-label={t("replay.scrubber")}
+        onChange={(event) => {
+          setPlaying(false);
+          setCursor(Number(event.target.value));
+        }}
+        className="w-full accent-neutral-900 dark:accent-neutral-100"
+        data-testid="tape-replay-scrubber"
+      />
+
+      {/* Replay surface: a centered column that follows the tail. */}
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          className="flex max-h-[32rem] min-h-[12rem] flex-col overflow-y-auto rounded-lg border border-neutral-200 p-3 dark:border-neutral-700"
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            const distance =
+              element.scrollHeight - element.scrollTop - element.clientHeight;
+            setFollowingTail(distance < FOLLOW_TAIL_THRESHOLD_PX);
           }}
-          className="w-full"
-          data-testid="tape-replay-scrubber"
-        />
-      </div>
-
-      <div className="flex max-h-[30rem] flex-col gap-3 overflow-y-auto rounded-md border border-neutral-200 p-3 dark:border-neutral-700">
-        {committed.map((turn, index) => (
-          <TurnView key={`${turn.turnIndex}-${index}`} turn={turn} />
-        ))}
+          data-testid="tape-replay-scroll"
+        >
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+            {committed.map((turn, index) => (
+              <TurnView key={`${turn.turnIndex}-${index}`} turn={turn} />
+            ))}
+            {committed.length === 0 ? (
+              <div className="py-8 text-center text-sm text-neutral-400">
+                {t("replay.scrubHint")}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {!followingTail ? (
+          <button
+            type="button"
+            className={cn(
+              "absolute bottom-3 left-1/2 -translate-x-1/2",
+              "flex items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-xs text-white shadow-md",
+              "dark:bg-neutral-100 dark:text-neutral-900"
+            )}
+            onClick={() => {
+              setFollowingTail(true);
+              const element = scrollRef.current;
+              if (element) element.scrollTop = element.scrollHeight;
+            }}
+            data-testid="tape-replay-to-bottom"
+          >
+            <SvgChevronDown className="h-3 w-3" />
+            {t("replay.toBottom")}
+          </button>
+        ) : null}
       </div>
     </div>
   );
