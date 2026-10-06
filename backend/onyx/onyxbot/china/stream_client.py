@@ -31,16 +31,16 @@ def _handler_for(config: object) -> "dingtalk_stream.CallbackHandler":  # noqa: 
             try:
                 payload = callback.data
                 if not isinstance(payload, dict):
-                    return dingtalk_stream.AckMessage.STATUS_ACK, "OK"
+                    return dingtalk_stream.AckMessage.STATUS_OK, "OK"
                 result = parse_robot_payload(payload)
                 if result.message is None:
-                    return dingtalk_stream.AckMessage.STATUS_ACK, "OK"
+                    return dingtalk_stream.AckMessage.STATUS_OK, "OK"
                 if seen_before("dingtalk", result.message.msg_id):
-                    return dingtalk_stream.AckMessage.STATUS_ACK, "OK"
+                    return dingtalk_stream.AckMessage.STATUS_OK, "OK"
                 answer_message_async(result.message, config)
             except Exception:
                 logger.exception("dingtalk stream message handling failed")
-            return dingtalk_stream.AckMessage.STATUS_ACK, "OK"
+            return dingtalk_stream.AckMessage.STATUS_OK, "OK"
 
     return _StreamChatbotHandler()
 
