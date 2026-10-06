@@ -88,14 +88,23 @@ def load_tape_entries(
     return list(db_session.scalars(stmt))
 
 
-def prune_tape_before(db_session: Session, cutoff: datetime) -> int:
-    """Delete tape rows older than the cutoff; returns the row count."""
-    result = db_session.execute(
-        delete(CraftTapeEntry).where(CraftTapeEntry.created_at < cutoff)
+def prune_tape_before(
+    db_session: Session, cutoff: datetime, *, max_id: int | None = None
+) -> int:
+    """Delete tape rows older than the cutoff; returns the row count.
+
+    ``max_id`` (the archive high-water mark) bounds deletion to rows that
+    are already in the Iceberg lake, so a hot window never drops facts
+    that exist nowhere else.
+    """
+    stmt = delete(CraftTapeEntry).where(CraftTapeEntry.created_at < cutoff)
+    if max_id is not None:
+        stmt = stmt.where(CraftTapeEntry.id <= max_id)
+    result = db_session.execute(stmt)
+    rowcount = getattr(  # ods: ignore[getattr] - Result type varies
+        result, "rowcount", 0
     )
-    return int(
-        getattr(result, "rowcount", 0) or 0
-    )  # ods: ignore[getattr] - Result type varies
+    return int(rowcount or 0)
 
 
 def tape_retention_cutoff(retention_days: int) -> datetime:

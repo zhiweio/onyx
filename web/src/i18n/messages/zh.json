@@ -8826,6 +8826,94 @@
         "saveFailed": "更新失败",
         "invalid": "请输入 1-10 之间的整数"
       }
+    },
+    "craftTape": {
+      "page": {
+        "title": "执行记录",
+        "description": "全量逐字记录的 Craft agent 执行。浏览会话、检查事件时间线、导出规范 JSONL。"
+      },
+      "loadFailed": "加载执行记录失败",
+      "export": "导出 JSONL",
+      "table": {
+        "footerUnits": "条记录",
+        "loading": "加载中..."
+      },
+      "overview": {
+        "disabled": "归档未启用",
+        "disabledHint": "启用 CRAFT_TAPE_ARCHIVE_ENABLED 将执行记录归档到 Iceberg 湖；热窗口记录仍写入 Postgres。",
+        "sessions": "会话",
+        "turns": "回合",
+        "events": "事件",
+        "outputTokens": "输出 tokens",
+        "cost": "费用"
+      },
+      "filters": {
+        "days": "近 {days} 天",
+        "origin": "会话来源",
+        "allOrigins": "全部来源",
+        "user": "按用户邮箱筛选",
+        "userPlaceholder": "用户邮箱",
+        "sort": "排序",
+        "sortKey": {
+          "created_at": "创建时间",
+          "name": "任务名称",
+          "last_activity": "最近活动"
+        },
+        "sortDir": {
+          "desc": "↓",
+          "asc": "↑"
+        }
+      },
+      "sessions": {
+        "searchPlaceholder": "按名称搜索会话",
+        "empty": "该时间窗口内没有已记录的会话",
+        "col": {
+          "created": "创建时间",
+          "name": "会话",
+          "user": "用户",
+          "origin": "来源",
+          "turns": "回合",
+          "events": "事件",
+          "tokens": "输出 tokens",
+          "lastReason": "最近结果"
+        }
+      },
+      "turns": {
+        "empty": "没有已记录的回合",
+        "col": {
+          "turn": "回合",
+          "runtime": "运行时",
+          "model": "模型",
+          "started": "开始时间",
+          "events": "事件",
+          "tokens": "输出 tokens",
+          "reason": "结果",
+          "tier": "存储层"
+        }
+      },
+      "events": {
+        "title": "事件时间线",
+        "showPayload": "展开载荷",
+        "hidePayload": "收起载荷",
+        "loadMore": "加载更多事件",
+        "empty": "没有已记录的事件",
+        "clearTurnFilter": "正在查看回合 #{turn} — 清除"
+      },
+      "series": {
+        "col": {
+          "day": "日期",
+          "sessions": "会话",
+          "turns": "回合",
+          "events": "事件"
+        }
+      },
+      "reasons": {
+        "completed": "已完成",
+        "aborted": "已中止",
+        "error": "出错",
+        "interrupted": "已中断",
+        "deadline_exceeded": "超时限"
+      }
     }
   },
   "agents": {
@@ -12950,6 +13038,9 @@
       "scheduledTasks": {
         "label": "计划任务"
       },
+      "tapes": {
+        "label": "执行记录"
+      },
       "sessions": {
         "empty": "开始构建吧！会话历史将显示在这里。",
         "title": "会话"
@@ -15836,6 +15927,9 @@
         },
         "craftEvaluations": {
           "label": "评测"
+        },
+        "craftTape": {
+          "label": "执行记录"
         }
       },
       "sections": {
@@ -16691,6 +16785,91 @@
       "description": "显示在应用侧边栏中的外部链接，例如企业内部帮助中心。",
       "itemTitlePlaceholder": "名称",
       "addItem": "添加链接"
+    }
+  },
+  "craftTape": {
+    "loadFailed": "加载执行记录失败",
+    "export": "导出 JSONL",
+    "table": {
+      "footerUnits": "条记录",
+      "loading": "加载中..."
+    },
+    "filters": {
+      "days": "近 {days} 天",
+      "origin": "会话来源",
+      "allOrigins": "全部来源",
+      "sort": "排序",
+      "sortKey": {
+        "created_at": "创建时间",
+        "name": "任务名称",
+        "last_activity": "最近活动"
+      },
+      "sortDir": {
+        "desc": "↓",
+        "asc": "↑"
+      }
+    },
+    "reasons": {
+      "completed": "已完成",
+      "aborted": "已中止",
+      "error": "出错",
+      "interrupted": "已中断",
+      "deadline_exceeded": "超时限"
+    },
+    "sessions": {
+      "col": {
+        "created": "创建时间",
+        "name": "会话",
+        "user": "用户",
+        "origin": "来源",
+        "turns": "回合",
+        "events": "事件",
+        "tokens": "输出 tokens",
+        "lastReason": "最近结果"
+      }
+    },
+    "turns": {
+      "empty": "没有已记录的回合",
+      "col": {
+        "turn": "回合",
+        "runtime": "运行时",
+        "model": "模型",
+        "started": "开始时间",
+        "events": "事件",
+        "tokens": "输出 tokens",
+        "reason": "结果",
+        "tier": "存储层"
+      }
+    },
+    "events": {
+      "title": "事件时间线",
+      "showPayload": "展开载荷",
+      "hidePayload": "收起载荷",
+      "loadMore": "加载更多事件",
+      "empty": "没有已记录的事件",
+      "clearTurnFilter": "正在查看回合 #{turn} — 清除"
+    },
+    "replay": {
+      "title": "回放",
+      "loading": "回放加载中...",
+      "empty": "没有可回放的事件",
+      "play": "播放",
+      "pause": "暂停",
+      "speed": "倍速",
+      "prevTurn": "上一回合",
+      "nextTurn": "下一回合",
+      "jumpEnd": "跳到结尾",
+      "scrubber": "回放进度",
+      "skipped": "跳过 {count} 个事件",
+      "interrupted": "完成前被中断",
+      "loadFailed": "加载回放数据失败"
+    },
+    "myPage": {
+      "title": "执行记录",
+      "description": "逐字记录的你本人 Craft 任务执行——浏览、回放、导出。",
+      "searchPlaceholder": "按任务名称搜索",
+      "empty": "该时间窗口内没有已记录的会话",
+      "clearSelection": "关闭详情"
     }
   }
 }

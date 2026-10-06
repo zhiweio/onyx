@@ -241,6 +241,16 @@ export const ADMIN_ROUTES = {
     requiredTier: null,
     visibleWhen: (f: FeatureFlags) => f.craftAvailable,
   },
+  CRAFT_TAPE: {
+    path: "/admin/craft/tapes",
+    icon: SvgHistory,
+    title: "Execution Tapes",
+    sidebarLabel: "Execution Tapes",
+    requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
+    section: "Craft",
+    requiredTier: null,
+    visibleWhen: (f: FeatureFlags) => f.craftAvailable,
+  },
 
   // ── Agents & Actions ──────────────────────────────────────────────
   AGENTS: {

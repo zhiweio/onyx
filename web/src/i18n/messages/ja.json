@@ -8826,6 +8826,94 @@
         "saveFailed": "Update failed",
         "invalid": "Enter an integer between 1 and 10"
       }
+    },
+    "craftTape": {
+      "page": {
+        "title": "Execution Tapes",
+        "description": "Every craft agent execution, recorded verbatim. Browse sessions, inspect the event timeline, and export canonical JSONL."
+      },
+      "loadFailed": "Failed to load execution tape data",
+      "export": "Export JSONL",
+      "table": {
+        "footerUnits": "records",
+        "loading": "Loading..."
+      },
+      "overview": {
+        "disabled": "Archiving disabled",
+        "disabledHint": "Enable CRAFT_TAPE_ARCHIVE_ENABLED to archive tapes into the Iceberg lake. Hot-window tape is still recorded in Postgres.",
+        "sessions": "Sessions",
+        "turns": "Turns",
+        "events": "Events",
+        "outputTokens": "Output tokens",
+        "cost": "Cost"
+      },
+      "filters": {
+        "days": "Last {days} days",
+        "origin": "Session origin",
+        "allOrigins": "All origins",
+        "user": "Filter by user email",
+        "userPlaceholder": "User email",
+        "sort": "Sort",
+        "sortKey": {
+          "created_at": "Created",
+          "name": "Task name",
+          "last_activity": "Last activity"
+        },
+        "sortDir": {
+          "desc": "↓",
+          "asc": "↑"
+        }
+      },
+      "sessions": {
+        "searchPlaceholder": "Search sessions by name",
+        "empty": "No recorded sessions in this window",
+        "col": {
+          "created": "Created",
+          "name": "Session",
+          "user": "User",
+          "origin": "Origin",
+          "turns": "Turns",
+          "events": "Events",
+          "tokens": "Output tokens",
+          "lastReason": "Last outcome"
+        }
+      },
+      "turns": {
+        "empty": "No turns recorded",
+        "col": {
+          "turn": "Turn",
+          "runtime": "Runtime",
+          "model": "Model",
+          "started": "Started",
+          "events": "Events",
+          "tokens": "Output tokens",
+          "reason": "Outcome",
+          "tier": "Tier"
+        }
+      },
+      "events": {
+        "title": "Event timeline",
+        "showPayload": "Show payload",
+        "hidePayload": "Hide payload",
+        "loadMore": "Load more events",
+        "empty": "No events recorded",
+        "clearTurnFilter": "Showing turn #{turn} — clear"
+      },
+      "series": {
+        "col": {
+          "day": "Day",
+          "sessions": "Sessions",
+          "turns": "Turns",
+          "events": "Events"
+        }
+      },
+      "reasons": {
+        "completed": "Completed",
+        "aborted": "Aborted",
+        "error": "Error",
+        "interrupted": "Interrupted",
+        "deadline_exceeded": "Deadline exceeded"
+      }
     }
   },
   "agents": {
@@ -12950,6 +13038,9 @@
       "scheduledTasks": {
         "label": "スケジュールされたタスク"
       },
+      "tapes": {
+        "label": "Execution Records"
+      },
       "sessions": {
         "empty": "さあ、作り始めましょう！セッション履歴がここに表示されます。",
         "title": "セッション"
@@ -15836,6 +15927,9 @@
         },
         "craftEvaluations": {
           "label": "評価"
+        },
+        "craftTape": {
+          "label": "Execution Tapes"
         }
       },
       "sections": {
@@ -16691,6 +16785,91 @@
       "description": "External links shown in the app sidebar, e.g. your internal help center.",
       "itemTitlePlaceholder": "Title",
       "addItem": "Add link"
+    }
+  },
+  "craftTape": {
+    "loadFailed": "Failed to load execution tape data",
+    "export": "Export JSONL",
+    "table": {
+      "footerUnits": "records",
+      "loading": "Loading..."
+    },
+    "filters": {
+      "days": "Last {days} days",
+      "origin": "Session origin",
+      "allOrigins": "All origins",
+      "sort": "Sort",
+      "sortKey": {
+        "created_at": "Created",
+        "name": "Task name",
+        "last_activity": "Last activity"
+      },
+      "sortDir": {
+        "desc": "↓",
+        "asc": "↑"
+      }
+    },
+    "reasons": {
+      "completed": "Completed",
+      "aborted": "Aborted",
+      "error": "Error",
+      "interrupted": "Interrupted",
+      "deadline_exceeded": "Deadline exceeded"
+    },
+    "sessions": {
+      "col": {
+        "created": "Created",
+        "name": "Session",
+        "user": "User",
+        "origin": "Origin",
+        "turns": "Turns",
+        "events": "Events",
+        "tokens": "Output tokens",
+        "lastReason": "Last outcome"
+      }
+    },
+    "turns": {
+      "empty": "No turns recorded",
+      "col": {
+        "turn": "Turn",
+        "runtime": "Runtime",
+        "model": "Model",
+        "started": "Started",
+        "events": "Events",
+        "tokens": "Output tokens",
+        "reason": "Outcome",
+        "tier": "Tier"
+      }
+    },
+    "events": {
+      "title": "Event timeline",
+      "showPayload": "Show payload",
+      "hidePayload": "Hide payload",
+      "loadMore": "Load more events",
+      "empty": "No events recorded",
+      "clearTurnFilter": "Showing turn #{turn} — clear"
+    },
+    "replay": {
+      "title": "Replay",
+      "loading": "Loading replay...",
+      "empty": "No replayable events",
+      "play": "Play",
+      "pause": "Pause",
+      "speed": "Speed",
+      "prevTurn": "Prev turn",
+      "nextTurn": "Next turn",
+      "jumpEnd": "Jump to end",
+      "scrubber": "Replay position",
+      "skipped": "{count} events skipped",
+      "interrupted": "Interrupted before this finished",
+      "loadFailed": "Failed to load replay data"
+    },
+    "myPage": {
+      "title": "Execution Records",
+      "description": "Your craft task executions, recorded verbatim — browse, replay, and export.",
+      "searchPlaceholder": "Search by task name",
+      "empty": "No recorded sessions in this window",
+      "clearSelection": "Close detail"
     }
   }
 }

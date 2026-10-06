@@ -763,6 +763,7 @@ class OnyxCeleryTask:
     LOOPS_FIRE_ITEM = "loops_fire_item"
     CRAFT_JOB_KEEPER_SWEEP = "craft_job_keeper_sweep"
     PRUNE_CRAFT_TAPE = "prune_craft_tape"
+    CRAFT_TAPE_ARCHIVE_TO_ICEBERG = "craft_tape_archive_to_iceberg"
     CRAFT_EVAL_RUN = "craft_eval_run"
     CRAFT_EVAL_NIGHTLY = "craft_eval_nightly"
 

@@ -9571,6 +9571,36 @@ class CraftTapeEntry(Base):
     )
 
 
+class CraftTapeArchiveBatch(Base):
+    """Ledger of craft tape batches archived into the Iceberg lake.
+
+    The durable checkpoint for the PG-to-Iceberg archival pipeline: a row
+    is written ``pending`` before the lake append and flipped to ``done``
+    after the (atomic) snapshot commit. The high-water mark — the greatest
+    ``max_source_id`` among ``done`` batches — is exactly the set of
+    ``craft_tape_entry`` rows safely present in the lake, and bounds both
+    Postgres pruning and the cold-read split. ``batch_id`` also tags the
+    archived rows for traceability."""
+
+    __tablename__ = "craft_tape_archive_batch"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    batch_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    max_source_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_craft_tape_archive_batch_status", "status", "max_source_id"),
+    )
+
+
 class CraftEvalRun(Base):
     """One execution of the craft golden-set eval pipeline.
 

@@ -30,6 +30,12 @@ from onyx.server.features.build.scheduled_tasks.api import (
 )
 from onyx.server.features.build.session.api import router as sessions_router
 from onyx.server.features.build.session.messages import router as messages_router
+from onyx.server.features.build.tape_archive.api import (
+    admin_router as tape_archive_admin_router,
+)
+from onyx.server.features.build.tape_archive.api import (
+    user_router as tape_user_router,
+)
 from onyx.server.features.build.user_library.api import router as user_library_router
 from onyx.server.features.build.utils import is_craft_enabled_for_user
 from onyx.utils.logger import setup_logger
@@ -58,6 +64,7 @@ admin_router = APIRouter(
 )
 admin_router.include_router(external_apps_admin_router, tags=["build"])
 admin_router.include_router(evals_admin_router, tags=["build"])
+admin_router.include_router(tape_archive_admin_router, tags=["build"])
 
 
 @admin_router.get("/base-instructions")
@@ -89,3 +96,6 @@ router.include_router(external_apps_oauth_router, tags=["build"])
 # USE_LLM_GATEWAY gate that the sandbox PAT satisfies.
 router.include_router(debug_router, tags=["build-debug"])
 router.include_router(approvals_router, tags=["build"])
+# Personal tape entry: a user reads only their own sessions' recordings
+# (ownership enforced per-endpoint inside the router).
+router.include_router(tape_user_router, tags=["build"])

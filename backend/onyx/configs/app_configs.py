@@ -2006,6 +2006,41 @@ MCP_ICEBERG_CATALOG_URI = os.environ.get("MCP_ICEBERG_CATALOG_URI") or ""
 MCP_ICEBERG_CATALOG_SCHEMA = os.environ.get("MCP_ICEBERG_CATALOG_SCHEMA") or "iceberg"
 MCP_ICEBERG_SCHEMA_VERSION = int(os.environ.get("MCP_ICEBERG_SCHEMA_VERSION") or 1)
 
+#####
+# Craft tape archive — the long-term (cold) tier for craft session tapes
+#####
+# Postgres keeps a hot window (WAL + codex inject source); a celery task
+# batches rows past the high-water mark into Iceberg, then prunes Postgres.
+# Same catalog schema as the MCP lake; own namespace and warehouse prefix.
+CRAFT_TAPE_ARCHIVE_ENABLED = (
+    os.environ.get("CRAFT_TAPE_ARCHIVE_ENABLED", "false").lower() == "true"
+)
+_DEFAULT_CRAFT_TAPE_WAREHOUSE = os.environ.get("CRAFT_TAPE_ICEBERG_WAREHOUSE") or (
+    f"s3://{os.environ.get('S3_FILE_STORE_BUCKET_NAME') or 'onyx-file-store-bucket'}"
+    "/onyx-craft-iceberg"
+    if os.environ.get("S3_ENDPOINT_URL") or os.environ.get("S3_AWS_ACCESS_KEY_ID")
+    else "file:///tmp/onyx-craft-iceberg"
+)
+CRAFT_TAPE_ICEBERG_WAREHOUSE = _DEFAULT_CRAFT_TAPE_WAREHOUSE
+CRAFT_TAPE_ICEBERG_NAMESPACE = os.environ.get("CRAFT_TAPE_ICEBERG_NAMESPACE") or "craft"
+CRAFT_TAPE_ICEBERG_CATALOG_URI = os.environ.get("CRAFT_TAPE_ICEBERG_CATALOG_URI") or ""
+CRAFT_TAPE_ICEBERG_CATALOG_SCHEMA = (
+    os.environ.get("CRAFT_TAPE_ICEBERG_CATALOG_SCHEMA") or "iceberg"
+)
+CRAFT_TAPE_ICEBERG_SCHEMA_VERSION = int(
+    os.environ.get("CRAFT_TAPE_ICEBERG_SCHEMA_VERSION") or 1
+)
+# Postgres keeps tape rows for this many days once archived (hot window for
+# live reads); 0 keeps everything. When archiving is disabled, the build
+# feature's CRAFT_TAPE_RETENTION_DAYS still applies unchanged.
+CRAFT_TAPE_HOT_RETENTION_DAYS = int(
+    os.environ.get("CRAFT_TAPE_HOT_RETENTION_DAYS") or 7
+)
+# Iceberg-side retention; 0 keeps archived tape forever.
+CRAFT_TAPE_ICEBERG_RETENTION_DAYS = int(
+    os.environ.get("CRAFT_TAPE_ICEBERG_RETENTION_DAYS") or 365
+)
+
 # At or below this size a result used to be stored inline in Postgres. The
 # body now always lives in Iceberg; this value is kept for pack policy fields.
 MCP_RESULT_INLINE_THRESHOLD_BYTES = int(

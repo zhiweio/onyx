@@ -124,19 +124,18 @@ def cleanup_idle_sandboxes_task(self: Task, *, tenant_id: str) -> None:  # noqa:
     ignore_result=True,
 )
 def prune_craft_tape_task(self: Task, *, tenant_id: str) -> None:  # noqa: ARG001
-    """Drop tape rows past the retention window.
+    """Apply tape retention.
 
-    The tape is an audit/replay asset with a bounded window; sessions keep
-    their BuildMessage transcript forever, so pruning loses no user-visible
-    history."""
-    from onyx.db.craft_tape import prune_tape_before, tape_retention_cutoff
-    from onyx.server.features.build.configs import CRAFT_TAPE_RETENTION_DAYS
+    With archiving disabled, drops rows past the single-tier window.
+    With archiving enabled, Postgres only drops rows the Iceberg lake
+    already holds (high-water bounded) past the hot window, and the lake
+    expires on its own retention. Sessions keep their BuildMessage
+    transcript forever, so pruning loses no user-visible history."""
+    from onyx.background.celery.tasks.craft_tape_archive.tasks import (
+        prune_craft_tape_hot_window,
+    )
 
-    with get_session_with_current_tenant() as db_session:
-        removed = prune_tape_before(
-            db_session, tape_retention_cutoff(CRAFT_TAPE_RETENTION_DAYS)
-        )
-        db_session.commit()
+    removed = prune_craft_tape_hot_window()
     if removed:
         task_logger.info("prune_craft_tape removed=%s tenant=%s", removed, tenant_id)
 

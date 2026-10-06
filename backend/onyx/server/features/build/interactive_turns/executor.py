@@ -751,9 +751,27 @@ def _drive_interactive_turn(
                 )
                 runtime_is_opencode = runtime_choice.runtime_id == "opencode"
                 # Tape rows must carry the runtime that produced them: the
-                # codex replay filters on runtime='codex'.
+                # codex replay filters on runtime='codex'. The turn/start
+                # fact carries the request environment (provider, model,
+                # reasoning effort) so the log alone can reconstruct what
+                # the model was asked with.
                 tape_stack.enter_context(
-                    tape_recording(session_id, turn_index, runtime_choice.runtime_id)
+                    tape_recording(
+                        session_id,
+                        turn_index,
+                        runtime_choice.runtime_id,
+                        turn_id=turn_id,
+                        kind=kind,
+                        request_env={
+                            "provider": session.agent_provider,
+                            "model": session.agent_model,
+                            "reasoning_effort": (
+                                session.reasoning_effort.value
+                                if session.reasoning_effort is not None
+                                else None
+                            ),
+                        },
+                    )
                 )
 
                 # Only while holding the slot — a racing loser must not overwrite
@@ -1174,6 +1192,36 @@ def _drive_interactive_turn(
                     session_manager.clear_turn_deadline(sandbox.id, session_id)
                 prompt_slot_cm.__exit__(None, None, None)
     finally:
+        # Turn-end fact for the tape, derived once here from the drive's
+        # outcome variables instead of at each finish_turn call site. A
+        # runner that dies before this note leaves the turn open on tape;
+        # readers classify open turns as interrupted (dsh semantics).
+        try:
+            from onyx.server.features.build.sandbox.tape_recorder import (
+                TURN_END_ABORTED,
+                TURN_END_COMPLETED,
+                TURN_END_DEADLINE,
+                TURN_END_ERROR,
+                TURN_END_INTERRUPTED,
+                note_turn_end,
+            )
+
+            if turn_succeeded:
+                reason = TURN_END_COMPLETED
+            elif cancelled:
+                reason = TURN_END_ABORTED
+            elif deadline_exceeded:
+                reason = TURN_END_DEADLINE
+            elif turn_error_detail:
+                reason = TURN_END_ERROR
+            else:
+                reason = TURN_END_INTERRUPTED
+            note_turn_end(
+                reason,
+                detail=turn_error_detail if reason == TURN_END_ERROR else None,
+            )
+        except Exception:
+            logger.debug("Tape turn/end note failed", exc_info=True)
         tape_stack.close()
         # request_skill links are filesystem-level (readable the same turn);
         # the harness catalog refreshes exactly once, after the turn ends —

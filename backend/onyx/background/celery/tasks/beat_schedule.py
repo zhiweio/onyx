@@ -7,6 +7,7 @@ from celery.schedules import crontab
 from onyx.configs.app_configs import (
     AUTO_LLM_CONFIG_URL,
     AUTO_LLM_UPDATE_INTERVAL_SECONDS,
+    CRAFT_TAPE_ARCHIVE_ENABLED,
     DISABLE_OPENSEARCH_MIGRATION_TASK,
     DISABLE_VECTOR_DB,
     ENABLE_OPENSEARCH_INDEXING_FOR_ONYX,
@@ -438,6 +439,22 @@ if CRAFT_EVAL_NIGHTLY_ENABLED:
                 "expires": BEAT_EXPIRES_DEFAULT,
                 "queue": OnyxCeleryQueues.SCHEDULED_TASKS,
                 "work_gated": True,
+            },
+        }
+    )
+
+# Craft tape archival into the Iceberg lake. High-water driven and
+# idempotent; a short cadence keeps the PG hot window small.
+if CRAFT_TAPE_ARCHIVE_ENABLED:
+    beat_task_templates.append(
+        {
+            "name": "archive-craft-tape",
+            "task": OnyxCeleryTask.CRAFT_TAPE_ARCHIVE_TO_ICEBERG,
+            "schedule": timedelta(minutes=5),
+            "options": {
+                "priority": OnyxCeleryPriority.LOW,
+                "expires": BEAT_EXPIRES_DEFAULT,
+                "queue": OnyxCeleryQueues.PRIMARY,
             },
         }
     )

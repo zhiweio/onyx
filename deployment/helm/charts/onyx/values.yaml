@@ -1625,6 +1625,16 @@ configMap:
   MCP_ICEBERG_CATALOG_URI: ""
   MCP_ICEBERG_CATALOG_SCHEMA: ""
   MCP_ICEBERG_SCHEMA_VERSION: ""
+  # Craft tape archive lake. Empty warehouse uses s3://<bucket>/onyx-craft-iceberg
+  # when S3 is set, otherwise file:///tmp/onyx-craft-iceberg.
+  CRAFT_TAPE_ARCHIVE_ENABLED: ""
+  CRAFT_TAPE_ICEBERG_WAREHOUSE: ""
+  CRAFT_TAPE_ICEBERG_NAMESPACE: ""
+  CRAFT_TAPE_ICEBERG_CATALOG_URI: ""
+  CRAFT_TAPE_ICEBERG_CATALOG_SCHEMA: ""
+  CRAFT_TAPE_ICEBERG_SCHEMA_VERSION: ""
+  CRAFT_TAPE_HOT_RETENTION_DAYS: ""
+  CRAFT_TAPE_ICEBERG_RETENTION_DAYS: ""
   # Azure Blob Storage file store (set FILE_STORE_BACKEND: "azure" and
   # minio.enabled: false). Auth priority: AZURE_STORAGE_CONNECTION_STRING,
   # then AZURE_STORAGE_ACCOUNT_KEY, then DefaultAzureCredential (AKS Workload

@@ -145,6 +145,8 @@ celery_app.autodiscover_tasks(
             # Craft golden-set eval runs (P4): one case is a real-model long
             # task, same shape as the scheduled-task executor above.
             "onyx.background.celery.tasks.craft_evals",
+            # Craft tape archival into the Iceberg lake (PG hot window).
+            "onyx.background.celery.tasks.craft_tape_archive",
         ]
     )
 )

@@ -28,6 +28,7 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
       craftApps: t("adminNav.items.craftApps.label"),
       craftCatalog: t("adminNav.items.craftCatalog.label"),
       craftEvaluations: t("adminNav.items.craftEvaluations.label"),
+      craftTape: t("adminNav.items.craftTape.label"),
       craftPreferences: t("adminNav.items.craftPreferences.label"),
       agents: t("adminNav.items.agents.label"),
       mcpActions: t("adminNav.items.mcpActions.label"),
