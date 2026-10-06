@@ -91,6 +91,7 @@ aiohttp==3.14.3 \
     --hash=sha256:fa9467a8113aa69d3d7c55a70ef0b7c636010a40993f3df9d9d0d73b3eb7ef24
     # via
     #   aiobotocore
+    #   dingtalk-stream
     #   litellm
     #   voyageai
 aioitertools==0.13.0 \
@@ -339,6 +340,9 @@ cryptography==48.0.1 \
     # via
     #   google-auth
     #   pyjwt
+dingtalk-stream==0.24.3 \
+    --hash=sha256:2160403656985962878bf60cdf5adf41619f21067348e06f07a7c7eebf5943ad
+    # via onyx
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
@@ -1363,6 +1367,7 @@ requests==2.33.0 \
     --hash=sha256:c7ebc5e8b0f21837386ad0e1c8fe8b829fa5f544d8df3b2253bff14ef29d7652
     # via
     #   cohere
+    #   dingtalk-stream
     #   google-api-core
     #   google-auth
     #   google-cloud-bigquery
@@ -1749,7 +1754,9 @@ websockets==15.0.1 \
     --hash=sha256:e09473f095a819042ecb2ab9465aee615bd9c2028e4ef7d933600a8401c79561 \
     --hash=sha256:ee443ef070bb3b6ed74514f5efaa37a252af57c90eb33b956d35c8e9c10a1931 \
     --hash=sha256:f7a866fbc1e97b5c617ee4116daaa09b722101d4a3c170c787450ba409f9736f
-    # via google-genai
+    # via
+    #   dingtalk-stream
+    #   google-genai
 wrapt==1.17.3 \
     --hash=sha256:0ed61b7c2d49cee3c027372df5809a59d60cf1b6c2f81ee980a091f3afed6a2d \
     --hash=sha256:16ecf15d6af39246fe33e507105d67e4b81d8f8d2c6598ff7e3ca1b8a37213f7 \
