@@ -368,6 +368,8 @@ celery_app.autodiscover_tasks(
             "onyx.background.celery.tasks.capability_checks",
             # craft deep-job keeper sweep rides the default queue
             "onyx.background.celery.tasks.build",
+            # craft tape archival into the Iceberg lake (default queue)
+            "onyx.background.celery.tasks.craft_tape_archive",
         ]
     )
 )

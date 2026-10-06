@@ -245,9 +245,14 @@ def _decorate_sessions(
     emails: dict[UUID, str] = {}
     user_ids = [row.user_id for row in rows if row.user_id is not None]
     if user_ids:
+        # Column select, not a User entity load: the User model carries
+        # joined-eager collection relationships (oauth_accounts), which
+        # would force a .unique() on the Result here.
         # ty: ignore[unresolved-attribute] — Mapped[UUID] column, ty misses .in_
-        for user in db_session.scalars(select(User).where(User.id.in_(user_ids))):
-            emails[user.id] = user.email
+        for user_id, email in db_session.execute(
+            select(User.id, User.email).where(User.id.in_(user_ids))
+        ):
+            emails[user_id] = email
 
     items = []
     for row in rows:
