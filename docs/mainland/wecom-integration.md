@@ -163,4 +163,4 @@ token 失效 (errcode 853004/853005) 由代理重新派生。沙箱侧通过内�
 | 群聊 | 经典自建应用无群聊事件回调 —— 平台限制，不支持 | 平台限制 |
 | Craft 应用 | craft 会话调 `wecom_api.py`（CLI 网关 org token） | ✅（见 dingtalk-integration.md §5 同批验证） |
 | 在线文档/群消息连接器 | 触发 WECOM_DOCS / WECOM_IM 同步 | ✅ 抓取入库标记成功；向量写入受环境嵌入模型错配阻塞（见 dingtalk-integration.md §5 环境说明） |
-| SSO 扫码登录 | 登录页点企业微信 → 授权 | 待真机配合 |
+| SSO 扫码登录 | 登录页点企业微信 → 授权 | 平台限制：回调域需可信域名（备案主体认证）；authorize 端点已验证正常生成 wwlogin URL |

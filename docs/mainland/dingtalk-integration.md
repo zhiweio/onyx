@@ -122,7 +122,8 @@ HTTP 配置均已保存且通道验证通过（保存时出现"修改成功"）�
 | 卡片模板 | 卡片平台 AI 卡片；自建模板未发布时可用官方公共模板 ID `02fcf2f4-5e02-4a85-b672-46d1f715543e.schema` | ✅ 写入 `bot_card_template_id` |
 | Craft 应用 | craft 会话调 `dingtalk_api.py kb.list` | ✅ proxy 门控 `dingtalk.kb.list policy=ALWAYS` + org token 注入，真实返回知识库 |
 | 知识库连接器 | UI 配置（凭据=AppKey/Secret，连接器配置=operator_union_id）→ 同步 | ✅ 抓取 9 篇、blocks 正文完整；向量写入见下方环境说明 |
-| SSO 扫码登录 | 登录页点钉钉 → 授权 | 待真机配合 |
+| SSO 扫码登录 | 登录页点钉钉 → 扫码授权 | ✅ `oauth_account` 落库（unionId 确定性邮箱） |
+| 真机消息（Stream 通道） | 钉钉客户端发消息/群内 @机器人 | ✅ Stream 接收 → AI 卡片流式回复，无错误日志 |
 
 > **环境已知问题（非钉钉专属）**：本部署的 `indexing_model_server` 实际加载
 > `thenlper/gte-small`（384 维），而全部 `search_settings` 与 opensearch 既有索引
